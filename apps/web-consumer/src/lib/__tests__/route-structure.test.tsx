@@ -270,10 +270,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // Pay is one page and lights its own tab there; so does Share
-    // (MESITA-2566).
+    // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
-    ["/share", "Share"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -352,8 +350,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Share · Me (MESITA-2561)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Share", "Me"]);
+  it("is exactly Home · Search · Pay · Me (MESITA-2871)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -369,13 +367,6 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     );
   });
 
-  it("Share wears the three joined dots — not a plane, not a box (MESITA-2568)", async () => {
-    const html = await renderNav("/search");
-    expect(html).toContain("lucide-share-2");
-    expect(html).not.toContain("lucide-send");
-    expect(html).not.toMatch(/lucide-share(?!-2)/);
-  });
-
   it("keeps Wallet, Visit and Order off the bar", async () => {
     const labels = await tabLabels();
     expect(labels).not.toContain("Wallet");
@@ -383,18 +374,13 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
     expect(labels).not.toContain("Order");
   });
 
-  // Four <a> tabs and one <button>: Pay navigates to its page like every
-  // other link, and it is the only one tagged Soon — exactly once. Share is
-  // a link to its own page too (MESITA-2566; it was a button that fired the
-  // share sheet, MESITA-2561).
-  it("draws five links and no button, Pay with the one Soon tag", async () => {
+  // Four <a> tabs and no <button>: Pay navigates to its page like every
+  // other link, and it is the only one tagged Soon — exactly once.
+  it("draws four links and no button, Pay with the one Soon tag", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(5);
+    expect(anchors).toHaveLength(4);
     expect(html.split("<button").slice(1)).toHaveLength(0);
-    const share = anchors.find((a) => /text-center">Share</.test(a));
-    expect(share).toMatch(/href="\/share"/);
-    expect(share).not.toMatch(/>Soon</);
     const pay = anchors.find((a) => /text-center">Pay</.test(a));
     expect(pay).toBeDefined();
     expect(pay).toMatch(/>Soon</);
@@ -419,7 +405,6 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.share,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -872,7 +857,7 @@ describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
       ["(shell)", "visit"],
       ["(shell)", "order"],
       // NOT ["(shell)", "share"]: the referral deck stays gone, but /share is
-      // the Share tab's own page now (MESITA-2566).
+      // its own page (MESITA-2566), off the bar since MESITA-2871.
       ["(shell)", "me", "diamond"],
       ["(shell)", "me", "visits"],
       ["(shell)", "me", "settings", "metrics"],

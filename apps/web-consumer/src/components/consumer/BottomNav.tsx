@@ -5,7 +5,7 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ComponentType, type PointerEvent } from "react";
-import { QrCode, Search, Share2, User } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 import {
@@ -19,18 +19,17 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 
-// FIVE tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
+// FOUR tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
 // Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings, MESITA-2521
 // renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
-// Share button: "fourth menu item must be a share button. just a share
-// button. no credits. no nothing"):
+// Share tab, MESITA-2566 gave it its own page):
 //
-//   Home · Search · Pay (Soon) · Share · Me
+//   Home · Search · Pay (Soon) · Me
 //
-//   SHARE IS A PAGE (Pato, MESITA-2566: "create a dedicate page for share").
-//   The tab links to /share and lights there; the page holds the link and
-//   the ways to send it. It was a tap that fired the share sheet
-//   (MESITA-2561).
+//   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
+//   the share from here"). Its page, /share, stays live and unlinked;
+//   restoring the tab is one ITEMS entry (Share2, CONSUMER_ROUTES.share)
+//   plus BAR_HREFS in (shell)/layout.tsx.
 //
 //   PAY IS ONE PAGE, THE SOON STATE (Pato, MESITA-2087: "Keep pay but delete
 //   everything else. just the empty page with soon."). The tab is a plain
@@ -84,16 +83,6 @@ const ITEMS: Item[] = [
     label: "Pay",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
     soon: true,
-  },
-  {
-    // Three joined dots, THE share glyph (Pato, MESITA-2568: "that share
-    // button looks like messages or dm instagram … it must look as a … share
-    // button"; the paper plane was MESITA-2564). Its page is the invite card
-    // and the ways to send it (MESITA-2566).
-    href: CONSUMER_ROUTES.share,
-    Icon: Share2,
-    label: "Share",
-    matchPrefixes: [CONSUMER_ROUTES.share],
   },
   {
     href: CONSUMER_ROUTES.me,
