@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import { EnrichedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
@@ -106,6 +107,7 @@ export function RailCard({
   onSave,
   onShare,
   withDistance = false,
+  photoOverlay,
 }: {
   place: Place;
   selected: boolean;
@@ -114,6 +116,8 @@ export function RailCard({
   onSave: () => void;
   onShare: () => void;
   withDistance?: boolean;
+  /** Drawn over the photo, e.g. Search's score readout (MESITA-2877). */
+  photoOverlay?: ReactNode;
 }) {
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
@@ -171,6 +175,7 @@ export function RailCard({
               )}
             </span>
           )}
+          {photoOverlay}
         </div>
         <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
