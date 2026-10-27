@@ -4,11 +4,11 @@
 // read these strings, so the loading tile cannot drift from the loaded one.
 // Layout only: each caller adds its own fill (the photo's grey, the ink).
 
-/** EVERY TILE IS SQUARE (MESITA-2652), in a 1px grey hairline (Pato,
- *  MESITA-2661: "add a really small border, gray, to each box"),
- *  rounded-2xl. */
+/** EVERY TILE IS SQUARE (MESITA-2652), rounded-2xl, edged by the score
+ *  tag's soft shadow, not a line (Pato, MESITA-2838: "I don't like the
+ *  borders of the items here in home"; the MESITA-2661 grey hairline). */
 export const TILE_FRAME =
-  "border-foreground/35 relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl border";
+  "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl shadow-sm";
 
 /** The photo, the top 60% (Pato, MESITA-2655: "better 40% and 60%, and use
  *  the space for 4 rows"). It carries the radius itself, as the band does:
