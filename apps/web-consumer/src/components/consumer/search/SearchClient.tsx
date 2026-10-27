@@ -125,6 +125,7 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
+  RAIL_LEAD_PAGES,
   RAIL_PAGE_SHARE,
   RAIL_PAGE_SIZE,
   SearchHereButton,
@@ -898,11 +899,19 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * RAIL_PAGE_SHARE;
     if (page <= 0) return;
-    // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
-    // (MESITA-2878). The Add button is pinned beside the rail, never a
-    // page (MESITA-2882).
-    const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
-    const next = railCenterIndex(el.scrollLeft, page, pageCount);
+    // railIndex counts PLACE pages, RAIL_PAGE_SIZE cards each. The Add card
+    // is scroll page 0 (MESITA-2886), so place page n is scroll page n + 1.
+    // Resting on the Add card changes nothing: the ring stays where it was,
+    // and railIndex is left alone so the centring effect does not pull the
+    // rail back off it.
+    const placePages = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
+    const scrolled = railCenterIndex(
+      el.scrollLeft,
+      page,
+      placePages + RAIL_LEAD_PAGES,
+    );
+    if (scrolled < RAIL_LEAD_PAGES) return;
+    const next = scrolled - RAIL_LEAD_PAGES;
     setRailIndex(next);
     const first = next * RAIL_PAGE_SIZE;
     const onPage = catalog.slice(first, first + RAIL_PAGE_SIZE);
@@ -963,7 +972,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || !railShown) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
     const page = idx < 0 ? 0 : Math.floor(idx / RAIL_PAGE_SIZE);
-    el.scrollLeft = page * el.clientWidth * RAIL_PAGE_SHARE;
+    // Past the Add card (scroll page 0, MESITA-2886): it waits to the left.
+    el.scrollLeft = (page + RAIL_LEAD_PAGES) * el.clientWidth * RAIL_PAGE_SHARE;
     // Only a new set or the rail's return re-rests it; a selection change
     // scrolls through the centring effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
