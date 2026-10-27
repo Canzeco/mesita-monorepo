@@ -38,7 +38,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { isSponsoredPlace } from "@/components/consumer/place-card";
-import { SIGHT_Y } from "./search-utils";
+import { SIGHT_Y, viewportSight } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
@@ -251,8 +251,9 @@ export function mapFingerIsDown(): boolean {
 
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
  *  MESITA-2514) — the catalog fetch point: the plus and its dot. The search
- *  rings are NOT drawn here: they are map geometry (SearchCircle), the
- *  circle the last load actually sent Google (MESITA-2842). */
+ *  rings are NOT drawn here: they are map geometry (SearchCircle) sized by
+ *  the last load's radiusKm (MESITA-2842) and centred on this sight
+ *  (MESITA-2844). */
 function SearchMapReticle() {
   return (
     <div
@@ -311,8 +312,12 @@ export function circlePath(
 
 /** The search circle and its half ring (Pato, MESITA-2773: "double circle
  *  for density"; MESITA-2820: both the same dotted line, nothing shaded),
- *  pinned to the map: they stay on the searched ground while the guest pans
- *  and move only when a load answers. Dimmed while a load is in flight. */
+ *  centred on the cross on every camera change, so they move with it while
+ *  the guest pans, before any reload answers (Pato, MESITA-2844: "the cruz
+ *  … must move togeher, even if the places are not loaded"). Their size is
+ *  the `radiusKm` the last load sent Google (MESITA-2842), in km, so a zoom
+ *  scales them with the map until the next answer. Dimmed while a load is
+ *  in flight. */
 function SearchCircle({
   circle,
   searching,
@@ -332,18 +337,38 @@ function SearchCircle({
       strokeWeight: 1.5,
       scale: 3,
     };
-    const made = [circle.radiusKm, circle.radiusKm / 2].map(
-      (km) =>
+    const kms = [circle.radiusKm, circle.radiusKm / 2];
+    const made = kms.map(
+      () =>
         new maps.Polyline({
           map,
-          path: circlePath(circle.center, km),
           clickable: false,
           strokeOpacity: 0,
           icons: [{ icon: dash, offset: "0", repeat: "10px" }],
           zIndex: 1,
         }),
     );
+    // The point under the cross now; the load's own centre until the map
+    // has bounds.
+    const follow = () => {
+      const b = map.getBounds();
+      const ne = b?.getNorthEast();
+      const sw = b?.getSouthWest();
+      const at =
+        ne && sw
+          ? viewportSight({
+              north: ne.lat(),
+              east: ne.lng(),
+              south: sw.lat(),
+              west: sw.lng(),
+            })
+          : circle.center;
+      made.forEach((l, i) => l.setPath(circlePath(at, kms[i])));
+    };
+    follow();
+    const moving = map.addListener("bounds_changed", follow);
     return () => {
+      moving.remove();
       for (const l of made) l.setMap(null);
     };
   }, [map, maps, circle, searching]);
