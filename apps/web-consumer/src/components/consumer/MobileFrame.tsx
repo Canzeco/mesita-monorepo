@@ -72,11 +72,8 @@ export function MobileFrame({
           "md:shadow-elev md:h-[calc(100dvh-2rem-var(--kb,0px))] md:rounded-3xl",
         )}
       >
-        <div className="border-border bg-card text-muted-foreground flex shrink-0 items-center justify-between gap-3 border-b px-3 py-1.5">
-          <p className="type-meta tracking-wide uppercase">
-            Phone emulator
-          </p>
-        </div>
+        {/* No "Phone emulator" band above the app (Pato, MESITA-2862: "remove
+            the ugly header at the top saying phone emulator"). */}
         <div className={cn("flex flex-1 flex-col overflow-hidden", className)}>
           {children}
         </div>
