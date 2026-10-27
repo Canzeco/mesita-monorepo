@@ -3,10 +3,10 @@
 import { ReadField } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "./PlaceContext";
 
-// Read-only (MESITA-2790). google_types is Google's categories list, primary
-// first. mesita_categories is the
-// LLM's 1–3 place_categories slugs, main first, redone on every Enrich. tags
-// is the Mesita tags the same runs pick from place_tags. Labels come from the
+// Read-only until MESITA-2829. google_types is the place's 1–3 Google
+// categories (Google's canonical list), picked by a model on Create and every
+// Enrich, the shown one first (MESITA-2827). tags is the Mesita tags the same
+// runs pick from place_tags. Labels come from the
 // vocabularies the overview already joined. A stored category label leads
 // with an emoji; it is dropped here, since only families wear one.
 
@@ -122,16 +122,6 @@ export function PlaceGoogleCategoriesField() {
         slugs={slugsOf(place.google_types).filter((s) => !GOOGLE_TABLE_B.has(s))}
         labels={labels}
       />
-    </ReadField>
-  );
-}
-
-export function PlaceMesitaCategoriesField() {
-  const { place } = usePlaceContext();
-  const labels = useCategoryLabels();
-  return (
-    <ReadField label="Mesita categories" auto boxed>
-      <Chips slugs={slugsOf(place.mesita_categories)} labels={labels} />
     </ReadField>
   );
 }

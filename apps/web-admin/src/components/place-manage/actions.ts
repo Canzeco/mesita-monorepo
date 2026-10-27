@@ -64,11 +64,9 @@ export type AdminPlace = {
   google_name?: string | null;
   category: string | null;
   category_label: string | null;
-  /** Google Places types[] as Google returned them. */
+  /** Google categories: 1–3 model-picked slugs from Google's list (MESITA-2827). */
   google_types?: unknown;
-  /** LLM-picked slugs (1–5) from the same Google type list. */
-  mesita_categories?: unknown;
-  /** Families: Enricher-inferred (stored); membership derives live. */
+  /** Families: stored (1–5, model-inferred), else mapped from the categories. */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;
