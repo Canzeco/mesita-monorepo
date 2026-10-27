@@ -6,6 +6,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { BottomNav } from "@/components/consumer/BottomNav";
+import { PendingScreen } from "@/components/consumer/PendingScreen";
+import { ShellLoadingFor } from "./shell-loading";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
@@ -24,6 +26,17 @@ import { prefixPath } from "@/lib/surface";
 // the layout's createServerSupabase() at build time and the whole build
 // exits with a "Missing NEXT_PUBLIC_SUPABASE_URL" error.
 export const dynamic = "force-dynamic";
+
+// The bar's five destinations, whose placeholders PendingScreen paints the
+// moment a tab is touched (MESITA-2846). A client module's exports are only
+// references here, so the list is BottomNav's hrefs, restated.
+const BAR_HREFS = [
+  CONSUMER_ROUTES.home,
+  CONSUMER_ROUTES.search,
+  CONSUMER_ROUTES.pay,
+  CONSUMER_ROUTES.share,
+  CONSUMER_ROUTES.me,
+] as const;
 
 // Mandatory onboarding gate for every page inside /(shell).
 //
@@ -146,6 +159,16 @@ export default async function ConsumerShellLayout({
               hidden already do it on the page (place detail). */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
+            {/* The tapped tab's placeholder, drawn on finger-down over the
+                old screen until the new one commits (MESITA-2846). */}
+            <PendingScreen
+              frames={Object.fromEntries(
+                BAR_HREFS.map((href) => [
+                  href,
+                  <ShellLoadingFor key={href} bare={href} />,
+                ]),
+              )}
+            />
             <div
               className={cn(
                 "pointer-events-none absolute inset-0",
