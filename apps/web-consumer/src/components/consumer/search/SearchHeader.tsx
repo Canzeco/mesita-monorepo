@@ -18,8 +18,10 @@
 // family, each with its line icon (MESITA-2478: line icons, not emoji).
 // Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
 // MESITA-2879 had All, MESITA-2534 Top). There is no Filters sheet any more
-// (MESITA-2879 deleted MESITA-2758's): the disc lights while a family is
-// picked, as the old disc did, and a tap on it clears the pick back to Top.
+// (MESITA-2879 deleted MESITA-2758's): while a family is picked the disc
+// turns red and wears a red bubble with the count (Pato, MESITA-2884: "mark
+// it red or something with a bubble"; MESITA-2882 lit it black), and a tap
+// on it clears the pick back to Top.
 // NO NEARBY, NO POPULAR (MESITA-2499/2502): the map is the where, a chip
 // is only the what. ONE pick at a time: Top is lit when no family is;
 // tapping the lit family again also goes back to Top. Sent as the
@@ -58,10 +60,15 @@ import {
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
-/** The Filters disc while a family is picked: the lit chip's ink, so a
- *  pick that scrolled out of view still shows at the row's edge. */
+/** The Filters disc while a family is picked: red, so a pick that scrolled
+ *  out of view still shows at the row's edge (MESITA-2884). */
 const DISC_LIT =
-  "border-primary bg-primary text-primary-foreground hover:bg-primary";
+  "relative border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
+
+/** The count bubble on the lit disc's top-right corner, ringed in the
+ *  band's white so it reads off the disc. */
+const DISC_BADGE =
+  "bg-destructive text-destructive-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
 
 export function SearchHeader({
   locate,
@@ -112,7 +119,11 @@ export function SearchHeader({
             <button
               type="button"
               onClick={clearMapFamilies}
-              aria-label={everyFamily ? "Filters" : "Clear the family filter"}
+              aria-label={
+                everyFamily
+                  ? "Filters"
+                  : `Clear the family filter (${filters.familyKeys.length} selected)`
+              }
               aria-pressed={!everyFamily}
               data-active={everyFamily ? undefined : "true"}
               className={cn(HEADER_DISC, !everyFamily && DISC_LIT)}
@@ -123,6 +134,15 @@ export function SearchHeader({
                 strokeWidth={2}
                 aria-hidden
               />
+              {everyFamily ? null : (
+                <span
+                  aria-hidden
+                  className={DISC_BADGE}
+                  data-search-filters-badge
+                >
+                  {filters.familyKeys.length}
+                </span>
+              )}
             </button>
             <nav
               aria-label="Families"
