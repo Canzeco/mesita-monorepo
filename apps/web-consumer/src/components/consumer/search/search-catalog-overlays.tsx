@@ -29,29 +29,11 @@ const RAIL_PAGE =
 export const RAIL_FLOAT_CLASS =
   "pointer-events-none absolute inset-x-0 bottom-2 z-20";
 
-/** The ranking line that sits on a loaded card (RailScoreTag): two 10px
- *  lines in the same box, so the card does not jump up when the line
- *  arrives (MESITA-2750). The words are data; only the bars show. */
-function RailScoreTagSkeleton() {
-  return (
-    <div
-      aria-hidden
-      className="bg-card/95 type-meta mb-1.5 rounded-xl px-3 py-1.5 font-mono leading-snug shadow-sm"
-    >
-      <div className="flex h-[1lh] items-center">
-        <Skeleton className="h-2.5 w-28" />
-      </div>
-      <div className="flex h-[1lh] items-center">
-        <Skeleton className="h-2.5 w-full" />
-      </div>
-    </div>
-  );
-}
-
 /** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
  *  similar to the page you are loading, like the sizes"): the loaded row's
  *  own pages, the first card centred and the next one peeking at the right
- *  edge, each card RailCard's face with the score line above it.
+ *  edge, each card RailCard's face (the score sits on the photo since
+ *  MESITA-2877, so nothing waits above it).
  *  search/loading.tsx draws this same row, so the route's skeleton hands
  *  over to the first load without a move. */
 export function CatalogRailSkeleton() {
@@ -61,11 +43,9 @@ export function CatalogRailSkeleton() {
       aria-hidden
     >
       <div className={RAIL_PAGE}>
-        <RailScoreTagSkeleton />
         <RailCardSkeleton />
       </div>
       <div className={RAIL_PAGE}>
-        <RailScoreTagSkeleton />
         <RailCardSkeleton />
       </div>
     </div>
@@ -229,6 +209,47 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   );
 }
 
+/**
+ * The same numbers ON THE CARD'S PHOTO (Pato, MESITA-2877: "remove the scores
+ * from there for the moment and put them on top of the image but kinda
+ * transparent"): Search's rail only; Home's rails keep RailScoreTag above
+ * the tile. A translucent dark scrim at the photo's foot, small white mono,
+ * one number a line so it fits the square (what Proximity read, km and k,
+ * on a line of its own). It never takes a tap: the photo
+ * is the card's open target. The sources line is gone here: since
+ * MESITA-2872 every place carries both Mesita sources.
+ */
+export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
+  const score = place.score;
+  if (!score) return null;
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 type-meta px-2 py-1.5 font-mono leading-tight text-white/90 tabular-nums"
+      data-rail-score-overlay
+    >
+      <p>prox {fmtScore(score.proximity)}</p>
+      {typeof score.distanceKm === "number" ? (
+        <p>
+          {score.distanceKm.toFixed(2)} km
+          {typeof score.distancePenalty === "number"
+            ? ` · k ${score.distancePenalty}`
+            : ""}
+        </p>
+      ) : null}
+      <p>pop {fmtScore(score.popularity)}</p>
+      <p>
+        sel{" "}
+        {fmtScore(
+          typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
+        )}
+      </p>
+      <p className="font-semibold text-white">
+        final {fmtScore(score.final)}
+      </p>
+    </div>
+  );
+}
+
 export function SearchRailOverlay({
   places,
   catalogLoading = false,
@@ -291,9 +312,9 @@ export function SearchRailOverlay({
                 ref={(el) => setRailCardRef(place.id, el)}
                 className={RAIL_PAGE}
               >
-                <RailScoreTag place={place} />
                 <RailCard
                   place={place}
+                  photoOverlay={<RailScoreOverlay place={place} />}
                   selected={place.id === selectedId}
                   onOpen={() => onOpenPlace(place)}
                   saved={cards.isSaved(place)}
