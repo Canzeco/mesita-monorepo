@@ -107,13 +107,13 @@ Deno.serve(async (req) => {
     ),
   );
   if (queries.length === 0 && placeIds.length === 0) {
-    return json({ ok: false, error: "queries or placeIds: empty" });
+    return json({ ok: false, error: "queries or placeIds: empty" }, 400);
   }
   if (queries.length + placeIds.length > MAX_QUERIES_PER_BATCH) {
     return json({
       ok: false,
       error: `queries + placeIds: max ${MAX_QUERIES_PER_BATCH} per batch (got ${queries.length + placeIds.length})`,
-    });
+    }, 400);
   }
 
   const regionCode = parseCldrRegionCode(body.regionCode);

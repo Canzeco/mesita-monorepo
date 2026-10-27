@@ -318,7 +318,10 @@ export async function fetchGoogleBasics(
 }
 
 // ── Google Places (New) ──────────────────────────────────────────────────────
-async function fetchGoogleDetails(
+// A network failure or an unreadable body is a transient error (503
+// google_unavailable up the stack), never a throw: the create-place and
+// update-from-Google EFs have no catch of their own (MESITA-2855).
+export async function fetchGoogleDetails(
   placeId: string,
   apiKey: string,
 ): Promise<GoogleDetails | { error: string; transient: boolean }> {
@@ -326,24 +329,35 @@ async function fetchGoogleDetails(
   const doFetch = () =>
     fetch(url, { headers: { "X-Goog-Api-Key": apiKey, "X-Goog-FieldMask": GOOGLE_FIELD_MASK } });
 
-  let r = await doFetch();
-  if (r.status >= 500 && r.status < 600) {
-    await new Promise((res) => setTimeout(res, 800));
-    r = await doFetch();
+  try {
+    let r = await doFetch();
+    if (r.status >= 500 && r.status < 600) {
+      await new Promise((res) => setTimeout(res, 800));
+      r = await doFetch();
+    }
+    if (!r.ok) {
+      const text = await r.text();
+      const transient = r.status >= 500 && r.status < 600;
+      const friendly = transient
+        ? "Google Places is temporarily unavailable. Try again in a few seconds."
+        : r.status === 429
+          ? "Google Places rate-limited the request. Try again in a moment."
+          : r.status === 404
+            ? "Google couldn't find that place. Try searching again."
+            : `Google rejected the request (${r.status}). ${text.slice(0, 160)}`;
+      return { error: friendly, transient };
+    }
+    return (await r.json()) as GoogleDetails;
+  } catch (err) {
+    console.error(
+      "[enrich-google-basics] place details unreachable:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return {
+      error: "Google Places is temporarily unavailable. Try again in a few seconds.",
+      transient: true,
+    };
   }
-  if (!r.ok) {
-    const text = await r.text();
-    const transient = r.status >= 500 && r.status < 600;
-    const friendly = transient
-      ? "Google Places is temporarily unavailable. Try again in a few seconds."
-      : r.status === 429
-        ? "Google Places rate-limited the request. Try again in a moment."
-        : r.status === 404
-          ? "Google couldn't find that place. Try searching again."
-          : `Google rejected the request (${r.status}). ${text.slice(0, 160)}`;
-    return { error: friendly, transient };
-  }
-  return (await r.json()) as GoogleDetails;
 }
 
 async function fetchGooglePhotos(

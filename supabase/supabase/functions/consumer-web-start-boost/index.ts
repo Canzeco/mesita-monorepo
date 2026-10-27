@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
-  checkoutParams,
+  openBackingCheckout,
   parseBoostStart,
   readBoostPlace,
   BOOST_CURRENCY,
@@ -71,25 +71,10 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: `backing_insert: ${insErr?.message ?? "no row"}` }, 500);
   }
 
-  try {
-    const stripe = stripeClient(key);
-    const session = await stripe(
-      "POST",
-      "checkout/sessions",
-      checkoutParams(start, {
-        backingId: row.id,
-        consumerId: authRes.user.id,
-        placeName: String(place.name ?? "Mesita place"),
-      }),
-    );
-    await admin
-      .from("place_backings")
-      .update({ stripe_checkout_session_id: session.id, livemode: session.livemode === true })
-      .eq("id", row.id);
-    return json({ ok: true, url: session.url });
-  } catch (err) {
-    await admin.from("place_backings").delete().eq("id", row.id);
-    console.error("[consumer-web-start-boost]", err);
-    return json({ ok: false, error: "Couldn't open checkout. Try again." }, 502);
-  }
+  const reply = await openBackingCheckout(admin, stripeClient(key), start, {
+    backingId: row.id,
+    consumerId: authRes.user.id,
+    placeName: String(place.name ?? "Mesita place"),
+  });
+  return json(reply.body, reply.status);
 });

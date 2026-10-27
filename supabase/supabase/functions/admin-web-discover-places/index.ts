@@ -9,6 +9,10 @@
 //
 // Wire status follows the standard admin EF contract: 403 when the caller
 // is not on public.super_admins. efInvoke surfaces the error body to the UI.
+// A 400/404/422 from the internal caller (a bad batch) passes through with
+// its error; any other failure, including an internal 401/403 or a network
+// error, is 502, so an internal auth refusal never reads as the admin's own
+// session failing. invokeInternalCaller carries no `code` (MESITA-2855).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -26,6 +30,8 @@ type RequestBody = {
   regionCode?: string;
   maxResultsPerQuery?: number;
 };
+
+const FORWARDED_STATUSES = new Set([400, 404, 422]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -61,7 +67,8 @@ Deno.serve(async (req) => {
     },
   );
   if (!result.ok) {
-    return json({ ok: false, error: result.error }, 502);
+    const status = FORWARDED_STATUSES.has(result.status) ? result.status : 502;
+    return json({ ok: false, error: result.error }, status);
   }
   return json(result.data);
 });

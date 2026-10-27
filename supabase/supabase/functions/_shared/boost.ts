@@ -244,7 +244,14 @@ export function isLiveBacking(
 
 /** Account deletion (consumer-web-delete-account): end every subscription
  *  the guest still pays, at once, so nobody is billed for an account that
- *  no longer exists. A Stripe failure refuses the deletion. */
+ *  no longer exists. A Stripe failure refuses the deletion.
+ *
+ *  A DELETE that throws is checked against Stripe (MESITA-2855): a
+ *  subscription already `canceled` or `incomplete_expired` there is done, so
+ *  its row is patched and counted instead of refusing the deletion forever.
+ *  A failed row write refuses the deletion too. The loop stops at the first
+ *  failure; rows already patched leave the live-status filter, so the retry
+ *  resumes where this run stopped. */
 export async function cancelConsumerBackings(
   admin: SupabaseClient,
   consumerId: string,
@@ -261,14 +268,151 @@ export async function cancelConsumerBackings(
   if (rows.length === 0) return { ok: true, cancelled: 0 };
   if (!stripe) return { ok: false, error: "boost_cancel: payments unavailable" };
   for (const row of rows) {
+    const path = `subscriptions/${encodeURIComponent(row.stripe_subscription_id)}`;
+    let sub: Record<string, unknown>;
     try {
-      const sub = await stripe("DELETE", `subscriptions/${encodeURIComponent(row.stripe_subscription_id)}`);
-      await admin.from("place_backings").update(subscriptionPatch(sub)).eq("id", row.id);
+      sub = await stripe("DELETE", path);
     } catch (err) {
-      return { ok: false, error: `boost_cancel: ${err instanceof Error ? err.message : String(err)}` };
+      const deleteError = errorText(err);
+      try {
+        sub = await stripe("GET", path);
+      } catch (getErr) {
+        return { ok: false, error: `boost_cancel: ${deleteError} (lookup: ${errorText(getErr)})` };
+      }
+      if (!STRIPE_ENDED.has(String(sub.status))) {
+        return { ok: false, error: `boost_cancel: ${deleteError} (still ${String(sub.status)})` };
+      }
     }
+    const { error: updErr } = await admin
+      .from("place_backings")
+      .update(subscriptionPatch(sub))
+      .eq("id", row.id);
+    if (updErr) return { ok: false, error: `boost_cancel: backings_update: ${updErr.message}` };
   }
   return { ok: true, cancelled: rows.length };
+}
+
+/** Stripe subscription statuses that never bill again. */
+const STRIPE_ENDED = new Set(["canceled", "incomplete_expired"]);
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+export type BoostReply = { status: number; body: Record<string, unknown> };
+
+/** consumer-web-start-boost, after its `open` row is inserted: opens the
+ *  Checkout Session and records its id on the row.
+ *
+ *  consumer-web-get-boost finds the backing by that session id when Stripe
+ *  sends the guest back, so a row without it is a payment nobody can confirm
+ *  (MESITA-2855). The write is retried once, then re-read (a timed-out write
+ *  may have landed). If it truly failed, the session is expired and the row
+ *  deleted, and the reply never carries the Checkout url, so the guest has
+ *  nothing to pay. A failed expire or delete is logged; the hourly sync drops
+ *  `open` rows after 24 h. */
+export async function openBackingCheckout(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  start: BoostStart,
+  ctx: { backingId: string; consumerId: string; placeName: string },
+): Promise<BoostReply> {
+  const failed: BoostReply = { status: 502, body: { ok: false, error: "Couldn't open checkout. Try again." } };
+  let session: Record<string, unknown>;
+  try {
+    session = await stripe("POST", "checkout/sessions", checkoutParams(start, ctx));
+  } catch (err) {
+    console.error("[consumer-web-start-boost] checkout:", errorText(err));
+    await deleteOpenBacking(admin, ctx.backingId, null);
+    return failed;
+  }
+  const sessionId = String(session.id ?? "");
+  const patch = { stripe_checkout_session_id: sessionId, livemode: session.livemode === true };
+  const opened: BoostReply = { status: 200, body: { ok: true, url: session.url } };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const err = await updateBacking(admin, ctx.backingId, patch);
+    if (!err) return opened;
+    console.error(`[consumer-web-start-boost] session_write attempt ${attempt + 1}:`, err);
+  }
+  const { data: back, error: readErr } = await admin
+    .from("place_backings")
+    .select("stripe_checkout_session_id")
+    .eq("id", ctx.backingId)
+    .maybeSingle();
+  if (!readErr && sessionId && back?.stripe_checkout_session_id === sessionId) return opened;
+  try {
+    await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
+  } catch (err) {
+    console.error(
+      "[consumer-web-start-boost] expire_failed",
+      JSON.stringify({ backing_id: ctx.backingId, session_id: sessionId, error: errorText(err) }),
+    );
+  }
+  await deleteOpenBacking(admin, ctx.backingId, sessionId);
+  return failed;
+}
+
+/** consumer-web-cancel-boost: stop renewing one backing at period end. A
+ *  row write that fails after Stripe agreed answers 500 so the guest retries
+ *  (the Stripe call is idempotent); supabase-cron-sync-boosts re-syncs the
+ *  row near the period end either way (MESITA-2855). */
+export async function cancelBackingAtPeriodEnd(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  row: { id: string; stripe_subscription_id: string },
+): Promise<BoostReply> {
+  let sub: Record<string, unknown>;
+  try {
+    sub = await stripe(
+      "POST",
+      `subscriptions/${encodeURIComponent(row.stripe_subscription_id)}`,
+      { cancel_at_period_end: true },
+    );
+  } catch (err) {
+    console.error("[consumer-web-cancel-boost] stripe:", errorText(err));
+    return { status: 502, body: { ok: false, error: "Couldn't cancel. Try again." } };
+  }
+  const patch = subscriptionPatch(sub);
+  const err = await updateBacking(admin, row.id, patch);
+  if (err) {
+    console.error("[consumer-web-cancel-boost] backings_update:", err);
+    return { status: 500, body: { ok: false, error: "Couldn't cancel. Try again." } };
+  }
+  return { status: 200, body: { ok: true, current_period_end: patch.current_period_end } };
+}
+
+/** One backing row write; the error text, or null when it landed. */
+async function updateBacking(
+  admin: SupabaseClient,
+  backingId: string,
+  patch: Record<string, unknown>,
+): Promise<string | null> {
+  try {
+    const { error } = await admin.from("place_backings").update(patch).eq("id", backingId);
+    return error ? error.message : null;
+  } catch (err) {
+    return errorText(err);
+  }
+}
+
+async function deleteOpenBacking(
+  admin: SupabaseClient,
+  backingId: string,
+  sessionId: string | null,
+): Promise<void> {
+  try {
+    const { error } = await admin.from("place_backings").delete().eq("id", backingId);
+    if (!error) return;
+    console.error(
+      "[consumer-web-start-boost] delete_failed",
+      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: error.message }),
+    );
+  } catch (err) {
+    console.error(
+      "[consumer-web-start-boost] delete_failed",
+      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: errorText(err) }),
+    );
+  }
 }
 
 // ── Reads (last in the file: the write-surface scans look 2000 characters

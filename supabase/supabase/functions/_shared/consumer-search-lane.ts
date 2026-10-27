@@ -563,7 +563,7 @@ export async function runConsumerSearchLane(
   const input = (args.input ?? "").toString().trim();
   const sessionToken = (args.sessionToken ?? "").toString();
   if (input.length < 2) return json({ ok: true, predictions: [] });
-  if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" });
+  if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" }, 400);
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
@@ -619,8 +619,12 @@ export async function runConsumerSearchLane(
       locations,
     );
 
+  // Every Google failure is a 502, rate limits included: one rule, the same
+  // as reverse-geocode, and a 429 would invite automatic retries from proxies
+  // and SDKs. Fast mode answers the error rather than a partial list; Deep
+  // drops a failed Autocomplete lane instead (MESITA-2855).
   if ("errorEnvelope" in predictions) {
-    return json(predictions.errorEnvelope);
+    return json(predictions.errorEnvelope, 502);
   }
 
   // THE GUEST BAR'S POPULARITY ORDER (MESITA-2724): after the caps and the
@@ -901,23 +905,25 @@ export function toWire(item: LaneItem) {
 /**
  * Selection-time anchor read for a picked Location (consumed by the map
  * anchor, MESITA-1405): ONE Location-shaped Details call per pick, never
- * per keystroke. Wire status stays 200 — supabase-js's invoke helper
- * swallows non-2xx bodies.
+ * per keystroke. Errors carry real statuses (MESITA-2855): the client's
+ * invokeEF reads the body of a non-2xx reply, so nothing is swallowed.
  */
 export async function runLocationAnchor(rawPlaceId: string): Promise<Response> {
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
   const placeId = stripPlacesPrefix(rawPlaceId.trim());
-  if (!placeId) return json({ ok: false, error: "Missing anchorPlaceId" });
-  const anchor = await fetchLocationAnchor(placeId, keyRes.key);
-  if (!anchor) {
-    return json({
-      ok: false,
-      code: "anchor_not_found",
-      error: "Couldn't resolve that location right now.",
-    });
+  if (!placeId) return json({ ok: false, error: "Missing anchorPlaceId" }, 400);
+  const res = await fetchLocationAnchor(placeId, keyRes.key);
+  if (!res.ok) {
+    return res.reason === "not_found"
+      ? json({ ok: false, code: "anchor_not_found", error: "Couldn't find that location." }, 404)
+      : json({
+        ok: false,
+        code: "google_unreachable",
+        error: "Couldn't resolve that location right now.",
+      }, 502);
   }
-  return json({ ok: true, anchor });
+  return json({ ok: true, anchor: res.anchor });
 }
 
 async function embedQueryVector(
@@ -983,7 +989,11 @@ async function fetchEmbedPool(
   return (data ?? []) as unknown as ListedRow[];
 }
 
-async function fetchAutocomplete(
+// A network failure or an unreadable body is an error envelope like any
+// Google error, never a throw: in fast mode a throw escaped the handler as a
+// CORS-less 500, and in deep mode it rejected the whole Promise.all even
+// though Deep treats a failed Autocomplete lane as empty (MESITA-2855).
+export async function fetchAutocomplete(
   input: string,
   sessionToken: string,
   apiKey: string,
@@ -991,28 +1001,8 @@ async function fetchAutocomplete(
 ): Promise<{ predictions: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = { input, sessionToken };
   applyPlacesAutocompleteRegion(body, origin);
-  const r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-    },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) {
-    const text = await r.text();
-    const code = classifyGoogleError(r.status, text);
-    return {
-      predictions: [],
-      errorEnvelope: {
-        ok: false,
-        code,
-        error: friendlyGoogleError(code, r.status, text),
-        httpStatus: r.status,
-      },
-    };
-  }
-  const data = (await r.json()) as {
+  let r: Response;
+  let data: {
     suggestions?: Array<{
       placePrediction?: {
         placeId: string;
@@ -1025,6 +1015,43 @@ async function fetchAutocomplete(
       };
     }>;
   };
+  try {
+    r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const text = await r.text();
+      const code = classifyGoogleError(r.status, text);
+      return {
+        predictions: [],
+        errorEnvelope: {
+          ok: false,
+          code,
+          error: friendlyGoogleError(code, r.status, text),
+          httpStatus: r.status,
+        },
+      };
+    }
+    data = await r.json();
+  } catch (err) {
+    console.error(
+      "[consumer-search-lane] autocomplete unreachable:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return {
+      predictions: [],
+      errorEnvelope: {
+        ok: false,
+        code: "google_unreachable",
+        error: "Search is unavailable right now. Try again.",
+      },
+    };
+  }
   const predictions = (data.suggestions ?? [])
     .map((s) => s.placePrediction)
     .filter((p): p is NonNullable<typeof p> => !!p)
@@ -1044,7 +1071,7 @@ async function fetchAutocomplete(
   return { predictions };
 }
 
-async function fetchTextSearch(
+export async function fetchTextSearch(
   input: string,
   apiKey: string,
   gate: MapConfig,
@@ -1086,7 +1113,16 @@ async function fetchTextSearch(
     );
     return [];
   }
-  const data = (await r.json()) as { places?: GooglePlaceListing[] };
+  let data: { places?: GooglePlaceListing[] };
+  try {
+    data = await r.json();
+  } catch (err) {
+    console.error(
+      "[consumer-search-lane] text search body:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return [];
+  }
   const out: LaneItem[] = [];
   for (const p of data.places ?? []) {
     const hit = nearbyHitFromPlace(p);

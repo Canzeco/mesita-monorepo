@@ -223,35 +223,46 @@ async function searchNearbyOnce(
         },
       }),
     });
-  let r: Response;
+  // The retries and the body reads can throw too (a second network failure,
+  // a truncated body); any of them is a failed batch, never a throw out of
+  // Home or the Map (MESITA-2855).
   try {
-    r = await post();
+    let r: Response;
+    try {
+      r = await post();
+    } catch (err) {
+      console.error("[nearby] Google searchNearby threw; retrying once", String(err));
+      await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
+      r = await post();
+    }
+    if (r.status >= 500) {
+      const text = await r.text();
+      console.error(
+        "[nearby] Google searchNearby 5xx; retrying once",
+        r.status,
+        text.slice(0, 300),
+      );
+      await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
+      r = await post();
+    }
+    if (!r.ok) {
+      const text = await r.text();
+      const code = classifyGoogleError(r.status, text);
+      console.error("[nearby] Google searchNearby failed", code, r.status, text.slice(0, 300));
+      return { ok: false };
+    }
+    const data = (await r.json()) as { places?: GooglePlaceListing[] };
+    const hits = (data.places ?? [])
+      .map(nearbyHitFromPlace)
+      .filter((p) => p.placeId && p.name);
+    return { ok: true, hits };
   } catch (err) {
-    console.error("[nearby] Google searchNearby threw; retrying once", String(err));
-    await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
-    r = await post();
-  }
-  if (r.status >= 500) {
-    const text = await r.text();
     console.error(
-      "[nearby] Google searchNearby 5xx; retrying once",
-      r.status,
-      text.slice(0, 300),
+      "[nearby] Google searchNearby unreachable after retry",
+      err instanceof Error ? err.message : String(err),
     );
-    await new Promise((res) => setTimeout(res, NEARBY_RETRY_DELAY_MS));
-    r = await post();
-  }
-  if (!r.ok) {
-    const text = await r.text();
-    const code = classifyGoogleError(r.status, text);
-    console.error("[nearby] Google searchNearby failed", code, r.status, text.slice(0, 300));
     return { ok: false };
   }
-  const data = (await r.json()) as { places?: GooglePlaceListing[] };
-  const hits = (data.places ?? [])
-    .map(nearbyHitFromPlace)
-    .filter((p) => p.placeId && p.name);
-  return { ok: true, hits };
 }
 
 /** Nearby's order: DISTANCE (nearest first) or POPULARITY (prominence). */

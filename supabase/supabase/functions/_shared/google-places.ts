@@ -66,17 +66,27 @@ export function readGooglePlacesKey():
 // and how wide the camera should open. A city has no rating, primaryType or
 // businessStatus to ask for; the place-shaped mask below would bill a higher
 // SKU for fields that do not exist on a locality.
-export async function fetchLocationAnchor(
-  placeId: string,
-  apiKey: string,
-): Promise<{
+//
+// The miss is tagged (MESITA-2855): `not_found` when Google rejects or has no
+// such id (400 INVALID_ARGUMENT, 404) or the place has no coordinates — a
+// retry can't help — and `upstream` for any other failure, which can.
+export type LocationAnchor = {
   lat: number;
   lng: number;
   viewport: {
     low: { lat: number; lng: number };
     high: { lat: number; lng: number };
   } | null;
-} | null> {
+};
+
+export type LocationAnchorResult =
+  | { ok: true; anchor: LocationAnchor }
+  | { ok: false; reason: "not_found" | "upstream" };
+
+export async function fetchLocationAnchor(
+  placeId: string,
+  apiKey: string,
+): Promise<LocationAnchorResult> {
   try {
     const r = await fetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
@@ -87,7 +97,9 @@ export async function fetchLocationAnchor(
         },
       },
     );
-    if (!r.ok) return null;
+    if (!r.ok) {
+      return { ok: false, reason: r.status === 400 || r.status === 404 ? "not_found" : "upstream" };
+    }
     const d = (await r.json()) as {
       location?: { latitude?: number; longitude?: number };
       viewport?: {
@@ -97,7 +109,9 @@ export async function fetchLocationAnchor(
     };
     const lat = d.location?.latitude;
     const lng = d.location?.longitude;
-    if (typeof lat !== "number" || typeof lng !== "number") return null;
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return { ok: false, reason: "not_found" };
+    }
     const vp = d.viewport;
     const viewport = typeof vp?.low?.latitude === "number" &&
         typeof vp?.low?.longitude === "number" &&
@@ -108,8 +122,12 @@ export async function fetchLocationAnchor(
         high: { lat: vp.high.latitude, lng: vp.high.longitude },
       }
       : null;
-    return { lat, lng, viewport };
-  } catch {
-    return null;
+    return { ok: true, anchor: { lat, lng, viewport } };
+  } catch (err) {
+    console.error(
+      "[google-places] location anchor unreachable:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return { ok: false, reason: "upstream" };
   }
 }
