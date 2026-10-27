@@ -132,14 +132,55 @@ export function PriceKindRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Search card row three (MESITA-2674): ★ rating (reviews), the star yellow. */
-export function StarsRow({ facts }: { facts: CardFacts }) {
-  if (!facts.rating) return null;
+/** Search card row three (Pato, MESITA-2859: "stars, open/close thats it
+ *  don't mention the hour"): ★ rating (reviews), the star yellow; then the
+ *  clock, green Open or red Closed, no hours; then, when `withDistance` (Me ›
+ *  Favorites), the blue arrow and the distance. */
+export function StarsOpenRow({
+  facts,
+  withDistance = false,
+}: {
+  facts: CardFacts;
+  withDistance?: boolean;
+}) {
+  const distance = withDistance ? facts.distance : null;
+  if (!facts.rating && facts.open === null && !distance) return null;
   return (
     <p className={ROW}>
-      <Star className={cn(MARK, "fill-fact-star text-fact-star")} aria-hidden />
-      {facts.rating}
-      {facts.reviews ? <span>({facts.reviews})</span> : null}
+      {facts.rating ? (
+        <span className="inline-flex shrink-0 items-center gap-1">
+          <Star
+            className={cn(MARK, "fill-fact-star text-fact-star")}
+            aria-hidden
+          />
+          {facts.rating}
+          {facts.reviews ? <span>({facts.reviews})</span> : null}
+        </span>
+      ) : null}
+      {facts.rating && facts.open !== null ? <Dot /> : null}
+      {facts.open !== null ? (
+        <span className="inline-flex shrink-0 items-center gap-1">
+          <Clock
+            className={cn(
+              MARK,
+              facts.open ? "text-fact-open" : "text-fact-closed",
+            )}
+            strokeWidth={2.5}
+            aria-hidden
+          />
+          {facts.open ? "Open" : "Closed"}
+        </span>
+      ) : null}
+      {(facts.rating || facts.open !== null) && distance ? <Dot /> : null}
+      {distance ? (
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <Navigation
+            className={cn(MARK, "fill-fact-distance text-fact-distance")}
+            aria-hidden
+          />
+          <span className="truncate">{distance}</span>
+        </span>
+      ) : null}
     </p>
   );
 }
