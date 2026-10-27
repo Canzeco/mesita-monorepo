@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type {
   PlaceActions,
   PlaceMenuItem,
+  PlaceTab,
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { PlaceMoreSheet } from "@/components/consumer/place-detail/PlaceMoreSheet";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { ReportSheet } from "@/components/consumer/place-detail/ReportSheet";
 import { BoostPane, BoostUnavailable } from "@/components/consumer/place-detail/BoostPane";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
@@ -38,6 +37,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
+  /** The Boost tab's body (MESITA-2861). */
+  boost: ReactNode;
+  /** Set when ⋯ › Boost or Stripe Checkout's return asks for the Boost tab
+   *  (MESITA-2797, MESITA-2861). */
+  openTab: { tab: PlaceTab; key: number } | null;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
@@ -45,15 +49,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  const [boostOpen, setBoostOpen] = useState(false);
+  // When ⋯ › Boost last asked for the Boost tab (ms).
+  const [boostAskedAt, setBoostAskedAt] = useState<number | null>(null);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // Stripe Checkout's return opens the Boost sheet (MESITA-2797, a sheet
-  // since MESITA-2815) until the guest closes it: derived, never an effect.
-  const [closedReturn, setClosedReturn] = useState<number | null>(null);
-  const boostShown =
-    boostOpen || (boost.returnedAt != null && boost.returnedAt !== closedReturn);
+  // ⋯ › Boost and Stripe Checkout's return both open the Boost tab; the
+  // later ask wins, and each new key switches once (PlaceDetailBody).
+  const boostAsk = Math.max(boostAskedAt ?? 0, boost.returnedAt ?? 0);
+  const openTab = boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
 
   const onSave = useCallback(() => {
     const nowSaved = !saved;
@@ -116,7 +120,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         onClose={() => setMoreOpen(false)}
         saved={saved}
         onSave={onSave}
-        onBoost={() => setBoostOpen(true)}
+        onBoost={() => setBoostAskedAt(Date.now())}
         // A Google-only card is not a place row yet: nothing to report.
         onReport={
           isMesitaPlaceId(place.id) ? () => setReportOpen(true) : undefined
@@ -127,16 +131,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
       />
-      <LocalSheet
-        open={boostShown}
-        onClose={() => {
-          setBoostOpen(false);
-          setClosedReturn(boost.returnedAt);
-        }}
-        ariaLabel={`Boost ${place.name}`}
-      >
-        <div className={SHEET_BODY_CLASS}>{boostPane}</div>
-      </LocalSheet>
       <MenuViewer
         open={menu != null}
         onClose={() => setMenu(null)}
@@ -145,11 +139,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
-
   return {
     actions,
     sheets,
     social: activity.social,
+    boost: boostPane,
+    openTab,
   };
 }
 

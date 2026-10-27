@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 // not only to report"), Instagram's way: one card of rows, Report last and
 // red. Share · Add to favorites · Copy link · Boost · Report. Every row
 // closes the menu first; Report then opens the Report sheet (MESITA-2684)
-// and Boost the Boost sheet on top of the place (MESITA-2815, Pato: "add it
-// as 3 dots and actually open a modal on top"): one door, never a tab.
+// and Boost switches the place to its Boost tab (MESITA-2861; a sheet on
+// top from MESITA-2815 until then).
 // decision: the rows are the place's own one-tap actions plus Copy link;
 // nothing new is built behind them.
 
@@ -44,7 +44,7 @@ export function PlaceMoreSheet({
   onClose: () => void;
   saved: boolean;
   onSave: () => void;
-  /** Opens the Boost sheet. */
+  /** Opens the Boost tab. */
   onBoost: () => void;
   /** Absent for a Google-only card: no Report row. */
   onReport?: () => void;

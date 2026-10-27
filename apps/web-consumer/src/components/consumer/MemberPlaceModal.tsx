@@ -9,11 +9,17 @@ import { useMeasuredPlace } from "@/lib/place-distance";
 export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   // The distance after the zone (MESITA-2644).
   const place = useMeasuredPlace(fetched);
-  const { actions, sheets, social } = useMemberPlaceActions(place);
+  const { actions, sheets, social, boost, openTab } = useMemberPlaceActions(place);
   return (
     <>
       <PlaceDetailModalShell place={place} onMore={actions.onMore}>
-        <PlaceDetailBody place={place} actions={actions} social={social} />
+        <PlaceDetailBody
+          place={place}
+          actions={actions}
+          social={social}
+          boost={boost}
+          openTab={openTab}
+        />
       </PlaceDetailModalShell>
       {sheets}
     </>

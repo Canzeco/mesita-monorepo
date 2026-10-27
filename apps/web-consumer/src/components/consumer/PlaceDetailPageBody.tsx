@@ -18,7 +18,7 @@ export function PlaceDetailPageBody({
   // The distance after the zone (MESITA-2644).
   const place = useMeasuredPlace(fetched);
   const router = useRouter();
-  const { actions, sheets, social } = useMemberPlaceActions(place);
+  const { actions, sheets, social, boost, openTab } = useMemberPlaceActions(place);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
@@ -35,6 +35,8 @@ export function PlaceDetailPageBody({
         onBack={onBack}
         actions={actions}
         social={social}
+        boost={boost}
+        openTab={openTab}
       />
       {sheets}
     </div>
