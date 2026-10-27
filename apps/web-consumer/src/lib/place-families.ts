@@ -1,52 +1,38 @@
-// Fifty guest families, plus Undefined last. Undefined is not a filter.
+// Forty guest families, plus Undefined last. Undefined is not a filter.
 // Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console. A place may wear more than one (MESITA-2749);
 // its families are a dictionary of its Google categories, never a model's
-// pick and never edited by hand (MESITA-2834).
+// pick and never edited by hand (MESITA-2834). Six rails sit past the table
+// since MESITA-2888: Family, Fun, Cinema, Casino, Spa, Tourist.
 // One word each (MESITA-2760): the labels are words a guest says, the keys
 // stay as stored.
 
 export type FamilyKey =
   | "coffee"
   | "breakfast"
-  | "brunch"
   | "bakery"
   | "sweet"
-  | "gelato"
   | "healthy"
-  | "vegan"
   | "quick_bite"
   | "tacos"
   | "burgers"
   | "pizza"
-  | "sandwiches"
   | "chicken"
-  | "wings"
-  | "kebab"
-  | "dinner"
+  | "sushi"
   | "mexican"
   | "steak"
-  | "bbq"
   | "seafood"
   | "italian"
-  | "sushi"
   | "japanese"
-  | "ramen"
-  | "noodles"
   | "chinese"
-  | "dumplings"
-  | "korean"
-  | "thai"
-  | "indian"
   | "asian"
+  | "indian"
   | "arabic"
-  | "mediterranean"
-  | "spanish"
-  | "french"
   | "european"
   | "american"
-  | "latin"
+  | "dinner"
   | "fancy"
+  | "family"
   | "drinks"
   | "beer"
   | "cocktails"
@@ -57,6 +43,11 @@ export type FamilyKey =
   | "nightclub"
   | "music"
   | "karaoke"
+  | "fun"
+  | "cinema"
+  | "casino"
+  | "spa"
+  | "tourist"
   | "undefined";
 
 type PlaceFamily = {
@@ -68,47 +59,32 @@ type PlaceFamily = {
 export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "coffee", label: "Coffee", emoji: "☕" },
   { key: "breakfast", label: "Breakfast", emoji: "🍳" },
-  { key: "brunch", label: "Brunch", emoji: "🥞" },
   { key: "bakery", label: "Bakery", emoji: "🥐" },
   { key: "sweet", label: "Dessert", emoji: "🍰" },
-  { key: "gelato", label: "Gelato", emoji: "🍦" },
   { key: "healthy", label: "Healthy", emoji: "🥗" },
-  { key: "vegan", label: "Vegan", emoji: "🌱" },
   { key: "quick_bite", label: "Quick", emoji: "⚡" },
   { key: "tacos", label: "Tacos", emoji: "🌮" },
   { key: "burgers", label: "Burgers", emoji: "🍔" },
   { key: "pizza", label: "Pizza", emoji: "🍕" },
-  { key: "sandwiches", label: "Sandwich", emoji: "🥪" },
-  { key: "chicken", label: "Chicken", emoji: "🍗" },
-  { key: "wings", label: "Wings", emoji: "🔥" },
-  { key: "kebab", label: "Kebab", emoji: "🥙" },
-  { key: "dinner", label: "Dinner", emoji: "🍽️" },
+  { key: "chicken", label: "Wings", emoji: "🍗" },
+  { key: "sushi", label: "Sushi", emoji: "🍣" },
   { key: "mexican", label: "Mexican", emoji: "🌶️" },
   { key: "steak", label: "Steak", emoji: "🥩" },
-  { key: "bbq", label: "BBQ", emoji: "🍖" },
   { key: "seafood", label: "Seafood", emoji: "🦐" },
   { key: "italian", label: "Italian", emoji: "🍝" },
-  { key: "sushi", label: "Sushi", emoji: "🍣" },
   { key: "japanese", label: "Japanese", emoji: "🍱" },
-  { key: "ramen", label: "Ramen", emoji: "🍜" },
-  { key: "noodles", label: "Noodles", emoji: "🥢" },
   { key: "chinese", label: "Chinese", emoji: "🥡" },
-  { key: "dumplings", label: "Dumpling", emoji: "🥟" },
-  { key: "korean", label: "Korean", emoji: "🍚" },
-  { key: "thai", label: "Thai", emoji: "🍲" },
-  { key: "indian", label: "Indian", emoji: "🍛" },
   { key: "asian", label: "Asian", emoji: "🍥" },
+  { key: "indian", label: "Indian", emoji: "🍛" },
   { key: "arabic", label: "Arabic", emoji: "🧆" },
-  { key: "mediterranean", label: "Greek", emoji: "🫒" },
-  { key: "spanish", label: "Spanish", emoji: "🥘" },
-  { key: "french", label: "French", emoji: "🥖" },
   { key: "european", label: "European", emoji: "🥨" },
   { key: "american", label: "American", emoji: "🍟" },
-  { key: "latin", label: "Latin", emoji: "🌎" },
+  { key: "dinner", label: "Dinner", emoji: "🍽️" },
   { key: "fancy", label: "Fancy", emoji: "🥂" },
+  { key: "family", label: "Family", emoji: "👨‍👩‍👧" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
   { key: "beer", label: "Beer", emoji: "🍺" },
-  { key: "cocktails", label: "Cocktail", emoji: "🍸" },
+  { key: "cocktails", label: "Cocktails", emoji: "🍸" },
   { key: "wine", label: "Wine", emoji: "🍷" },
   { key: "sports", label: "Sports", emoji: "📺" },
   { key: "hookah", label: "Hookah", emoji: "💨" },
@@ -116,6 +92,11 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "nightclub", label: "Club", emoji: "🪩" },
   { key: "music", label: "Music", emoji: "🎶" },
   { key: "karaoke", label: "Karaoke", emoji: "🎤" },
+  { key: "fun", label: "Fun", emoji: "🎯" },
+  { key: "cinema", label: "Cinema", emoji: "🎬" },
+  { key: "casino", label: "Casino", emoji: "🎰" },
+  { key: "spa", label: "Spa", emoji: "🧖" },
+  { key: "tourist", label: "Tourist", emoji: "🏛️" },
   { key: "undefined", label: "Undefined", emoji: "·" },
 ];
 

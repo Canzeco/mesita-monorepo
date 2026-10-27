@@ -5,7 +5,7 @@ import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 Deno.test("a Google type can sit in several guest families", () => {
   const map = buildFamiliesMap([], []);
   const bySlug = new Map(map.googleMembership.map((row) => [row.slug, row.familyKeys]));
-  assertEquals(bySlug.get("cafe"), ["coffee", "breakfast", "brunch"]);
+  assertEquals(bySlug.get("cafe"), ["coffee", "breakfast"]);
   assertEquals(bySlug.get("pizza_restaurant"), ["pizza", "italian"]);
   assertEquals(bySlug.get("taco_restaurant"), ["quick_bite", "tacos", "mexican"]);
   assertEquals(bySlug.get("gas_station"), []);
