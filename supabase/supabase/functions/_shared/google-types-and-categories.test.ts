@@ -1,11 +1,13 @@
-// MESITA-2790 write guards: google_types is stored primary-first without
-// Table B, and only known Mesita category slugs (1–3, never `undefined`)
-// reach place_profiles.
+// Write guards: Google's own types are stored primary-first without Table B
+// (MESITA-2790), only known Google category slugs (1–3, never `undefined`)
+// and known families (1–5) reach place_profiles (MESITA-2827).
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { cleanGoogleTypes, googleTypesPrimaryFirst } from "./google-table-b.ts";
-import { MESITA_CATEGORIES_MAX, parseCategoriesReply } from "./categories-infer.ts";
-import type { PlaceCategory } from "./categories.ts";
+import { GOOGLE_CATEGORIES_MAX, parseCategoriesReply } from "./categories-infer.ts";
+import { FAMILIES_MAX, parseFamiliesReply } from "./families-infer.ts";
+import type { PlaceCategory, PlaceFamily } from "./categories.ts";
+import { classificationPatch, mappedFamilies } from "./place-classification.ts";
 import { pickVocabularyTags } from "./tags.ts";
 
 Deno.test("Google's primary leads google_types, deduped, Table B dropped", () => {
@@ -37,10 +39,10 @@ Deno.test("only known slugs survive, main first, at most three", () => {
     parseCategoriesReply('{"categories":["bakery","nope","cafe","bakery","taqueria","bar"]}', categories),
     ["bakery", "cafe", "taqueria"],
   );
-  assertEquals(MESITA_CATEGORIES_MAX, 3);
+  assertEquals(GOOGLE_CATEGORIES_MAX, 3);
 });
 
-Deno.test("undefined is never a Mesita category; labels are salvaged to slugs", () => {
+Deno.test("undefined is never a category; labels are salvaged to slugs", () => {
   assertEquals(parseCategoriesReply('{"categories":["undefined"]}', categories), null);
   assertEquals(parseCategoriesReply('{"categories":["🥐 Bakery","undefined"]}', categories), ["bakery"]);
 });
@@ -56,4 +58,38 @@ Deno.test("Mesita tags: vocabulary only; a missing tags key is a failure, [] is 
   assertEquals(pickVocabularyTags(["DJ", "made_up", "terraza", "dj"], vocab), ["dj", "terraza"]);
   assertEquals(pickVocabularyTags([], vocab), []);
   assertEquals(pickVocabularyTags(undefined, vocab), null);
+});
+
+const families: PlaceFamily[] = ["dinner", "coffee", "drinks", "sweet", "mexican", "brunch", "night_out"]
+  .map((slug, i) => ({ slug, label: slug[0].toUpperCase() + slug.slice(1), emoji: "", sort_order: i }))
+  .concat([{ slug: "undefined", label: "Undefined", emoji: "", sort_order: 99 }]);
+
+Deno.test("families: known slugs only, deduped, at most five, never undefined", () => {
+  assertEquals(
+    parseFamiliesReply(
+      '{"families":["coffee","nope","Coffee","undefined","sweet","brunch","dinner","drinks","night_out"]}',
+      families,
+    ),
+    ["coffee", "sweet", "brunch", "dinner", "drinks"],
+  );
+  assertEquals(FAMILIES_MAX, 5);
+  assertEquals(parseFamiliesReply('{"families":["undefined"]}', families), null);
+  assertEquals(parseFamiliesReply("not json", families), null);
+  assertEquals(parseFamiliesReply('{"families":[]}', families), null);
+});
+
+Deno.test("a failed call writes nothing; editing categories never touches families", () => {
+  assertEquals(classificationPatch({ categories: null, families: null }), {});
+  assertEquals(classificationPatch({ categories: ["bakery"], families: null }), {
+    google_types: ["bakery"],
+    category: "bakery",
+    category_label: "Bakery",
+  });
+  assertEquals(classificationPatch({ categories: null, families: ["coffee"] }), {
+    family_keys: ["coffee"],
+  });
+});
+
+Deno.test("the families hint is the categories' mapped families, undefined dropped", () => {
+  assertEquals(mappedFamilies(["bakery", "cafe", "undefined"], categories), ["sweet", "coffee"]);
 });

@@ -1,6 +1,6 @@
-// Place-category inference: OpenAI classifier + token normaliser.
-// Callers pass the live slug list in, usually read by categories.ts
-// (fetchPlaceCategories).
+// Google categories inference (MESITA-2827): OpenAI classifier + token
+// normaliser. Callers pass Google's canonical list in, read by categories.ts
+// (fetchGoogleCategories).
 
 import type { PlaceCategory } from "./categories.ts";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
@@ -14,18 +14,18 @@ const DEFAULT_CLASSIFIER_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
 type CategorySignals = {
   name: string;
   address?: string | null;
-  /** google_types as stored: Google's primary first (MESITA-2790). */
+  /** Google's own types for the place (google_source_types), primary first. */
   googleTypes?: string[];
   googleTags?: string[];
   editorialSummary?: string | null;
   description?: string | null;
 };
 
-/** Mesita categories per place: 1 to 3, main first (MESITA-2790). */
-export const MESITA_CATEGORIES_MAX = 3;
+/** Google categories per place: 1 to 3, the shown one first (MESITA-2827). */
+export const GOOGLE_CATEGORIES_MAX = 3;
 
-// Picks the 1–3 best-matching Mesita category slugs for a place from the live
-// list, main first. Returns null when there's no OpenAI key, no categories,
+// Picks the 1–3 best-matching Google category slugs for a place from Google's
+// canonical list, the shown one first. Returns null when there's no OpenAI key, no categories,
 // the model errors, or no valid slug comes back. The model must copy slugs
 // from the list; we still validate against the live slug set and salvage a
 // returned label by matching it to its slug. `undefined` is never offered
@@ -37,12 +37,14 @@ export const MESITA_CATEGORIES_MAX = 3;
 // The console shows these exact values, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const CATEGORY_INSTRUCTIONS =
-  "You classify a place into ONE TO THREE categories from a fixed list. " +
-  'Respond with a single JSON object {"categories":["<slug>", ...]} where each ' +
-  "<slug> is copied verbatim from the list. Put the place's main offering " +
-  "first, then at most two more that a guest would also search it under. " +
-  "Choose the most specific categories; prefer one when one fits. Always " +
-  "return at least one slug from the list, even when uncertain.";
+  "You classify a place into ONE TO THREE categories from Google's fixed " +
+  'category list. Respond with a single JSON object {"categories":["<slug>", ...]} ' +
+  "where each <slug> is copied verbatim from the list. Put the place's main " +
+  "offering first, then at most two more that a guest would also search it " +
+  "under. Google's own types for the place are a strong hint, but correct " +
+  "them when the name, summary or details say otherwise. Choose the most " +
+  "specific categories; prefer one when one fits. Always return at least one " +
+  "slug from the list, even when uncertain.";
 
 export function buildCategoryInput(catalog: string, placeLines: string): string {
   return `Categories (slug — label [section]):\n${catalog}\n\n` +
@@ -87,7 +89,7 @@ export function parseCategoriesReply(
     if (!token) continue;
     const slug = valid.has(token) ? token : labelToSlug.get(normaliseCategoryToken(token));
     if (slug && valid.has(slug) && !out.includes(slug)) out.push(slug);
-    if (out.length === MESITA_CATEGORIES_MAX) break;
+    if (out.length === GOOGLE_CATEGORIES_MAX) break;
   }
   return out.length > 0 ? out : null;
 }
@@ -108,8 +110,8 @@ export async function inferPlaceCategories(
   const placeLines = [
     `Name: ${signals.name}`,
     signals.address ? `Address: ${signals.address}` : "",
-    types[0] ? `Google primary category: ${types[0]}` : "",
-    types.length > 1 ? `Other Google categories: ${types.slice(1).join(", ")}` : "",
+    types[0] ? `Google's own primary type: ${types[0]}` : "",
+    types.length > 1 ? `Google's other types: ${types.slice(1).join(", ")}` : "",
     signals.googleTags && signals.googleTags.length
       ? `Google attributes: ${signals.googleTags.join(", ")}`
       : "",

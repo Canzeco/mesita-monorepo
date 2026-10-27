@@ -1,5 +1,5 @@
-// The one enrichment commit fills the Presentation, the Mesita categories and
-// the Mesita tags, and hands back the Mesita Name the same synthesis inferred,
+// The one enrichment commit fills the Presentation, the Google categories, the
+// Families (MESITA-2827) and the Mesita tags, and hands back the Mesita Name the same synthesis inferred,
 // which lands only through _shared/mesita-name-door.ts (MESITA-2790: every
 // Mesita field is inferred on every Enrich). The classifiers live in _shared.
 // This module only decides which of those results may land, then the write
@@ -7,8 +7,8 @@
 // SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchPlaceCategories } from "../_shared/categories.ts";
-import { inferPlaceCategories } from "../_shared/categories-infer.ts";
+import { fetchGoogleCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import { classifyPlace, googleCategoriesPatch } from "../_shared/place-classification.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
   applyProfileToUpdate,
@@ -22,7 +22,6 @@ import { loadModelsConfig } from "../_shared/models-config.ts";
 // and its test.
 export { capPresentation } from "../_shared/presentation-cap.ts";
 import { capPresentation } from "../_shared/presentation-cap.ts";
-import { mesitaCategoriesPatch } from "../_shared/mesita-categories.ts";
 import { fetchPlaceTags, pickVocabularyTags } from "../_shared/tags.ts";
 
 export function reviewQuotes(value: unknown): string {
@@ -48,14 +47,15 @@ function slugs(value: unknown): string[] {
 /**
  * What this run's inferences add to the patch. Every Enrich replaces the
  * Presentation with the one it wrote (MESITA-2799: one Enrich, no Overwrite
- * switch); an empty synthesis leaves the saved text alone. Mesita
- * categories and tags are read-only and re-inferred every run: written when
- * the call succeeded, left as stored when it failed (null).
+ * switch); an empty synthesis leaves the saved text alone. Google
+ * categories, families and tags are re-inferred every run: written when the
+ * call succeeded, left as stored when it failed (null).
  */
 export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;
   presentation: string | null;
   categories: string[] | null;
+  families?: string[] | null;
   tags: string[] | null;
 }): Record<string, unknown> {
   const next = { ...opts.patch };
@@ -64,14 +64,17 @@ export function mergeSynthesizedProfile(opts: {
     next.description = presentation;
   }
   if (opts.categories && opts.categories.length > 0) {
-    Object.assign(next, mesitaCategoriesPatch(opts.categories));
+    Object.assign(next, googleCategoriesPatch(opts.categories));
   }
+  if (opts.families && opts.families.length > 0) next.family_keys = opts.families;
   if (opts.tags) next.tags = opts.tags;
   return next;
 }
 
 /** The saved row's Google and Mesita signals; Render's patch carries none. */
 export type SavedSignals = {
+  /** Google's own types (MESITA-2827), the categories model's input. */
+  google_source_types?: unknown;
   google_types?: unknown;
   google_tags?: unknown;
   category?: unknown;
@@ -102,8 +105,8 @@ export type FilledProfile = {
 };
 
 /**
- * Asks the classifiers for a Presentation, the Mesita tags and 1–3 Mesita
- * categories.
+ * Asks the classifiers for a Presentation, the Mesita tags, 1–3 Google
+ * categories and 1–5 families.
  * A model failure leaves the patch unchanged. The caller still commits once.
  */
 export async function fillAtlasProfile(
@@ -132,8 +135,9 @@ async function fillAtlasProfileInner(
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null };
 
-  const [categories, tagVocabulary, models, cfg] = await Promise.all([
-    fetchPlaceCategories(admin),
+  const [categories, families, tagVocabulary, models, cfg] = await Promise.all([
+    fetchGoogleCategories(admin),
+    fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
     loadEnrichConfig(admin),
@@ -144,8 +148,10 @@ async function fillAtlasProfileInner(
   const webRead = textField(grounding.serpSummary) || googleSummary;
   const reviews = reviewQuotes(patch.google_reviews);
   // Render's patch carries no Google categories, attributes or category:
-  // read them off the saved row (MESITA-2790).
-  const googleTypes = slugs(saved.google_types);
+  // read them off the saved row. Google's own types feed the categories call;
+  // a row from before google_source_types falls back to its categories.
+  const sourceTypes = slugs(saved.google_source_types);
+  const googleTypes = sourceTypes.length > 0 ? sourceTypes : slugs(saved.google_types);
   const googleTags = slugs(saved.google_tags);
   const tagSlugs = new Set(tagVocabulary.map((t) => t.slug));
 
@@ -181,7 +187,7 @@ async function fillAtlasProfileInner(
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
 
-  const mesitaCategories = await inferPlaceCategories(openaiKey, categories, {
+  const classified = await classifyPlace(openaiKey, { categories, families }, {
     name: name || "Place",
     address,
     googleTypes,
@@ -189,15 +195,19 @@ async function fillAtlasProfileInner(
     editorialSummary: googleSummary || null,
     description: presentation,
   }, models.enricherModel);
-  if (!mesitaCategories) {
-    console.warn(`[enrich] ${placeId}: Mesita categories not inferred; stored categories kept`);
+  if (!classified.categories) {
+    console.warn(`[enrich] ${placeId}: Google categories not inferred; stored categories kept`);
+  }
+  if (!classified.families) {
+    console.warn(`[enrich] ${placeId}: families not inferred; stored families kept`);
   }
 
   return {
     patch: mergeSynthesizedProfile({
       patch,
       presentation,
-      categories: mesitaCategories,
+      categories: classified.categories,
+      families: classified.families,
       tags,
     }),
     mesitaName,

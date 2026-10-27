@@ -28,6 +28,7 @@ import {
   PRESENTATION_INSTRUCTIONS,
 } from "./enrich-synthesis.ts";
 import { buildCategoryInput, CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
+import { buildFamilyInput, FAMILY_INSTRUCTIONS } from "./families-infer.ts";
 import { CRENUP_STEP_META, type CrenupStep } from "./crenup-ladder.ts";
 
 /** One prompt-bearing step, as the console renders it. */
@@ -167,20 +168,42 @@ function categoryPrompt(): CrenupPrompt {
     key: "category",
     fn: null,
     agent: null,
-    label: "Mesita categories inference",
+    label: "Google categories inference",
     vendor: "OpenAI",
     vendorNote:
-      "One chat-completions call in JSON mode, temperature 0. The live category " +
-      "vocabulary is read from the database and pasted into the message, so the " +
-      "model can only answer with slugs that exist. Runs at Create and on every " +
-      "Enrich; families are derived from the answer, never asked of a model.",
-    writes: "The place's Mesita categories: 1 to 3 slugs, main first.",
+      "One chat-completions call in JSON mode, temperature 0. Google's canonical " +
+      "category list (catalog_membership) is read from the database and pasted " +
+      "into the message, so the model can only answer with slugs that exist. " +
+      "Runs at Create and on every Enrich, before the families call.",
+    writes: "The place's Google categories: 1 to 3 slugs, the shown one first.",
     instructions: CATEGORY_INSTRUCTIONS,
     input: buildCategoryInput(
-      "{slug} — {label} [{section}]\n… one line per live category",
-      "Name: {place name}\nAddress: {address}\nGoogle primary category: {type}\n" +
-        "Other Google categories: {types}\nGoogle attributes: {google tags}\n" +
+      "{slug} — {label} [Google]\n… one line per Google category",
+      "Name: {place name}\nAddress: {address}\nGoogle's own primary type: {type}\n" +
+        "Google's other types: {types}\nGoogle attributes: {google tags}\n" +
         "Summary: {editorial summary}\nDetails: {details}",
+    ),
+  };
+}
+
+function familyPrompt(): CrenupPrompt {
+  return {
+    key: "families",
+    fn: null,
+    agent: null,
+    label: "Families inference",
+    vendor: "OpenAI",
+    vendorNote:
+      "One chat-completions call in JSON mode, temperature 0, right after the " +
+      "Google categories call. The live family list is pasted into the message; " +
+      "the families the categories map to ride along as a hint only.",
+    writes: "The place's families: 1 to 5 slugs.",
+    instructions: FAMILY_INSTRUCTIONS,
+    input: buildFamilyInput(
+      "{slug} — {label}\n… one line per live family",
+      "Name: {place name}\nAddress: {address}\nGoogle categories: {categories}\n" +
+        "Families mapped from those categories: {families}\n" +
+        "Google attributes: {google tags}\nSummary: {editorial summary}\nDetails: {details}",
     ),
   };
 }
@@ -199,6 +222,7 @@ export function crenupPromptsMeta(): CrenupPrompt[] {
     scoutPrompt(),
     resolverPrompt(),
     categoryPrompt(),
+    familyPrompt(),
     presentationPrompt(),
   ];
 }

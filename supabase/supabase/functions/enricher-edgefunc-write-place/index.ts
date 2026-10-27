@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
   const { data: versionRow, error: versionErr } = await admin
     .from("profiles")
     .select(
-      "updated_at, content_state, enriched_at, enrichment_sources, google_types, google_tags, category",
+      "updated_at, content_state, enriched_at, enrichment_sources, google_source_types, google_types, google_tags, category",
     )
     .eq("id", commit.placeId)
     .maybeSingle();
@@ -139,6 +139,7 @@ Deno.serve(async (req) => {
   const filled = await fillAtlasProfile(admin, commit.placeId, validated.patch, {
     serpSummary: commit.serpSummary,
   }, {
+    google_source_types: versionRow?.google_source_types,
     google_types: versionRow?.google_types,
     google_tags: versionRow?.google_tags,
     category: versionRow?.category,

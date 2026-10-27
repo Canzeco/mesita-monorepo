@@ -10,9 +10,9 @@
 //                   (content_state ready, enriched_at null).
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
-//                   google_types primary-first; Mesita categories 1–3
-//                   inferred right after the mint, families derived from
-//                   them in the profiles view)
+//                   Google's own types in google_source_types; right
+//                   after the mint a model picks 1–3 Google categories
+//                   (google_types) and then 1–5 families, MESITA-2827)
 //                   PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb. The
 //                   LIVENESS GATE is a subprocess of this step, not a rung of
@@ -58,7 +58,7 @@ import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
-import { inferMesitaCategories } from "./mesita-categories.ts";
+import { classifyAndWritePlace } from "./place-classification.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
@@ -264,9 +264,9 @@ export async function createMinimalPlace(opts: {
   // minted this row IS the first Reviews verification, so a new profile
   // reads its stars and review count at once (MESITA-2306). The Instagram
   // and Facebook counts stay empty until a Reviews reload.
-  // google_types is the Google categories list, primary first; `category`
-  // holds that primary until the Mesita categories call below fills
-  // mesita_categories (MESITA-2790).
+  // Google's own types, primary first, are google_source_types. Until the
+  // classification call below lands, google_types holds the first three of
+  // them and `category` their primary (MESITA-2827).
   const googleTypes = googleTypesPrimaryFirst(basicsRes.primaryType, basicsRes.googleTypes);
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
@@ -278,8 +278,8 @@ export async function createMinimalPlace(opts: {
           : humanizeCategorySlug(googleTypes[0]),
       }
       : {}),
-    google_types: googleTypes,
-    mesita_categories: [],
+    google_source_types: googleTypes,
+    google_types: googleTypes.slice(0, 3),
     ...googleReviewsAtCreate(basicsRes.basics),
     // Operating (MESITA-1239). businessStatus rides the envelope, not `basics`,
     // so the spread above does not carry it. Stored verbatim: reaching here
@@ -303,7 +303,7 @@ export async function createMinimalPlace(opts: {
   const saved = saveRes.saved;
 
   try {
-    await inferMesitaCategories(admin, saved.place_id, {
+    await classifyAndWritePlace(admin, saved.place_id, {
       name: saved.name,
       address: (place.address ?? null) as string | null,
       googleTypes,
@@ -311,7 +311,7 @@ export async function createMinimalPlace(opts: {
       editorialSummary: basicsRes.editorialSummary,
     });
   } catch (err) {
-    console.error(`[${callerName}/on-create] mesita-categories:`, err);
+    console.error(`[${callerName}/on-create] classification:`, err);
   }
 
   // ── CREATE Details — first Google photo into storage ────────────────────
@@ -364,9 +364,7 @@ export async function createMinimalPlace(opts: {
         address: (place.address ?? null) as string | null,
         zone: (place.zone ?? null) as string | null,
         city: (place.city ?? null) as string | null,
-        googleTypes: Array.isArray(place.google_types)
-          ? place.google_types as string[]
-          : null,
+        googleTypes,
         // Google's blurb rides the envelope, not `basics` — it is a
         // classifier input, not a place_profiles column (MESITA-2144).
         editorialSummary: basicsRes.editorialSummary,
@@ -378,7 +376,7 @@ export async function createMinimalPlace(opts: {
         const patch: Record<string, unknown> = {};
         // Mesita tags (MESITA-2790): the door's slugs, already validated
         // against place_tags, land in `tags`; every Enrich replaces them.
-        // Categories came from inferMesitaCategories above.
+        // Categories and families came from classifyAndWritePlace above.
         if (door.description) patch.description = door.description;
         if (door.tags) patch.tags = door.tags;
         // The seed for a place nobody has answered for yet; an operator's

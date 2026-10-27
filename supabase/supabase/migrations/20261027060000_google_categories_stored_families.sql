@@ -11,7 +11,21 @@
 -- * google_types: 1–3 catalog_membership slugs, first = shown = category.
 -- * place_profiles.family_keys: 1–5 place_families slugs, stored. Until a
 --   list is stored the view maps the Google categories to families.
+-- * google_source_types: Google's own types as last fetched (primary first,
+--   Table B dropped), the model's input. Written by Create and Google Update.
 -- * mesita_categories is no longer written or read; its drop is a follow-up.
+
+alter table public.place_profiles
+  add column if not exists google_source_types jsonb not null default '[]'::jsonb;
+
+-- Until now google_types WAS Google's own list.
+update public.place_profiles
+   set google_source_types = google_types
+ where jsonb_typeof(google_types) = 'array'
+   and google_source_types = '[]'::jsonb;
+
+comment on column public.place_profiles.google_source_types is
+  'MESITA-2827: Google''s own types as last fetched (primary first, Table B dropped). Input to the Google categories model; never shown.';
 
 -- ── Taxonomy trigger ────────────────────────────────────────────────────
 -- Checked on insert and when a list changes, so a legacy row with more than
@@ -184,7 +198,8 @@ create or replace view public.profiles with (security_invoker = true) as
     p.source_sync,
     u.selected,
     p.google_tags,
-    u.boost_tier
+    u.boost_tier,
+    p.google_source_types
    FROM places u
      JOIN place_profiles p ON p.id = u.id;
 
