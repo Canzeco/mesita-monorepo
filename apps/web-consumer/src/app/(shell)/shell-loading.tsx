@@ -4,11 +4,10 @@ import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import PayLoading from "./pay/loading";
 import ShareLoading from "./share/loading";
-import WalletLoading from "./wallet/loading";
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
 // "why spinning and then placeholder, don't do that. just use the
-// placeholder directly"). A tap on the bar from Me, Pay or Wallet lands on
+// placeholder directly"). A tap on the bar from Me, Pay or Share lands on
 // the (shell) boundary, and a full page load on the root one, before the
 // target's own loading.tsx can mount; both drew a centred spinner, so Home
 // came in as spinner → tiles. Both now draw the target's own frame, picked
@@ -22,7 +21,6 @@ export function ShellLoadingFor({ bare }: { bare: string }) {
   if (at("/home")) return <HomeLoadingFrame />;
   if (bare === "/me") return <MeLoading />;
   if (at("/pay")) return <PayLoading />;
-  if (at("/wallet")) return <WalletLoading />;
   if (at("/share")) return <ShareLoading />;
   return <div className="bg-background min-h-0 flex-1" aria-busy />;
 }

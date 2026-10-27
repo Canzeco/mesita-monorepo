@@ -48,9 +48,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // hop. Deepest sources first so the intent survives a `:param` rewrite.
   { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
   { source: "/new-visit", destination: "/pay", permanent: true },
-  // /wallet itself is the Wallet tab's page (MESITA-2858); only what hung
-  // under it lands on Pay.
-  { source: "/wallet/:id/:path*", destination: "/pay", permanent: true },
+  { source: "/wallet/:path*", destination: "/pay", permanent: true },
   { source: "/credits", destination: "/pay", permanent: true },
   { source: "/inbox/credits", destination: "/pay", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },
