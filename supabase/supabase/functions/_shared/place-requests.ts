@@ -5,7 +5,7 @@
 // place counts once (apply_place_request; consumer-web-track-activity on
 // `viewed`, MESITA-2642 — it replaced the guest vote). When request_count
 // reaches the enrichment config's "Enrich after N visits"
-// (atlasRequestThreshold) this door starts the same Render run admin Enrich
+// (enrichRequestThreshold) this door starts the same Render run admin Enrich
 // starts (_shared/enrich-start.ts): there is one Enrich. Admin Enrich never
 // calls this door — that is the bypass.
 
@@ -108,7 +108,7 @@ export async function loadRequestThreshold(
   if (error) return DEFAULT_REQUEST_THRESHOLD;
   return normalizeEnrichmentConfig(
     (data as { enrichment_config?: unknown } | null)?.enrichment_config,
-  ).atlasRequestThreshold;
+  ).enrichRequestThreshold;
 }
 
 export async function applyPlaceRequest(

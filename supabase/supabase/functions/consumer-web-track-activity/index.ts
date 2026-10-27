@@ -25,7 +25,7 @@
 // enrich the place"). A `viewed` also goes through applyPlaceRequest: each
 // signed-in guest counts once per place (apply_place_request), and reaching
 // the enrichment config's threshold ("Enrich after N visits",
-// atlasRequestThreshold) starts the same Render run admin Enrich starts. It
+// enrichRequestThreshold) starts the same Render run admin Enrich starts. It
 // replaced the guest vote (consumer-web-request-place, retired). An Enriched
 // place is untouched; a failure here never fails the view.
 

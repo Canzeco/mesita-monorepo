@@ -25,7 +25,7 @@ export default async function ManageSinglePlacePage() {
   // defaults, which are its behaviour before the knobs existed.
   const find = discovery.ok ? discovery.config.name.admin : DEFAULT_NAME_ADMIN;
   const createOnOpen = settings.ok
-    ? settings.data.atlasCreateOnOpenAdmin !== false
+    ? settings.data.enrichCreateOnOpenAdmin !== false
     : true;
   return (
     <PageContainer size="full" className="pb-16 sm:pb-24">

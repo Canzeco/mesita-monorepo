@@ -68,7 +68,7 @@ Deno.test("helpers: google spine / IG / vision / synth / discovery", () => {
 });
 
 Deno.test("googleMapsRunCost: priced per review, not per run", () => {
-  // The live config: atlasGatherReviews 100, atlasGatherGoogleImages 10.
+  // The live config: enrichGatherReviews 100, enrichGatherGoogleImages 10.
   // Apify bills start + place + details + $0.0005 per review + $0.0005 per
   // image, so ~6 cents — NOT the flat $0.30 this replaced, and not the
   // ~$0.65 the old comment claimed by pricing reviews per hundred instead of

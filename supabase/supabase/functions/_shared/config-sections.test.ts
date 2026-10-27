@@ -161,9 +161,9 @@ const CASES: Record<string, SectionCase> = {
     assertSaved: (saved, row) => {
       // The success shape spreads the config at the top level; there is no
       // `config` key and the console reads atlas* straight off the body.
-      assertEquals(saved.atlasGatherGoogleImages, 8);
-      assertEquals(saved.atlasGatherReviews, 20);
-      assertEquals((row.enrichment_config as Row).atlasGatherGoogleImages, 8);
+      assertEquals(saved.enrichGatherGoogleImages, 8);
+      assertEquals(saved.enrichGatherReviews, 20);
+      assertEquals((row.enrichment_config as Row).enrichGatherGoogleImages, 8);
     },
     invalid: { gatherGoogleImages: 99 },
     refuse: { status: 400, contains: "gatherGoogleImages must be an integer 1-10" },

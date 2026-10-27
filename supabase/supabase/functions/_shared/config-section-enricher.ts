@@ -102,7 +102,7 @@ export async function writeEnricherSection(
   if (body.gatherGoogleImages !== undefined) {
     const n = intInRange(body.gatherGoogleImages, 1, 10);
     if (n === null) return jsonError("gatherGoogleImages must be an integer 1-10", 400);
-    next.atlasGatherGoogleImages = n;
+    next.enrichGatherGoogleImages = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -112,7 +112,7 @@ export async function writeEnricherSection(
     if (n === null) {
       return jsonError(`gatherInstagramDepth must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    next.atlasGatherInstagramDepth = n;
+    next.enrichGatherInstagramDepth = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -122,7 +122,7 @@ export async function writeEnricherSection(
     if (n === null) {
       return jsonError(`gatherInstagramPosts must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    next.atlasGatherInstagramPosts = n;
+    next.enrichGatherInstagramPosts = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -132,7 +132,7 @@ export async function writeEnricherSection(
     if (n === null) {
       return jsonError(`gatherReviews must be an integer 0-${GOOGLE_REVIEWS_MAX}`, 400);
     }
-    next.atlasGatherReviews = n;
+    next.enrichGatherReviews = n;
     blobTouched = true;
   }
 
@@ -140,7 +140,7 @@ export async function writeEnricherSection(
     if (typeof body.imageVisionEnabled !== "boolean") {
       return jsonError("imageVisionEnabled must be a boolean", 400);
     }
-    next.atlasImageVisionEnabled = body.imageVisionEnabled;
+    next.enrichImageVisionEnabled = body.imageVisionEnabled;
     blobTouched = true;
   }
 
@@ -149,7 +149,7 @@ export async function writeEnricherSection(
     if (n === null) {
       return jsonError(`saveTotalImages must be an integer 1-${SAVE_TOTAL_IMAGES_MAX}`, 400);
     }
-    next.atlasSaveTotalImages = n;
+    next.enrichSaveTotalImages = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -158,14 +158,14 @@ export async function writeEnricherSection(
     if (typeof body.saveImagesToStorage !== "boolean") {
       return jsonError("saveImagesToStorage must be a boolean", 400);
     }
-    next.atlasSaveImagesToStorage = body.saveImagesToStorage;
+    next.enrichSaveImagesToStorage = body.saveImagesToStorage;
     blobTouched = true;
   }
 
   if (body.analyzeGoogleImages !== undefined) {
     const n = intInRange(body.analyzeGoogleImages, 1, 10);
     if (n === null) return jsonError("analyzeGoogleImages must be an integer 1-10", 400);
-    next.atlasAnalyzeGoogleImages = n;
+    next.enrichAnalyzeGoogleImages = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -174,7 +174,7 @@ export async function writeEnricherSection(
     if (typeof body.imageAnalysisPrompt !== "string" || body.imageAnalysisPrompt.length > 4000) {
       return jsonError("imageAnalysisPrompt must be a string up to 4000 chars", 400);
     }
-    next.atlasImageAnalysisPrompt = body.imageAnalysisPrompt;
+    next.enrichImageAnalysisPrompt = body.imageAnalysisPrompt;
     blobTouched = true;
   }
 
@@ -182,7 +182,7 @@ export async function writeEnricherSection(
     if (typeof body.imageSortingPrompt !== "string" || body.imageSortingPrompt.length > 4000) {
       return jsonError("imageSortingPrompt must be a string up to 4000 chars", 400);
     }
-    next.atlasImageSortingPrompt = body.imageSortingPrompt;
+    next.enrichImageSortingPrompt = body.imageSortingPrompt;
     blobTouched = true;
   }
 
@@ -191,7 +191,7 @@ export async function writeEnricherSection(
     if (n === null) {
       return jsonError(`analyzeInstagramImages must be an integer 1-${INSTAGRAM_MAX}`, 400);
     }
-    next.atlasAnalyzeInstagramImages = n;
+    next.enrichAnalyzeInstagramImages = n;
     funnelTouched = true;
     blobTouched = true;
   }
@@ -200,7 +200,7 @@ export async function writeEnricherSection(
     if (typeof body.synthesisQuality !== "string" || !QUALITY_VALUES.has(body.synthesisQuality)) {
       return jsonError("synthesisQuality must be economy or standard", 400);
     }
-    next.atlasSynthesisQuality = storedQuality(body.synthesisQuality);
+    next.enrichSynthesisQuality = storedQuality(body.synthesisQuality);
     blobTouched = true;
   }
 
@@ -208,7 +208,7 @@ export async function writeEnricherSection(
     if (typeof body.visionQuality !== "string" || !QUALITY_VALUES.has(body.visionQuality)) {
       return jsonError("visionQuality must be economy or standard", 400);
     }
-    next.atlasVisionQuality = storedQuality(body.visionQuality);
+    next.enrichVisionQuality = storedQuality(body.visionQuality);
     blobTouched = true;
   }
 
@@ -222,45 +222,45 @@ export async function writeEnricherSection(
         400,
       );
     }
-    next.atlasPerplexityPreset = body.perplexityPreset;
+    next.enrichPerplexityPreset = body.perplexityPreset;
     blobTouched = true;
   }
 
   if (body.discoverWebsiteN !== undefined) {
     const n = intInRange(body.discoverWebsiteN, 0, 10);
     if (n === null) return jsonError("discoverWebsiteN must be an integer 0-10", 400);
-    next.atlasDiscoverWebsiteN = n;
+    next.enrichDiscoverWebsiteN = n;
     blobTouched = true;
   }
   if (body.discoverInstagramN !== undefined) {
     const n = intInRange(body.discoverInstagramN, 0, 10);
     if (n === null) return jsonError("discoverInstagramN must be an integer 0-10", 400);
-    next.atlasDiscoverInstagramN = n;
+    next.enrichDiscoverInstagramN = n;
     blobTouched = true;
   }
   if (body.discoverFacebookN !== undefined) {
     const n = intInRange(body.discoverFacebookN, 0, 10);
     if (n === null) return jsonError("discoverFacebookN must be an integer 0-10", 400);
-    next.atlasDiscoverFacebookN = n;
+    next.enrichDiscoverFacebookN = n;
     blobTouched = true;
   }
   if (body.discoverOpentableN !== undefined) {
     const n = intInRange(body.discoverOpentableN, 0, 10);
     if (n === null) return jsonError("discoverOpentableN must be an integer 0-10", 400);
-    next.atlasDiscoverOpentableN = n;
+    next.enrichDiscoverOpentableN = n;
     blobTouched = true;
   }
   if (body.discoverUbereatsN !== undefined) {
     const n = intInRange(body.discoverUbereatsN, 0, 10);
     if (n === null) return jsonError("discoverUbereatsN must be an integer 0-10", 400);
-    next.atlasDiscoverUbereatsN = n;
+    next.enrichDiscoverUbereatsN = n;
     blobTouched = true;
   }
 
   if (body.requestThreshold !== undefined) {
     const n = intInRange(body.requestThreshold, 1, 100);
     if (n === null) return jsonError("requestThreshold must be an integer 1-100", 400);
-    next.atlasRequestThreshold = n;
+    next.enrichRequestThreshold = n;
     blobTouched = true;
   }
 
@@ -268,14 +268,14 @@ export async function writeEnricherSection(
     if (typeof body.createOnOpenConsumer !== "boolean") {
       return jsonError("createOnOpenConsumer must be a boolean", 400);
     }
-    next.atlasCreateOnOpenConsumer = body.createOnOpenConsumer;
+    next.enrichCreateOnOpenConsumer = body.createOnOpenConsumer;
     blobTouched = true;
   }
   if (body.createOnOpenAdmin !== undefined) {
     if (typeof body.createOnOpenAdmin !== "boolean") {
       return jsonError("createOnOpenAdmin must be a boolean", 400);
     }
-    next.atlasCreateOnOpenAdmin = body.createOnOpenAdmin;
+    next.enrichCreateOnOpenAdmin = body.createOnOpenAdmin;
     blobTouched = true;
   }
   if (body.consumerCreatesPerDay !== undefined) {
@@ -286,18 +286,18 @@ export async function writeEnricherSection(
         400,
       );
     }
-    next.atlasConsumerCreatesPerDay = n;
+    next.enrichConsumerCreatesPerDay = n;
     blobTouched = true;
   }
 
   if (funnelTouched) {
     const lockErr = funnelLockError(
-      next.atlasGatherGoogleImages,
-      next.atlasGatherInstagramDepth,
-      next.atlasGatherInstagramPosts,
-      next.atlasAnalyzeGoogleImages,
-      next.atlasAnalyzeInstagramImages,
-      next.atlasSaveTotalImages,
+      next.enrichGatherGoogleImages,
+      next.enrichGatherInstagramDepth,
+      next.enrichGatherInstagramPosts,
+      next.enrichAnalyzeGoogleImages,
+      next.enrichAnalyzeInstagramImages,
+      next.enrichSaveTotalImages,
     );
     if (lockErr) return jsonError(lockErr, 400);
   }

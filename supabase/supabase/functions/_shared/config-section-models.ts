@@ -16,7 +16,7 @@
 //
 // The MAIN model is always OpenAI (a chat model, or an embedding model under
 // the `embeddings` key). The blob has no Perplexity key — the Enricher's search
-// preset is enrichment_config.atlasPerplexityPreset. `supabase.model`,
+// preset is enrichment_config.enrichPerplexityPreset. `supabase.model`,
 // `ojo.model`, `enricher.perplexity` and `memo.perplexity` had no reader
 // (MESITA-2136, MESITA-2144). The validator rebuilds the blob from the keys
 // below and ignores everything else, so an older console that still sends them

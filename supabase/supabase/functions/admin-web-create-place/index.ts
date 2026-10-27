@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
     if (!creation.ok) return creation.response;
     const createOnOpen = normalizeEnrichmentConfig(
       creation.row?.enrichment_config,
-    ).atlasCreateOnOpenAdmin;
+    ).enrichCreateOnOpenAdmin;
     if (!createOnOpen) {
       await recordAdminOperatorEvent(admin, {
         verb: "create",

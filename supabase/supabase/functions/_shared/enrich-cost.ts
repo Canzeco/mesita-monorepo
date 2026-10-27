@@ -63,7 +63,7 @@ export function chargeGoogleSpine(
  * Apify compass/crawler-google-places for ONE place, pay-per-event.
  *
  * A function, not a constant, for the same reason instagramRunCost is one: the
- * spend moves with the knob. `atlasGatherReviews` is the dominant term — at the
+ * spend moves with the knob. `enrichGatherReviews` is the dominant term — at the
  * live setting of 100 reviews + 10 images this is ~$0.061, and the flat $0.30
  * it replaces was both five times too high and frozen (MESITA-2032).
  */
