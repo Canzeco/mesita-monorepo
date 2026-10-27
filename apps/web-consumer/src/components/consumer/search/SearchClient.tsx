@@ -123,8 +123,8 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
-  RAIL_PAGE_SHARE,
-  RAIL_PAGE_SIZE,
+  RAIL_ROW_REM,
+  RAIL_VISIBLE_CARDS,
   SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
@@ -921,21 +921,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    const page = el.clientWidth * RAIL_PAGE_SHARE;
-    if (page <= 0) return;
-    // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
-    // (MESITA-2878).
-    const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
-    const next = railCenterIndex(el.scrollLeft, page, pageCount);
+    // The rail scrolls vertically, one card per snap (MESITA-2880):
+    // railIndex is the top card in view.
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const row = RAIL_ROW_REM * (rem || 16);
+    const next = railCenterIndex(el.scrollTop, row, catalog.length);
     setRailIndex(next);
-    const onPage = catalog.slice(
-      next * RAIL_PAGE_SIZE,
-      (next + 1) * RAIL_PAGE_SIZE,
-    );
-    // A card already selected on the centred page keeps the ring — a tap
-    // on the lower card scrolls here too, and must not hand it to the top.
-    if (onPage.some((p) => p.id === railSelectedId)) return;
-    const id = onPage[0]?.id;
+    const inView = catalog.slice(next, next + RAIL_VISIBLE_CARDS);
+    // A selected card still in view keeps the ring — a tap on the lower
+    // card must not hand it to the top one.
+    if (inView.some((p) => p.id === railSelectedId)) return;
+    const id = inView[0]?.id;
     // A SCROLL RINGS THE PIN, IT NEVER PANS (MESITA-2440): browsing the
     // rail must not drag the map out from under the guest.
     if (id) setSelectedId(id);
@@ -967,15 +963,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    const pageIdx = idx < 0 ? idx : Math.floor(idx / RAIL_PAGE_SIZE);
-    if (!shouldCenterRailCard(pageIdx, railIndex, centerOnSelect.current))
-      return;
+    if (!shouldCenterRailCard(idx, railIndex, centerOnSelect.current)) return;
     centerOnSelect.current = false;
-    railRefs.current.get(railSelectedId)?.scrollIntoView({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    // Scroll the rail itself, never its ancestors: the card lands on top.
+    const card = railRefs.current.get(railSelectedId);
+    const rail = railScrollRef.current;
+    if (card && rail) {
+      rail.scrollTo({
+        top: card.offsetTop - rail.offsetTop,
+        behavior: "smooth",
+      });
+    }
   }, [railSelectedId, catalog, railIndex]);
 
   return (
