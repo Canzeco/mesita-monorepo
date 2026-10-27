@@ -7,6 +7,7 @@ import {
   Heart,
   Plug,
   Settings as SettingsIcon,
+  Share2,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -14,7 +15,7 @@ import { Instagram } from "@/components/shared/instagram-icon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid } from "./profile-sections";
 
-// ─── Me's nine cells and the page they sit on ──────────────────────────────
+// ─── Me's ten cells and the page they sit on ──────────────────────────────
 //
 // ONE SOURCE FOR THE HUB (Pato, MESITA-2701: "the placeholders must be
 // similar to the page you are loading, like the sizes"). ProfileClient draws
@@ -36,16 +37,20 @@ import { DestGrid } from "./profile-sections";
 //   2              Class · Plan
 //   2              Notifications · Reservations
 //   2              Favorites · Connector
-//   1              Settings, alone on the last row
+//   2              Share · Settings
 //
-// NINE CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// Share left the bar (MESITA-2871) and came here (MESITA-2887, Pato: "Add
+// the Sharee button here"); it fills the cell beside Settings.
+//
+// TEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
 // display anything of info of the user ... don't display info
 // preliminarily"). The header card holds the four facts; every summary is a
 // static description of what its page holds.
 
-/** One cell: a destination, always a route to `/me/<box>`. */
+/** One cell: a destination, a route to `/me/<box>` — or `/share`, the one
+ *  page Me opens outside its own namespace (MESITA-2887). */
 export type HubTile = {
   Icon: LucideIcon;
   title: string;
@@ -121,9 +126,15 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
       href: CONSUMER_ROUTES.mePages.connector,
     },
   ],
-  // Settings closes the page, alone; the cell beside it is empty (Pato,
-  // MESITA-2562).
+  // Settings closes the page (Pato, MESITA-2562); Share sits beside it, the
+  // three joined dots it wore on the bar (MESITA-2568, MESITA-2887).
   [
+    {
+      Icon: Share2,
+      title: "Share",
+      summary: "Invite your friends",
+      href: CONSUMER_ROUTES.share,
+    },
     {
       Icon: SettingsIcon,
       title: "Settings",
