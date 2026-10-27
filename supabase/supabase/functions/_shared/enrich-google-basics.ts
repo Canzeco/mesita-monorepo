@@ -115,9 +115,9 @@ export type GoogleBasics = {
   google_place_id: string;
   /**
    * Google Places displayName — a cached observation, not an identity spine
-   * (google_place_id is). There is deliberately no `name` here: `place_profiles.name`
-   * is a generated column and `mesita_name` belongs to the operator, so the
-   * Enricher has nothing to say about either.
+   * (google_place_id is). There is deliberately no `name` here:
+   * `place_profiles.name` is the Mesita name (MESITA-2828), the name door's
+   * and the operator's, so the Google spine has nothing to say about it.
    */
   google_name: string;
   category: string | null;
@@ -330,10 +330,9 @@ export async function fetchGoogleBasics(
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an
-      // identity spine (google_place_id is). The Enricher never writes `name`
-      // or `mesita_name`: `name` is a generated display column
-      // (coalesce(mesita_name, google_name)) and `mesita_name` belongs to the
-      // operator. Writing either would clobber an editorial label.
+      // identity spine (google_place_id is). The spine never writes `name`:
+      // that is the Mesita name (MESITA-2828), the name door's and the
+      // operator's. Writing it here would clobber an editorial label.
       google_name: placeName,
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),

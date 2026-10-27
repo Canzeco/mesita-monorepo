@@ -152,8 +152,8 @@ Deno.serve(async (req) => {
 
   // The pipeline facts of State ride along computed, never stored — the same
   // helpers admin-web-search-places uses for the Single Place table, so the
-  // box and the table can never disagree. `name` arrives already resolved: it
-  // is a generated column (mesita_name → google_name).
+  // box and the table can never disagree. `name` is the Mesita name
+  // (MESITA-2828); google_name rides along as Google's own label.
   const place = {
     ...placeFields,
     seeded: isPlaceSeeded(placeFields.google_place_id),

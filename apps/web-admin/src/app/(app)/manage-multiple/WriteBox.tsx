@@ -33,7 +33,7 @@ async function resolveMesitaId(googleId: string): Promise<
   if (!r.ok) return { ok: false, error: r.error };
   const hit = r.data.find((p) => p.google_place_id === googleId) ?? r.data[0];
   if (!hit) return { ok: false, error: "Not on Mesita" };
-  return { ok: true, placeId: hit.id, name: hit.google_name || hit.name };
+  return { ok: true, placeId: hit.id, name: hit.name || hit.google_name || "" };
 }
 
 // One write box: Create, Enrich or Update (MESITA-2096). Each box carries its

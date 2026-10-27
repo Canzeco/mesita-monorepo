@@ -1,16 +1,21 @@
-// Source guard: nothing may write `place_profiles.name`.
+// Source guard: three writers of `place_profiles.name`, and no other.
 //
-// `place_profiles.name` is a GENERATED column (coalesce(mesita_name, google_name)).
-// Postgres rejects writes to it, so a straggler write is a hard 428C9 at
-// runtime rather than a silent clobber — but `deno test` has no database
-// attached, and `supabase gen types` does NOT mark generated columns read-only
-// (place_profiles.Insert still carries `name?: string`), so TypeScript will not catch
-// it either. This scan is the only check that runs before deploy.
+// `place_profiles.name` is the one Mesita name (MESITA-2828): stored, seeded
+// from Google at Create, refined by the Description step, edited by the
+// operator. A straggler write elsewhere — above all in an enrich path —
+// would silently revert an operator's rename on the next run, the sticky-sync
+// clobber MESITA-917 closed. `deno test` has no database attached and
+// TypeScript cannot tell one `name:` key from another, so this scan is the
+// only check that runs before deploy.
 //
-// It also pins the rule that replaced the old sticky-sync design: the
-// Enricher writes google_name and NEVER mesita_name.
+// The allowed writers:
+//   · _shared/save-place.ts            — Create seeds `name` from google_name
+//   · _shared/place-name-door.ts       — the Description step's inference,
+//                                        gate D2 (machine-owned values only)
+//   · admin-web-update-place/index.ts  — the operator's edit
 //
-// See the phase 1/2 migrations (20260809201500, 20260809203000) for the model.
+// The Enricher writes google_name (Google's own label, Search's alias) and
+// reaches `name` ONLY through the door.
 
 import { assertEquals } from "jsr:@std/assert@1";
 
@@ -70,7 +75,7 @@ function stripLineComments(src: string): string {
   return src.split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
 }
 
-/** A bare `name:` key — not google_name, mesita_name, menu_pdf_name, etc. */
+/** A bare `name:` key — not google_name, menu_pdf_name, etc. */
 const BARE_NAME_KEY = /(?<![\w$])name\s*:/;
 /** `something.name = ...` assignment building a write payload. */
 const BARE_NAME_ASSIGN = /(?<![\w$])update\.name\s*=|(?<![\w$])nameUpdate\.name\s*=/;
@@ -78,29 +83,66 @@ const BARE_NAME_ASSIGN = /(?<![\w$])update\.name\s*=|(?<![\w$])nameUpdate\.name\
 const PLACE_TABLE = /\.from\(\s*["'](place_profiles|profiles)["']\s*\)/g;
 const WRITE_CALL = /\.(insert|update|upsert)\s*\(/;
 
-Deno.test("no Edge Function writes place_profiles.name (it is a generated column)", async () => {
+/**
+ * Every argument list of a `writePlace(` call against a place table —
+ * balanced parens, so a `name:` three objects later is not this call's.
+ */
+function placeWriteCalls(src: string): string[] {
+  const out: string[] = [];
+  const re = /writePlace\s*\(/g;
+  for (const m of src.matchAll(re)) {
+    let depth = 0;
+    let i = (m.index ?? 0) + m[0].length - 1;
+    const start = i;
+    for (; i < src.length; i++) {
+      if (src[i] === "(") depth++;
+      else if (src[i] === ")" && --depth === 0) break;
+    }
+    const call = src.slice(start, i + 1);
+    if (/table:\s*["'](place_profiles|profiles)["']/.test(call)) out.push(call);
+  }
+  return out;
+}
+
+/** The three writers of the Mesita name (MESITA-2828). */
+const NAME_WRITERS = new Set([
+  "_shared/save-place.ts",
+  "_shared/place-name-door.ts",
+  "admin-web-update-place/index.ts",
+]);
+
+Deno.test("only Create, the name door and the operator's save write place_profiles.name", async () => {
   const offenders: string[] = [];
+  const seenWriters = new Set<string>();
   for (const { path, text } of await tsSources()) {
     const src = stripLineComments(text);
+    let writes = false;
     for (const m of src.matchAll(PLACE_TABLE)) {
       // Window forward far enough to cover a chained write and its payload.
       const window = src.slice(m.index ?? 0, (m.index ?? 0) + 2000);
       if (!WRITE_CALL.test(window)) continue;
       const payload = window.slice(window.search(WRITE_CALL));
-      if (BARE_NAME_KEY.test(payload)) {
-        offenders.push(`${path} — write to ${m[1]} carries a bare \`name:\``);
-      }
+      if (BARE_NAME_KEY.test(payload)) writes = true;
     }
-    if (BARE_NAME_ASSIGN.test(src)) {
-      offenders.push(`${path} — assigns \`name\` into a place_profiles update payload`);
-    }
+    if (BARE_NAME_ASSIGN.test(src)) writes = true;
+    if (placeWriteCalls(src).some((call) => BARE_NAME_KEY.test(call))) writes = true;
+    if (!writes) continue;
+    if (NAME_WRITERS.has(path)) seenWriters.add(path);
+    else offenders.push(`${path} — writes place_profiles.name outside the three allowed writers`);
   }
   assertEquals(
     offenders,
     [],
-    `place_profiles.name is generated and rejects writes. Write mesita_name (operator ` +
-      `override) or google_name (Enricher observation) instead.\n` +
+    `place_profiles.name is the Mesita name: Create seeds it, the name door ` +
+      `(_shared/place-name-door.ts) lands the Description step's inference, ` +
+      `admin-web-update-place takes the operator's edit. Nothing else writes it.\n` +
       offenders.join("\n"),
+  );
+  // The door itself must still be a writer, or the guard is scanning nothing.
+  assertEquals(
+    seenWriters.has("_shared/place-name-door.ts"),
+    true,
+    "the name door no longer writes `name:` — the scan has gone blind",
   );
 });
 
@@ -157,28 +199,40 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   );
 });
 
-Deno.test("the Enricher never writes mesita_name", async () => {
+Deno.test("the Enricher reaches the Mesita name only through the door", async () => {
   const offenders: string[] = [];
   for (const { path, text } of await tsSources()) {
     if (!/enrich|cron-enrich/.test(path)) continue;
     const src = stripLineComments(text);
-    // Deleting the key off `gathered` is the correct defensive move, not a write.
-    let writes = src.replace(/delete\s+\w+\.mesita_name\s*;?/g, "");
-    // §8.4 v3: the Description function INFERS a Mesita Name, but only the
-    // gated door (_shared/mesita-name-door.ts, gate D2) may WRITE it. A JSON
-    // schema/type declaration of the inferred field is not a write.
-    writes = writes.replace(/mesita_name:\s*\{\s*type:/g, "");
-    if (/mesita_name\s*:/.test(writes)) {
-      offenders.push(`${path} — enrichment path sets mesita_name`);
+    for (const m of src.matchAll(PLACE_TABLE)) {
+      const window = src.slice(m.index ?? 0, (m.index ?? 0) + 2000);
+      if (!WRITE_CALL.test(window)) continue;
+      const payload = window.slice(window.search(WRITE_CALL));
+      if (BARE_NAME_KEY.test(payload)) {
+        offenders.push(`${path} — enrichment path writes name`);
+      }
+    }
+    if (placeWriteCalls(src).some((call) => BARE_NAME_KEY.test(call))) {
+      offenders.push(`${path} — enrichment path hands writePlace a name`);
     }
   }
   assertEquals(
     offenders,
     [],
-    `mesita_name may only be written through _shared/mesita-name-door.ts ` +
-      `(gate D2: NULL / google-copy / the door's own last value). A raw write ` +
+    `the Mesita name may only be written through _shared/place-name-door.ts ` +
+      `(gate D2: blank / google-copy / the door's own last value). A raw write ` +
       `in an enrich path would reintroduce the sticky-sync clobber.\n` +
       offenders.join("\n"),
+  );
+  // Every enrich-path writer of the name goes through the door: the import
+  // is the proof. The door's own file is in _shared/, outside this filter.
+  const callers = (await tsSources()).filter((s) =>
+    /enrich|cron-enrich/.test(s.path) && /applyInferredPlaceName\(/.test(s.text)
+  );
+  assertEquals(
+    callers.every((s) => s.text.includes("place-name-door.ts")),
+    true,
+    "an enrich path calls the door without importing it",
   );
 });
 

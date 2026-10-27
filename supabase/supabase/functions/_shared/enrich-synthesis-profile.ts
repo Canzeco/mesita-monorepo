@@ -14,7 +14,7 @@ export type ProfileResult = {
   /**
    * Clean Mesita display name (§8.4 v3): the Google label stripped of chain
    * suffixes, slogans, and city tags; proper case. NOT applied by
-   * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
+   * applyProfileToUpdate — only the place-name-door may land it (gate D2).
    */
   mesita_name?: string | null;
   /** Mesita tags (MESITA-2790): vocabulary slugs; filtered by the caller. */

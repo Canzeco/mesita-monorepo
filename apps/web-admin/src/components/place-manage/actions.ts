@@ -51,15 +51,14 @@ export type AdminPlace = {
   id: string;
   slug: string | null;
   /**
-   * Resolved display label. GENERATED in Postgres as
-   * coalesce(mesita_name, google_name) — read-only, never send it in a patch.
+   * The one Mesita name (MESITA-2828): stored, editable. Blank on save ⇒ the
+   * place follows google_name again.
    */
   name: string;
-  /** Operator override. Null/empty ⇒ the place follows google_name. Editable. */
-  mesita_name?: string | null;
   /**
-   * Cached Google Places displayName. Not an identity spine (google_place_id
-   * is) — it changes whenever the Google listing does. Enricher-only write.
+   * Google's own label. Not an identity spine (google_place_id is) — it
+   * changes whenever the Google listing does. Google-only write; Search's
+   * alias of the Mesita name, never shown to a guest.
    */
   google_name?: string | null;
   category: string | null;

@@ -56,7 +56,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                         href={placeTabHref(hit.id, "profile")}
                         className="block truncate font-medium underline-offset-4 hover:underline"
                       >
-                        {hit.google_name || hit.name}
+                        {hit.name || hit.google_name}
                       </Link>
                     ) : (
                       <>

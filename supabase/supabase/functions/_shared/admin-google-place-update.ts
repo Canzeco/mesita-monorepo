@@ -15,7 +15,7 @@ const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PE
 /** Keys the Update path must never send to writePlace. */
 export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "photos",
-  "mesita_name",
+  // The Mesita name is the operator's / the name door's (MESITA-2828).
   "name",
   "description",
   "enriched_at",

@@ -52,7 +52,7 @@ import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { synthesizeDoorProfile } from "./create-door-profile.ts";
-import { applyInferredMesitaName } from "./mesita-name-door.ts";
+import { applyInferredPlaceName } from "./place-name-door.ts";
 import { writePlace } from "./place-doc.ts";
 import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
@@ -379,7 +379,7 @@ export async function createMinimalPlace(opts: {
           patch,
         });
         if (door.mesitaNameCandidate) {
-          await applyInferredMesitaName(
+          await applyInferredPlaceName(
             admin,
             saved.place_id,
             door.mesitaNameCandidate,

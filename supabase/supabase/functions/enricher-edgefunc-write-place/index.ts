@@ -12,7 +12,7 @@
 //
 // Around the commit (MESITA-2420): a field a person pinned is withheld, so
 // an Enrich writes around a correction instead of over it; the Mesita Name
-// the synthesis inferred lands through _shared/mesita-name-door.ts; and each
+// the synthesis inferred lands through _shared/place-name-door.ts; and each
 // step the run bought is stamped from what landed (./steps.ts).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -23,7 +23,7 @@ import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-i
 import { pairedAnalyses } from "../_shared/photo-analysis.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns } from "../_shared/enrich-corrections.ts";
-import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
+import { applyInferredPlaceName } from "../_shared/place-name-door.ts";
 import { reportCrenupSteps, stepFailed } from "../_shared/crenup-report.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 import { fillAtlasProfile } from "./synthesize-profile.ts";
@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
   // After the profile, so the door sees this run's google_name. It writes
   // only over a name the machine owns; an operator's name stays.
   if (filled.mesitaName) {
-    await applyInferredMesitaName(admin, commit.placeId, filled.mesitaName);
+    await applyInferredPlaceName(admin, commit.placeId, filled.mesitaName);
   }
   await reportCrenupSteps(
     admin,

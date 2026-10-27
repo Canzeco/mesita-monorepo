@@ -167,11 +167,10 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
   const nameVector = parseEmbeddingVector(place.name_embedding);
   const namePreview = nameVector?.slice(0, 24) ?? null;
   const nameDims = nameVector?.length ?? 0;
-  // The resolved label is what actually reaches the source text: Postgres
-  // generates places.name as coalesce(mesita_name, google_name), so an
-  // operator override is already folded in by the time we embed.
+  // The Mesita name is what reaches the source text (MESITA-2828); it is
+  // Google's label only until the name door or an operator renames the place.
   const resolvedName = (place.name ?? "").trim();
-  const override = (place.mesita_name ?? "").trim();
+  const renamed = resolvedName !== "" && resolvedName !== (place.google_name ?? "").trim();
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -200,9 +199,9 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
             <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
               <span className="text-sm">{resolvedName}</span>
               <span className="text-muted-foreground type-label">
-                {override
-                  ? "Operator override — this is what the Name vector embeds."
-                  : "Following the Google name — no override set."}
+                {renamed
+                  ? "The Mesita name — this is what the Name vector embeds."
+                  : "Still Google's label — no Mesita name yet."}
               </span>
             </span>
           ) : (

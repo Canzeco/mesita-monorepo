@@ -90,7 +90,7 @@ export async function attachPlaces<T extends RowWithPlace>(
         | null;
     };
     for (const p of (data ?? []) as unknown as Row[]) {
-      // `name` is the generated display column (mesita_name → google_name).
+      // `name` is the Mesita name (MESITA-2828); google_name is Google's label.
       const placeName = p.place?.name ?? null;
       byId.set(p.id, {
         id: p.id,

@@ -1,55 +1,58 @@
-// The ONE door through which the Enricher may write `mesita_name` (§8.4 v3).
+// The ONE door through which the Enricher may write `place_profiles.name`
+// (§8.4 v3; MESITA-2828: `name` is the stored Mesita name, `mesita_name` is gone).
 //
-// The Description function infers a clean Mesita display name; this door
-// decides whether that inference may land. THE LAW (gate D2, 2026-08-29 —
-// provenance, not equality-proxy):
-//   write ONLY when the current mesita_name is
-//     · NULL/blank (never named), or
-//     · exactly the google_name copy the create door seeded, or
+// The Description function infers a clean Mesita name; this door decides
+// whether that inference may land. THE LAW (gate D2, 2026-08-29 — provenance,
+// not equality-proxy):
+//   write ONLY when the current name is
+//     · blank (never named — the trigger would have filled it from Google), or
+//     · exactly the google_name copy Create seeded, or
 //     · exactly the LAST value THIS door wrote (provenance:
-//       enrichment_sources.mesita_name_inferred) — the machine may keep
-//       improving its own guesses as signals get richer.
+//       enrichment_sources.name_inferred) — the machine may keep improving
+//       its own guesses as signals get richer.
 //   An operator-chosen name matches none of those and is NEVER overwritten.
 //
-// Provenance lives in place_profiles.enrichment_sources.mesita_name_inferred (the
-// diagnostics blob the enricher inspector already renders). place_profiles.name
-// stays GENERATED — nothing here writes `name`.
+// Provenance lives in place_profiles.enrichment_sources.name_inferred (the
+// diagnostics blob the enricher inspector already renders).
 //
-// place-name-writes.test.ts scans enrich-path files for raw `mesita_name:`
-// writes; the Enricher calls THIS module instead, which is the blessed door.
+// place-name-writes.test.ts scans enrich-path files for raw `name:` writes;
+// the Enricher calls THIS module instead, which is the blessed door.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writePlace } from "./place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
-export type MesitaNameDoorResult = {
+export type PlaceNameDoorResult = {
   wrote: boolean;
   reason: "written" | "operator" | "empty" | "unchanged" | "read_failed";
 };
 
+/** Where the door keeps the last name it wrote. */
+export const NAME_INFERRED_KEY = "name_inferred";
+
 const norm = (v: unknown): string =>
   typeof v === "string" ? v.trim() : "";
 
-export async function applyInferredMesitaName(
+export async function applyInferredPlaceName(
   admin: SupabaseClient,
   placeId: string,
   candidateRaw: unknown,
-): Promise<MesitaNameDoorResult> {
+): Promise<PlaceNameDoorResult> {
   const max = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;
   const candidate = norm(candidateRaw).slice(0, max);
   if (!candidate) return { wrote: false, reason: "empty" };
 
   const { data, error } = await admin
     .from("place_profiles")
-    .select("mesita_name, google_name, enrichment_sources")
+    .select("name, google_name, enrichment_sources")
     .eq("id", placeId)
     .maybeSingle();
   if (error || !data) return { wrote: false, reason: "read_failed" };
 
-  const current = norm(data.mesita_name);
+  const current = norm(data.name);
   const google = norm(data.google_name);
   const sources = (data.enrichment_sources ?? {}) as Record<string, unknown>;
-  const lastInferred = norm(sources.mesita_name_inferred);
+  const lastInferred = norm(sources[NAME_INFERRED_KEY]);
 
   const machineOwned = !current || current === google ||
     (lastInferred !== "" && current === lastInferred);
@@ -63,7 +66,7 @@ export async function applyInferredMesitaName(
         mode: "update",
         id: placeId,
         patch: {
-          enrichment_sources: { ...sources, mesita_name_inferred: candidate },
+          enrichment_sources: { ...sources, [NAME_INFERRED_KEY]: candidate },
         },
       });
     }
@@ -75,8 +78,8 @@ export async function applyInferredMesitaName(
     mode: "update",
     id: placeId,
     patch: {
-      mesita_name: candidate,
-      enrichment_sources: { ...sources, mesita_name_inferred: candidate },
+      name: candidate,
+      enrichment_sources: { ...sources, [NAME_INFERRED_KEY]: candidate },
     },
   });
   if (!res.ok) return { wrote: false, reason: "read_failed" };

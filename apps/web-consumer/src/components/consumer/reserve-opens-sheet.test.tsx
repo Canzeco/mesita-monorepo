@@ -60,7 +60,7 @@ describe("Reserve still opens the sheet", () => {
     root = createRoot(host);
     const place = placeRowToDetail({
       id: "p-1",
-      mesita_name: "Lupita",
+      name: "Lupita",
       enriched_at: "2026-01-01T00:00:00Z",
       reservations_enabled: true,
     });

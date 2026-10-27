@@ -81,7 +81,7 @@ import {
 } from "./place-family-keys.ts";
 import { PLACE_CARD_COLUMNS } from "./place-columns.ts";
 import { radiusBoundingBox } from "./geo.ts";
-import { clearsPopularityFloor, nameSimilarity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor, lexicalNameSimilarity, nameSimilarity } from "./pipeline-signals.ts";
 import {
   fetchPlaceListing,
   type GooglePlaceListing,
@@ -345,6 +345,8 @@ export type ListedRow = {
   slug: string;
   google_place_id: string | null;
   name: string | null;
+  /** Google's own label (MESITA-2828): Search's alias of the Mesita name. */
+  google_name?: string | null;
   address: string | null;
   lat: number | null;
   lng: number | null;
@@ -428,6 +430,10 @@ export const NAME_MIN_LEXICAL = 0.4;
  * fallback. Each method has its own admission floor. No gate, no weight:
  * a Created place is findable by its name like any other. Ties break on
  * name, then id, so the order is deterministic.
+ *
+ * Google's own label is an alias (MESITA-2828): a query that trigram-matches
+ * `google_name` better than the Mesita name takes that score, and the row
+ * still carries its Mesita name.
  */
 export function rankMesitaByName(
   rows: ListedRow[],
@@ -435,10 +441,17 @@ export function rankMesitaByName(
 ): ListedRow[] {
   return rows
     .filter((row) => String(row.name ?? "").trim())
-    .map((row) => ({
-      row,
-      sim: nameSimilarity(query, { name: row.name, nameEmbedding: row.name_embedding }),
-    }))
+    .map((row) => {
+      const sim = nameSimilarity(query, { name: row.name, nameEmbedding: row.name_embedding });
+      const alias = String(row.google_name ?? "").trim();
+      if (alias && alias !== String(row.name ?? "").trim()) {
+        const aliasScore = lexicalNameSimilarity(query.text, alias);
+        if (aliasScore > sim.score && aliasScore >= NAME_MIN_LEXICAL) {
+          return { row, sim: { score: aliasScore, method: "lexical" as const } };
+        }
+      }
+      return { row, sim };
+    })
     .filter(({ sim }) =>
       sim.score >= (sim.method === "embedding" ? NAME_MIN_COSINE : NAME_MIN_LEXICAL)
     )
@@ -945,7 +958,7 @@ async function embedQueryVector(
 }
 
 const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, address, lat, lng, content_state, enriched_at, selected, boost_tier, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
+  "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, selected, boost_tier, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
 /** In-process cosine budget — a bounded pool, not every vector. */
 const EMBED_POOL = 300;
 const EMBED_RADIUS_KM = 40;

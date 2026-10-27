@@ -38,7 +38,7 @@ function mount() {
   const story = "A short presentation that stays fully visible. ".repeat(8);
   const place = placeRowToDetail({
     id: "p-1",
-    mesita_name: "Strana",
+    name: "Strana",
     enriched_at: "2026-01-01T00:00:00Z",
     description: story,
     google_stars_overall: 3.8,
