@@ -23,7 +23,21 @@ export const RAIL_PAGE_SHARE = 0.88;
  *  inside the page, so the snap math stays 88% and the selected ring does
  *  not kiss the neighbor. */
 const RAIL_PAGE =
-  "w-[88%] shrink-0 snap-center px-1.5 first:ml-[6%] last:mr-[6%]";
+  "flex w-[88%] shrink-0 snap-center flex-col gap-1.5 px-1.5 first:ml-[6%] last:mr-[6%]";
+
+/** Cards per carousel page, stacked: the rail is two cards tall (Pato,
+ *  MESITA-2878: "make it two items height"). SearchClient's page math reads
+ *  the same number. */
+export const RAIL_PAGE_SIZE = 2;
+
+/** The catalog cut into pages of RAIL_PAGE_SIZE, in order. */
+export function railPages<T>(items: T[]): T[][] {
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += RAIL_PAGE_SIZE) {
+    pages.push(items.slice(i, i + RAIL_PAGE_SIZE));
+  }
+  return pages;
+}
 
 /** Where the carousel floats: over the map's foot, 8px up (MESITA-2670). */
 export const RAIL_FLOAT_CLASS =
@@ -60,14 +74,16 @@ export function CatalogRailSkeleton() {
       className="scrollbar-hide flex snap-x snap-mandatory overflow-hidden pb-1"
       aria-hidden
     >
-      <div className={RAIL_PAGE}>
-        <RailScoreTagSkeleton />
-        <RailCardSkeleton />
-      </div>
-      <div className={RAIL_PAGE}>
-        <RailScoreTagSkeleton />
-        <RailCardSkeleton />
-      </div>
+      {[0, 1].map((page) => (
+        <div key={page} className={RAIL_PAGE}>
+          {Array.from({ length: RAIL_PAGE_SIZE }, (_, i) => (
+            <div key={i}>
+              <RailScoreTagSkeleton />
+              <RailCardSkeleton />
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
@@ -285,21 +301,28 @@ export function SearchRailOverlay({
               catalogLoading && "opacity-55",
             )}
           >
-            {places.map((place) => (
+            {railPages(places).map((page) => (
               <div
-                key={place.id}
-                ref={(el) => setRailCardRef(place.id, el)}
+                key={page[0].id}
+                ref={(el) => {
+                  // Every card on the page scrolls to the page.
+                  for (const place of page) setRailCardRef(place.id, el);
+                }}
                 className={RAIL_PAGE}
               >
-                <RailScoreTag place={place} />
-                <RailCard
-                  place={place}
-                  selected={place.id === selectedId}
-                  onOpen={() => onOpenPlace(place)}
-                  saved={cards.isSaved(place)}
-                  onSave={() => cards.toggle(place)}
-                  onShare={() => cards.share(place)}
-                />
+                {page.map((place) => (
+                  <div key={place.id}>
+                    <RailScoreTag place={place} />
+                    <RailCard
+                      place={place}
+                      selected={place.id === selectedId}
+                      onOpen={() => onOpenPlace(place)}
+                      saved={cards.isSaved(place)}
+                      onSave={() => cards.toggle(place)}
+                      onShare={() => cards.share(place)}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
