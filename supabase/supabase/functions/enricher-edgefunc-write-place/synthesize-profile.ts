@@ -7,7 +7,7 @@
 // SERP slot; Google's own summary is the fallback.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { fetchGoogleCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
+import { fetchGoogleCategories } from "../_shared/categories.ts";
 import { classifyPlace, googleCategoriesPatch } from "../_shared/place-classification.ts";
 import { loadEnrichConfig } from "../_shared/enrich-config.ts";
 import {
@@ -48,14 +48,14 @@ function slugs(value: unknown): string[] {
  * What this run's inferences add to the patch. Every Enrich replaces the
  * Presentation with the one it wrote (MESITA-2799: one Enrich, no Overwrite
  * switch); an empty synthesis leaves the saved text alone. Google
- * categories, families and tags are re-inferred every run: written when the
- * call succeeded, left as stored when it failed (null).
+ * categories and tags are re-inferred every run: written when the call
+ * succeeded, left as stored when it failed (null). Families are never
+ * written: the profiles view maps the categories (MESITA-2834).
  */
 export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;
   presentation: string | null;
   categories: string[] | null;
-  families?: string[] | null;
   tags: string[] | null;
 }): Record<string, unknown> {
   const next = { ...opts.patch };
@@ -66,7 +66,6 @@ export function mergeSynthesizedProfile(opts: {
   if (opts.categories && opts.categories.length > 0) {
     Object.assign(next, googleCategoriesPatch(opts.categories));
   }
-  if (opts.families && opts.families.length > 0) next.family_keys = opts.families;
   if (opts.tags) next.tags = opts.tags;
   return next;
 }
@@ -105,8 +104,8 @@ export type FilledProfile = {
 };
 
 /**
- * Asks the classifiers for a Presentation, the Mesita tags, 1–3 Google
- * categories and 1–5 families.
+ * Asks the classifiers for a Presentation, the Mesita tags and 1–3 Google
+ * categories; the families follow the categories (MESITA-2834).
  * A model failure leaves the patch unchanged. The caller still commits once.
  */
 export async function fillAtlasProfile(
@@ -135,9 +134,8 @@ async function fillAtlasProfileInner(
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
   if (!openaiKey) return { patch, mesitaName: null };
 
-  const [categories, families, tagVocabulary, models, cfg] = await Promise.all([
+  const [categories, tagVocabulary, models, cfg] = await Promise.all([
     fetchGoogleCategories(admin),
-    fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
     loadEnrichConfig(admin),
@@ -187,7 +185,7 @@ async function fillAtlasProfileInner(
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
 
-  const classified = await classifyPlace(openaiKey, { categories, families }, {
+  const classified = await classifyPlace(openaiKey, { categories }, {
     name: name || "Place",
     address,
     googleTypes,
@@ -198,16 +196,12 @@ async function fillAtlasProfileInner(
   if (!classified.categories) {
     console.warn(`[enrich] ${placeId}: Google categories not inferred; stored categories kept`);
   }
-  if (!classified.families) {
-    console.warn(`[enrich] ${placeId}: families not inferred; stored families kept`);
-  }
 
   return {
     patch: mergeSynthesizedProfile({
       patch,
       presentation,
       categories: classified.categories,
-      families: classified.families,
       tags,
     }),
     mesitaName,

@@ -163,10 +163,10 @@ describe("coerceConfig", () => {
     expect(cfg).not.toHaveProperty("social");
   });
 
-  it("the category param is twenty families", () => {
+  it("the category param is fifty families", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(SUPER_FIELDS.length).toBe(20);
-    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(20);
+    expect(SUPER_FIELDS.length).toBe(50);
+    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(50);
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
     const on = SUPER_FIELDS.filter((f) => DEFAULT_NAME.deep.supers[f.key]).map((f) => f.key);
     expect(new Set(on)).toEqual(
@@ -174,7 +174,7 @@ describe("coerceConfig", () => {
     );
     expect(
       new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).map((f) => f.battery[0])),
-    ).toEqual(new Set(["restaurant", "bar", "night_club", "cafe", "bakery"]));
+    ).toEqual(new Set(["restaurant", "bar", "dance_hall", "cafe", "dessert_shop"]));
   });
 
   it("map.googlePull is retired and map.radiusKm is the one Nearby radius (MESITA-2298)", () => {

@@ -28,7 +28,6 @@ import {
   PRESENTATION_INSTRUCTIONS,
 } from "./enrich-synthesis.ts";
 import { buildCategoryInput, CATEGORY_INSTRUCTIONS } from "./categories-infer.ts";
-import { buildFamilyInput, FAMILY_INSTRUCTIONS } from "./families-infer.ts";
 import { CRENUP_STEP_META, type CrenupStep } from "./crenup-ladder.ts";
 
 /** One prompt-bearing step, as the console renders it. */
@@ -174,7 +173,7 @@ function categoryPrompt(): CrenupPrompt {
       "One chat-completions call in JSON mode, temperature 0. Google's canonical " +
       "category list (catalog_membership) is read from the database and pasted " +
       "into the message, so the model can only answer with slugs that exist. " +
-      "Runs at Create and on every Enrich, before the families call.",
+      "Runs at Create and on every Enrich. The families follow the categories through the Atlas dictionary (MESITA-2834); no call picks them.",
     writes: "The place's Google categories: 1 to 3 slugs, the shown one first.",
     instructions: CATEGORY_INSTRUCTIONS,
     input: buildCategoryInput(
@@ -186,27 +185,6 @@ function categoryPrompt(): CrenupPrompt {
   };
 }
 
-function familyPrompt(): CrenupPrompt {
-  return {
-    key: "families",
-    fn: null,
-    agent: null,
-    label: "Families inference",
-    vendor: "OpenAI",
-    vendorNote:
-      "One chat-completions call in JSON mode, temperature 0, right after the " +
-      "Google categories call. The live family list is pasted into the message; " +
-      "the families the categories map to ride along as a hint only.",
-    writes: "The place's families: 1 to 5 slugs.",
-    instructions: FAMILY_INSTRUCTIONS,
-    input: buildFamilyInput(
-      "{slug} — {label}\n… one line per live family",
-      "Name: {place name}\nAddress: {address}\nGoogle categories: {categories}\n" +
-        "Families mapped from those categories: {families}\n" +
-        "Google attributes: {google tags}\nSummary: {editorial summary}\nDetails: {details}",
-    ),
-  };
-}
 
 /**
  * Every Crenup prompt, in pipeline order. Called per request — the builders are
@@ -222,7 +200,6 @@ export function crenupPromptsMeta(): CrenupPrompt[] {
     scoutPrompt(),
     resolverPrompt(),
     categoryPrompt(),
-    familyPrompt(),
     presentationPrompt(),
   ];
 }

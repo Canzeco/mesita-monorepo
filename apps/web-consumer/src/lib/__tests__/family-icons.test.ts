@@ -18,7 +18,7 @@ describe("family icons (MESITA-2478)", () => {
       expect(FAMILY_ICONS[k], k).toBeDefined();
     }
     expect(familyIcon("social")).toBe(Users);
-    expect(familyIcon("mexican")).toBe(Taco);
+    expect(familyIcon("tacos")).toBe(Taco);
   });
 
   it("an unknown family falls back to Utensils", () => {

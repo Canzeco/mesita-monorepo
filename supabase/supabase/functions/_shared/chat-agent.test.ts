@@ -165,7 +165,7 @@ Deno.test("the model's context groups places by why, and forbids inventing one",
   assert(ctx.includes("Live jazz on Thursdays."));
   assertEquals(chatContextForModel([], { hasAnchor: true }), "");
   // Each place names its kind, so the model can check it fits.
-  assert(ctx.includes("Drinks"));
+  assert(ctx.includes("Bar"));
 });
 
 Deno.test("without a location, Area's places are never called 'around the guest'", () => {

@@ -787,8 +787,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  21::bigint,
-  'place family catalog is twenty guest families plus Undefined (MESITA-2749)'
+  51::bigint,
+  'place family catalog is fifty guest families plus Undefined (MESITA-2834)'
 );
 
 select is(
@@ -799,38 +799,36 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','quick_bite','mexican','pizza','burgers','chicken',
-        'sushi','noodles','korean','chinese','italian','seafood','steak',
-        'indian','thai','dinner','sweet','drinks','night_out',
+  array['coffee','breakfast','brunch','bakery','sweet','gelato','healthy','vegan','quick_bite','tacos','burgers','pizza','sandwiches','chicken','wings','kebab','dinner','mexican','steak','bbq','seafood','italian','sushi','japanese','ramen','noodles','chinese','dumplings','korean','thai','indian','asian','arabic','mediterranean','spanish','french','european','american','latin','fancy','drinks','beer','cocktails','wine','sports','hookah','night_out','nightclub','music','karaoke',
         'undefined']::text[],
-  'family catalog order is the twenty guest rails, Undefined last'
+  'family catalog order is the fifty guest rails, Undefined last (MESITA-2834)'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['breakfast']::text[],
-  'breakfast is the breakfast rail'
+  array['breakfast','brunch']::text[],
+  'breakfast is Breakfast and Brunch (MESITA-2834)'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['night_out']::text[],
-  'karaoke is a night out (MESITA-2486)'
+  array['night_out','karaoke']::text[],
+  'karaoke is Nightlife and its own rail (MESITA-2486, MESITA-2834)'
 );
 
 select is(
   (select array_agg(slug order by slug) from public.place_categories
     where 'night_out' = any(family_keys) and slug <> 'night_club'),
-  array['billiards','board_game_cafe','escape_room','karaoke']::text[],
-  'Night out took Go out whole and holds no attraction (MESITA-2438, MESITA-2486)'
+  array['billiards','board_game_cafe','cocktail_bar','escape_room','karaoke']::text[],
+  'Nightlife took Go out whole, a cocktail bar is a night out, and no attraction is (MESITA-2438, MESITA-2486, MESITA-2834)'
 );
 
 select ok(
   (select family_keys from public.place_categories where slug = 'bakery')
-    @> array['sweet','breakfast']::text[]
+    @> array['breakfast','bakery','sweet']::text[]
   and (select family_keys from public.place_categories where slug = 'bakery')
-    <@ array['sweet','breakfast']::text[],
-  'a bakery is Sweet and Breakfast: a list, no family first (MESITA-2808)'
+    <@ array['breakfast','bakery','sweet']::text[],
+  'a bakery is Breakfast, Bakery and Dessert: a list, no family first (MESITA-2808, MESITA-2834)'
 );
 
 select ok(

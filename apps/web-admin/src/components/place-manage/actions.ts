@@ -66,7 +66,7 @@ export type AdminPlace = {
   category_label: string | null;
   /** Google categories: 1–3 model-picked slugs from Google's list (MESITA-2827). */
   google_types?: unknown;
-  /** Families: stored (1–5, model-inferred), else mapped from the categories. */
+  /** Families: the Google categories' dictionary, mapped in the profiles view (MESITA-2834). */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;

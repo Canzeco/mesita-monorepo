@@ -8,7 +8,7 @@ import {
 } from "./sourcing.ts";
 
 Deno.test("familiesForGoogleType: a gastropub is dinner and drinks", () => {
-  assertEquals(familiesForGoogleType("gastropub"), ["dinner", "drinks"]);
+  assertEquals(familiesForGoogleType("gastropub"), ["dinner", "drinks", "beer"]);
   assertEquals(familiesForGoogleType("gas_station"), []);
 });
 
