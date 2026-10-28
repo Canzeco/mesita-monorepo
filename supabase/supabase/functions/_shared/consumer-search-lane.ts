@@ -1,35 +1,29 @@
 // THE NAME PIPELINE (MESITA-2327): resolve a place by its name. Sources:
-// Google Autocomplete · Google Text Search · Mesita Places Search. Signal:
-// Name (`nameSimilarity`, pipeline-signals.ts). No gate, no weight. The
-// consumer bar runs it once after the guest stops typing (MESITA-2322); the
-// modes below are this one pipeline's callers and passes.
+// Google Autocomplete · Google Text Search — GOOGLE'S NAME IS CANONICAL
+// (Pato, MESITA-2896: "Kill Mesita Name from everywhere. Now we are only using
+// Google Name which is canonic. If the Text Search API nor the Autocomplete
+// API does shit, then the place is not visible"). The Mesita Places lane
+// (name embeddings, MESITA-2327) and its `mesita` mode are gone. A Google hit
+// Mesita holds (same google_place_id) is stamped as the Mesita place and
+// carries its Mesita card; a place neither Google API returns is not found.
 //
-// THREE NAME BARS RUN THIS LANE: consumer Search, admin Manage Single Place
-// (admin-web-suggest-places, mode deep), and — from MESITA-1874 until
-// MESITA-2090 retired it — the business console's Add place. That one used to
-// run `suggestPlaces` (Autocomplete + a Mesita ILIKE), which returned one
-// establishment from anywhere on earth for a partial name; `suggestPlaces`
-// went with its last caller, consumer-mcp (retired, MESITA-2090).
+// TWO NAME BARS RUN THIS LANE: consumer Search and admin Manage Single Place
+// (admin-web-suggest-places, mode deep).
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; they stay locked.
 // Map Filters never cut this list. Autocomplete and Text Search never
 // take a country code — both stay Any (guest pin may still bias).
-// Deep: three independent queries, each capped, then concat. Overlaps drop;
+// Deep: two independent queries, each capped, then concat. Overlaps drop;
 // earlier query keeps the slot. Order:
 //   1. Google Autocomplete (autoCount)
 //   2. Google Text Search (googleCount)
-//   3. Mesita Places — the Name signal (mesitaCount)
-// Never Nearby Search. Guest pin biases Autocomplete / Text / name match.
+// Never Nearby Search. Guest pin biases Autocomplete / Text.
 // Discovery > General runs LAST on both modes: whatever a Google query
 // returned, and whatever Mesita row it resolved to, has to clear Active
 // (discovery-general-gate.ts) -- on-Mesita rows too: an operator who switched
 // Active off meant it. No reviews floor (MESITA-2721: `map.googleMinReviews`
 // is retired).
-// A Google hit that resolves to Mesita stays in its Google query; later
-// Mesita queries skip it. The Mesita lane ranks by the Name signal alone
-// (`rankMesitaByName`): name-embedding cosine, or the lexical fallback for a
-// row or a request without a vector.
 // Word answers with TWO entities (MESITA-1403): Places are places,
 // Locations are regions/cities. Autocomplete returns both in one call;
 // classification reads `types` off rows the response already carries —
@@ -72,16 +66,13 @@ import {
   type GeneralGateQuery,
 } from "./discovery-general-gate.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
-import { embedSingle } from "./embeddings-http.ts";
-import { resolveEmbeddingModel } from "./embeddings.ts";
 import {
   isEnrichedPlace,
   type PlaceCategoryRow,
   withFamilyKeysList,
 } from "./place-family-keys.ts";
 import { PLACE_CARD_COLUMNS } from "./place-columns.ts";
-import { radiusBoundingBox } from "./geo.ts";
-import { clearsPopularityFloor, lexicalNameSimilarity, nameSimilarity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor } from "./pipeline-signals.ts";
 import {
   fetchPlaceListing,
   type GooglePlaceListing,
@@ -91,29 +82,14 @@ import {
 } from "./google-listing.ts";
 import { googleStub } from "./google-stub.ts";
 
-export const NAME_MIN_COSINE = 0.4;
-/** Pay has no Google fallback, so its lane never collapses to nothing. */
-export const MESITA_NAME_MIN_CAP = 10;
-
-/**
- * How many Mesita rows Pay's search returns. Follows the operator's Deep
- * count so Pay and Search rank alike, with a floor: zeroing it would leave
- * Pay permanently empty, while Search would still have Autocomplete.
- */
-export function mesitaNameCap(deep: { mesitaCount: number }): number {
-  return Math.max(deep.mesitaCount ?? 0, MESITA_NAME_MIN_CAP);
-}
 export const GOOGLE_TEXT_MAX = 20;
 
 /**
- * `fast`   Search bar while typing — Google Autocomplete.
- * `deep`   Search bar after idle — Autocomplete + Text Search + Mesita.
- * `mesita` PAY — the Mesita NAME EMBEDDINGS and nothing else (Pato,
- *          2026-08-29). Pay opens a ticket, and you cannot open one at a
- *          place that is not on Mesita, so a Google lane here would bill
- *          an API call to return a row the surface must immediately lock.
+ * `fast` Autocomplete only (pickers, older clients).
+ * `deep` Autocomplete + Text Search: the Search bar (MESITA-2896). A stale
+ *        `mesita` caller (the retired Mesita Name lane) resolves here.
  */
-export type SuggestPlacesMode = "fast" | "deep" | "mesita";
+export type SuggestPlacesMode = "fast" | "deep";
 
 /** Word's two entities: a place, or a region/city from Autocomplete. */
 export type LaneKind = "place" | "location";
@@ -262,12 +238,11 @@ export function laneDedupeKeys(item: {
 export type NameDeepQueries = {
   autocomplete: LaneItem[];
   text: LaneItem[];
-  mesita: LaneItem[];
 };
 
 /**
  * Concatenate query arrays. Overlaps drop. Earlier query keeps the slot.
- * Name Deep order: Autocomplete → Text → Mesita Places.
+ * Name Deep order: Autocomplete → Text.
  */
 export function concatQueryLanes(lanes: LaneItem[][]): LaneItem[] {
   const byKey = new Map<string, LaneItem>();
@@ -296,7 +271,6 @@ export function mergeNameDeepQueries(queries: NameDeepQueries): LaneItem[] {
   return concatQueryLanes([
     queries.autocomplete,
     queries.text,
-    queries.mesita,
   ]);
 }
 
@@ -358,11 +332,7 @@ export type ListedRow = {
   google_review_count: number | null;
   google_stars_overall?: number | null;
   family_keys?: string[] | null;
-  name_embedding: unknown | null;
-  /** Never selected since MESITA-2338: the Name signal reads the name
-   *  embedding only; the summary vector is Deep's. */
-  embedding?: unknown | null;
-  /** The About, read only for the few hits `nameMesitaPlaces` returns. */
+  /** The About, read only for the few hits `nameGooglePlaces` returns. */
   description?: string | null;
 };
 
@@ -419,95 +389,46 @@ export function applyResolvedMesitaName(
   };
 }
 
-/** The lexical fallback's floor: trigram Dice 0.4 is about one shared word
- *  (pipeline-signals.ts `lexicalNameSimilarity`). */
-export const NAME_MIN_LEXICAL = 0.4;
-
 /**
- * The Name pipeline's Mesita order (MESITA-2327): the Name signal alone
- * (`nameSimilarity`) — the cosine of precomputed name embeddings against the
- * one query vector, or, where either vector is missing, the lexical
- * fallback. Each method has its own admission floor. No gate, no weight:
- * a Created place is findable by its name like any other. Ties break on
- * name, then id, so the order is deterministic.
- *
- * Google's own label is an alias (MESITA-2828): a query that trigram-matches
- * `google_name` better than the Mesita name takes that score, and the row
- * still carries its Mesita name.
+ * The Name pipeline for a caller that is not a search bar — the Chat Agent
+ * (MESITA-2339). Google's name is canonical (MESITA-2896): ONE Text Search
+ * for the named place near the anchor, kept only where Mesita holds its
+ * google_place_id and the row is listed and clears Discovery › General, in
+ * Google's order. A place Text Search does not return is not found.
  */
-export function rankMesitaByName(
-  rows: ListedRow[],
-  query: { text: string; vector: number[] | null },
-): ListedRow[] {
-  return rows
-    .filter((row) => String(row.name ?? "").trim())
-    .map((row) => {
-      const sim = nameSimilarity(query, { name: row.name, nameEmbedding: row.name_embedding });
-      const alias = String(row.google_name ?? "").trim();
-      if (alias && alias !== String(row.name ?? "").trim()) {
-        const aliasScore = lexicalNameSimilarity(query.text, alias);
-        if (aliasScore > sim.score && aliasScore >= NAME_MIN_LEXICAL) {
-          return { row, sim: { score: aliasScore, method: "lexical" as const } };
-        }
-      }
-      return { row, sim };
-    })
-    .filter(({ sim }) =>
-      sim.score >= (sim.method === "embedding" ? NAME_MIN_COSINE : NAME_MIN_LEXICAL)
-    )
-    .sort((a, b) =>
-      b.sim.score - a.sim.score ||
-      String(a.row.name).localeCompare(String(b.row.name)) ||
-      a.row.id.localeCompare(b.row.id)
-    )
-    .map(({ row }) => row);
-}
-
-/**
- * The Name pipeline's Mesita lane for a caller that is not a search bar —
- * the Chat Agent (MESITA-2339). The Name signal over Mesita Places Search
- * only: no Google source, so no Google bill. The query is embedded once.
- */
-export async function nameMesitaPlaces(
+export async function nameGooglePlaces(
   admin: SupabaseClient,
+  map: MapConfig,
   general: GeneralConfig,
   text: string,
   origin: { lat: number; lng: number } | null,
   cap: number,
 ): Promise<ListedRow[]> {
-  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  const [pool, vector] = await Promise.all([
-    fetchEmbedPool(admin, origin, general),
-    embedQueryVector(admin, text, openaiKey),
-  ]);
-  const hits = rankMesitaByName(pool, { text, vector }).slice(0, Math.max(0, cap));
-  if (hits.length === 0) return hits;
-  // The About for these few hits only: the bar's 300-row pool stays lean,
-  // and Chat can quote the place it names.
-  const { data, error } = await admin
+  const query = text.trim();
+  if (!query || cap <= 0) return [];
+  const keyRes = readGooglePlacesKey();
+  if (!keyRes.ok) return [];
+  const hits = await fetchTextSearch(query, keyRes.key, map, origin, cap);
+  const order = [...new Set(hits.map((h) => h.placeId).filter(Boolean))];
+  if (order.length === 0) return [];
+  const base = admin
     .from("profiles")
-    .select("id, description")
-    .in("id", hits.map((h) => h.id));
+    .select(`${LISTED_COLUMNS}, description`)
+    .in("google_place_id", order)
+    .eq("state", "active");
+  const { data, error } = await (applyGeneralGateQuery(
+    base as unknown as GeneralGateQuery,
+    general,
+  ) as unknown as typeof base);
   if (error) {
-    // The names still answer; only the About is missing.
-    console.error("[consumer-search-lane] name about:", error.message);
-    return hits;
+    console.error("[consumer-search-lane] name google:", error.message);
+    return [];
   }
-  const about = new Map(
-    ((data ?? []) as Array<{ id: string; description: string | null }>).map((r) => [r.id, r.description]),
-  );
-  return hits.map((h) => ({ ...h, description: about.get(h.id) ?? null }));
-}
-
-function takeListedLane(rows: ListedRow[], cap: number): LaneItem[] {
-  const out: LaneItem[] = [];
-  for (const row of rows) {
-    const item = listedToLane(row);
-    if (!item || !item.mainText) continue;
-    out.push(item);
-    if (out.length >= cap) break;
-  }
-  return out;
+  const rank = new Map(order.map((id, i) => [id, i]));
+  return ((data ?? []) as unknown as ListedRow[])
+    .filter((row) => row.google_place_id && rank.has(row.google_place_id))
+    .sort((a, b) => rank.get(a.google_place_id!)! - rank.get(b.google_place_id!)!)
+    .slice(0, cap);
 }
 
 function originOf(
@@ -524,8 +445,9 @@ function originOf(
 }
 
 export function resolveMode(raw?: string | null): SuggestPlacesMode {
-  if (raw === "deep") return "deep";
-  if (raw === "mesita") return "mesita";
+  // `mesita` was the Mesita Name lane (retired, MESITA-2896): its callers
+  // get Google's names now.
+  if (raw === "deep" || raw === "mesita") return "deep";
   return "fast";
 }
 
@@ -585,8 +507,8 @@ export async function runConsumerSearchLane(
   // The caller opts in (the consumer bar only); the operator can switch
   // Locations off for it on Discovery › Word (MESITA-2319).
   const locations = args.locations === true && cfg.name.locations;
-  // Word by Admin swaps in its own caps: Autocomplete rows for `fast`,
-  // Mesita name rows for `mesita` (Text Search is the Find page's own call).
+  // Word by Admin swaps in its own caps: Autocomplete rows for `fast`
+  // (Text Search is the Find page's own call).
   const name = args.admin === true
     ? {
       ...cfg.name,
@@ -598,17 +520,7 @@ export async function runConsumerSearchLane(
     }
     : cfg.name;
 
-  const predictions = mode === "mesita"
-    // Pay: the Mesita name embeddings alone. No Google lane, no Google bill.
-    ? await runMesitaNameSearch(
-      admin,
-      name,
-      cfg.general,
-      input,
-      origin,
-      args.admin === true ? cfg.name.admin.mesitaCount : mesitaNameCap(cfg.name.deep),
-    )
-    : mode === "deep"
+  const predictions = mode === "deep"
     ? await runDeepSearch(
       admin,
       apiKey,
@@ -646,20 +558,18 @@ export async function runConsumerSearchLane(
   // must still find it), unlike Home, the Map and Chat, where the same floor
   // hides a place. Admin Find and Word keep Google's own order.
   const isAdmin = args.admin === true;
-  const ordered = mode === "mesita" || isAdmin
+  const ordered = isAdmin
     ? { items: predictions, demoted: 0, unknown: 0 }
     : demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor);
-  if (mode !== "mesita") {
-    console.info(JSON.stringify({
-      fn: "search-lane",
-      caller: callerName,
-      mode,
-      admin: isAdmin,
-      popularityFloor: cfg.map.popularityFloor,
-      popularityDemoted: ordered.demoted,
-      popularityUnknown: ordered.unknown,
-    }));
-  }
+  console.info(JSON.stringify({
+    fn: "search-lane",
+    caller: callerName,
+    mode,
+    admin: isAdmin,
+    popularityFloor: cfg.map.popularityFloor,
+    popularityDemoted: ordered.demoted,
+    popularityUnknown: ordered.unknown,
+  }));
 
   return json({
     ok: true,
@@ -760,19 +670,15 @@ function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   return items.slice(0, cap);
 }
 
-/** Which Deep modules fire. Types off skip the Google modules. The Mesita
- *  lane needs no OpenAI key: without a query vector the Name signal falls
- *  back to lexical similarity (MESITA-2327). */
+/** Which Deep modules fire. Types off skip both Google modules. */
 export function deepModuleFlags(args: {
   autoCount: number;
-  mesitaCount: number;
   googleCount: number;
   typesOn: boolean;
-}): { wantAuto: boolean; wantText: boolean; wantMesita: boolean } {
+}): { wantAuto: boolean; wantText: boolean } {
   return {
     wantAuto: args.autoCount > 0 && args.typesOn,
     wantText: args.googleCount > 0 && args.typesOn,
-    wantMesita: args.mesitaCount > 0,
   };
 }
 
@@ -790,25 +696,19 @@ async function runDeepSearch(
   const deep = name.deep;
   const gate = map;
   const typesOn = anySuperOn(deep.supers);
-  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  const { wantAuto, wantText, wantMesita } = deepModuleFlags({
+  const { wantAuto, wantText } = deepModuleFlags({
     autoCount: deep.autoCount,
-    mesitaCount: deep.mesitaCount,
     googleCount: deep.googleCount,
     typesOn,
   });
 
-  const [googleAuto, googleText, embedPool, queryVec] = await Promise.all([
+  const [googleAuto, googleText] = await Promise.all([
     wantAuto
       ? fetchAutocomplete(input, sessionToken, apiKey, origin)
       : Promise.resolve({ predictions: [] as LaneItem[] }),
     wantText
       ? fetchTextSearch(input, apiKey, gate, origin, deep.googleCount, locations)
       : Promise.resolve([] as LaneItem[]),
-    wantMesita
-      ? fetchEmbedPool(admin, origin, general)
-      : Promise.resolve([] as ListedRow[]),
-    wantMesita ? embedQueryVector(admin, input, openaiKey) : Promise.resolve(null),
   ]);
 
   const autoPreds = "errorEnvelope" in googleAuto && googleAuto.errorEnvelope
@@ -816,8 +716,7 @@ async function runDeepSearch(
     : googleAuto.predictions;
 
   // Deep keeps Location rows from its Autocomplete query only: Text Search
-  // returns Places even for "Ciudad de México", and the Mesita lanes are
-  // places by construction.
+  // returns Places even for "Ciudad de México".
   const [stampedAuto, stampedText] = await Promise.all([
     stampAutocompleteLane(
       keepWantedKinds(autoPreds, locations),
@@ -837,49 +736,13 @@ async function runDeepSearch(
     ),
   ]);
 
-  const ordered = wantMesita
-    ? rankMesitaByName(embedPool, { text: input, vector: queryVec })
-    : [];
-  const lineupMesita = deep.mesitaCount > 0
-    ? takeListedLane(ordered, deep.mesitaCount)
-    : [];
-
   return await attachMesitaCards(
     admin,
     mergeNameDeepQueries({
       autocomplete: takeLane(stampedAuto, deep.autoCount),
       text: takeLane(stampedText, deep.googleCount),
-      mesita: lineupMesita,
     }),
   );
-}
-
-/**
- * Pay's engine. Same pool, same cosine floor, same Deep Lineup order as
- * the Mesita lane inside `runDeepSearch` — no second retrieval scheme,
- * just that one lane on its own. The pool does not require a name embedding:
- * a row without one is scored by the lexical fallback (MESITA-2327).
- *
- * The cap follows the operator's Deep count so Pay and Search rank the
- * same way, with a floor: an operator zeroing it would otherwise leave
- * Pay's search permanently empty, and Pay has no Google lane to fall
- * back to.
- */
-async function runMesitaNameSearch(
-  admin: SupabaseClient,
-  name: NameConfig,
-  general: GeneralConfig,
-  input: string,
-  origin: { lat: number; lng: number } | null,
-  cap: number = mesitaNameCap(name.deep),
-): Promise<LaneItem[]> {
-  const openaiKey = (Deno.env.get("OPENAI_KEY") ?? "").trim();
-  const [embedPool, queryVec] = await Promise.all([
-    fetchEmbedPool(admin, origin, general),
-    embedQueryVector(admin, input, openaiKey),
-  ]);
-  const ordered = rankMesitaByName(embedPool, { text: input, vector: queryVec });
-  return takeListedLane(ordered, cap);
 }
 
 export function toWire(item: LaneItem) {
@@ -939,68 +802,10 @@ export async function runLocationAnchor(rawPlaceId: string): Promise<Response> {
   return json({ ok: true, anchor: res.anchor });
 }
 
-async function embedQueryVector(
-  admin: SupabaseClient,
-  input: string,
-  openaiKey: string,
-): Promise<number[] | null> {
-  if (!openaiKey) return null;
-  try {
-    const model = await resolveEmbeddingModel(admin);
-    return await embedSingle(input, openaiKey, model);
-  } catch (err) {
-    console.error(
-      "[consumer-search-lane] embed query:",
-      err instanceof Error ? err.message : err,
-    );
-    return null;
-  }
-}
-
-const EMBED_COLUMNS =
-  "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, selected, boost_tier, business_state, google_review_count, google_stars_overall, family_keys, name_embedding";
-/** In-process cosine budget — a bounded pool, not every vector. */
-const EMBED_POOL = 300;
-const EMBED_RADIUS_KM = 40;
-
-async function fetchEmbedPool(
-  admin: SupabaseClient,
-  origin: { lat: number; lng: number } | null,
-  general: GeneralConfig,
-): Promise<ListedRow[]> {
-  // Discovery > General rides the WHERE clause here: the pool is capped at
-  // EMBED_POOL, so gating after the fetch would thin the deck instead of
-  // narrowing the catalog.
-  const base = admin
-    .from("profiles")
-    .select(EMBED_COLUMNS)
-    // Listed = `active`; `lead` is a dead label (MESITA-2144) that a filter
-    // must not name once the enum drops it — Postgres would 22P02 the read.
-    .eq("state", "active");
-  let query = applyGeneralGateQuery(
-    base as unknown as GeneralGateQuery,
-    general,
-  ) as unknown as typeof base;
-  if (origin) {
-    const { latDelta, lngDelta } = radiusBoundingBox(origin.lat, EMBED_RADIUS_KM);
-    query = query
-      .gte("lat", origin.lat - latDelta)
-      .lte("lat", origin.lat + latDelta)
-      .gte("lng", origin.lng - lngDelta)
-      .lte("lng", origin.lng + lngDelta)
-      // The same capped slice every time (MESITA-2338): without an order,
-      // Postgres may return any EMBED_POOL rows once the box holds more.
-      .order("id", { ascending: true });
-  } else {
-    query = query.order("created_at", { ascending: false }).order("id", { ascending: true });
-  }
-  const { data, error } = await query.limit(EMBED_POOL);
-  if (error) {
-    console.error("[consumer-search-lane] embed pool:", error.message);
-    return [];
-  }
-  return (data ?? []) as unknown as ListedRow[];
-}
+/** The columns a Google hit resolves onto: a Mesita row's lane fields and
+ *  the Discovery › General inputs. */
+const LISTED_COLUMNS =
+  "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, selected, boost_tier, business_state, google_review_count, google_stars_overall, family_keys";
 
 // A network failure or an unreadable body is an error envelope like any
 // Google error, never a throw: in fast mode a throw escaped the handler as a
@@ -1303,11 +1108,9 @@ async function fetchListedByGoogleIds(
 ): Promise<ListedRow[]> {
   const { data, error } = await admin
     .from("profiles")
-    // One column list, not a second hand-typed copy: this is the path that
-    // resolves a Google hit onto a Mesita row, so it must carry the same
-    // enrichment fact as the embedding pool — and the same Discovery ›
-    // General inputs.
-    .select(EMBED_COLUMNS)
+    // The path that resolves a Google hit onto a Mesita row: the lane fields
+    // and the Discovery › General inputs.
+    .select(LISTED_COLUMNS)
     .in("google_place_id", placeIds)
     .eq("state", "active");
   if (error) {

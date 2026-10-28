@@ -433,13 +433,14 @@ export type PlacePrediction = {
   underFloor?: boolean;
 };
 
-/** `fast` Autocomplete · `deep` Mesita · Google · `mesita` Mesita names
- *  alone, no Google call (the Search tab's bar since MESITA-2883). */
-type SuggestPlacesMode = "fast" | "deep" | "mesita";
+/** `fast` Autocomplete · `deep` Autocomplete + Text Search, the Search
+ *  tab's bar. Google's name is canonical (MESITA-2896): the Mesita Name
+ *  mode (`mesita`, MESITA-2883) is gone. */
+type SuggestPlacesMode = "fast" | "deep";
 
 /**
  * Name search for the consumer /search bar and pickers.
- * Fast (default) = Autocomplete. Deep = Mesita · Google.
+ * Fast (default) = Autocomplete. Deep = Autocomplete + Text Search.
  * Map Filters never ride this call — power and Family are map-only.
  * Country is always Any: Autocomplete and Text Search do not take a region.
  */

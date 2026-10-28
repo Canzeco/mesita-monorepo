@@ -27,7 +27,6 @@ export const DISCOVERY_FIELDS = [
   "review_count",
   "family",
   "open_now",
-  "name_embedding",
   "description_embedding",
   "about",
   "selected",
@@ -44,7 +43,6 @@ export const DISCOVERY_FIELD_LABELS: Record<DiscoveryField, string> = {
   review_count: "Review count",
   family: "Family",
   open_now: "Open now",
-  name_embedding: "Name embedding",
   description_embedding: "Description embedding",
   about: "About",
   selected: "Selected",
@@ -97,7 +95,7 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
   {
     key: "mesita_places",
     label: "Mesita Places Search",
-    retrieves: "Mesita's own places, queried by name, by area or by meaning, as each pipeline needs.",
+    retrieves: "Mesita's own places, queried by area or by meaning, as each pipeline needs. Never by name: Google's name is canonical (MESITA-2896).",
     provides: [
       "place_id",
       "name",
@@ -106,7 +104,6 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
       "rating",
       "review_count",
       "family",
-      "name_embedding",
       "description_embedding",
       "about",
       "selected",
@@ -123,7 +120,6 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
 ];
 
 export const DISCOVERY_SIGNAL_KEYS = [
-  "name_similarity",
   "description_similarity",
   "proximity",
   "popularity",
@@ -146,17 +142,6 @@ export type DiscoverySignalFact = {
 };
 
 export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
-  {
-    key: "name_similarity",
-    label: "Name",
-    formula: "cosine(query name embedding, place name embedding)",
-    requires: ["name"],
-    query: "The typed name.",
-    computation: "hybrid",
-    cost: "Place vectors are precomputed; one embedding call per request, the cosine runs locally.",
-    missing: "No embedding on either side: lexical trigram similarity instead, never a silent 0.",
-    normalization: "A cosine clamped to 0..1 (a negative one is 0); the lexical score is already 0..1. A Mesita row needs 0.4 by either method.",
-  },
   {
     key: "description_similarity",
     label: "Description",
@@ -263,11 +248,14 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     key: "name",
     label: "Name",
     purpose: "Resolve a place by its name or identity.",
-    sources: ["google_autocomplete", "google_text", "mesita_places"],
-    signals: ["name_similarity"],
+    // Google's name is canonical (MESITA-2896): the Mesita Places lane and
+    // the Name signal are gone. A place neither Google source returns is
+    // not found; a Google hit Mesita holds shows as the Mesita place.
+    sources: ["google_autocomplete", "google_text"],
+    signals: [],
     gates: [],
     factors: [],
-    scoring: "Google rows keep Google's order, except that on the guest bar Google places under the Area box's Minimum Popularity sort after the rest (MESITA-2724); Mesita rows are ordered by Name. Duplicates merge.",
+    scoring: "Google rows keep Google's order, except that on the guest bar Google places under the Area box's Minimum Popularity sort after the rest (MESITA-2724). Autocomplete first, then Text Search; duplicates merge. A Google hit Mesita holds is shown as the Mesita place.",
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",

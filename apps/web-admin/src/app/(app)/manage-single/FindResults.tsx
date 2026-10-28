@@ -4,15 +4,15 @@
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
 // states (Boosted is a tier: Off · 2x · 5x · 10x), then Views · Likes,
-// then, on a word, Name Search and Google. 50 rows a page
+// then, on a word, Google's rank. 50 rows a page
 // (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
 // Drawn once both have settled, so no row ever moves under the cursor.
 //
 // From 640px, On and Place stay pinned while the state columns scroll.
 // Under that, On hides and the same pill sits in the Place cell: a second
-// 9rem pin plus Place at 60vw would fill the phone. The two ranks fold
-// into one line beneath the address.
+// 9rem pin plus Place at 60vw would fill the phone. The rank folds into
+// one line beneath the address.
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
@@ -161,7 +161,7 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with their states, and where Name Search and Google ranked them`
+                ? `Places matching “${query}”, with their states, and where Google ranked them`
                 : "Every place on Mesita, with its states"}
             </caption>
             <thead>
@@ -587,7 +587,7 @@ function Miss({ label }: { label: string }) {
   );
 }
 
-/** Name Search and Google, folded into one line for a phone. Misses are omitted. */
+/** Google's rank, folded into one line for a phone. A miss is omitted. */
 function PhoneSources({ row }: { row: FindRow }) {
   const parts = WORD_RANK_COLUMNS.flatMap((s) =>
     row.ranks[s.key] != null ? [`${s.short} #${row.ranks[s.key]}`] : [],

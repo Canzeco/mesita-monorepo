@@ -1,7 +1,6 @@
 import {
   autocompleteGooglePlaces,
   listAllPlaces,
-  searchMesitaNames,
   type PlaceHit,
   type SuggestHit,
 } from "@/app/(app)/manage-multiple/actions";
@@ -9,9 +8,10 @@ import type { SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import type { SourceResult, TextSearchResult } from "./find-results";
 import { GOOGLE_NAME_RESULTS } from "./single-place-lookup";
 
-// The four sources Find asks for a name (MESITA-2124). Each resolves to a
-// SourceResult and never throws, so one failing source becomes its own
-// column's "—" and a note line instead of sinking the other three.
+// The sources Find asks for a name (MESITA-2124; Google's alone since
+// MESITA-2896). Each resolves to a SourceResult and never throws, so one
+// failing source becomes its own column's "—" and a note line instead of
+// sinking the others.
 
 function failed(err: unknown): { status: "error"; error: string } {
   return { status: "error", error: err instanceof Error ? err.message : String(err) };
@@ -32,17 +32,6 @@ export async function loadCatalogueWithTotal(): Promise<
     return r.ok
       ? { status: "ok", data: { places: r.data.places, total: r.data.total } }
       : { status: "error", error: r.error };
-  } catch (err) {
-    return failed(err);
-  }
-}
-
-/** Mesita Places Name Search. Its own session token: the lane wants one even
- *  though this mode bills no Google session. */
-export async function searchNameSource(query: string): Promise<SourceResult<SuggestHit[]>> {
-  try {
-    const r = await searchMesitaNames(query, crypto.randomUUID());
-    return r.ok ? { status: "ok", data: r.data } : { status: "error", error: r.error };
   } catch (err) {
     return failed(err);
   }

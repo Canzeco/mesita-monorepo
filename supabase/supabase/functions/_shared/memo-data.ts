@@ -8,7 +8,7 @@
 //                    (MESITA-2327, MESITA-2339) with one client, used only
 //                    by `loadDiscoveryConfig` and each pipeline module's own
 //                    read-only `profiles` SELECT: the Name lane
-//                    (`nameMesitaPlaces`), Area's Selected scope
+//                    (`nameGooglePlaces`, Google Text Search since MESITA-2896), Area's Selected scope
 //                    (`areaSelectedPlaces`) and Deep (`deepDepsFor`)
 //
 // Why, when Memo already runs inside Supabase with a service-role client: a

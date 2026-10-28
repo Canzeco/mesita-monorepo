@@ -185,10 +185,11 @@ describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", ()
     const src = read("SearchClient.tsx");
     expect(src).toContain("DEFAULT_IDLE_MS");
     expect(src).toContain("idleMsRef.current");
-    // MESITA-2883: typing bills no Google call — `mesita` mode; only the
-    // Add button's Add mode asks Google (`fast`, MESITA-2885).
-    expect(src).toContain('adding ? "fast" : "mesita"');
-    expect(src).not.toContain('"deep"');
+    // MESITA-2896: Google's names only — `deep` (Autocomplete + Text
+    // Search); the Mesita Name mode is gone.
+    expect(src).toContain('"deep"');
+    expect(src).not.toContain('"mesita"');
+    expect(src).not.toContain('"fast"');
     expect(src).not.toContain("FAST_DEBOUNCE_MS");
     expect(src).not.toContain("DEEP_IDLE_MS");
   });
@@ -276,9 +277,9 @@ describe("every searchbar pick anchors the map (MESITA-1405)", () => {
     expect(barPick).not.toContain("openGoogleProfile");
   });
 
-  it("never resolves a Location through Google (MESITA-2883)", () => {
+  it("resolves a Location on pick, once (MESITA-1405, back in MESITA-2896)", () => {
     const client = read("SearchClient.tsx");
-    expect(client).not.toContain("apiResolveLocationAnchor");
+    expect(client).toContain("apiResolveLocationAnchor");
     // The camera side: a bounds anchor FITS (city wide, neighbourhood
     // close); a place anchor pans.
     const map = read("SearchMap.tsx");

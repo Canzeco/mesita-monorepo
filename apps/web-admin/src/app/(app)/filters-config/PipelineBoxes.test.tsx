@@ -61,7 +61,7 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("names each pipeline's signals with their formula and missing-data policy", () => {
-    const [, name, area] = boxes();
+    const [nameAdmin, name, area] = boxes();
     const has = (box: string, key: string) => {
       const s = DISCOVERY_SIGNALS.find((x) => x.key === key)!;
       // renderToStaticMarkup escapes text; compare on a fragment with no
@@ -69,9 +69,10 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
       expect(box).toContain(`>${s.label}<`);
       expect(box).toContain(s.missing.split(":")[0]);
     };
-    has(name, "name_similarity");
     has(area, "proximity");
     has(area, "popularity");
+    // Name is Google's alone (MESITA-2896): its Signals part says None.
+    for (const box of [nameAdmin, name]) expect(box).toContain("None: no signal scores these rows");
     expect(name).not.toContain(">Proximity<");
   });
 
@@ -88,7 +89,7 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 4 Name + 2 Area (current-location radius, the
+    // 2 Name by Admin + 3 Name + 2 Area (current-location radius, the
     // radius divisor; the reviews minimum left in MESITA-2721, a and b in
     // MESITA-2722; Popularity has no
     // parameter since MESITA-2710) + the Map's reload seconds and min
@@ -99,10 +100,10 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     // + Selected boost (MESITA-2717) + the Catalog's own Places shown
     // (MESITA-2727) + min screen move (MESITA-2732); one Distance penalty
     // (MESITA-2776). Typed numbers, no spinner (MESITA-2733): 7 decimal
-    // knobs, 8 integer knobs.
-    expect(html.match(/type="text"/g)?.length).toBe(15);
+    // knobs, 6 integer knobs (both Max Mesita rows left in MESITA-2896).
+    expect(html.match(/type="text"/g)?.length).toBe(13);
     expect(html.match(/inputMode="decimal"/g)?.length).toBe(7);
-    expect(html.match(/inputMode="numeric"/g)?.length).toBe(8);
+    expect(html.match(/inputMode="numeric"/g)?.length).toBe(6);
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain("step=");
     expect(html).toContain("0.1–10");
@@ -121,12 +122,11 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
 });
 
 describe("the boxes' controls", () => {
-  it("Name by Admin: three caps and the empty-query switch", () => {
+  it("Name by Admin: two caps and the empty-query switch", () => {
     const html = render(<NameAdminBox {...seed} />);
     for (const label of [
       "Max Autocomplete rows",
       "Max Text Search rows",
-      "Max Mesita rows",
       "Show results on an empty query",
     ]) {
       expect(html).toContain(label);
@@ -176,10 +176,11 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
     expect(area).toContain("It decides who is a candidate and never scores.");
   });
 
-  it("Name says Google rows keep Google's order and derives Name as fed by Mesita only", () => {
+  it("Name says Google rows keep Google's order and has no Mesita source (MESITA-2896)", () => {
     const name = boxes()[1];
     expect(name).toContain("No signal scores its rows; they carry Google Autocomplete&#x27;s own rank.");
-    expect(name).toContain("Fed by Mesita Places Search.");
+    expect(name).not.toContain("Mesita Places Search");
+    expect(name).not.toContain("Fed by");
   });
 
   it("each signal shows its computation, normalization and the pipelines using it", () => {
@@ -191,7 +192,7 @@ describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
 
   it("Name by Admin shows Find's own ordering and rules, not the guest bar's", () => {
     const nameAdmin = boxes()[0];
-    expect(nameAdmin).toContain("Rows found by more sources come first");
+    expect(nameAdmin).toContain("Rows found by both sources come first");
     expect(nameAdmin).toContain("Text Search rows are Find&#x27;s own call");
     expect(nameAdmin).not.toContain("Closed places never show (Discovery");
   });

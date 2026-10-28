@@ -7,11 +7,10 @@ import { DEFAULT_NAME_ADMIN } from "../filters-config/catalog";
 const read = (f: string) => readFileSync(join(__dirname, f), "utf8");
 
 describe("Find's caps come from Word by Admin", () => {
-  it("defaults are Find's behaviour before the knobs: no Autocomplete, 20 Text Search, 10 Mesita, catalogue on empty", () => {
+  it("defaults are Find's behaviour before the knobs: no Autocomplete, 20 Text Search, catalogue on empty", () => {
     expect(DEFAULT_NAME_ADMIN).toEqual({
       autoCount: 0,
       textCount: 20,
-      mesitaCount: 10,
       emptyQuery: true,
     });
   });

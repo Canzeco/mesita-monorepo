@@ -23,7 +23,7 @@ import { NEARBY_SCAN_LIMIT } from "./geo.ts";
 const root = new URL("../../", import.meta.url);
 const text = (rel: string) => Deno.readTextFile(new URL(rel, root));
 
-Deno.test("the model is Pato's: four sources (Google Nearby gone, MESITA-2872), Name · Area · Deep, four signals, two gates", () => {
+Deno.test("the model is Pato's: four sources (Google Nearby gone, MESITA-2872), Name · Area · Deep, three signals (Name gone, MESITA-2896), two gates", () => {
   assertEquals(DISCOVERY_SOURCES.map((s) => s.label), [
     "Google Autocomplete",
     "Google Text Search",
@@ -31,11 +31,10 @@ Deno.test("the model is Pato's: four sources (Google Nearby gone, MESITA-2872), 
     "Mesita Social Search",
   ]);
   assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
-  assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Name", "Description", "Proximity", "Popularity"]);
+  assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Description", "Proximity", "Popularity"]);
   assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Radius"]);
   assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
   assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
-  assertEquals(pipelinesUsingSignal("name_similarity"), ["name"]);
   assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
   assertEquals(pipelinesUsingGate("radius"), ["area"]);
   assertEquals(pipelinesUsingGate("family"), ["area"]);
@@ -60,9 +59,8 @@ Deno.test("every pipeline signal is fed by one of its own sources (derived from 
   }
   assertEquals(sourcesFeedingSignal("area", "proximity"), ["mesita_places"]);
   assertEquals(sourcesFeedingSignal("deep", "description_similarity"), ["mesita_places"]);
-  // Google rows keep Google's order in the Name pipeline: no signal scores
-  // them, so neither Google source is derived as feeding Name (MESITA-2338).
-  assertEquals(sourcesFeedingSignal("name", "name_similarity"), ["mesita_places"]);
+  // Name is Google's two sources in Google's order: no signal (MESITA-2896).
+  assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "name")?.signals, []);
   // Autocomplete answers with no coordinates, so it can never feed Proximity.
   assertEquals(sourceProvides("google_autocomplete", ["coordinates"]), false);
 });
@@ -83,9 +81,10 @@ Deno.test("the call sites match the model", async () => {
   const feed = await text("functions/consumer-web-list-catalog/index.ts");
   const chat = await text("functions/consumer-web-ask-memo/index.ts");
 
-  // Name: Autocomplete · Text Search · Mesita Places, ranked by the Name signal.
-  assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch") && name.includes("fetchEmbedPool"));
-  assert(name.includes("nameSimilarity"));
+  // Name: Autocomplete · Text Search, Google's order; no Mesita name lane
+  // (MESITA-2896).
+  assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch"));
+  assertEquals(/fetchEmbedPool|nameSimilarity|rankMesitaByName/.test(name), false);
   // Area: Mesita Places only, the Area score; Map and the Catalog are its
   // views. No Google Nearby anywhere (MESITA-2872).
   assert(area.includes("selectedPoolQuery") && area.includes("rankArea"));

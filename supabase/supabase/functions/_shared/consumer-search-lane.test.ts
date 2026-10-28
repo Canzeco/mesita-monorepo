@@ -1,8 +1,6 @@
 // deno test supabase/functions/_shared/consumer-search-lane.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  MESITA_NAME_MIN_CAP,
-  mesitaNameCap,
   resolveMode,
   applyResolvedMesitaName,
   classifyPredictionKind,
@@ -13,13 +11,10 @@ import {
   laneDedupeKeys,
   locationTypeOf,
   mergeNameDeepQueries,
-  NAME_MIN_LEXICAL,
-  rankMesitaByName,
   takeFastLane,
   toWire,
   weaveStampedAutocomplete,
   type LaneItem,
-  type ListedRow,
 } from "./consumer-search-lane.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { stripPlacesPrefix } from "./google-places.ts";
@@ -93,13 +88,12 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.selected, true);
 });
 
-Deno.test("mergeNameDeepQueries: Autocomplete then Text then Mesita", () => {
+Deno.test("mergeNameDeepQueries: Autocomplete then Text", () => {
   const out = mergeNameDeepQueries({
     autocomplete: [item({ placeId: "a1", mainText: "Auto" })],
     text: [item({ placeId: "t1", mainText: "Text" })],
-    mesita: [item({ placeId: "m1", mainText: "Mesita", mesitaId: "m-1" })],
   });
-  assertEquals(out.map((p) => p.mainText), ["Auto", "Text", "Mesita"]);
+  assertEquals(out.map((p) => p.mainText), ["Auto", "Text"]);
 });
 
 Deno.test("mergeNameDeepQueries: first query keeps overlaps; union is not sliced", () => {
@@ -112,18 +106,12 @@ Deno.test("mergeNameDeepQueries: first query keeps overlaps; union is not sliced
       item({ placeId: "t1", mainText: "T1" }),
       item({ placeId: "t2", mainText: "T2" }),
     ],
-    mesita: [
-      item({ placeId: "m1", mainText: "M1", mesitaId: "m-1" }),
-      item({ placeId: "m2", mainText: "M2", mesitaId: "m-2" }),
-    ],
   });
   assertEquals(out.map((p) => p.mainText), [
     "A1",
     "A2",
     "T1",
     "T2",
-    "M1",
-    "M2",
   ]);
 });
 
@@ -139,23 +127,15 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
     ],
     text: [
       item({
-        placeId: "ChIJ2",
-        mainText: "Resolved Text",
-        mesitaId: "m-2",
-        state: "web_listed",
-      }),
-    ],
-    mesita: [
-      item({
         placeId: "ChIJ1",
-        mainText: "Dup Mesita",
+        mainText: "Dup Text",
         mesitaId: "m-1",
         state: "web_listed",
       }),
       item({
-        placeId: "ChIJ3",
-        mainText: "Only Mesita",
-        mesitaId: "m-3",
+        placeId: "ChIJ2",
+        mainText: "Resolved Text",
+        mesitaId: "m-2",
         state: "web_listed",
       }),
     ],
@@ -163,7 +143,6 @@ Deno.test("mergeNameDeepQueries: Google-resolved Mesita stays in Autocomplete/Te
   assertEquals(out.map((p) => p.mainText), [
     "Resolved Autocomplete",
     "Resolved Text",
-    "Only Mesita",
   ]);
 });
 
@@ -175,7 +154,6 @@ Deno.test("mergeNameDeepQueries: Text Search keeps its own order", () => {
       item({ placeId: "g1", mainText: "First-best text" }),
       item({ placeId: "g2", mainText: "Second-best text" }),
     ],
-    mesita: [],
   });
   assertEquals(out.map((p) => p.mainText), [
     "Third-best text",
@@ -192,7 +170,6 @@ Deno.test("stripPlacesPrefix drops the Places API resource prefix", () => {
 Deno.test("deepModuleFlags: which Deep modules fire", () => {
   const on = {
     autoCount: 3,
-    mesitaCount: 3,
     googleCount: 3,
     typesOn: true,
   };
@@ -202,114 +179,23 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
     ["types off skip Autocomplete and Text Search", { typesOn: false }, {
       wantAuto: false,
       wantText: false,
-      wantMesita: true,
     }],
     ["googleCount 0 keeps Autocomplete, skips Text Search", { googleCount: 0 }, {
       wantAuto: true,
       wantText: false,
-      wantMesita: true,
     }],
     ["autoCount 0 skips Autocomplete, keeps Text Search", { autoCount: 0 }, {
       wantAuto: false,
       wantText: true,
-      wantMesita: true,
     }],
-    ["mesitaCount 0 skips the Mesita lane", { mesitaCount: 0 }, {
+    ["all lanes on fire both modules", {}, {
       wantAuto: true,
       wantText: true,
-      wantMesita: false,
-    }],
-    ["all lanes on fire all three modules", {}, {
-      wantAuto: true,
-      wantText: true,
-      wantMesita: true,
     }],
   ];
   for (const [label, over, want] of cases) {
     assertEquals(deepModuleFlags({ ...on, ...over }), want, label);
   }
-});
-
-const STAMP = "2026-09-01T00:00:00Z";
-
-function listed(
-  id: string,
-  name: string,
-  embedding: number[],
-  enriched_at: string | null = STAMP,
-  content_state: string | null = "ready",
-): ListedRow {
-  return {
-    id,
-    slug: id,
-    google_place_id: `g-${id}`,
-    name,
-    address: "",
-    lat: 19.4,
-    lng: -99.1,
-    content_state,
-    enriched_at,
-    business_state: "OPERATIONAL",
-    google_review_count: null,
-    name_embedding: embedding,
-    embedding: null,
-  };
-}
-
-const QUERY = [1, 0];
-const BEST = listed("best", "Best", [1, 0]);
-const WORSE = listed("worse", "Worse", [0.8, 0.6]);
-
-Deno.test("Name signal: a better name cosine ranks first", () => {
-  assertEquals(
-    rankMesitaByName([WORSE, BEST], { text: "best", vector: QUERY }).map((r) => r.id),
-    ["best", "worse"],
-  );
-});
-
-Deno.test("Name signal alone: no Selected gate and no popularity, so a Created place is findable", () => {
-  const created = listed("un", "Un", QUERY, null, "ready");
-  const loved = listed("lo", "Lo", [0.8, 0.6]);
-  loved.google_stars_overall = 4.9;
-  loved.google_review_count = 5000;
-  assertEquals(
-    rankMesitaByName([loved, created], { text: "un", vector: QUERY }).map((r) => r.id),
-    ["un", "lo"],
-  );
-});
-
-Deno.test("Name signal floors: raw cosine below 0.4 is out", () => {
-  const below = listed("low", "Low", [0.2, 0.98]);
-  assertEquals(rankMesitaByName([BEST, below], { text: "best", vector: QUERY }).map((r) => r.id), ["best"]);
-});
-
-Deno.test("Name signal: Google's own label is an alias — a lexical hit on google_name ranks the Mesita row (MESITA-2828)", () => {
-  const renamed = { ...listed("renamed", "La Cocina de Lupe", []), name_embedding: null, google_name: "Fonda Doña Lupita" };
-  const other = { ...listed("other", "Taquería El Paso", []), name_embedding: null };
-  assertEquals(
-    rankMesitaByName([other, renamed], { text: "doña lupita", vector: null }).map((r) => r.id),
-    ["renamed"],
-  );
-  // The row keeps its Mesita name: the alias only scores.
-  assertEquals(
-    rankMesitaByName([renamed], { text: "doña lupita", vector: null })[0].name,
-    "La Cocina de Lupe",
-  );
-});
-
-Deno.test("Name signal missing data: no embedding or no query vector falls back to lexical", () => {
-  const unembedded = { ...listed("tacos", "Tacos el Güero", [1, 0]), name_embedding: null };
-  const other = { ...listed("sushi", "Sushi Roll", [1, 0]), name_embedding: null };
-  assertEquals(
-    rankMesitaByName([other, unembedded], { text: "tacos", vector: QUERY }).map((r) => r.id),
-    ["tacos"],
-  );
-  // No OpenAI key at all: the whole lane runs lexical.
-  assertEquals(
-    rankMesitaByName([BEST, WORSE], { text: "Worse", vector: null }).map((r) => r.id),
-    ["worse"],
-  );
-  assertEquals(NAME_MIN_LEXICAL, 0.4);
 });
 
 Deno.test("Deep source never calls searchNearbyPlaces", async () => {
@@ -321,37 +207,12 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   assertEquals(src.includes("includedRegionCodes"), false);
   assertEquals(src.includes("rankPlacesSearch"), false);
   assertEquals(src.includes("rankByBlend"), false);
-  assertEquals(src.includes("rankMesitaByName(embedPool, { text: input, vector: queryVec })"), true);
 });
 
-Deno.test("mergeNameDeepQueries: overflow Mesita in Text stays; later Mesita skips it", () => {
-  const out = mergeNameDeepQueries({
-    autocomplete: [],
-    text: [
-      item({
-        placeId: "overflow",
-        mainText: "Resolved overflow",
-        mesitaId: "m-overflow",
-        state: "web_listed",
-      }),
-      item({ placeId: "fresh", mainText: "Fresh Google" }),
-    ],
-    mesita: [
-      item({ placeId: "top", mainText: "Top Mesita", mesitaId: "m-top" }),
-      item({
-        placeId: "overflow",
-        mainText: "Should skip",
-        mesitaId: "m-overflow",
-        state: "web_listed",
-      }),
-    ],
-  });
-  assertEquals(out.map((p) => p.placeId), ["overflow", "fresh", "top"]);
-});
-
-// PAY's engine is the Mesita NAME EMBEDDINGS alone (Pato, 2026-08-29).
-Deno.test("resolveMode: mesita is its own mode, unknown still falls back to fast", () => {
-  assertEquals(resolveMode("mesita"), "mesita");
+// The Mesita Name lane is retired (MESITA-2896): an older client still
+// sending `mesita` gets the deep Google lane.
+Deno.test("resolveMode: mesita now resolves to deep, unknown still falls back to fast", () => {
+  assertEquals(resolveMode("mesita"), "deep");
   assertEquals(resolveMode("deep"), "deep");
   assertEquals(resolveMode("fast"), "fast");
   assertEquals(resolveMode(undefined), "fast");
@@ -469,19 +330,6 @@ Deno.test("Locations dedupe on g:<placeId> like any Google row", () => {
   );
 });
 
-Deno.test("Pay has no Google fallback, so its lane cap never collapses", () => {
-  // An operator zeroing the Deep Mesita count would otherwise leave Pay's
-  // search permanently empty — Search would still have Autocomplete.
-  assertEquals(mesitaNameCap({ mesitaCount: 0 }), MESITA_NAME_MIN_CAP);
-  assertEquals(mesitaNameCap({ mesitaCount: 3 }), MESITA_NAME_MIN_CAP);
-  // Above the floor the operator's number wins, so Pay and Search agree.
-  assertEquals(mesitaNameCap({ mesitaCount: 20 }), 20);
-  assertEquals(
-    mesitaNameCap(DISCOVERY_DEFAULTS.name.deep),
-    Math.max(DISCOVERY_DEFAULTS.name.deep.mesitaCount, MESITA_NAME_MIN_CAP),
-  );
-});
-
 // MESITA-1874. Pato, on the Add place bar returning ONE result — a bar in
 // Toledo, Ohio — for the query `strana`: "use autocomplete and text search
 // from google … basically the word search mode but without showing the
@@ -526,26 +374,6 @@ Deno.test("Text Search asks for the listing mask and builds its card with google
   assertEquals(fn.includes('"X-Goog-FieldMask": LISTING_FIELD_MASK'), true);
   assertEquals(fn.includes("googleHitFromPlace(p)"), true);
   assertEquals(fn.includes("card: googleStub(hit, null)"), true);
-});
-
-// ── MESITA-2338: the query is embedded once per request, never per row ─────
-
-Deno.test("Name embeds the query once per request; fast mode never embeds; no row is re-embedded", async () => {
-  const src = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
-  const body = (name: string) => {
-    const start = src.indexOf(`async function ${name}(`);
-    const next = src.indexOf("\nasync function ", start + 1);
-    const nextExport = src.indexOf("\nexport ", start + 1);
-    const end = [next, nextExport].filter((i) => i > start).sort((a, b) => a - b)[0] ?? src.length;
-    return src.slice(start, end);
-  };
-  const count = (s: string, needle: string) => s.split(needle).length - 1;
-  assertEquals(count(body("runDeepSearch"), "embedQueryVector("), 1);
-  assertEquals(count(body("runMesitaNameSearch"), "embedQueryVector("), 1);
-  assertEquals(count(body("runFastSearch"), "embedQueryVector("), 0);
-  // embedSingle has exactly one call site: the query, inside embedQueryVector.
-  assertEquals(count(src, "embedSingle("), 1);
-  assertEquals(body("embedQueryVector").includes("embedSingle(input"), true);
 });
 
 // ── Google failures never throw out of the lane (MESITA-2855) ───────────────
