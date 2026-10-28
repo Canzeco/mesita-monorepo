@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { SizedImage } from "@mesita/place-profile";
 import { CalendarCheck, MapPin } from "lucide-react";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import type { ConsumerNotification } from "@/lib/api/notifications";
@@ -67,8 +67,9 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
     <article className={ROW_CARD}>
       <div className={cn("bg-muted", ROW_PHOTO)}>
         {placePhoto ? (
-          <Image
+          <SizedImage
             src={placePhoto}
+            size="thumb"
             alt=""
             fill
             className="object-cover"
