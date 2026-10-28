@@ -122,12 +122,26 @@ Deno.test("Map types admit F&B, bars and spas, and drop hotels", () => {
   const admits = (category: string) => primaryTypeClearsMapTypes(category, MAP);
   assertEquals(
     ["thai_restaurant", "bar", "hotel", "spa", "undefined"].filter(admits),
-    ["thai_restaurant", "bar", "spa", "undefined"],
+    ["thai_restaurant", "bar", "spa"],
   );
 });
 
+// MESITA-2962: a guest's open minted "Hello Salon" because the Atlas twin's
+// ["undefined"] counted as a family. Create and Search share this gate.
+Deno.test("Map types refuse every Undefined type: salons, gyms, parks", () => {
+  const admits = (category: string) => primaryTypeClearsMapTypes(category, MAP);
+  assertEquals(
+    ["beauty_salon", "hair_salon", "nail_salon", "barber_shop", "gym", "massage", "park", "shopping_mall"]
+      .filter(admits),
+    [],
+  );
+  const salon = evaluatePlaceForMap(MAP, { primaryType: "beauty_salon", rating: 4.9, reviewCount: 500 });
+  assertEquals(salon.eligible, false);
+  if (!salon.eligible) assertEquals(salon.code, "family_not_eligible");
+});
+
 Deno.test("Atlas leftover slugs admit via Super membership, not Google type", () => {
-  assertEquals(primaryTypeClearsMapTypes("undefined", MAP), true);
+  assertEquals(primaryTypeClearsMapTypes("undefined", MAP), false);
   assertEquals(primaryTypeClearsMapTypes("board_game_cafe", MAP), true);
   assertEquals(primaryTypeClearsMapTypes("hotel", MAP), false);
   assertEquals(primaryTypeClearsMapTypes("gas_station", MAP), false);

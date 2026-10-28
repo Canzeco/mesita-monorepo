@@ -56,9 +56,22 @@ function googleReviewUrl(placeId: string | undefined): string | undefined {
   return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
+// The Tags box (MESITA-2792): Mesita's own tags when the place has any,
+// otherwise Google's atmosphere chips (MESITA-2255). Mesita tags are inferred
+// on Create and every Enrich (MESITA-2790) and carry the vibe Google lacks
+// (Casual, Healthy, Dancing); Google's list stays the floor so a place with
+// no Mesita tags yet still shows its facts.
+function profileTagChips(
+  catalogTags: ResolvedTag[] | undefined,
+  googleTags: unknown,
+): PlaceDetail["tags"] {
+  const mesita = (catalogTags ?? [])
+    .filter((t) => typeof t?.label_en === "string" && t.label_en.trim() !== "")
+    .map((t) => ({ slug: t.slug, label: t.label_en, facet: t.facet }));
+  return mesita.length > 0 ? mesita : googleTagChips(googleTags);
+}
+
 export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDetail {
-  // Catalog tags stay stored and are not the Profile field (MESITA-2255).
-  void catalogTags;
   const categoryName =
     resolvePlaceCategoryName({
       categoryLabel: str(row.category_label),
@@ -132,8 +145,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
     photos: arr<string>(row.photos),
 
-    // Google atmosphere chips (MESITA-2255). places.tags is not this box.
-    tags: googleTagChips(row.google_tags),
+    tags: profileTagChips(catalogTags, row.google_tags),
     families: familyChips(row.families),
     profile_stats: profileStats(row.profile_stats),
 

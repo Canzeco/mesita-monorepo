@@ -74,3 +74,27 @@ export async function fetchGoogleCategories(
     enabled: row.enabled === true,
   }));
 }
+
+/**
+ * A place's main Google category — the first of Google's types (primary
+ * first) that is in the catalog, as the taxonomy trigger picks it — and
+ * whether it is enabled on Mesita (MESITA-2962). Create refuses a place
+ * whose main category is not. A failed read, or no catalog type at all,
+ * answers not enabled: Create fails closed.
+ */
+export async function mainGoogleCategoryOnMesita(
+  admin: SupabaseClient,
+  typesPrimaryFirst: readonly string[],
+): Promise<{ slug: string | null; enabled: boolean }> {
+  if (typesPrimaryFirst.length === 0) return { slug: null, enabled: false };
+  const { data, error } = await admin
+    .from("catalog_membership")
+    .select("slug, enabled")
+    .in("slug", [...typesPrimaryFirst]);
+  if (error || !data) return { slug: null, enabled: false };
+  const enabled = new Map(
+    (data as { slug: string; enabled: boolean }[]).map((row) => [row.slug, row.enabled === true]),
+  );
+  const slug = typesPrimaryFirst.find((t) => enabled.has(t)) ?? null;
+  return { slug, enabled: slug !== null && enabled.get(slug) === true };
+}
