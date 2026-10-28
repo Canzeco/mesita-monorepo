@@ -3,14 +3,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const actions = vi.hoisted(() => ({
   autocompleteGooglePlaces: vi.fn(),
   listAllPlaces: vi.fn(),
-  searchMesitaNames: vi.fn(),
 }));
 vi.mock("@/app/(app)/manage-multiple/actions", () => actions);
 
 import {
   loadCatalogSource,
   searchAutocompleteSource,
-  searchNameSource,
   searchTextSource,
 } from "./find-sources";
 
@@ -21,20 +19,15 @@ afterEach(() => {
 
 describe("Find's sources never throw", () => {
   it("turns an action's failure into that source's error", async () => {
-    actions.searchMesitaNames.mockResolvedValue({ ok: false, error: "no embedding key" });
-    expect(await searchNameSource("cafe")).toEqual({ status: "error", error: "no embedding key" });
     actions.autocompleteGooglePlaces.mockRejectedValue(new Error("network"));
     expect(await searchAutocompleteSource("cafe")).toEqual({ status: "error", error: "network" });
     actions.listAllPlaces.mockResolvedValue({ ok: true, data: { places: [], total: 0 } });
     expect(await loadCatalogSource()).toEqual({ status: "ok", data: [] });
   });
 
-  it("gives Name Search and Autocomplete a session token each", async () => {
-    actions.searchMesitaNames.mockResolvedValue({ ok: true, data: [] });
+  it("gives Autocomplete a session token", async () => {
     actions.autocompleteGooglePlaces.mockResolvedValue({ ok: true, data: [] });
-    await searchNameSource("cafe");
     await searchAutocompleteSource("cafe");
-    expect(actions.searchMesitaNames.mock.calls[0]?.[1]).toMatch(/[0-9a-f-]{36}/);
     expect(actions.autocompleteGooglePlaces.mock.calls[0]?.[1]).toMatch(/[0-9a-f-]{36}/);
   });
 

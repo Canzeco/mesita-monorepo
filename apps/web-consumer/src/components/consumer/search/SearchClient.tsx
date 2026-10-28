@@ -25,12 +25,20 @@
 // the map query only — and its modal is one more tap away, on the card or
 // its pin.
 //
-// THE BAR MAKES NO GOOGLE CALL (Pato, MESITA-2883: "completly remove Google
-// Places api frm Area Search"). It asks for Mesita names only (`mesita`
-// mode: Pay's engine), so no Autocomplete, no Text Search, no Location rows
-// and no Details call per pick; with no Google rows there is no Add-a-place
-// button either (MESITA-2879/2882's, which searched Google). Area itself
-// stopped calling Google in MESITA-2872.
+// THE BAR SEARCHES GOOGLE'S NAMES (Pato, MESITA-2896: "Kill Mesita Name from
+// everywhere. Now we are only using Google Name which is canonic"; MESITA-2883
+// had made it Mesita names only). `deep` mode: Autocomplete + Text Search; a
+// Google row Mesita holds comes back as the Mesita place. A place neither
+// returns is not found. A Location (kind: "location") is a camera
+// destination: coordinates + viewport resolve on pick, never per keystroke,
+// and the viewport picks the zoom. Area itself makes no Google call
+// (MESITA-2872).
+//
+// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849): a Google place
+// under the Area box's Minimum Popularity arrives `underFloor` and its pick
+// is a destination too — the camera lands there and the Area reloads there,
+// but no card is drawn for it, because that reload hides every place under
+// the same floor. A Mesita row is a Mesita place already.
 //
 // A Google-only result has no preview sheet and no Add button (MESITA-2298):
 // its SECOND tap (pin or rail card) is the explicit open — get-or-create on
@@ -72,6 +80,7 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
+  apiResolveLocationAnchor,
   apiSuggestPlacesWithIdle,
   type PlacePrediction,
 } from "@/lib/api/place-search";
@@ -139,6 +148,7 @@ import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
+  anchorViewportBounds,
   boxAtSight,
   boxBounds,
   catalogIsStale,
@@ -152,8 +162,9 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Word is ONE search (MESITA-2322): Mesita names alone (MESITA-2883) once
-// the guest has stopped typing for Discovery › Word's idle seconds. The EF returns that number with every answer; until the
+// Word is ONE search (MESITA-2322): Google's Autocomplete + Text Search
+// (MESITA-2896) once the guest has stopped typing for Discovery › Word's
+// idle seconds. The EF returns that number with every answer; until the
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
@@ -331,8 +342,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const searchMode = barFocused || querying;
   // ADD MODE (Pato, MESITA-2885: "a button to add a profile if the place is
   // not yet on mesita, just create place"). The rail's Add button turns the
-  // bar into a Google lookup — the ONLY Google call the bar makes; plain
-  // typing stays Mesita names (MESITA-2883). A pick is the explicit open:
+  // bar's placeholder into "Add a place" — the bar searches Google either
+  // way (MESITA-2896). A pick is the explicit open:
   // the opening screen calls consumer-web-create-place (get-or-create).
   // Clearing the bar, or leaving it empty, ends Add mode.
   const [adding, setAdding] = useState(false);
@@ -380,7 +391,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmedQuery,
           token,
           searchOrigin,
-          adding ? "fast" : "mesita",
+          "deep",
         );
         if (idleSec !== null) idleMsRef.current = Math.round(idleSec * 1000);
         if (cancelled) return;
@@ -782,6 +793,41 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   const handleBarPick = (prediction: PlacePrediction) => {
+    if (prediction.kind === "location") {
+      // A Location is a camera destination, never a card. Coordinates are
+      // resolved ON PICK — one Details call per selection, never per
+      // keystroke — and the viewport decides the zoom.
+      void (async () => {
+        try {
+          const resolved = await apiResolveLocationAnchor(
+            supabase,
+            prediction.placeId,
+          );
+          anchorMapTo(
+            {
+              lat: resolved.lat,
+              lng: resolved.lng,
+              bounds: anchorViewportBounds(resolved.viewport),
+            },
+            null,
+          );
+        } catch (err) {
+          toast.error(errMsg(err, "Couldn't open that location right now."));
+        }
+      })();
+      return;
+    }
+    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
+    // the camera lands on it and the Area reloads there, with no card ONE.
+    if (
+      prediction.underFloor &&
+      !predictionOnMesita(prediction) &&
+      typeof prediction.lat === "number" &&
+      typeof prediction.lng === "number"
+    ) {
+      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
+      return;
+    }
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
     // snapshot; either way the EF already shipped coordinates on the row.

@@ -190,13 +190,12 @@ describe("coerceConfig", () => {
     expect(radius("far")).toBe(15);
   });
 
-  it("coerceConfig defaults name Fast 5 and Deep 3+3+3", () => {
+  it("coerceConfig defaults name Fast 5 and Deep 3+3; a stored mesitaCount is dropped (MESITA-2896)", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).name).toEqual(DEFAULT_NAME);
     expect(coerceConfig({ name: { fast: { count: 99 }, deep: { mesitaCount: -1 } } }).name)
       .toMatchObject({
         fast: { googleCount: 20, count: 20 },
         deep: {
-          mesitaCount: 0,
           autoCount: 3,
           googleCount: 3,
         },
@@ -215,9 +214,12 @@ describe("coerceConfig", () => {
     ).toEqual({
       autoCount: 5,
       googleCount: 1,
-      mesitaCount: 10,
       supers: DEFAULT_NAME.deep.supers,
     });
+    expect(
+      coerceConfig({ name: { admin: { autoCount: 2, textCount: 7, mesitaCount: 5, emptyQuery: false } } })
+        .name.admin,
+    ).toEqual({ autoCount: 2, textCount: 7, emptyQuery: false });
   });
 });
 

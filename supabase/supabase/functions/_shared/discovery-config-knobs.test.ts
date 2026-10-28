@@ -42,17 +42,16 @@ Deno.test("Word's idle seconds default to 1, bounded 0.3..5, one decimal (MESITA
   assertEquals(normalizeNameConfig({ idleSec: 1.26 }).idleSec, 1.3);
 });
 
-Deno.test("Word by Admin defaults are Find's old behaviour; Mesita rows stop at 10", () => {
+Deno.test("Word by Admin defaults are Find's old behaviour; a stored mesitaCount is dropped", () => {
   assertEquals(normalizeNameConfig({}).admin, {
     autoCount: 0,
     textCount: 20,
-    mesitaCount: 10,
     emptyQuery: true,
   });
   const a = normalizeNameConfig({
     admin: { autoCount: 5, textCount: 99, mesitaCount: 40, emptyQuery: false },
   }).admin;
-  assertEquals(a, { autoCount: 5, textCount: 20, mesitaCount: 10, emptyQuery: false });
+  assertEquals(a, { autoCount: 5, textCount: 20, emptyQuery: false });
 });
 
 Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec", async () => {
@@ -66,7 +65,7 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   assertEquals(adminEf.includes("admin: true"), true);
   assertEquals(consumerEf.includes("admin: true"), false);
   assertEquals(lane.includes("idleSec: cfg.name.idleSec"), true);
-  assertEquals(lane.includes("cfg.name.admin.mesitaCount"), true);
+  assertEquals(lane.includes("cfg.name.admin.autoCount"), true);
 });
 
 Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESITA-2347)", () => {

@@ -335,7 +335,7 @@ export type SuggestHit = {
 };
 
 async function suggestPlacesIn(
-  mode: "fast" | "mesita",
+  mode: "fast",
   input: string,
   sessionToken: string,
 ): Promise<Result<SuggestHit[]>> {
@@ -358,16 +358,6 @@ export async function autocompleteGooglePlaces(
   sessionToken: string,
 ): Promise<Result<SuggestHit[]>> {
   return suggestPlacesIn("fast", input, sessionToken);
-}
-
-/** Mesita Places Name Search for a name — the lane's `mesita` mode: the
- *  name-embedding match over listed places that consumer Search runs, and
- *  no Google call. */
-export async function searchMesitaNames(
-  input: string,
-  sessionToken: string,
-): Promise<Result<SuggestHit[]>> {
-  return suggestPlacesIn("mesita", input, sessionToken);
 }
 
 // ── Create (the Create box and Single Place) ─────────────────────────────

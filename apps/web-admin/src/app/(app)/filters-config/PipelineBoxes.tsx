@@ -30,7 +30,6 @@ import {
   MAP_RELOAD_MIN_VIEWPORT_PCT_MIN,
   MAP_SELECTED_FACTOR_MAX,
   MAP_SELECTED_FACTOR_MIN,
-  NAME_ADMIN_MESITA_MAX,
   NAME_ADMIN_TEXT_MAX,
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
@@ -131,19 +130,20 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
       callers={["Admin Single Place › Find"]}
       explanation={
         <p>
-          The Name pipeline as an admin runs it. An admin types a name;
-          Autocomplete and the Mesita rows run through the guest bar&apos;s
-          lane, with its rules, except the Minimum Popularity order: admin
-          sees Google&apos;s own order. The Text Search column is Find&apos;s own
+          The Name pipeline as an admin runs it. An admin types a name and
+          Google answers: Autocomplete runs through the guest bar&apos;s lane,
+          with its rules, except the Minimum Popularity order: admin sees
+          Google&apos;s own order. The Text Search column is Find&apos;s own
           call: it applies Mesita&apos;s place types but not Discovery ›
-          General&apos;s active check. Locations are never
-          shown here. With the last option on, the page opens listing every
-          Mesita place, as an empty search.
+          General&apos;s active check. A Google hit Mesita holds shows as
+          that Mesita place; a place neither returns is not found. Locations
+          are never shown here. With the last option on, the page opens
+          listing every Mesita place, as an empty search.
         </p>
       }
-      scoring="Rows found by more sources come first, then Text Search rank, then Autocomplete rank, then Name. Duplicates merge."
+      scoring="Rows found by both sources come first, then Text Search rank, then Autocomplete rank. Duplicates merge."
       rules={[
-        "Autocomplete and Mesita rows follow the guest bar's rules: closed places never show, and a Google row must be one of Mesita's place types. The guest bar's Minimum Popularity order does not apply: admin sees Google's own order.",
+        "Autocomplete rows follow the guest bar's rules: closed places never show, and a row must be one of Mesita's place types. The guest bar's Minimum Popularity order does not apply: admin sees Google's own order.",
         "Text Search rows are Find's own call: Mesita's place types and the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them), not Discovery › General.",
       ]}
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.nameAdmin} />}
@@ -165,14 +165,6 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
           disabled={off}
           onChange={(textCount) => patch({ textCount })}
         />
-        <NumberField
-          label="Max Mesita rows"
-          value={a.mesitaCount}
-          min={1}
-          max={NAME_ADMIN_MESITA_MAX}
-          disabled={off}
-          onChange={(mesitaCount) => patch({ mesitaCount })}
-        />
         <SwitchRow
           label="Show results on an empty query"
           on={a.emptyQuery}
@@ -181,8 +173,7 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
       </div>
       <p className="text-muted-foreground type-meta">
-        0 Autocomplete rows means Find does not call Autocomplete. Mesita rows
-        stop at {NAME_ADMIN_MESITA_MAX}.
+        0 Autocomplete rows means Find does not call Autocomplete.
       </p>
     </PipelineBox>
   );
@@ -215,17 +206,18 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
       explanation={
         <p>
           The guest knows which place they want. The search runs once they
-          stop typing for the seconds below; the sources run together and
-          merge into one list with duplicates removed. A Location (a city, a
-          region) shows with a location icon, and picking one moves the map.
-          Picking a place moves the map there and makes it the first card.
-          Neither gate applies: a place Mesita has created is findable by
-          name before its profile is written. The always-on rules below
-          still hold: closed places never show and a Google row must be one
-          of Mesita&apos;s place types. Google places under the Minimum
-          Popularity (now {cfg.map.popularityFloor}, set in the Area box; 0 is
-          off) sort after the rest; none are removed, so an exact name is
-          always found. Mesita places and Locations never move.
+          stop typing for the seconds below; Google Autocomplete and Text
+          Search run together and merge into one list with duplicates
+          removed. A Google hit Mesita holds shows as that Mesita place; a
+          place neither returns is not found. A Location (a city, a region)
+          shows with a location icon, and picking one moves the map. Picking
+          a place moves the map there and makes it the first card. Neither
+          gate applies: a place Mesita has created is findable by name before
+          its profile is written. The always-on rules below still hold:
+          closed places never show and a row must be one of Mesita&apos;s
+          place types. Places under the Minimum Popularity (now{" "}
+          {cfg.map.popularityFloor}, set in the Area box; 0 is off) sort after
+          the rest; none are removed. Locations never move.
         </p>
       }
       save={
@@ -258,14 +250,6 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           disabled={off}
           onChange={(googleCount) => deep({ googleCount })}
         />
-        <NumberField
-          label="Max Mesita rows"
-          value={cfg.name.deep.mesitaCount}
-          min={0}
-          max={NAME_LANE_COUNT_MAX}
-          disabled={off}
-          onChange={(mesitaCount) => deep({ mesitaCount })}
-        />
         <SwitchRow
           label="Show Locations"
           on={cfg.name.locations}
@@ -274,8 +258,7 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
         />
       </div>
       <p className="text-muted-foreground type-meta">
-        0 rows turns a source off. A Mesita row needs a Name score of 0.4 or
-        more.
+        0 rows turns a source off.
       </p>
     </PipelineBox>
   );

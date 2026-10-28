@@ -245,7 +245,6 @@ export type NameFastConfig = {
 };
 
 export type NameDeepConfig = {
-  mesitaCount: number;
   /** Google Autocomplete cap. Independent query. */
   autoCount: number;
   /** Google Text Search cap. Independent query. */
@@ -271,8 +270,6 @@ export type NameAdminConfig = {
   autoCount: number;
   /** Text Search rows (one page, at most 20). */
   textCount: number;
-  /** Mesita name rows, at most 10. */
-  mesitaCount: number;
   /** The page opens listing the Mesita catalogue, as an empty search. */
   emptyQuery: boolean;
 };
@@ -317,7 +314,6 @@ export const MAP_MIN_POPULARITY_MAX = 1;
 
 export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
-export const NAME_MESITA_COUNT_DEFAULT = 3;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
 /** An Area source is off (0) or on (20): its 20 best rows (MESITA-2703). */
 export const AREA_SOURCE_STOPS = [0, 20] as const;
@@ -431,7 +427,6 @@ export const DEFAULT_NAME_FAST: NameFastConfig = {
 };
 
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
-  mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   supers: DEFAULT_MAP_SUPERS,
@@ -441,14 +436,13 @@ export const DEFAULT_NAME_DEEP: NameDeepConfig = {
 export const NAME_IDLE_SEC_MIN = 0.3;
 export const NAME_IDLE_SEC_MAX = 5;
 export const NAME_ADMIN_TEXT_MAX = 20;
-export const NAME_ADMIN_MESITA_MAX = 10;
 
 /** Find's behaviour before these knobs existed: no Autocomplete, a Text
- *  Search page of 20, 10 Mesita names, the catalogue on an empty query. */
+ *  Search page of 20, the catalogue on an empty query. The Mesita name
+ *  rows (`mesitaCount`) left with the Mesita Name lane (MESITA-2896). */
 export const DEFAULT_NAME_ADMIN: NameAdminConfig = {
   autoCount: 0,
   textCount: NAME_ADMIN_TEXT_MAX,
-  mesitaCount: NAME_ADMIN_MESITA_MAX,
   emptyQuery: true,
 };
 
@@ -592,14 +586,6 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       supers: normalizeSuperParams(fast.supers),
     },
     deep: {
-      mesitaCount: Math.round(
-        num(
-          deep.mesitaCount,
-          DEFAULT_NAME_DEEP.mesitaCount,
-          0,
-          NAME_LANE_COUNT_MAX,
-        ),
-      ),
       autoCount: Math.round(
         num(
           deep.autoCount,
@@ -634,9 +620,6 @@ function normalizeNameAdmin(raw: unknown): NameAdminConfig {
     ),
     textCount: Math.round(
       num(a.textCount, DEFAULT_NAME_ADMIN.textCount, 1, NAME_ADMIN_TEXT_MAX),
-    ),
-    mesitaCount: Math.round(
-      num(a.mesitaCount, DEFAULT_NAME_ADMIN.mesitaCount, 1, NAME_ADMIN_MESITA_MAX),
     ),
     emptyQuery: bool(a.emptyQuery, DEFAULT_NAME_ADMIN.emptyQuery),
   };

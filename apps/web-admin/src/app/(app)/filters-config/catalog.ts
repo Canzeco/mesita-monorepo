@@ -39,7 +39,6 @@ export type NameFastConfig = {
 };
 
 export type NameDeepConfig = {
-  mesitaCount: number;
   /** Google Autocomplete cap. Independent query. */
   autoCount: number;
   /** Google Text Search cap. Independent query. */
@@ -61,7 +60,6 @@ export type NameConfig = {
 export type NameAdminConfig = {
   autoCount: number;
   textCount: number;
-  mesitaCount: number;
   emptyQuery: boolean;
 };
 
@@ -879,7 +877,6 @@ const MAP_MIN_POPULARITY_MAX = 1;
 /** Name lane caps. */
 export const NAME_LANE_COUNT_MAX = 20;
 const NAME_FAST_COUNT_DEFAULT = 5;
-const NAME_MESITA_COUNT_DEFAULT = 3;
 const NAME_GOOGLE_COUNT_DEFAULT = 3;
 
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
@@ -962,7 +959,6 @@ const DEFAULT_NAME_FAST: NameFastConfig = {
 };
 
 const DEFAULT_NAME_DEEP: NameDeepConfig = {
-  mesitaCount: NAME_MESITA_COUNT_DEFAULT,
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
   supers: DEFAULT_MAP_SUPERS,
@@ -972,12 +968,10 @@ const DEFAULT_NAME_DEEP: NameDeepConfig = {
 export const NAME_IDLE_SEC_MIN = 0.3;
 export const NAME_IDLE_SEC_MAX = 5;
 export const NAME_ADMIN_TEXT_MAX = 20;
-export const NAME_ADMIN_MESITA_MAX = 10;
 
 export const DEFAULT_NAME_ADMIN: NameAdminConfig = {
   autoCount: 0,
   textCount: NAME_ADMIN_TEXT_MAX,
-  mesitaCount: NAME_ADMIN_MESITA_MAX,
   emptyQuery: true,
 };
 
@@ -1145,9 +1139,6 @@ function coerceName(raw: unknown): NameConfig {
       supers: coerceSuperParams(fast.supers),
     },
     deep: {
-      mesitaCount: Math.round(
-        num(deep.mesitaCount, DEFAULT_NAME_DEEP.mesitaCount, 0, NAME_LANE_COUNT_MAX),
-      ),
       autoCount: Math.round(
         num(deep.autoCount, DEFAULT_NAME_DEEP.autoCount, 0, NAME_LANE_COUNT_MAX),
       ),
@@ -1169,9 +1160,6 @@ function coerceNameAdmin(raw: unknown): NameAdminConfig {
   return {
     autoCount: Math.round(num(a.autoCount, DEFAULT_NAME_ADMIN.autoCount, 0, NAME_LANE_COUNT_MAX)),
     textCount: Math.round(num(a.textCount, DEFAULT_NAME_ADMIN.textCount, 1, NAME_ADMIN_TEXT_MAX)),
-    mesitaCount: Math.round(
-      num(a.mesitaCount, DEFAULT_NAME_ADMIN.mesitaCount, 1, NAME_ADMIN_MESITA_MAX),
-    ),
     emptyQuery: typeof a.emptyQuery === "boolean" ? a.emptyQuery : DEFAULT_NAME_ADMIN.emptyQuery,
   };
 }

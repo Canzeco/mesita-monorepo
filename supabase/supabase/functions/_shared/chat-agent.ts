@@ -5,7 +5,7 @@
 //      names, the families they ask for, whether they mean "around me", and
 //      the qualitative need in their own words (`extractChatIntent`).
 //   2. Invoke the pipelines that intent calls for, in parallel:
-//        Name  a named place          → the Name pipeline's Mesita lane
+//        Name  a named place          → the Name pipeline: Google Text Search, Mesita-held places (MESITA-2896)
 //        Area  families or "near me"  → the Area pipeline, Mesita Selected
 //                                       scope, around the guest's location
 //        Deep  a qualitative need     → the Deep pipeline (Description)
@@ -19,8 +19,8 @@
 //
 // The agent calls pipelines through `ChatPipelines`; it holds no database
 // client and never calls a source (Google, Mesita's tables, embeddings).
-// Chat names only Mesita places, so neither Name nor Area spends a Google
-// call here. Every step fails soft: a failed intent read falls back to
+// Chat names only Mesita places. Area spends no Google call; Name spends one
+// Text Search, because Google's name is canonical (MESITA-2896). Every step fails soft: a failed intent read falls back to
 // Deep, a failed pipeline contributes nothing. Nothing here writes.
 
 import { CATALOG_FAMILIES, CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";

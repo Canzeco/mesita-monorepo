@@ -130,7 +130,7 @@ Deno.test("Memo's only database client feeds the config read and the three pipel
   assert(fn.includes("adminClient(env)"));
   assert(fn.includes("loadDiscoveryConfig(admin)"));
   // The client reaches data only through the pipeline modules (MESITA-2339).
-  assert(chat.includes("nameMesitaPlaces(admin,"));
+  assert(chat.includes("nameGooglePlaces(admin,"));
   assert(chat.includes("areaSelectedPlaces(admin,"));
   assert(chat.includes("deepDepsFor(admin,"));
   // Any member call, however the chain is wrapped (imports read `from "…"`).

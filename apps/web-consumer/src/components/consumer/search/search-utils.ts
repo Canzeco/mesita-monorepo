@@ -4,7 +4,7 @@
 
 import type { MapBounds, Place } from "@/lib/api/places";
 import { stripInsecurePhotos } from "@/lib/api/places";
-import type { PlacePrediction } from "@/lib/api/place-search";
+import type { LocationAnchor, PlacePrediction } from "@/lib/api/place-search";
 import { haversineKm } from "@/lib/utils";
 
 // Stable per-page-session token, passed on every consumer-suggest-places
@@ -173,6 +173,24 @@ export function anchorSurvivesReload(
     haversineKm(anchor.lat, anchor.lng, loadedCenter.lat, loadedCenter.lng) <
     ANCHOR_DROP_KM
   );
+}
+
+/**
+ * A Location's Details viewport → the bounds the camera should fit: a
+ * city opens wide, a neighbourhood close — `fitBounds` derives the zoom
+ * from the entity's own extent instead of a fixed place zoom. Null when
+ * the viewport is missing; the caller falls back to a plain pan.
+ */
+export function anchorViewportBounds(
+  viewport: LocationAnchor["viewport"],
+): { south: number; west: number; north: number; east: number } | null {
+  if (!viewport) return null;
+  return {
+    south: viewport.low.lat,
+    west: viewport.low.lng,
+    north: viewport.high.lat,
+    east: viewport.high.lng,
+  };
 }
 
 /**

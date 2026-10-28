@@ -354,13 +354,12 @@ Deno.test("map.radiusKm is the one Nearby radius: default 15 (the reach, MESITA-
   assertEquals(radius("far"), 15);
 });
 
-Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
   assertEquals(missing.name.fast.googleCount, 5);
   assertEquals(missing.name.deep, {
-    mesitaCount: 3,
     autoCount: 3,
     googleCount: 3,
     supers: DISCOVERY_DEFAULTS.name.deep.supers,
@@ -375,9 +374,9 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(clamped.name.fast.supers.coffee, true);
   assertEquals(clamped.name.fast.supers.dinner, true);
   assertEquals("restaurants" in clamped.name.fast.supers, false);
-  // The retired Deep partners cap does not survive a read.
+  // The retired Deep partners and Mesita caps do not survive a read.
   assertEquals("partnerCount" in clamped.name.deep, false);
-  assertEquals(clamped.name.deep.mesitaCount, 7);
+  assertEquals("mesitaCount" in clamped.name.deep, false);
   assertEquals(clamped.name.deep.googleCount, 20);
   assertEquals(clamped.name.deep.autoCount, 0);
   assertEquals(clamped.name.fast.googleCount, 20);

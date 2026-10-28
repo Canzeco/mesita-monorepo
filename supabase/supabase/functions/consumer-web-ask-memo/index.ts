@@ -19,7 +19,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
 import { areaSelectedPlaces } from "../_shared/area-pipeline.ts";
-import { nameMesitaPlaces } from "../_shared/consumer-search-lane.ts";
+import { nameGooglePlaces } from "../_shared/consumer-search-lane.ts";
 import {
   type ChatPipelines,
   type ChatPlace,
@@ -145,8 +145,10 @@ function chatPipelines(
   const limit = discovery.deep.limit;
   return {
     hasAnchor: anchor !== null,
+    // Google's name is canonical (MESITA-2896): Text Search, kept where
+    // Mesita holds the place.
     name: async (placeName) =>
-      (await nameMesitaPlaces(admin, discovery.general, placeName, anchor, limit))
+      (await nameGooglePlaces(admin, discovery.map, discovery.general, placeName, anchor, limit))
         .map((row) => toChatPlace("name")(row as unknown as Record<string, unknown>)),
     area: async (families) =>
       ((await areaSelectedPlaces(admin, discovery, { center: anchor, families, limit })) ?? [])
