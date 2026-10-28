@@ -24,7 +24,7 @@
 // RETIRED WITH LIST-PLACES' LISTED LANES (MESITA-2337): `filters`, the
 // operator floor of the listed Mesita pool. Its last readers were the
 // `{ lat, lng }` lane without `google: true` and the newest-first lane; the
-// Area pipeline gates Selected itself (`selectedPoolQuery`).
+// Area pipeline gates its own read (`mesitaPoolQuery`).
 //
 // RETIRED AS UNREAD (MESITA-2687): `params.modes` (the weights table: no view
 // read it after MESITA-2516, and its stored Nearby row ranked Chat by distance
@@ -41,6 +41,10 @@
 // curve's distance for half credit (MESITA-2706); it became `radiusDivisor`,
 // half credit at radius ÷ k (MESITA-2720), and a stored `halfKm` or
 // `reachKm` was dropped on the next save.
+//
+// RETIRED WITH SELECTED (MESITA-2925): `map.selectedFactor`, the operator's
+// Selected boost. Official's factor is the row's paid tier, no knob. The
+// live row still holds the key; the rebuilt map drops it on the next save.
 //
 // RETIRED WITH THE MAP / CATALOG SPLIT (MESITA-2909): `map.mesitaPopular` and
 // `map.mesitaClosest` (the two 20-place source switches), `map.catalogPlacesShown`
@@ -157,9 +161,9 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * The Map and Catalog pipelines' policy (MESITA-2909): the Map ranks every
- * Mesita place inside its screen radius by Popularity × the Selected boost
+ * Mesita place inside its screen radius by Popularity × the Official factor
  * and shows the top `placesShown`; the Catalog ranks the whole catalog by
- * Proximity × Popularity × the boost and pages it by `catalogPageSize`.
+ * Proximity × Popularity × the factor and pages it by `catalogPageSize`.
  * Mesita's places only (Google Nearby retired in MESITA-2872). Operator
  * numbers since MESITA-1699. Floors still exclude; 0 = off.
  */
@@ -195,7 +199,7 @@ export type MapConfig = {
   /**
    * THE MAP'S MOST PINS (Pato, MESITA-2713, MESITA-2909: "cuántos puntos se
    * van a mostrar máximo, cincuenta"): the top N of the places inside the
-   * screen radius, by Popularity × the Selected boost.
+   * screen radius, by Popularity × the Official factor.
    * `MAP_PLACES_SHOWN_MIN`..`MAX`, whole, default 50.
    */
   placesShown: number;
@@ -213,15 +217,8 @@ export type MapConfig = {
    * one decimal, default 3; 0 is off.
    */
   popularityFloor: number;
-  /**
-   * THE SELECTED BOOST (Pato, MESITA-2717: "if Select, then a factor to
-   * multiply value of place. not select is 1, select is 3"; Admin's
-   * "Selected factor" until MESITA-2722, the key never renamed): a Mesita
-   * Selected place's Area score is multiplied by it, every other place's
-   * by 1, and Mesita Popularity picks by Popularity × it.
-   * `MAP_SELECTED_FACTOR_MIN`..`MAX`, one decimal, default 3; 1 is off.
-   */
-  selectedFactor: number;
+  // `selectedFactor` (the Selected boost, MESITA-2717) retired with
+  // Selected in MESITA-2925: dropped on the next Save.
 };
 
 /**
@@ -324,10 +321,6 @@ export const CATALOG_PAGE_SIZE_DEFAULT = 20;
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
 export const MAP_POPULARITY_FLOOR_DEFAULT = 3;
-/** `map.selectedFactor` bounds: 1 leaves a Selected place's score alone. */
-export const MAP_SELECTED_FACTOR_MIN = 1;
-export const MAP_SELECTED_FACTOR_MAX = 10;
-export const MAP_SELECTED_FACTOR_DEFAULT = 3;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -402,7 +395,6 @@ export const DEFAULT_MAP: MapConfig = {
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
-  selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
 
 export const DEFAULT_CATALOG: CatalogConfig = {
@@ -646,7 +638,8 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
     // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the four
-    // source switches, `catalogPlacesShown`) is dropped on the next save.
+    // source switches, `catalogPlacesShown`, `selectedFactor`) is dropped on
+    // the next save.
     radiusKm: Math.round(
       num(
         r.radiusKm,
@@ -667,14 +660,6 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
         DEFAULT_MAP.popularityFloor,
         MAP_POPULARITY_FLOOR_MIN,
         MAP_POPULARITY_FLOOR_MAX,
-      ) * 10,
-    ) / 10,
-    selectedFactor: Math.round(
-      num(
-        r.selectedFactor,
-        DEFAULT_MAP.selectedFactor,
-        MAP_SELECTED_FACTOR_MIN,
-        MAP_SELECTED_FACTOR_MAX,
       ) * 10,
     ) / 10,
   };

@@ -90,7 +90,7 @@ Deno.test("the call sites match the model", async () => {
   assertEquals(/fetchEmbedPool|rankMesitaByName/.test(name), false);
   // Map and Catalog (Area until MESITA-2909): Mesita Places only, one engine; both EFs are its
   // views. No Google Nearby anywhere (MESITA-2872).
-  assert(area.includes("selectedPoolQuery") && area.includes("rankArea"));
+  assert(area.includes("mesitaPoolQuery") && area.includes("rankArea"));
   assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
   for (const src of [name, area, deep, map, feed]) {
     assertEquals(/searchNearby|areaQuota/.test(src), false);
@@ -148,24 +148,24 @@ Deno.test("Deep is not live while no guest reaches Chat; Name, Map and Catalog a
 });
 
 // ── MESITA-2379: one pool; MESITA-2872: two Mesita sources;
-//    MESITA-2717: Selected is back as a factor, never a signal ────────────
+//    MESITA-2925: Official is the factor, never a signal ──────────────────
 
-Deno.test("Map: Family and Radius gate, Popularity × the Selected boost (MESITA-2909)", () => {
+Deno.test("Map: Family and Radius gate, Popularity × the Official factor (MESITA-2909, MESITA-2925)", () => {
   const map = DISCOVERY_PIPELINES.find((p) => p.key === "map")!;
   assertEquals(map.gates, ["family", "radius"]);
   assertEquals(map.signals, ["popularity"]);
   assertEquals(map.factors.length, 1);
-  assert(map.factors[0].startsWith("Selected (MESITA-2717)"));
+  assert(map.factors[0].startsWith("Official (MESITA-2925)"));
   assert(map.scoring.startsWith("Popularity × s"));
   assertEquals(JSON.stringify(map).includes("rectangle"), false);
 });
 
-Deno.test("Catalog: Family only, Proximity × Popularity × the Selected boost, Chat reads Selected only (MESITA-2909)", () => {
+Deno.test("Catalog: Family only, Proximity × Popularity × the Official factor, Chat reads every ready place (MESITA-2909, MESITA-2925)", () => {
   const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!;
   assertEquals(catalog.gates, ["family"]);
   assertEquals(catalog.signals, ["proximity", "popularity"]);
   assert(catalog.scoring.startsWith("Proximity × Popularity × s"));
-  assert(catalog.rules.includes("Chat reads Mesita Selected places only, inside the current-location radius."));
+  assert(catalog.rules.includes("Chat reads every ready Mesita place inside the current-location radius (Selected only until MESITA-2925)."));
   assert(catalog.callers.includes("Chat (Don Memo)"));
   for (const p of [catalog, DISCOVERY_PIPELINES.find((x) => x.key === "map")!]) {
     for (const stale of ["scope", "subset", "rail", "Mesita Proximity", "Distance penalty"]) {

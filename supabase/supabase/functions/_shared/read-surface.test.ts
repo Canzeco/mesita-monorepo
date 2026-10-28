@@ -190,7 +190,7 @@ const PROFILES_READ_ALLOWLIST = [
   // The Deep pipeline's Mesita Places Search: id, name, About and the summary
   // vector of active, ready places (MESITA-2327).
   "_shared/deep-pipeline.ts",
-  // Area's Mesita Selected scope for the Chat Agent: the same pool query the
+  // Area's Mesita scope for the Chat Agent: the same pool query the
   // Map and the Feed run (MESITA-2339).
   "_shared/area-pipeline.ts",
   "_shared/place-embeddings.ts",
@@ -204,8 +204,6 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-set-place-listed/index.ts",
-  // The Selected mark's one door re-reads the place after the write (MESITA-2707).
-  "admin-web-set-place-selected/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
@@ -222,7 +220,7 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/enrich-start.ts",
   // The Enrichment card's state: content_state and enriched_at, since Render never writes place_research (MESITA-2811).
   "admin-web-get-place-enrichment/index.ts",
-  // Boost (MESITA-1998): name, state and tier of the place a guest backs.
+  // Official (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
 ];
 
@@ -236,7 +234,6 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/reservation-places.ts",
   "admin-web-delete-place/index.ts",
   "admin-web-set-place-listed/index.ts",
-  "admin-web-set-place-selected/index.ts", // `selected` only: a no-op when already there (MESITA-2707)
   "consumer-web-create-reservation/index.ts",
 ];
 

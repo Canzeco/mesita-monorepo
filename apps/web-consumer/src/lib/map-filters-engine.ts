@@ -16,7 +16,7 @@ import type { Place } from "@/lib/api/places";
 import { type FamilyKey } from "@/lib/place-families";
 
 /** Which set a pin belongs to: a Google-only stub, or a Mesita place. */
-export type MapPlacesScope = "google" | "selected";
+export type MapPlacesScope = "google" | "mesita";
 
 export type MapFilters = {
   /** Families: the twenty guest families; empty = All Families. */
@@ -29,11 +29,11 @@ export const MAP_FILTER_DEFAULTS: MapFilters = {
 
 /**
  * The scope a row belongs to on this surface. A Google stub is Google's
- * alone; every Mesita row the server sends here is Mesita Selected. The
- * pin TONE still tells red from ink (`placePinTone`) — that is the colour's
- * promise, not the sheet's set.
+ * alone; every other row is a Mesita place. The pin TONE still tells
+ * Official's red from gray (`placePinTone`) — that is the colour's
+ * promise, not the set.
  */
 export function placeSearchScope(place: Place): MapPlacesScope {
   if (place.googleOnly || place.from_google) return "google";
-  return "selected";
+  return "mesita";
 }

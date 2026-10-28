@@ -2,7 +2,14 @@ export { PlaceProfile } from "./components/PlaceProfile";
 export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
 export { PlaceTopBar } from "./components/PlaceTopBar";
-export { SelectedBadge } from "./components/SelectedBadge";
+export { OfficialBadge } from "./components/OfficialBadge";
+export {
+  OFFICIAL_LEVELS,
+  isOfficialPlace,
+  officialLabel,
+  officialLevel,
+  officialTier,
+} from "./official";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
 export { PlaceCreateFailedPanel } from "./components/place-detail/PlaceCreateFailedPanel";

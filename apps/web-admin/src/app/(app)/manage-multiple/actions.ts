@@ -65,7 +65,7 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_state: string | null;
   // ── The state facts (labels: Created · Pulsing · Enriching · Enriched ·
-  //    Selected · Disabled). All derived (or
+  //    Disabled). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
   //    content_state generating (MESITA-453 whole-pipeline). Disabled is
   //    `!listed`: the operator's off switch.
@@ -87,13 +87,9 @@ export type PlaceHit = {
   enriched: boolean;
   /** When the last Enrich run completed; null for a Created place. */
   enriched_at: string | null;
-  /** Mesita Selected (MESITA-2707): the operator's own mark,
-   *  `places.selected`, shipped by the EF. Never derived from Enriched,
-   *  ready and Listed; a Created place can carry it. Absent on a payload
-   *  that predates it — the table then says "unknown", never a false no. */
-  selected?: boolean;
-  /** Boost (MESITA-2809): the paid tier, 0 · 1 · 2 · 3 = Off · 2x · 5x · 10x.
-   *  Null when the payload does not carry it. */
+  /** Official (MESITA-2925, was Boost — MESITA-2809): the paid tier,
+   *  0 · 1 · 2 · 3 = Off · 2X · 5X · 10X. Null when the payload does not
+   *  carry it. */
   boost_tier?: number | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */
   viewed?: number | null;
@@ -147,9 +143,6 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     content_state: contentState,
     ...enrichmentView({ ...raw, content_state: contentState }),
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
-    // The operator's mark rides through only as the boolean the EF sent
-    // (MESITA-2707): a missing one stays missing, so factOn says "unknown".
-    ...(typeof raw.selected === "boolean" ? { selected: raw.selected } : {}),
     boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
     viewed: typeof raw.viewed === "number" ? raw.viewed : null,
     saved: typeof raw.saved === "number" ? raw.saved : null,
@@ -241,23 +234,6 @@ export async function setPlaceListed(
   const r = await efInvoke<unknown>("admin-web-set-place-listed", {
     placeId,
     listed,
-  });
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, data: true };
-}
-
-/** Mesita Selected — the ONLY write path to `places.selected` from this
- *  page, the same door Single Place uses (admin-web-set-place-selected,
- *  MESITA-2707). Independent of Enriched: this call never starts an Enrich
- *  run and never writes `enriched_at`. Reversible, and no guest RLS policy
- *  reads the column, so the batch needs no confirm. */
-export async function setPlaceSelected(
-  placeId: string,
-  selected: boolean,
-): Promise<Result<true>> {
-  const r = await efInvoke<unknown>("admin-web-set-place-selected", {
-    placeId,
-    selected,
   });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };

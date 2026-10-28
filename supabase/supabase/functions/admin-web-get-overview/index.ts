@@ -169,10 +169,8 @@ Deno.serve(async (req) => {
     // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
     // admin-web-search-places, so Status and the catalog table agree.
     enriched: isPlaceEnriched(placeFields.enriched_at),
-    // Mesita Selected (MESITA-2707): the operator's own mark, read off the
-    // row (`places.selected`) — never derived from Enriched, ready and
-    // Disabled. The same read admin-web-search-places makes.
-    selected: placeFields.selected === true,
+    // Official (MESITA-2925): `boost_tier` (0..3) rides in from the
+    // profile columns; Selected is no longer read.
     // The Basics fields the operator owns (MESITA-2829): Enrich skips them
     // until the row's Reset clears the mark.
     operator_fields: readOperatorFields(enrichmentRow.data?.enrichment_sources),

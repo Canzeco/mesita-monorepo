@@ -3,12 +3,13 @@
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. The MARK tells the two entities apart
 // (MESITA-1404): a Place wears the tone point — gray = Google's alone, ink =
-// a basic Mesita profile, red = Mesita Selected — and a Location (a city, a
+// a basic Mesita profile, red = Mesita Official — and a Location (a city, a
 // region) wears a location icon instead. The two semantics never share a mark: a colour
 // that means "we wrote a profile" cannot also mean "this is not a place".
 // Every row pick anchors the map (MESITA-1405).
 
 import { MapPin, RotateCw, SearchX } from "lucide-react";
+import { officialLabel } from "@mesita/place-profile";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
@@ -131,7 +132,7 @@ function SuggestionLine({
   onPick: (prediction: PlacePrediction) => void;
 }) {
   // Branch on `kind` BEFORE tone is ever computed: predictionPinTone answers
-  // "is this a Mesita Selected place", and a Location has no profile to
+  // "is this an Official place", and a Location has no profile to
   // answer for — asking would silently paint a city as a gray Google place. The
   // accessible label is the mark's spoken half: it names the ENTITY
   // ("City"), never the absence of a profile.
@@ -154,11 +155,11 @@ function SuggestionLine({
 
   const tone = predictionPinTone(prediction);
   const added = addState === "added";
-  // Three spoken answers over the three tones: a Mesita place without the
-  // operator's mark (MESITA-2707) has a profile, so it is not "No profile".
+  // Three spoken answers over the three tones: a Mesita place that is not
+  // Official has a profile, so it is not "No profile".
   // The word Enriched never reaches a guest (MESITA-2298).
-  const toneLabel = tone === "selected"
-    ? "Mesita Selected"
+  const toneLabel = tone === "official"
+    ? (officialLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ?? "Mesita Official")
     : predictionOnMesita(prediction)
       ? "Basic Mesita profile"
       : "No profile yet";

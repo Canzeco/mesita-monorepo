@@ -11,7 +11,6 @@ vi.mock("./actions", () => ({
   listAllPlaces: vi.fn(),
   searchPlacesByGoogleIds: vi.fn(),
   setPlaceListed: vi.fn(),
-  setPlaceSelected: vi.fn(),
 }));
 vi.mock("@/components/PlacesMap", () => ({ PlacesMap: () => null }));
 
@@ -48,8 +47,6 @@ describe("Multiple Places renders six boxes (MESITA-2096, MESITA-2739)", () => {
     expect(buttons(box("enrich"))).toEqual(["Enrich"]);
     expect(buttons(box("google-update"))).toEqual(["Update Google"]);
     expect(buttons(box("edit"))).toEqual([
-      "Select",
-      "Unselect",
       "Enable",
       "Disable",
       "Delete",

@@ -14,10 +14,11 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
-//   Profile States      Created · Pulsing · Enriching · Enriched · Selected ·
-//                         Disabled. Profile Stats (Viewed · Saved) is its own
-//                         box (MESITA-2735). A place is enriching or
-//                         enriched. There is no step ladder.
+//   Profile States      Created · Pulsing · Enriching · Enriched · Official ·
+//                         Disabled (Selected died, MESITA-2925). Profile
+//                         Stats (Viewed · Saved) is its own box
+//                         (MESITA-2735). A place is enriching or enriched.
+//                         There is no step ladder.
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
 // Then the rest:

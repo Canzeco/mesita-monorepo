@@ -1,9 +1,10 @@
-// Boost (MESITA-2789, was Spotlight MESITA-1998): anyone can pay a monthly
+// Official (MESITA-2925; Boost since MESITA-2789, Spotlight MESITA-1998
+// before it; code names keep `boost`): anyone can pay a monthly
 // or yearly tier for a place from the consumer app, and many guests may
 // back one place, each with their own Stripe subscription. `place_backings`
 // mirrors those subscriptions; its trigger derives `places.boost_tier` from
-// the live ones (migration 20261027000000). Paid, never verified, never
-// Selected, and marked Sponsored wherever a guest sees it.
+// the live ones (migration 20261027000000). Paid, never verified, and
+// marked Official 2X · 5X · 10X wherever a guest sees it.
 //
 // Stripe is reached over its REST API with fetch (no SDK): four calls, all
 // form-encoded. The key follows STRIPE_MODE, which defaults to TEST; live
@@ -13,7 +14,7 @@
 // promise to the guests already paying it, so it changes by PR.
 // decision (Pato, MESITA-2789): a yearly plan costs ten months for twelve,
 // so toward the place's tier it counts a TENTH a month — a $100/yr backing
-// buys Boost 2x exactly like $10/mo.
+// buys Official 2X exactly like $10/mo.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -35,14 +36,16 @@ export const BOOST_YEAR_MONTHS = 10;
 
 export const BOOST_CURRENCY = "usd";
 
+/** The Stripe product line's name (MESITA-2925). The wire tiers keep their
+ *  stored `boost_*` keys. */
 export const BOOST_LABEL: Record<BoostTier, string> = {
-  boost_2x: "Boost 2x",
-  boost_5x: "Boost 5x",
-  boost_10x: "Boost 10x",
+  boost_2x: "Official 2X",
+  boost_5x: "Official 5X",
+  boost_10x: "Official 10X",
 };
 
-/** The Area score multiplier a place's `boost_tier` (0..3) earns. Literal:
- *  the tier names promise the number. */
+/** The Official factor a place's `boost_tier` (0..3) earns in the Area
+ *  score. Literal: the tier names promise the number. */
 export const BOOST_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
 
 /** What the guest pays per interval. */

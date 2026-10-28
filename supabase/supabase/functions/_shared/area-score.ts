@@ -1,7 +1,7 @@
 // The gates and the two signals of the Map and Catalog pipelines (Area,
 // MESITA-2327, split in two by MESITA-2909; one pool since MESITA-2379;
 // points only since Territory was retired, MESITA-2500, MESITA-2603; the
-// Selected boost since MESITA-2717).
+// Official factor since MESITA-2925, Selected's multiplier before it).
 //
 //   Map      final = Popularity × s           inside the screen radius
 //   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
@@ -14,14 +14,14 @@
 // Proximity, 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the operator's half
 // distance, pulls nearer places up without ever cutting a far one.
 // Popularity is ln(1 + reviews × stars), unbounded, and the product is never
-// clamped or normalized (MESITA-2710). s is the operator's Selected boost
-// (`map.selectedFactor`, default 3) for a Mesita Selected place, the paid
-// Boost's factor for a Boosted one (the larger of the two), and 1 for every
-// other place (MESITA-2717, MESITA-2789). No exponents (MESITA-2722).
+// clamped or normalized (MESITA-2710). s is the Official factor: an Official
+// place's paid tier, ×2 · ×5 · ×10 (`places.boost_tier`, MESITA-2789), and 1
+// for every other place. Selected and its operator boost died with
+// MESITA-2925. No exponents (MESITA-2722).
 //
 // THE REACH (MESITA-2920): the Catalog has no radius, so s counts only
-// within BOOST_REACH_HALVES × h of the anchor; past it s is 1 and a paid or
-// Selected place ranks like any other. A 10x Boost in another city never
+// within BOOST_REACH_HALVES × h of the anchor; past it s is 1 and an
+// Official place ranks like any other. An Official 10X in another city never
 // tops a guest's Home. The Map's circle already bounds it; Chat keeps its
 // radius box, so neither reads the reach.
 //
@@ -36,12 +36,10 @@ import { clearsPopularityFloor, logPopularity, proximity } from "./pipeline-sign
 import { haversineKm } from "./geo.ts";
 import { BOOST_FACTOR } from "./boost.ts";
 
-/** Where a candidate's card comes from. `selected` = Mesita Selected, the
- *  operator's mark on the row (`places.selected`, MESITA-2707; independent
- *  of Enriched); `mesita` = a ready Mesita row without the mark; `google` =
- *  a Google-only stub. `selected` alone takes the Selected boost
- *  (MESITA-2717); the other two score × 1. */
-export type AreaSource = "selected" | "mesita" | "google";
+/** Where a candidate's card comes from: `mesita` = a ready Mesita row,
+ *  `google` = a Google-only stub (never Official). Selected is gone
+ *  (MESITA-2925). */
+export type AreaSource = "mesita" | "google";
 
 export type LatLng = { lat: number; lng: number };
 /** A rectangle: the Map's visible box, read only to measure the screen
@@ -68,9 +66,6 @@ export type AreaContext = {
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
-  /** The Selected boost (MESITA-2717): a `selected` candidate's score is
-   *  multiplied by it; absent = 1. */
-  selectedFactor?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -87,8 +82,8 @@ export type AreaCandidate = {
    *  no Google hit). Carried into the diagnostics, never re-judged here. */
   ready?: 1 | null;
   reviews?: 1 | null;
-  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`
-   *  (0 · 1 · 2 · 3 = none · 2x · 5x · 10x); absent = 0. */
+  /** Official (MESITA-2925, was Boost MESITA-2789): the paid tier,
+   *  `places.boost_tier` (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); absent = 0. */
   boostTier?: number;
 };
 
@@ -139,30 +134,16 @@ function factor(x: number): number {
   return Number.isFinite(x) ? Math.max(0, x) : 0;
 }
 
-/** The factor a candidate's score is multiplied by (MESITA-2717): the
- *  operator's Selected boost for a Mesita Selected place, 1 for every other
- *  place. A missing, non-finite or non-positive factor reads 1.
- *
- *  Boost (MESITA-2789, was Spotlight MESITA-1998): a paid place takes its
- *  tier's literal factor, ×2 · ×5 · ×10 (BOOST_FACTOR). A place that is
- *  both Selected and Boosted takes the larger, never the product: paying
- *  never stacks on the operator's mark. Boost 5x and 10x outrank the
- *  default Selected ×3 (Pato, MESITA-2789 D1: accepted); the Sponsored
- *  mark tells the guest which is which. */
-export function selectedFactor(
-  c: Pick<AreaCandidate, "source" | "boostTier">,
-  ctx: Pick<AreaContext, "selectedFactor">,
-): number {
-  const raw = ctx.selectedFactor;
-  const s = typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : 1;
-  const selected = c.source === "selected" ? s : 1;
+/** The Official factor a candidate's score is multiplied by (MESITA-2925,
+ *  was Boost MESITA-2789): an Official place's tier, ×2 · ×5 · ×10
+ *  (BOOST_FACTOR); 1 for every other place and for a Google stub. */
+export function officialFactor(c: Pick<AreaCandidate, "source" | "boostTier">): number {
   const tier = c.source === "google" ? 0 : c.boostTier ?? 0;
-  const boost = tier >= 3 ? BOOST_FACTOR[3] : tier >= 2 ? BOOST_FACTOR[2] : tier >= 1 ? BOOST_FACTOR[1] : 1;
-  return Math.max(selected, boost);
+  return tier >= 3 ? BOOST_FACTOR[3] : tier >= 2 ? BOOST_FACTOR[2] : tier >= 1 ? BOOST_FACTOR[1] : 1;
 }
 
-/** The Selected boost and Boost reach on the Catalog, in half distances
- *  (MESITA-2920): s counts within 2 × h of the anchor, 1 beyond. */
+/** The Official reach on the Catalog, in half distances (MESITA-2920):
+ *  s counts within 2 × h of the anchor, 1 beyond. */
 export const BOOST_REACH_HALVES = 2;
 
 /** The Catalog's reach (km) for a half distance h. */
@@ -177,14 +158,10 @@ function popularityOrNull(c: AreaCandidate): number | null {
   return logPopularity(c);
 }
 
-/** The score without Proximity: Popularity × the Selected boost. The
- *  whole score with no location, and what Mesita Popularity picks by, so the
- *  pick and the ranking agree (MESITA-2717). */
-export function popularPart(
-  c: AreaCandidate,
-  ctx: Pick<AreaContext, "selectedFactor">,
-): number {
-  return factor(popularityOrNull(c) ?? 0) * selectedFactor(c, ctx);
+/** The score without Proximity: Popularity × the Official factor. The
+ *  whole score with no location. */
+export function popularPart(c: AreaCandidate): number {
+  return factor(popularityOrNull(c) ?? 0) * officialFactor(c);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -204,9 +181,10 @@ export type AreaDiagnostics = {
   };
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
-  /** The factor `final` carries (MESITA-2717): the Selected boost for a
-   *  Mesita Selected place, else 1; on the Catalog, 1 past the reach
-   *  (MESITA-2920). */
+  /** The factor `final` carries: the Official factor (MESITA-2925), 1 for
+   *  a place that is not Official; on the Catalog, 1 past the reach
+   *  (MESITA-2920). The wire key predates Official and is kept so the
+   *  score tags read on. */
   selectedFactor: number;
   /** Popularity × selectedFactor, × Proximity on the Catalog. */
   final: number;
@@ -236,12 +214,12 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   // no Radius gate; a place with no distance is out of reach.
   const capped = loc.kind === "point" && loc.radiusKm === null && ctx.halfKm !== null &&
     (km === null || km > boostReachKm(ctx.halfKm));
-  const sel = capped ? 1 : selectedFactor(c, ctx);
-  const popPart = capped ? factor(pop ?? 0) : popularPart(c, ctx);
+  const sel = capped ? 1 : officialFactor(c);
+  const popPart = capped ? factor(pop ?? 0) : popularPart(c);
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
-  // Mesita, Selected or not; no Google numbers reads 0, so it is out too.
+  // Mesita, Official or not; no Google numbers reads 0, so it is out too.
   const floor = typeof ctx.popularityFloor === "number" && ctx.popularityFloor > 0
     ? ctx.popularityFloor
     : null;

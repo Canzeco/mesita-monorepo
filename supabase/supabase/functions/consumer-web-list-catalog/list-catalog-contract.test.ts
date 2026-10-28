@@ -17,8 +17,9 @@ Deno.test("list-catalog: the Catalog's ranking — Proximity × Popularity, no e
 
 Deno.test("list-catalog: one pool from the shared engine", () => {
   assert(src.includes("selectAreaPool<PoolRow>("));
-  assert(src.includes("selectedPoolQuery("));
-  assert(src.includes("selectedOnly: false"));
+  assert(src.includes("mesitaPoolQuery("));
+  // Selected is read by no one (MESITA-2925).
+  assertEquals(src.includes("selected"), false);
   assertEquals(src.includes("buildCatalogRails"), false);
   assert(src.includes('wire: "unified"'));
   assert(src.includes('surface: "catalog"'));
@@ -53,7 +54,7 @@ Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {
 
 Deno.test("list-catalog: no radius at all, the whole catalog; no guest review stop (MESITA-2909)", () => {
   assertEquals(src.includes("requestRadiusKm"), false);
-  assert(src.includes("{ center: null, radiusKm: 0, families, selectedOnly: false }"));
+  assert(src.includes("{ center: null, radiusKm: 0, families }"));
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
   assertEquals(src.includes("guestReviewFloor"), false);

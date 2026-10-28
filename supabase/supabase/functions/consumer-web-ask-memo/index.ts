@@ -4,7 +4,7 @@
 // every message. THE CHAT AGENT SITS ABOVE THE PIPELINES (MESITA-2327,
 // MESITA-2339): before the model answers, `_shared/chat-agent.ts` reads the
 // guest's intent once and calls the pipelines it needs — Name for a place
-// they name, Area (Mesita Selected around their location) for families or
+// they name, Area (ready Mesita places around their location) for families or
 // "near me", Deep for a qualitative need — and hands the model those places
 // as context (`places` on the wire; `related` stays the follow-up chips the
 // client renders as strings). It never calls a source itself. Passive:
@@ -18,7 +18,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/h
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
-import { areaSelectedPlaces } from "../_shared/area-pipeline.ts";
+import { areaMesitaPlaces } from "../_shared/area-pipeline.ts";
 import { nameGooglePlaces } from "../_shared/consumer-search-lane.ts";
 import {
   type ChatPipelines,
@@ -151,7 +151,7 @@ function chatPipelines(
       (await nameGooglePlaces(admin, discovery.map, discovery.general, placeName, anchor, limit))
         .map((row) => toChatPlace("name")(row as unknown as Record<string, unknown>)),
     area: async (families) =>
-      ((await areaSelectedPlaces(admin, discovery, { center: anchor, families, limit })) ?? [])
+      ((await areaMesitaPlaces(admin, discovery, { center: anchor, families, limit })) ?? [])
         .map(toChatPlace("area")),
     deep: async (text) =>
       (await runDeepPipeline({ query: text, config: discovery.deep, ...deepDepsFor(admin, discovery.general, openaiKey) }))

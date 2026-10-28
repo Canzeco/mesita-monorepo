@@ -67,7 +67,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       radiusKm: 3,
       placesShown: 77,
       catalogPageSize: 33,
-      selectedFactor: 5,
+      popularityFloor: 5,
     },
     catalog: { ...live.catalog, seedCount: 99 },
     name: {
@@ -111,7 +111,7 @@ describe("the Map box (MESITA-2909)", () => {
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.map]);
     expect(sent.config?.map.radiusKm).toBe(3);
     expect(sent.config?.map.placesShown).toBe(77);
-    expect(sent.config?.map.selectedFactor).toBe(5);
+    expect(sent.config?.map.popularityFloor).toBe(5);
     expect(sent.config?.map.catalogPageSize).toBe(live.map.catalogPageSize);
     expect(sent.config?.params).toEqual(live.params);
     expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);

@@ -7,9 +7,9 @@ import {
   resolveAreaLocation,
   SCREEN_RADIUS_KM_MIN,
   screenRadiusKm,
+  mesitaPoolQuery,
+  rankMesitaPlaces,
   selectAreaPool,
-  selectedPoolQuery,
-  selectMesitaSelected,
 } from "./area-pipeline.ts";
 import { DISCOVERY_DEFAULTS, type DiscoveryConfig } from "./discovery-config.ts";
 import { nearbyBbox } from "./geo.ts";
@@ -20,18 +20,12 @@ type DepsOver = Partial<AreaPoolDeps<PoolRow>> & {
   /** Shorthands for a point location around CENTER. */
   center?: { lat: number; lng: number } | null;
   radiusKm?: number | null;
-  /** The Selected boost over the default (3). */
-  weights?: { selectedFactor?: number };
 };
 
 function deps(over: DepsOver = {}) {
-  const { center = CENTER, radiusKm = 50, weights = {}, cfg: base, ...rest } = over;
+  const { center = CENTER, radiusKm = 50, cfg: base, ...rest } = over;
   const b = base ?? DISCOVERY_DEFAULTS;
-  const cfg: DiscoveryConfig = {
-    ...DISCOVERY_DEFAULTS,
-    ...b,
-    map: { ...b.map, ...weights },
-  };
+  const cfg: DiscoveryConfig = { ...DISCOVERY_DEFAULTS, ...b };
   const d: AreaPoolDeps<PoolRow> = {
     surface: "map",
     location: center ? { kind: "point", anchor: center, radiusKm } : { kind: "none" },
@@ -46,7 +40,7 @@ function deps(over: DepsOver = {}) {
 const ids = (places: Array<Record<string, unknown>>) =>
   places.map((p) => p.id);
 
-// ── Mesita Selected ─────────────────────────────────────────────────────
+// ── Chat's Mesita read (every ready place since MESITA-2925) ────────────
 
 const ENRICHED = "2026-01-01T00:00:00Z";
 function mrow(id: string, over: Record<string, unknown> = {}) {
@@ -56,9 +50,6 @@ function mrow(id: string, over: Record<string, unknown> = {}) {
     lng: CENTER.lng,
     enriched_at: ENRICHED,
     content_state: "ready",
-    // The operator's mark (MESITA-2707): Selected is read here, never off
-    // `enriched_at`.
-    selected: true,
     family_keys: ["dinner"],
     category: "restaurant",
     google_stars_overall: 4.4,
@@ -72,40 +63,40 @@ const selOpts = {
   params: DISCOVERY_DEFAULTS.params,
 };
 
-Deno.test("selected: only the operator's marked rows inside the radius (MESITA-2707)", () => {
-  const out = selectMesitaSelected([
+Deno.test("chat: every ready row inside the radius, a stale Selected mark ignored (MESITA-2925)", () => {
+  const out = rankMesitaPlaces([
     mrow("ok"),
-    // Enriched and ready, but unmarked: Selected is not derived from
-    // enrichment any more.
     mrow("unmarked", { selected: false }),
+    mrow("created", { enriched_at: null }),
     mrow("far", { lat: CENTER.lat + 1 }),
   ], selOpts);
-  assertEquals(ids(out), ["ok"]);
+  assertEquals(new Set(ids(out)), new Set(["ok", "unmarked", "created"]));
 });
 
-Deno.test("selected: a Created place the operator marked is Selected before any Enrich run", () => {
-  const out = selectMesitaSelected([
-    mrow("created-marked", { enriched_at: null }),
+Deno.test("chat: an Official place outranks a plain twin by its tier (MESITA-2925)", () => {
+  const out = rankMesitaPlaces([
+    mrow("plain", { google_review_count: 400 }),
+    mrow("official", { google_review_count: 120, boost_tier: 1 }),
   ], selOpts);
-  assertEquals(ids(out), ["created-marked"]);
+  assertEquals(ids(out), ["official", "plain"]);
 });
 
-Deno.test("selected: has no review floor — a two-review place is kept", () => {
-  const out = selectMesitaSelected([
+Deno.test("chat: has no review floor — a two-review place is kept", () => {
+  const out = rankMesitaPlaces([
     mrow("thin", { google_review_count: 2 }),
   ], selOpts);
   assertEquals(ids(out), ["thin"]);
 });
 
-Deno.test("selected: the Catalog score ranks; the nearer twin first", () => {
-  const out = selectMesitaSelected([
+Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
+  const out = rankMesitaPlaces([
     mrow("far-twin", { lat: CENTER.lat + 0.02 }),
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
   ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
   // quiet at 0 km: 1 × ln(1 + 15.5) ≈ 2.8; loved at 1.1 km, h = 5 km:
   // 0.76 × ln(1 + 14,700) ≈ 7.3.
-  const loved = selectMesitaSelected([
+  const loved = rankMesitaPlaces([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
       lat: CENTER.lat + 0.01,
@@ -116,42 +107,42 @@ Deno.test("selected: the Catalog score ranks; the nearer twin first", () => {
   assertEquals(ids(loved), ["loved", "quiet"]);
 });
 
-Deno.test("selected: Chat ranks like the Catalog, by the half distance (MESITA-2909)", () => {
+Deno.test("chat: Chat ranks like the Catalog, by the half distance (MESITA-2909)", () => {
   const rows = [
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
   const h = (halfKm: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { halfKm } } });
-  assertEquals(ids(selectMesitaSelected(rows, h(0.5)))[0], "near-quiet");
-  assertEquals(ids(selectMesitaSelected(rows, h(50)))[0], "far-loved");
+  assertEquals(ids(rankMesitaPlaces(rows, h(0.5)))[0], "near-quiet");
+  assertEquals(ids(rankMesitaPlaces(rows, h(50)))[0], "far-loved");
 });
 
-Deno.test("selected: a wider circle keeps the same place in", () => {
+Deno.test("chat: a wider circle keeps the same place in", () => {
   // 5.6 km north: inside a 6 km circle and a 60 km one alike; the circle
   // decides who is in (its Proximity follows the radius, MESITA-2720).
   const row = mrow("mid", { lat: CENTER.lat + 0.05 });
-  const narrow = selectMesitaSelected([row], { ...selOpts, radiusKm: 6 });
-  const wide = selectMesitaSelected([row], { ...selOpts, radiusKm: 60 });
+  const narrow = rankMesitaPlaces([row], { ...selOpts, radiusKm: 6 });
+  const wide = rankMesitaPlaces([row], { ...selOpts, radiusKm: 60 });
   assertEquals(ids(narrow), ["mid"]);
   assertEquals(ids(wide), ["mid"]);
 });
 
-Deno.test("selected: guest families cut, and no centre means no radius", () => {
+Deno.test("chat: guest families cut, and no centre means no radius", () => {
   const rows = [
     mrow("coffee", { family_keys: ["coffee"], category: "cafe" }),
     mrow("dinner", { lat: CENTER.lat + 5 }),
   ];
   assertEquals(
-    ids(selectMesitaSelected(rows, { ...selOpts, families: ["coffee"] })),
+    ids(rankMesitaPlaces(rows, { ...selOpts, families: ["coffee"] })),
     ["coffee"],
   );
   assertEquals(
-    new Set(ids(selectMesitaSelected(rows, { ...selOpts, center: null }))),
+    new Set(ids(rankMesitaPlaces(rows, { ...selOpts, center: null }))),
     new Set(["coffee", "dinner"]),
   );
 });
 
-Deno.test("selectedPoolQuery: the Selected mark, General, ready, families and the radius box", () => {
+Deno.test("mesitaPoolQuery: General, ready, families and the radius box; no Selected cut (MESITA-2925)", () => {
   const seen: string[] = [];
   const q = {
     eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
@@ -162,13 +153,13 @@ Deno.test("selectedPoolQuery: the Selected mark, General, ready, families and th
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
     order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
-  selectedPoolQuery(q, DISCOVERY_DEFAULTS, {
+  mesitaPoolQuery(q, DISCOVERY_DEFAULTS, {
     center: CENTER,
     radiusKm: 5,
     families: ["coffee"],
   });
-  // Chat's gate is the operator's mark, never `enriched_at` (MESITA-2707).
-  assert(seen.includes("eq selected true"));
+  // Selected is read by no one (MESITA-2925).
+  assertEquals(seen.some((s) => s.includes("selected")), false);
   assertEquals(seen.some((s) => s.includes("enriched_at")), false);
   assert(seen.includes("eq content_state ready"));
   assert(seen.includes("overlaps family_keys coffee"));
@@ -178,7 +169,7 @@ Deno.test("selectedPoolQuery: the Selected mark, General, ready, families and th
   assertEquals(seen[seen.length - 1], "order id true");
   // The Catalog passes no centre: no box at all (MESITA-2909).
   seen.length = 0;
-  selectedPoolQuery(q, DISCOVERY_DEFAULTS, { center: null, radiusKm: 0, selectedOnly: false });
+  mesitaPoolQuery(q, DISCOVERY_DEFAULTS, { center: null, radiusKm: 0 });
   assertEquals(seen.some((l) => l.startsWith("gte lat") || l.startsWith("lte lng")), false);
 });
 
@@ -193,11 +184,11 @@ Deno.test("the Mesita pool read never carries the reviews floor (MESITA-2702)", 
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
     order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
-  selectedPoolQuery(q, { general: DISCOVERY_DEFAULTS.general }, { center: null, radiusKm: 5 });
+  mesitaPoolQuery(q, { general: DISCOVERY_DEFAULTS.general }, { center: null, radiusKm: 5 });
   assertEquals(seen.some((s) => s.includes("google_review_count")), false);
 });
 
-Deno.test("selected: the radius cut reads the exact distance, not the rounded one", () => {
+Deno.test("chat: the radius cut reads the exact distance, not the rounded one", () => {
   // 5.04 km shows as 5.0 km but is outside a 5 km radius.
   const row = {
     id: "edge",
@@ -205,13 +196,12 @@ Deno.test("selected: the radius cut reads the exact distance, not the rounded on
     lng: CENTER.lng,
     enriched_at: "2026-01-01T00:00:00Z",
     content_state: "ready",
-    selected: true,
     google_stars_overall: 4.5,
     google_review_count: 100,
     family_keys: ["dinner"],
   };
   assertEquals(
-    selectMesitaSelected([row], { ...selOpts, radiusKm: 5 }).length,
+    rankMesitaPlaces([row], { ...selOpts, radiusKm: 5 }).length,
     0,
   );
 });
@@ -254,30 +244,30 @@ Deno.test("pool: the Family gate drops a row outside the requested families", as
   assertEquals(ids((await selectAreaPool(deps({ families: [], mesitaRows: rows }).d)).places), ["a-dinner"]);
 });
 
-Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the boost (MESITA-2909)", async () => {
-  const selected = mrow("sel", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
-  // Enriched, yet unmarked: `source` reads the operator's mark (MESITA-2707).
-  const created = mrow("created", { selected: false, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
+Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the Official factor (MESITA-2909, MESITA-2925)", async () => {
+  const official = mrow("off", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
+  // A stale Selected mark scores nothing (MESITA-2925).
+  const plain = mrow("plain", { selected: true, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
   // 330 km away: kept, only lowered.
   const far = mrow("far", { lat: 28.6, google_stars_overall: 4.9, google_review_count: 9000 });
-  const run = (selectedFactor: number) =>
-    selectAreaPool(deps({ surface: "catalog", radiusKm: null, weights: { selectedFactor }, mesitaRows: [selected, created, far] }).d);
+  const run = (tier: number) =>
+    selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: [{ ...official, boost_tier: tier }, plain, far] }).d);
   const out = await run(3);
   const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
   assertEquals(ids(out.places).length, 3);
   assertEquals(byId["far"].gates.radius, null);
-  assertEquals(byId["sel"].selectedFactor, 3);
-  assertEquals(byId["created"].selectedFactor, 1);
+  assertEquals(byId["off"].selectedFactor, 10);
+  assertEquals(byId["plain"].selectedFactor, 1);
   for (const a of Object.values(byId)) {
     assertEquals(a.halfKm, 5);
     const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0) * a.selectedFactor;
     assertEquals(Math.abs(a.final - want) < 1e-12, true);
   }
   assertEquals(ids(out.places)[2], "far");
-  // × 3 lifts the Selected row over the loved unmarked one; at 1 (off) it does not.
-  assert(ids(out.places).indexOf("sel") < ids(out.places).indexOf("created"));
-  const off = await run(1);
-  assert(ids(off.places).indexOf("created") < ids(off.places).indexOf("sel"));
+  // Official 10X lifts the quieter row over the loved plain one; tier 0 does not.
+  assert(ids(out.places).indexOf("off") < ids(out.places).indexOf("plain"));
+  const none = await run(0);
+  assert(ids(none.places).indexOf("plain") < ids(none.places).indexOf("off"));
   const finals = out.places.map((p) => p.area.final);
   assertEquals(finals, [...finals].sort((a, b) => b - a));
 });
@@ -305,7 +295,7 @@ Deno.test("no location: Popularity alone", async () => {
   assertEquals(out.places[0].area.signals.proximity, null);
 });
 
-Deno.test("selectedPoolQuery: the Catalog and the Map drop the Selected SQL filter; a point reads its radius box, none reads everything", () => {
+Deno.test("mesitaPoolQuery: a point reads its radius box, none reads everything", () => {
   const seen: string[] = [];
   const q = {
     eq: (c: string, v: unknown) => (seen.push(`eq ${c} ${v}`), q),
@@ -316,10 +306,9 @@ Deno.test("selectedPoolQuery: the Catalog and the Map drop the Selected SQL filt
     overlaps: (c: string, v: string[]) => (seen.push(`overlaps ${c} ${v}`), q),
     order: (c: string, o?: { ascending?: boolean }) => (seen.push(`order ${c} ${o?.ascending}`), q),
   };
-  selectedPoolQuery(q, DISCOVERY_DEFAULTS, {
+  mesitaPoolQuery(q, DISCOVERY_DEFAULTS, {
     center: CENTER,
     radiusKm: 5,
-    selectedOnly: false,
   });
   assertEquals(seen.includes("not enriched_at is null"), false);
   assert(seen.includes("eq content_state ready"));
@@ -330,7 +319,7 @@ Deno.test("selectedPoolQuery: the Catalog and the Map drop the Selected SQL filt
   assertEquals(seen[seen.length - 1], "order id true");
   // The Catalog passes no centre: no box at all (MESITA-2909).
   seen.length = 0;
-  selectedPoolQuery(q, DISCOVERY_DEFAULTS, { center: null, radiusKm: 0, selectedOnly: false });
+  mesitaPoolQuery(q, DISCOVERY_DEFAULTS, { center: null, radiusKm: 0 });
   assertEquals(seen.some((l) => l.startsWith("gte lat") || l.startsWith("lte lng")), false);
 });
 
@@ -413,7 +402,7 @@ Deno.test("screen radius: the circle gates the Map's pool and never scores (MESI
   assertEquals(ids(out.places), ["inside"]);
   const a = out.places[0].area;
   assertEquals(a.signals.proximity, null);
-  // final = popularity × the Selected boost.
+  // final = popularity × the Official factor.
   assert(Math.abs(a.final - (a.signals.popularity ?? 0) * a.selectedFactor) < 1e-9);
 });
 

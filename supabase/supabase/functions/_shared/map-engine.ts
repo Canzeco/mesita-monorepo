@@ -2,11 +2,10 @@
 //
 // Search allowlist for guest map, admin Google Search, Create, and Name
 // Google (Fast Autocomplete + Deep Text Search) via Map floors. The guest
-// has TWO SCOPES (MESITA-2298) over the three internal sets (Google
-// Places ⊃ Mesita Places ⊃ Mesita Selected Places): Google Places is what
-// Nearby returned inside `map.radiusKm`, a Mesita owner painting its hit;
-// Mesita Selected is the rows the operator marked (`places.selected`,
-// MESITA-2707), never `enriched_at`. Type batteries ride the
+// has TWO SCOPES (MESITA-2298) over the internal sets (Google Places ⊃
+// Mesita Places): Google Places is what Nearby returned inside
+// `map.radiusKm`, a Mesita owner painting its hit. Mesita Selected, the
+// third set, died with MESITA-2925. Type batteries ride the
 // Google call only. Floors exclude. There is no Google reviews minimum
 // (MESITA-2721): the Area pipeline's Popularity floor is the cut. Name Google
 // categories live on discovery_config.name. The Area pipeline calls no

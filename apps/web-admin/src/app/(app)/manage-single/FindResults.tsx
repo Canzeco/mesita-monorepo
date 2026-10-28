@@ -3,7 +3,7 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states (Boosted is a tier: Off · 2x · 5x · 10x), then Views · Likes,
+// states (Official is a tier: Off · 2X · 5X · 10X, MESITA-2925), then Views · Likes,
 // then, on a word, Google's rank. 50 rows a page
 // (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
@@ -183,9 +183,9 @@ export function FindResults({
                     <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
                       {f.label}
                     </th>
-                    {f.key === "selected" ? (
+                    {f.key === "enriched" ? (
                       <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
-                        Boosted
+                        Official
                       </th>
                     ) : null}
                   </Fragment>
@@ -515,14 +515,14 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
               <Miss label={f.label} />
             )}
           </td>
-          {f.key === "selected" ? (
+          {f.key === "enriched" ? (
             <td className={CELL}>
               {hit ? (
-                <BoostPill tier={hit.boost_tier} />
+                <OfficialPill tier={hit.boost_tier} />
               ) : row.held ? (
                 <StatePill on="unknown" />
               ) : (
-                <Miss label="Boost" />
+                <Miss label="Official" />
               )}
             </td>
           ) : null}
@@ -550,9 +550,10 @@ const QUICK_STATS = [
   { key: "saved", label: "Likes" },
 ] as const;
 
-/** Boosted is a tier, not a yes/no (MESITA-2809): Off · 2x · 5x · 10x. Off
- *  is the normal case, so it is muted rather than rose; a paid tier is green. */
-function BoostPill({ tier }: { tier: number | null | undefined }) {
+/** Official is a tier, not a yes/no (MESITA-2925, was Boost — MESITA-2809):
+ *  Off · 2X · 5X · 10X. Off is the normal case, so it is muted rather than
+ *  rose; a paid tier is green. */
+function OfficialPill({ tier }: { tier: number | null | undefined }) {
   const chip = boostTierChip(tier);
   if (chip === "?") return <StatePill on="unknown" />;
   return (

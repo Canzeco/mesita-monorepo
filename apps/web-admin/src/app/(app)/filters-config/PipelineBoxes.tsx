@@ -4,9 +4,10 @@
 // MESITA-2779, MESITA-2909): Admin Name · Consumer Name · Consumer Map ·
 // Consumer Catalog · Consumer Deep. Each box is a PipelineBox and saves only
 // its own slices, so two boxes can never overwrite each other. The Map and the
-// Catalog were one Area pipeline until MESITA-2909; the Minimum Popularity and
-// the Selected boost they share sit in the Map box. The Chat Agent is Deep's
-// caller, so its prompt sits in the Deep box.
+// Catalog were one Area pipeline until MESITA-2909; the Minimum Popularity
+// they share sits in the Map box. Official's factor is the paid tier, no knob
+// (the Selected boost retired with Selected, MESITA-2925). The Chat Agent is
+// Deep's caller, so its prompt sits in the Deep box.
 
 import { LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
@@ -32,8 +33,6 @@ import {
   MAP_RELOAD_IDLE_SEC_MIN,
   MAP_RELOAD_MIN_VIEWPORT_PCT_MAX,
   MAP_RELOAD_MIN_VIEWPORT_PCT_MIN,
-  MAP_SELECTED_FACTOR_MAX,
-  MAP_SELECTED_FACTOR_MIN,
   NAME_ADMIN_TEXT_MAX,
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
@@ -285,7 +284,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
             The Search tab&apos;s pins: every Mesita place inside the
             <strong> screen radius</strong> (the distance from the cross to the
             nearest edge of the visible map), ranked by{" "}
-            <strong>Popularity</strong> × the Selected boost.
+            <strong>Popularity</strong> × the Official factor.
           </p>
           <p className="mt-2">
             Distance only decides who is on the map, never the order: a place
@@ -336,19 +335,9 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
               disabled={off}
               onChange={(popularityFloor) => map({ popularityFloor })}
             />
-            <NumberField
-              label="Selected boost"
-              value={cfg.map.selectedFactor}
-              min={MAP_SELECTED_FACTOR_MIN}
-              max={MAP_SELECTED_FACTOR_MAX}
-              decimals
-              disabled={off}
-              onChange={(selectedFactor) => map({ selectedFactor })}
-            />
           </div>
           <p className="text-muted-foreground type-meta">
-            Minimum Popularity and Selected boost apply to the Map, the Catalog
-            and Chat.
+            Minimum Popularity applies to the Map, the Catalog and Chat.
           </p>
         </div>
         <p className="text-muted-foreground type-meta">
@@ -358,10 +347,10 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
           On the guest Search bar it only reorders: Google places under it sort
           last, none are removed. Popularity is ln(1 + reviews × stars), never
           normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
-          no Google numbers scores 0 and sinks, never disappears. The Selected
-          boost (now {cfg.map.selectedFactor}; 1 is off) multiplies the score of
-          a place marked Selected in Single Place, × 1 for every other place; it
-          never saves a place from the Minimum Popularity.
+          no Google numbers scores 0 and sinks, never disappears. An Official
+          place&apos;s score is multiplied by its paid tier (Official 2X · 5X ·
+          10X), every other place&apos;s by 1; being Official never saves a place
+          from the Minimum Popularity.
         </p>
       </Group>
       <Group title="Reload">
@@ -433,18 +422,19 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
         <>
           <p>
             Home&apos;s Places: <strong>every</strong> Mesita place, ranked in
-            one run by <strong>Proximity × Popularity</strong> × the Selected
-            boost from the guest&apos;s device or saved pin, and drawn a page at
+            one run by <strong>Proximity × Popularity</strong> × the Official
+            factor from the guest&apos;s device or saved pin, and drawn a page at
             a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
-            Selected and Boost count within {2 * h} km (twice the half
-            distance); past it a paid or Selected place ranks like any other,
+            Official counts within {2 * h} km (twice the half distance); past
+            it an Official place ranks like any other,
             so one in another city never tops Home.
           </p>
           <p className="mt-2">
-            No location: Popularity × the Selected boost alone. Mesita places
-            only (no Google call). Chat ranks its Selected places the same way.
+            No location: Popularity × the Official factor alone. Mesita places
+            only (no Google call). Chat ranks every ready Mesita place in its
+            radius the same way.
           </p>
         </>
       }
