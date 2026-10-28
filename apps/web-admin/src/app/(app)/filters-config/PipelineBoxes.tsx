@@ -438,6 +438,11 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
+            Selected and Boost count within {2 * h} km (twice the half
+            distance); past it a paid or Selected place ranks like any other,
+            so one in another city never tops Home.
+          </p>
+          <p className="mt-2">
             No location: Popularity × the Selected boost alone. Mesita places
             only (no Google call). Chat ranks its Selected places the same way.
           </p>
