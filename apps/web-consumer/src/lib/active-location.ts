@@ -18,8 +18,6 @@ export type ActiveLocation = {
   name: string;
   lat: number;
   lng: number;
-  /** The pin's own radius (km); null = the operator's (MESITA-2703). */
-  radiusKm: number | null;
 };
 
 const STORAGE_KEY = "mesita:active-location";
@@ -100,7 +98,7 @@ export function resolveActiveLocation(
   if (!key) return null;
   const entry = saved.find((l) => savedLocationKey(l.id) === key);
   if (!entry || entry.unconfirmed) return null;
-  return { key, name: displayName(entry), lat: entry.lat, lng: entry.lng, radiusKm: entry.radiusKm };
+  return { key, name: displayName(entry), lat: entry.lat, lng: entry.lng };
 }
 
 export function useActiveLocationKey(): string | null {
@@ -111,17 +109,16 @@ export function useActiveLocation(): ActiveLocation | null {
   const key = useActiveLocationKey();
   const saved = useSavedLocations();
   const resolved = resolveActiveLocation(key, saved);
-  // One object per (key, pin, name, radius), so effects keyed on it stay
-  // quiet when nothing they read changed, and a radius edit alone refetches.
+  // One object per (key, pin, name), so effects keyed on it stay quiet when
+  // nothing they read changed.
   const name = resolved?.name ?? null;
   const lat = resolved?.lat ?? null;
   const lng = resolved?.lng ?? null;
-  const radiusKm = resolved?.radiusKm ?? null;
   return useMemo(
     () =>
       key && name !== null && lat !== null && lng !== null
-        ? { key, name, lat, lng, radiusKm }
+        ? { key, name, lat, lng }
         : null,
-    [key, name, lat, lng, radiusKm],
+    [key, name, lat, lng],
   );
 }

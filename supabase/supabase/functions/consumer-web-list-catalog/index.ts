@@ -18,11 +18,11 @@
 //
 // Request: POST { unified: true, google: true, lat, lng, familyKeys? }
 //   lat/lng   a POINT; none = no location (Popularity alone).
-//   radiusKm  ignored since MESITA-2909 (the Catalog has no radius); a saved
-//             pin's radius only lives on the pin.
+//   radiusKm  ignored since MESITA-2909 (the Catalog has no radius); pins
+//             carry none since MESITA-2914.
 //   bounds    ignored (Territory retired, MESITA-2500).
 //   google    ignored since MESITA-2872 (no Google stub comes back).
-// Response: { ok, location: { kind, operatorRadiusKm }, pageSize,
+// Response: { ok, location: { kind }, pageSize,
 //   places: [... { area }], summary }.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
@@ -144,9 +144,9 @@ Deno.serve(async (req) => {
 
   return json({
     ok: true,
-    // The operator's current-location radius (MESITA-2703): the location
-    // sheet still names it. The Catalog itself searches no radius.
-    location: { kind: location.kind, operatorRadiusKm: cfg.map.radiusKm },
+    // No radius on the wire: the Catalog has none and the location sheet
+    // names none (MESITA-2914).
+    location: { kind: location.kind },
     pageSize: pool.summary.pageSize,
     places: pool.places,
     summary: pool.summary,

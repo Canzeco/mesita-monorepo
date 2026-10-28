@@ -11,14 +11,14 @@
 //   ├──────────────────────────────┤
 //   │ Near Av. Garza Sada 2501     │  follows the pin, always
 //   │ Name [ Tecnológico        ]  │  the live suggestion until typed
-//   │ (1)(3)(5)(10)(15) km         │  the radius Home searches (MESITA-2703)
 //   │ [           Save           ] │
 //   └──────────────────────────────┘
 //
 // The rules (what the name shows, when Google is asked, what Save stores)
 // live in `lib/pin-picker-state.ts`; this file is the map and the controls.
 // The picker sits inside Home's location sheet (`LocationPicker.tsx`), whose
-// Back, backdrop and Escape return to where the guest came from.
+// Back, backdrop and Escape return to where the guest came from. A pin has
+// no radius since MESITA-2914: the Catalog ranks every place from it.
 
 import { useEffect, useReducer, useRef, useState } from "react";
 import { ChevronLeft, Loader2, MapPin, Navigation } from "lucide-react";
@@ -29,11 +29,9 @@ import {
   Marker,
   useApiLoadingStatus,
   useMap,
-  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 import { apiReverseGeocodePin } from "@/lib/api/place-search";
 import { setActiveLocation, savedLocationKey } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
 import {
   MAP_MINIMAL_STYLES,
   MAP_USER_LOCATION_PIN_COLOR,
@@ -48,7 +46,6 @@ import {
   PIN_LOOKUP_DEBOUNCE_MS,
   pinDraft,
   pinPickerReducer,
-  pinRadiusChips,
   streetLine,
   type PinPickerAction,
 } from "@/lib/pin-picker-state";
@@ -111,7 +108,6 @@ export function PinPicker({
 }) {
   const supabase = useBrowserSupabase();
   const apiKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
-  const operatorKm = useOperatorRadiusKm();
   const [state, dispatch] = useReducer(
     pinPickerReducer,
     initialPinPickerState({
@@ -120,17 +116,8 @@ export function PinPicker({
       formattedAddress: entry?.unconfirmed ? null : entry?.formattedAddress,
       customName: entry?.customName,
       nameEdited: entry?.nameEdited,
-      radiusKm: entry?.radiusKm ?? operatorKm,
     }),
   );
-  // A chip tap re-fits the map to the circle; the first fit waits for the
-  // camera the sheet asked for.
-  const [fitTick, setFitTick] = useState(0);
-  const chips = pinRadiusChips(operatorKm);
-  const pickRadius = (km: number) => {
-    dispatch({ type: "radius", km });
-    setFitTick((n) => n + 1);
-  };
   const [mapAttempt, setMapAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -241,8 +228,6 @@ export function PinPicker({
               dispatch={dispatch}
               attempt={mapAttempt}
               onRetry={() => setMapAttempt((n) => n + 1)}
-              radiusKm={state.radiusKm}
-              fitTick={fitTick}
             />
           </APIProvider>
         ) : (
@@ -285,45 +270,6 @@ export function PinPicker({
             data-pin-picker-name
           />
         </label>
-        <div className="flex flex-col gap-1.5">
-          <span id="pin-radius-label" className="text-sm font-semibold">
-            Search within
-          </span>
-          <div
-            role="radiogroup"
-            aria-labelledby="pin-radius-label"
-            className="flex w-full gap-1.5"
-            data-pin-picker-radius
-            onKeyDown={(e) => {
-              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-              e.preventDefault();
-              const at = chips.indexOf(state.radiusKm);
-              const next = chips[Math.max(0, Math.min(chips.length - 1, at + (e.key === "ArrowRight" ? 1 : -1)))];
-              if (next !== undefined && next !== state.radiusKm) pickRadius(next);
-            }}
-          >
-            {chips.map((km) => {
-              const on = km === state.radiusKm;
-              return (
-                <button
-                  key={km}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  tabIndex={on ? 0 : -1}
-                  onClick={() => pickRadius(km)}
-                  className={cn(
-                    "h-11 min-w-0 flex-1 rounded-full border text-sm font-semibold transition",
-                    on ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted",
-                  )}
-                  data-pin-picker-radius-km={km}
-                >
-                  {km} km
-                </button>
-              );
-            })}
-          </div>
-        </div>
         {saveError ? (
           <p className="text-muted-foreground text-xs" role="status" data-pin-picker-error>
             {saveError}
@@ -361,8 +307,6 @@ function PinMapLayer({
   dispatch,
   attempt,
   onRetry,
-  radiusKm,
-  fitTick,
 }: {
   camera: PickerCamera;
   moving: boolean;
@@ -370,8 +314,6 @@ function PinMapLayer({
   dispatch: (a: PinPickerAction) => void;
   attempt: number;
   onRetry: () => void;
-  radiusKm: number;
-  fitTick: number;
 }) {
   const status = useApiLoadingStatus();
   const failed = status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE;
@@ -403,7 +345,6 @@ function PinMapLayer({
         className="absolute inset-0 h-full w-full"
       >
         <PinCamera camera={camera} dispatch={dispatch} />
-        <RadiusCircle radiusKm={radiusKm} fitTick={fitTick} />
         <UserDot />
       </Map>
       <CenterPin lifted={moving} />
@@ -447,59 +388,6 @@ function PinCamera({ camera, dispatch }: { camera: PickerCamera; dispatch: (a: P
       idle.remove();
     };
   }, [map, camera, dispatch]);
-
-  return null;
-}
-
-/**
- * The search circle around the pin (MESITA-2703): it follows the map's
- * centre and keeps its km when the guest pans or zooms. A chip tap
- * (`fitTick`) animates the map to fit the circle with equal padding on
- * every side, the pin staying at the centre.
- */
-type MapsLibrary = NonNullable<ReturnType<typeof useMapsLibrary<"maps">>>;
-
-function RadiusCircle({ radiusKm, fitTick }: { radiusKm: number; fitTick: number }) {
-  const map = useMap();
-  const maps = useMapsLibrary("maps");
-  const circle = useRef<InstanceType<MapsLibrary["Circle"]> | null>(null);
-
-  useEffect(() => {
-    if (!map || !maps) return;
-    const c = new maps.Circle({
-      map,
-      center: map.getCenter() ?? undefined,
-      radius: radiusKm * 1000,
-      clickable: false,
-      strokeColor: MAP_USER_LOCATION_STROKE_COLOR,
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: MAP_USER_LOCATION_PIN_COLOR,
-      fillOpacity: 0.08,
-    });
-    circle.current = c;
-    const follow = map.addListener("center_changed", () => {
-      const at = map.getCenter();
-      if (at) c.setCenter(at);
-    });
-    return () => {
-      follow.remove();
-      c.setMap(null);
-      circle.current = null;
-    };
-    // The circle is made once per map; radius changes go through setRadius.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, maps]);
-
-  useEffect(() => {
-    circle.current?.setRadius(radiusKm * 1000);
-  }, [radiusKm]);
-
-  useEffect(() => {
-    if (!map || fitTick === 0) return;
-    const bounds = circle.current?.getBounds();
-    if (bounds) map.fitBounds(bounds, 24);
-  }, [map, fitTick]);
 
   return null;
 }

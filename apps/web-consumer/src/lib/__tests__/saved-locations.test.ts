@@ -30,7 +30,6 @@ const pin = (over: Partial<SavedLocationInput> = {}): SavedLocationInput => ({
   suggestedName: "Tecnológico",
   customName: null,
   formattedAddress: "Avenida Eugenio Garza Sada 2501",
-  radiusKm: null,
   nameEdited: false,
   needsName: false,
   ...over,
@@ -149,7 +148,6 @@ describe("entries stored before confirmed pins", () => {
       name: "San Pedro",
       lat: 1,
       lng: 2,
-      radiusKm: null,
     });
     expect(resolveActiveLocation("saved:gone", [confirmed])).toBeNull();
     expect(resolveActiveLocation(null, [confirmed])).toBeNull();
@@ -184,27 +182,12 @@ describe("a browser that refuses to keep the list", () => {
   });
 });
 
-describe("a saved pin carries its radius (MESITA-2703)", () => {
+describe("a saved pin has no radius (MESITA-2914)", () => {
   beforeEach(() => clearSavedLocationsLocal());
 
-  it("the chip's km survives a write and a read; bad values read null", () => {
-    const saved = addSavedLocation(pin({ radiusKm: 5 }));
-    expect(saved?.location.radiusKm).toBe(5);
-    const back = readStoredLocations(JSON.parse(JSON.stringify(getSavedLocations())));
-    expect(back[0].radiusKm).toBe(5);
-    for (const bad of [0.3, 80, "5", Number.NaN, undefined]) {
-      expect(readStoredLocations([{ ...back[0], radiusKm: bad }])[0].radiusKm).toBeNull();
-    }
-  });
-
-  it("editing only the radius changes the active location Home searches from", () => {
-    const saved = addSavedLocation(pin({ radiusKm: 5 }))!;
-    const key = savedLocationKey(saved.location.id);
-    const before = resolveActiveLocation(key, getSavedLocations());
-    updateSavedLocation(saved.location.id, { radiusKm: 10 });
-    const after = resolveActiveLocation(key, getSavedLocations());
-    expect(before?.radiusKm).toBe(5);
-    expect(after?.radiusKm).toBe(10);
-    expect(after?.lat).toBe(before?.lat);
+  it("a radius stored before MESITA-2914 is dropped on read", () => {
+    addSavedLocation(pin());
+    const stored = { ...JSON.parse(JSON.stringify(getSavedLocations()))[0], radiusKm: 5 };
+    expect("radiusKm" in readStoredLocations([stored])[0]).toBe(false);
   });
 });
