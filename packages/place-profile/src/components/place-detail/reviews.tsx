@@ -34,6 +34,12 @@ import { OutboundLink } from "./location-hours";
 // newest 100, render/src/reviews.ts), ties newest first. Google's own
 // "relevant" order would need a second scrape, so it is not offered.
 // The red G moved off every row to that line: it says the source once.
+//
+// ONE WHITE CARD (Pato, MESITA-2944: "white backgrounf for the reviews with
+// a small gray border beteween them"). The reviews sit in one white card on
+// the grey page, a hairline between rows, and Show more is the card's last
+// row instead of a floating pill. This reverses MESITA-2309's "no box"; the
+// privacy line stays above the card, Leave a review stays its own card.
 
 /** How many reviews the list shows before the next Show more. */
 export const REVIEW_PAGE = 5;
@@ -72,7 +78,7 @@ function LeaveGoogleReview({
     <OutboundLink
       url={url}
       onOpenLink={onOpenLink}
-      className="bg-card text-card-foreground hover:bg-card/80 mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold"
+      className="bg-card text-card-foreground hover:bg-card/80 mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold"
     >
       <GoogleLogo compact />
       Leave a review on Google
@@ -120,7 +126,7 @@ export function GoogleReviewsBox({
   }
   return (
     <section className="flex flex-col pb-4" aria-label="Reviews">
-      <div className="text-muted-foreground flex items-center gap-1.5 pt-4 text-xs">
+      <div className="text-muted-foreground flex items-center gap-1.5 pt-5 text-xs">
         <GoogleLogo tiny />
         <span className="flex-1">Names hidden for privacy</span>
         {sorted.length > 1 && (
@@ -141,22 +147,24 @@ export function GoogleReviewsBox({
           </select>
         )}
       </div>
-      <ul className="divide-border divide-y">
-        {sorted.slice(0, shown).map((review, i) => (
-          <li key={`google-${review.date}-${i}`} className="py-4">
-            <ReviewCard review={review} />
-          </li>
-        ))}
-      </ul>
-      {shown < sorted.length && (
-        <button
-          type="button"
-          onClick={() => setShown((n) => n + REVIEW_PAGE)}
-          className="bg-muted text-foreground hover:bg-muted/70 mx-auto mt-2 rounded-full px-5 py-2.5 text-sm font-semibold"
-        >
-          Show more
-        </button>
-      )}
+      <div className="bg-card divide-border mt-3 flex flex-col divide-y overflow-hidden rounded-xl">
+        <ul className="divide-border divide-y">
+          {sorted.slice(0, shown).map((review, i) => (
+            <li key={`google-${review.date}-${i}`} className="p-4">
+              <ReviewCard review={review} />
+            </li>
+          ))}
+        </ul>
+        {shown < sorted.length && (
+          <button
+            type="button"
+            onClick={() => setShown((n) => n + REVIEW_PAGE)}
+            className="text-foreground hover:bg-muted/50 min-h-12 w-full text-sm font-semibold"
+          >
+            Show more
+          </button>
+        )}
+      </div>
       <LeaveGoogleReview url={reviewUrl} onOpenLink={onOpenLink} />
     </section>
   );
