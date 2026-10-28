@@ -1,3 +1,4 @@
+// priceLevelFromGoogle + PRICE_LADDERS: twin of supabase _shared/enrich-google-basics-normalizers.ts, pinned by twins.test.ts.
 // Google's websiteUri is one link. It is not always the place's own site:
 // Instagram, Facebook, OpenTable, and the delivery apps show up there too.
 // WhatsApp stays off the write. It is an operator field.

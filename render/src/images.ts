@@ -1,3 +1,4 @@
+// ANALYSIS_PROMPT / SORTING_PROMPT: twin of supabase _shared/enrichment-config.ts DEFAULT_IMAGE_*_PROMPT, pinned by twins.test.ts.
 // The gallery the Enrichment page describes.
 // Google photos are already best-first: take that many. Instagram posts come
 // back newest first: rank that window by likes, then vision the top of each.
