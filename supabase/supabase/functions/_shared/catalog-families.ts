@@ -632,14 +632,16 @@ export function familiesForCatalogSlug(
  * section in overview above mesita tags where you call it Mesita Families"):
  * a place's family keys as the chips the box draws, label and emoji from
  * CATALOG_FAMILIES, in family (day-arc) order. Unknown keys and Undefined
- * drop; no families is an empty list (no box).
+ * drop; no families is an empty list (no box). The `profiles` view reads an
+ * empty list as `['undefined']`, so Undefined must drop here (MESITA-2954:
+ * "IF NO FAMILIES, THEN DON'T SHOW THE BOX").
  */
 export function familyChips(
   keys: unknown,
 ): Array<{ key: CatalogFamilySlug; label: string; emoji: string }> {
   if (!Array.isArray(keys)) return [];
   const wanted = new Set(keys.filter((k): k is string => typeof k === "string"));
-  return CATALOG_FAMILIES.filter((f) => wanted.has(f.slug))
+  return CATALOG_FAMILIES.filter((f) => f.slug !== "undefined" && wanted.has(f.slug))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((f) => ({ key: f.slug as CatalogFamilySlug, label: f.label, emoji: f.emoji }));
 }

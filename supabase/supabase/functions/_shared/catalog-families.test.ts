@@ -1,5 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
-import { NO_FAMILY_TYPES } from "./catalog-families.ts";
+import { familyChips, NO_FAMILY_TYPES } from "./catalog-families.ts";
 import { placeFamilies, familiesForGoogleType } from "./sourcing.ts";
 import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
@@ -69,4 +69,12 @@ Deno.test("a place's families are every family of its categories, none primary (
   // A primary type in no family: no families at all.
   assertEquals(placeFamilies("gas_station", ["gas_station", "cafe"]), []);
   assertEquals(placeFamilies(null, ["cafe"]), []);
+});
+
+Deno.test("the Families box: Undefined is no family, so no families draws no box (MESITA-2954)", () => {
+  // The profiles view reads an empty list as ['undefined'].
+  assertEquals(familyChips(["undefined"]), []);
+  assertEquals(familyChips([]), []);
+  assertEquals(familyChips(null), []);
+  assertEquals(familyChips(["undefined", "coffee"]).map((f) => f.key), ["coffee"]);
 });

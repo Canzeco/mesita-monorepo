@@ -250,6 +250,8 @@ function familyChips(
     if (typeof r.key !== "string" || typeof r.label !== "string" || !r.label) {
       return [];
     }
+    // Undefined is no family: an EF from before MESITA-2954 still sends it.
+    if (r.key === "undefined") return [];
     const emoji = typeof r.emoji === "string" ? r.emoji : "";
     return [{ key: r.key, label: r.label, emoji }];
   });
