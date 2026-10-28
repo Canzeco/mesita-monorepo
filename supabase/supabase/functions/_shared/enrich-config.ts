@@ -49,8 +49,8 @@ export const ENRICH_DESCRIPTION_TARGET_WORDS = 250;
 
 // Per-call cost estimates (USD), from each provider's PUBLISHED price list
 // (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
-// (apps/web-admin `enricher-config/cost-model.ts`). Used at run time by
-// enrich-cost.ts to record estimated USD on the run. Nothing aborts a run on
+// (apps/web-admin `enricher-config/cost-model.ts`). The run-time recorder
+// (enrich-cost.ts) went with the stage path (MESITA-2424). Nothing aborts a run on
 // dollars: the dollar abort is retired, and its atlasPerRunCostCapUsd knob went
 // with MESITA-2144. Approximate — enough to bound spend, not for billing. Keep
 // the two in sync.
