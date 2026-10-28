@@ -9,6 +9,11 @@ import { closesAtFromHours, type GooglePeriod, weeklyHoursFromPeriods } from "./
 import { type GooglePriceRange, priceLevelFromGoogle } from "./enrich-google-basics-normalizers.ts";
 import { DEFAULT_IMAGE_ANALYSIS_PROMPT, DEFAULT_IMAGE_SORTING_PROMPT } from "./enrichment-config.ts";
 import { vectorLiteral } from "./embeddings-vector.ts";
+import { capPresentation } from "./presentation-cap.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+
+/** Fixture text is [chunk, times] pairs, so a 2,300-character case stays one line. */
+const build = (parts: [string, number][]) => parts.map(([s, n]) => s.repeat(n)).join("");
 
 Deno.test("twin: weeklyHoursFromPeriods matches the Render fixture", () => {
   for (const c of fixture.hours) {
@@ -34,4 +39,12 @@ Deno.test("twin: vectorLiteral matches the Render fixture", () => {
 Deno.test("twin: default image prompts match the Render fixture", () => {
   assertEquals(DEFAULT_IMAGE_ANALYSIS_PROMPT, fixture.imagePrompts.analysis);
   assertEquals(DEFAULT_IMAGE_SORTING_PROMPT, fixture.imagePrompts.sorting);
+});
+
+Deno.test("twin: capPresentation and its ceiling match the Render fixture", () => {
+  assertEquals(ENRICH_FIELD_LIMITS.description.max, fixture.presentation.max);
+  for (const c of fixture.presentation.cases) {
+    const text = build(c.text as [string, number][]);
+    assertEquals(capPresentation(text), build(c.expected as [string, number][]), c.note);
+  }
 });

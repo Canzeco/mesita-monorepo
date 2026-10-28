@@ -215,6 +215,9 @@ verify_jwt = true
 [functions.consumer-web-update-profile]
 verify_jwt = true
 
+[functions.consumer-web-join-class]
+verify_jwt = true
+
 [functions.consumer-web-delete-account]
 verify_jwt = true
 

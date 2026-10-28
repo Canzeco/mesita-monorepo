@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { priceLevelFromGoogle } from "./channels.ts";
 import { vectorLiteral } from "./embedding.ts";
+import { capPresentation, PRESENTATION_MAX } from "./google-spine.ts";
 import { closesAtFromHours, type GooglePeriod, weeklyHoursFromPeriods } from "./hours.ts";
 import { defaultImageKnobs } from "./images.ts";
 
@@ -15,7 +16,11 @@ type Fixture = {
   priceLevel: { value: string | null; range: Parameters<typeof priceLevelFromGoogle>[1] | null; expected: number | null }[];
   vectorLiteral: { values: number[]; expected: string }[];
   imagePrompts: { analysis: string; sorting: string };
+  presentation: { max: number; cases: { note: string; text: [string, number][]; expected: [string, number][] }[] };
 };
+
+/** Fixture text is [chunk, times] pairs, so a 2,300-character case stays one line. */
+const build = (parts: [string, number][]) => parts.map(([s, n]) => s.repeat(n)).join("");
 
 const fixture = JSON.parse(
   readFileSync(new URL("../../supabase/supabase/functions/_shared/render-twins.fixture.json", import.meta.url), "utf8"),
@@ -45,4 +50,11 @@ test("twin: default image prompts match _shared/enrichment-config.ts", () => {
   const knobs = defaultImageKnobs();
   assert.equal(knobs.imageAnalysisPrompt, fixture.imagePrompts.analysis);
   assert.equal(knobs.imageSortingPrompt, fixture.imagePrompts.sorting);
+});
+
+test("twin: capPresentation and PRESENTATION_MAX match _shared/presentation-cap.ts", () => {
+  assert.equal(PRESENTATION_MAX, fixture.presentation.max);
+  for (const c of fixture.presentation.cases) {
+    assert.equal(capPresentation(build(c.text)), build(c.expected), c.note);
+  }
 });
