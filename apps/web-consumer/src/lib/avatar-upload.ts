@@ -1,6 +1,6 @@
 // Consumer profile photo upload helpers (MESITA-953).
 //
-// Flow: validate → shrink to a 512px square WebP (MESITA-2936) → Storage
+// Flow: validate → shrink to a 512px square JPEG (MESITA-2936/2938) → Storage
 // upload to consumer-avatars → return public URL → caller patches
 // consumers.avatar_url via consumer-web-update-profile.
 // Bucket + EF both reject anything outside JPG/PNG/WEBP ≤ 2 MB; that cap now
