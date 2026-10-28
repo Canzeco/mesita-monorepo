@@ -17,6 +17,9 @@
 -- `undefined`. Cocktails is nine letters, like Breakfast, so its label
 -- comes back whole (MESITA-2841 fits it).
 --
+-- Stamped 20261028010000: MESITA-2828's one_place_name took 20261028000000
+-- the same night, and two files on one version skip silently (MESITA-2588).
+--
 -- Order matters, as in MESITA-2834:
 --   1. seed_place_families() is defined FIRST (place-families-parity.test.ts
 --      reads the first `insert into public.place_families` in the newest
@@ -92,14 +95,17 @@ begin
 end;
 $function$;
 
--- The six new rails exist before any list names them.
+-- The six new rails exist before any list names them. Their sort_order sits
+-- far above the seed's +1000 shift: place_families_sort_order_unique is
+-- checked row by row inside that UPDATE, so a value in 1001..1050 collides
+-- with an old row mid-statement (the first CI replay of this file did).
 insert into public.place_families (slug, label, emoji, sort_order) values
-  ('family', 'Family', '👨‍👩‍👧', 1025),
-  ('fun', 'Fun', '🎯', 1036),
-  ('cinema', 'Cinema', '🎬', 1037),
-  ('casino', 'Casino', '🎰', 1038),
-  ('spa', 'Spa', '🧖', 1039),
-  ('tourist', 'Tourist', '🏛️', 1040)
+  ('family', 'Family', '👨‍👩‍👧', 9025),
+  ('fun', 'Fun', '🎯', 9036),
+  ('cinema', 'Cinema', '🎬', 9037),
+  ('casino', 'Casino', '🎰', 9038),
+  ('spa', 'Spa', '🧖', 9039),
+  ('tourist', 'Tourist', '🏛️', 9040)
 on conflict (slug) do nothing;
 
 -- ── catalog_membership: the full Google Table A seed, from the code map ──
