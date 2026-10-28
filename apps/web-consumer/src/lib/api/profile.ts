@@ -72,6 +72,17 @@ type ConsumerAppearAnonymousPatch = {
   appear_anonymous: boolean;
 };
 
+/** Join VIP with a partner's 12-digit code (MESITA-2984; emulated on the
+ *  server: any 12 digits are accepted for now). */
+export async function apiJoinClass(
+  client: SupabaseClient,
+  code: string,
+): Promise<void> {
+  await invokeEF<{ guest_class: "vip" }>(client, "consumer-web-join-class", {
+    code,
+  });
+}
+
 export async function apiUpdateConsumerProfile(
   client: SupabaseClient,
   input:
