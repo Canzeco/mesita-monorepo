@@ -1,13 +1,20 @@
 // Consumer profile photo upload helpers (MESITA-953).
 //
-// Flow: validate → Storage upload to consumer-avatars → return public URL →
-// caller patches consumers.avatar_url via consumer-web-update-profile.
-// Bucket + EF both reject anything outside JPG/PNG/WEBP ≤ 2 MB.
+// Flow: validate → shrink to a 512px square WebP (MESITA-2936) → Storage
+// upload to consumer-avatars → return public URL → caller patches
+// consumers.avatar_url via consumer-web-update-profile.
+// Bucket + EF both reject anything outside JPG/PNG/WEBP ≤ 2 MB; that cap now
+// applies to the shrunk file, so the picked photo may be larger.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { resizeImageFile } from "@/lib/image-resize";
+
 const AVATAR_BUCKET = "consumer-avatars";
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+/** What the picker accepts before shrinking; big enough for any phone photo. */
+const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
+const AVATAR_EDGE = 512;
 
 const ALLOWED_AVATAR_MIME_TYPES = new Set([
   "image/jpeg",
@@ -42,8 +49,8 @@ export function validateAvatarFile(file: File): string | null {
   if (!ALLOWED_AVATAR_MIME_TYPES.has(file.type)) {
     return "Unsupported file type. Use JPG, PNG, or WEBP.";
   }
-  if (file.size > MAX_AVATAR_BYTES) {
-    return `Photo is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_AVATAR_BYTES)}.`;
+  if (file.size > MAX_SOURCE_BYTES) {
+    return `Photo is too large (${formatBytes(file.size)}). Max ${formatBytes(MAX_SOURCE_BYTES)}.`;
   }
   if (file.size <= 0) {
     return "That file looks empty. Pick another photo.";
@@ -60,13 +67,23 @@ export async function uploadConsumerAvatar(
   const validationError = validateAvatarFile(file);
   if (validationError) throw new Error(validationError);
 
-  const ext = extForMime(file.type) ?? "jpg";
+  const shrunk = await resizeImageFile(file, {
+    maxEdge: AVATAR_EDGE,
+    square: true,
+  });
+  if (shrunk.size > MAX_AVATAR_BYTES) {
+    throw new Error(
+      `Photo is too large (${formatBytes(shrunk.size)}). Max ${formatBytes(MAX_AVATAR_BYTES)}.`,
+    );
+  }
+
+  const ext = extForMime(shrunk.type) ?? "jpg";
   const path = `${userId}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
   const { error: uploadError } = await client.storage
     .from(AVATAR_BUCKET)
-    .upload(path, file, {
+    .upload(path, shrunk, {
       upsert: false,
-      contentType: file.type,
+      contentType: shrunk.type,
       cacheControl: "31536000",
     });
   if (uploadError) {
