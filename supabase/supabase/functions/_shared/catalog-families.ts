@@ -163,51 +163,6 @@ export function isCatalogFamily(value: string): value is FamilyKey {
   return FAMILY_SET.has(value);
 }
 
-/** Each rail's lead Google type: first in its Nearby battery, so the
- *  every-family battery (round-robin, capped at 50) always carries it. Thirty-seven
- *  families, thirty-seven distinct leads, thirteen slots to spare inside Google's cap.
- *  The full battery is derived from the Table A map (`GOOGLE_SEARCH_TYPES`,
- *  google-type-super.ts). */
-export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
-  coffee: "cafe",
-  breakfast: "breakfast_restaurant",
-  bakery: "bakery",
-  sweet: "dessert_shop",
-  healthy: "salad_shop",
-  quick_bite: "fast_food_restaurant",
-  tacos: "taco_restaurant",
-  burgers: "hamburger_restaurant",
-  pizza: "pizza_restaurant",
-  chicken: "chicken_wings_restaurant",
-  sushi: "sushi_restaurant",
-  mexican: "mexican_restaurant",
-  steak: "steak_house",
-  seafood: "seafood_restaurant",
-  italian: "italian_restaurant",
-  japanese: "japanese_restaurant",
-  chinese: "chinese_restaurant",
-  asian: "asian_restaurant",
-  indian: "indian_restaurant",
-  arabic: "middle_eastern_restaurant",
-  european: "european_restaurant",
-  american: "american_restaurant",
-  dinner: "restaurant",
-  fancy: "fine_dining_restaurant",
-  family: "family_restaurant",
-  drinks: "bar",
-  sports: "sports_bar",
-  hookah: "hookah_bar",
-  night_out: "dance_hall",
-  nightclub: "night_club",
-  music: "live_music_venue",
-  karaoke: "karaoke",
-  fun: "bowling_alley",
-  cinema: "movie_theater",
-  casino: "casino",
-  spa: "spa",
-  tourist: "tourist_attraction",
-};
-
 /**
  * Not social, still (MESITA-2468, kept by MESITA-2888): the sport, fitness
  * and beauty places a guest goes to alone. Every one sits in no family;

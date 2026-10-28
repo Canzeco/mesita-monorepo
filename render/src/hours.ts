@@ -1,3 +1,4 @@
+// Twin of supabase _shared/enrich-google-hours.ts, pinned by twins.test.ts.
 // Google's opening periods, in the shape the profile door stores.
 
 export type GooglePeriod = {

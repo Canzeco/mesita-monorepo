@@ -1,3 +1,4 @@
+// priceLevelFromGoogle + PRICE_LADDERS: twin of render/src/channels.ts, pinned by render-twins.test.ts.
 type GoogleAddressComponent = { types?: string[]; longText?: string };
 
 export function findAddressComponent(

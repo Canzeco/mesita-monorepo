@@ -137,11 +137,11 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "_shared/config-section-reservations.ts",
   "_shared/delete-history-free.ts", // head-only count by consumer_id: no place_id to remap
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation)
-  "consumer-web-cancel-reservation/index.ts",
-  "consumer-web-confirm-reservation/index.ts",
+  // The guest's own ticket for the app's cancel / update / confirm doors,
+  // error checked; columns name place_id directly (MESITA-2981).
+  "_shared/reservation-owned.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-list-reservations/index.ts",
-  "consumer-web-update-reservation/index.ts",
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
@@ -165,16 +165,12 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
   "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
+  "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
-  "consumer-web-confirm-reservation/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
-  "eleven-a2-confirm-reservation/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
-  "eleven-a4-find-reservation/index.ts",
-  "eleven-a4-verify-caller/index.ts",
-  "eleven-agent-get-reservation/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
@@ -350,12 +346,8 @@ const SWALLOWED_TODAY = [
   "_shared/place-slug.ts",
   "_shared/reservation-places.ts",
   "_shared/save-place.ts",
-  "consumer-web-confirm-reservation/index.ts",
-  "eleven-a2-confirm-reservation/index.ts",
   "eleven-a3-verify-caller/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
-  "eleven-a4-find-reservation/index.ts",
-  "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",

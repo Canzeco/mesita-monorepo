@@ -31,7 +31,8 @@ import {
   type ReservationPatch,
   writeReservation,
 } from "../_shared/reservation-doc.ts";
-import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { loadReservationsConfig } from "../_shared/reservations-config.ts";
+import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
 
 type Body = {
@@ -88,15 +89,23 @@ serveJson("consumer-web-update-reservation", async (req) => {
   }
 
   const admin = adminClient(envRes.env);
-  const { data: row, error: readErr } = await admin
-    .from("reservation_tickets")
-    .select(
-      "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
-    )
-    .eq("id", id)
-    .maybeSingle();
-  if (readErr) return json({ ok: false, error: readErr.message }, 500);
-  if (!row || row.consumer_id !== authRes.user.id) {
+  const { row, error: readErr } = await readOwnedTicket<{
+    id: string;
+    state: string;
+    reserved_at: string;
+    consumer_id: string;
+    reference_code: string | null;
+    reschedules_today: number | null;
+    reschedules_day: string | null;
+    modification_of: string | null;
+  }>(
+    admin,
+    id,
+    authRes.user.id,
+    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
+  );
+  if (readErr) return json({ ok: false, error: readErr }, 500);
+  if (!row) {
     return json({ ok: false, error: "Reservation not found" }, 404);
   }
   if (row.state === "cancelled") {
@@ -109,12 +118,7 @@ serveJson("consumer-web-update-reservation", async (req) => {
   // ── Reschedule cap (abuse guard, eng-review 2026-08-04) ───────────────────
   // Every reschedule resets call_attempts — i.e. buys fresh place calls — so
   // it is rate-limited per ticket per day. Knob lives in reservations_config.
-  const { data: settings } = await admin
-    .from("app_config")
-    .select("reservations_config")
-    .eq("id", 1)
-    .maybeSingle();
-  const limits = coerceReservationsCallConfig(settings?.reservations_config).limits;
+  const limits = (await loadReservationsConfig(admin)).limits;
   const todayStr = new Date().toISOString().slice(0, 10);
   const sameDay = row.reschedules_day === todayStr;
   const usedToday = sameDay && typeof row.reschedules_today === "number"

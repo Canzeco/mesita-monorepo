@@ -26,6 +26,7 @@ import {
   runtimeImports,
 } from "./pipeline-audit.ts";
 import { GOOGLE_TYPE_SUPER } from "../supabase/supabase/functions/_shared/google-type-super.ts";
+import { familiesForGoogleType } from "../supabase/supabase/functions/_shared/sourcing.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 const NOW = new Date("2026-10-19T15:00:00Z");
@@ -98,8 +99,9 @@ function world() {
     failGithub: {} as Record<string, Got>,
     failFunctions: null as Got | null,
     rulesetBody: null as unknown,
-    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: one row per Google type, some enabled.
-    membership: Object.keys(GOOGLE_TYPE_SUPER).sort().map((slug, i) => ({ slug, enabled: i % 2 === 0 })) as { slug: string; enabled: boolean }[],
+    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: one row per Google type,
+    // enabled exactly where the category gate admits it (MESITA-2974).
+    membership: Object.keys(GOOGLE_TYPE_SUPER).sort().map((slug) => ({ slug, enabled: familiesForGoogleType(slug).length > 0 })) as { slug: string; enabled: boolean }[],
     failSql: null as Got | null,
   };
 }
@@ -228,6 +230,9 @@ const CASES: [string, (w: World) => void, string][] = [
   ["an empty catalog_membership in the cloud", (w) => (w.membership = []), "PA-MEMBERSHIP-DRIFT:empty"],
   ["a catalog_membership with nothing enabled", (w) => w.membership.forEach((r) => (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:none-enabled"],
   ["a Google type missing from the cloud", (w) => (w.membership = w.membership.filter((r) => r.slug !== "restaurant")), "PA-MEMBERSHIP-DRIFT:count"],
+  // MESITA-2962/2974: Create reads the switch, Search reads the gate; apart, Search shows what Create refuses.
+  ["a Google type Atlas has off that the gate admits", (w) => w.membership.forEach((r) => r.slug === "bar" && (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:gate"],
+  ["a Google type Atlas has on that the gate refuses", (w) => w.membership.forEach((r) => r.slug === "beauty_salon" && (r.enabled = true)), "PA-MEMBERSHIP-DRIFT:gate"],
 ];
 
 for (const [name, mutate, code] of CASES) {
