@@ -8,7 +8,6 @@ import {
   DEFAULT_GENERAL,
   DEFAULT_MAP,
   DEFAULT_NAME,
-  SUPER_FIELDS,
 } from "./catalog";
 
 // `app_config.discovery_config` as stored on 2026-10-18 (trimmed): the
@@ -162,19 +161,15 @@ describe("coerceConfig", () => {
     expect(cfg).not.toHaveProperty("social");
   });
 
-  it("the category param is thirty-seven families", () => {
+  it("coerceConfig drops the retired Search-bar family switches (MESITA-2767)", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(SUPER_FIELDS.length).toBe(37);
-    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(37);
-    for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
-    const on = SUPER_FIELDS.filter((f) => DEFAULT_NAME.deep.supers[f.key]).map((f) => f.key);
-    expect(new Set(on)).toEqual(
-      new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
-    );
-    expect(
-      new Set(SUPER_FIELDS.filter((f) => on.includes(f.key)).map((f) => f.battery[0])),
-    ).toEqual(new Set(["restaurant", "bar", "dance_hall", "cafe", "dessert_shop"]));
+    const name = coerceConfig({
+      name: { fast: { count: 4, supers: { coffee: false } }, deep: { supers: { pizza: true } } },
+    }).name;
+    expect(name.fast).not.toHaveProperty("supers");
+    expect(name.deep).not.toHaveProperty("supers");
   });
+
 
   it("map.googlePull is retired and map.radiusKm is the one Nearby radius (MESITA-2298)", () => {
     // One Nearby Search (New) call per request, 20 places, never widened: the
@@ -216,7 +211,6 @@ describe("coerceConfig", () => {
     ).toEqual({
       autoCount: 5,
       googleCount: 1,
-      supers: DEFAULT_NAME.deep.supers,
     });
     expect(
       coerceConfig({ name: { admin: { autoCount: 2, textCount: 7, mesitaCount: 5, emptyQuery: false } } })

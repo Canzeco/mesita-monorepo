@@ -10,8 +10,7 @@
 //              (pipeline-signals.ts). The Catalog box edits the first.
 //   general    Discovery-wide. requireActive — the post-Google wipe
 //              (discovery-general-gate.ts). No reviews floor: the
-//              Popularity floor is the quality cut (MESITA-2721). The category param is NOT
-//              here: it is `supers` on each Google-calling engine (MESITA-1695).
+//              Popularity floor is the quality cut (MESITA-2721).
 //   chat       The Chat Agent's system prompt. Blank → memo_config, then the
 //              in-code persona (memo-prompt.ts).
 //
@@ -52,6 +51,11 @@
 // and `params.proximity.radiusDivisor` (the Distance penalty: the Map has no
 // Proximity, and the Catalog's is the log curve with `params.proximity.halfKm`,
 // the half distance in km). Each is dropped on the next save.
+//
+// RETIRED AS ALWAYS ON (MESITA-2767): `name.fast.supers` and
+// `name.deep.supers`, the Search bar's family switches. Nothing read them
+// (every family rode every call), so an off switch lied to the operator.
+// Migration 20261028233000 strips them from the stored row.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
@@ -218,7 +222,6 @@ export type NameFastConfig = {
   /** Redundant with count on Fast — one source. Locked together. */
   googleCount: number;
   count: number;
-  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameDeepConfig = {
@@ -226,7 +229,6 @@ export type NameDeepConfig = {
   autoCount: number;
   /** Google Text Search cap. Independent query. */
   googleCount: number;
-  supers: Record<SuperParamKey, boolean>;
 };
 
 export type NameConfig = {
@@ -310,56 +312,6 @@ export const MAP_RELOAD_MIN_VIEWPORT_PCT_MIN = 0;
 export const MAP_RELOAD_MIN_VIEWPORT_PCT_MAX = 50;
 export const MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT = 15;
 
-/**
- * Coffee, Dinner, Dessert, Bar and Night default on, every other
- * family off (MESITA-2749; the thirty of MESITA-2834 joined off). The
- * switches gate no call today: `anySuperOn` returns true and
- * `enabledMapSupers` returns every key, so every family's battery rides the
- * all-families Nearby call.
- *
- * NOT for cost: one request carries the whole battery array (MESITA-1685).
- * Off by default because it keeps the returned pool as it was.
- */
-export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
-  coffee: true,
-  breakfast: false,
-  bakery: false,
-  sweet: true,
-  healthy: false,
-  quick_bite: false,
-  tacos: false,
-  burgers: false,
-  pizza: false,
-  chicken: false,
-  sushi: false,
-  mexican: false,
-  steak: false,
-  seafood: false,
-  italian: false,
-  japanese: false,
-  chinese: false,
-  asian: false,
-  indian: false,
-  arabic: false,
-  european: false,
-  american: false,
-  dinner: true,
-  fancy: false,
-  family: false,
-  drinks: true,
-  sports: false,
-  hookah: false,
-  night_out: true,
-  nightclub: false,
-  music: false,
-  karaoke: false,
-  fun: false,
-  cinema: false,
-  casino: false,
-  spa: false,
-  tourist: false,
-};
-
 /** How many pins is the GUEST's question (How many, on the Filters sheet),
  *  never a knob here — the operator only decides IF Google may be called. */
 export const DEFAULT_MAP: MapConfig = {
@@ -377,13 +329,11 @@ export const DEFAULT_MAP: MapConfig = {
 export const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
-  supers: DEFAULT_MAP_SUPERS,
 };
 
 export const DEFAULT_NAME_DEEP: NameDeepConfig = {
   autoCount: NAME_GOOGLE_COUNT_DEFAULT,
   googleCount: NAME_GOOGLE_COUNT_DEFAULT,
-  supers: DEFAULT_MAP_SUPERS,
 };
 
 /** Word's idle bounds (seconds). */
@@ -457,24 +407,6 @@ export function normalizeChatPrompt(raw: unknown): string {
   return raw.slice(0, CHAT_PROMPT_MAX);
 }
 
-/**
- * The seven Super params. A blob with no boolean Super key reads the defaults;
- * otherwise a missing or non-boolean key falls back to its own default.
- */
-export function normalizeSuperParams(
-  raw: unknown,
-): Record<SuperParamKey, boolean> {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  if (!SUPER_PARAM_KEYS.some((key) => typeof r[key] === "boolean")) {
-    return { ...DEFAULT_MAP_SUPERS };
-  }
-  const out = {} as Record<SuperParamKey, boolean>;
-  for (const key of SUPER_PARAM_KEYS) {
-    out[key] = bool(r[key], DEFAULT_MAP_SUPERS[key]);
-  }
-  return out;
-}
-
 export function normalizeGeneralConfig(raw: unknown): GeneralConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -500,7 +432,6 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
         ),
       ),
       count: fastCount,
-      supers: normalizeSuperParams(fast.supers),
     },
     deep: {
       autoCount: Math.round(
@@ -519,7 +450,6 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
           NAME_LANE_COUNT_MAX,
         ),
       ),
-      supers: normalizeSuperParams(deep.supers),
     },
     locations: bool(r.locations, DEFAULT_NAME.locations),
     idleSec: Math.round(
