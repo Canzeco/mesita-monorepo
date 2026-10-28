@@ -1,5 +1,6 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { GUEST_CALL_MAX_ATTEMPTS, nextGuestCallAt } from "./reservation-callback.ts";
+import { GUEST_CALL_MAX_ATTEMPTS, nextGuestCallAt, spentLadderPatch } from "./reservation-callback.ts";
+import { validateReservationPatch } from "./reservation-doc.ts";
 
 // CDMX longitude → America/Mexico_City (UTC−6, no DST since 2022).
 const LNG = -99.13;
@@ -53,4 +54,19 @@ Deno.test("no slot on file: ladder still paces, quiet hours still hold", () => {
   assertEquals(r?.at.getTime(), cdmx(14).getTime() + 10 * 60_000);
   const held = nextGuestCallAt(1, LNG, null, cdmx(23));
   assert(held !== null && held.reason.includes("held"));
+});
+
+// MESITA-2991: the spent-ladder write must pass the runtime validator, or
+// guardedRecord throws, the runner stops quietly and the ticket stays
+// `ringing` forever. Reservation state = data-loss class.
+Deno.test("spent ladder: terminal patch is `failed` and passes validateReservationPatch", () => {
+  const notes = ["guest didn't answer", "guest call outcome unknown", "guest call failed: 400"];
+  for (const note of notes) {
+    const patch = spentLadderPatch(GUEST_CALL_MAX_ATTEMPTS, "confirmed", note);
+    assertEquals(patch.callback_state, "failed");
+    assertEquals(patch.callback_next_attempt_at, null);
+    assert(patch.last_call_state.includes(note));
+    const v = validateReservationPatch(patch);
+    assert(v.ok, `validator refused the spent-ladder patch: ${JSON.stringify(v)}`);
+  }
 });
