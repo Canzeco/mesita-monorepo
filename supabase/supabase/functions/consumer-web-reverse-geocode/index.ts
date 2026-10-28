@@ -5,7 +5,7 @@
 // `{ lat, lng }` → `{ ok: true, name, areas, suggestedName, formattedAddress }`
 // (the most local of neighbourhood · sublocality · city, and the sheet's
 // "Around you" rows, MESITA-2471: each area with its rectangle, from the same
-// answer) or `{ ok: false, code }`.
+// answer) or `{ ok: false, code, error? }` (every non-2xx carries `error`).
 //
 // A PIN (MESITA-2500): `{ lat, lng, precision: "pin" }` names a saved
 // location's pin while the guest places it on a map. Snapped to ~11 m, one
@@ -112,7 +112,7 @@ serveJson("consumer-web-reverse-geocode", async (req) => {
       `[consumer-web-reverse-geocode] google (precision ${precision}):`,
       err instanceof Error ? err.message : err,
     );
-    return json({ ok: false, code: "google_unreachable" }, 502);
+    return json({ ok: false, code: "google_unreachable", error: "Google could not be reached. Try again." }, 502);
   }
 
   const status = geocodeStatus(payload);
@@ -123,7 +123,11 @@ serveJson("consumer-web-reverse-geocode", async (req) => {
       `[consumer-web-reverse-geocode] google status ${status} (precision ${precision})`,
       typeof message === "string" ? message : "",
     );
-    return json({ ok: false, code: `google_${status.toLowerCase()}` }, 502);
+    return json({
+      ok: false,
+      code: `google_${status.toLowerCase()}`,
+      error: `Google could not name this point (${status}).`,
+    }, 502);
   }
 
   const answer: Answer = {

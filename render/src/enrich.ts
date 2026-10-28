@@ -88,10 +88,12 @@ export function isPermanentlyClosed(details: { businessStatus?: string }): boole
 // A finished place is the Google spine, the Scout's read of the web, the
 // official links Firecrawl sourced and the Resolver kept, the gallery the
 // Enrichment page asked for, the 100 newest Google reviews from Apify, and a
-// description of at most 500 characters. The description is Google's own
-// summary when it has one, otherwise one written from those facts. The write
-// then infers the families and tags from the saved row
-// on every run, and writes the synthesized presentation. A listing Google calls permanently
+// description: Google's own summary when it has one, otherwise one written
+// from those facts. It is never a column: it gates the run and feeds the
+// summary vector. The stored Presentation is the write's: it infers the
+// families and tags from the saved row on every run and synthesizes the
+// Presentation, falling back to Google's summary (pitch/story, capped at the
+// same 2000 as _shared/presentation-cap.ts). A listing Google calls permanently
 // closed stops right after Details, before any paid step. Anything else short
 // of a finished profile throws before the write. Places itself never supplies
 // the review list: it returns five.

@@ -67,27 +67,35 @@ test("profileFromGoogle does not call the description model", () => {
   assert.equal(fn.includes("formattedAddress.split"), false);
 });
 
-test("a Google summary longer than 500 characters is cut inside it, never mid-word (MESITA-2641)", () => {
+test("a Google summary longer than 2000 characters is cut inside it, never mid-word (MESITA-2641, MESITA-2989)", () => {
   const got = profileFromGoogle({
     ...PLACE,
-    editorialSummary: { text: "A".repeat(800) },
-    generativeSummary: { overview: { text: "B".repeat(900) } },
+    editorialSummary: { text: "A".repeat(2400) },
+    generativeSummary: { overview: { text: "B".repeat(2500) } },
   }, "ChIJ-test");
   assert.equal(got.ok, true);
   if (!got.ok) return;
-  // No sentence and no space to cut at: 499 characters and an ellipsis.
-  assert.equal(got.description?.length, 500);
-  assert.equal(got.description, `${"A".repeat(499)}…`);
-  assert.equal(got.patch.pitch, `${"A".repeat(499)}…`);
-  assert.equal(got.patch.story, `${"B".repeat(499)}…`);
+  // No sentence and no space to cut at: 1999 characters and an ellipsis.
+  assert.equal(got.description?.length, 2000);
+  assert.equal(got.description, `${"A".repeat(1999)}…`);
+  assert.equal(got.patch.pitch, `${"A".repeat(1999)}…`);
+  assert.equal(got.patch.story, `${"B".repeat(1999)}…`);
 });
 
-test("a long summary is cut at its last full sentence (MESITA-2641)", () => {
-  const text = `${"A fine taco place. ".repeat(26)}Ideal for meals with family or friends.`;
+test("a 600-character Google summary is kept whole: it is the write's fallback Presentation (MESITA-2989)", () => {
+  const text = "Una taquería de barrio. ".repeat(25).trim();
   const got = profileFromGoogle({ ...PLACE, editorialSummary: { text } }, "ChIJ-test");
   assert.equal(got.ok, true);
   if (!got.ok) return;
-  assert.ok((got.description ?? "").length <= 500);
+  assert.equal(got.patch.pitch, text);
+});
+
+test("a long summary is cut at its last full sentence (MESITA-2641)", () => {
+  const text = `${"A fine taco place. ".repeat(110)}Ideal for meals with family or friends.`;
+  const got = profileFromGoogle({ ...PLACE, editorialSummary: { text } }, "ChIJ-test");
+  assert.equal(got.ok, true);
+  if (!got.ok) return;
+  assert.ok((got.description ?? "").length <= 2000);
   assert.ok((got.description ?? "").endsWith("A fine taco place."));
 });
 
