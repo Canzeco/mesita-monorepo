@@ -181,7 +181,7 @@ const RAIL_PLACE = {
 } as Place;
 
 describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", () => {
-  it("calls suggest-places once, Mesita names only, after the EF's idle wait", () => {
+  it("calls suggest-places once, Google's names only, after the EF's idle wait", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("DEFAULT_IDLE_MS");
     expect(src).toContain("idleMsRef.current");

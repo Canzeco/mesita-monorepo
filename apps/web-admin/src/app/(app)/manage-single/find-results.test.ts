@@ -53,10 +53,8 @@ function text(places: PlaceLite[], over: Partial<TextSearchResult> = {}) {
 }
 
 function inputs(over: Partial<FindInputs> = {}): FindInputs {
-  const catalogue = [hit({})];
   return {
-    catalogue: { status: "ok", data: catalogue },
-    catalog: catalogue,
+    catalog: [hit({})],
     autocomplete: { status: "ok", data: [suggest({ placeId: B, mainText: "Brunch Dos" }), suggest({ mesitaId: "mesita-a" })] },
     text: text([lite({}), lite({ id: B, displayName: "Brunch Dos", formattedAddress: "Parque 455", rating: 4.7, userRatingCount: 266 }), lite({ id: C, displayName: "Casa C", existsInMesita: true })]),
     ...over,
@@ -64,19 +62,17 @@ function inputs(over: Partial<FindInputs> = {}): FindInputs {
 }
 
 describe("mergeFindResults", () => {
-  it("draws one row per place across all three sources, ranked per source", () => {
+  it("draws one row per place across both Google sources, ranked per source", () => {
     const { rows } = mergeFindResults(inputs());
     expect(rows.map((r) => r.key)).toEqual([A, B, C]);
-    expect(rows[0].ranks).toEqual({ catalogue: 1, autocomplete: 2, text: 1 });
-    expect(rows[1].ranks).toEqual({ catalogue: null, autocomplete: 1, text: 2 });
-    expect(rows[2].ranks).toEqual({ catalogue: null, autocomplete: null, text: 3 });
+    expect(rows[0].ranks).toEqual({ autocomplete: 2, text: 1 });
+    expect(rows[1].ranks).toEqual({ autocomplete: 1, text: 2 });
+    expect(rows[2].ranks).toEqual({ autocomplete: null, text: 3 });
   });
 
-  it("orders by agreement, then Text Search rank, Autocomplete, Catalogue", () => {
-    // One-source rows: Text Search #3 beats Autocomplete #1, which beats
-    // Catalogue #1.
+  it("orders by agreement, then Text Search rank, then Autocomplete", () => {
+    // One-source rows: Text Search #3 beats Autocomplete #1.
     const r = mergeFindResults({
-      catalogue: { status: "ok", data: [hit({ id: "m-cat", google_place_id: "ChIJcat000000000000000000" })] },
       catalog: [],
       autocomplete: { status: "ok", data: [suggest({ placeId: "ChIJauto00000000000000000" })] },
       text: text([lite({ id: "ChIJt1" }), lite({ id: "ChIJt2" }), lite({ id: "ChIJtext00000000000000000" })]),
@@ -86,7 +82,6 @@ describe("mergeFindResults", () => {
       "ChIJt2",
       "ChIJtext00000000000000000",
       "ChIJauto00000000000000000",
-      "ChIJcat000000000000000000",
     ]);
   });
 
@@ -108,9 +103,9 @@ describe("mergeFindResults", () => {
     expect(rows[1]).toMatchObject({ address: "Parque 455", rating: 4.7, reviews: 266 });
   });
 
-  it("finds a held place's id in the whole catalogue when no Mesita source named it", () => {
+  it("finds a held place's id in the whole catalogue when no Google source named it", () => {
     const catalog = [hit({ id: "mesita-b", name: "Dos Amores", google_place_id: B })];
-    const { rows } = mergeFindResults(inputs({ catalogue: { status: "ok", data: [] }, catalog }));
+    const { rows } = mergeFindResults(inputs({ catalog }));
     const b = rows.find((r) => r.key === B);
     expect(b).toMatchObject({ held: true, mesitaId: "mesita-b", name: "Dos Amores" });
     expect(b?.placeHit).toMatchObject({ id: "mesita-b" });
@@ -123,14 +118,13 @@ describe("mergeFindResults", () => {
 
   it("keys a Mesita place with no Google Place ID by its Mesita id and merges a hit naming that id", () => {
     const r = mergeFindResults({
-      catalogue: { status: "ok", data: [hit({ id: "m-x", google_place_id: null })] },
-      catalog: [],
+      catalog: [hit({ id: "m-x", google_place_id: null })],
       autocomplete: { status: "ok", data: [suggest({ placeId: "", mesitaId: "m-x", mainText: "X" })] },
       text: text([]),
     });
     expect(r.rows).toHaveLength(1);
     expect(r.rows[0]).toMatchObject({ key: "mesita:m-x", googleId: null, held: true });
-    expect(r.rows[0].ranks).toMatchObject({ catalogue: 1, autocomplete: 1 });
+    expect(r.rows[0].ranks).toEqual({ autocomplete: 1, text: null });
   });
 
   it("marks a failed source and says why; the others still draw", () => {
@@ -162,7 +156,7 @@ describe("mergeFindResults", () => {
       key: `mesita:m-b`,
       held: true,
       mesitaId: "m-b",
-      ranks: { catalogue: null, autocomplete: null, text: null },
+      ranks: { autocomplete: null, text: null },
     });
     expect(r.notes.map((n) => n.text)).toContain("Mesita only. Google was not asked.");
   });
@@ -191,7 +185,6 @@ describe("mergeFindResults", () => {
 
   it("is empty when every source is empty", () => {
     const r = mergeFindResults({
-      catalogue: { status: "ok", data: [] },
       catalog: [],
       autocomplete: { status: "ok", data: [] },
       text: text([]),

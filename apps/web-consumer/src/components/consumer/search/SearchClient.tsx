@@ -816,17 +816,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
     // snapshot; either way the EF already shipped coordinates on the row.
-    const own =
-      (prediction.mesitaId
-        ? nearby.find((p) => p.id === prediction.mesitaId)
-        : null) ??
-      nearby.find(
-        (p) =>
-          (p.google_place_id ??
-            (p.googleOnly || p.from_google ? p.slug : null)) ===
-          prediction.placeId,
-      ) ??
-      matchPredictionToPlace(prediction, nearby);
+    const own = matchPredictionToPlace(prediction, nearby);
     const anchorRow =
       own && typeof own.lat === "number" && typeof own.lng === "number"
         ? own
