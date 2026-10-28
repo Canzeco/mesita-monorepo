@@ -8,6 +8,7 @@ import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
 import { ProfileStatsCard } from "./ProfileStatsCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
+import { ReportsCard } from "./ReportsCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -21,6 +22,9 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         There is no step ladder.
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
+//   Reports             the place's guest reports from the three dots,
+//                         newest first: reason, note, when, guest
+//                         (MESITA-2686). Read-only.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
 //   SERP / Vectors / Metadata (UID & audit)
@@ -39,6 +43,8 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       <StateCard place={place} />
       <ProfileStatsCard place={place} />
       <ReviewsStateCard place={place} />
+      {/* key remounts the list when the operator switches places. */}
+      <ReportsCard key={`reports-${place.id}`} place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
       <SerpSummaryCard place={place} />

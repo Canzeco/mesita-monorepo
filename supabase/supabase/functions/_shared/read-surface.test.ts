@@ -252,6 +252,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // account check after a Class or Plan change (MESITA-2553). Writes go through the admin_set_guest_standing RPC.
   "admin-web-list-guests/index.ts",
   "admin-web-set-guest-standing/index.ts",
+  // Single Place › Admin › Reports (MESITA-2686): first name and member
+  // number of each reporting guest, error checked. Read-only.
+  "admin-web-list-place-reports/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
