@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Crown, Search, UsersRound } from "lucide-react";
+import { Crown, Handshake, Plus, Search, UsersRound } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   Button,
@@ -12,11 +12,13 @@ import {
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import {
   listGuests,
+  saveVipPartner,
   setGuestStanding,
   type GuestClass,
   type GuestPlan,
   type GuestRow,
   type StandingPatch,
+  type VipPartner,
 } from "./actions";
 
 // Manage › Guests (MESITA-2550, MESITA-2553). Two independent facts per
@@ -29,6 +31,12 @@ import {
 // A tap saves at once. A refusal rolls the row back; a lost connection
 // re-reads the list, because the save may have landed. The note on where a
 // VIP came from is for operators only and saves when the field loses focus.
+//
+// A VIP also records the partner it came through and, optionally, its last
+// day (MESITA-2556). Both are records, not rules: no rate rides on them, and
+// nothing demotes a VIP when the day passes — an operator flips the class.
+// The Partners card adds and renames partners; one with a Google Place ID is
+// a Mesita place that partners with us.
 
 const NOTE_MAX = 280;
 const NOTE_COUNT_FROM = 240;
@@ -41,6 +49,22 @@ const PLAN_OPTIONS: { value: GuestPlan; label: string }[] = [
   { value: "free", label: "Free" },
   { value: "premium", label: "Pro" },
 ];
+
+const fmtDay = (iso: string) =>
+  new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+
+/** "Last day Dec 31, 2026", or "Ended Oct 1, 2026 · still VIP until you change the class". */
+export function vipUntilLine(g: GuestRow, today: string): string | null {
+  if (g.guestClass !== "vip" || !g.vipUntil) return null;
+  return g.vipUntil < today
+    ? `Ended ${fmtDay(g.vipUntil)} · still VIP until you change the class`
+    : `Last day ${fmtDay(g.vipUntil)}`;
+}
 
 /** "VIP since Oct 21, 2026 · by pato@…": no line until an operator set it. */
 export function vipLine(g: GuestRow): string | null {
@@ -60,11 +84,14 @@ export function vipLine(g: GuestRow): string | null {
 
 export function GuestsClient({
   initialGuests,
+  initialPartners = [],
   loadError,
 }: {
   initialGuests: GuestRow[];
+  initialPartners?: VipPartner[];
   loadError: string | null;
 }) {
+  const [partners, setPartners] = useState<VipPartner[]>(initialPartners);
   return (
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
@@ -72,7 +99,13 @@ export function GuestsClient({
         title="Guests"
         description="Set each guest's Class and Plan. They are separate: VIP comes from a partner and is never sold; the plan is Free or Pro. Both show on the guest's card in the app."
       />
-      <GuestsCard initialGuests={initialGuests} loadError={loadError} />
+      <GuestsCard
+        initialGuests={initialGuests}
+        loadError={loadError}
+        partners={partners}
+        onPartners={setPartners}
+      />
+      <PartnersCard partners={partners} onPartners={setPartners} />
     </PageContainer>
   );
 }
@@ -80,9 +113,13 @@ export function GuestsClient({
 function GuestsCard({
   initialGuests,
   loadError,
+  partners,
+  onPartners,
 }: {
   initialGuests: GuestRow[];
   loadError: string | null;
+  partners: VipPartner[];
+  onPartners: (p: VipPartner[]) => void;
 }) {
   const [guests, setGuests] = useState<GuestRow[]>(initialGuests);
   const [q, setQ] = useState("");
@@ -103,6 +140,7 @@ function GuestsCard({
       return;
     }
     setGuests(r.guests);
+    onPartners(r.partners);
     setShownFor(query);
   };
 
@@ -188,6 +226,7 @@ function GuestsCard({
             busy={busyId === g.id}
             locked={busyId !== null}
             error={rowError?.id === g.id ? rowError.message : null}
+            partners={partners}
             onSave={(patch) => save(g, patch)}
           />
         ))}
@@ -201,15 +240,19 @@ function GuestItem({
   busy,
   locked,
   error,
+  partners,
   onSave,
 }: {
   guest: GuestRow;
   busy: boolean;
   locked: boolean;
   error: string | null;
+  partners: VipPartner[];
   onSave: (patch: StandingPatch) => Promise<boolean>;
 }) {
   const since = vipLine(g);
+  const today = new Date().toISOString().slice(0, 10);
+  const until = vipUntilLine(g, today);
   return (
     <li className="flex flex-col gap-3 px-4 py-3" data-guest-row>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -228,6 +271,18 @@ function GuestItem({
           {since && (
             <p className="text-muted-foreground truncate text-xs" data-vip-since>
               {since}
+            </p>
+          )}
+          {until && (
+            <p
+              className={
+                g.vipUntil! < today
+                  ? "text-destructive truncate text-xs"
+                  : "text-muted-foreground truncate text-xs"
+              }
+              data-vip-until
+            >
+              {until}
             </p>
           )}
         </div>
@@ -250,6 +305,9 @@ function GuestItem({
           />
         </div>
       </div>
+      {g.guestClass === "vip" && (
+        <VipFields guest={g} partners={partners} today={today} disabled={locked} onSave={onSave} />
+      )}
       {(g.guestClass === "vip" || g.guestClassNote) && (
         <NoteField
           guest={g}
@@ -370,5 +428,202 @@ function NoteField({
         )}
       </div>
     </div>
+  );
+}
+
+const INPUT_CLASS =
+  "border-border bg-background h-9 rounded-lg border px-3 text-sm outline-none focus:border-foreground disabled:opacity-50";
+
+/** A VIP's partner and last day (MESITA-2556). Each saves on change. */
+function VipFields({
+  guest: g,
+  partners,
+  today,
+  disabled,
+  onSave,
+}: {
+  guest: GuestRow;
+  partners: VipPartner[];
+  today: string;
+  disabled: boolean;
+  onSave: (patch: StandingPatch) => Promise<boolean>;
+}) {
+  // A partner the list no longer holds still shows, so the choice never lies.
+  const known = !g.vipPartnerId || partners.some((p) => p.id === g.vipPartnerId);
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <label className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="text-muted-foreground text-xs font-medium">Partner</span>
+        <select
+          value={g.vipPartnerId ?? ""}
+          disabled={disabled}
+          onChange={(e) => onSave({ vipPartnerId: e.target.value || null })}
+          className={INPUT_CLASS}
+          data-vip-partner
+        >
+          <option value="">No partner recorded</option>
+          {!known && <option value={g.vipPartnerId!}>Unknown partner</option>}
+          {partners.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.placeName ? `${p.name} · ${p.placeName}` : p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex flex-col gap-1 sm:w-48">
+        <span className="text-muted-foreground text-xs font-medium">Last day · empty = no end</span>
+        <input
+          type="date"
+          value={g.vipUntil ?? ""}
+          min={today}
+          disabled={disabled}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || v >= today) void onSave({ vipUntil: v || null });
+          }}
+          className={INPUT_CLASS}
+          data-vip-until-input
+        />
+      </label>
+    </div>
+  );
+}
+
+/** Partners VIP comes through (MESITA-2556): add one, or rename one. A Google
+ *  Place ID marks a partner that is a Mesita place. No rates live here. */
+function PartnersCard({
+  partners,
+  onPartners,
+}: {
+  partners: VipPartner[];
+  onPartners: (p: VipPartner[]) => void;
+}) {
+  const [editing, setEditing] = useState<VipPartner | null>(null);
+  const [name, setName] = useState("");
+  const [placeId, setPlaceId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, startSave] = useTransition();
+
+  const reset = () => {
+    setEditing(null);
+    setName("");
+    setPlaceId("");
+  };
+
+  const submit = () => {
+    if (saving || name.trim() === "") return;
+    setError(null);
+    startSave(async () => {
+      const r = await saveVipPartner({
+        ...(editing ? { id: editing.id } : {}),
+        name: name.trim(),
+        // Editing with the field left empty keeps the place it had.
+        ...(placeId.trim() !== "" || !editing ? { googlePlaceId: placeId.trim() || null } : {}),
+      });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      onPartners(r.partners);
+      reset();
+    });
+  };
+
+  return (
+    <SectionCard
+      icon={<Handshake className="text-muted-foreground h-4 w-4" />}
+      title="Partners"
+      subtitle="Who a VIP comes through: an agency, a creator deal, a place. A Google Place ID marks a Mesita place. Partner rates are not set here."
+      state={
+        <span className="text-muted-foreground text-xs tabular-nums">{partners.length}</span>
+      }
+    >
+      <ul className="border-border divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
+        {partners.length === 0 && (
+          <li className="text-muted-foreground px-4 py-4 text-sm">No partners yet.</li>
+        )}
+        {partners.map((p) => (
+          <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3" data-vip-partner-row>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{p.name}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {p.placeId ? `Mesita place · ${p.placeName ?? "name not found"}` : "Not a Mesita place"}
+              </p>
+            </div>
+            <Button
+              tone="secondary"
+              size="sm"
+              onClick={() => {
+                setEditing(p);
+                setName(p.name);
+                setPlaceId("");
+                setError(null);
+              }}
+            >
+              Edit
+            </Button>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <TextField
+            label={editing ? `Rename ${editing.name}` : "New partner"}
+            value={name}
+            onChange={setName}
+            maxLength={80}
+            placeholder="Agency, creator or place name"
+            autoComplete="off"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <TextField
+            label={editing ? "Google Place ID · empty keeps it" : "Google Place ID · optional"}
+            value={placeId}
+            onChange={setPlaceId}
+            placeholder="ChIJ…"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+        <Button pending={saving} icon={<Plus className="h-3.5 w-3.5" />} onClick={submit}>
+          {editing ? "Save" : "Add"}
+        </Button>
+        {editing && (
+          <Button tone="secondary" onClick={reset}>
+            Cancel
+          </Button>
+        )}
+      </div>
+      {editing?.placeId && (
+        <div className="mt-2">
+          <Button
+            tone="ghost"
+            size="sm"
+            disabled={saving}
+            onClick={() =>
+              startSave(async () => {
+                setError(null);
+                const r = await saveVipPartner({
+                  id: editing.id,
+                  name: editing.name,
+                  googlePlaceId: null,
+                });
+                if (!r.ok) {
+                  setError(r.error);
+                  return;
+                }
+                onPartners(r.partners);
+                reset();
+              })
+            }
+          >
+            Not a Mesita place
+          </Button>
+        </div>
+      )}
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
   );
 }

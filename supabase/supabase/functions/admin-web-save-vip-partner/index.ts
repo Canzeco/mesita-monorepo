@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       const placeClash = /place_id/.test(`${error.message} ${error.details ?? ""}`);
       return json(
         placeClash
-          ? { ok: false, code: "place_taken", error: "Another partner is already that venue." }
+          ? { ok: false, code: "place_taken", error: "That place is already another partner." }
           : { ok: false, code: "name_taken", error: `A partner named “${parsed.name}” already exists.` },
         409,
       );
