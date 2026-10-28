@@ -11,13 +11,14 @@ const webBranch = anchor >= 0 ? src.slice(anchor) : "";
 
 Deno.test("list-places: the Map is the one Area pool inside the screen radius, no Google call", () => {
   assert(webBranch.length > 0);
-  assert(webBranch.includes("selectAreaPool<PoolRow>("));
+  // Every ready place in the box is ranked, then the kept cards are read
+  // (MESITA-2950); no capped single read.
+  assert(webBranch.includes("selectMapPool<PoolRow>("));
+  assertEquals(src.includes("NEARBY_SCAN_LIMIT"), false);
   // A point at the cross inside the screen radius (MESITA-2504): one circle
   // gates the Mesita read.
   assert(webBranch.includes("const screenKm = screenRadiusKm(body.bounds, center);"));
-  assert(webBranch.includes('const location = { kind: "point" as const, anchor: center, radiusKm };'));
-  assert(webBranch.includes("{ center, radiusKm, families: guestSupers },"));
-  assert(webBranch.includes("    location,\n"));
+  assert(webBranch.includes("      center,\n      radiusKm,\n      families: guestSupers,\n"));
   assertEquals(src.includes("resolveAreaLocation"), false);
   // The switches decide the sources, the same as Home's (MESITA-2703).
   for (const gone of ["fanoutMode", "googleCalls", "mesitaLimit", "mapGooglePlaces"]) {
@@ -71,7 +72,7 @@ Deno.test("list-places: the answer carries the radius and each place's score, no
   // Retired with the source switches and the Distance penalty (MESITA-2909).
   assertEquals(answer.includes("foundBy"), false);
   assertEquals(answer.includes("distancePenalty"), false);
-  assert(src.includes('surface: "map"'));
+  assert(src.includes("selectMapPool"));
   assertEquals(answer.includes("selected: a.selected"), false);
 });
 

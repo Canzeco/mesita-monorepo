@@ -25,7 +25,11 @@
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
 // ranked by Popularity × the Premier factor (a Premier place's paid tier,
-// ×2 · ×5 · ×10, MESITA-2925), no Proximity.
+// ×2 · ×5 · ×10, MESITA-2925), no Proximity. EVERY ready place in the box is
+// ranked (MESITA-2950): the read walks the scoring columns by id, page after
+// page (`selectMapPool`, the Catalog's two passes from MESITA-2921), then
+// reads only the kept places' cards, so a wide ring never ranks an
+// id-ordered 1000-row slice.
 // The Map shows the top `map.placesShown`. The family chip gates; the guest
 // picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
 // however far out the guest zooms, the search is the ring they see. No
@@ -36,7 +40,9 @@
 // `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
-// without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
+// without a lat/lng pair is 400. A failed read is a 502 with
+// `code: "places_read_failed"`, the pass, page or chunk and a requestId; the
+// PostgREST message is logged, never sent. The listed `{ lat, lng }` lane and the
 // GET / `{ limit }` newest-first lane retired with their last callers, and
 // `discovery_config.filters` with them (MESITA-2337).
 //
@@ -62,17 +68,13 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
+import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
 import {
-  decideNearby,
-  NEARBY_SCAN_LIMIT,
-  wantsGoogleFill,
-} from "../_shared/geo.ts";
-import {
-  type PoolRow,
+  CatalogReadError,
   type PoolBuilder,
+  type PoolRow,
   screenRadiusKm,
-  selectAreaPool,
-  mesitaPoolQuery,
+  selectMapPool,
 } from "../_shared/area-pipeline.ts";
 import {
   stripInternal,
@@ -185,37 +187,57 @@ Deno.serve(async (req) => {
   // The screen radius, or the operator's when there is no screen to read.
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
-  const location = { kind: "point" as const, anchor: center, radiusKm };
+  const requestId = crypto.randomUUID();
   // Popularity × the Premier factor; the radius only gates (MESITA-2909).
-  const pool = await mesitaPoolQuery(
-    supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
-    cfg,
-    { center, radiusKm, families: guestSupers },
-  ).limit(NEARBY_SCAN_LIMIT);
-  if (pool.error) {
-    return json({ ok: false, error: pool.error.message }, 500);
+  // Every ready place in the box is ranked, then the kept cards are read
+  // (MESITA-2950).
+  let area: Awaited<ReturnType<typeof selectMapPool<PoolRow>>>;
+  try {
+    area = await selectMapPool<PoolRow>({
+      read: (columns) => supabase.from("profiles").select(columns) as unknown as PoolBuilder,
+      cfg,
+      center,
+      radiusKm,
+      families: guestSupers,
+      cardColumns: PLACE_CARD_COLUMNS,
+      wire: (rows) => rows as PoolRow[],
+    });
+  } catch (err) {
+    if (!(err instanceof CatalogReadError)) throw err;
+    const at = err.pass === 1 ? { page: err.at } : { chunk: err.at };
+    console.error(JSON.stringify({
+      fn: "consumer-web-list-places",
+      event: "read_failed",
+      requestId,
+      pass: err.pass,
+      ...at,
+      pgCode: err.pgCode,
+      message: err.message,
+    }));
+    return json({
+      ok: false,
+      code: "places_read_failed",
+      error: "Places read failed",
+      pass: err.pass,
+      ...at,
+      requestId,
+    }, 502);
   }
-  const area = await selectAreaPool<PoolRow>({
-    surface: "map",
-    location,
-    families: guestSupers,
-    mesitaRows: (pool.data ?? []) as PoolRow[],
-    cfg,
-  });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
     ? area.places.slice(0, clampIntRange(body.limit, 1, MAX_LIMIT))
     : area.places;
   // One line, because every failure mode is a WRONG SET rather than an
-  // error: a capped read looks like a thin map.
+  // error: `scanCapped` means the box held more than the walk reads, and
+  // past it the cut is by id again.
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
+    requestId,
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
     ...area.summary,
-    mesitaRead: pool.data?.length ?? 0,
-    mesitaCapped: (pool.data?.length ?? 0) >= NEARBY_SCAN_LIMIT,
+    lastId: area.summary.scanCapped ? area.lastId : undefined,
     returned: places.length,
   }));
   return json({

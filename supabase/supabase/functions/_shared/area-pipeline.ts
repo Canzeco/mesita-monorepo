@@ -3,8 +3,9 @@
 // MESITA-2909). Neither calls Google: Mesita's places are the one source.
 //
 //   Map (the Search tab)   (point, screen radius)
-//     every ready Mesita row in the circle → gates → Popularity × s
-//     → the top `map.placesShown`
+//     every ready Mesita row in the circle's box (scoring columns, walked by
+//     id) → gates → Popularity × s → the top `map.placesShown` BY RANK,
+//     then their cards (MESITA-2950)
 //   Catalog (Home)         (point or nothing, NO radius)
 //     every ready Mesita row (scoring columns, walked by id) → gates →
 //     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
@@ -195,6 +196,8 @@ export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPo
 export type AreaPoolSummary = {
   /** Mesita rows the pipeline read, before its gates. */
   read: number;
+  /** Rows that passed the gates and were ranked, before any cut. */
+  ranked: number;
   returned: number;
   /** Which pipeline ran and the numbers it read (MESITA-2909). */
   surface: AreaSurface;
@@ -251,6 +254,7 @@ export function selectAreaPool<T extends PoolRow>(
   });
   const summary: AreaPoolSummary = {
     read: deps.mesitaRows.length,
+    ranked: ranked.length,
     returned: places.length,
     surface: deps.surface,
     halfKm: ctx.halfKm,
@@ -332,11 +336,13 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
   return q.order("id", { ascending: true });
 }
 
-// ── The Catalog's read (MESITA-2921) ────────────────────────────────────
+// ── The Catalog's and the Map's read (MESITA-2921, MESITA-2950) ─────────
 //
 // A capped read ordered by id is an id-ordered slice, and ids are UUIDs: past
-// 1000 active places Home ranked an effectively random 1000, not the best.
-// So the Catalog reads in two passes:
+// 1000 active places Home ranked an effectively random 1000, not the best,
+// and so did the Map once its screen ring (no ceiling, MESITA-2918) held more
+// than 1000 ready places. So both read in two passes (the Map boxed to its
+// ring, the Catalog unboxed):
 //   1. the scoring columns only, walked by id (`.gt("id", last)`) page after
 //      page until an EMPTY page, at most CATALOG_SCAN_PAGES_MAX pages;
 //   2. ranked with the shared scorer, the best CATALOG_RETURN_MAX kept, and
@@ -356,7 +362,7 @@ export const CATALOG_RETURN_MAX = 1000;
 export const CATALOG_SCORING_COLUMNS =
   "id,lat,lng,google_stars_overall,google_review_count,family_keys,boost_tier";
 
-/** A failed Catalog read: which pass and which page or chunk. */
+/** A failed Catalog or Map read: which pass and which page or chunk. */
 export class CatalogReadError extends Error {
   constructor(
     readonly pass: 1 | 2,
@@ -372,7 +378,19 @@ export class CatalogReadError extends Error {
 /** A fresh `profiles` select of these columns, `state = active`. */
 export type CatalogRead = (columns: string) => PoolBuilder;
 
-type CatalogGates = { families: readonly string[] };
+/** The gates both passes push down: the families and, on the Map, the
+ *  centre's radius box (no centre, no box: the whole catalog). */
+type CatalogGates = {
+  families: readonly string[];
+  center?: LatLng | null;
+  radiusKm?: number;
+};
+
+const poolOpts = (g: CatalogGates) => ({
+  center: g.center ?? null,
+  radiusKm: g.radiusKm ?? 0,
+  families: g.families,
+});
 
 /** Pass 1: every gated row's scoring columns, in id order. */
 export async function walkScoringRows(
@@ -384,11 +402,7 @@ export async function walkScoringRows(
   const rows: PoolRow[] = [];
   let last: string | null = null;
   for (let page = 0; page < pagesMax; page++) {
-    let q = mesitaPoolQuery(read(CATALOG_SCORING_COLUMNS), cfg, {
-      center: null,
-      radiusKm: 0,
-      families: gates.families,
-    });
+    let q = mesitaPoolQuery(read(CATALOG_SCORING_COLUMNS), cfg, poolOpts(gates));
     // The last id from the page Postgres returned, never a re-sorted one.
     if (last !== null) q = q.gt("id", last);
     const { data, error } = await q.limit(CATALOG_SCAN_PAGE);
@@ -413,11 +427,8 @@ export async function cardsForIds(
   const parts = chunked([...ids], ID_CHUNK);
   const results = await Promise.all(parts.map(async (chunk, i) => {
     // `limit` is the builder's await point; a chunk never holds more rows.
-    const { data, error } = await mesitaPoolQuery(read(cardColumns), cfg, {
-      center: null,
-      radiusKm: 0,
-      families: gates.families,
-    }).in("id", chunk).limit(chunk.length);
+    const { data, error } = await mesitaPoolQuery(read(cardColumns), cfg, poolOpts(gates))
+      .in("id", chunk).limit(chunk.length);
     if (error) throw new CatalogReadError(2, i, error.code ?? null, error.message);
     return data ?? [];
   }));
@@ -425,44 +436,48 @@ export async function cardsForIds(
 }
 
 export type CatalogPoolSummary = AreaPoolSummary & {
-  /** Rows that passed the gates and were ranked. `read` is pass 1's rows,
-   *  `returned` the places emitted after pass 2. */
+  /** Rows that passed the gates and were ranked (`ranked`). `read` is pass
+   *  1's rows, `returned` the places emitted after pass 2. */
   total: number;
   /** Pass-2 reads. */
   chunks: number;
-  /** Ten full pages and no empty one: the cut is by id again past here. */
+  /** `pagesMax` full pages and no empty one: the cut is by id again past
+   *  here. */
   scanCapped: boolean;
-  /** Kept ids pass 2 did not return (no backfill from rank 1001). */
+  /** Kept ids pass 2 did not return (no backfill from below the cut). */
   missing: number;
 };
 
-/**
- * The Catalog pool (MESITA-2921): rank every gated place, keep the best
- * CATALOG_RETURN_MAX, read only their cards. Ranking is `selectAreaPool`'s,
- * so the order (`final` desc, then distance, then id) and every `area`
- * breakdown are the scorer's; the card comes from pass 2 and the breakdown
- * from pass 1's values, so a row edited between the two reads can disagree.
- */
-export async function selectCatalogPool<T extends PoolRow>(deps: {
+type RankedPoolDeps<T extends PoolRow> = {
   read: CatalogRead;
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
-  location: AreaLocation;
   families: readonly string[];
   cardColumns: string;
   /** Shapes pass 2's raw rows (the EF's `wirePlaces`). */
   wire: (rows: unknown[]) => T[];
   pagesMax?: number;
-}): Promise<{ places: AreaPoolPlace[]; summary: CatalogPoolSummary; lastId: string | null }> {
-  const gates = { families: deps.families };
+};
+
+type RankedPool = { places: AreaPoolPlace[]; summary: CatalogPoolSummary; lastId: string | null };
+
+/** Both passes: walk, rank with `selectAreaPool`, keep `keepMax`, read the
+ *  kept cards, emit them in rank order. */
+async function selectRankedPool<T extends PoolRow>(
+  deps: RankedPoolDeps<T>,
+  surface: AreaSurface,
+  location: AreaLocation,
+  gates: CatalogGates,
+  keepMax: number,
+): Promise<RankedPool> {
   const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
   const ranked = await selectAreaPool({
-    surface: "catalog",
-    location: deps.location,
+    surface,
+    location,
     families: deps.families,
     mesitaRows: walk.rows,
     cfg: deps.cfg,
   });
-  const kept = ranked.places.slice(0, CATALOG_RETURN_MAX);
+  const kept = ranked.places.slice(0, keepMax);
   const cards = await cardsForIds(
     deps.read,
     deps.cfg,
@@ -482,13 +497,51 @@ export async function selectCatalogPool<T extends PoolRow>(deps: {
     summary: {
       ...ranked.summary,
       returned: places.length,
-      total: ranked.places.length,
+      total: ranked.summary.ranked,
       chunks: cards.chunks,
       scanCapped: walk.scanCapped,
       missing: kept.length - places.length,
     },
     lastId: walk.lastId,
   };
+}
+
+/**
+ * The Catalog pool (MESITA-2921): rank every gated place, keep the best
+ * CATALOG_RETURN_MAX, read only their cards. Ranking is `selectAreaPool`'s,
+ * so the order (`final` desc, then distance, then id) and every `area`
+ * breakdown are the scorer's; the card comes from pass 2 and the breakdown
+ * from pass 1's values, so a row edited between the two reads can disagree.
+ */
+export function selectCatalogPool<T extends PoolRow>(
+  deps: RankedPoolDeps<T> & { location: AreaLocation },
+): Promise<RankedPool> {
+  return selectRankedPool(
+    deps,
+    "catalog",
+    deps.location,
+    { families: deps.families },
+    CATALOG_RETURN_MAX,
+  );
+}
+
+/**
+ * The Map pool (MESITA-2950): the Catalog's two passes boxed to the screen
+ * ring. Every gated place inside the box is ranked (Popularity × s, the
+ * Radius gate drops the box's corners), the top `map.placesShown` kept, and
+ * only their cards read.
+ */
+export function selectMapPool<T extends PoolRow>(
+  deps: RankedPoolDeps<T> & { center: LatLng; radiusKm: number },
+): Promise<RankedPool> {
+  return selectRankedPool(
+    deps,
+    "map",
+    { kind: "point", anchor: deps.center, radiusKm: deps.radiusKm },
+    { families: deps.families, center: deps.center, radiusKm: deps.radiusKm },
+    // selectAreaPool already cut to `map.placesShown`.
+    Number.POSITIVE_INFINITY,
+  );
 }
 
 // ── Chat's Mesita read (MESITA-2339) ────────────────────────────────────
