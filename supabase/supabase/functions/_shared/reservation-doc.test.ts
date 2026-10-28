@@ -284,6 +284,33 @@ Deno.test("validateReservationPatch: rejects a cancelled_by outside {consumer, b
   assert(!validateReservationPatch({ cancelled_by: "system" }).ok);
 });
 
+// The eight closed-set columns share one table-driven check (MESITA-2986);
+// each keeps its exact error text, its null rule, and its order.
+Deno.test("validateReservationPatch: every closed-set column keeps its exact error text and null rule", () => {
+  const cases: Array<[string, boolean, string]> = [
+    ["attempts_state", false, "attempts_state must be one of idle, running, scheduled, answered, error, exhausted, cancelled"],
+    ["callback_state", false, "callback_state must be one of none, scheduled, ringing, calling, answered, failed, skipped"],
+    ["notice_state", false, "notice_state must be one of none, pending, scheduled, running, done, failed, skipped"],
+    ["reminder_state", false, "reminder_state must be one of idle, scheduled, ringing, calling, answered, failed, skipped"],
+    ["notice_kind", true, "notice_kind must be null or one of place_cancel, guest_cancel"],
+    ["cancelled_by", true, "cancelled_by must be null or one of consumer, business, agent"],
+    ["consumer_notify", false, "consumer_notify must be one of call, app"],
+    ["reported_verdict", true, "reported_verdict must be null or one of confirmed, counter_offer, declined, unreachable, wrong_number"],
+  ];
+  for (const [key, nullable, error] of cases) {
+    assertEquals(validateReservationPatch({ [key]: "nope" }), { ok: false, error }, key);
+    assertEquals(validateReservationPatch({ [key]: 7 }), { ok: false, error }, key);
+    const nul = validateReservationPatch({ [key]: null });
+    if (nullable) assertEquals(nul, { ok: true, patch: { [key]: null } }, key);
+    else assertEquals(nul, { ok: false, error }, key);
+  }
+  // First failing column in validation order wins.
+  assertEquals(
+    validateReservationPatch({ reported_verdict: "x", attempts_state: "x" }),
+    { ok: false, error: cases[0][2] },
+  );
+});
+
 Deno.test("validateReservationPatch: rejects a malformed alternatives entry", () => {
   assert(!validateReservationPatch({ alternatives: "21:30" }).ok, "not an array");
   assert(!validateReservationPatch({ alternatives: [{ note: 5 }] }).ok, "note must be a string");

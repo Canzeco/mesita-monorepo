@@ -145,6 +145,7 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
+  "supabase-edgefunc-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
 ];
 
 Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside the allowlist", async () => {
@@ -354,6 +355,7 @@ const SWALLOWED_TODAY = [
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
+  "supabase-edgefunc-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
 ];
 
 Deno.test("READ SURFACE: no NEW raw read of a doored table discards its error", async () => {
