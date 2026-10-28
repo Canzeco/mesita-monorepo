@@ -260,12 +260,13 @@ const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
  *  circle of the radious, but only one circle, not two, make the radious
  *  kinda white, like really discreet and pretty"). MESITA-2906 had removed
  *  both dashed rings; the inner density ring (MESITA-2773) stays gone. A
- *  solid 2px white line with a hair-thin dark halo, so it reads on the light
- *  basemap, and a whisper of white fill. It never pulses; the cross does
+ *  solid 3px white line with a thin dark outline and a soft glow, so it
+ *  reads on the light basemap (MESITA-2912: "a bit more visible"; MESITA-2908
+ *  drew 2px at 85% with a hair halo), and a whisper of white fill. It never pulses; the cross does
  *  during a load. Screen CSS, never map geometry (MESITA-2847: it rides the
  *  cross in real time). */
 const RING_CLASS =
-  "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/85 bg-white/[0.06] shadow-[0_0_0_0.5px_rgba(0,0,0,0.10),inset_0_0_0_0.5px_rgba(0,0,0,0.06)]";
+  "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-white/[0.06] shadow-[0_0_0_1px_rgba(0,0,0,0.18),inset_0_0_0_0.5px_rgba(0,0,0,0.10),0_1px_6px_rgba(0,0,0,0.12)]";
 
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
