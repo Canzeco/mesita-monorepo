@@ -10,12 +10,12 @@ import { RAIL_CARD_HEIGHT_CLASS } from "./SearchRailCard";
 // to the left. A tap opens AddPlaceSheet (MESITA-2902): a Google search
 // whose row button creates the profile (consumer-web-create-place).
 //
-// A CENTRED, FAST BUTTON, THE CARD'S SIZE (Pato, MESITA-2904: "it must be all
-// centered … add a new place in less than 10 seconds … it must look super
-// fast · the only thing that must remain the same is the size of the box").
-// RailCard's height and the page's width; no photo slot (MESITA-2889 had
-// drawn it as a place card). Ink fill and white text, the primary-button
-// look, with a bolt for speed.
+// A CENTRED, FAST CARD WITH A REAL BUTTON (Pato, MESITA-2904: "it must be all
+// centered … add a new place in less than 10 seconds … the only thing that
+// must remain the same is the size of the box"; MESITA-2905: "must have
+// something that looks as a button and must be centered"). RailCard's
+// height and the page's width, an ink fill; a centred headline, a line, and
+// a white pill button with a bolt. The whole card is the tap target.
 
 export function AddPlaceButton({
   onAdd,
@@ -31,20 +31,24 @@ export function AddPlaceButton({
       onClick={onAdd}
       className={cn(
         RAIL_CARD_HEIGHT_CLASS,
-        "bg-foreground text-paper shadow-elev focus-visible:ring-primary flex w-full flex-col items-center justify-center gap-2 rounded-2xl px-5 text-center transition outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-[0.98]",
+        "group bg-foreground text-paper shadow-elev focus-visible:ring-primary flex w-full flex-col items-center justify-center gap-1 rounded-2xl px-5 text-center transition outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
       )}
       data-search-add-button
     >
-      <span className="bg-paper/15 flex h-10 w-10 items-center justify-center rounded-full">
-        <Zap aria-hidden className="h-5 w-5 fill-current" strokeWidth={2} />
-      </span>
       <span className="font-sans text-base leading-5 font-semibold tracking-tight">
         Add a new place to Mesita
       </span>
       <span className="text-paper/70 text-sm leading-5">
         {empty
-          ? "Nothing on Mesita here yet. Add it in under 10 seconds."
-          : "Not on Mesita yet? Add it in under 10 seconds."}
+          ? "Nothing here yet. Takes under 10 seconds."
+          : "Not on Mesita yet? Takes under 10 seconds."}
+      </span>
+      <span
+        className="bg-paper text-foreground mt-2 flex h-9 items-center gap-1.5 rounded-full px-5 text-sm font-semibold transition group-active:scale-[0.96]"
+        data-search-add-cta
+      >
+        <Zap aria-hidden className="h-4 w-4 fill-current" strokeWidth={2} />
+        Add a place
       </span>
     </button>
   );
