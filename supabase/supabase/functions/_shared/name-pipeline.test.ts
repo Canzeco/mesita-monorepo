@@ -2,21 +2,23 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   resolveMode,
-  applyResolvedMesitaName,
-  classifyPredictionKind,
   deepModuleFlags,
-  detailsTargets,
-  fetchAutocomplete,
-  fetchTextSearch,
-  gatedGoogleKind,
   laneDedupeKeys,
-  locationTypeOf,
   mergeNameDeepQueries,
   takeFastLane,
   toWire,
   weaveStampedAutocomplete,
   type LaneItem,
 } from "./name-pipeline.ts";
+import {
+  applyResolvedMesitaName,
+  classifyPredictionKind,
+  detailsTargets,
+  fetchAutocomplete,
+  fetchTextSearch,
+  gatedGoogleKind,
+  locationTypeOf,
+} from "./name-pipeline-google.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { stripPlacesPrefix } from "./google-places.ts";
 import type { GoogleHit } from "./google-listing.ts";
@@ -198,7 +200,7 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
 Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   const src = await Deno.readTextFile(
     new URL("./name-pipeline.ts", import.meta.url),
-  );
+  ) + await Deno.readTextFile(new URL("./name-pipeline-google.ts", import.meta.url));
   assertEquals(src.includes("searchNearbyPlaces"), false);
   assertEquals(src.includes("applyPlacesCallerRegion"), false);
   assertEquals(src.includes("includedRegionCodes"), false);
@@ -373,7 +375,7 @@ Deno.test("toWire: a Text Search card rides Google-only rows, never a Mesita one
 });
 
 Deno.test("Text Search asks for the listing mask and builds its card with googleStub", async () => {
-  const src = await Deno.readTextFile(new URL("./name-pipeline.ts", import.meta.url));
+  const src = await Deno.readTextFile(new URL("./name-pipeline-google.ts", import.meta.url));
   const fn = src.slice(src.indexOf("async function fetchTextSearch("));
   assertEquals(fn.includes("fieldMask: LISTING_FIELD_MASK"), true);
   assertEquals(fn.includes("googleHitFromPlace(p)"), true);

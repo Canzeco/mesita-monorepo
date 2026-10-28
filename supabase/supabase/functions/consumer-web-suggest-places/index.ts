@@ -22,11 +22,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { readEFEnv } from "../_shared/auth.ts";
-import {
-  runConsumerNamePipeline,
-  runLocationAnchor,
-  runPlacePreview,
-} from "../_shared/name-pipeline.ts";
+import { runConsumerNamePipeline } from "../_shared/name-pipeline.ts";
+import { runLocationAnchor, runPlacePreview } from "./handlers.ts";
 
 type Body = {
   input?: string;

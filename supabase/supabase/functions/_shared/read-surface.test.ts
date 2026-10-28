@@ -180,6 +180,9 @@ Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the a
 
 const PROFILES_READ_ALLOWLIST = [
   "_shared/name-pipeline.ts",
+  // The Name pipeline's Google I/O: the Mesita row a Google hit resolves
+  // onto, and its card (split out of name-pipeline.ts, MESITA-2987).
+  "_shared/name-pipeline-google.ts",
   "_shared/create-place.ts",
   // The Deep pipeline's Mesita Places Search: id, name, About and the summary
   // vector of active, ready places (MESITA-2327).
