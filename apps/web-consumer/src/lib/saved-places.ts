@@ -234,7 +234,7 @@ export function clearSavedPlacesLocal(): void {
  */
 export async function syncSavedPlaces<T extends { id: string }>(
   read: () => Promise<{ ids: string[]; places: T[] }>,
-  push: (placeId: string) => Promise<void>,
+  push: (placeId: string) => Promise<unknown>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
   let server: { ids: string[]; places: T[] };

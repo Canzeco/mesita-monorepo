@@ -76,9 +76,10 @@ export async function apiTrackActivity(
      *  the event happened. Omitted without a fix. */
     at?: { lat: number; lng: number } | null;
   },
-): Promise<void> {
-  if (!isMesitaPlaceId(input.placeId)) return;
-  await invokeEF<{ kind: ActivityKind; on: boolean }>(
+): Promise<{ enriching: boolean }> {
+  if (!isMesitaPlaceId(input.placeId)) return { enriching: false };
+  // A `viewed` says whether the place is mid-Enrich after it (MESITA-2952).
+  const res = await invokeEF<{ kind: ActivityKind; on: boolean; enriching?: boolean }>(
     client,
     "consumer-web-track-activity",
     {
@@ -90,6 +91,7 @@ export async function apiTrackActivity(
       ...(input.at ? { lat: input.at.lat, lng: input.at.lng } : {}),
     },
   );
+  return { enriching: res.enriching === true };
 }
 
 export async function apiListActivityFeed(

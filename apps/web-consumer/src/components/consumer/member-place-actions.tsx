@@ -33,7 +33,15 @@ import { toast } from "@/lib/toast";
 // Social v1 (MESITA-2442): opening the profile records `viewed`; the line
 // under the title comes from consumer-web-list-activity. There is no
 // "I went" (MESITA-2567: Social is liked and viewed only).
+//
+// THE VISIT THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the
+// enriching tag when created, just for user to understand that the place is
+// being enriched"). With "Enrich after N visits" at 1, this open is the visit
+// that starts the run, after the page loaded `ready`. The `viewed` answer
+// says so, and `place` comes back Enriching until the place is Enriched.
 export function useMemberPlaceActions(place: PlaceDetail): {
+  /** The place to draw: Enriching once a visit found it mid-run. */
+  place: PlaceDetail;
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
@@ -139,7 +147,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
+  const enriching = activity.enriching && !place.is_enriched && !place.is_enriching;
   return {
+    place: enriching ? { ...place, is_enriching: true } : place,
     actions,
     sheets,
     social: activity.social,
@@ -213,13 +223,15 @@ function usePlaceBoost(placeId: string): {
   };
 }
 
-function usePlaceActivity(placeId: string): { social: ReactNode } {
+function usePlaceActivity(placeId: string): { social: ReactNode; enriching: boolean } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{
     placeId: string;
     activity: PlaceActivity | null;
   }>({ placeId, activity: null });
+  // The place this page's visit found mid-Enrich (MESITA-2952).
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mesita) return;
@@ -232,6 +244,9 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
       placeId,
       at: locationSnapshot().coords,
     })
+      .then((tracked) => {
+        if (!cancelled && tracked.enriching) setEnrichingId(placeId);
+      })
       .catch(() => {})
       .then(() => apiPlaceActivity(supabase, placeId))
       .then((activity) => {
@@ -252,6 +267,9 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
   ) : null;
 
   // A Google-only card has no place row yet: no line.
-  return { social: mesita ? social : null };
+  return {
+    social: mesita ? social : null,
+    enriching: mesita && enrichingId === placeId,
+  };
 }
 
