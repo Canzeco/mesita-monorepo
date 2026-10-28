@@ -14,28 +14,25 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // ONE REQUEST SHAPE — POST { google: true, lat, lng, bounds, familyKeys }:
-// web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
-// one pool since MESITA-2379, `_shared/area-pipeline.ts`). THE MAP IS WHAT
-// THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
-// decides how wide the set is — a street close, a city wide. THE SCREEN
-// RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
-// the sight) inside R = the cross's distance to the nearest edge of the
-// visible map (`screenRadiusKm`, MESITA-2511: the circle always fits on
-// screen). R is a GATE — Mesita's read is boxed to it and the Radius gate
-// drops what lies past it (Pato: "I son't want to see stuff beyond my
-// screen"). The score is
-// Proximity × Popularity × the Selected boost, Proximity ½ at R ÷ the
-// operator's radius divisor (MESITA-2720), the boost `map.selectedFactor`
-// on a Selected place (MESITA-2717); no exponents since MESITA-2722. The family chip gates;
-// the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
-// than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
-// scored the same way. The answer carries R and each place's
-// breakdown for the debug readout (MESITA-2504). It runs the same sources as
-// the Feed — Mesita Popularity and Mesita Proximity (Google Nearby's two
-// retired in MESITA-2872: nothing here calls Google) — merged with
-// duplicates removed and ranked, with the guest's family pills pushed down
-// to the Mesita read and the operator's Popularity floor on every place.
-// The guest never picks a source: a stale `placesScope` is ignored.
+// web Search, THE MAP PIPELINE (Area, MESITA-2302; split from the Catalog by
+// MESITA-2909; `_shared/area-pipeline.ts`). THE MAP IS WHAT THE GUEST SEES
+// (MESITA-2499): `bounds` is the visible map, so the zoom decides how wide
+// the set is — a street close, a city wide. THE SCREEN RADIUS (MESITA-2504):
+// the location is a POINT at the cross (`lat`, `lng`, the sight) inside R =
+// the cross's distance to the nearest edge of the visible map
+// (`screenRadiusKm`, MESITA-2511: the circle always fits on screen). R is a
+// GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
+// del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
+// to it, the Radius gate drops what lies past it, and the places inside are
+// ranked by Popularity × the Selected boost (`map.selectedFactor` on a
+// Selected place, the paid Boost's factor on a Boosted one), no Proximity.
+// The Map shows the top `map.placesShown`. The family chip gates; the guest
+// picks no mode, so `prefer` is ignored. No bounds, or a box wider than
+// AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`. The
+// answer carries R and each place's breakdown for the debug readout
+// (MESITA-2504). Mesita's places only (Google Nearby retired in
+// MESITA-2872), the operator's Popularity floor on every place. A stale
+// `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
 // without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
@@ -122,11 +119,8 @@ type WireScore = {
   /** The factor `final` carries: the Selected boost for a Mesita Selected
    *  place, else 1 (MESITA-2717). */
   selectedFactor: number;
-  /** The sources that found the place (MESITA-2703); diagnostics only. */
-  foundBy: string[];
-  /** Km from the anchor and the Distance penalty k (MESITA-2830). */
+  /** Km from the cross (MESITA-2830); it screens, never scores. */
   distanceKm: number | null;
-  distancePenalty: number;
 };
 
 type CardRow = {
@@ -191,8 +185,7 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity × Popularity × the Selected boost; the radius gates, the
-  // half-distance scores.
+  // Popularity × the Selected boost; the radius only gates (MESITA-2909).
   const pool = await selectedPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
@@ -213,7 +206,7 @@ Deno.serve(async (req) => {
     ? area.places.slice(0, clampIntRange(body.limit, 1, MAX_LIMIT))
     : area.places;
   // One line, because every failure mode is a WRONG SET rather than an
-  // error: a capped read or a switched-off source looks like a thin map.
+  // error: a capped read looks like a thin map.
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
     mode: "nearby",
@@ -236,9 +229,7 @@ Deno.serve(async (req) => {
             popularity: a.signals.popularity,
             final: a.final,
             selectedFactor: a.selectedFactor,
-            foundBy: a.foundBy,
             distanceKm: a.distanceKm,
-            distancePenalty: a.distancePenalty,
           } satisfies WireScore,
         };
       }) as CardRow[],

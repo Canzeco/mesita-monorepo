@@ -30,24 +30,29 @@ Deno.test("the model is Pato's: four sources (Google Nearby gone, MESITA-2872), 
     "Mesita Places Search",
     "Mesita Social Search",
   ]);
-  assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Area", "Deep"]);
+  assertEquals(DISCOVERY_PIPELINES.map((p) => p.label), ["Name", "Map", "Catalog", "Deep"]);
   assertEquals(DISCOVERY_SIGNALS.map((s) => s.label), ["Description", "Proximity", "Popularity"]);
   assertEquals(DISCOVERY_GATES.map((g) => g.label), ["Family", "Radius"]);
-  assertEquals(pipelinesUsingSignal("proximity"), ["area"]);
-  assertEquals(pipelinesUsingSignal("popularity"), ["area"]);
+  // The Map ranks by Popularity alone; only the Catalog reads Proximity and
+  // only the Map gates on a radius (MESITA-2909).
+  assertEquals(pipelinesUsingSignal("proximity"), ["catalog"]);
+  assertEquals(pipelinesUsingSignal("popularity"), ["map", "catalog"]);
   assertEquals(pipelinesUsingSignal("description_similarity"), ["deep"]);
-  assertEquals(pipelinesUsingGate("radius"), ["area"]);
-  assertEquals(pipelinesUsingGate("family"), ["area"]);
+  assertEquals(pipelinesUsingGate("radius"), ["map"]);
+  assertEquals(pipelinesUsingGate("family"), ["map", "catalog"]);
 });
 
-Deno.test("views and collections are not pipelines; the Chat Agent is a caller, never a source", () => {
+Deno.test("collections are not pipelines; the Chat Agent is a caller, never a source", () => {
   const labels = DISCOVERY_PIPELINES.map((p) => p.label.toLowerCase());
-  for (const notAPipeline of ["catalog", "map", "favorites", "chat", "search"]) {
+  for (const notAPipeline of ["favorites", "chat", "search"]) {
     assertEquals(labels.some((l) => l.includes(notAPipeline)), false, notAPipeline);
   }
   assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "deep")?.callers, ["Chat (Don Memo)"]);
-  // The Chat Agent calls all three pipelines (MESITA-2339) and is none of them.
-  for (const p of DISCOVERY_PIPELINES) assert(p.callers.includes("Chat (Don Memo)"), p.key);
+  // The Chat Agent calls Name, Catalog and Deep (MESITA-2339, MESITA-2909)
+  // and is none of them; the Map is the Search tab's alone.
+  for (const p of DISCOVERY_PIPELINES) {
+    assertEquals(p.callers.includes("Chat (Don Memo)"), p.key !== "map", p.key);
+  }
   assertEquals(DISCOVERY_SOURCES.some((s) => /chat|exa|perplexity|provider/i.test(s.label)), false);
 });
 
@@ -57,7 +62,7 @@ Deno.test("every pipeline signal is fed by one of its own sources (derived from 
       assert(sourcesFeedingSignal(p.key, sig).length > 0, `${p.key}/${sig}`);
     }
   }
-  assertEquals(sourcesFeedingSignal("area", "proximity"), ["mesita_places"]);
+  assertEquals(sourcesFeedingSignal("catalog", "proximity"), ["mesita_places"]);
   assertEquals(sourcesFeedingSignal("deep", "description_similarity"), ["mesita_places"]);
   // Name is Google's two sources in Google's order: no signal (MESITA-2896).
   assertEquals(DISCOVERY_PIPELINES.find((p) => p.key === "name")?.signals, []);
@@ -85,7 +90,7 @@ Deno.test("the call sites match the model", async () => {
   // (MESITA-2896).
   assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch"));
   assertEquals(/fetchEmbedPool|rankMesitaByName/.test(name), false);
-  // Area: Mesita Places only, the Area score; Map and the Catalog are its
+  // Map and Catalog (Area until MESITA-2909): Mesita Places only, one engine; both EFs are its
   // views. No Google Nearby anywhere (MESITA-2872).
   assert(area.includes("selectedPoolQuery") && area.includes("rankArea"));
   assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
@@ -139,30 +144,35 @@ Deno.test("Deep's evidence (the About) is a field Mesita Places Search declares"
   assert(mesita.provides.includes("about"));
 });
 
-Deno.test("Deep is not live while no guest reaches Chat; Name and Area are (MESITA-2345)", () => {
+Deno.test("Deep is not live while no guest reaches Chat; Name, Map and Catalog are (MESITA-2345)", () => {
   const live = Object.fromEntries(DISCOVERY_PIPELINES.map((p) => [p.key, p.live]));
-  assertEquals(live, { name: true, area: true, deep: false });
+  assertEquals(live, { name: true, map: true, catalog: true, deep: false });
 });
 
 // ── MESITA-2379: one pool; MESITA-2872: two Mesita sources;
 //    MESITA-2717: Selected is back as a factor, never a signal ────────────
 
-Deno.test("Area: Family and Radius gate, Proximity × Popularity × the Selected boost, Chat reads Selected only", () => {
-  const area = DISCOVERY_PIPELINES.find((p) => p.key === "area")!;
-  assertEquals(area.gates, ["family", "radius"]);
-  assertEquals(area.signals, ["proximity", "popularity"]);
-  assertEquals(area.factors.length, 1);
-  assert(area.factors[0].startsWith("Selected (MESITA-2717)"));
-  assert(area.scoring.startsWith("The Map and Home: Proximity × Popularity × s"));
-  assert(area.scoring.includes("Selected boost"));
-  assertEquals(JSON.stringify(area).includes("rectangle"), false);
-  for (const src of ["Mesita Popularity", "Mesita Proximity"]) {
-    assert(area.rules.some((r) => r.includes(src)), src);
-  }
-  assert(area.rules.includes("Chat reads Mesita Selected places only, inside the current-location radius."));
-  assert(area.callers.includes("Chat (Don Memo)"));
-  for (const stale of ["scope", "subset", "rail"]) {
-    assertEquals(JSON.stringify(area).toLowerCase().includes(stale), false, stale);
+Deno.test("Map: Family and Radius gate, Popularity × the Selected boost (MESITA-2909)", () => {
+  const map = DISCOVERY_PIPELINES.find((p) => p.key === "map")!;
+  assertEquals(map.gates, ["family", "radius"]);
+  assertEquals(map.signals, ["popularity"]);
+  assertEquals(map.factors.length, 1);
+  assert(map.factors[0].startsWith("Selected (MESITA-2717)"));
+  assert(map.scoring.startsWith("Popularity × s"));
+  assertEquals(JSON.stringify(map).includes("rectangle"), false);
+});
+
+Deno.test("Catalog: Family only, Proximity × Popularity × the Selected boost, Chat reads Selected only (MESITA-2909)", () => {
+  const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!;
+  assertEquals(catalog.gates, ["family"]);
+  assertEquals(catalog.signals, ["proximity", "popularity"]);
+  assert(catalog.scoring.startsWith("Proximity × Popularity × s"));
+  assert(catalog.rules.includes("Chat reads Mesita Selected places only, inside the current-location radius."));
+  assert(catalog.callers.includes("Chat (Don Memo)"));
+  for (const p of [catalog, DISCOVERY_PIPELINES.find((x) => x.key === "map")!]) {
+    for (const stale of ["scope", "subset", "rail", "Mesita Proximity", "Distance penalty"]) {
+      assertEquals(JSON.stringify(p).includes(stale), false, stale);
+    }
   }
 });
 
@@ -172,9 +182,9 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
   const model = JSON.stringify({ DISCOVERY_GATES, DISCOVERY_PIPELINES, DISCOVERY_SIGNALS, DISCOVERY_SOURCES });
   assertEquals(model.toLowerCase().includes("territory\""), false);
   assertEquals(DISCOVERY_GATES.map((g) => g.key), ["family", "radius"]);
-  const rules = DISCOVERY_PIPELINES.find((p) => p.key === "area")!.rules.join(" ");
+  const rules = DISCOVERY_PIPELINES.find((p) => p.key === "map")!.rules.join(" ");
   const facts = [
-    "Area calls no Google",
+    "the Map calls no Google",
     `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,
     `wider than ${AREA_BOUNDS_MAX_KM} km`,
     `at most ${NEARBY_SCAN_LIMIT} ready rows`,

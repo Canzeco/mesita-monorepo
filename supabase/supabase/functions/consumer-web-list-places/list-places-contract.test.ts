@@ -67,7 +67,10 @@ Deno.test("list-places: the answer carries the radius and each place's score, no
   assert(answer.includes("proximity: a.signals.proximity,"));
   assert(answer.includes("popularity: a.signals.popularity,"));
   assert(answer.includes("final: a.final,"));
-  assert(answer.includes("foundBy: a.foundBy,"));
+  // Retired with the source switches and the Distance penalty (MESITA-2909).
+  assertEquals(answer.includes("foundBy"), false);
+  assertEquals(answer.includes("distancePenalty"), false);
+  assert(src.includes('surface: "map"'));
   assertEquals(answer.includes("selected: a.selected"), false);
 });
 

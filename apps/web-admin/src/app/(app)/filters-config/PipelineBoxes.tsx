@@ -1,12 +1,14 @@
 "use client";
 
-// Discovery: ONE page, four boxes (MESITA-2327), four pipelines (Pato,
-// MESITA-2779): Admin Name · Consumer Name · Consumer Area · Consumer Deep. Each box is a PipelineBox
-// and saves only its own slices, so two boxes can never overwrite each other.
-// Catalog and Map are views of the Area pipeline, ranked one way, so their
-// knobs sit in the Area box; the Chat Agent is Deep's caller, so its prompt sits in the Deep box.
+// Discovery: ONE page (MESITA-2327), five boxes, five pipelines (Pato,
+// MESITA-2779, MESITA-2909): Admin Name · Consumer Name · Consumer Map ·
+// Consumer Catalog · Consumer Deep. Each box is a PipelineBox and saves only
+// its own slices, so two boxes can never overwrite each other. The Map and the
+// Catalog were one Area pipeline until MESITA-2909; the Minimum Popularity and
+// the Selected boost they share sit in the Map box. The Chat Agent is Deep's
+// caller, so its prompt sits in the Deep box.
 
-import { MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
+import { LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
   NumberField,
   SaveRow,
@@ -16,8 +18,10 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
-  AREA_SOURCE_ON,
-  type AreaSourceKey,
+  CATALOG_PAGE_SIZE_MAX,
+  CATALOG_PAGE_SIZE_MIN,
+  HALF_KM_MAX,
+  HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
   MAP_POPULARITY_FLOOR_MAX,
   MAP_POPULARITY_FLOOR_MIN,
@@ -34,8 +38,6 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
-  RADIUS_DIVISOR_MAX,
-  RADIUS_DIVISOR_MIN,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -48,15 +50,9 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 export const BOX_SLICES = {
   nameAdmin: ["nameAdmin"],
   name: ["nameDeep", "nameLocations", "nameIdle"],
-  area: ["map", "areaSignals"],
+  map: ["mapPipeline"],
+  catalog: ["catalogPipeline"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
-
-/** The Area box's two switches, in the order the pipeline runs them
- *  (Google Nearby's two retired in MESITA-2872). */
-const AREA_SOURCE_SOURCES: ReadonlyArray<{ key: AreaSourceKey; label: string }> = [
-  { key: "mesitaPopular", label: "Mesita Popularity" },
-  { key: "mesitaClosest", label: "Mesita Proximity" },
-];
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
   return useConfigEditor({ ...seed, load: getDiscoveryConfig });
@@ -265,8 +261,8 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 3 ─ Consumer Area Pipeline ───────────────────────────────────────────────
-export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
+// 3 ─ Consumer Map Pipeline ────────────────────────────────────────────────
+export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
   const off = pending || loadBlocked;
@@ -274,45 +270,31 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, ...p } }));
   };
-  const params = cfg.params;
-  const proximity = (p: Partial<DiscoveryConfig["params"]["proximity"]>) => {
-    setOk(false);
-    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
-  };
-  const toggle = (key: AreaSourceKey) => map({ [key]: cfg.map[key] > 0 ? 0 : AREA_SOURCE_ON });
-  const allOff = AREA_SOURCE_SOURCES.every(({ key }) => !(cfg.map[key] > 0));
-  const dirty = !same(cfg.map, saved.map) || !same(params, saved.params);
+  // The Catalog box owns the page size.
+  const mine = (m: DiscoveryConfig["map"]) => ({ ...m, catalogPageSize: 0 });
+  const dirty = !same(mine(cfg.map), mine(saved.map));
   return (
     <PipelineBox
-      id="s-area"
-      pipeline="area"
-      title="Consumer Area Pipeline"
+      id="s-map"
+      pipeline="map"
+      title="Consumer Map Pipeline"
       icon={<MapPin className={ICON} />}
       explanation={
         <>
           <p>
-            Places around a <strong>point</strong> inside a <strong>radius</strong>:
-            the Map&apos;s cross and its screen radius (the cross&apos;s distance to
-            the nearest edge of the visible map), or on Home a saved pin and the
-            radius the guest picked for it, else the device and the
-            current-location radius below.
+            The Search tab&apos;s pins: every Mesita place inside the
+            <strong> screen radius</strong> (the distance from the cross to the
+            nearest edge of the visible map), ranked by{" "}
+            <strong>Popularity</strong> × the Selected boost.
           </p>
           <p className="mt-2">
-            Mesita places only (no Google call). Two sources, each on or off:
-            Mesita Popularity and Mesita Proximity, 20 places each. They merge into one pool
-            (a place found twice is one card), then Home and the Map rank it the
-            same way: score = Proximity × Popularity, × the Selected boost
-            for a Selected place. No point: Mesita Popularity alone, by
-            Popularity × the Selected boost.
-          </p>
-          <p className="mt-2">
-            One pipeline for the Map and Home: the same sources, gates, score
-            and numbers. Only Places shown differs, the cut each view takes
-            from the same ranked list.
+            Distance only decides who is on the map, never the order: a place
+            inside the circle ranks by how popular it is, however far from the
+            cross. Mesita places only (no Google call).
           </p>
         </>
       }
-      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.area} />}
+      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.map} />}
     >
       <Group title="Input">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -325,81 +307,24 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(radiusKm) => map({ radiusKm })}
           />
-        </div>
-        <p className="text-muted-foreground type-meta">
-          The pipeline takes a point and a radius. On Home the radius is the
-          one the guest saved with the pin, else this one (the device, or a pin
-          saved without a radius); the Map uses the screen radius, and this one
-          only when it has no screen to measure (no view yet, or one wider than
-          100 km). It is also Chat&apos;s search radius.{" "}
-          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km.
-        </p>
-      </Group>
-      <Group title="Sources">
-        {AREA_SOURCE_SOURCES.map(({ key, label }) => (
-          <SwitchRow
-            key={key}
-            label={label}
-            on={cfg.map[key] > 0}
-            disabled={off}
-            onClick={() => toggle(key)}
-          />
-        ))}
-        <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Map places shown"
+            label="Most pins shown"
             value={cfg.map.placesShown}
             min={MAP_PLACES_SHOWN_MIN}
             max={MAP_PLACES_SHOWN_MAX}
             disabled={off}
             onChange={(placesShown) => map({ placesShown })}
           />
-          <NumberField
-            label="Catalog places shown"
-            value={cfg.map.catalogPlacesShown}
-            min={MAP_PLACES_SHOWN_MIN}
-            max={MAP_PLACES_SHOWN_MAX}
-            disabled={off}
-            onChange={(catalogPlacesShown) => map({ catalogPlacesShown })}
-          />
         </div>
         <p className="text-muted-foreground type-meta">
-          The sources bring up to {MAP_PLACES_SHOWN_MAX} places (2 × 20); after the
-          merge and the sort, the Map (Search tab) shows at most Map places
-          shown and Home at most Catalog places shown.{" "}
-          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+          The Map uses the screen radius, and the current-location radius only
+          when it has no screen to measure (no view yet, or one wider than
+          100 km). It is also Chat&apos;s search radius.{" "}
+          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km. The Map shows at most
+          Most pins shown, best first. {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
         </p>
-        <p className="text-muted-foreground type-meta">
-          Mesita Popularity is the 20 Mesita places in the circle with the
-          highest Popularity × the Selected boost (the score without
-          Proximity), Mesita Proximity the 20 nearest; both are free. There is
-          no reviews minimum: the Minimum Popularity below cuts weak places
-          from both.
-        </p>
-        {allOff ? (
-          <p className="text-destructive type-meta">
-            Every source is off: the Map and Home show nothing.
-          </p>
-        ) : null}
       </Group>
       <Group title="Signals">
-        <div className="flex flex-col gap-2">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField
-              label="Distance penalty"
-              value={params.proximity.radiusDivisor}
-              min={RADIUS_DIVISOR_MIN}
-              max={RADIUS_DIVISOR_MAX}
-              decimals
-              disabled={off}
-              onChange={(radiusDivisor) => proximity({ radiusDivisor })}
-            />
-          </div>
-          <p className="text-muted-foreground type-meta">
-            Bigger favours nearer places; smaller favours popular places. One
-            number for the Map, Home and Chat.
-          </p>
-        </div>
         <div className="flex flex-col gap-2">
           <div className="grid gap-3 sm:grid-cols-2">
             <NumberField
@@ -422,25 +347,14 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
             />
           </div>
           <p className="text-muted-foreground type-meta">
-            Minimum Popularity and Selected boost apply to the Map, Home and Chat.
+            Minimum Popularity and Selected boost apply to the Map, the Catalog
+            and Chat.
           </p>
         </div>
         <p className="text-muted-foreground type-meta">
-          The score is Proximity × Popularity × the Selected boost, Home, the
-          Map and Chat alike, with one distance penalty (now{" "}
-          {params.proximity.radiusDivisor}); only the places shown differ.
-        </p>
-        <p className="text-muted-foreground type-meta">
-          Proximity is 1 ÷ (1 + penalty × distance ÷ radius), so half credit
-          sits at the radius ÷ the penalty and the edge scores 1 ÷ (1 +
-          penalty), whatever the circle — the Home pin&apos;s or the Map
-          screen&apos;s. At 2, a place halfway to the edge scores ½ and one on
-          the edge ⅓. Never 0.
-        </p>
-        <p className="text-muted-foreground type-meta">
           A place whose Popularity is under the Minimum Popularity (now{" "}
-          {cfg.map.popularityFloor}; 0 is off) never shows on Home, the Map or
-          Chat, whatever its score: 3 is about 4★ × 5 reviews.
+          {cfg.map.popularityFloor}; 0 is off) never shows on the Map, the
+          Catalog or Chat, whatever its score: 3 is about 4★ × 5 reviews.
           On the guest Search bar it only reorders: Google places under it sort
           last, none are removed. Popularity is ln(1 + reviews × stars), never
           normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
@@ -450,7 +364,7 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
           never saves a place from the Minimum Popularity.
         </p>
       </Group>
-      <Group title="Map view (the Search tab)">
+      <Group title="Reload">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
             label="Reload after the map rests (s)"
@@ -486,7 +400,92 @@ export function AreaBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-// 4 ─ Consumer Deep Pipeline ───────────────────────────────────────────────
+/** Proximity at d km with half distance h (km): the Catalog's curve,
+ *  1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)). Mirrors proximityFromDistance. */
+function catalogProximity(d: number, h: number): number {
+  return 1 / (1 + Math.log1p(((Math.E - 1) * d) / h));
+}
+
+// 4 ─ Consumer Catalog Pipeline ────────────────────────────────────────────
+export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const params = cfg.params;
+  const proximity = (p: Partial<DiscoveryConfig["params"]["proximity"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
+  };
+  const pageSize = (catalogPageSize: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
+  };
+  const dirty = cfg.map.catalogPageSize !== saved.map.catalogPageSize || !same(params, saved.params);
+  const h = params.proximity.halfKm;
+  const at = (k: number) => catalogProximity(k * h, h).toFixed(2);
+  return (
+    <PipelineBox
+      id="s-catalog"
+      pipeline="catalog"
+      title="Consumer Catalog Pipeline"
+      icon={<LayoutGrid className={ICON} />}
+      explanation={
+        <>
+          <p>
+            Home&apos;s Places: <strong>every</strong> Mesita place, ranked in
+            one run by <strong>Proximity × Popularity</strong> × the Selected
+            boost from the guest&apos;s device or saved pin, and drawn a page at
+            a time. There is no radius: a far place is never cut, only lowered.
+          </p>
+          <p className="mt-2">
+            No location: Popularity × the Selected boost alone. Mesita places
+            only (no Google call). Chat ranks its Selected places the same way.
+          </p>
+        </>
+      }
+      save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.catalog} />}
+    >
+      <Group title="Signals">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumberField
+            label="Half distance (km)"
+            value={params.proximity.halfKm}
+            min={HALF_KM_MIN}
+            max={HALF_KM_MAX}
+            decimals
+            disabled={off}
+            onChange={(halfKm) => proximity({ halfKm })}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          Proximity is 1 ÷ (1 + ln(1 + (e − 1) × distance ÷ half distance)):
+          1 at the guest, ½ at the half distance, falling fast at first and
+          ever slower after, never 0. At {h} km: {at(0.5)} at half of it,
+          {" "}{at(2)} at twice it, {at(4)} at four times it. Smaller favours
+          nearer places; bigger favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
+        </p>
+      </Group>
+      <Group title="Paging">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NumberField
+            label="Page size"
+            value={cfg.map.catalogPageSize}
+            min={CATALOG_PAGE_SIZE_MIN}
+            max={CATALOG_PAGE_SIZE_MAX}
+            disabled={off}
+            onChange={pageSize}
+          />
+        </div>
+        <p className="text-muted-foreground type-meta">
+          Home draws the ranked list this many places at a time; scrolling to
+          the end draws the next page. {CATALOG_PAGE_SIZE_MIN}–{CATALOG_PAGE_SIZE_MAX}.
+        </p>
+      </Group>
+    </PipelineBox>
+  );
+}
+
+// 5 ─ Consumer Deep Pipeline ───────────────────────────────────────────────
 // Soon (MESITA-2345): Deep's only caller is Chat, and no guest reaches Chat
 // yet. Its stored settings stay on the blob; the box has no controls.
 export function DeepBox() {

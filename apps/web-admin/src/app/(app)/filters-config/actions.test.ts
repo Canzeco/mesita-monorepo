@@ -59,14 +59,14 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
-      proximity: { radiusDivisor: 3 },
+      proximity: { halfKm: 8 },
       popularity: { halfReviews: 250 },
     },
     map: {
       ...live.map,
       radiusKm: 3,
-      mesitaPopular: 0,
-      mesitaClosest: 20,
+      placesShown: 77,
+      catalogPageSize: 33,
       selectedFactor: 5,
     },
     catalog: { ...live.catalog, seedCount: 99 },
@@ -104,27 +104,32 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
   });
 });
 
-describe("the Area box", () => {
-  it("moves the two half points (MESITA-2703: reach and Selected are gone; MESITA-2706: the half-distance)", async () => {
+describe("the Map box (MESITA-2909)", () => {
+  it("writes map but the Catalog page size; leaves params, catalog seed, Name, Deep and the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), ["areaSignals"]);
-    expect(sent.config?.params).toEqual({ proximity: { radiusDivisor: 3 }, popularity: { halfReviews: 250 } });
-  });
-
-  it("writes map and the two params; leaves catalog seed, Name, Deep and the prompt", async () => {
-    const live = liveConfig();
-    const sent = armed(live);
-    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.area]);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.map]);
     expect(sent.config?.map.radiusKm).toBe(3);
-    // The two switches and the Selected boost persist (MESITA-2703/2872).
-    expect(sent.config?.map.mesitaPopular).toBe(0);
-    expect(sent.config?.map.mesitaClosest).toBe(20);
+    expect(sent.config?.map.placesShown).toBe(77);
     expect(sent.config?.map.selectedFactor).toBe(5);
+    expect(sent.config?.map.catalogPageSize).toBe(live.map.catalogPageSize);
+    expect(sent.config?.params).toEqual(live.params);
     expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.general).toEqual(live.general);
     expect(sent.config?.deep).toEqual(live.deep);
+    expect(sent.config?.chat).toEqual(live.chat);
+  });
+});
+
+describe("the Catalog box (MESITA-2909)", () => {
+  it("writes the half distance and the page size, and nothing else of map", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.catalog]);
+    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8 }, popularity: { halfReviews: 250 } });
+    expect(sent.config?.map).toEqual({ ...live.map, catalogPageSize: 33 });
+    expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.chat).toEqual(live.chat);
   });
 });
@@ -185,9 +190,9 @@ describe("the Name boxes", () => {
 });
 
 describe("the boxes' slices", () => {
-  it("are the four boxes, each with its own slices, none shared", () => {
+  it("are the saving boxes, each with its own slices, none shared", () => {
     // Deep is Soon (MESITA-2345): three boxes save.
-    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "area"]);
+    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "map", "catalog"]);
     const all = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
   });

@@ -73,35 +73,33 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 2 }, popularity: { halfReviews: 100 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 5 }, popularity: { halfReviews: 100 } });
   assertEquals("ranking" in cfg.catalog, false);
 });
 
-Deno.test("Area params clamp; the reach, the fixed half distance, Selected and the weights table drop, the divisor arrives (MESITA-2687, MESITA-2703, MESITA-2720)", () => {
+Deno.test("params clamp; the reach, the divisor, Selected and the weights table drop, the half distance arrives (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { reachKm: 7, halfKm: 4, radiusDivisor: 0.01 },
+      proximity: { reachKm: 7, halfKm: 0.01, radiusDivisor: 3 },
       selected: { otherFactor: 0.3 },
       popularity: { halfReviews: 0 },
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 0.1 }, popularity: { halfReviews: 1 } });
-  // One decimal, clamped to 10; a stored row with only the old fixed
-  // half distance reads the default 2 (never its 10 as a divisor).
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 2.34 } } }).params.proximity, { radiusDivisor: 2.3 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity, { radiusDivisor: 10 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 10 } } }).params.proximity, { radiusDivisor: 2 });
-  // One penalty for the Map, Home and Chat: a stored Catalog one drops (MESITA-2776).
-  assertEquals(
-    normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 3, catalogRadiusDivisor: 0.1 } } }).params.proximity,
-    { radiusDivisor: 3 },
-  );
-  const m = normalizeDiscoveryConfig({ map: { placesShown: 33 } }).map;
-  assertEquals([m.placesShown, m.catalogPlacesShown], [33, 33]);
-  const n = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 500 } }).map;
-  assertEquals([n.placesShown, n.catalogPlacesShown], [33, 40]);
+  assertEquals(cfg.params, { proximity: { halfKm: 0.5 }, popularity: { halfReviews: 1 } });
+  // One decimal, clamped to 50; a stored row with only the retired divisor
+  // reads the default 5 km.
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 2.34 } } }).params.proximity, { halfKm: 2.3 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity, { halfKm: 50 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 1 } } }).params.proximity, { halfKm: 5 });
+  // Most pins 1..200 default 50; the Catalog page size 5..100 default 20,
+  // and the retired cut `catalogPlacesShown` drops (MESITA-2909).
+  const m = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 40 } }).map;
+  assertEquals([m.placesShown, m.catalogPageSize, "catalogPlacesShown" in m], [33, 20, false]);
+  const n = normalizeDiscoveryConfig({ map: { placesShown: 900, catalogPageSize: 500 } }).map;
+  assertEquals([n.placesShown, n.catalogPageSize], [200, 100]);
+  assertEquals(normalizeDiscoveryConfig({}).map.placesShown, 50);
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

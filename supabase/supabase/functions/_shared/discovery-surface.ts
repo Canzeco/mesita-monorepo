@@ -1,4 +1,4 @@
-// What Discovery IS (MESITA-2327): five Sources, three Pipelines, four
+// What Discovery IS (MESITA-2327): five Sources, four Pipelines, four
 // Signals, two Gates, one Factor (Selected, back as a multiplier with
 // MESITA-2717), and who uses whom. The admin console renders this file
 // (its twin, apps/web-admin filters-config/discovery-surface.ts, is pinned
@@ -7,14 +7,14 @@
 // that does not exist.
 //
 //   Source    a callable retrieval unit with declared output fields
-//   Pipeline  orchestrates sources, gates and signals (Name · Area · Deep)
+//   Pipeline  orchestrates sources, gates and signals (Name · Map · Catalog · Deep)
 //   Signal    a continuous score in 0..1
 //   Gate      a binary eligibility check (0 or 1)
 //   Factor    a multiplier on the score: it orders, never excludes (none
 //             from MESITA-2439 until Selected, MESITA-2717)
 //
-// Catalog and Map are VIEWS of Area, not pipelines; Saved is a saved
-// collection; the Chat Agent sits above the pipelines and calls Deep, never a
+// The Map and the Catalog are two pipelines since MESITA-2909 (one Area
+// before); Saved is a saved collection; the Chat Agent sits above the pipelines and calls Deep, never a
 // source. Which source can feed which signal or gate is DERIVED from the
 // declared fields, never kept as a second map.
 
@@ -156,13 +156,13 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "1 ÷ (1 + distance penalty × distance ÷ radius)",
+    formula: "1 ÷ (1 + ln(1 + (e − 1) × distance ÷ half distance))",
     requires: ["coordinates"],
-    query: "A point location: the Map's cross, the device or a saved pin.",
+    query: "A point location: the device or a saved pin.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the point, ½ at the radius ÷ the operator's Distance penalty, one for the Map, Home and Chat (MESITA-2776; default 2, so halfway to the edge), 1 ÷ (1 + penalty) at the edge (⅓ by default) whatever the radius, never 0 (MESITA-2720). The radius is Home's circle or the Map's screen radius, so a tight screen sorts by distance as much as a wide one.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (default 5 km), falling fast near the guest and ever slower after, never 0 (Pato, MESITA-2909). The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the reciprocal on the radius (MESITA-2720).",
   },
   {
     key: "popularity",
@@ -173,7 +173,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, Proximity × Popularity × the Selected boost, never clamped.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, never clamped: Popularity × the Selected boost on the Map, × Proximity on the Catalog.",
   },
 ];
 
@@ -207,16 +207,16 @@ export const DISCOVERY_GATES: readonly DiscoveryGateFact[] = [
   {
     key: "radius",
     label: "Radius",
-    rule: "1 when the place lies inside the radius around the point, else 0: on the Map the screen radius (the distance from the cross to the nearest edge of the visible map), on Home the radius saved with the pin or the current-location radius below. It decides who is a candidate and never scores.",
+    rule: "1 when the place lies inside the screen radius on the Map (the distance from the cross to the nearest edge of the visible map), else 0; Chat reads inside the current-location radius. It decides who is a candidate and never scores. The Catalog has no radius (MESITA-2909).",
     kind: "query",
     requires: ["coordinates"],
-    when: "Every request with a point. Territory is gone (MESITA-2500, MESITA-2603): no view searches a rectangle or a saved area, so Home sends a point or nothing.",
+    when: "Every Map request. Territory is gone (MESITA-2500, MESITA-2603): no view searches a rectangle or a saved area.",
     missing: "No coordinates: 0.",
     pushdown: ["mesita_places"],
   },
 ];
 
-export const DISCOVERY_PIPELINE_KEYS = ["name", "area", "deep"] as const;
+export const DISCOVERY_PIPELINE_KEYS = ["name", "map", "catalog", "deep"] as const;
 export type DiscoveryPipelineKey = (typeof DISCOVERY_PIPELINE_KEYS)[number];
 
 export type DiscoveryPipelineFact = {
@@ -227,8 +227,8 @@ export type DiscoveryPipelineFact = {
   signals: readonly DiscoverySignalKey[];
   gates: readonly DiscoveryGateKey[];
   scoring: string;
-  /** Multipliers on the score that never exclude (Area's Selected since
-   *  MESITA-2717; none from MESITA-2439 until then). */
+  /** Multipliers on the score that never exclude (the Map's and the
+   *  Catalog's Selected since MESITA-2717; none from MESITA-2439 until then). */
   factors: readonly string[];
   /** Sources whose rows keep the source's own order: no signal scores them,
    *  so none is derived as feeding a signal. */
@@ -255,37 +255,59 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: [],
     gates: [],
     factors: [],
-    scoring: "Google rows keep Google's order, except that on the guest bar Google places under the Area box's Minimum Popularity sort after the rest (MESITA-2724). Autocomplete first, then Text Search; duplicates merge. A Google hit Mesita holds is shown as the Mesita place.",
+    scoring: "Google rows keep Google's order, except that on the guest bar Google places under the Map box's Minimum Popularity sort after the rest (MESITA-2724). Autocomplete first, then Text Search; duplicates merge. A Google hit Mesita holds is shown as the Mesita place.",
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
       "A Google row must have a Google type of one of the forty families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
-      "Guest bar: Google places under the Area box's Minimum Popularity sort after the rest; none are removed; 0 is off. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
+      "Guest bar: Google places under the Map box's Minimum Popularity sort after the rest; none are removed; 0 is off. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
     live: true,
   },
   {
-    key: "area",
-    label: "Area",
-    purpose: "Places around a point: the Map's cross, the device or a saved pin.",
+    key: "map",
+    label: "Map",
+    purpose: "Places on the guest's screen: the Map's cross and the circle that fits the visible map.",
     sources: ["mesita_places"],
-    signals: ["proximity", "popularity"],
+    signals: ["popularity"],
     gates: ["family", "radius"],
     factors: [
-      "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected boost (default 3; 1 is off), every other place's × 1.",
+      "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected boost (default 3; 1 is off), a Boosted place's × its tier (the larger of the two), every other place's × 1.",
     ],
-    scoring: "The Map and Home: Proximity × Popularity × s, no exponents (MESITA-2722), s the Selected boost for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the radius ÷ the operator's Distance penalty (\"Radius divisor\" until MESITA-2726), the Map's screen radius or Home's circle (MESITA-2720), and the radius also gates. The Map and Home share one Distance penalty (MESITA-2776) and each have their own Places shown; nothing else differs (MESITA-2727). No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "Popularity × s, s the Selected boost for a Mesita Selected place, 1 for every other place (MESITA-2717), a plain product never clamped or normalized (MESITA-2710). Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Mesita places only: Google Nearby Search is gone (MESITA-2872), so Area calls no Google. Two sources, each switched on (20) or off (0) by the operator, Home and the Map alike: Mesita Popularity (the 20 with the highest Popularity × the Selected boost, the score without Proximity) and Mesita Proximity (the 20 nearest). They merge into one pool, deduped, gated, scored and ranked before any page is cut. The guest never picks a source. The Map shows at most Map places shown of that sorted pool and Home at most Catalog places shown (1–40 each, default 20, MESITA-2713/2727). Before that cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Selected or not.",
+      "Mesita places only: Google Nearby Search is gone (MESITA-2872), so the Map calls no Google. Every ready Mesita place inside the screen radius is a candidate (the two 20-place source switches retired in MESITA-2909); the guest never picks a source.",
+      "Before the cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Selected or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
-      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead. A saved pin's radius is clamped to 1–50 km.",
+      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead.",
       "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
+    ],
+    callers: ["Map (the Search tab)"],
+    live: true,
+  },
+  {
+    key: "catalog",
+    label: "Catalog",
+    purpose: "Every Mesita place, ranked for the guest's location: Home's Places.",
+    sources: ["mesita_places"],
+    signals: ["proximity", "popularity"],
+    gates: ["family"],
+    factors: [
+      "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected boost (default 3; 1 is off), a Boosted place's × its tier (the larger of the two), every other place's × 1.",
+    ],
+    scoring: "Proximity × Popularity × s, s the Selected boost (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    keepsOrder: [],
+    rules: [
+      "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and comes back whole; Home draws it a Catalog page size at a time (MESITA-2909).",
+      "A place whose Popularity is under the Minimum Popularity is dropped, Selected or not (MESITA-2714).",
+      "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
+      "Mesita's read keeps at most 1000 ready rows before scoring.",
       "Chat reads Mesita Selected places only, inside the current-location radius.",
     ],
-    callers: ["Map (the Search tab)", "Catalog (Home's Places)", "Chat (Don Memo)"],
+    callers: ["Catalog (Home's Places)", "Chat (Don Memo)"],
     live: true,
   },
   {

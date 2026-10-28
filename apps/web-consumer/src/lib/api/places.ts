@@ -321,12 +321,13 @@ export type AreaDiagnostics = {
  *  (MESITA-2703). No radius = the operator's current-location radius. */
 export type AreaOrigin = { lat: number; lng: number; radiusKm?: number | null };
 
-/** The Feed's one ranked Area pool (MESITA-2379). */
+/** Home's ranked Catalog (MESITA-2379, the Catalog pipeline since
+ *  MESITA-2909): every Mesita place, best first. */
 export type AreaPool = {
   kind: "point" | "none";
   places: Place[];
-  /** The radius the server searched (km), when it says (MESITA-2703). */
-  radiusKm?: number;
+  /** Tiles per page, the operator's `map.catalogPageSize` (MESITA-2909). */
+  pageSize?: number;
 };
 
 function cleanPlace(place: Place): Place {
@@ -337,12 +338,11 @@ function cleanPlace(place: Place): Place {
 }
 
 /**
- * Places' one ranked Area pool (MESITA-2384): Google and Mesita places the
- * server merged, scored and ranked; the client pages it in the server's
- * order. `familyKeys` is a family row's question (MESITA-2438): the server
- * asks Google for that family's full type list and lists its primary
- * places first. None = every family. One ranking for every row, the
- * Map's (MESITA-2516): no `prefer`.
+ * Places' Catalog (MESITA-2384, MESITA-2909): every Mesita place the server
+ * scored and ranked, Proximity × Popularity from `origin`, with no radius;
+ * the client pages it in the server's order by the server's `pageSize`.
+ * `familyKeys` is a family row's question (MESITA-2438). None = every
+ * family. No `prefer`.
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
@@ -351,23 +351,21 @@ export async function apiListAreaPool(
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
-    location?: { kind?: "point" | "none"; radiusKm?: number; operatorRadiusKm?: number };
+    location?: { kind?: "point" | "none"; operatorRadiusKm?: number };
+    pageSize?: number;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+    // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
-    // The pin's own radius; none = the operator's (MESITA-2703).
-    ...(origin && typeof origin.radiusKm === "number" && Number.isFinite(origin.radiusKm)
-      ? { radiusKm: origin.radiusKm }
-      : {}),
   });
   const op = data.location?.operatorRadiusKm;
   if (typeof op === "number" && Number.isFinite(op)) rememberOperatorRadiusKm(op);
-  const km = data.location?.radiusKm;
+  const size = data.pageSize;
   return {
     kind: data.location?.kind ?? (origin ? "point" : "none"),
     places: (data.places ?? []).map(cleanPlace),
-    ...(typeof km === "number" && Number.isFinite(km) ? { radiusKm: km } : {}),
+    ...(typeof size === "number" && Number.isFinite(size) && size > 0 ? { pageSize: size } : {}),
   };
 }
 

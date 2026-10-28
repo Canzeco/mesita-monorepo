@@ -20,14 +20,13 @@
 import { num } from "@/lib/config-coerce";
 
 /**
- * The Area pipeline's two stored signal numbers: Proximity's radius divisor
- * (half credit at radius ÷ k, MESITA-2720) and Popularity's reviews for half
- * credit. The exponents live on `map`. Mirrors SignalParams in
- * _shared/discovery-config.ts.
+ * The stored signal numbers: Proximity's half distance (km; the Catalog
+ * pipeline and Chat, MESITA-2909) and Popularity's reviews for half credit.
+ * Mirrors SignalParams in _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  /** The Distance penalty: the Map, Home and Chat alike (MESITA-2776). */
-  proximity: { radiusDivisor: number };
+  /** Proximity is ½ at this many km (MESITA-2909). */
+  proximity: { halfKm: number };
   popularity: { halfReviews: number };
 };
 
@@ -89,9 +88,9 @@ export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
-/** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-2720). */
-export const RADIUS_DIVISOR_MIN = 0.1;
-export const RADIUS_DIVISOR_MAX = 10;
+/** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-2909). */
+export const HALF_KM_MIN = 0.5;
+export const HALF_KM_MAX = 50;
 /** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
@@ -152,23 +151,18 @@ export const SUPER_PARAM_KEYS = [
 ] as const;
 export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
-/** Mirrors AREA_SOURCE_KEYS / AREA_SOURCE_DEFAULT in
- *  _shared/discovery-config.ts (MESITA-2703): each source is off (0) or on
- *  (20). Google Nearby's two retired in MESITA-2872. */
-export const AREA_SOURCE_KEYS = [
-  "mesitaPopular",
-  "mesitaClosest",
-] as const;
-export type AreaSourceKey = (typeof AREA_SOURCE_KEYS)[number];
-export const AREA_SOURCE_ON = 20;
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. */
 export const MAP_RADIUS_KM_MIN = 1;
 export const MAP_RADIUS_KM_MAX = 50;
 const MAP_RADIUS_KM_DEFAULT = 15;
-/** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713). */
+/** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713, MESITA-2909). */
 export const MAP_PLACES_SHOWN_MIN = 1;
-export const MAP_PLACES_SHOWN_MAX = 40;
-const MAP_PLACES_SHOWN_DEFAULT = 20;
+export const MAP_PLACES_SHOWN_MAX = 200;
+const MAP_PLACES_SHOWN_DEFAULT = 50;
+/** Mirrors CATALOG_PAGE_SIZE_* in _shared/discovery-config.ts (MESITA-2909). */
+export const CATALOG_PAGE_SIZE_MIN = 5;
+export const CATALOG_PAGE_SIZE_MAX = 100;
+const CATALOG_PAGE_SIZE_DEFAULT = 20;
 /** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714). */
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
@@ -196,18 +190,16 @@ export type MapConfig = {
   /** Min share of the last-reload screen a guest move must cover before
    *  rest-reload (MESITA-2732). 0 = any move. */
   reloadMinViewportPct: number;
-  /** The two Area sources (MESITA-2703, Mesita only since MESITA-2872), 0
-   *  or 20 each, Home and the Map. */
-  mesitaPopular: number;
-  mesitaClosest: number;
-  /** The current-location radius (km): Home's from the device or a saved
-   *  pin with no radius, the Map's with no screen, Chat's (MESITA-2703). */
+  // The source switches `mesitaPopular` / `mesitaClosest` retired (MESITA-2909).
+  /** The current-location radius (km): the Map's with no screen, Chat's
+   *  (MESITA-2703). The Catalog has no radius (MESITA-2909). */
   radiusKm: number;
   // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
-  /** How many sorted places the Map shows, 1..40 (MESITA-2713). */
+  /** The Map's most pins, 1..200, default 50 (MESITA-2713, MESITA-2909). */
   placesShown: number;
-  /** The same for Home, total across its rails; missing = the Map's (MESITA-2727). */
-  catalogPlacesShown: number;
+  /** Home's Catalog page size, 5..100, default 20 (MESITA-2909; it
+   *  replaced `catalogPlacesShown`). */
+  catalogPageSize: number;
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
   popularityFloor: number;
   /** A Mesita Selected place's score × this, every other place's × 1;
@@ -943,11 +935,9 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
-  mesitaPopular: AREA_SOURCE_ON,
-  mesitaClosest: AREA_SOURCE_ON,
   radiusKm: MAP_RADIUS_KM_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
-  catalogPlacesShown: MAP_PLACES_SHOWN_DEFAULT,
+  catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
   selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
@@ -989,7 +979,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { radiusDivisor: 2 },
+  proximity: { halfKm: 5 },
   popularity: { halfReviews: 100 },
 };
 
@@ -1010,15 +1000,15 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
 }
 
 /**
- * The Area pipeline's numbers. Mirrors `normalizeSignalParams`: rebuilt
+ * The signal numbers. Mirrors `normalizeSignalParams`: rebuilt
  * field by field, so the retired deck's bags (maxKm, timing, category,
  * priorRating, …), the retired calibration (halfDistanceKm,
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
  * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity.reachKm`
  * and `selected` (MESITA-2703) are dropped on the next Save;
- * `proximity.radiusDivisor` (the Distance penalty, MESITA-2720; the Map,
- * Home and Chat alike since MESITA-2776) is the one proximity field; the
- * fixed `halfKm` (MESITA-2706) and `catalogRadiusDivisor` drop.
+ * `proximity.halfKm` (the Catalog's half distance, MESITA-2909) is the one
+ * proximity field; `radiusDivisor` (MESITA-2720) and `catalogRadiusDivisor`
+ * drop.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -1027,7 +1017,7 @@ function coerceParams(raw: unknown): SignalParams {
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
-      radiusDivisor: bounded(prox.radiusDivisor, d.proximity.radiusDivisor, RADIUS_DIVISOR_MIN, RADIUS_DIVISOR_MAX, 1),
+      halfKm: bounded(prox.halfKm, d.proximity.halfKm, HALF_KM_MIN, HALF_KM_MAX, 1),
     },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
@@ -1099,12 +1089,6 @@ function coerceSuperParams(raw: unknown): Record<SuperParamKey, boolean> {
   return out;
 }
 
-/** An Area source switch: 0 or 20, snapped. Mirrors normalizeAreaSource. */
-function coerceAreaSource(raw: unknown): number {
-  const n = num(raw, AREA_SOURCE_ON, 0, AREA_SOURCE_ON);
-  return n >= AREA_SOURCE_ON / 2 ? AREA_SOURCE_ON : 0;
-}
-
 function coerceGeneral(raw: unknown): GeneralConfig {
   const g = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -1166,9 +1150,6 @@ function coerceNameAdmin(raw: unknown): NameAdminConfig {
 
 function coerceMap(raw: unknown): MapConfig {
   const m = (raw ?? {}) as Record<string, unknown>;
-  const placesShown = Math.round(
-    num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
-  );
   return {
     minRating: Math.round(
       num(m.minRating, DEFAULT_MAP.minRating, 0, MIN_RATING_MAX) * 10,
@@ -1191,17 +1172,17 @@ function coerceMap(raw: unknown): MapConfig {
         ) * 10,
       ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
-    // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the Google
-    // sources `googlePopular` / `googleClosest`) is dropped on the next save.
-    mesitaPopular: coerceAreaSource(m.mesitaPopular),
-    mesitaClosest: coerceAreaSource(m.mesitaClosest),
+    // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the four
+    // source switches, `catalogPlacesShown`) is dropped on the next save.
     radiusKm:
       Math.round(
         num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
       ) / 10,
-    placesShown,
-    catalogPlacesShown: Math.round(
-      num(m.catalogPlacesShown, placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    placesShown: Math.round(
+      num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
+    ),
+    catalogPageSize: Math.round(
+      num(m.catalogPageSize, DEFAULT_MAP.catalogPageSize, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX),
     ),
     popularityFloor:
       Math.round(
