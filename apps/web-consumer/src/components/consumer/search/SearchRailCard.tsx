@@ -43,14 +43,14 @@ import {
 /** Every catalog rail card is this tall. Missing rows must not shrink a
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
-const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
+export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
 
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift
  *  from the loaded one. */
-const RAIL_CARD_FRAME =
+export const RAIL_CARD_FRAME =
   "border-border bg-card/95 shadow-elev relative isolate w-full overflow-hidden rounded-2xl border backdrop-blur";
-const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
+export const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
 /** Save · Share under the text column: the left edge is the square photo
  *  (the 132px inner height) plus the column's 12px. */
 const RAIL_CARD_ACTIONS =

@@ -2,17 +2,23 @@ import { Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
+import {
+  RAIL_CARD_FRAME,
+  RAIL_CARD_HEIGHT_CLASS,
+  RAIL_CARD_TEXT,
+} from "./SearchRailCard";
+
 // ADD A PLACE IS THE CAROUSEL'S FIRST CARD (Pato, MESITA-2886: "the normal
 // horizontal carousel but if you scroll to the left, you see a box to add a
-// new place", "same size as all the items"). Page 0, a RailCard's size; the
-// carousel rests on place #1, so it waits off-screen to the left. MESITA-2885
-// had pinned it beside the rail, 56px wide. Dashed and photo-less so it never
-// reads as a place. A tap puts the bar in Add mode (SearchClient): Google's
-// names for a place not yet on Mesita, and a pick opens the opening screen,
-// which calls consumer-web-create-place.
-
-/** A RailCard's height (SearchRailCard's RAIL_CARD_HEIGHT_CLASS). */
-const ADD_CARD_HEIGHT_CLASS = "h-[8.375rem]";
+// new place"). Page 0; the carousel rests on place #1, so it waits off-screen
+// to the left. A tap puts the bar in Add mode (SearchClient): Google's names
+// for a place not yet on Mesita, and a pick opens the opening screen, which
+// calls consumer-web-create-place.
+//
+// THE PLACE CARD'S OWN SHAPE (Pato, MESITA-2889: "same size and dimensions"):
+// RailCard's frame, height and text column, read from SearchRailCard so the
+// two cannot drift; the square photo slot holds a big + where a place shows
+// its photo. MESITA-2886's grey dashed panel is gone.
 
 export function AddPlaceButton({
   onAdd,
@@ -23,29 +29,28 @@ export function AddPlaceButton({
   empty?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onAdd}
-      aria-label="Add a place"
-      className={cn(
-        ADD_CARD_HEIGHT_CLASS,
-        "border-border bg-muted/95 shadow-elev focus-visible:border-foreground flex w-full items-center gap-3 rounded-2xl border-2 border-dashed px-4 text-left backdrop-blur transition outline-none active:scale-[0.98]",
-      )}
-      data-search-add-button
-    >
-      <span className="bg-card text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-        <Plus aria-hidden className="h-6 w-6" strokeWidth={2} />
-      </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-foreground text-base font-semibold">
-          Add a place
+    <div className={cn(RAIL_CARD_FRAME, RAIL_CARD_HEIGHT_CLASS)}>
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label="Add a place"
+        className="focus-visible:ring-primary absolute inset-0 flex items-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset active:opacity-80"
+        data-search-add-button
+      >
+        <span className="bg-muted text-foreground flex aspect-square h-full w-auto shrink-0 items-center justify-center">
+          <Plus aria-hidden className="h-12 w-12" strokeWidth={1.75} />
         </span>
-        <span className="text-muted-foreground text-sm">
-          {empty
-            ? "Nothing on Mesita here yet. Add the first one."
-            : "Not on Mesita yet? Create its profile."}
+        <span className={cn("text-foreground", RAIL_CARD_TEXT)}>
+          <span className="font-sans text-base leading-5 font-semibold tracking-tight">
+            Add a place
+          </span>
+          <span className="text-muted-foreground text-sm leading-5">
+            {empty
+              ? "Nothing on Mesita here yet. Add the first one."
+              : "Not on Mesita yet? Create its profile."}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
