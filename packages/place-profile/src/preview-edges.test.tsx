@@ -37,7 +37,7 @@ describe("member preview edges", () => {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
-    // Visits enrich a place now; the guest never votes (MESITA-2642).
+    // Views enrich a place now; the guest never votes (MESITA-2642).
     expect(html).not.toContain("Vote to enrich");
     expect(html).not.toContain("Community votes");
   });

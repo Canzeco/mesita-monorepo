@@ -76,7 +76,7 @@ export type PlaceDetail = {
     facet: string;
   }>;
 
-  /** Overview's Mesita Families box (Pato, MESITA-2924), above Tags: the
+  /** Overview's Families box (Pato, MESITA-2924), above Tags: the
    *  place's families as the EF names them, in family order. Empty hides the
    *  box (an older EF sends none). */
   families: Array<{ key: string; label: string; emoji: string }>;

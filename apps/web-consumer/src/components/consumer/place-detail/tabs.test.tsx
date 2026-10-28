@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { PlaceTabBar, placeTabs } from "./tabs";
 
-// The vote panel and its copy are gone (MESITA-2642: visits enrich a place,
+// The vote panel and its copy are gone (MESITA-2642: views enrich a place,
 // no guest votes); only the section strip's pins remain here.
 describe("section strip", () => {
   it("is the four sections for every place, Premier the fourth, Enrich never a tab (MESITA-2332, MESITA-2861, MESITA-2925)", () => {

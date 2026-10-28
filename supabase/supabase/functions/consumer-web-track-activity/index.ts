@@ -17,7 +17,7 @@
 //                 measures the viewer to this point ("1.2 km away"). Without
 //                 a fix, or out of range, the event stores no point.
 // Response: { ok: true, kind, on, enriching? }
-//   enriching     viewed only: the place is mid-Enrich after this visit
+//   enriching     viewed only: the place is mid-Enrich after this view
 //                 (MESITA-2952), so the open profile can show the Enriching
 //                 tag the page loaded without.
 //
@@ -26,11 +26,11 @@
 // visibility: a member without Instagram still saves; nobody sees it
 // (place_activity_visible decides that at read time).
 //
-// A VISIT COUNTS TOWARD ENRICH (Pato, MESITA-2642: "a profile views counter
+// A VIEW COUNTS TOWARD ENRICH (Pato, MESITA-2642: "a profile views counter
 // in the background, and when it surpasses a certain amount we automatically
 // enrich the place"). A `viewed` also goes through applyPlaceRequest: each
 // signed-in guest counts once per place (apply_place_request), and reaching
-// the enrichment config's threshold ("Enrich after N visits",
+// the enrichment config's threshold ("Enrich after N views",
 // enrichRequestThreshold) starts the same Render run admin Enrich starts. It
 // replaced the guest vote (consumer-web-request-place, retired). An Enriched
 // place is untouched; a failure here never fails the view.
@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       enriching = counted.enriching;
     } else {
       console.error(
-        `[consumer-web-track-activity] the visit did not count toward Enrich: ${counted.error}`,
+        `[consumer-web-track-activity] the view did not count toward Enrich: ${counted.error}`,
       );
     }
   }
