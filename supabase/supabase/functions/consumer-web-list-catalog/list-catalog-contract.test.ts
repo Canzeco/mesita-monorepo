@@ -22,9 +22,9 @@ Deno.test("list-catalog: one pool from the shared engine", () => {
   assertEquals(src.includes("buildCatalogRails"), false);
   assert(src.includes('wire: "unified"'));
   assert(src.includes('surface: "catalog"'));
-  // The answer names the operator's radius (the location sheet) and the
-  // page size (MESITA-2909).
-  assert(src.includes("location: { kind: location.kind, operatorRadiusKm: cfg.map.radiusKm }"));
+  // The answer names the page size and no radius (MESITA-2909, MESITA-2914).
+  assert(src.includes("location: { kind: location.kind },"));
+  assertEquals(src.includes("operatorRadiusKm"), false);
   assert(src.includes("pageSize: pool.summary.pageSize"));
   assertEquals(src.includes("googleCalls"), false);
   assertEquals(src.includes("mesitaLimit"), false);

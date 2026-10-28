@@ -25,7 +25,7 @@ import type { SavedLocation } from "@/lib/saved-locations";
 const run = (s: PinPickerState, ...actions: PinPickerAction[]) => actions.reduce(pinPickerReducer, s);
 const TEC = { lat: 25.6514, lng: -100.2895 };
 const ROMA = { lat: 25.6611, lng: -100.2801 };
-const start = () => initialPinPickerState({ center: null, radiusKm: 15 });
+const start = () => initialPinPickerState({ center: null });
 
 /** A lookup for `at` that Google answered. */
 function answered(s: PinPickerState, at: typeof TEC, suggestedName: string, street: string) {
@@ -121,7 +121,7 @@ describe("the name follows the final pin", () => {
   });
 
   it("an edited entry reopens with its own name and nothing to ask", () => {
-    const s = initialPinPickerState({ center: TEC, suggestedName: "Tecnológico", formattedAddress: "a", customName: "Casa", nameEdited: true, radiusKm: 5 });
+    const s = initialPinPickerState({ center: TEC, suggestedName: "Tecnológico", formattedAddress: "a", customName: "Casa", nameEdited: true });
     expect(s.nameValue).toBe("Casa");
     expect(lookupNeeded(s)).toBe(false);
   });
@@ -180,7 +180,6 @@ describe("the backfill names saved pins", async () => {
       suggestedName: "San Pedro",
       customName: null,
       formattedAddress: null,
-      radiusKm: null,
       nameEdited: false,
       needsName: true,
     })!.location;
@@ -209,7 +208,7 @@ describe("the backfill names saved pins", async () => {
     reverse.mockResolvedValueOnce({ suggestedName: "Saltillo Centro", formattedAddress: "Calle Victoria 1" });
     await backfillSavedLocation({} as never, legacy);
     expect(store.getSavedLocations()[0]).toMatchObject({ suggestedName: "Saltillo Centro", needsName: false, name: "Saltillo Centro" });
-    const typed = seed({ customName: "Casa", nameEdited: true, radiusKm: 5 });
+    const typed = seed({ customName: "Casa", nameEdited: true });
     reverse.mockResolvedValueOnce({ suggestedName: "Otro", formattedAddress: "Calle 2" });
     await backfillSavedLocation({} as never, typed);
     expect(store.getSavedLocations().find((l) => l.id === typed.id)).toMatchObject({ name: "Casa", suggestedName: "San Pedro", formattedAddress: "Calle 2" });

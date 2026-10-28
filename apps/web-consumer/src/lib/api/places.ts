@@ -11,7 +11,6 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { rememberOperatorRadiusKm } from "@/lib/operator-radius";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
@@ -316,10 +315,9 @@ export type AreaDiagnostics = {
   formula: "point" | "none";
 };
 
-/** Where Places searches from: always a point (MESITA-2501) — the device, a
- *  confirmed saved pin, or the city's centre — and, for a pin, its radius
- *  (MESITA-2703). No radius = the operator's current-location radius. */
-export type AreaOrigin = { lat: number; lng: number; radiusKm?: number | null };
+/** Where Places ranks from: always a point (MESITA-2501) — the device, a
+ *  confirmed saved pin, or the city's centre. No radius (MESITA-2914). */
+export type AreaOrigin = { lat: number; lng: number };
 
 /** Home's ranked Catalog (MESITA-2379, the Catalog pipeline since
  *  MESITA-2909): every Mesita place, best first. */
@@ -351,7 +349,7 @@ export async function apiListAreaPool(
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
-    location?: { kind?: "point" | "none"; operatorRadiusKm?: number };
+    location?: { kind?: "point" | "none" };
     pageSize?: number;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
@@ -359,8 +357,6 @@ export async function apiListAreaPool(
     // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
   });
-  const op = data.location?.operatorRadiusKm;
-  if (typeof op === "number" && Number.isFinite(op)) rememberOperatorRadiusKm(op);
   const size = data.pageSize;
   return {
     kind: data.location?.kind ?? (origin ? "point" : "none"),

@@ -14,11 +14,9 @@
 // write so a build from before this change still reads every entry. The
 // fields map one-to-one onto MESITA-2400's future server row.
 //
-// EVERY PIN CARRIES ITS RADIUS (MESITA-2703): `radiusKm`, the chip the guest
-// picked on the pin picker (1 · 3 · 5 · 10 · 15 km, or the operator's). Home
-// searches that circle around the pin. An entry saved before it, or with a
-// broken value, reads null: Home uses the operator's current-location
-// radius.
+// A PIN HAS NO RADIUS (MESITA-2914): the Catalog ranks every place from the
+// point (MESITA-2909). The `radiusKm` an entry stored from MESITA-2703 on is
+// dropped on read and never written again.
 //
 // Stored in this browser, the same way Favorites are (saved-places.ts): no
 // EF, and consumer-local-reset.ts wipes them when a different guest signs in.
@@ -50,9 +48,6 @@ export type SavedLocation = {
   formattedAddress: string | null;
   /** The free `location_kind` hook: every saved location is a point. */
   kind: "point";
-  /** The radius Home searches around this pin (km), 1..50; null = the
-   *  operator's current-location radius (MESITA-2703). */
-  radiusKm: number | null;
   nameEdited: boolean;
   /** When the Google-made names were fetched (ms); null = never. */
   namedAt: number | null;
@@ -64,27 +59,12 @@ export type SavedLocation = {
   legacyName: string | null;
 };
 
-/** A radius as the location sheet and Home say it: 5, 2.5. */
-export function formatKm(km: number): string {
-  return Number.isInteger(km) ? String(km) : km.toFixed(1);
-}
-
 export function displayName(l: Pick<SavedLocation, "customName" | "suggestedName">): string {
   return l.customName ?? l.suggestedName ?? SAVED_LOCATION_FALLBACK;
 }
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** The radius bounds, mirroring `MAP_RADIUS_KM_*` on the server. */
-export const SAVED_RADIUS_KM_MIN = 1;
-export const SAVED_RADIUS_KM_MAX = 50;
-
-/** A stored or picked radius: a finite number in 1..50, one decimal; any
- *  other value is null (the operator's radius). */
-export function savedRadiusKm(v: unknown): number | null {
-  if (!finite(v) || v < SAVED_RADIUS_KM_MIN || v > SAVED_RADIUS_KM_MAX) return null;
-  return Math.round(v * 10) / 10;
-}
 const strOrNull = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
@@ -110,7 +90,6 @@ function toSavedLocation(x: unknown): SavedLocation | null {
       customName: strOrNull(o.customName),
       formattedAddress: strOrNull(o.formattedAddress),
       kind: "point" as const,
-      radiusKm: savedRadiusKm(o.radiusKm),
       nameEdited: o.nameEdited,
       namedAt: finite(o.namedAt) ? o.namedAt : null,
       needsName: o.needsName === true,
@@ -130,7 +109,6 @@ function toSavedLocation(x: unknown): SavedLocation | null {
     customName: null,
     formattedAddress: null,
     kind: "point" as const,
-    radiusKm: null,
     nameEdited: false,
     namedAt: null,
     needsName: true,
@@ -218,8 +196,6 @@ export type SavedLocationInput = {
   suggestedName: string | null;
   customName: string | null;
   formattedAddress: string | null;
-  /** The chip the guest picked (km); null = the operator's radius. */
-  radiusKm: number | null;
   nameEdited: boolean;
   needsName: boolean;
 };
@@ -247,7 +223,6 @@ export function addSavedLocation(
     customName: strOrNull(input.customName),
     formattedAddress: strOrNull(input.formattedAddress),
     kind: "point" as const,
-    radiusKm: savedRadiusKm(input.radiusKm),
     nameEdited: input.nameEdited,
     namedAt: input.needsName ? null : now,
     needsName: input.needsName,
@@ -288,7 +263,6 @@ export function confirmedPatch(input: SavedLocationInput, now = Date.now()): Sav
     suggestedName: strOrNull(input.suggestedName),
     customName: strOrNull(input.customName),
     formattedAddress: strOrNull(input.formattedAddress),
-    radiusKm: savedRadiusKm(input.radiusKm),
     nameEdited: input.nameEdited,
     needsName: input.needsName,
     namedAt: input.needsName ? null : now,
