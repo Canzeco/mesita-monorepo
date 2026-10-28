@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Search, Sparkles, X } from "lucide-react";
+import { Check, Pencil, Plus, Search, X } from "lucide-react";
 import { usePlaceContext } from "./PlaceContext";
 import type { PlaceFamilyOption } from "./actions";
 
@@ -65,52 +65,45 @@ export function PlaceFamilyPicker({
   };
 
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-foreground/80 type-body font-medium">Mesita Families</span>
-        <span className="text-muted-foreground type-label tabular-nums" aria-live="polite">
-          {value.length} / {max}
-        </span>
-      </div>
-
-      {ordered.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5">
-          {ordered.map((slug) => (
-            <li key={slug}>
-              <span className="border-border bg-foreground/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
-                {chipFor(slug)}
-                <button
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => toggle(slug)}
-                  aria-label={`Remove ${chipFor(slug)}`}
-                  className="text-muted-foreground hover:text-foreground transition disabled:opacity-50"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-muted-foreground text-xs">
-          No family yet — the place reads Undefined and stays off the guest rails.
-        </p>
-      )}
-
-      <button
-        type="button"
-        disabled={disabled || families.length === 0}
-        onClick={() => {
-          if (disabled) return;
-          setOpen(true);
-          setQuery("");
-        }}
-        className="border-border hover:border-primary/50 hover:text-primary inline-flex h-9 w-fit items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-50"
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-        {value.length > 0 ? "Edit families" : "Select families"}
-      </button>
+    <div className="-mx-1.5 flex-1 py-2">
+      <ul className="flex flex-wrap items-center gap-1.5">
+        {ordered.map((slug) => (
+          <li key={slug}>
+            <span className="border-border bg-foreground/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
+              {chipFor(slug)}
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => toggle(slug)}
+                aria-label={`Remove ${chipFor(slug)}`}
+                className="text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          </li>
+        ))}
+        <li>
+          <button
+            type="button"
+            disabled={disabled || families.length === 0}
+            onClick={() => {
+              if (disabled) return;
+              setOpen(true);
+              setQuery("");
+            }}
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
+          >
+            {value.length > 0 ? <Pencil className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+            {value.length > 0 ? "Edit" : "Add families"}
+          </button>
+        </li>
+        {ordered.length === 0 ? (
+          <li className="text-muted-foreground text-xs">
+            None yet: the place reads Undefined and stays off the guest rails.
+          </li>
+        ) : null}
+      </ul>
 
       {open ? (
         <FamiliesModal
