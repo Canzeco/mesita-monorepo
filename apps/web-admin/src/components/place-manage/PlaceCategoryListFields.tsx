@@ -143,8 +143,21 @@ export function PlaceMesitaTagsField({
   /** Basics' Reset (MESITA-2829). */
   labelRight?: React.ReactNode;
 }) {
+  const max = usePlaceContext().profile.fieldLimits.tagsPerPlaceMax;
+  // Editable, so no "auto" lock; the counter sits on the label row (MESITA-2929).
   return (
-    <ReadField label="Mesita tags" auto boxed labelRight={labelRight}>
+    <ReadField
+      label="Mesita tags"
+      boxed
+      labelRight={
+        <span className="inline-flex items-center gap-3">
+          {labelRight}
+          <span className="text-muted-foreground type-label tabular-nums" aria-live="polite">
+            {value.length} / {max}
+          </span>
+        </span>
+      }
+    >
       <PlaceTagsPicker value={value} onChange={onChange} disabled={disabled} />
     </ReadField>
   );
