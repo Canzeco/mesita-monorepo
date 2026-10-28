@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
+  ME_BUTTON_CLASS,
+  MeLead,
+  SettingsGroup,
+} from "@/components/consumer/me/settings-rows";
+import {
   apiFetchConsumerProfile,
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -25,10 +30,7 @@ import {
 } from "@/lib/avatar-upload";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import {
-  INPUT_CLASS,
-  SHEET_CANCEL_BUTTON_CLASS,
-} from "@/lib/ui-classes";
+import { INPUT_CLASS, SHEET_CANCEL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 
 // Full-page identity editor at /me/profile (MESITA-1789). Was a LocalSheet
@@ -67,7 +69,7 @@ const PROFILE_CAPTION = "How you appear across Mesita";
 /** The line under the photo. */
 const PHOTO_HINT = "JPG, PNG, or WEBP · max 2 MB";
 
-/** The member-number card's label, over the number. */
+/** The member-number group's eyebrow, over its row. */
 const MEMBER_NUMBER_LABEL = "Member number";
 
 const MEMBER_NUMBER_LINE =
@@ -105,9 +107,9 @@ const PHOTO_BOX_CLASS = "h-20 w-20 rounded-full";
 const CAMERA_BADGE_BOX_CLASS =
   "border-paper absolute -right-0.5 -bottom-0.5 h-7 w-7 rounded-full border-2";
 
-/** The number's own line: the display face, 18px tight. */
+/** The number: the row title's 14px semibold, tabular (MESITA-2983). */
 const MEMBER_NUMBER_CLASS =
-  "font-display block truncate text-lg leading-tight tracking-wide tabular-nums";
+  "block truncate text-sm font-semibold tracking-wide tabular-nums";
 
 /** The 44px copy button beside the number. */
 const COPY_BUTTON_BOX_CLASS = "h-11 w-11 shrink-0 rounded-xl";
@@ -154,20 +156,20 @@ function FieldLabel({ children }: { children: string }) {
 
 /** The caption under the title, the form's and the skeleton's. */
 function ProfileCaption() {
-  return <p className="text-muted-foreground text-xs">{PROFILE_CAPTION}</p>;
+  return <MeLead>{PROFILE_CAPTION}</MeLead>;
 }
 
 /** The hint under the photo, the form's and the skeleton's. */
 function PhotoHint() {
   return (
-    <p className="text-muted-foreground type-body mt-2 text-center">
+    <p className="text-muted-foreground type-label mt-2 text-center">
       {PHOTO_HINT}
     </p>
   );
 }
 
-/** The member-number card: the label, the number, the line, and the copy
- *  button beside them. The form passes the number and the button; the
+/** The member-number group: its eyebrow, then one row — the number, the
+ *  line, and the copy button beside them. The form passes the number and the button; the
  *  skeleton passes a bar on the number's line and the button's box. */
 function MemberNumberCard({
   number,
@@ -177,17 +179,18 @@ function MemberNumberCard({
   action: ReactNode;
 }) {
   return (
-    <div className="border-border bg-card mt-5 flex items-center gap-3 rounded-2xl border p-4">
-      <div className="min-w-0 flex-1">
-        <span className="text-muted-foreground type-label block font-medium">
-          {MEMBER_NUMBER_LABEL}
-        </span>
-        {number}
-        <span className="text-muted-foreground mt-1 block text-xs leading-snug">
-          {MEMBER_NUMBER_LINE}
-        </span>
-      </div>
-      {action}
+    <div className="mt-5">
+      <SettingsGroup title={MEMBER_NUMBER_LABEL}>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="min-w-0 flex-1">
+            {number}
+            <span className="text-muted-foreground type-label mt-0.5 block">
+              {MEMBER_NUMBER_LINE}
+            </span>
+          </div>
+          {action}
+        </div>
+      </SettingsGroup>
     </div>
   );
 }
@@ -206,15 +209,15 @@ function MemberNumberCard({
  * box: the 80px photo with the camera badge on its corner, the 44px copy
  * button, the three fields as their own empty controls
  * (FIELD_SKELETON_CLASS), BirthdayPicker's own skeleton (its grid, its 52px
- * parts), Cancel (46px) and Save beside it.
+ * parts), Cancel (44px) and Save beside it.
  * /me/profile/loading.tsx draws this same one.
  */
 export function EditProfileSkeleton() {
   return (
-    <MeScreen title="Personal details">
+    <MeScreen title="Profile">
       <ProfileCaption />
 
-      <div className="mt-5 flex justify-center">
+      <div className="flex justify-center">
         <div className="relative">
           <Skeleton className={PHOTO_BOX_CLASS} />
           <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
@@ -255,8 +258,8 @@ export function EditProfileSkeleton() {
       </div>
 
       <div className={ACTIONS_CLASS}>
-        <Skeleton className="h-11.5 flex-1" />
-        <Skeleton className="h-11.5 flex-1" />
+        <Skeleton className="h-11 flex-1 rounded-xl" />
+        <Skeleton className="h-11 flex-1 rounded-xl" />
       </div>
       <p role="status" className="sr-only">
         Loading your details
@@ -374,10 +377,10 @@ function EditProfileForm({
   }
 
   return (
-    <MeScreen title="Personal details">
+    <MeScreen title="Profile">
       <ProfileCaption />
 
-      <div className="mt-5 flex justify-center">
+      <div className="flex justify-center">
         <input
           ref={fileInputRef}
           type="file"
@@ -504,7 +507,7 @@ function EditProfileForm({
         <button
           type="button"
           onClick={goBack}
-          className={SHEET_CANCEL_BUTTON_CLASS}
+          className={cn(SHEET_CANCEL_BUTTON_CLASS, ME_BUTTON_CLASS)}
         >
           Cancel
         </button>
@@ -513,7 +516,7 @@ function EditProfileForm({
           size="sm"
           onClick={() => void save()}
           disabled={!dirty || saving || uploadingPhoto}
-          className="flex-1 text-sm font-semibold"
+          className={cn(ME_BUTTON_CLASS, "flex-1")}
         >
           {saving && (
             <Spinner size="sm" className="border-white/40 border-t-white" />

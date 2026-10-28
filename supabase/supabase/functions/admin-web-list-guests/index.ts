@@ -7,13 +7,8 @@
 // Read-only; super-admin only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   GUEST_LIST_LIMIT,
   GUEST_ROW_SELECT,
@@ -24,19 +19,9 @@ import {
 import { loadVipPartners } from "../_shared/vip-partners.ts";
 
 serveJson("admin-web-list-guests", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<{ q?: unknown }>(req, {});
   const filter = guestSearchFilter(body.q);
@@ -75,16 +60,12 @@ serveJson("admin-web-list-guests", async (req) => {
     }
   }
 
-  let partners;
-  try {
-    partners = await loadVipPartners(admin);
-  } catch (err) {
-    return json({ ok: false, error: (err as Error).message }, 500);
-  }
+  const partners = await loadVipPartners(admin);
+  if (!partners.ok) return json({ ok: false, error: partners.error }, 500);
 
   return json({
     ok: true,
     guests: rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null)),
-    partners,
+    partners: partners.partners,
   });
 });

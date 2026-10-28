@@ -76,43 +76,56 @@ export function readPartnerBody(
   return { ok: true, id, name, googlePlaceId };
 }
 
-/** Every partner, by name, with its venue's name. Throws on a failed read. */
-export async function loadVipPartners(admin: SupabaseClient): Promise<VipPartner[]> {
+/** A failed read, as the rest of _shared answers one: never a throw. */
+export type ReadFailure = { ok: false; error: string };
+
+/** Every partner, by name, with its venue's name. */
+export async function loadVipPartners(
+  admin: SupabaseClient,
+): Promise<{ ok: true; partners: VipPartner[] } | ReadFailure> {
   const { data, error } = await admin
     .from("vip_partners")
     .select("id, name, place_id")
     .order("name", { ascending: true });
-  if (error) throw new Error(`vip_partners_read: ${error.message}`);
+  if (error) return { ok: false, error: `vip_partners_read: ${error.message}` };
   const rows = (data ?? []) as { id: string; name: string; place_id: string | null }[];
   const placeIds = rows.map((r) => r.place_id).filter((v): v is string => !!v);
   const names = new Map<string, string>();
   if (placeIds.length > 0) {
     const places = await admin.from("profiles").select("id, name").in("id", placeIds);
-    if (places.error) throw new Error(`vip_partner_places_read: ${places.error.message}`);
+    if (places.error) {
+      return { ok: false, error: `vip_partner_places_read: ${places.error.message}` };
+    }
     for (const p of places.data ?? []) {
       if (p.id && p.name) names.set(p.id as string, p.name as string);
     }
   }
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    placeId: r.place_id,
-    placeName: r.place_id ? names.get(r.place_id) ?? null : null,
-  }));
+  return {
+    ok: true,
+    partners: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      placeId: r.place_id,
+      placeName: r.place_id ? names.get(r.place_id) ?? null : null,
+    })),
+  };
 }
 
 /** The Mesita place with this Google Place ID: its id and name, or null when
- *  Mesita has none. Throws on a failed read. */
+ *  Mesita has none. */
 export async function findPlaceByGoogleId(
   admin: SupabaseClient,
   googlePlaceId: string,
-): Promise<{ id: string; name: string | null } | null> {
+): Promise<{ ok: true; place: { id: string; name: string | null } | null } | ReadFailure> {
   const { data, error } = await admin
     .from("profiles")
     .select("id, name")
     .eq("google_place_id", googlePlaceId)
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`place_read: ${error.message}`);
-  return data ? { id: data.id as string, name: (data.name as string | null) ?? null } : null;
+  if (error) return { ok: false, error: `place_read: ${error.message}` };
+  return {
+    ok: true,
+    place: data ? { id: data.id as string, name: (data.name as string | null) ?? null } : null,
+  };
 }

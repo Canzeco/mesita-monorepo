@@ -16,19 +16,12 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  corsPreflight,
   json,
   readJson,
   readPlaceIdAlias,
-  rejectUnlessMethods,
   serveJson,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
   BOOST_FACTOR,
@@ -40,18 +33,9 @@ import {
 } from "../_shared/boost.ts";
 
 serveJson("admin-web-get-place-boost", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;

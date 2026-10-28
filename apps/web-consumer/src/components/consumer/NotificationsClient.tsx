@@ -25,10 +25,10 @@ import { EmptyState } from "@/components/shared";
 // screen cannot render off the list.
 
 const FEED_CLASS =
-  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6";
+  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6";
 
-/** The rows' column: 16px under the blurb, 8px apart. */
-const LIST_CLASS = "mt-4 flex flex-col gap-2";
+/** The rows' column: 20px under the header, 8px apart. */
+const LIST_CLASS = "mt-5 flex flex-col gap-2";
 
 // Four NotificationRow silhouettes (notification-row.tsx, beside the row
 // they stand in for) on the list's own step (Pato, MESITA-2701: "the
@@ -44,7 +44,7 @@ function SkeletonRows() {
 }
 
 /** The feed while it loads: what /me/notifications/loading.tsx draws under
- *  the page's blurb, and what this component draws until the fetch lands. */
+ *  the page's frame, and what this component draws until the fetch lands. */
 export function NotificationsSkeleton() {
   return (
     <div className={FEED_CLASS}>

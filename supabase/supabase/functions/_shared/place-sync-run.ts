@@ -2,7 +2,10 @@
 
 import { apifyActorError, apifyBillingDetail } from "./apify.ts";
 import { gatherGoogleMaps } from "./enrich-google.ts";
-import { googleReviewListFromScrape } from "./enrich-google-review-snippets.ts";
+import {
+  googleReviewListFromScrape,
+  type GoogleReviewSnippet,
+} from "./enrich-google-review-snippets.ts";
 import {
   syncSavedLinks,
   type PlaceSyncResult,
@@ -36,24 +39,38 @@ export async function runPlaceSync(links: SyncLinks): Promise<PlaceSyncResult> {
         return { ok: true, value: { followers: result.metrics.facebook_followers } };
       },
       googleReviews: async (googlePlaceId) => {
-        const key = Deno.env.get("APIFY_KEY")?.trim() ?? "";
-        if (!key) return { ok: false, error: "Apify is not configured" };
-        const gathered = await gatherGoogleMaps({
-          apifyKey: key,
-          placeId: googlePlaceId,
-          gatherGoogleImages: 0,
-        });
-        const error = typeof gathered.diag.error === "string" ? gathered.diag.error : null;
-        const listed = googleReviewListFromScrape(gathered.reviews, error);
-        if (!listed.ok) {
-          return {
-            ok: false,
-            error: apifyBillingDetail(error) ??
-              (error ? apifyActorError(error) : "Google reviews could not be loaded"),
-          };
-        }
-        return { ok: true, value: listed.list ?? [] };
+        const listed = await loadGoogleReviewList(googlePlaceId);
+        if (listed.ok) return { ok: true, value: listed.list ?? [] };
+        if (listed.reason === "unconfigured") return { ok: false, error: "Apify is not configured" };
+        const error = listed.scrapeError;
+        return {
+          ok: false,
+          error: apifyBillingDetail(error) ??
+            (error ? apifyActorError(error) : "Google reviews could not be loaded"),
+        };
       },
     },
   });
+}
+
+/** One Apify scrape of a place's Google review list. `unconfigured` = no
+ *  APIFY_KEY; `failed` carries the scraper's own error, if it gave one, for
+ *  the caller to word (Sync names it, admin's reload stays generic). */
+export async function loadGoogleReviewList(
+  googlePlaceId: string,
+): Promise<
+  | { ok: true; list: GoogleReviewSnippet[] | null }
+  | { ok: false; reason: "unconfigured" | "failed"; scrapeError: string | null }
+> {
+  const key = Deno.env.get("APIFY_KEY")?.trim() ?? "";
+  if (!key) return { ok: false, reason: "unconfigured", scrapeError: null };
+  const gathered = await gatherGoogleMaps({
+    apifyKey: key,
+    placeId: googlePlaceId,
+    gatherGoogleImages: 0,
+  });
+  const error = typeof gathered.diag.error === "string" ? gathered.diag.error : null;
+  const listed = googleReviewListFromScrape(gathered.reviews, error);
+  if (!listed.ok) return { ok: false, reason: "failed", scrapeError: error };
+  return { ok: true, list: listed.list };
 }

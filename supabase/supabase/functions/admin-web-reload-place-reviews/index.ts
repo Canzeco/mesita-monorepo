@@ -16,14 +16,14 @@
 // and writes nothing. A failed list scrape writes nothing.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
-import { writePlace } from "../_shared/place-doc.ts";
-import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
 import {
-  googleReviewListFromScrape,
-  type GoogleReviewSnippet,
-} from "../_shared/enrich-google-review-snippets.ts";
+  json,
+  readJson,
+  readPlaceIdAlias,
+  serveJson,
+} from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
+import { writePlace } from "../_shared/place-doc.ts";
 import {
   reviewSourcePatch,
   verifyFacebook,
@@ -32,7 +32,7 @@ import {
   type ReviewVerify,
 } from "../_shared/review-sources.ts";
 import { mergeReviewFoundFlags, reviewFoundFromRow } from "../_shared/review-found.ts";
-import { runPlaceSync } from "../_shared/place-sync-run.ts";
+import { loadGoogleReviewList, runPlaceSync } from "../_shared/place-sync-run.ts";
 
 const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook", "sync"]);
 
@@ -54,18 +54,9 @@ type PlaceRow = {
 };
 
 serveJson("admin-web-reload-place-reviews", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can reload reviews.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can reload reviews.");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -122,8 +113,12 @@ serveJson("admin-web-reload-place-reviews", async (req) => {
   if (linkError) return json({ ok: false, code: "unlinked", error: linkError }, 400);
 
   if (source === "google_reviews") {
-    const listed = await reloadGoogleReviewList(place.google_place_id);
-    if (!listed.ok) return json({ ok: false, error: listed.error }, listed.status);
+    const listed = await loadGoogleReviewList(place.google_place_id ?? "");
+    if (!listed.ok) {
+      return listed.reason === "unconfigured"
+        ? json({ ok: false, error: "Apify is not configured" }, 500)
+        : json({ ok: false, error: "Google reviews could not be loaded" }, 502);
+    }
     const written = await writePlace(admin, {
       table: "place_profiles",
       mode: "update",
@@ -192,23 +187,4 @@ function numbers(place: PlaceRow) {
     facebook_followers: place.facebook_followers,
     ...reviewFoundFromRow(place),
   };
-}
-
-async function reloadGoogleReviewList(
-  googlePlaceId: string | null,
-): Promise<
-  | { ok: true; list: GoogleReviewSnippet[] | null }
-  | { ok: false; error: string; status: number }
-> {
-  const key = Deno.env.get("APIFY_KEY")?.trim() ?? "";
-  if (!key) return { ok: false, error: "Apify is not configured", status: 500 };
-  const gathered = await gatherGoogleMaps({
-    apifyKey: key,
-    placeId: googlePlaceId ?? "",
-    gatherGoogleImages: 0,
-  });
-  const error = typeof gathered.diag.error === "string" ? gathered.diag.error : null;
-  const listed = googleReviewListFromScrape(gathered.reviews, error);
-  if (!listed.ok) return { ok: false, error: "Google reviews could not be loaded", status: 502 };
-  return { ok: true, list: listed.list };
 }

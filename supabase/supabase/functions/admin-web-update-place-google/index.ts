@@ -9,37 +9,21 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  corsPreflight,
   json,
   readJson,
   readPlaceIdAlias,
-  rejectUnlessMethods,
   serveJson,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
 serveJson("admin-web-update-place-google", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can update Google data.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can update Google data.");
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -47,14 +31,14 @@ serveJson("admin-web-update-place-google", async (req) => {
   if (!placeId) return json({ ok: false, error: "placeId is required" }, 400);
 
   const result = await runGooglePlaceUpdate(admin, placeId, {
-    supabaseUrl: envRes.env.url,
+    supabaseUrl: env.url,
   });
   if (!result.ok) {
     await recordAdminOperatorEvent(admin, {
       verb: "update",
       outcome: "failed",
       placeId,
-      actorUserId: authRes.user.id,
+      actorUserId: user.id,
       source: "admin-web-update-place-google",
       detail: { error: result.error, code: result.code ?? null },
     });
@@ -68,7 +52,7 @@ serveJson("admin-web-update-place-google", async (req) => {
     verb: "update",
     outcome: "succeeded",
     placeId,
-    actorUserId: authRes.user.id,
+    actorUserId: user.id,
     source: "admin-web-update-place-google",
     detail: { heroRefreshed: result.heroRefreshed },
   });

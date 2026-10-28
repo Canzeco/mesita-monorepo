@@ -717,9 +717,15 @@ describe("T8 — Me's grid is ten live cells", () => {
   it("each cell leads with its icon in one neutral ink chip", () => {
     const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
     expect(src).toContain("data-dest-chip");
-    // DEST_CHIP: one string for the chip and its loading box (MESITA-2701).
-    expect(src).toContain(
-      '"bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
+    // DEST_CHIP: one string for the chip and its loading box (MESITA-2701),
+    // built on the box every Me row icon wears (MESITA-2983).
+    expect(src).toContain('cn(ICON_CHIP_CLASS, "bg-muted text-foreground")');
+    const rows = readFileSync(
+      join(APP_DIR, "..", "components", "consumer", "me", "settings-rows.tsx"),
+      "utf8",
+    );
+    expect(rows).toContain(
+      '"flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
     );
     expect(src).toContain("className={DEST_CHIP} aria-hidden data-dest-chip");
     expect(src).not.toContain("opacity-[0.22]");
@@ -731,8 +737,12 @@ describe("T8 — Me's grid is ten live cells", () => {
   // two columns". The chip sits beside the text: one row, not a stack.
   it("each cell is one short row — chip beside the text — in two columns", () => {
     const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
-    expect(src).toContain("relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3");
-    expect(src).not.toMatch(/relative flex w-full flex-col overflow-hidden rounded-2xl/);
+    expect(src).toContain(
+      "relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3",
+    );
+    expect(src).not.toMatch(
+      /relative flex w-full flex-col overflow-hidden rounded-2xl/,
+    );
     expect(src).toContain('className="grid grid-cols-2 items-stretch gap-2"');
   });
 

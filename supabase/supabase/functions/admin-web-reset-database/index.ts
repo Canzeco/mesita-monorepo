@@ -42,13 +42,8 @@
 // the DB, so a stuck purge can also be drained later without re-wiping.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { purgeStorageObjects } from "../_shared/storage-purge.ts";
 
 type Body = { confirm?: string; storageOnly?: boolean };
@@ -56,20 +51,9 @@ type Body = { confirm?: string; storageOnly?: boolean };
 const CONFIRM_PHRASE = "RESET";
 
 serveJson("admin-web-reset-database", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  // --- Guard 1: super_admins gate. ---
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx; // Guard 1: the super_admins gate.
 
   // --- Guard 2: typed confirmation phrase. ---
   const bodyRes = await readJson<Body>(req);

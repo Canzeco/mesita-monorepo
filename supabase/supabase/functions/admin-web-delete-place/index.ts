@@ -18,20 +18,13 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  corsPreflight,
   json,
   readJson,
   readPlaceIdAlias,
-  rejectUnlessMethods,
   serveJson,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
-import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
+import { readAdminPlace } from "../_shared/admin-place.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
@@ -42,18 +35,9 @@ const ARCHIVED_STATE = "archived";
 type Body = { placeId?: unknown; projectId?: unknown };
 
 serveJson("admin-web-delete-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -77,14 +61,9 @@ serveJson("admin-web-delete-place", async (req) => {
   // Already archived — report success without a write, so a double-click
   // cannot log a second archive event for the same place.
   if (currentState === ARCHIVED_STATE) {
-    const { data: place, error: readError } = await admin
-      .from("profiles")
-      .select(PLACE_PROFILE_COLUMNS)
-      .eq("id", placeId)
-      .single();
-    if (readError) {
-      return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
-    }
+    const readBack = await readAdminPlace(admin, placeId);
+    if (!readBack.ok) return readBack.response;
+    const place = readBack.place;
     return json({ ok: true, state: ARCHIVED_STATE, place });
   }
 
@@ -107,7 +86,7 @@ serveJson("admin-web-delete-place", async (req) => {
       place: placeId,
       from: currentState,
       to: ARCHIVED_STATE,
-      actor: authRes.user.email ?? authRes.user.id,
+      actor: user.email ?? user.id,
     }),
   );
 
@@ -115,19 +94,14 @@ serveJson("admin-web-delete-place", async (req) => {
     verb: "edit",
     outcome: "succeeded",
     placeId,
-    actorUserId: authRes.user.id,
+    actorUserId: user.id,
     source: "admin-web-delete-place",
     detail: { action: "archive", from: currentState },
   });
 
-  const { data: place, error: readError } = await admin
-    .from("profiles")
-    .select(PLACE_PROFILE_COLUMNS)
-    .eq("id", placeId)
-    .single();
-  if (readError) {
-    return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
-  }
+  const readBack = await readAdminPlace(admin, placeId);
+  if (!readBack.ok) return readBack.response;
+  const place = readBack.place;
 
   return json({ ok: true, state: ARCHIVED_STATE, place });
 });

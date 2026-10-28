@@ -29,8 +29,8 @@
 // Deploy: supabase functions deploy admin-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
@@ -39,20 +39,9 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 type Body = { placeId?: string; onOpen?: boolean };
 
 serveJson("admin-web-create-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
-
-  // Authenticate the admin operator against the admin allowlist.
-  const authRes = await getAuthedUser(req, env);
-  if (!authRes.ok) return authRes.response;
-  const admin = adminClient(env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can create places.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can create places.");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   // Parse input.
   const bodyRes = await readJson<Body>(req);
@@ -74,7 +63,7 @@ serveJson("admin-web-create-place", async (req) => {
       await recordAdminOperatorEvent(admin, {
         verb: "create",
         outcome: "failed",
-        actorUserId: authRes.user.id,
+        actorUserId: user.id,
         source: "admin-web-create-place",
         detail: { code: "create_on_open_off", googlePlaceId: placeId },
       });
@@ -98,7 +87,7 @@ serveJson("admin-web-create-place", async (req) => {
     await recordAdminOperatorEvent(admin, {
       verb: "create",
       outcome: "failed",
-      actorUserId: authRes.user.id,
+      actorUserId: user.id,
       source: "admin-web-create-place",
       detail: {
         code: (created.body as { code?: string }).code ?? "create_failed",
@@ -112,7 +101,7 @@ serveJson("admin-web-create-place", async (req) => {
     verb: "create",
     outcome: "succeeded",
     placeId: created.place.id,
-    actorUserId: authRes.user.id,
+    actorUserId: user.id,
     source: "admin-web-create-place",
     detail: { googlePlaceId: placeId },
   });

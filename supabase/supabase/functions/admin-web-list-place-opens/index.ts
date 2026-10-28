@@ -11,13 +11,8 @@
 // Deploy: supabase functions deploy admin-web-list-place-opens
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   type PlaceOpenRow,
   summarizePlaceOpens,
@@ -27,19 +22,9 @@ const WINDOW_DAYS = 30;
 const ROW_CAP = 10_000;
 
 serveJson("admin-web-list-place-opens", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
-
-  const authRes = await getAuthedUser(req, env);
-  if (!authRes.ok) return authRes.response;
-  const admin = adminClient(env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString();
   const { data, error } = await admin
