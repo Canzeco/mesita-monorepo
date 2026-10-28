@@ -76,29 +76,17 @@ export function PlaceTagsPicker({
     }
   };
 
-  const removeTag = (slug: string) => {
-    onChange(value.filter((item) => item !== slug));
-  };
-
   const labelFor = (slug: string) =>
     bySlug.get(slug)?.label_en ?? slug.replace(/_/g, " ");
 
   return (
     <div className="-mx-1.5 flex-1 py-2">
+      {/* Read-only chips: removing is unchecking in the Edit modal (MESITA-2934). */}
       <ul className="flex flex-wrap items-center gap-1.5">
         {value.map((slug) => (
           <li key={slug}>
             <span className="border-border bg-foreground/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
               {labelFor(slug)}
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => removeTag(slug)}
-                aria-label={`Remove ${labelFor(slug)}`}
-                className="text-muted-foreground hover:text-foreground transition disabled:opacity-50"
-              >
-                <X className="h-3 w-3" />
-              </button>
             </span>
           </li>
         ))}
