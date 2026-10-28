@@ -144,6 +144,7 @@ import {
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
+import { AddPlaceSheet } from "./AddPlaceSheet";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -340,14 +341,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a flicker — so this stays true until the query is really gone.
   const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
-  // ADD MODE (Pato, MESITA-2885: "a button to add a profile if the place is
-  // not yet on mesita, just create place"). The rail's Add button turns the
-  // bar's placeholder into "Add a place" — the bar searches Google either
-  // way (MESITA-2896). A pick is the explicit open:
-  // the opening screen calls consumer-web-create-place (get-or-create).
-  // Clearing the bar, or leaving it empty, ends Add mode.
-  const [adding, setAdding] = useState(false);
-  const barInputRef = useRef<HTMLInputElement | null>(null);
+  // ADD A PLACE IS ITS OWN SHEET (Pato, MESITA-2902: "open a new modal and
+  // write a searchbar of the place to add … and click the create new
+  // profile"): the rail's Add card opens AddPlaceSheet; MESITA-2885's Add
+  // mode on this bar is gone.
+  const [addOpen, setAddOpen] = useState(false);
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -410,7 +408,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       cancelled = true;
       window.clearTimeout(search);
     };
-  }, [supabase, trimmedQuery, searchOrigin, searchNonce, adding]);
+  }, [supabase, trimmedQuery, searchOrigin, searchNonce]);
 
   // The second pin source. null hands the map back its catalog pins, so the
   // basemap is never blank while you type — results ADD to what is there.
@@ -779,19 +777,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // its modal from the bar: the camera lands on the place, the catalog
   // reloads there, and the modal is one more tap away on the card or its
   // pin. The operator's cap never vetoes it.
-  // ADD MODE'S PICK IS THE EXPLICIT OPEN (MESITA-2885): a Mesita row opens
-  // its profile, a Google row the opening screen, which creates it. The
-  // plain bar pick below never creates; it anchors. An area is not a place.
-  const handleAddPick = (prediction: PlacePrediction) => {
-    if (prediction.kind === "location") {
-      toast("Pick a place, not an area.");
-      return;
-    }
-    setAdding(false);
-    updateQuery("");
-    openGoogleOnly(prediction);
-  };
-
   const handleBarPick = (prediction: PlacePrediction) => {
     if (prediction.kind === "location") {
       // A Location is a camera destination, never a card. Coordinates are
@@ -1095,20 +1080,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         chipsHidden={querying}
         bar={
           <SearchBar
-            inputRef={barInputRef}
             query={query}
-            showClear={query.length > 0 || adding}
-            placeholder={adding ? "Add a place not on Mesita…" : undefined}
+            showClear={query.length > 0}
             onQueryChange={updateQuery}
             onFocus={() => setBarFocused(true)}
-            onBlur={() => {
-              setBarFocused(false);
-              if (!query.trim()) setAdding(false);
-            }}
-            onClear={() => {
-              setAdding(false);
-              updateQuery("");
-            }}
+            onBlur={() => setBarFocused(false)}
+            onClear={() => updateQuery("")}
           />
         }
       >
@@ -1129,7 +1106,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searchError={searchError}
               predictions={predictions}
               addStates={addStates}
-              onPick={adding ? handleAddPick : handleBarPick}
+              onPick={handleBarPick}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
@@ -1178,15 +1155,21 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
-            onAdd={() => {
-              setAdding(true);
-              barInputRef.current?.focus();
-            }}
+            onAdd={() => setAddOpen(true)}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
           />
         )}
+        {/* The Add card's sheet: a Google search whose row button creates the
+            profile (the opening screen's get-or-create) or opens the Mesita
+            place (MESITA-2902). */}
+        <AddPlaceSheet
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          origin={searchOrigin}
+          onPick={openGoogleOnly}
+        />
       </div>
     </div>
   );
