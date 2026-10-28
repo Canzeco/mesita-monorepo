@@ -58,7 +58,7 @@ describe("persisted familyKeys hydrate from the filterable twenty", () => {
     const mod = await import("@/lib/use-map-filters");
     mod.selectMapFamily("dinner");
 
-    // One family at a time (MESITA-2412): picking Dinner replaces Coffee.
+    // A chip picks its family alone (MESITA-2412): Dinner replaces Coffee.
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(["dinner"]);
   });
 
@@ -73,8 +73,8 @@ describe("persisted familyKeys hydrate from the filterable twenty", () => {
     const mod = await import("@/lib/use-map-filters");
     mod.selectMapFamily("dinner");
 
-    // A stored set from before the one-family rule reads as its first key;
-    // picking another replaces it.
+    // A stored set survives hydration (MESITA-2903: several families);
+    // a chip pick replaces it with that family alone.
     expect(persistedFamilyKeys(store, MAP_KEY)).toEqual(["dinner"]);
   });
 
