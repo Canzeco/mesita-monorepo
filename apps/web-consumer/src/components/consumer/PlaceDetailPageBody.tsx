@@ -16,9 +16,10 @@ export function PlaceDetailPageBody({
   fallbackHref?: string;
 }) {
   // The distance after the zone (MESITA-2644).
-  const place = useMeasuredPlace(fetched);
+  const measured = useMeasuredPlace(fetched);
   const router = useRouter();
-  const { actions, sheets, social, boost, openTab } = useMemberPlaceActions(place);
+  // Enriching once this visit starts the run (MESITA-2952).
+  const { place, actions, sheets, social, boost, openTab } = useMemberPlaceActions(measured);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();

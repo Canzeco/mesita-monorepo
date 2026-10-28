@@ -8,8 +8,9 @@ import { useMeasuredPlace } from "@/lib/place-distance";
 
 export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   // The distance after the zone (MESITA-2644).
-  const place = useMeasuredPlace(fetched);
-  const { actions, sheets, social, boost, openTab } = useMemberPlaceActions(place);
+  const measured = useMeasuredPlace(fetched);
+  // Enriching once this visit starts the run (MESITA-2952).
+  const { place, actions, sheets, social, boost, openTab } = useMemberPlaceActions(measured);
   return (
     <>
       <PlaceDetailModalShell place={place} onMore={actions.onMore}>

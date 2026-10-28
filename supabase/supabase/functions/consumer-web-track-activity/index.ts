@@ -16,7 +16,10 @@
 //   lat, lng      where the guest's device was (MESITA-2853): the feed
 //                 measures the viewer to this point ("1.2 km away"). Without
 //                 a fix, or out of range, the event stores no point.
-// Response: { ok: true, kind, on }
+// Response: { ok: true, kind, on, enriching? }
+//   enriching     viewed only: the place is mid-Enrich after this visit
+//                 (MESITA-2952), so the open profile can show the Enriching
+//                 tag the page loaded without.
 //
 // A Google-only card (`g:<id>`) is refused: it is not a place row yet, and its
 // save stays in the browser (lib/saved-places.ts). Recording never checks
@@ -102,18 +105,21 @@ Deno.serve(async (req) => {
     }
   }
 
+  let enriching = false;
   if (kind === "viewed") {
     const counted = await applyPlaceRequest(admin, {
       consumerId,
       placeId,
       callerName: "consumer-web-track-activity",
     });
-    if (!counted.ok) {
+    if (counted.ok) {
+      enriching = counted.enriching;
+    } else {
       console.error(
         `[consumer-web-track-activity] the visit did not count toward Enrich: ${counted.error}`,
       );
     }
   }
 
-  return json({ ok: true, kind, on });
+  return json(kind === "viewed" ? { ok: true, kind, on, enriching } : { ok: true, kind, on });
 });

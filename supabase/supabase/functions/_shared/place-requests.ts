@@ -8,6 +8,10 @@
 // (enrichRequestThreshold) this door starts the same Render run admin Enrich
 // starts (_shared/enrich-start.ts): there is one Enrich. Admin Enrich never
 // calls this door — that is the bypass.
+//
+// `enriching` tells the visitor the place is mid-run after this visit
+// (MESITA-2952): the page loaded before the run began, so the guest whose
+// visit started it would otherwise never see the Enriching tag.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
@@ -119,7 +123,7 @@ export async function applyPlaceRequest(
     callerName: string;
   },
 ): Promise<
-  | { ok: true; state: PlaceRequestState }
+  | { ok: true; state: PlaceRequestState; enriching: boolean }
   | { ok: false; status: number; error: string; code?: string }
 > {
   const { data: place, error: placeErr } = await admin
@@ -158,6 +162,7 @@ export async function applyPlaceRequest(
         enrichedAt,
         enrichmentTriggered: false,
       }),
+      enriching: false,
     };
   }
 
@@ -173,6 +178,8 @@ export async function applyPlaceRequest(
   const count = Number.isFinite(requestCount) ? requestCount : existingCount;
 
   let enrichmentTriggered = false;
+  // Another guest's run won the claim between our read and our start.
+  let claimedElsewhere = false;
   if (shouldTriggerRequestEnrichment({
     requestCount: count,
     threshold,
@@ -193,7 +200,9 @@ export async function applyPlaceRequest(
       });
       if (started.ok) {
         enrichmentTriggered = true;
-      } else if (started.blocked !== "enriching") {
+      } else if (started.blocked === "enriching") {
+        claimedElsewhere = true;
+      } else {
         console.error(
           `[${opts.callerName}] the visit did not start an Enrich run: ${started.error}`,
         );
@@ -211,5 +220,6 @@ export async function applyPlaceRequest(
       enrichedAt,
       enrichmentTriggered,
     }),
+    enriching: enrichmentTriggered || claimedElsewhere || isPlaceEnriching(contentState),
   };
 }
