@@ -11,6 +11,7 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
+import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
@@ -21,17 +22,16 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 // Pato, MESITA-2924: "add a new section in overview above mesita tags where
 // you call it Mesita Families, there you mention all". The place's families
 // (1–5, inferred by the Description step, MESITA-2891), emoji + label, in
-// family order. No families, no box.
+// family order. No families, no box. Each wears the Tags chip
+// (PLACE_OUTLINE_CHIP_CLASS), emoji first (MESITA-2932: one chip, one type
+// size; the round semibold pill was a third treatment).
 export function FamiliesBox({ place }: { place: PlaceDetail }) {
   if (place.families.length === 0) return null;
   return (
     <Box title="Mesita Families">
       <div className="flex flex-wrap gap-2" data-place-families>
         {place.families.map((f) => (
-          <span
-            key={f.key}
-            className="border-border bg-card text-foreground flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold"
-          >
+          <span key={f.key} className={PLACE_OUTLINE_CHIP_CLASS}>
             {f.emoji ? (
               <span aria-hidden className="text-base leading-none">
                 {f.emoji}
