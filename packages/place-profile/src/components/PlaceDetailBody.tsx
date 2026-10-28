@@ -120,7 +120,9 @@ export function PlaceDetailBody({
               <StatsBox place={place} />
             </>
           )}
-          {tab === "reviews" && <GoogleReviewsBox place={place} />}
+          {tab === "reviews" && (
+            <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
+          )}
           {tab === "products" && <SoonScreen />}
           {tab === "boost" && (boost ?? <PlaceEmptyScreen {...NO_BOOST} />)}
       </div>

@@ -17,6 +17,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
+import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
 import {
@@ -25,6 +26,11 @@ import {
 } from "../_shared/place-requests.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
+// Google's place id: the write-review form takes no `?cid=`. This EF only;
+// PLACE_PUBLIC_COLUMNS stays as it is.
+const GOOGLE_REVIEW_FORM_COLUMN = ", google_place_id";
 
 type Body = { id?: string; slug?: string };
 
@@ -52,7 +58,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select(PLACE_PROFILE_COLUMNS)
+    .select(PLACE_PROFILE_COLUMNS + GOOGLE_REVIEW_FORM_COLUMN)
     .eq(column, idOrSlug)
     .maybeSingle();
 
@@ -99,7 +105,12 @@ Deno.serve(async (req) => {
     contentState: row.content_state,
     enrichedAt: row.enriched_at,
   });
-  const place = { ...row, ...request, profile_stats: await profileStatsP };
+  const place = {
+    ...row,
+    google_reviews: anonymousReviews(row.google_reviews),
+    ...request,
+    profile_stats: await profileStatsP,
+  };
 
   return json({ ok: true, place, tags });
 });

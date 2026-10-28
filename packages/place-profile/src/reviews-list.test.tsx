@@ -25,7 +25,8 @@ function review(author: string, rating: number, day: number) {
   return {
     author,
     rating,
-    text: `${author} liked the room.`,
+    author_photo: `https://lh3.googleusercontent.com/${author}`,
+    text: `Review ${author.slice(1)} liked the room.`,
     published: `2026-10-${String(day).padStart(2, "0")}`,
   };
 }
@@ -114,17 +115,30 @@ describe("Reviews is a vertical list", () => {
     expect(html).toContain("flex-col");
 
     let text = document.body.textContent ?? "";
-    for (const name of ["R1", "R2", "R3", "R4", "R5"]) {
-      expect(text).toContain(name);
+    for (const n of ["1", "2", "3", "4", "5"]) {
+      expect(text).toContain(`Review ${n} liked`);
     }
-    expect(text).not.toContain("R6");
-    expect(text).not.toContain("R7");
+    expect(text).not.toContain("Review 6 liked");
+    expect(text).not.toContain("Review 7 liked");
     expect(text).toContain("Show more");
 
     clickNamed("Show more");
     text = document.body.textContent ?? "";
-    expect(text).toContain("R6");
-    expect(text).toContain("R7");
+    expect(text).toContain("Review 6 liked");
+    expect(text).toContain("Review 7 liked");
     expect(text).not.toContain("Show more");
+  });
+
+  it("never prints a reviewer's name or photo (MESITA-2916)", () => {
+    mount();
+    clickNamed("Reviews");
+    clickNamed("Show more");
+    const html =
+      document.querySelector('section[aria-label="Reviews"]')?.outerHTML ?? "";
+    for (const name of ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]) {
+      expect(html).not.toContain(name);
+    }
+    expect(html).not.toContain("googleusercontent");
+    expect(html).toContain("Reviewer names are hidden");
   });
 });
