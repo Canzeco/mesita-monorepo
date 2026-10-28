@@ -17,9 +17,12 @@ import {
 import { clean } from "../_shared/input.ts";
 import { isInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { runInBackground } from "../_shared/background.ts";
+import { savePhotoSizes } from "../_shared/photo-sizes.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import {
   buildProfilePatch,
+  AVATAR_BUCKET,
   parseAvatarUrl,
   parseBirthday,
   parseName,
@@ -149,6 +152,13 @@ Deno.serve(async (req) => {
   });
   if (!update.ok) {
     return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
+  }
+
+  // A new upload gets the three sizes screens load (MESITA-2966).
+  if (typeof avatarUrl === "string" && avatarUrl !== existing.data?.avatar_url) {
+    const base = envRes.env.url.replace(/\/+$/, "");
+    const path = avatarUrl.slice(`${base}/storage/v1/object/public/${AVATAR_BUCKET}/`.length);
+    runInBackground(savePhotoSizes(admin, envRes.env.url, AVATAR_BUCKET, path));
   }
 
   return json({ ok: true, consumer: update.row });
