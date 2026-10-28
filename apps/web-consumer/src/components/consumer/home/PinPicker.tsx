@@ -6,6 +6,7 @@
 // searched there silently.
 //
 //   ┌ ‹  Set the spot ─────────────┐
+//   │ [🔍 Search an address     ]  │  floats on the map (MESITA-2947)
 //   │        [ map, greedy ]       │  ≥45vh, outside any scroll body
 //   │             📍 fixed     (◎) │  the map moves under the pin
 //   ├──────────────────────────────┤
@@ -21,7 +22,7 @@
 // no radius since MESITA-2914: the Catalog ranks every place from it.
 
 import { useEffect, useReducer, useRef, useState } from "react";
-import { ChevronLeft, Loader2, MapPin, Navigation } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Navigation, Search, X } from "lucide-react";
 import {
   APIProvider,
   APILoadingStatus,
@@ -30,15 +31,21 @@ import {
   useApiLoadingStatus,
   useMap,
 } from "@vis.gl/react-google-maps";
-import { apiReverseGeocodePin } from "@/lib/api/place-search";
+import {
+  apiReverseGeocodePin,
+  apiSuggestPlaces,
+  type PlacePrediction,
+} from "@/lib/api/place-search";
+import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { setActiveLocation, savedLocationKey } from "@/lib/active-location";
 import {
   MAP_MINIMAL_STYLES,
+  MONTERREY_CENTER,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_USER_LOCATION_STROKE_COLOR,
   mapPinIcon,
 } from "@/lib/map-defaults";
-import type { PickerCamera } from "@/lib/location-pick";
+import { pickCamera, type PickerCamera } from "@/lib/location-pick";
 import {
   classifyThrown,
   initialPinPickerState,
@@ -387,8 +394,9 @@ function PinMapLayer({
         <UserDot />
       </Map>
       <CenterPin lifted={moving} />
+      <PinSearch />
       {!moved ? (
-        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center" data-pin-picker-hint>
+        <div className="pointer-events-none absolute inset-x-0 top-[4.25rem] flex justify-center" data-pin-picker-hint>
           <span className="bg-card/95 shadow-elev rounded-full px-3 py-1.5 text-xs font-semibold">
             Move the map to place the pin
           </span>
@@ -437,6 +445,157 @@ function UserDot() {
   if (!coords) return null;
   const icon = mapPinIcon(MAP_USER_LOCATION_PIN_COLOR, MAP_USER_LOCATION_STROKE_COLOR);
   return <Marker position={coords} clickable={false} icon={icon.url} title="You're here" />;
+}
+
+/** The search bar on the map (MESITA-2947, Pato: "save location must also
+ *  have a searchbar"): a match moves the map there and the pin follows, as a
+ *  drag would; nothing is saved until Save. Same Autocomplete EF and billing
+ *  rule as the sheet's search: one session token until a pick. */
+function PinSearch() {
+  const map = useMap();
+  const supabase = useBrowserSupabase();
+  const coords = useUserLocation();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlacePrediction[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState(newSessionToken);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const typing = query.trim().length >= 2;
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const rows = await apiSuggestPlaces(supabase, q, token, coords ?? MONTERREY_CENTER);
+        if (!cancelled) {
+          setResults(rows.slice(0, 6));
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError("Couldn't search right now");
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // `coords` only biases the ranking; a new fix should not re-run a search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, query]);
+
+  const clear = () => {
+    setQuery("");
+    setResults([]);
+    setError(null);
+  };
+
+  const go = async (r: PlacePrediction) => {
+    if (!map) return;
+    setResolving(r.placeId);
+    try {
+      const cam = await pickCamera(supabase, r);
+      if (cam.fit) {
+        map.fitBounds({
+          south: cam.fit.low.lat,
+          west: cam.fit.low.lng,
+          north: cam.fit.high.lat,
+          east: cam.fit.high.lng,
+        });
+      } else {
+        map.setCenter(cam.center);
+        map.setZoom(cam.zoom);
+      }
+      clear();
+      inputRef.current?.blur();
+    } catch {
+      setError("Couldn't open that place");
+    } finally {
+      setResolving(null);
+      // Google bills a session per pick; the next search starts a new one.
+      setToken(newSessionToken());
+    }
+  };
+
+  return (
+    <div className="absolute inset-x-3 top-3" data-pin-picker-search>
+      <label className="relative block">
+        <Search
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+          aria-hidden
+        />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (e.target.value.trim().length < 2) setResults([]);
+          }}
+          placeholder="Search an address or place"
+          aria-label="Search the map"
+          enterKeyHint="search"
+          autoComplete="off"
+          className={cn(INPUT_CLASS, "shadow-elev border-transparent pr-10 pl-9")}
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Clear search"
+            className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center"
+          >
+            <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </button>
+        ) : null}
+      </label>
+      {typing || error ? (
+        <ul
+          role="list"
+          aria-label="Matches"
+          className="bg-card shadow-elev divide-border mt-2 max-h-[30vh] divide-y overflow-y-auto rounded-2xl"
+          data-pin-picker-results
+        >
+          {results.map((r) => (
+            <li key={r.placeId}>
+              <button
+                type="button"
+                disabled={resolving !== null}
+                onClick={() => void go(r)}
+                className="hover:bg-muted/60 flex w-full items-center gap-3 px-3 py-2.5 text-left transition disabled:opacity-60"
+              >
+                {resolving === r.placeId ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{r.mainText}</span>
+                  {r.secondaryText ? (
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {r.secondaryText}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          ))}
+          {results.length === 0 ? (
+            <li className="text-muted-foreground px-3 py-3 text-xs" role="status">
+              {error ?? (searching ? "Searching…" : "No matches yet")}
+            </li>
+          ) : error ? (
+            <li className="text-muted-foreground px-3 py-3 text-xs" role="status">{error}</li>
+          ) : null}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 /** "Use my location": pans to the fix; asks for one only if the browser has
