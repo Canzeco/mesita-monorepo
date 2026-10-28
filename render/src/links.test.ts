@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  brandFromWebsite,
   confirmedLink,
   discoverLinks,
   discoverOfficialLinks,
   poolFromUrls,
   resolverBackground,
+  searchQueries,
   urlsFromFirecrawl,
   validateLink,
 } from "./links.ts";
@@ -100,7 +102,8 @@ test("a sourced link is kept and an invented one is dropped", async () => {
   });
   assert.equal(found.website_url, "https://www.pujol.com.mx/menu");
   assert.equal(found.instagram_url, undefined);
-  assert.equal(searches.filter((search) => search.query.includes("instagram")).length, 1);
+  // The plain query and the `site:instagram.com` one; no website, so no brand query.
+  assert.equal(searches.filter((search) => search.query.includes("instagram")).length, 2);
   assert.equal(searches.find((search) => search.query.includes("instagram"))?.limit, 7);
   assert.equal(judged.preset, "pro-search");
   assert.equal(judged.max_steps, 10);
@@ -301,4 +304,50 @@ test("Links reports absence as a result and a silent vendor as a failure", async
 
   const noKeys = await discoverLinks({ name: "Pujol", city: null, have: {} });
   assert.equal(noKeys.report.state, "failed");
+});
+
+// MESITA-2969: a Starbucks kiosk on a campus has no Instagram of its own.
+test("a chain branch's brand comes from the website host its name carries", () => {
+  assert.equal(brandFromWebsite("Starbucks Biblioteca ITESM MTY II", "https://www.starbucks.com.mx/"), "starbucks");
+  assert.equal(brandFromWebsite("Café Tacvba Centro", "https://cafetacvba.com.mx"), "cafetacvba");
+  assert.equal(brandFromWebsite("Pujol", "https://pujol.com.mx"), null);
+  assert.equal(brandFromWebsite("Strana", "https://grupoanderson.com"), null);
+  assert.equal(brandFromWebsite("Starbucks", null), null);
+  assert.deepEqual(searchQueries("instagram_url", "Starbucks Biblioteca ITESM MTY II", "Monterrey", "starbucks"), [
+    "Starbucks Biblioteca ITESM MTY II Monterrey instagram",
+    '"Starbucks Biblioteca ITESM MTY II" site:instagram.com',
+    "starbucks Monterrey instagram",
+  ]);
+  assert.deepEqual(searchQueries("website_url", "Starbucks Biblioteca ITESM MTY II", "Monterrey", "starbucks"), [
+    "Starbucks Biblioteca ITESM MTY II Monterrey official website",
+  ]);
+});
+
+test("the brand account found by the brand search reaches the Resolver and is kept", async () => {
+  let input = "";
+  const fetchImpl: typeof fetch = async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string; input?: string };
+    if (String(url).includes("firecrawl")) {
+      const hits = body.query === "starbucks Monterrey instagram"
+        ? [{ url: "https://www.instagram.com/starbucksmex/" }]
+        : [];
+      return Response.json({ data: { web: hits } });
+    }
+    input = body.input ?? "";
+    return Response.json({
+      output: [{ type: "message", content: [{ text: JSON.stringify({ instagram_url: "https://www.instagram.com/starbucksmex" }) }] }],
+    });
+  };
+  const found = await discoverOfficialLinks({
+    name: "Starbucks Biblioteca ITESM MTY II",
+    city: "Monterrey",
+    website: "https://www.starbucks.com.mx/",
+    have: {},
+    counts: { website_url: 0, instagram_url: 7, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.equal(found.instagram_url, "https://www.instagram.com/starbucksmex");
+  assert.match(input, /location of the "starbucks" brand/);
 });
