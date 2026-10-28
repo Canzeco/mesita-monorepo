@@ -15,13 +15,8 @@
 // duplicating hundreds of lines per product EF. Default modularization is
 // still in-process `_shared/` imports; use an EF hop only when it earns its
 // cost (async ack, separate deploy boundary, cron claim). Every internal
-// endpoint runs requireInternalCaller (the three enrich stages through
-// serveEnrichStage in enrich-pipeline.ts), and internal-callers.test.ts holds
+// endpoint runs requireInternalCaller, and internal-callers.test.ts holds
 // this list to the code and to verify_jwt = true:
-//   enricher-cron-enrich-place-first
-//   enricher-cron-enrich-place-second
-//   enricher-cron-enrich-place-third
-//   enricher-edgefunc-store-place-images
 //   supabase-cron-reservation-retries
 //   supabase-cron-sync-boosts
 //   supabase-edgefunc-discover-places
@@ -135,7 +130,7 @@ export function requireInternalCaller(
 export async function invokeInternalCaller<T = unknown>(
   env: EFEnv,
   callerName: string, // who the product caller is, e.g. "consumer-web-create-reservation"
-  internalName: string, // who we're calling, e.g. "enricher-edgefunc-store-place-images"
+  internalName: string, // who we're calling, e.g. "supabase-edgefunc-reservation-call"
   body: unknown,
 ): Promise<
   | { ok: true; data: T }

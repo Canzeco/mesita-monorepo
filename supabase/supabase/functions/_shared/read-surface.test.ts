@@ -161,7 +161,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
   "_shared/operator-fields.ts", // read enrichment_sources before the operator-mark merge (MESITA-2829)
-  "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
   "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
@@ -175,8 +174,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-third/index.ts",
-  "enricher-cron-enrich-place-first/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
@@ -218,7 +215,7 @@ const PROFILES_READ_ALLOWLIST = [
   "enricher-edgefunc-write-place/index.ts",
   // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
   "_shared/enrich-start.ts",
-  // The Enrichment card's state: content_state and enriched_at, since Render never writes place_research (MESITA-2811).
+  // The Enrichment card's state: content_state and enriched_at (MESITA-2811, MESITA-2424).
   "admin-web-get-place-enrichment/index.ts",
   // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
@@ -355,8 +352,6 @@ const SWALLOWED_TODAY = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-third/index.ts",
-  "enricher-cron-enrich-place-first/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];

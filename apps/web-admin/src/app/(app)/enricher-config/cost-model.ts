@@ -74,7 +74,7 @@ const TIME_RATES = {
 } as const;
 
 // Vision describes every analyzed image CONCURRENTLY (the enricher fires the
-// whole analyze pool at once — see _shared/enrich-image-funnel.ts). Up to 40
+// whole analyze pool at once). Up to 40
 // run in flight; the analyze caps top out at 60 (Google ≤10 + Instagram ≤50),
 // so a typical config is one round and the absolute max is two — analysis time
 // ≈ one describe (or two), not N of them.

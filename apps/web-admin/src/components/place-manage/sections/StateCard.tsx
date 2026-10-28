@@ -154,12 +154,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
   const enriching = isEnriching(
     enrichState ?? {
       content_state: contentState,
-      stage: null,
-      stage_state: null,
-      error: null,
       last_enriched_at: null,
-      updated_at: null,
-      serp_summary: null,
     },
   );
   const enriched = enriching ? false : isEnrichedPlace(place);

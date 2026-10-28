@@ -144,7 +144,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     facebook: { followers: num(row.facebook_followers) ?? null },
     instagram: { followers: num(row.instagram_followers_count) ?? null },
 
-    // Enricher (enricher-cron-enrich-place-*) stores each review as
+    // The Enricher (Render, via enricher-edgefunc-write-place) stores each review as
     // { author, rating, text, published } — map those onto the detail shape
     // (quote/date) and keep the legacy keys as fallbacks. The author and any
     // photo are dropped here: guests see reviews anonymously (MESITA-2916).

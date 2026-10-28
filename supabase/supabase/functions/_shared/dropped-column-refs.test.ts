@@ -170,7 +170,7 @@ const LIVE_ELSEWHERE: Record<string, readonly string[]> = {
   email: ["super_admins"],
   phone: ["consumers", "place_profiles", "profiles"],
   section: ["place_categories"],
-  state: ["place_research", "places", "profiles", "reservation_tickets"],
+  state: ["places", "profiles", "reservation_tickets"],
   plan: ["consumers"],
 };
 

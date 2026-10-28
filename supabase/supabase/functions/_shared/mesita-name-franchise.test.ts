@@ -70,19 +70,11 @@ Deno.test("both prompts are fed a zone/city anchor to qualify a branch with", as
     "enrich-synthesis.ts must accept zone/city and put them in the prompt",
   );
 
-  // …and the two callers must actually pass them.
+  // …and the caller must actually pass them.
   const create = await read("create-place.ts");
   assertEquals(
     /zone: \(place\.zone \?\? null\)/.test(create),
     true,
     "create-place.ts must pass the zone into the door",
-  );
-  const contents = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-third/index.ts", import.meta.url),
-  );
-  assertEquals(
-    /zone: \(place\.zone \?\? null\)/.test(contents),
-    true,
-    "the contents stage must pass the zone into synthesis",
   );
 });

@@ -5,9 +5,8 @@
 // `supabase-*` alone while the three enrich stages and
 // enricher-edgefunc-store-place-images ran the same gate (MESITA-2414).
 //
-// A function counts as gated when its own source CALLS requireInternalCaller,
-// or calls serveEnrichStage, which runs it for the stage. Comment lines are
-// dropped first, so a mention is not a call. A new `_shared/` wrapper around
+// A function counts as gated when its own source CALLS requireInternalCaller.
+// Comment lines are dropped first, so a mention is not a call. A new `_shared/` wrapper around
 // requireInternalCaller joins GATE in the same PR.
 
 import { assertEquals } from "jsr:@std/assert@1";
@@ -16,7 +15,7 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const CONFIG_TOML = new URL("../../config.toml", import.meta.url);
 const INTERNAL_TS = new URL("./internal.ts", import.meta.url);
 
-const GATE = /\b(?:requireInternalCaller|serveEnrichStage)\(/;
+const GATE = /\brequireInternalCaller\(/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
 async function codeOf(dir: URL): Promise<string> {
@@ -77,7 +76,7 @@ Deno.test("INTERNAL: internal.ts's header lists exactly the functions that run r
     await listedInHeader(),
     await gatedFunctions(),
     "The internal-endpoint list at the top of _shared/internal.ts must name every function " +
-      "that runs requireInternalCaller (directly or through serveEnrichStage), one per line, " +
+      "that runs requireInternalCaller, one per line, " +
       "and nothing else.",
   );
 });

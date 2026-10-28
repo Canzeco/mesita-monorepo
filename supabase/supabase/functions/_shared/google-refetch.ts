@@ -24,7 +24,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportCrenupSteps, stepDone, stepFailed, type StepOutcome } from "./crenup-report.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns, type FieldPins } from "./enrich-corrections.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
-import { closeEnrichmentRun, openEnrichmentRun } from "./enrich-pipeline-stage.ts";
+import { closeEnrichmentRun, openEnrichmentRun } from "./enrich-runs.ts";
 import type { SubprocessKey } from "./enrich-triggers.ts";
 import { phoneDigits } from "./phone.ts";
 import { writePlace } from "./place-doc.ts";
