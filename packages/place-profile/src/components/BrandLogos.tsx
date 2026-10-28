@@ -34,11 +34,11 @@ function GoogleG({ className }: { className: string }) {
   );
 }
 
-// The G on a gray tile, the size and corner of the Instagram and Facebook
-// tiles beside it, so the channel row reads as three tiles (Pato, MESITA-2963:
-// "add a gray border or gray background to google box"). MESITA-2978 deepened
-// the gray from Google's #F1F3F4 and grew the G inside the same tile. Review
-// cards use the larger tile; the header row uses compact.
+// The G on a black tile, the size and corner of the Instagram and Facebook
+// tiles beside it, so the channel row reads as three tiles (MESITA-2963).
+// Black, the Mesita Reserve fill, since gray read as disabled and azure as a
+// second Facebook (MESITA-2985). Review cards use the larger tile; the header
+// row uses compact.
 export function GoogleLogo({
   compact = false,
   tiny = false,
@@ -50,7 +50,7 @@ export function GoogleLogo({
   return (
     <div
       className={
-        "flex shrink-0 items-center justify-center bg-[#E2E4E7] " +
+        "flex shrink-0 items-center justify-center bg-foreground " +
         (tiny
           ? "h-4 w-4 rounded"
           : compact
