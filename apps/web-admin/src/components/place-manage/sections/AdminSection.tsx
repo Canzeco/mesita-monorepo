@@ -14,7 +14,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
-//   Profile States      Created · Pulsing · Enriching · Enriched · Official ·
+//   Profile States      Created · Pulsing · Enriching · Enriched · Premier ·
 //                         Disabled (Selected died, MESITA-2925). Profile
 //                         Stats (Viewed · Saved) is its own box
 //                         (MESITA-2735). A place is enriching or enriched.

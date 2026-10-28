@@ -44,7 +44,7 @@ export function PlaceProfile({
   /** Social v1's line (MESITA-2442), under the chips like Instagram's
    *  "Followed by". */
   social?: React.ReactNode;
-  /** The Official tab's body (MESITA-2861, MESITA-2925); see PlaceDetailBody. */
+  /** The Premier tab's body (MESITA-2861, MESITA-2925); see PlaceDetailBody. */
   boost?: React.ReactNode;
   /** A tab the host asks to show (MESITA-2797); see PlaceDetailBody. */
   openTab?: { tab: PlaceTab; key: number } | null;
@@ -53,7 +53,7 @@ export function PlaceProfile({
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <PlaceTopBar
         name={place.name}
-        officialTier={place.boost_tier ?? 0}
+        premierTier={place.boost_tier ?? 0}
         onBack={onBack}
         onMore={actions?.onMore}
       />

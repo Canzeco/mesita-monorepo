@@ -148,19 +148,19 @@ Deno.test("Deep is not live while no guest reaches Chat; Name, Map and Catalog a
 });
 
 // ── MESITA-2379: one pool; MESITA-2872: two Mesita sources;
-//    MESITA-2925: Official is the factor, never a signal ──────────────────
+//    MESITA-2925: Premier is the factor, never a signal ──────────────────
 
-Deno.test("Map: Family and Radius gate, Popularity × the Official factor (MESITA-2909, MESITA-2925)", () => {
+Deno.test("Map: Family and Radius gate, Popularity × the Premier factor (MESITA-2909, MESITA-2925)", () => {
   const map = DISCOVERY_PIPELINES.find((p) => p.key === "map")!;
   assertEquals(map.gates, ["family", "radius"]);
   assertEquals(map.signals, ["popularity"]);
   assertEquals(map.factors.length, 1);
-  assert(map.factors[0].startsWith("Official (MESITA-2925)"));
+  assert(map.factors[0].startsWith("Premier (MESITA-2925)"));
   assert(map.scoring.startsWith("Popularity × s"));
   assertEquals(JSON.stringify(map).includes("rectangle"), false);
 });
 
-Deno.test("Catalog: Family only, Proximity × Popularity × the Official factor, Chat reads every ready place (MESITA-2909, MESITA-2925)", () => {
+Deno.test("Catalog: Family only, Proximity × Popularity × the Premier factor, Chat reads every ready place (MESITA-2909, MESITA-2925)", () => {
   const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!;
   assertEquals(catalog.gates, ["family"]);
   assertEquals(catalog.signals, ["proximity", "popularity"]);

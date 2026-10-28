@@ -18,10 +18,10 @@ export type Place = {
    *  on an older payload — the client falls back to `enriched_at` alone
    *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
-  /** Mesita Official (MESITA-2925, the paid tier since MESITA-2789):
+  /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
    *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
-   *  wears "Official 2X" and the pin is red. Absent on an older payload
-   *  reads as not Official. */
+   *  wears "Premier 2X" and the pin is red. Absent on an older payload
+   *  reads as not Premier. */
   boost_tier?: number | null;
   id: string;
   slug: string;
@@ -132,8 +132,8 @@ export type MapScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: Official's tier number (2 · 5 · 10) for an
-   *  Official place, else 1 (MESITA-2925; the wire keeps the Selected-era
+  /** The factor `final` carries: Premier's tier number (2 · 5 · 10) for an
+   *  Premier place, else 1 (MESITA-2925; the wire keeps the Selected-era
    *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
@@ -295,8 +295,8 @@ export type AreaDiagnostics = {
   /** Where the card came from; diagnostics and events only. `selected`
    *  died with the operator's mark (MESITA-2925). */
   source: "mesita" | "google";
-  /** The factor `final` carries: Official's tier number (2 · 5 · 10) for an
-   *  Official place, else 1 (MESITA-2925; the wire keeps the Selected-era
+  /** The factor `final` carries: Premier's tier number (2 · 5 · 10) for an
+   *  Premier place, else 1 (MESITA-2925; the wire keeps the Selected-era
    *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,
@@ -394,9 +394,9 @@ export type PlacePrediction = {
    *  column fallback on this lane, so an older payload reads as
    *  not-enriched (gray understates). */
   enriched?: boolean;
-  /** Server's answer: the place's Official tier, `places.boost_tier`
+  /** Server's answer: the place's Premier tier, `places.boost_tier`
    *  (MESITA-2925), 0..3; above 0 the pin is red. An older payload without
-   *  it (here or on `card`) reads as not Official (gray understates). */
+   *  it (here or on `card`) reads as not Premier (gray understates). */
   boost_tier?: number | null;
   /**
    * Word's second entity (MESITA-1403). Absent = "place" — a place row

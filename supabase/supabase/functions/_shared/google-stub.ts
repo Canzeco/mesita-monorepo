@@ -74,7 +74,7 @@ export function googleStub(
     city: null,
     // Not a Mesita place, so never enriched: no `enriched_at`, and
     // `googleOnly` excludes it from the Enriched signal by name. Never
-    // Official either: Official is a paid tier on a Mesita row (MESITA-2925).
+    // Premier either: Premier is a paid tier on a Mesita row (MESITA-2925).
     content_state: "ready",
     enriched_at: null,
     boost_tier: 0,

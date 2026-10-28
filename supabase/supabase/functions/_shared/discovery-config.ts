@@ -43,7 +43,7 @@
 // `reachKm` was dropped on the next save.
 //
 // RETIRED WITH SELECTED (MESITA-2925): `map.selectedFactor`, the operator's
-// Selected boost. Official's factor is the row's paid tier, no knob. The
+// Selected boost. Premier's factor is the row's paid tier, no knob. The
 // live row still holds the key; the rebuilt map drops it on the next save.
 //
 // RETIRED WITH THE MAP / CATALOG SPLIT (MESITA-2909): `map.mesitaPopular` and
@@ -158,7 +158,7 @@ export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * The Map and Catalog pipelines' policy (MESITA-2909): the Map ranks every
- * Mesita place inside its screen radius by Popularity × the Official factor
+ * Mesita place inside its screen radius by Popularity × the Premier factor
  * and shows the top `placesShown`; the Catalog ranks the whole catalog by
  * Proximity × Popularity × the factor and pages it by `catalogPageSize`.
  * Mesita's places only (Google Nearby retired in MESITA-2872). Operator
@@ -196,7 +196,7 @@ export type MapConfig = {
   /**
    * THE MAP'S MOST PINS (Pato, MESITA-2713, MESITA-2909: "cuántos puntos se
    * van a mostrar máximo, cincuenta"): the top N of the places inside the
-   * screen radius, by Popularity × the Official factor.
+   * screen radius, by Popularity × the Premier factor.
    * `MAP_PLACES_SHOWN_MIN`..`MAX`, whole, default 50.
    */
   placesShown: number;

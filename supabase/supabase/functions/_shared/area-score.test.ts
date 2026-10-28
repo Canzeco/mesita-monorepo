@@ -205,7 +205,7 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
   assertEquals(order.map((r) => r.item.id), ["many", "few"]);
 });
 
-Deno.test("the Popularity floor drops any place under it, Google or Mesita, Official or not (MESITA-2714)", () => {
+Deno.test("the Popularity floor drops any place under it, Google or Mesita, Premier or not (MESITA-2714)", () => {
   const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
   // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, boostTier: 3 });
@@ -220,7 +220,7 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Offi
   assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
 });
 
-Deno.test("Official multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
+Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
   // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 2 ≈ 10.6,
   // beats ln(1 + 3000 × 4.5) ≈ 9.51.
   const paid = cand({ id: "paid", rating: 4, reviewCount: 50, boostTier: 1 });
@@ -238,8 +238,8 @@ Deno.test("Official multiplies by its tier, every other place by 1 (MESITA-2925)
   assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
 });
 
-// THE REACH (MESITA-2920, money: Official is sold). On the Catalog the
-// Official factor counts within 2 × h of the anchor and is 1 past it; the
+// THE REACH (MESITA-2920, money: Premier is sold). On the Catalog the
+// Premier factor counts within 2 × h of the anchor and is 1 past it; the
 // Map and Chat (a radius) keep the full factor.
 const KM = 1 / 111.195;
 const CATALOG: AreaContext = {
@@ -248,16 +248,16 @@ const CATALOG: AreaContext = {
   halfKm: 5,
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
-  { label: "Official 2X", over: { source: "mesita", boostTier: 1 }, s: 2 },
-  { label: "Official 5X", over: { source: "mesita", boostTier: 2 }, s: 5 },
-  { label: "Official 10X", over: { source: "mesita", boostTier: 3 }, s: 10 },
+  { label: "Premier 2X", over: { source: "mesita", boostTier: 1 }, s: 2 },
+  { label: "Premier 5X", over: { source: "mesita", boostTier: 2 }, s: 5 },
+  { label: "Premier 10X", over: { source: "mesita", boostTier: 3 }, s: 10 },
 ];
 
 Deno.test("the Catalog reach is 2 × the half distance (MESITA-2920)", () => {
   assertEquals(boostReachKm(5), 10);
 });
 
-Deno.test("Catalog: Official counts inside the reach, 1 past it (MESITA-2920)", () => {
+Deno.test("Catalog: Premier counts inside the reach, 1 past it (MESITA-2920)", () => {
   for (const { label, over, s } of TIERS) {
     const inside = areaScore(cand({ ...over, lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
     const plainInside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 9.9 * KM }), CATALOG);

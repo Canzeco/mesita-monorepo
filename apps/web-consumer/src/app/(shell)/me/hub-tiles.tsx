@@ -91,7 +91,7 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
     {
       Icon: CreditCard,
       title: "Plan",
-      summary: "Free or Premier",
+      summary: "Free or Pro",
       href: CONSUMER_ROUTES.mePages.plan,
     },
   ],

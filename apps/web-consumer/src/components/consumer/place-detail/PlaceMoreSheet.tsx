@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 
 // THE THREE DOTS' MENU (Pato, MESITA-2692: "three dots in place profile is
 // not only to report"), Instagram's way: one card of rows, Report last and
-// red. Share · Add to favorites · Copy link · Official · Report. Every row
+// red. Share · Add to favorites · Copy link · Premier · Report. Every row
 // closes the menu first; Report then opens the Report sheet (MESITA-2684)
-// and Official switches the place to its Official tab (MESITA-2861, the
+// and Premier switches the place to its Premier tab (MESITA-2861, the
 // word since MESITA-2925; a sheet on top from MESITA-2815 until then).
 // decision: the rows are the place's own one-tap actions plus Copy link;
 // nothing new is built behind them.
@@ -44,7 +44,7 @@ export function PlaceMoreSheet({
   onClose: () => void;
   saved: boolean;
   onSave: () => void;
-  /** Opens the Official tab. */
+  /** Opens the Premier tab. */
   onBoost: () => void;
   /** Absent for a Google-only card: no Report row. */
   onReport?: () => void;
@@ -71,7 +71,7 @@ export function PlaceMoreSheet({
     },
     {
       key: "boost",
-      label: "Official",
+      label: "Premier",
       icon: BadgeCheck,
       run: onBoost,
     },

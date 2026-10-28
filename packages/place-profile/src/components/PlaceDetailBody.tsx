@@ -32,7 +32,7 @@ import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-li
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon, with Rewards)
-//      · Official, for every place (MESITA-2332, MESITA-2861, MESITA-2925). While a Google-only profile is being
+//      · Premier, for every place (MESITA-2332, MESITA-2861, MESITA-2925). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
@@ -51,9 +51,9 @@ export function PlaceDetailBody({
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** The Official tab's body (MESITA-2861, MESITA-2925), drawn by the
+  /** The Premier tab's body (MESITA-2861, MESITA-2925), drawn by the
    *  host: the consumer passes its subscribe/cancel pane; without it the
-   *  tab explains where a place is made Official. */
+   *  tab explains where a place is made Premier. */
   boost?: React.ReactNode;
   /** The host asks for a tab. Each new `key` switches once; the guest's own
    *  taps win after. */

@@ -1,5 +1,5 @@
 // Saved locations — the guest's own pins (Home, Office…) that Places can
-// search from (Pato, MESITA-2380: "no official Mesita zones, you just save
+// search from (Pato, MESITA-2380: "no premier Mesita zones, you just save
 // them").
 //
 // EVERY SAVED LOCATION IS A CONFIRMED PIN (Pato, 2026-10-20, MESITA-2501):

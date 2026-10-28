@@ -21,11 +21,11 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
   line: "The overview of this place will show up here.",
 };
 
-/** The Official tab where the host draws no pane (admin Preview). */
+/** The Premier tab where the host draws no pane (admin Preview). */
 export const NO_BOOST: PlaceEmptyScreenProps = {
   icon: BadgeCheck,
-  title: "Official",
-  line: "Guests make this place Official from the Mesita app: Official 2X, 5X or 10X.",
+  title: "Premier",
+  line: "Guests make this place Premier from the Mesita app: Premier 2X, 5X or 10X.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products

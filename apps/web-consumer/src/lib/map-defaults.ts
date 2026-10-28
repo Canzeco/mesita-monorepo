@@ -98,16 +98,16 @@ export const MAP_MINIMAL_STYLES = [
 // The visible circle sits in a 44px pad so the hit box is a finger, not
 // the painted disk. Cursor stays default — never the pointing hand.
 export const MAP_PLACE_PIN_RADIUS = 7;
-/** Mesita Official (MESITA-2925; Selected's from gate d4a): a slightly
+/** Mesita Premier (MESITA-2925; Selected's from gate d4a): a slightly
  *  larger disk on the map. */
-export const MAP_OFFICIAL_PLACE_PIN_RADIUS = 9;
+export const MAP_PREMIER_PLACE_PIN_RADIUS = 9;
 export const MAP_PIN_HIT_SIZE = 44;
 export const MAP_PIN_CURSOR = "default";
 export const MAP_PIN_STROKE_WEIGHT = 1.25;
 export const MAP_SELECTED_PIN_STROKE_WEIGHT = 3;
 
 /** SVG for the Search pin: near-invisible full pad + the coloured disk.
- *  Boost's ⚡ badge is gone (MESITA-2925): Official is the red disk alone. */
+ *  Boost's ⚡ badge is gone (MESITA-2925): Premier is the red disk alone. */
 export function mapPinSvg(
   fillColor: string,
   strokeColor: string,
@@ -142,21 +142,21 @@ export function mapPinIcon(
 // Search pins — same hexes as the results-row dots. THE LAW (Pato,
 // 2026-10-12, MESITA-2158; 2026-10-18, MESITA-2316):
 //
-//   red     Mesita Official Places  — a paid tier, `boost_tier` 1..3
-//   gray    everything else         — a Mesita place that is not Official
+//   red     Mesita Premier Places  — a paid tier, `boost_tier` 1..3
+//   gray    everything else         — a Mesita place that is not Premier
 //                                     and a Google row alike
 //
 // The paint IS the set law, not a second opinion about it:
 //
-//   Google Places ⊃ Mesita Places ⊃ Mesita Official Places
+//   Google Places ⊃ Mesita Places ⊃ Mesita Premier Places
 //
-// Red is Official (Pato, MESITA-2925: "Kill Select and Boosted. Just
-// Official"). It was the operator's Selected mark (MESITA-2707), an Enrich
+// Red is Premier (Pato, MESITA-2925: "Kill Select and Boosted. Just
+// Premier"). It was the operator's Selected mark (MESITA-2707), an Enrich
 // run before that; enrichment paints nothing on the map. The brand-ink
 // middle tone is gone (MESITA-2316).
 //
 // Blue is the guest's current location and is never a place pin.
-export const MAP_OFFICIAL_PIN_COLOR = "#ff2357";
+export const MAP_PREMIER_PIN_COLOR = "#ff2357";
 // Google grey is a TRUE neutral (chroma 0); the old #9ca3af was a cool
 // blue-grey that read as "disabled" on the map (MESITA-2469).
 export const MAP_GOOGLE_PIN_COLOR = "#a3a3a3";

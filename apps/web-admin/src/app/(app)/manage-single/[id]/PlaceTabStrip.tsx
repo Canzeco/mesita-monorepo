@@ -2,7 +2,7 @@
 
 // Every door on one place, one row (MESITA-2086). The strip draws exactly
 // the views the layout published (`FIRST_STAGE_TABS`: Profile · Reviews ·
-// Preview · Admin · Official), in `PLACE_TABS` order.
+// Preview · Admin · Premier), in `PLACE_TABS` order.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";

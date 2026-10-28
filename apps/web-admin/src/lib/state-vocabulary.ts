@@ -7,7 +7,7 @@
 //                 Disabled.
 //   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
 //                 members from place_activity. No request count.
-//                 Official (MESITA-2925, was Boost) is a tier, not a bool —
+//                 Premier (MESITA-2925, was Boost) is a tier, not a bool —
 //                 the paid `places.boost_tier`; see `boostTierChip`.
 //                 All are bools (`true` / `false`). Disabled is the
 //                 operator's off switch (places.state is not active), the
@@ -106,7 +106,7 @@ export const PROFILE_STATS_FACTS = [
 
 export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
 
-/** Official tier chip (MESITA-2925, was Boost — MESITA-2809): Official is a
+/** Premier tier chip (MESITA-2925, was Boost — MESITA-2809): Premier is a
  *  tier, not a yes/no — `places.boost_tier` 0 · 1 · 2 · 3 reads
  *  Off · 2X · 5X · 10X. */
 export const BOOST_TIER_LABELS = ["Off", "2X", "5X", "10X"] as const;

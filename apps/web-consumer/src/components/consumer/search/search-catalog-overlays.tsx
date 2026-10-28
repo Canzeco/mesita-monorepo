@@ -185,7 +185,7 @@ const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
  * `score` (MESITA-2703). Remove when Pato says the ranking is verified.
  *
  * THE PAID FACTOR IS A NUMBER, NOT A PILL (Pato, MESITA-2719): it reads
- * as `official` on the numbers line, Official's tier number or 1
+ * as `premier` on the numbers line, Premier's tier number or 1
  * (MESITA-2925; it was Selected's). Nothing on the card changes when the
  * score tag goes.
  */
@@ -206,13 +206,13 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
       </p>
       {/* Wraps rather than cuts: four numbers no longer fit one phone line. */}
       <p>
-        {/* Official reads as the third signal (MESITA-2718, MESITA-2925): the
-            factor the final took, 1 for a place that is not Official. */}
+        {/* Premier reads as the third signal (MESITA-2718, MESITA-2925): the
+            factor the final took, 1 for a place that is not Premier. */}
         {/* What Proximity read (Pato, MESITA-2830): the distance and the
             Distance penalty k, 1 ÷ (1 + k × km ÷ radius). */}
         proximity {fmtScore(score.proximity)}
         {proximityInputs(score)} · popularity {fmtScore(score.popularity)} ·
-        official{" "}
+        premier{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}{" "}

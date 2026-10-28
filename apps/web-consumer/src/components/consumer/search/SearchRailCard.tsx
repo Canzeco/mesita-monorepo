@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { OfficialBadge } from "@mesita/place-profile";
+import { PremierBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import {
   cardPhoto,
@@ -120,7 +120,7 @@ export function RailCard({
   const placeholder = placePlaceholder(place);
   // THE HOME TILE'S FACTS, THE HOME TILE'S SCALE (Pato, MESITA-2651: "the
   // preview must show the same preview information"), from the same module
-  // (place-card.tsx): name (+ the Official mark, rosette and level alone:
+  // (place-card.tsx): name (+ the Premier mark, rosette and level alone:
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
@@ -178,7 +178,7 @@ export function RailCard({
         <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
-            <OfficialBadge tier={place.boost_tier} compact />
+            <PremierBadge tier={place.boost_tier} compact />
           </p>
           <PriceKindRow facts={facts} />
           <StarsOpenRow facts={facts} withDistance={withDistance} />
