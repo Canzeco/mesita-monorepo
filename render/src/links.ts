@@ -5,6 +5,7 @@
 // Google's own link is left alone. The Scout's read, when the job carried a Scout message, is
 // the Resolver's background on the place: never the source of a URL.
 
+import { charge, firecrawlCredits, FIRECRAWL_USD_PER_CREDIT } from "./cost.ts";
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
 import { callAgent } from "./perplexity.ts";
 import { completed, failed, type StepReport } from "./steps.ts";
@@ -231,7 +232,10 @@ async function firecrawlSearch(
         console.error(`[links] firecrawl ${res.status} ${body}`);
         return { urls: [], ok: false };
       }
-      return { urls: urlsFromFirecrawl(await res.json()), ok: true };
+      const payload = await res.json();
+      const credits = firecrawlCredits(payload, limit);
+      charge("firecrawl", credits * FIRECRAWL_USD_PER_CREDIT, `search ${credits} credits`);
+      return { urls: urlsFromFirecrawl(payload), ok: true };
     } catch (err) {
       const why = ctrl.signal.aborted
         ? "timeout after 20000ms"
