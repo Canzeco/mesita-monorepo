@@ -14,6 +14,9 @@ import {
   sourcesFeedingSignal,
 } from "./discovery-surface.ts";
 import {
+  CATALOG_RETURN_MAX,
+  CATALOG_SCAN_PAGE,
+  CATALOG_SCAN_PAGES_MAX,
   SCREEN_RADIUS_KM_MIN,
 } from "./area-pipeline.ts";
 import { NEARBY_SCAN_LIMIT } from "./geo.ts";
@@ -91,7 +94,7 @@ Deno.test("the call sites match the model", async () => {
   // Map and Catalog (Area until MESITA-2909): Mesita Places only, one engine; both EFs are its
   // views. No Google Nearby anywhere (MESITA-2872).
   assert(area.includes("mesitaPoolQuery") && area.includes("rankArea"));
-  assert(map.includes("selectAreaPool") && feed.includes("selectAreaPool"));
+  assert(map.includes("selectAreaPool") && feed.includes("selectCatalogPool"));
   for (const src of [name, area, deep, map, feed]) {
     assertEquals(/searchNearby|areaQuota/.test(src), false);
   }
@@ -187,8 +190,13 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
     `at most ${NEARBY_SCAN_LIMIT} ready rows`,
   ];
   for (const f of facts) assert(rules.includes(f), f);
-  // Home's Mesita read keeps the same cap as the Map's.
-  const home = await text("functions/consumer-web-list-catalog/index.ts");
-  assert(home.includes(`const POOL_CAP = ${NEARBY_SCAN_LIMIT};`));
+  // Home ranks every place up to the scan cap and keeps the best
+  // CATALOG_RETURN_MAX (MESITA-2921); its page is PostgREST's max_rows.
+  const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!.rules.join(" ");
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  assert(catalog.includes(`up to ${fmt(CATALOG_SCAN_PAGES_MAX * CATALOG_SCAN_PAGE)}`));
+  assert(catalog.includes(`keeps the best ${fmt(CATALOG_RETURN_MAX)} by score`));
+  const toml = await text("config.toml");
+  assert(toml.includes(`max_rows = ${CATALOG_SCAN_PAGE}`));
 });
 

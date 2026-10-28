@@ -304,10 +304,10 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. s counts within 2 × the half distance and is 1 beyond (MESITA-2920). No location: Popularity × s. Chat ranks the same way inside the current-location radius, with no reach (its radius bounds it). Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
-      "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and comes back whole; Home draws it a Catalog page size at a time (MESITA-2909).",
+      "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and the best 1,000 come back; Home draws them a Catalog page size at a time (MESITA-2909, MESITA-2921).",
       "A place whose Popularity is under the Minimum Popularity is dropped, Premier or not (MESITA-2714).",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
-      "Mesita's read keeps at most 1000 ready rows before scoring.",
+      "Mesita's read ranks every active place (up to 10,000) and keeps the best 1,000 by score; Home shows them `map.catalogPageSize` at a time (MESITA-2921).",
       "Chat reads every ready Mesita place inside the current-location radius (Selected only until MESITA-2925).",
     ],
     callers: ["Catalog (Home's Places)", "Chat (Don Memo)"],
