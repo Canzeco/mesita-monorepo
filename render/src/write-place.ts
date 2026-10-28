@@ -74,7 +74,13 @@ export async function stopEnriching(placeId: string, opts: { closed?: boolean } 
   const id = placeId.trim();
   const supabaseUrl = process.env.SUPABASE_URL?.trim() ?? "";
   const writeKey = process.env.ENRICH_WRITE_KEY?.trim() ?? "";
-  if (!id || !supabaseUrl || !writeKey) return;
+  if (!id) return;
+  if (!supabaseUrl || !writeKey) {
+    // The place stays enriching until the hourly sweep (MESITA-2804) puts it back.
+    const missing = [!supabaseUrl && "SUPABASE_URL", !writeKey && "ENRICH_WRITE_KEY"].filter(Boolean).join(", ");
+    console.error(`[enrich] stop enriching skipped for ${id}: missing ${missing}`);
+    return;
+  }
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 10_000);
   try {
