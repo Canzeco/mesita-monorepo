@@ -1,4 +1,5 @@
 import { assertEquals } from "jsr:@std/assert@1";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 import { buildScoutInput, SCOUT_INSTRUCTIONS } from "./enrich-serp.ts";
 import {
@@ -8,6 +9,8 @@ import {
   enrichmentRun,
   renderApiKey,
   scoutInputFor,
+  splitClaims,
+  startEnrichment,
 } from "./enrich-start.ts";
 
 const ONE = { placeId: "place-1", googlePlaceId: "ChIJ-1" };
@@ -105,4 +108,109 @@ Deno.test("a refused start turns enriching off: ready when enriched before, fail
   assertEquals(contentStateAfterRefusal({ content_state: "generating", enriched_at: "2026-10-01T00:00:00Z" }), "ready");
   assertEquals(contentStateAfterRefusal({ content_state: "generating", enriched_at: null }), "failed");
   assertEquals(contentStateAfterRefusal({ content_state: "ready", enriched_at: null }), null);
+});
+
+// A database of places where `enriching` names the ones a run already holds.
+// The claim is `update places ... where content_state <> 'generating'`.
+function fakeAdmin(enriching: Set<string>) {
+  const writes: string[] = [];
+  const client = {
+    from(table: string) {
+      const q = { table, op: "select", id: "", neq: "", ids: [] as string[] };
+      const builder: Record<string, unknown> = {
+        select: () => builder,
+        update: () => {
+          q.op = "update";
+          return builder;
+        },
+        in: (_col: string, ids: string[]) => {
+          q.ids = ids;
+          return builder;
+        },
+        eq: (col: string, value: string) => {
+          if (col === "id") q.id = value;
+          return builder;
+        },
+        neq: (_col: string, value: string) => {
+          q.neq = value;
+          return builder;
+        },
+        maybeSingle: () => Promise.resolve(resolve()),
+        single: () => Promise.resolve(resolve()),
+        then: (ok: (v: unknown) => unknown) => Promise.resolve(resolve()).then(ok),
+      };
+      const resolve = () => {
+        if (table === "places" && q.op === "update") {
+          if (q.neq === "generating" && enriching.has(q.id)) return { data: null, error: null };
+          writes.push(q.id);
+          enriching.add(q.id);
+          return { data: { id: q.id }, error: null };
+        }
+        if (table === "place_profiles") {
+          return {
+            data: q.ids.map((id) => ({ id, google_place_id: `ChIJ-${id}`, name: id, updated_at: null })),
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      };
+      return builder;
+    },
+  };
+  return { admin: client as unknown as SupabaseClient, writes };
+}
+
+const ENV = { get: (name: string) => (name === "RENDER_KEY" ? "key" : undefined) };
+
+Deno.test("a second press on a place already enriching is refused before Render is paid", async () => {
+  const { admin } = fakeAdmin(new Set(["place-1"]));
+  let renderCalls = 0;
+  const started = await startEnrichment(admin, {
+    placeIds: ["place-1"],
+    env: ENV,
+    fetchImpl: () => {
+      renderCalls++;
+      return Promise.resolve(new Response("{}"));
+    },
+  });
+  assertEquals(started, { ok: false, status: 409, error: "Already enriching.", blocked: "enriching" });
+  assertEquals(renderCalls, 0);
+});
+
+Deno.test("a double press starts one run: the first claims, the second is refused", async () => {
+  const { admin } = fakeAdmin(new Set());
+  const bodies: unknown[] = [];
+  const fetchImpl = (_url: string | URL | Request, init?: RequestInit) => {
+    bodies.push(JSON.parse(String(init?.body)));
+    return Promise.resolve(new Response("{}"));
+  };
+  const first = await startEnrichment(admin, { placeIds: ["place-1"], env: ENV, fetchImpl: fetchImpl as typeof fetch });
+  const second = await startEnrichment(admin, { placeIds: ["place-1"], env: ENV, fetchImpl: fetchImpl as typeof fetch });
+  assertEquals(first.ok, true);
+  assertEquals(second.ok ? null : second.status, 409);
+  assertEquals(bodies.length, 1);
+});
+
+Deno.test("a list skips the places already enriching and starts the rest", async () => {
+  const { admin, writes } = fakeAdmin(new Set(["place-2"]));
+  const bodies: { input: unknown[] }[] = [];
+  const started = await startEnrichment(admin, {
+    placeIds: ["place-1", "place-2", "place-3"],
+    env: ENV,
+    fetchImpl: ((_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Promise.resolve(new Response("{}"));
+    }) as unknown as typeof fetch,
+  });
+  assertEquals(started.ok && { started: started.started, skipped: started.skipped }, {
+    started: ["place-1", "place-3"],
+    skipped: ["place-2"],
+  });
+  assertEquals(writes, ["place-1", "place-3"]);
+  const jobs = bodies[0].input[0] as { placeId: string }[];
+  assertEquals(jobs.map((job) => job.placeId), ["place-1", "place-3"]);
+});
+
+Deno.test("splitClaims keeps the order the places were asked in", () => {
+  assertEquals(splitClaims(["a", "b", "c"], [false, true, false]), { started: ["b"], skipped: ["a", "c"] });
 });

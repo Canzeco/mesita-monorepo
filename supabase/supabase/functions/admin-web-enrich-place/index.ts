@@ -7,7 +7,9 @@
 // a place still generating goes back to ready when it was enriched before
 // and to failed when it never was. The profile is written once, at the end.
 // The start itself is _shared/enrich-start.ts, which the guest vote door
-// shares.
+// shares. A place already enriching is skipped; when every place is, the
+// answer is 409 "Already enriching." (MESITA-2805), so a double press never
+// pays for two runs.
 //
 // Internal enricher control — super-admin gated, admin console only.
 
@@ -61,10 +63,10 @@ Deno.serve(async (req) => {
   await recordAdminOperatorEvent(admin, {
     verb: "enrich",
     outcome: "succeeded",
-    placeId: placeIds.length === 1 ? placeIds[0] : null,
+    placeId: started.started.length === 1 ? started.started[0] : null,
     actorUserId: authRes.user.id,
     source: "admin-web-enrich-place",
-    detail: { count: placeIds.length },
+    detail: { count: started.started.length, skipped: started.skipped.length },
   });
-  return json({ ok: true, enrichmentTriggered: true, task: started.task });
+  return json({ ok: true, enrichmentTriggered: true, task: started.task, skipped: started.skipped });
 });
