@@ -1,9 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { PremierBadge } from "@mesita/place-profile";
+import { PremierBadge, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import { sharePlace } from "@/lib/share-place";
@@ -117,8 +116,9 @@ export function CatalogTile({
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
     photo ? (
-      <Image
+      <SizedImage
         src={photo}
+        size="card"
         alt=""
         fill
         sizes="(max-width: 448px) 66vw, 300px"

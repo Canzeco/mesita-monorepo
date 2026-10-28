@@ -193,14 +193,17 @@ async function gatherCandidates(
 // console shows this exact constant, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const RESOLVER_INSTRUCTIONS =
-  "You are a meticulous reviewer that resolves a place's OWN official online " +
-  "channels. You are given candidate URLs found by search plus web access. For " +
-  "each requested field, review the candidates and the web, then return the single " +
-  "URL that is unmistakably THIS place's own official presence, or null. Prefer " +
-  "this location's own branch site and accounts over a parent group or holding " +
-  "company. When the same handle is linked from the website and from another " +
-  "channel, that agreement wins. Output ONLY strict JSON matching the schema. " +
-  "Never fabricate a URL.";
+  "You resolve a place's official online channels. You are given candidate URLs " +
+  "found by search plus web access. For each requested field, return the single " +
+  "best URL for this place, or null. Prefer this location's own branch site and " +
+  "accounts over a parent group when the branch has its own. When it does not — a " +
+  "branch of a chain or franchise, a kiosk, a counter inside a campus, mall, " +
+  "hospital or airport — the brand's main account IS this place's channel; between " +
+  "brand accounts prefer the one for this country. Return null only when no " +
+  "candidate plausibly belongs to the place or its brand: a missing channel is a " +
+  "worse miss than a brand-level one. When the same handle is linked from the " +
+  "website and from another channel, that agreement wins. Output ONLY strict JSON " +
+  "matching the schema. Never fabricate a URL.";
 
 export async function selectChannels(
   key: string,
@@ -311,7 +314,8 @@ export function buildResolverInput(
     `list, guide, directory, aggregator, a single post/video, or a source you merely cited. ` +
     `This location's own branch wins over a parent group, holding company, or umbrella brand. ` +
     `A franchise main account is not acceptable when a branch account exists. ` +
-    `Return null for website when the only site you can find is a parent group. ` +
+    `When this location has no account of its own (a chain branch, a kiosk, a counter ` +
+    `inside a campus or mall), the brand's account is the answer, preferring this country's. ` +
     `A handle that appears on more than one of this place's own channels outranks a larger parent account. ` +
     `Never invent a URL.`;
 

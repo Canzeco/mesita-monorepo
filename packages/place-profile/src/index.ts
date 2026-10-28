@@ -34,3 +34,5 @@ export type {
 export type { PlaceDetail } from "./place-detail";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";
+export { SizedImage, SizedImg } from "./components/SizedPhoto";
+export { isStoredPhoto, photoUrl, type PhotoSize } from "./photo-url";

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import Image from "next/image";
+import { SizedImage } from "@mesita/place-profile";
 import { Calendar, Users } from "lucide-react";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import type { ReservationItem } from "@/lib/reservation-types";
@@ -79,8 +79,9 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       <div className="flex items-start gap-3">
         <div className={cn("bg-muted", CARD_PHOTO)}>
           {r.placePhoto ? (
-            <Image
+            <SizedImage
               src={r.placePhoto}
+              size="thumb"
               alt={r.placeName}
               fill
               sizes="64px"
