@@ -3,9 +3,10 @@
 // many run at once. Two callers start one: admin Enrich (admin-web-enrich-place)
 // and the guest vote door at its threshold (place-requests.ts).
 //
-// Before Render is called each place is marked enriching (content_state =
-// generating), the only write before the profile exists. If Render refuses the
-// run, a place still generating goes back to ready when it was enriched before
+// Before Render is called each place is claimed: marked enriching (content_state
+// = generating) only when it is not already, the only write before the profile
+// exists. A place already enriching is skipped, never started twice. If Render
+// refuses the run, a place still generating goes back to ready when it was enriched before
 // and to failed when it never was. Render writes the profile once, at the end,
 // through enricher-edgefunc-write-place.
 //
@@ -155,20 +156,34 @@ export function contentStateAfterRefusal(row: {
 }
 
 export type EnrichStart =
-  | { ok: true; task: string }
+  | { ok: true; task: string; started: string[]; skipped: string[] }
   | { ok: false; status: number; error: string; blocked?: "enriching" };
 
+/** The answer when every place asked for is already enriching. */
+export const ALREADY_ENRICHING = "Already enriching.";
+
 /**
- * Start one Enrich run for `placeIds`. `claim` marks a place enriching only
- * when it is not already, so a caller racing another start (two guests'
- * votes) loses cleanly with `blocked: "enriching"` instead of paying twice.
- * Admin Enrich does not claim: a press is explicit intent.
+ * Every start claims each place: it marks a place enriching only when it is
+ * not already. A place a run already holds is skipped, so a second press, or
+ * a guest vote racing an admin press, never pays Render twice. When nothing
+ * is left to start the answer is 409 `blocked: "enriching"` (MESITA-2805).
+ * A run that died leaves the place enriching until the hourly sweep puts it
+ * back (MESITA-2804), so the refusal cannot hold for long.
  */
+export function splitClaims(
+  placeIds: readonly string[],
+  claimed: readonly boolean[],
+): { started: string[]; skipped: string[] } {
+  const started: string[] = [];
+  const skipped: string[] = [];
+  placeIds.forEach((id, index) => (claimed[index] ? started : skipped).push(id));
+  return { started, skipped };
+}
+
 export async function startEnrichment(
   admin: SupabaseClient,
   opts: {
     placeIds: readonly string[];
-    claim?: boolean;
     env?: { get(name: string): string | undefined };
     fetchImpl?: typeof fetch;
   },
@@ -178,11 +193,6 @@ export async function startEnrichment(
   if (placeIds.length > ENRICH_MAX_PLACES) {
     return { ok: false, status: 400, error: `At most ${ENRICH_MAX_PLACES} places per enrich call.` };
   }
-  // A claim that lost on one place of many would strand the others enriching.
-  if (opts.claim && placeIds.length !== 1) {
-    return { ok: false, status: 400, error: "A claimed start carries one place." };
-  }
-
   const { data: places, error: placeErr } = await admin
     .from("place_profiles")
     .select(["id", "google_place_id", ...SAVED_KEYS].join(", "))
@@ -205,33 +215,34 @@ export async function startEnrichment(
 
   const knobs = enrichmentKnobs(await loadEnrichConfig(admin));
   const marked = await Promise.all(placeIds.map((id) =>
-    opts.claim
-      ? writePlace(admin, {
-        table: "places",
-        mode: "update",
-        id,
-        patch: { ...ENRICHING_PATCH },
-        unlessWhile: "generating",
-        select: "id",
-        selectMode: "maybeSingle",
-      })
-      : writePlace(admin, { table: "places", mode: "update", id, patch: { ...ENRICHING_PATCH } })
+    writePlace(admin, {
+      table: "places",
+      mode: "update",
+      id,
+      patch: { ...ENRICHING_PATCH },
+      unlessWhile: "generating",
+      select: "id",
+      selectMode: "maybeSingle",
+    })
   ));
+  // A place this call did mark goes to Render even when another failed to mark:
+  // leaving it out would strand it enriching.
+  const { started, skipped } = splitClaims(placeIds, marked.map((row) => row.ok && !!row.row));
   const failed = marked.find((row) => !row.ok);
-  if (failed && !failed.ok) {
+  if (failed && !failed.ok && started.length === 0) {
     return { ok: false, status: 500, error: `The place was not marked enriching: ${failed.error}` };
   }
-  if (opts.claim && marked.some((row) => row.ok && !row.row)) {
-    return { ok: false, status: 409, error: "The place is already enriching.", blocked: "enriching" };
+  if (started.length === 0) {
+    return { ok: false, status: 409, error: ALREADY_ENRICHING, blocked: "enriching" };
   }
 
   const { data: stamps, error: stampErr } = await admin
     .from("place_profiles")
     .select("id, updated_at")
-    .in("id", placeIds);
+    .in("id", started);
   if (stampErr) return { ok: false, status: 500, error: stampErr.message };
   const updatedAt = new Map((stamps ?? []).map((row) => [row.id as string, (row.updated_at ?? null) as string | null]));
-  const jobs: EnrichJob[] = placeIds.map((id) => {
+  const jobs: EnrichJob[] = started.map((id) => {
     const row = rows.get(id) ?? {};
     const saved: Record<string, unknown> = {};
     for (const column of SAVED_KEYS) saved[column] = row[column] ?? null;
@@ -258,7 +269,7 @@ export async function startEnrichment(
     const detail = await res.text();
     // content_state lives on places, enriched_at on place_profiles: the
     // profiles view carries both.
-    await Promise.all(placeIds.map(async (id) => {
+    await Promise.all(started.map(async (id) => {
       const { data, error } = await admin
         .from("profiles")
         .select("content_state, enriched_at")
@@ -275,5 +286,5 @@ export async function startEnrichment(
       error: detail.slice(0, 300) || `Render did not start the run (${res.status})`,
     };
   }
-  return { ok: true, task: run.task };
+  return { ok: true, task: run.task, started, skipped };
 }

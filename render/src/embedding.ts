@@ -2,6 +2,8 @@
 // MESITA-2900: Google's name is canonical). The literal is what pgvector stores.
 // A short or missing vector is omitted; it does not reject the place.
 
+import { charge, openaiUsd } from "./cost.ts";
+
 export const EMBEDDING_DIMS = 1536;
 export const EMBEDDING_MODEL = "text-embedding-3-small";
 
@@ -71,7 +73,9 @@ export async function embedSummary(
   });
   const body = await res.json().catch(() => null) as {
     data?: { embedding?: number[]; index?: number }[];
+    usage?: { prompt_tokens?: number };
   } | null;
+  charge("openai", openaiUsd(EMBEDDING_MODEL, body?.usage), `embed ${EMBEDDING_MODEL}`);
   if (!res.ok || !body?.data) return null;
   const byIndex = new Map(body.data.map((row) => [row.index, row.embedding ?? null]));
   return byIndex.get(0) ?? null;

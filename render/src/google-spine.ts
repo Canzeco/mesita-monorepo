@@ -2,6 +2,7 @@
 // Google type slug is not a Mesita category. Photo links are fetched separately
 // and copied into storage by the write.
 
+import { charge, openaiUsd } from "./cost.ts";
 import {
   channelFromUrl,
   priceLevelFromGoogle,
@@ -263,6 +264,8 @@ export async function fetchGooglePlace(
   return (await res.json()) as GooglePlace;
 }
 
+const DESCRIBE_MODEL = "gpt-4o-mini";
+
 export async function describeFromFacts(
   facts: string,
   apiKey: string,
@@ -274,7 +277,7 @@ export async function describeFromFacts(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: DESCRIBE_MODEL,
       temperature: 0.2,
       messages: [
         {
@@ -288,8 +291,10 @@ export async function describeFromFacts(
   });
   const body = (await res.json().catch(() => null)) as {
     choices?: { message?: { content?: string } }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
     error?: { message?: string };
   } | null;
+  charge("openai", openaiUsd(DESCRIBE_MODEL, body?.usage), `describe ${DESCRIBE_MODEL}`);
   if (!res.ok)
     throw new Error(
       body?.error?.message ||

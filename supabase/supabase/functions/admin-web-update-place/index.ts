@@ -61,7 +61,7 @@ import { readFamilyKeysBody } from "./place-families-body.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
-const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "google_types", "google_source_types"] as const;
+const READ_ONLY_FIELDS = ["category", "category_label", "google_types", "google_source_types"] as const;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
