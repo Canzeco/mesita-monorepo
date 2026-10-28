@@ -265,6 +265,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           plan: string
+          reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
           vip_partner_id: string | null
@@ -290,6 +291,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           plan?: string
+          reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
           vip_partner_id?: string | null
@@ -315,6 +317,7 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           plan?: string
+          reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
           vip_partner_id?: string | null
@@ -1041,69 +1044,6 @@ export type Database = {
           },
         ]
       }
-      place_research: {
-        Row: {
-          analysis: Json | null
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          gathered: Json | null
-          google_place_id: string
-          place_id: string
-          run_id: string | null
-          stage: string
-          state: string
-          subprocesses: Json | null
-          updated_at: string
-        }
-        Insert: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id: string
-          place_id: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id?: string
-          place_id?: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "place_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       place_tags: {
         Row: {
           created_at: string
@@ -1582,6 +1522,41 @@ export type Database = {
         }[]
       }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
+      admin_set_guest_reservation_cap: {
+        Args: { p_cap: number; p_consumer: string }
+        Returns: {
+          appear_anonymous: boolean
+          avatar_url: string | null
+          birthday: string | null
+          code: string | null
+          created_at: string
+          deleted_at: string | null
+          first_name: string | null
+          full_name: string | null
+          guest_class: string
+          guest_class_note: string | null
+          guest_class_set_at: string | null
+          guest_class_set_by: string | null
+          id: string
+          instagram_followers_count: number | null
+          instagram_handle: string | null
+          instagram_verified_at: string | null
+          last_name: string | null
+          phone: string | null
+          plan: string
+          reservation_cap_override: number | null
+          sex: string | null
+          use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "consumers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       admin_set_guest_standing: {
         Args: {
           p_actor: string
@@ -1615,6 +1590,7 @@ export type Database = {
           last_name: string | null
           phone: string | null
           plan: string
+          reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
           vip_partner_id: string | null
@@ -1738,7 +1714,6 @@ export type Database = {
         Returns: string[]
       }
       recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
-      run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
