@@ -780,7 +780,6 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
-          mesita_categories: Json
           name: string
           opentable_url: string | null
           payments_enabled: boolean
@@ -850,7 +849,6 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
-          mesita_categories?: Json
           name: string
           opentable_url?: string | null
           payments_enabled?: boolean
@@ -920,7 +918,6 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
-          mesita_categories?: Json
           name?: string
           opentable_url?: string | null
           payments_enabled?: boolean
@@ -1427,7 +1424,6 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
-          mesita_categories: Json | null
           name: string | null
           opentable_url: string | null
           payments_enabled: boolean | null
@@ -1629,6 +1625,10 @@ export type Database = {
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
+      unstick_enriching_places: {
+        Args: { older_than?: string }
+        Returns: number
+      }
     }
     Enums: {
       content_state: "generating" | "ready" | "failed"
