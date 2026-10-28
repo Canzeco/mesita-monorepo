@@ -379,18 +379,6 @@ export function wants(
 }
 
 /**
- * Does a run with this purchase stamp `enriched_at`, THE Enriched fact
- * (MESITA-2154)? Only when it paid for synthesis. The wrong-number refetch
- * (`on_reservation_failed`) buys only `google`, so it must not turn a Created
- * place into an Enriched one: _shared/google-refetch.ts never writes it.
- * Render's one write stamps it on every Enrich, and admin Enrich and the vote
- * door buy everything.
- */
-export function stampsEnrichedAt(stored: unknown): boolean {
-  return wants(stored, "synthesis");
-}
-
-/**
  * Read the matrix from the app_config singleton. A missing blob is not an
  * error: the code defaults ARE the shipped policy, so a fresh environment
  * enriches correctly before anyone opens the console.

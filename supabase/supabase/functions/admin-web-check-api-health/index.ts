@@ -15,7 +15,7 @@
 // key is indistinguishable from "no results". Probing one vendor at a time is
 // the only way to attribute the failure.
 //
-// COST: most probes hit an account/metadata endpoint that vendors do not bill
+// Spend: most probes hit an account/metadata endpoint that vendors do not bill
 // for. Perplexity and Google Places expose no such endpoint and must spend a
 // token / a request unit to prove the key works. They used to be gated behind
 // their own buttons so a sweep stayed free; that gate is gone — a few cents is

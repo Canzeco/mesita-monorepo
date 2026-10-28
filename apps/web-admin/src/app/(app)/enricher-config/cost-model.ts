@@ -4,10 +4,9 @@ import type { CrenupSettings } from "./crenup-guards";
 // Cost estimate — the pure model behind the calculator + the inline cost card.
 //
 // Per-call USD rate card, sourced from each provider's PUBLISHED price list
-// (verified 2026-07-07). MIRRORS the cost constants in the enricher
-// (`_shared/enrich-config.ts` `COST`). Approximate — enough to compare
-// configurations and bound spend, not for billing. Keep in sync with the
-// enricher. Each line carries a label, a per-place cost, a duration and a
+// (verified 2026-07-07). The only copy: the enricher's own rate card left
+// with the stage path (MESITA-2424). Approximate — enough to compare
+// configurations and bound spend, not for billing. Each line carries a label, a per-place cost, a duration and a
 // stage; the Estimate card lists the active lines.
 //
 // Sources:

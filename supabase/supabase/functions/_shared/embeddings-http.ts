@@ -7,7 +7,7 @@
 
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 
-export const DEFAULT_EMBEDDING_MODEL = DEFAULT_MODELS_CONFIG.embeddings.model!;
+export const DEFAULT_EMBEDDING_MODEL = DEFAULT_MODELS_CONFIG.embeddings.model;
 export const EMBEDDING_DIMS = 1536;
 
 export function callEmbeddings(

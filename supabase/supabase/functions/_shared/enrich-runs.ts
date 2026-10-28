@@ -27,8 +27,6 @@ export async function openEnrichmentRun(
      * NUMBER lives in enrich-triggers.ts, never in SQL.
      */
     cooldownHours: number;
-    actorUserId?: string | null;
-    meta?: Record<string, unknown>;
   },
 ): Promise<
   { ok: boolean; error?: string; runId?: string; blocked?: "cooldown" | "already_open" }
@@ -40,8 +38,8 @@ export async function openEnrichmentRun(
     p_subprocesses: opts.subprocesses ?? null,
     p_entry_stage: opts.entryStage ?? "first",
     p_cooldown_hours: Math.max(0, Math.round(opts.cooldownHours)),
-    p_actor_user_id: opts.actorUserId ?? null,
-    p_meta: opts.meta ?? {},
+    p_actor_user_id: null,
+    p_meta: {},
   });
   if (error) return { ok: false, error: `open_run: ${error.message}` };
   const row = (Array.isArray(data) ? data[0] : data) as
@@ -61,12 +59,10 @@ export async function openEnrichmentRun(
 export async function closeEnrichmentRun(
   admin: SupabaseClient,
   runId: string | null | undefined,
-  outcome: "succeeded" | "failed" | "superseded" | "abandoned",
+  outcome: "succeeded" | "failed",
   opts: {
     reason?: string;
     stage?: string | null;
-    costUsd?: number | null;
-    charges?: unknown;
   } = {},
 ): Promise<void> {
   if (!runId) return;
@@ -75,10 +71,10 @@ export async function closeEnrichmentRun(
     p_outcome: outcome,
     p_reason: opts.reason ?? null,
     p_stage: opts.stage ?? null,
-    p_cost_usd: opts.costUsd ?? null,
-    p_charges: opts.charges ?? null,
+    p_cost_usd: null,
+    p_charges: null,
   });
   // Best-effort by design: the janitor reconciles anything this misses, so a
   // failed close must never take down the terminal path it is reporting on.
-  if (error) console.error("[enrich-pipeline] close_run:", error.message);
+  if (error) console.error("[enrich-runs] close_run:", error.message);
 }

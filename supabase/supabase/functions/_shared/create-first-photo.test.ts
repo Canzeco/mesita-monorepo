@@ -18,13 +18,12 @@ Deno.test("create fetches one Google photo and awaits a storage mirror", async (
   assertStringIncludes(create, "maxPhotos: 1");
   assertStringIncludes(create, "first Google photo");
   assertEquals(create.includes("runInBackground(storeFirstPlaceImage"), false);
-  assertEquals(create.includes("enricher-edgefunc-store-place-images"), false);
 
   assertStringIncludes(basics, "maxPhotos?: number");
   assertStringIncludes(store, "export async function storeFirstPlaceImage");
   assertStringIncludes(store, "via: \"create\"");
-  // Create's first-photo helper is awaited. The import of runInBackground is for
-  // the later enrich-gallery path (storePlaceImages), not this helper.
+  // Create's first-photo helper is awaited. The file's runInBackground is the
+  // photo-size step inside the shared mirror, not this helper.
   const firstPhotoFn = store.match(
     /export async function storeFirstPlaceImage[\s\S]*?^}/m,
   )?.[0] ?? "";

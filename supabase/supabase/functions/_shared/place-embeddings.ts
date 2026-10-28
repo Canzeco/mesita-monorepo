@@ -7,15 +7,13 @@
 //
 // §8.4 v3 (2026-08-29): the WORDS belong to the Description function; the
 // Embedding function only embeds what Description wrote.
-//   · synthesizePlaceSummaryText — Description-owned: synthesizes the
-//     Semantic Summary; never embeds.
 //   · computeAndPersistPlaceEmbedding mode "stored" — embed-only: embeds the
 //     STORED summary text; never synthesizes. (MESITA-2900: the name vector
 //     is gone — Google's name is canonical.)
 //   · mode "synth" — the on-update path (profile edits): Description's
 //     synthesis helper then the embed, composed in one call.
-// Called after enrich-contents publish and after admin-web-update-place
-// when embedding-relevant fields change.
+// Called by Create (create-place.ts, mode "stored") and by
+// admin-web-update-place when embedding-relevant fields change.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { runInBackground } from "./background.ts";
@@ -36,7 +34,7 @@ import { writePlace, type PlaceProfilePatch } from "./place-doc.ts";
 import { stepDone, reportCrenupSteps } from "./crenup-report.ts";
 
 /** Fallback when models_config.enricher.model is unset. */
-const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
+const DEFAULT_SYNTH_MODEL = DEFAULT_MODELS_CONFIG.enricher.model;
 /** Hard ceiling for the Semantic Summary — Atlas Config Field limits. */
 export const MAX_BLURB_WORDS = ENRICH_FIELD_LIMITS.embeddingSourceText.max;
 
@@ -85,23 +83,6 @@ export function composeEmbeddingBlurb(v: EmbeddablePlace): string {
     .filter(Boolean) ?? [about];
   const body = sentences.slice(0, 2).join(" ");
   return clampToWordLimit(`${head}. ${body}`);
-}
-
-/**
- * Description-owned Semantic Summary. Synthesizes it every time it runs.
- * NEVER persists — the caller writes the text with its own patch.
- */
-export async function synthesizePlaceSummaryText(
-  admin: SupabaseClient,
-  place: EmbeddablePlace,
-  apiKey: string,
-): Promise<string> {
-  const models = await loadModelsConfig(admin);
-  return await synthesizePlaceEmbeddingText(
-    place,
-    apiKey,
-    models.enricherModel || DEFAULT_SYNTH_MODEL,
-  );
 }
 
 export async function synthesizePlaceEmbeddingText(
@@ -165,9 +146,9 @@ export type PlaceEmbeddingWrite = {
  * Who asked for this embed — stamped onto the summary event so the Monitor can
  * attribute the beacon to the right caller instead of guessing from the key
  * (MESITA-1253 audit): "create" = the front door, "update" = a profile edit
- * re-embedding in-process, "third" = the last Enrich step.
+ * re-embedding in-process.
  */
-export type EmbeddingVia = "create" | "update" | "third";
+export type EmbeddingVia = "create" | "update";
 
 // On-Update S2+S3 for one place. Every run regenerates the summary vector —
 // even if its text is unchanged.
@@ -273,8 +254,6 @@ export async function runPlaceEmbeddingsOnUpdate(
   }
   return computeAndPersistPlaceEmbedding(admin, place, apiKey, logPrefix, via, mode);
 }
-
-export { loadEmbeddablePlace };
 
 export function queuePlaceEmbeddingsOnUpdate(opts: {
   admin: SupabaseClient;

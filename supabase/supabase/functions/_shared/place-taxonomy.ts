@@ -12,7 +12,6 @@ import {
   familiesForCatalogSlug,
   type FamilyKey,
 } from "./catalog-families.ts";
-import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
 export type { FamilyKey };
 
@@ -174,25 +173,6 @@ export function readGuestFamilyKeys(raw: unknown): FamilyKey[] {
   );
 }
 
-/**
- * The family of a category that is exactly a Google Table A type.
- * Null when the slug is not one of those types. The `_restaurant` alias
- * is not applied: a leftover Mesita slug such as `breakfast` is not
- * `breakfast_restaurant`.
- */
-/** Catalog families when the category is exactly a Google Table A type. */
-export function familiesForExactGoogle(
-  category: string | null | undefined,
-): FamilyKey[] | null {
-  if (typeof category !== "string") return null;
-  const slug = category.trim().toLowerCase();
-  if (!slug) return null;
-  const coarse = GOOGLE_TYPE_SUPER[slug];
-  if (!coarse) return null;
-  const families = familiesForCatalogSlug(slug, coarse);
-  return families.length > 0 ? families : ["undefined"];
-}
-
 export function familiesForAtlasCategory(
   category: string | null | undefined,
 ): FamilyKey[] {
@@ -230,40 +210,4 @@ export function familiesForPlace(
   const carried = sanitizeFamilyKeys(place.family_keys);
   if (carried.length > 0) return carried;
   return ["undefined"];
-}
-
-/**
- * Enrichment does not assign families. `inferred` is ignored. Membership
- * is the dictionary when the caller has it, otherwise Undefined.
- */
-export function resolveEnrichedFamilyKeys(
-  category: string | null | undefined,
-  inferred: unknown,
-  mapping?: CategoryFamilyMap,
-): FamilyKey[] {
-  void inferred;
-  return familiesForPlace({ category }, mapping);
-}
-
-/** Enrichment may keep only Categories and Tags Atlas already defines. */
-export function keepAtlasValues(opts: {
-  category: string | null | undefined;
-  tags: readonly unknown[] | null | undefined;
-  categories: readonly string[];
-  tagVocabulary: readonly string[];
-}): { category: string; tags: string[] } {
-  const categories = new Set(
-    opts.categories.map((slug) => slug.trim().toLowerCase()).filter(Boolean),
-  );
-  const vocabulary = new Set(opts.tagVocabulary);
-  const raw = typeof opts.category === "string" ? opts.category.trim().toLowerCase() : "";
-  const category = raw && categories.has(raw) ? raw : "undefined";
-  const tags: string[] = [];
-  for (const tag of opts.tags ?? []) {
-    if (typeof tag !== "string") continue;
-    const slug = tag.trim();
-    if (!slug || !vocabulary.has(slug) || tags.includes(slug)) continue;
-    tags.push(slug);
-  }
-  return { category, tags };
 }

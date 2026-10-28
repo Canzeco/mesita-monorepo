@@ -522,21 +522,6 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, GuestSuper>> = {
   "zoo": "experiences",
 };
 
-const GUEST_SUPERS = new Set<string>([
-  "restaurants",
-  "bars_nightlife",
-  "cafes_bakeries",
-  "sports_fitness",
-  "wellness_beauty",
-  "experiences",
-  "culture_arts",
-  "undefined",
-]);
-
-export function isGuestSuper(value: string): value is GuestSuper {
-  return GUEST_SUPERS.has(value);
-}
-
 /**
  * One of the eight families for a Google Table A slug.
  * Truncated `*_restaurant` aliases (`fine_dining` → `fine_dining_restaurant`)
@@ -609,10 +594,3 @@ export function nearbyTypesForSupers(
   }
   return out;
 }
-
-/** Every guest family's Nearby types, round-robin: what a call with no
- *  family asks Google for (the Feed's Nearby and Popular rows, the Map
- *  with no pill). */
-export const EVERY_FAMILY_TYPES: readonly string[] = nearbyTypesForSupers(
-  CATALOG_FAMILY_SLUGS,
-);

@@ -1,7 +1,7 @@
 import { assertEquals } from "jsr:@std/assert";
 import { SUPER_PARAM_KEYS } from "./discovery-config.ts";
+import { CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
 import {
-  EVERY_FAMILY_TYPES,
   GOOGLE_SEARCH_TYPES,
   GOOGLE_TYPE_SUPER,
   nearbyTypesForSupers,
@@ -113,6 +113,7 @@ Deno.test("the audit's reds ride no battery (MESITA-2962)", () => {
 });
 
 Deno.test("every family's battery leads the every-family list, inside Google's 50", () => {
+  const EVERY_FAMILY_TYPES = nearbyTypesForSupers(CATALOG_FAMILY_SLUGS);
   assertEquals(EVERY_FAMILY_TYPES.length, 50);
   assertEquals(new Set(EVERY_FAMILY_TYPES).size, 50);
   const leads = Object.entries(GOOGLE_SEARCH_TYPES).filter(([k]) => k !== "undefined").map(([, v]) => v[0]);

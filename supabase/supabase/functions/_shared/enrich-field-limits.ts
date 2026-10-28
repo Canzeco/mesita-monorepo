@@ -26,10 +26,9 @@ export const ENRICH_FIELD_LIMITS = {
   // through the `enricher` config section, which is the only writer left now
   // that the admin Enrichment page renders no knobs. Lowering this number is
   // what lowers the server validator too — _shared/config-section-enricher.ts
-  // derives SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The S9
-  // storage-mirror step (store-place-images.ts / PHOTO_CEILING) separately
-  // hard-caps the persisted array at 50 regardless of this setting — the two
-  // are not the same knob.
+  // derives SAVE_TOTAL_IMAGES_MAX from it rather than restating it. The
+  // storage mirror (store-place-images.ts mirrorPlacePhotos) separately copies
+  // at most 10 URLs per call — the two are not the same knob.
   photos: { max: 10 },
   // Hard Apify scrape ceiling (EF wall-clock + cost). Live gather count is
   // app_config.enrichment_config.enrichGatherReviews (0–100); this is the profile-spec max the

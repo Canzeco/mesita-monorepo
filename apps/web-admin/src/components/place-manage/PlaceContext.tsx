@@ -226,20 +226,7 @@ export function PlaceProvider({
       if (!r.ok) {
         // Nothing was written, so nothing is re-seeded and every draft stays
         // exactly as the operator left it — the whole point of one call.
-        // A definite miss keeps Save off until that link changes, so the
-        // same dead account is not sent to Apify again.
         setSaveError(r.error);
-        if (r.code === "social_not_connected" && !r.retryable) {
-          const draft = socialDraftRef.current;
-          const lock: SocialLock = {};
-          if (r.fields?.includes("instagram_url")) {
-            lock.instagram_url = draft?.instagram_url ?? "";
-          }
-          if (r.fields?.includes("facebook_url")) {
-            lock.facebook_url = draft?.facebook_url ?? "";
-          }
-          setSocialLock(lock);
-        }
         return;
       }
       const next: AdminPlace = {

@@ -4,9 +4,7 @@ import {
   FAMILIES,
   familiesForAtlasCategory,
   familiesForPlace,
-  keepAtlasValues,
   readGuestFamilyKeys,
-  resolveEnrichedFamilyKeys,
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
@@ -182,42 +180,6 @@ Deno.test("familiesForPlace is TOTAL — no place is ever pill-less", () => {
   assertEquals(familiesForPlace({ category: "lol", family_keys: ["nope"] }), [
     "undefined",
   ]);
-});
-
-Deno.test("resolveEnrichedFamilyKeys ignores a family the model invented", () => {
-  const mapping = {
-    mexican: ["mexican"],
-    board_game_cafe: ["coffee", "fun"],
-  };
-  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"], mapping), ["mexican"]);
-  assertEquals(
-    resolveEnrichedFamilyKeys("board_game_cafe", ["invented_family"], mapping),
-    ["coffee", "fun"],
-  );
-  assertEquals(resolveEnrichedFamilyKeys("mexican", ["dinner"]), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys("leftover_slug", ["dinner"]), ["undefined"]);
-  assertEquals(resolveEnrichedFamilyKeys(null, ["dinner"], mapping), ["undefined"]);
-});
-
-Deno.test("keepAtlasValues drops a category and tags Atlas does not define", () => {
-  assertEquals(
-    keepAtlasValues({
-      category: "invented_bistro",
-      tags: ["terraza", "made_up", "terraza", "desayuno"],
-      categories: ["mexican", "undefined"],
-      tagVocabulary: ["terraza", "desayuno"],
-    }),
-    { category: "undefined", tags: ["terraza", "desayuno"] },
-  );
-  assertEquals(
-    keepAtlasValues({
-      category: "Mexican",
-      tags: ["desayuno"],
-      categories: ["mexican"],
-      tagVocabulary: ["desayuno"],
-    }),
-    { category: "mexican", tags: ["desayuno"] },
-  );
 });
 
 Deno.test("sanitizeFamilyKeys drops junk, dedupes, keeps more than two, catalog order", () => {

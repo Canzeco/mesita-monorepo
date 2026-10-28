@@ -23,9 +23,9 @@ export type ModelsConfig = {
   memo?: { model?: string };
 };
 
-export const DEFAULT_MODELS_CONFIG: Required<
-  Pick<ModelsConfig, "enricher" | "embeddings" | "memo">
-> = {
+type DefaultModels = Record<"enricher" | "embeddings" | "memo", { model: string }>;
+
+export const DEFAULT_MODELS_CONFIG: DefaultModels = {
   enricher: { model: "gpt-4o-mini" },
   embeddings: { model: "text-embedding-3-small" },
   memo: { model: "gpt-4o-mini" },
@@ -53,14 +53,8 @@ export async function loadModelsConfig(
   }
   const raw = (data?.models_config ?? null) as ModelsConfig | null;
   return {
-    enricherModel: nonEmpty(
-      raw?.enricher?.model,
-      DEFAULT_MODELS_CONFIG.enricher.model!,
-    ),
-    embeddingModel: nonEmpty(
-      raw?.embeddings?.model,
-      DEFAULT_MODELS_CONFIG.embeddings.model!,
-    ),
-    memoModel: nonEmpty(raw?.memo?.model, DEFAULT_MODELS_CONFIG.memo.model!),
+    enricherModel: nonEmpty(raw?.enricher?.model, DEFAULT_MODELS_CONFIG.enricher.model),
+    embeddingModel: nonEmpty(raw?.embeddings?.model, DEFAULT_MODELS_CONFIG.embeddings.model),
+    memoModel: nonEmpty(raw?.memo?.model, DEFAULT_MODELS_CONFIG.memo.model),
   };
 }

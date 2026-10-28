@@ -14,7 +14,7 @@ export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 // Vision + sort always run on the cheap multimodal model — image work doesn't
 // need the synthesis-quality setting (which governs only the profile text model).
 /** Default vision/sort model when models_config.enricher.model is unavailable. */
-export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
+export const VISION_MODEL = DEFAULT_MODELS_CONFIG.enricher.model;
 
 // Synthesis model by the admin 'synthesis quality' param. Synthesis reads only
 // the gathered source material (no web) — that's why it's OpenAI, not Perplexity
@@ -34,11 +34,6 @@ export function visionModelFor(quality: string): string {
   return QUALITY_MODEL[quality] ?? VISION_MODEL;
 }
 
-// Hard ceiling on photos persisted to the place, regardless of per-source caps.
-// Safety bound on the candidate pool before save (the real, source-independent
-// save cap is enrichment_config.enrichSaveTotalImages, applied at the end).
-export const PHOTO_CEILING = 50;
-
 // Presentation ceiling (ENRICH_FIELD_LIMITS.description) and the length the
 // Description step asks for (MESITA-2955, Pato: "around 1500 chars"). The
 // target sits 500 under the ceiling so a long reply still fits and the cap
@@ -46,63 +41,6 @@ export const PHOTO_CEILING = 50;
 export const ENRICH_DESCRIPTION_MAX = ENRICH_FIELD_LIMITS.description.max;
 export const ENRICH_DESCRIPTION_TARGET_CHARS = 1500;
 export const ENRICH_DESCRIPTION_TARGET_WORDS = 250;
-
-// Per-call cost estimates (USD), from each provider's PUBLISHED price list
-// (verified 2026-07-07). MIRRORS the admin cost calculator's rate card
-// (apps/web-admin `enricher-config/cost-model.ts`). The run-time recorder
-// (enrich-cost.ts) went with the stage path (MESITA-2424). Nothing aborts a run on
-// dollars: the dollar abort is retired, and its atlasPerRunCostCapUsd knob went
-// with MESITA-2144. Approximate — enough to bound spend, not for billing. Keep
-// the two in sync.
-//
-// Sources: Google Maps Platform pricing list (Places API New, first tier) ·
-// Apify Store actor pages (pay-per-event) · Firecrawl pricing · Perplexity
-// Agent API pricing · OpenAI API pricing.
-export const COST = {
-  // Google — Places API (New). The S1 field mask requests reviews +
-  // editorial/generative/review summaries → billed Enterprise+Atmosphere
-  // ($25/1k), NOT Pro ($17/1k).
-  googleDetails: 0.025, // Place Details, Enterprise+Atmosphere SKU, $25/1k
-  googlePhoto: 0.007, // Place Photo (New) media fetch, $7/1k, per photo (≤10/place)
-  googleTimezone: 0.005, // Time Zone API, $5/1k
-  // Apify compass/crawler-google-places — PAY PER EVENT, so this is four
-  // prices, not one. The flat `compass: 0.3` that stood here was ~5x the real
-  // spend and could not move when enrichGatherReviews did; its comment priced
-  // reviews at $0.50/100 when Apify bills $0.50 per THOUSAND (MESITA-2032).
-  // Rates are the Free/Bronze tier from Apify's own actor API, matching the
-  // list prices the other Apify lines below use. See googleMapsRunCost.
-  gmapsPlace: 0.004, // event place-scraped, $4/1k
-  gmapsDetails: 0.002, // event place-details-scraped, flat per place
-  gmapsReview: 0.0005, // event review-scraped, $0.50/1k, PER REVIEW
-  gmapsImage: 0.0005, // event image-scraped, $0.50/1k, per image
-  gmapsStart: 0.00005, // event apify-actor-start, once per run
-  instagramProfile: 0.0026, // Apify instagram-profile-scraper, $2.60/1k results
-  instagramPost: 0.0027, // Apify instagram-post-scraper, $2.70/1k, per post (depth)
-  // Identity verification of the IG candidate: the LLM judge plus, worst case,
-  // a Perplexity fallback + a second IG scrape. Bundled into the IG reservation.
-  instagramVerify: 0.01,
-  facebook: 0.01, // Apify facebook-pages-scraper, $10/1k pages, one page
-  firecrawlSearch: 0.001, // Firecrawl Search, 2 credits/10 results (~$0.0008/credit)
-  perplexity: 0.01, // Perplexity Agent (pro-search): web search $0.005 + sonar tokens
-  synthesisEconomy: 0.002, // gpt-4o-mini synthesis ($0.15/$0.60 per 1M in/out)
-  synthesisStandard: 0.028, // gpt-4o synthesis ($2.50/$10 per 1M in/out)
-  visionPerImage: 0.001, // gpt-4o-mini vision, one image (detail:low)
-  visionPerImageStandard: 0.008, // gpt-4o vision, one image
-  sort: 0.001, // gpt-4o-mini text sort / short judge
-} as const;
-
-// One photo candidate + which source it came from (drives the per-source
-// analyze caps in the image funnel).
-export type Img = { url: string; source: "google" | "website" | "instagram" };
-
-export type MediaAssetPayload = {
-  source: Img["source"];
-  source_url: string;
-  likes_count?: number | null;
-  caption?: string | null;
-  analysis?: string | null;
-  source_metadata?: Record<string, unknown> | null;
-};
 
 export type EnrichConfig = {
   synthesisQuality: string;
