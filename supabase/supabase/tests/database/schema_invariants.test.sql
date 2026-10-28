@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(169);
+select plan(171);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1299,6 +1299,12 @@ select is_empty(
 -- Official and MESITA-2926 dropped the column and its slot in the view.
 select hasnt_column('public', 'places', 'selected', 'places.selected retired (MESITA-2926)');
 select hasnt_column('public', 'profiles', 'selected', 'profiles.selected retired (MESITA-2926)');
+
+-- ━━━ MESITA-2959 — mesita_categories is gone ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Nothing read or wrote it since 20261027060000 (families are stored on
+-- family_keys); MESITA-2959 dropped the column and its slot in the view.
+select hasnt_column('public', 'place_profiles', 'mesita_categories', 'place_profiles.mesita_categories retired (MESITA-2959)');
+select hasnt_column('public', 'profiles', 'mesita_categories', 'profiles.mesita_categories retired (MESITA-2959)');
 
 -- Function bodies are strings, so every one of these would have survived its
 -- tables and 42P01'd on its next call.

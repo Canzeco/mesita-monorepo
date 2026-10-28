@@ -37,6 +37,9 @@
 // a visitor sees are rails now. What still sits in NO family is the not-social
 // rest — gyms, courts, studios, salons, barbers, tattoo — and every hotel,
 // shop, office, service and transit stop (`NO_FAMILY_TYPES`, MESITA-2382).
+// MESITA-2962 narrowed the sights to ones somebody runs (museums, galleries,
+// attractions, zoos): parks, plazas, monuments, beaches and malls sit in no
+// family again, with massage, yoga, pools and the sweet and tea shops.
 // Sports is sports bars and stadiums — watching the game is social; a gym is
 // not.
 //
@@ -209,7 +212,8 @@ export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
  * Not social, still (MESITA-2468, kept by MESITA-2888): the sport, fitness
  * and beauty places a guest goes to alone. Every one sits in no family;
  * `catalog-families.test.ts` pins it. Spas, saunas and baths left this list
- * for the Spa rail; golf, rinks, pools and sports complexes for Fun.
+ * for the Spa rail; golf and rinks for Fun. MESITA-2962 sent back massage,
+ * yoga, pools, sports complexes, shops and the public places Tourist held.
  */
 export const NO_FAMILY_TYPES = [
   "gym",
@@ -247,6 +251,40 @@ export const NO_FAMILY_TYPES = [
   "off_roading_area",
   "dog_park",
   "art_studio",
+  // Off Mesita since MESITA-2962 (Pato 2026-10-28: "a beaty salon must not be
+  // allowed in mesita", then the audit's reds): a service used alone, a
+  // fitness place, a shop, or a public place nobody runs.
+  "massage",
+  "yoga_studio",
+  "swimming_pool",
+  "sports_complex",
+  "sports_activity_location",
+  "skateboard_park",
+  "candy_store",
+  "tea_store",
+  "health_food_store",
+  "shopping_mall",
+  "internet_cafe",
+  "park",
+  "city_park",
+  "state_park",
+  "national_park",
+  "garden",
+  "plaza",
+  "fountain",
+  "sculpture",
+  "monument",
+  "historical_landmark",
+  "historical_place",
+  "cultural_landmark",
+  "scenic_spot",
+  "hiking_area",
+  "mountain_peak",
+  "lake",
+  "beach",
+  "marina",
+  "picnic_ground",
+  "playground",
 ] as const;
 
 // The dictionary (MESITA-2834, rewritten by MESITA-2888): one row per
@@ -262,8 +300,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   coffee_roastery: ["coffee"],
   coffee_stand: ["coffee"],
   tea_house: ["coffee"],
-  tea_store: ["coffee"],
-  internet_cafe: ["coffee"],
   board_game_cafe: ["coffee", "fun"],
   juice_shop: ["healthy", "coffee"],
   juice_bar: ["healthy", "coffee"],
@@ -278,7 +314,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   pastry_shop: ["bakery", "sweet", "breakfast"],
   donut_shop: ["bakery", "sweet", "breakfast"],
   cake_shop: ["bakery", "sweet"],
-  candy_store: ["sweet"],
   chocolate_factory: ["sweet"],
   chocolate_shop: ["sweet"],
   confectionery: ["sweet"],
@@ -294,7 +329,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   vegetarian_restaurant: ["healthy"],
   vegan: ["healthy"],
   vegetarian: ["healthy"],
-  health_food_store: ["healthy"],
   // Tacos · Mexican
   taco_restaurant: ["tacos", "mexican", "quick_bite"],
   burrito_restaurant: ["tacos", "mexican", "quick_bite"],
@@ -508,10 +542,6 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   adventure_sports_center: ["fun"],
   paintball_center: ["fun"],
   race_course: ["fun"],
-  skateboard_park: ["fun"],
-  sports_activity_location: ["fun"],
-  sports_complex: ["fun"],
-  swimming_pool: ["fun"],
   ice_skating_rink: ["fun", "family"],
   water_park: ["fun", "family"],
   // Cinema · Casino
@@ -522,11 +552,9 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   // Spa
   spa: ["spa"],
   massage_spa: ["spa"],
-  massage: ["spa"],
   sauna: ["spa"],
   wellness_center: ["spa"],
   public_bath: ["spa"],
-  yoga_studio: ["spa"],
   temazcal: ["spa"],
   hot_springs: ["spa"],
   // Family: a day out with the kids
@@ -534,40 +562,19 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   aquarium: ["family", "tourist"],
   wildlife_park: ["family", "tourist"],
   amusement_park: ["family", "fun"],
-  playground: ["family"],
   indoor_playground: ["family"],
   ferris_wheel: ["family", "tourist"],
   roller_coaster: ["family", "fun"],
   planetarium: ["family", "tourist"],
-  picnic_ground: ["family"],
   // Tourist: what a visitor sees
   tourist_attraction: ["tourist"],
-  historical_landmark: ["tourist"],
-  historical_place: ["tourist"],
-  cultural_landmark: ["tourist"],
   cultural_center: ["tourist"],
-  monument: ["tourist"],
-  sculpture: ["tourist"],
   museum: ["tourist"],
   art_museum: ["tourist"],
   history_museum: ["tourist"],
   art_gallery: ["tourist"],
-  plaza: ["tourist"],
-  park: ["tourist"],
-  city_park: ["tourist"],
-  national_park: ["tourist"],
-  state_park: ["tourist"],
   botanical_garden: ["tourist"],
-  garden: ["tourist"],
   observation_deck: ["tourist"],
-  scenic_spot: ["tourist"],
-  fountain: ["tourist"],
-  hiking_area: ["tourist"],
-  mountain_peak: ["tourist"],
-  lake: ["tourist"],
-  beach: ["tourist"],
-  marina: ["tourist"],
-  shopping_mall: ["tourist"],
   market: ["tourist"],
   flea_market: ["tourist"],
   farmers_market: ["tourist"],
