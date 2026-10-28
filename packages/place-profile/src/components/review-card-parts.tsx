@@ -16,7 +16,7 @@ export function StarRow({ rating }: { rating: number }) {
           key={i}
           aria-hidden
           className={cn(
-            "h-3.5 w-3.5",
+            "h-4 w-4",
             i < rating ? "fill-[#FBBC04]" : "fill-muted-foreground/25",
           )}
           strokeWidth={0}
@@ -49,7 +49,7 @@ export function Quote({
         <button
           type="button"
           onClick={onExpand}
-          className="text-foreground self-start text-xs font-semibold hover:underline"
+          className="text-foreground min-h-11 self-start text-sm font-semibold hover:underline"
         >
           Read more
         </button>

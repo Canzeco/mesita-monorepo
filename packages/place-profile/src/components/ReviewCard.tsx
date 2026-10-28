@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { GoogleLogo } from "./BrandLogos";
 import { Quote, StarRow } from "./review-card-parts";
 import type { PlaceDetail } from "../place-detail";
 
@@ -9,9 +8,10 @@ import type { PlaceDetail } from "../place-detail";
 // long-quote read-more toggle needs state.
 //
 // ANONYMOUS (Pato, MESITA-2916): no name, no initial, no reviewer photo —
-// only the stars, the date and the comment.
+// only the stars, the date and the comment. No G per row (MESITA-2927):
+// the list's privacy line carries the one Google mark.
 //
-//   ★★★★★  date                                     [Google logo]
+//   ★★★★★  date
 //   Quote... (truncated)
 //   [Read more]                                     (when truncated)
 
@@ -31,7 +31,6 @@ export function ReviewCard({
         <span className="text-muted-foreground flex-1 text-xs">
           {formatReviewDate(review.date)}
         </span>
-        <GoogleLogo compact />
       </div>
       <Quote
         text={review.quote}
