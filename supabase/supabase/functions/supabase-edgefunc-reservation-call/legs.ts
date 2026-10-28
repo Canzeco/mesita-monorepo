@@ -16,7 +16,7 @@ import {
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
 import { nextAttemptAt } from "../_shared/reservation-retry.ts";
-import { nextGuestCallAt } from "../_shared/reservation-callback.ts";
+import { nextGuestCallAt, spentLadderPatch } from "../_shared/reservation-callback.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "../_shared/reservation-reminder.ts";
 import {
   classifyFailedConversation,
@@ -239,7 +239,7 @@ async function callGuest(input: {
   }
   const n = input.attemptsDone + 1;
   // Park the next ladder rung, or go quiet for good once the ladder is spent.
-  const parkOrGiveUp = async (state: string, failNote: string) => {
+  const parkOrGiveUp = async (failNote: string) => {
     const next = nextGuestCallAt(
       n,
       input.placeLng,
@@ -253,14 +253,8 @@ async function callGuest(input: {
         last_call_state: `${label} — ${failNote} — ${next.reason}`.slice(0, 200),
       });
     } else {
-      await record({
-        callback_attempts: n,
-        callback_state: state,
-        callback_next_attempt_at: null,
-        last_call_state:
-          `${label} — ${failNote} — guest unreached after ${n} call${n === 1 ? "" : "s"}; in-app only`
-            .slice(0, 200),
-      });
+      // Spent ladder: terminal `failed`, the reason rides in last_call_state.
+      await record(spentLadderPatch(n, label, failNote));
     }
   };
   // A platform failure (quota, 5xx) parks on the OUTAGE clock and does NOT
@@ -301,7 +295,7 @@ async function callGuest(input: {
     if (classifyPlacementFailure(call.httpStatus) === "platform") {
       await outagePark(`guest call not placed (HTTP ${call.httpStatus ?? "network"})`);
     } else {
-      await parkOrGiveUp("failed", `guest call failed: ${call.error}`);
+      await parkOrGiveUp(`guest call failed: ${call.error}`);
     }
     return;
   }
@@ -328,7 +322,6 @@ async function callGuest(input: {
     return;
   }
   await parkOrGiveUp(
-    watch.outcome,
     watch.outcome === "no_answer" ? "guest didn't answer" : "guest call outcome unknown",
   );
 }

@@ -23,6 +23,7 @@
 // are paced by their opening hours (nextAttemptAt), not by politeness windows.
 
 import { placeLocalHour } from "./local-time.ts";
+import type { CallbackState } from "./reservation-doc.ts";
 
 /** Minutes to wait after attempt N fails (index N-1). Length defines the cap. */
 export const GUEST_CALL_LADDER_MIN = [10, 60] as const;
@@ -91,5 +92,33 @@ export function nextGuestCallAt(
       : `retry ${attemptsDone + 1}/${GUEST_CALL_MAX_ATTEMPTS} in ${delayMin} min${
         urgent ? " (urgent — quiet hours waived)" : ""
       }`,
+  };
+}
+
+/**
+ * The ticket patch once the ladder is spent (nextGuestCallAt returned null).
+ * The terminal state is always `failed`; WHY the guest was unreached (no
+ * answer, unknown outcome, a refused placement) lives in last_call_state.
+ * MESITA-2991: the runner used to write the watch outcome ("no_answer" /
+ * "unknown") into callback_state, validateReservationPatch refused it, and the
+ * ticket stayed `ringing` forever.
+ */
+export function spentLadderPatch(
+  attemptsDone: number,
+  label: string,
+  failNote: string,
+): {
+  callback_attempts: number;
+  callback_state: CallbackState;
+  callback_next_attempt_at: null;
+  last_call_state: string;
+} {
+  const calls = `${attemptsDone} call${attemptsDone === 1 ? "" : "s"}`;
+  return {
+    callback_attempts: attemptsDone,
+    callback_state: "failed",
+    callback_next_attempt_at: null,
+    last_call_state: `${label} — ${failNote} — guest unreached after ${calls}; in-app only`
+      .slice(0, 200),
   };
 }
