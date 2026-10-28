@@ -113,8 +113,8 @@ export type LaneItem = {
   state: PredictionState;
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
-  /** Official (MESITA-2925): the row's paid tier, `places.boost_tier`
-   *  (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); 1 or more is Official. Absent
+  /** Premier (MESITA-2925): the row's paid tier, `places.boost_tier`
+   *  (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); 1 or more is Premier. Absent
    *  on a Google-only row (0 on the wire). */
   boostTier?: number;
   /**
@@ -328,7 +328,7 @@ export type ListedRow = {
   lng: number | null;
   content_state: string | null;
   enriched_at: string | null;
-  /** Official's paid tier, 0..3 (MESITA-2925). */
+  /** Premier's paid tier, 0..3 (MESITA-2925). */
   boost_tier?: number | null;
   business_state: string | null;
   google_review_count: number | null;
@@ -338,8 +338,8 @@ export type ListedRow = {
   description?: string | null;
 };
 
-/** A stored `boost_tier` as Official's tier, 0..3; anything else reads 0. */
-function officialTier(v: unknown): number {
+/** A stored `boost_tier` as Premier's tier, 0..3; anything else reads 0. */
+function premierTier(v: unknown): number {
   return typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(Math.trunc(v), 0), 3) : 0;
 }
 
@@ -356,8 +356,8 @@ function listedToLane(row: ListedRow): LaneItem | null {
     // list dot and the map pin cannot disagree (Pato, 2026-08-29).
     // `enriched_at` set (MESITA-2154): a Created row reads gray here.
     enriched: isEnrichedPlace(row),
-    // The Official tag (MESITA-2925): the paid tier, never `enriched_at`.
-    boostTier: officialTier(row.boost_tier),
+    // The Premier tag (MESITA-2925): the paid tier, never `enriched_at`.
+    boostTier: premierTier(row.boost_tier),
     mesitaId: row.id,
     mesitaSlug: row.slug,
     lat: row.lat,
@@ -378,7 +378,7 @@ export function applyResolvedMesitaName(
   return {
     ...item,
     state: mesita.state,
-    // The entity is Mesita's now, so its enrichment fact and its Official
+    // The entity is Mesita's now, so its enrichment fact and its Premier
     // tier travel with it.
     enriched: mesita.enriched,
     boostTier: mesita.boostTier,
@@ -758,8 +758,8 @@ export function toWire(item: LaneItem) {
     secondaryText: item.secondaryText,
     state: item.state,
     enriched: item.enriched === true,
-    // Official's tier, 0..3 (MESITA-2925); 0 for a Google-only row.
-    boost_tier: officialTier(item.boostTier),
+    // Premier's tier, 0..3 (MESITA-2925); 0 for a Google-only row.
+    boost_tier: premierTier(item.boostTier),
     // `kind` rides Location rows only — absent reads "place", and the
     // Places path stays byte-identical for a place query.
     ...(item.kind === "location"

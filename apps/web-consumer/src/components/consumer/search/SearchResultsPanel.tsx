@@ -10,7 +10,7 @@
 // row's body anchors the map (MESITA-1405); the button opens or creates.
 
 import { Map as MapIcon, MapPin, RotateCw, SearchX } from "lucide-react";
-import { officialLabel } from "@mesita/place-profile";
+import { premierLabel } from "@mesita/place-profile";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
@@ -138,7 +138,7 @@ function SuggestionLine({
   }`;
 
   // Branch on `kind` BEFORE tone is ever computed: predictionPinTone answers
-  // "is this an Official place", and a Location has no profile to answer
+  // "is this a Premier place", and a Location has no profile to answer
   // for. The accessible label names the ENTITY ("City"), never the absence
   // of a profile.
   if (prediction.kind === "location") {
@@ -162,10 +162,10 @@ function SuggestionLine({
   const tone = predictionPinTone(prediction);
   const onMesita = predictionOnMesita(prediction);
   // Three spoken answers over the three tones: a Mesita place that is not
-  // Official has a profile, so it is not "No profile".
+  // Premier has a profile, so it is not "No profile".
   // The word Enriched never reaches a guest (MESITA-2298).
-  const toneLabel = tone === "official"
-    ? (officialLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ?? "Mesita Official")
+  const toneLabel = tone === "premier"
+    ? (premierLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ?? "Mesita Premier")
     : onMesita
       ? "Basic Mesita profile"
       : "No profile yet";

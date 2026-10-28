@@ -1,30 +1,30 @@
 // The pin tone is the coloured point, on the results rows AND the map pins.
 // THE LAW, three nested sets (Pato, 2026-10-12, MESITA-2158):
 //
-//   official  red    Mesita Official — a paid tier, `boost_tier` 1..3
-//   mesita    gray   our own place that is not Official
+//   premier  red    Mesita Premier — a paid tier, `boost_tier` 1..3
+//   mesita    gray   our own place that is not Premier
 //   google    gray   a Google row Mesita does not hold
 //
 // THREE COLOURS ON THE MAP AND NO MORE (Pato, 2026-10-18, MESITA-2316): red
-// is Official, blue is the guest's own location, gray is everything else.
+// is Premier, blue is the guest's own location, gray is everything else.
 // The `mesita` tone survives as a FACT, not a colour: its row says "Basic
 // Mesita profile" and opens its own profile, while a Google-only row opens
 // through the opening screen.
 //
-// RED IS OFFICIAL (Pato, MESITA-2925: "Kill Select and Boosted. Just
-// Official"). It was the operator's Selected mark (MESITA-2707), and a paid
+// RED IS PREMIER (Pato, MESITA-2925: "Kill Select and Boosted. Just
+// Premier"). It was the operator's Selected mark (MESITA-2707), and a paid
 // Boost wore a ⚡ badge on top (MESITA-2789); now the paid tier alone paints
 // red, one treatment. The SERVER states `boost_tier` on every place payload
 // and name-lane row; an older payload without it stays gray (understating
-// beats promising a mark that is not there). The Official mark after a name
-// (OfficialBadge) reads the same `boost_tier`. Hexes live in
+// beats promising a mark that is not there). The Premier mark after a name
+// (PremierBadge) reads the same `boost_tier`. Hexes live in
 // lib/map-defaults.ts; a HELD pin (the tapped one) trades its tone for ink
 // with a white ring (MESITA-2488).
 
-import { isOfficialPlace } from "@mesita/place-profile";
+import { isPremierPlace } from "@mesita/place-profile";
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_OFFICIAL_PIN_COLOR,
+  MAP_PREMIER_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
   MAP_PIN_STROKE_WEIGHT,
   MAP_SELECTED_PIN_COLOR,
@@ -32,9 +32,9 @@ import {
   MAP_SELECTED_PIN_STROKE_WEIGHT,
 } from "@/lib/map-defaults";
 
-/** The tone IS the narrowest ring; only `official` (a paid tier,
+/** The tone IS the narrowest ring; only `premier` (a paid tier,
  *  MESITA-2925) draws red. */
-export type PinTone = "official" | "mesita" | "google";
+export type PinTone = "premier" | "mesita" | "google";
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
@@ -57,8 +57,8 @@ export function catalogPlaceOnMesita(place: {
 }
 
 const TONE_COLORS: Record<PinTone, string> = {
-  official: MAP_OFFICIAL_PIN_COLOR,
-  // A Mesita place that is not Official is gray like a Google row.
+  premier: MAP_PREMIER_PIN_COLOR,
+  // A Mesita place that is not Premier is gray like a Google row.
   mesita: MAP_GOOGLE_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
@@ -101,8 +101,8 @@ export function predictionPinTone(item: {
   mesitaSlug?: string | null;
 }): PinTone {
   if (!predictionOnMesita(item)) return "google";
-  return isOfficialPlace({ boost_tier: item.boost_tier ?? item.card?.boost_tier })
-    ? "official"
+  return isPremierPlace({ boost_tier: item.boost_tier ?? item.card?.boost_tier })
+    ? "premier"
     : "mesita";
 }
 
@@ -182,14 +182,14 @@ export function overlayPinDecision(input: {
 }
 
 /** Map/catalog rows: a Google stub is gray, a Mesita row that is not
- *  Official is gray too (its own tone, `mesita`), an Official one red. */
+ *  Premier is gray too (its own tone, `mesita`), a Premier one red. */
 export function placePinTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;
   boost_tier?: number | null;
 }): PinTone {
   if (place.googleOnly || place.from_google) return "google";
-  return isOfficialPlace(place) ? "official" : "mesita";
+  return isPremierPlace(place) ? "premier" : "mesita";
 }
 
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row

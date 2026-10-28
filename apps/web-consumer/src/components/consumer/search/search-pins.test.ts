@@ -4,7 +4,7 @@ import type { Place } from "@/lib/api/places";
 import { placeSearchScope } from "@/lib/map-filters-engine";
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_OFFICIAL_PIN_COLOR,
+  MAP_PREMIER_PIN_COLOR,
   MAP_PIN_HIT_SIZE,
   MAP_PIN_STROKE_COLOR,
   MAP_PLACE_PIN_RADIUS,
@@ -26,15 +26,15 @@ import {
   predictionPinTone,
 } from "./search-pins";
 
-describe("pin tones — official > mesita > google", () => {
+describe("pin tones — premier > mesita > google", () => {
   // THE LAW (Pato, 2026-10-12, MESITA-2158; MESITA-2925): the three nested
-  // sets — Google ⊃ Mesita ⊃ Mesita Official. Red is Official (a paid
+  // sets — Google ⊃ Mesita ⊃ Mesita Premier. Red is Premier (a paid
   // tier), gray is everything else.
-  it("paints map rows red only when the place is Official (MESITA-2925)", () => {
+  it("paints map rows red only when the place is Premier (MESITA-2925)", () => {
     const marked = { boost_tier: 1 };
-    expect(placePinTone(marked)).toBe("official");
-    // Enrichment paints nothing: an Enriched place that is not Official is
-    // gray, and a Created place that is Official is red.
+    expect(placePinTone(marked)).toBe("premier");
+    // Enrichment paints nothing: an Enriched place that is not Premier is
+    // gray, and a Created place that is Premier is red.
     const enrichedUnmarked = {
       enriched: true,
       enriched_at: "2026-08-01T00:00:00Z",
@@ -42,7 +42,7 @@ describe("pin tones — official > mesita > google", () => {
     };
     expect(placePinTone(enrichedUnmarked)).toBe("mesita");
     const createdMarked: Partial<Place> = { content_state: "ready", enriched_at: null, boost_tier: 1 };
-    expect(placePinTone(createdMarked)).toBe("official");
+    expect(placePinTone(createdMarked)).toBe("premier");
     const created: Partial<Place> = { content_state: "ready", enriched_at: null };
     expect(placePinTone(created)).toBe("mesita");
     expect(placePinTone({ ...created, boost_tier: 0 })).toBe("mesita");
@@ -77,7 +77,7 @@ describe("pin tones — official > mesita > google", () => {
 
   it("paints name-lane rows the same way, gray when the server is silent", () => {
     expect(predictionPinTone({ state: "web_listed", boost_tier: 1 })).toBe(
-      "official",
+      "premier",
     );
     expect(predictionPinTone({ state: "web_listed", boost_tier: 0 })).toBe(
       "mesita",
@@ -91,14 +91,14 @@ describe("pin tones — official > mesita > google", () => {
 
   it("treats mesitaId as on-Mesita even when state is not_in_mesita", () => {
     // mesitaId still wins over a stale state — but being on Mesita is not
-    // enough for red. Official is what earns it.
+    // enough for red. Premier is what earns it.
     expect(
       predictionPinTone({
         state: "not_in_mesita",
         mesitaId: "uuid-1",
         boost_tier: 1,
       }),
-    ).toBe("official");
+    ).toBe("premier");
     expect(
       predictionPinTone({
         state: "not_in_mesita",
@@ -108,24 +108,24 @@ describe("pin tones — official > mesita > google", () => {
     ).toBe("mesita");
   });
 
-  it("uses red for Mesita Official and gray for everything else (MESITA-2316)", () => {
-    expect(pinToneColor("official")).toBe(MAP_OFFICIAL_PIN_COLOR);
-    // A Mesita place that is not Official is gray like a Google row.
+  it("uses red for Mesita Premier and gray for everything else (MESITA-2316)", () => {
+    expect(pinToneColor("premier")).toBe(MAP_PREMIER_PIN_COLOR);
+    // A Mesita place that is not Premier is gray like a Google row.
     expect(pinToneColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinToneColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
-    expect(MAP_OFFICIAL_PIN_COLOR).toBe("#ff2357");
+    expect(MAP_PREMIER_PIN_COLOR).toBe("#ff2357");
     expect(MAP_GOOGLE_PIN_COLOR).toBe("#a3a3a3");
-    expect(MAP_OFFICIAL_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
+    expect(MAP_PREMIER_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
   });
 
   it("rings every place pin dark; a held pin CHANGES colour (MESITA-2488)", () => {
-    expect(pinFillColor("official")).toBe(MAP_OFFICIAL_PIN_COLOR);
+    expect(pinFillColor("premier")).toBe(MAP_PREMIER_PIN_COLOR);
     expect(pinFillColor("mesita")).toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinFillColor("google")).toBe(MAP_GOOGLE_PIN_COLOR);
     // Held (tapped): ink fill, white ring, whatever the tone was.
-    expect(pinFillColor("official", true)).toBe(MAP_SELECTED_PIN_COLOR);
+    expect(pinFillColor("premier", true)).toBe(MAP_SELECTED_PIN_COLOR);
     expect(pinFillColor("google", true)).toBe(MAP_SELECTED_PIN_COLOR);
-    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_OFFICIAL_PIN_COLOR);
+    expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_PREMIER_PIN_COLOR);
     expect(MAP_SELECTED_PIN_COLOR).not.toBe(MAP_GOOGLE_PIN_COLOR);
     expect(pinStrokeColor(false)).toBe("#111111");
     expect(pinStrokeColor(true)).toBe("#ffffff");
@@ -323,7 +323,7 @@ describe("overlayPinDecision", () => {
 });
 
 describe("buildSearchMapPins", () => {
-  it("paints the pin from the prediction's own Official tier", () => {
+  it("paints the pin from the prediction's own Premier tier", () => {
     const pins = buildSearchMapPins(
       [
         {
@@ -344,7 +344,7 @@ describe("buildSearchMapPins", () => {
         lat: 25.6,
         lng: -100.4,
         title: "Strana",
-        tone: "official",
+        tone: "premier",
       },
     ]);
   });
@@ -388,11 +388,11 @@ describe("mapPinIcon", () => {
   it("paints a bigger disk inside a 44px tap pad", () => {
     expect(MAP_PLACE_PIN_RADIUS).toBe(7);
     expect(MAP_PIN_HIT_SIZE).toBe(44);
-    const svg = mapPinSvg(MAP_OFFICIAL_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const svg = mapPinSvg(MAP_PREMIER_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(svg).toContain(`r="${MAP_PLACE_PIN_RADIUS}"`);
     expect(svg).toContain(`width="${MAP_PIN_HIT_SIZE}"`);
     expect(svg).toContain('fill-opacity="0.01"');
-    const icon = mapPinIcon(MAP_OFFICIAL_PIN_COLOR, MAP_PIN_STROKE_COLOR);
+    const icon = mapPinIcon(MAP_PREMIER_PIN_COLOR, MAP_PIN_STROKE_COLOR);
     expect(icon.scaledSize).toEqual({
       width: MAP_PIN_HIT_SIZE,
       height: MAP_PIN_HIT_SIZE,

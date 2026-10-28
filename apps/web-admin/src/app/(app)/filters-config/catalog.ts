@@ -196,7 +196,7 @@ export type MapConfig = {
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
   popularityFloor: number;
   // `selectedFactor` (the Selected boost) retired with Selected (MESITA-2925):
-  // Official's factor is the paid tier, no knob; the next Save drops it.
+  // Premier's factor is the paid tier, no knob; the next Save drops it.
 };
 
 /**

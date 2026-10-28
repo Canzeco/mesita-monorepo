@@ -30,7 +30,7 @@ export const MAP_FILTER_DEFAULTS: MapFilters = {
 /**
  * The scope a row belongs to on this surface. A Google stub is Google's
  * alone; every other row is a Mesita place. The pin TONE still tells
- * Official's red from gray (`placePinTone`) — that is the colour's
+ * Premier's red from gray (`placePinTone`) — that is the colour's
  * promise, not the set.
  */
 export function placeSearchScope(place: Place): MapPlacesScope {

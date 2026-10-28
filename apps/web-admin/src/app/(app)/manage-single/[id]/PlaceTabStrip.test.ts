@@ -10,7 +10,7 @@ import { stripPills } from "./PlaceTabStrip";
 describe("Single Place strip", () => {
   const tabs = FIRST_STAGE_TABS;
 
-  it("is Profile, Reviews, Preview, Admin, and Official (MESITA-2789; segment `boost`)", () => {
+  it("is Profile, Reviews, Preview, Admin, and Premier (MESITA-2789; segment `boost`)", () => {
     expect(tabs).toEqual(["profile", "reviews", "preview", "admin", "boost"]);
   });
 

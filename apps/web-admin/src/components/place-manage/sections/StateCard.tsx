@@ -1,12 +1,12 @@
 "use client";
 
 // Profile States — the facts of a place (Pato, 2026-10-13, MESITA-2176;
-// Selected died and Boost became Official in MESITA-2925):
+// Selected died and Boost became Premier in MESITA-2925):
 //
-//   Created · Pulsing · Enriching · Enriched · Official · Disabled
+//   Created · Pulsing · Enriching · Enriched · Premier · Disabled
 //
 // Enriching and Enriched are the only enrichment states. A live run is
-// enriching; the one finished write is enriched. Official is the paid tier
+// enriching; the one finished write is enriched. Premier is the paid tier
 // (`places.boost_tier`), read-only here. Disabled is the one operator write
 // in this box.
 //
@@ -172,20 +172,20 @@ export function StateCard({ place }: { place: AdminPlace }) {
     : enriching
       ? "A run is in progress. The profile is written once, when it finishes."
       : "No Enrich run has completed — a Created profile is not enriched.";
-  // Official (MESITA-2925, was Boost — MESITA-2789, shown here since
+  // Premier (MESITA-2925, was Boost — MESITA-2789, shown here since
   // MESITA-2795): paid visibility guests bought, read off `places.boost_tier`
   // (1 · 2 · 3 = 2X · 5X · 10X). Read-only: payers manage it in the consumer
-  // app; the Official view lists them.
+  // app; the Premier view lists them.
   const boostTier =
     typeof place.boost_tier === "number" ? place.boost_tier : null;
-  const official: boolean | "unknown" =
+  const premier: boolean | "unknown" =
     boostTier == null ? "unknown" : boostTier > 0;
-  const officialDetail =
-    official === "unknown"
-      ? "Couldn't read the Official tier."
-      : official
-        ? `Official ${boostTierChip(boostTier)}: guests pay for its visibility and see it marked Official. Payers are on the Official view.`
-        : "Not Official. Guests make a place Official from its ⋯ menu.";
+  const premierDetail =
+    premier === "unknown"
+      ? "Couldn't read the Premier tier."
+      : premier
+        ? `Premier ${boostTierChip(boostTier)}: guests pay for its visibility and see it marked Premier. Payers are on the Premier view.`
+        : "Not Premier. Guests make a place Premier from its ⋯ menu.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
     : "No run is in progress.";
@@ -222,10 +222,10 @@ export function StateCard({ place }: { place: AdminPlace }) {
           detail={enrichedDetail}
         />
         <StateRow
-          name="Official"
-          on={official === true}
+          name="Premier"
+          on={premier === true}
           chip={boostTierChip(boostTier)}
-          detail={officialDetail}
+          detail={premierDetail}
         />
         <StateRow
           name="Disabled"

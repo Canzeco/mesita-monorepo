@@ -23,8 +23,8 @@ import {
 // guest, both on their identity card in the consumer app:
 //
 //   Class   Regular · VIP   VIP comes through a partner (an agency, a creator
-//                           deal). It is never sold and never an upgrade to Premier.
-//   Plan    Free · Premier  the subscription; operator-set until a checkout exists
+//                           deal). It is never sold and never an upgrade to Pro.
+//   Plan    Free · Pro  the subscription; operator-set until a checkout exists
 //
 // A tap saves at once. A refusal rolls the row back; a lost connection
 // re-reads the list, because the save may have landed. The note on where a
@@ -39,7 +39,7 @@ const CLASS_OPTIONS: { value: GuestClass; label: string }[] = [
 ];
 const PLAN_OPTIONS: { value: GuestPlan; label: string }[] = [
   { value: "free", label: "Free" },
-  { value: "premium", label: "Premier" },
+  { value: "premium", label: "Pro" },
 ];
 
 /** "VIP since Oct 21, 2026 · by pato@…": no line until an operator set it. */
@@ -70,7 +70,7 @@ export function GuestsClient({
       <PageHeader
         eyebrow="Manage · Guests"
         title="Guests"
-        description="Set each guest's Class and Plan. They are separate: VIP comes from a partner and is never sold; the plan is Free or Premier. Both show on the guest's card in the app."
+        description="Set each guest's Class and Plan. They are separate: VIP comes from a partner and is never sold; the plan is Free or Pro. Both show on the guest's card in the app."
       />
       <GuestsCard initialGuests={initialGuests} loadError={loadError} />
     </PageContainer>

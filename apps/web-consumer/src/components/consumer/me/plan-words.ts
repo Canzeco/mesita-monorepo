@@ -12,7 +12,7 @@ import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 // not the words.
 //
 // NO PRICE, NO HYPOTHESIS (see PlanModal). Free states today's enforced cap;
-// Premier opens with "Everything in Free", then its unbuilt perks, each Soon.
+// Pro opens with "Everything in Free", then its unbuilt perks, each Soon.
 
 export type PlanRowWords = {
   title: string;
@@ -35,9 +35,9 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
     ],
   },
   premium: {
-    title: "Premier",
+    title: "Pro",
     subtitle: "The paid plan.",
-    label: "Included in Premier",
+    label: "Included in Pro",
     items: [
       {
         text: `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,

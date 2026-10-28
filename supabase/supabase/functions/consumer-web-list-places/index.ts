@@ -24,7 +24,7 @@
 // GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
-// ranked by Popularity × the Official factor (an Official place's paid tier,
+// ranked by Popularity × the Premier factor (a Premier place's paid tier,
 // ×2 · ×5 · ×10, MESITA-2925), no Proximity.
 // The Map shows the top `map.placesShown`. The family chip gates; the guest
 // picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
@@ -117,8 +117,8 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Official factor, ×2 · ×5 · ×10, else 1
-   *  (MESITA-2925; the key predates Official). */
+  /** The factor `final` carries: the Premier factor, ×2 · ×5 · ×10, else 1
+   *  (MESITA-2925; the key predates Premier). */
   selectedFactor: number;
   /** Km from the cross (MESITA-2830); it screens, never scores. */
   distanceKm: number | null;
@@ -186,7 +186,7 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Popularity × the Official factor; the radius only gates (MESITA-2909).
+  // Popularity × the Premier factor; the radius only gates (MESITA-2909).
   const pool = await mesitaPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,

@@ -1,8 +1,8 @@
-// Mesita Official (MESITA-2925; Boost from MESITA-2789, Spotlight from
-// MESITA-1998): anyone makes a place Official from its Official tab, with
+// Mesita Premier (MESITA-2925; Boost from MESITA-2789, Spotlight from
+// MESITA-1998): anyone makes a place Premier from its Premier tab, with
 // their own Stripe subscription. Many guests may back one place; the place
 // holds the highest tier their live backings pay for together, shown as
-// Official 2X · 5X · 10X. The wire keeps its Boost names (the EFs, the
+// Premier 2X · 5X · 10X. The wire keeps its Boost names (the EFs, the
 // `boost_*` tiers); only the words a guest reads changed.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -17,19 +17,19 @@ export type BoostInterval = "month" | "year";
 export const BOOST_TIERS = [
   {
     key: "boost_2x",
-    label: "Official 2X",
+    label: "Premier 2X",
     monthly: 10,
     blurb: "Twice as likely to show on the Map and Home",
   },
   {
     key: "boost_5x",
-    label: "Official 5X",
+    label: "Premier 5X",
     monthly: 50,
     blurb: "Five times as likely to show",
   },
   {
     key: "boost_10x",
-    label: "Official 10X",
+    label: "Premier 10X",
     monthly: 200,
     blurb: "Ten times as likely to show, the most there is",
   },
@@ -39,9 +39,9 @@ export const BOOST_YEAR_MONTHS = 10;
 
 export const BOOST_TIER_LABEL: Record<0 | 1 | 2 | 3, string | null> = {
   0: null,
-  1: "Official 2X",
-  2: "Official 5X",
-  3: "Official 10X",
+  1: "Premier 2X",
+  2: "Premier 5X",
+  3: "Premier 10X",
 };
 
 const USD = new Intl.NumberFormat("en-US", {

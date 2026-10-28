@@ -2,14 +2,14 @@ export { PlaceProfile } from "./components/PlaceProfile";
 export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
 export { PlaceTopBar } from "./components/PlaceTopBar";
-export { OfficialBadge } from "./components/OfficialBadge";
+export { PremierBadge } from "./components/PremierBadge";
 export {
-  OFFICIAL_LEVELS,
-  isOfficialPlace,
-  officialLabel,
-  officialLevel,
-  officialTier,
-} from "./official";
+  PREMIER_LEVELS,
+  isPremierPlace,
+  premierLabel,
+  premierLevel,
+  premierTier,
+} from "./premier";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
 export { PlaceCreateFailedPanel } from "./components/place-detail/PlaceCreateFailedPanel";

@@ -95,10 +95,10 @@ const COLUMNS: readonly string[] = [
   // THE Enriched fact (MESITA-2154): set by the contents stage when an
   // Enrich run completes, never by Create. `isPlaceEnriched` reads it.
   "enriched_at",
-  // Official (MESITA-2925, was Boost MESITA-2789): the paid tier its
+  // Premier (MESITA-2925, was Boost MESITA-2789): the paid tier its
   // backers' live subscriptions buy together, 0 · 1 · 2 · 3 (none · 2X · 5X
-  // · 10X), derived by trigger. A place is Official at 1 or more; the Area
-  // score multiplies it by 2 · 5 · 10, and cards and pins say Official 2X ·
+  // · 10X), derived by trigger. A place is Premier at 1 or more; the Area
+  // score multiplies it by 2 · 5 · 10, and cards and pins say Premier 2X ·
   // 5X · 10X. `places.selected` is read by no one since MESITA-2925.
   "boost_tier",
   // Profile lifecycle (places.content_state: generating | ready | failed).

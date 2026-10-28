@@ -26,7 +26,7 @@ import {
   MAP_PIN_HIT_SIZE,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  MAP_OFFICIAL_PLACE_PIN_RADIUS,
+  MAP_PREMIER_PLACE_PIN_RADIUS,
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
@@ -69,12 +69,12 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (ink, MESITA-2488). An Official pin is red
+/** `held` is the tapped pin (ink, MESITA-2488). A Premier pin is red
  *  and a little larger (MESITA-2925). */
 function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
   const radius =
-    tone === "official" && !held ? MAP_OFFICIAL_PLACE_PIN_RADIUS : undefined;
+    tone === "premier" && !held ? MAP_PREMIER_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),

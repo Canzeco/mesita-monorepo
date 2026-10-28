@@ -23,7 +23,7 @@ export const IDENTITY_PHOTO_CLASS =
   "relative block h-16 w-16 overflow-hidden rounded-full";
 
 /** The boxes' grid: one column, two from 360px, where a half box is wide
- *  enough for "Premier Plan" (MESITA-2614). */
+ *  enough for "Pro Plan" (MESITA-2614). */
 export const IDENTITY_GRID_CLASS =
   "grid w-full min-w-0 grid-cols-1 gap-2 min-[360px]:grid-cols-2";
 
