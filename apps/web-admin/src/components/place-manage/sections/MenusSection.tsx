@@ -25,6 +25,7 @@ import {
   isDriveMenuUrl,
   MENU_MAX_COUNT,
   placeMenuObjectPath,
+  prepareMenuUploadFile,
   removeOrphanMenuStorageObjects,
   validateMenuUploadFile,
 } from "@/lib/place-upload-utils";
@@ -228,13 +229,13 @@ export function MenusSection({
   };
 
   const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = "";
     const key = uploadTargetKey.current;
     uploadTargetKey.current = null;
-    if (!file || !key || uploadingKey) return;
+    if (!picked || !key || uploadingKey) return;
 
-    const fileError = validateMenuUploadFile(file);
+    const fileError = validateMenuUploadFile(picked);
     if (fileError) {
       setError(fileError);
       return;
@@ -243,6 +244,9 @@ export function MenusSection({
     setUploadingKey(key);
     setError(null);
     try {
+      const prepared = await prepareMenuUploadFile(picked);
+      if (prepared.error) throw new Error(prepared.error);
+      const file = prepared.file;
       const supabase = createBrowserSupabase();
       const path = placeMenuObjectPath(place.id, file);
       const bucket = bucketForMenuFile(file);
