@@ -16,6 +16,35 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
+// ── 9b. Mesita Families ─────────────────────────────────────────────────
+
+// Pato, MESITA-2924: "add a new section in overview above mesita tags where
+// you call it Mesita Families, there you mention all". The place's families
+// (1–5, inferred by the Description step, MESITA-2891), emoji + label, in
+// family order. No families, no box.
+export function FamiliesBox({ place }: { place: PlaceDetail }) {
+  if (place.families.length === 0) return null;
+  return (
+    <Box title="Mesita Families">
+      <div className="flex flex-wrap gap-2" data-place-families>
+        {place.families.map((f) => (
+          <span
+            key={f.key}
+            className="border-border bg-card text-foreground flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold"
+          >
+            {f.emoji ? (
+              <span aria-hidden className="text-base leading-none">
+                {f.emoji}
+              </span>
+            ) : null}
+            {f.label}
+          </span>
+        ))}
+      </div>
+    </Box>
+  );
+}
+
 // ── 10. Tags ────────────────────────────────────────────────────────────
 
 export function TagsBox({ place }: { place: PlaceDetail }) {

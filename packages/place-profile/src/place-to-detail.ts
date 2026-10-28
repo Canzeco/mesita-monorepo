@@ -135,6 +135,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
     // Google atmosphere chips (MESITA-2255). places.tags is not this box.
     tags: googleTagChips(row.google_tags),
+    families: familyChips(row.families),
     profile_stats: profileStats(row.profile_stats),
 
     google: {
@@ -238,4 +239,19 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
     phone: str(row.phone),
   };
+}
+
+/** The EF's `families` (MESITA-2924), kept only when well formed. */
+function familyChips(
+  raw: unknown,
+): Array<{ key: string; label: string; emoji: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((f) => {
+    const r = (f ?? {}) as Record<string, unknown>;
+    if (typeof r.key !== "string" || typeof r.label !== "string" || !r.label) {
+      return [];
+    }
+    const emoji = typeof r.emoji === "string" ? r.emoji : "";
+    return [{ key: r.key, label: r.label, emoji }];
+  });
 }

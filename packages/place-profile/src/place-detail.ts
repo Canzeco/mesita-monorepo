@@ -79,6 +79,11 @@ export type PlaceDetail = {
     facet: string;
   }>;
 
+  /** Overview's Mesita Families box (Pato, MESITA-2924), above Tags: the
+   *  place's families as the EF names them, in family order. Empty hides the
+   *  box (an older EF sends none). */
+  families: Array<{ key: string; label: string; emoji: string }>;
+
   /** Overview's Stats box (MESITA-2866): unique members who opened this
    *  profile and who liked (saved) it, from place_activity. Absent when the
    *  payload carries no counts (admin Preview, an older EF): no box. */
