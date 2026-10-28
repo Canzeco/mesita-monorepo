@@ -180,11 +180,9 @@ function OverviewSkeleton() {
           <Bone className={PLACE_BUTTON_CLASS} />
         </div>
       </Box>
-      {/* HoursBox: the open line, then the week in one outlined list of
-          44px rows. */}
+      {/* HoursBox: the week in one outlined list of 44px rows. */}
       <Box>
         <BoxTitleBar width="w-16" />
-        <LineBars type="text-sm leading-snug" widths={["w-32"]} />
         <div className="border-border overflow-hidden rounded-lg border">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div
