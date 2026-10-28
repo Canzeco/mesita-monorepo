@@ -1,3 +1,4 @@
+// DEFAULT_IMAGE_*_PROMPT: twin of render/src/images.ts, pinned by render-twins.test.ts.
 // Crenup (enricher) knobs: app_config.enrichment_config (MESITA-1248).
 //
 // Folds the 20 leftover atlas_* scalar columns into one jsonb, matching the

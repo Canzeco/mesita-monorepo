@@ -1,3 +1,4 @@
+// vectorLiteral: twin of render/src/embedding.ts, pinned by render-twins.test.ts.
 // Pure embedding + ranking helpers (no HTTP / DB).
 // The OpenAI embeddings call lives in embeddings-http.ts; blurb synthesis
 // and persistence live in place-embeddings.ts.

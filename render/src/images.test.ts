@@ -6,7 +6,6 @@ import {
   fetchInstagramPosts,
   rankGallery,
   rankPostsByLikes,
-  sortPlacePhotos,
 } from "./images.ts";
 
 const A = "https://lh3.googleusercontent.com/a";
@@ -23,6 +22,10 @@ test("ten photos is the gallery cap", () => {
   assert.equal(applyPhotoOrder(urls, urls.map((_, i) => i)).length, 10);
 });
 
+async function rankGoogle(urls: string[], openaiKey: string, fetchImpl: typeof fetch): Promise<string[]> {
+  return (await rankGallery({ google: urls, instagram: [], knobs: defaultImageKnobs(), openaiKey, fetchImpl })).urls;
+}
+
 test("vision rank leads with the photo the model put first", async () => {
   const fetchImpl: typeof fetch = async (_input, init) => {
     const body = JSON.parse(String(init?.body ?? "{}")) as {
@@ -32,17 +35,17 @@ test("vision rank leads with the photo the model put first", async () => {
     if (Array.isArray(content)) return Response.json({ choices: [{ message: { content: "A bright dining room." } }] });
     return Response.json({ choices: [{ message: { content: JSON.stringify({ order: [1, 0] }) } }] });
   };
-  assert.deepEqual(await sortPlacePhotos([A, B], "sk-test", fetchImpl), [B, A]);
+  assert.deepEqual(await rankGoogle([A, B], "sk-test", fetchImpl), [B, A]);
 });
 
 test("a failed describe keeps Google's order", async () => {
   const fetchImpl: typeof fetch = async () => Response.json({ choices: [{ message: { content: "" } }] });
-  assert.deepEqual(await sortPlacePhotos([A, B], "sk-test", fetchImpl), [A, B]);
+  assert.deepEqual(await rankGoogle([A, B], "sk-test", fetchImpl), [A, B]);
 });
 
 test("no OpenAI key still returns the gathered photos", async () => {
   assert.deepEqual(
-    await sortPlacePhotos([A, B], "", async () => {
+    await rankGoogle([A, B], "", async () => {
       throw new Error("network");
     }),
     [A, B],

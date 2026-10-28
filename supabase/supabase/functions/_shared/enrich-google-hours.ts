@@ -1,3 +1,4 @@
+// Twin of render/src/hours.ts (weeklyHoursFromPeriods, closesAtFromHours), pinned by render-twins.test.ts.
 export type GooglePeriod = {
   open?: { day?: number; hour?: number; minute?: number };
   close?: { day?: number; hour?: number; minute?: number };
