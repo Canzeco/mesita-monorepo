@@ -50,6 +50,12 @@ import {
   subprocessesFor,
 } from "../_shared/enrich-triggers.ts";
 import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
+import {
+  isOperatorField,
+  markOperatorFields,
+  type OperatorField,
+  operatorFieldsInPatch,
+} from "../_shared/operator-fields.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
@@ -90,6 +96,8 @@ type UpdateBody = {
   /** Profile's Actions toggle, sent with the operator's reservation channel. */
   reservations_enabled?: boolean;
   reservation_channel?: string;
+  /** Basics' Reset (MESITA-2829): hand these fields back to Enrich. */
+  reset_fields?: unknown;
 };
 
 Deno.serve(async (req) => {
@@ -234,45 +242,76 @@ Deno.serve(async (req) => {
     update.reservations_enabled = body.reservations_enabled;
     update.reservation_channel = channel;
   }
-  if (Object.keys(update).length === 0) {
+  // Basics' Reset (MESITA-2829): a list of operator-owned fields to hand
+  // back to Enrich. It may ride alone, with no edit.
+  const resetFields: OperatorField[] = [];
+  if ("reset_fields" in body) {
+    if (!Array.isArray(body.reset_fields) || !body.reset_fields.every(isOperatorField)) {
+      return json({ ok: false, error: "reset_fields must list name, description or tags" }, 400);
+    }
+    resetFields.push(...body.reset_fields);
+  }
+  if (Object.keys(update).length === 0 && resetFields.length === 0) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  const updRes = await writePlace(admin, {
-    table: "profiles",
-    mode: "update",
-    id: placeId,
-    patch: update as ProfilePatch,
-    select: PLACE_PROFILE_COLUMNS,
-  });
-
-  if (!updRes.ok) {
-    await recordAdminOperatorEvent(admin, {
-      verb: "edit",
-      outcome: "failed",
-      placeId,
-      actorUserId: authRes.user.id,
-      source: "admin-web-update-place",
-      detail: { error: updRes.error, code: updRes.code ?? null },
+  let place: Record<string, unknown>;
+  if (Object.keys(update).length > 0) {
+    const updRes = await writePlace(admin, {
+      table: "profiles",
+      mode: "update",
+      id: placeId,
+      patch: update as ProfilePatch,
+      select: PLACE_PROFILE_COLUMNS,
     });
-    return json(
-      {
-        ok: false,
-        error: `place_update: ${updRes.error}`,
-        code: updRes.code ?? null,
-      },
-      400,
-    );
-  }
-  const place = updRes.row as Record<string, unknown>;
 
-  const pinRes = await persistBusinessFieldPins(admin, placeId, update);
-  if (!pinRes.ok) {
-    return json(
-      { ok: false, error: `field_pin: ${pinRes.error}` },
-      500,
-    );
+    if (!updRes.ok) {
+      await recordAdminOperatorEvent(admin, {
+        verb: "edit",
+        outcome: "failed",
+        placeId,
+        actorUserId: authRes.user.id,
+        source: "admin-web-update-place",
+        detail: { error: updRes.error, code: updRes.code ?? null },
+      });
+      return json(
+        {
+          ok: false,
+          error: `place_update: ${updRes.error}`,
+          code: updRes.code ?? null,
+        },
+        400,
+      );
+    }
+    place = updRes.row as Record<string, unknown>;
+
+    const pinRes = await persistBusinessFieldPins(admin, placeId, update);
+    if (!pinRes.ok) {
+      return json(
+        { ok: false, error: `field_pin: ${pinRes.error}` },
+        500,
+      );
+    }
+  } else {
+    const { data: row, error } = await admin
+      .from("profiles")
+      .select(PLACE_PROFILE_COLUMNS)
+      .eq("id", placeId)
+      .maybeSingle();
+    if (error || !row) return json({ ok: false, error: error?.message ?? "Place not found" }, 404);
+    place = row as unknown as Record<string, unknown>;
   }
+
+  // An operator's name, Presentation or tags stick through every Enrich
+  // (MESITA-2829): a typed value marks the field, a Reset clears the mark.
+  const marks = await markOperatorFields(admin, placeId, {
+    mark: operatorFieldsInPatch(update),
+    clear: resetFields,
+  });
+  if (!marks.ok) {
+    return json({ ok: false, error: `operator_fields: ${marks.error}` }, 500);
+  }
+  place.operator_fields = marks.fields;
 
   // The on_update row's `embedding` cell re-synthesises when the blurb
   // inputs change. Sync is not this save. A disabled row buys nothing.
@@ -307,7 +346,7 @@ Deno.serve(async (req) => {
     placeId,
     actorUserId: authRes.user.id,
     source: "admin-web-update-place",
-    detail: { fields: Object.keys(update) },
+    detail: { fields: Object.keys(update), reset: resetFields },
   });
 
   return json({ ok: true, place, familyStored });

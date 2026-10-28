@@ -160,6 +160,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/place-name-door.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
+  "_shared/operator-fields.ts", // read enrichment_sources before the operator-mark merge (MESITA-2829)
   "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
   "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
@@ -206,6 +207,7 @@ const PROFILES_READ_ALLOWLIST = [
   // The Selected mark's one door re-reads the place after the write (MESITA-2707).
   "admin-web-set-place-selected/index.ts",
   "admin-web-get-overview/index.ts",
+  "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
   "admin-web-list-place-opens/index.ts",
   "admin-web-get-activity-summary/index.ts",

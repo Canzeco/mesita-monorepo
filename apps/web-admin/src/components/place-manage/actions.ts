@@ -156,6 +156,9 @@ export type AdminPlace = {
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
+  /** Basics fields the operator owns (MESITA-2829): name · description · tags.
+   *  Enrich skips them until the row's Reset clears the mark. */
+  operator_fields?: string[];
   /** Unique members who viewed / saved (admin-web-get-overview). */
   profile_stats?: { viewed?: number; saved?: number };
   /** Votes required before Enrich starts. Settings `enrichRequestThreshold`. */

@@ -23,6 +23,7 @@ import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-i
 import { pairedAnalyses } from "../_shared/photo-analysis.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns } from "../_shared/enrich-corrections.ts";
+import { readOperatorFields, stripOperatorFields } from "../_shared/operator-fields.ts";
 import { applyInferredPlaceName } from "../_shared/place-name-door.ts";
 import { reportCrenupSteps, stepFailed } from "../_shared/crenup-report.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
@@ -151,7 +152,14 @@ Deno.serve(async (req) => {
   if (unpinned.skipped.length > 0) {
     console.log(`[enrich] ${commit.placeId}: kept pinned ${unpinned.skipped.join(", ")}`);
   }
-  let patch = unpinned.update;
+  // An operator's name, Presentation or tags stick through every Enrich
+  // (MESITA-2829): the run writes around them until the operator's Reset.
+  const owned = readOperatorFields(versionRow?.enrichment_sources);
+  const unowned = stripOperatorFields(unpinned.update, owned);
+  if (unowned.skipped.length > 0) {
+    console.log(`[enrich] ${commit.placeId}: kept operator ${unowned.skipped.join(", ")}`);
+  }
+  let patch = unowned.update;
   const gallery = galleryFromPatch(patch);
   let stored: { sourceUrl: string; publicUrl: string }[] = [];
   if (gallery.length === 0) {
@@ -195,7 +203,7 @@ Deno.serve(async (req) => {
   );
   // After the profile, so the door sees this run's google_name. It writes
   // only over a name the machine owns; an operator's name stays.
-  if (filled.mesitaName) {
+  if (filled.mesitaName && !owned.includes("name")) {
     await applyInferredPlaceName(admin, commit.placeId, filled.mesitaName);
   }
   await reportCrenupSteps(

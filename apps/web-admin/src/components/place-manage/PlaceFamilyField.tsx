@@ -13,7 +13,7 @@ import { usePlaceContext } from "./PlaceContext";
 export function PlaceFamilyField() {
   const { profile } = usePlaceContext();
   return (
-    <ReadField label="Families" auto boxed>
+    <ReadField label="Mesita families" auto boxed>
       <ChipList
         items={profile.familyStored.text
           .split(" · ")

@@ -40,6 +40,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { readOperatorFields } from "../_shared/operator-fields.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,
@@ -110,7 +111,7 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     admin
       .from("place_profiles")
-      .select("enrichment, google_found, instagram_found, facebook_found")
+      .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources")
       .eq("id", placeId)
       .maybeSingle(),
     fetchPlaceCategories(admin),
@@ -170,6 +171,9 @@ Deno.serve(async (req) => {
     // row (`places.selected`) — never derived from Enriched, ready and
     // Disabled. The same read admin-web-search-places makes.
     selected: placeFields.selected === true,
+    // The Basics fields the operator owns (MESITA-2829): Enrich skips them
+    // until the row's Reset clears the mark.
+    operator_fields: readOperatorFields(enrichmentRow.data?.enrichment_sources),
     enrich_crenup: enrichmentMap.highWater,
     enrich_crenup_total: CRENUP_TOTAL,
     enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,
