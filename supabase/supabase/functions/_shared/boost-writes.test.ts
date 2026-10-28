@@ -55,7 +55,6 @@ const START: BoostStart = {
   placeId: "11111111-1111-4111-8111-111111111111",
   tier: "boost_2x",
   interval: "month",
-  showName: false,
   returnUrl: "https://mesita.ai/web/place/x",
 } as BoostStart;
 const CTX = { backingId: "b-1", consumerId: "c-1", placeName: "Cafe" };

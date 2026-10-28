@@ -243,7 +243,7 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  // Boost (MESITA-1998): first names of backers who chose to be shown.
+  // Boost (MESITA-1998): payer first names for the admin console only (MESITA-2928).
   "_shared/boost.ts",
   // Instagram verify (MESITA-2578) reads avatar_url alone, error checked, to
   // keep an uploaded photo; the write goes through writeConsumer.

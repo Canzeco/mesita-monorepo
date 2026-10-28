@@ -74,7 +74,6 @@ export type BoostStart = {
   placeId: string;
   tier: BoostTier;
   interval: BoostInterval;
-  showName: boolean;
   returnUrl: string;
 };
 
@@ -114,7 +113,7 @@ export function parseBoostStart(
   }
   return {
     ok: true,
-    start: { placeId, tier: tier as BoostTier, interval, showName: body.show_name === true, returnUrl },
+    start: { placeId, tier: tier as BoostTier, interval, returnUrl },
   };
 }
 
@@ -439,7 +438,8 @@ export async function readBoostPlace(
   return { ok: true, place: data ?? null };
 }
 
-/** First names of the backers who chose to be shown, in the given order. */
+/** First names of the given payers, in order: the admin console only, never a
+ *  guest (MESITA-2928). */
 export async function readBackerNames(
   admin: SupabaseClient,
   consumerIds: string[],

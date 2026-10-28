@@ -71,7 +71,6 @@ export type MyBacking = {
 export type PlaceBoost = {
   tier: 0 | 1 | 2 | 3;
   backers: number;
-  names: string[];
   mine: MyBacking[];
   confirmed?: boolean;
 };
@@ -94,7 +93,6 @@ export async function apiStartBoost(
     placeId: string;
     tier: BoostTier;
     interval: BoostInterval;
-    showName: boolean;
     returnUrl: string;
   },
 ): Promise<string> {
@@ -102,7 +100,6 @@ export async function apiStartBoost(
     place_id: input.placeId,
     tier: input.tier,
     interval: input.interval,
-    show_name: input.showName,
     return_url: input.returnUrl,
   });
   return res.url;
