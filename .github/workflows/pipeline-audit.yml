@@ -51,8 +51,10 @@ jobs:
         with:
           version: 2.100.0
 
-      # The catalog-membership check reads the cloud with `supabase db query
-      # --linked` (MESITA-2766). It takes the project from project-ref, and
+      # The catalog-membership check reads the cloud's slug and enabled
+      # columns with `supabase db query --linked` (MESITA-2766, MESITA-2933):
+      # an empty table, nothing enabled, or a row set unlike the code's
+      # Google types is a finding. It takes the project from project-ref, and
       # without pooler-url it dials the database's IPv6-only direct host,
       # which runners cannot reach (MESITA-2781). pooler-url is the IPv4
       # pooler `supabase link` saves: host and user, no password; the CLI

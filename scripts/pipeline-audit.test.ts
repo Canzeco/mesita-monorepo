@@ -25,7 +25,7 @@ import {
   type Report,
   runtimeImports,
 } from "./pipeline-audit.ts";
-import { membershipSeedRows } from "../supabase/scripts/catalog-membership-sql.ts";
+import { GOOGLE_TYPE_SUPER } from "../supabase/supabase/functions/_shared/google-type-super.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 const NOW = new Date("2026-10-19T15:00:00Z");
@@ -98,8 +98,8 @@ function world() {
     failGithub: {} as Record<string, Got>,
     failFunctions: null as Got | null,
     rulesetBody: null as unknown,
-    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: equal to the code map.
-    membership: membershipSeedRows().map((r) => ({ slug: r.slug, family_keys: [...r.keys] })) as { slug: string; family_keys: string[] }[],
+    // The cloud catalog_membership as `supabase db query --linked -o json` lists it: one row per Google type, some enabled.
+    membership: Object.keys(GOOGLE_TYPE_SUPER).sort().map((slug, i) => ({ slug, enabled: i % 2 === 0 })) as { slug: string; enabled: boolean }[],
     failSql: null as Got | null,
   };
 }
@@ -226,7 +226,8 @@ const CASES: [string, (w: World) => void, string][] = [
   ["a bot PR open over 7 days", (w) => (w.openPrs[0].created_at = "2026-10-11T00:00:00Z"), "PA-BOT-PR:2400"],
   // MESITA-2759: an admin Reset emptied the table and Create refused most restaurants.
   ["an empty catalog_membership in the cloud", (w) => (w.membership = []), "PA-MEMBERSHIP-DRIFT:empty"],
-  ["a cloud membership row that differs from the code map", (w) => (w.membership.find((r) => r.slug === "restaurant")!.family_keys = ["undefined"]), "PA-MEMBERSHIP-DRIFT:restaurant"],
+  ["a catalog_membership with nothing enabled", (w) => w.membership.forEach((r) => (r.enabled = false)), "PA-MEMBERSHIP-DRIFT:none-enabled"],
+  ["a Google type missing from the cloud", (w) => (w.membership = w.membership.filter((r) => r.slug !== "restaurant")), "PA-MEMBERSHIP-DRIFT:count"],
 ];
 
 for (const [name, mutate, code] of CASES) {
