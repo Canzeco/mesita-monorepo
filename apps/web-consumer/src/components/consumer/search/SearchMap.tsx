@@ -38,7 +38,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { isSponsoredPlace } from "@/components/consumer/place-card";
-import { RING_INSET, SIGHT_Y } from "./search-utils";
+import { SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
@@ -246,36 +246,13 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** The search ring's diameter: RING_INSET of twice the cross's distance to
- *  the nearest edge of the map — the full width, or twice the gap to the
- *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
- *  server's screen radius on screen. The inset keeps a margin between the
- *  ring and the map's border (MESITA-2825). Container units of the map's box. */
-export const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
-  Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
-}cqh)`;
-
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
- *  MESITA-2514) — the catalog fetch point: the plus, its dot, and THE
- *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
- *  and move it realative to the cruz … it must feel more dynamic"). The ring
- *  is the circle the next load searches — the server's screen radius, the
- *  cross's distance to the nearest edge, so it always fits on the map
- *  (MESITA-2511), inset to 0.9 so it never touches the border
- *  (MESITA-2825) — dashed, riding the cross while the guest pans, and it
- *  pulses while a load is in flight. A second ring at half the diameter says
- *  the centre is denser (Pato, MESITA-2773: "double circle for density") —
- *  the proximity half-strength distance at the default radiusDivisor of 2
- *  (MESITA-2720). Both rings are the same dashed line and nothing is shaded
- *  (Pato, MESITA-2820: "remove those dark backgrounds … just keep the borders
- *  … both borders must be the same dotted"), so the map reads as one surface.
- *  Screen CSS, never map geometry: MESITA-2842/2844 drew them as Google
- *  polylines, which trail the cross a frame behind on a drag and keep the
- *  last load's size after a zoom (Pato, MESITA-2847: "must move with the
- *  cruz in real time … the animation must not look lagged"). */
-const RING_CLASS =
-  "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed";
-
+ *  MESITA-2514) — the catalog fetch point: the plus and its dot. THE RINGS
+ *  ARE GONE (Pato, MESITA-2906: "remove the stupid circle · we don't need it
+ *  anymore"): MESITA-2508's dashed search ring and MESITA-2773's inner
+ *  density ring no longer draw. The search radius is unchanged — RING_INSET
+ *  (search-utils.ts) still sizes the screen radius each load sends; only the
+ *  picture of it went. While a load is in flight the cross pulses. */
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -285,16 +262,8 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       data-search-sight
     >
       <div
-        className={cn(RING_CLASS, searching && "animate-pulse")}
-        style={{ width: SEARCH_RING_SIZE }}
-        data-search-ring
-      />
-      <div
-        className={cn(RING_CLASS, searching && "animate-pulse")}
-        style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
-        data-search-ring-inner
-      />
-      <div className="relative h-3.5 w-3.5">
+        className={cn("relative h-3.5 w-3.5", searching && "animate-pulse")}
+      >
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
