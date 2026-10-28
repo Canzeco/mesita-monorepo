@@ -74,8 +74,11 @@ export function primaryTypeClearsMapTypes(
   const enabled = new Set(enabledNearbyTypes(map));
   const slug = (primaryType ?? "").trim().toLowerCase();
   if (slug && enabled.has(slug)) return true;
+  // Undefined is not a family (MESITA-2962): the Atlas twin answers
+  // ["undefined"] for a salon or a gym, and counting that as a family let a
+  // guest's open mint "Hello Salon".
   const families = (() => {
-    const atlas = familiesForAtlasCategory(primaryType);
+    const atlas = familiesForAtlasCategory(primaryType).filter((f) => f !== "undefined");
     if (atlas.length > 0) return atlas;
     return familiesForGoogleType(primaryType);
   })();
