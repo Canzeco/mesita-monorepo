@@ -782,7 +782,6 @@ export type Database = {
           menus: Json | null
           mesita_categories: Json
           name: string
-          name_embedding: string | null
           opentable_url: string | null
           payments_enabled: boolean
           phone: string | null
@@ -853,7 +852,6 @@ export type Database = {
           menus?: Json | null
           mesita_categories?: Json
           name: string
-          name_embedding?: string | null
           opentable_url?: string | null
           payments_enabled?: boolean
           phone?: string | null
@@ -924,7 +922,6 @@ export type Database = {
           menus?: Json | null
           mesita_categories?: Json
           name?: string
-          name_embedding?: string | null
           opentable_url?: string | null
           payments_enabled?: boolean
           phone?: string | null
@@ -1435,7 +1432,6 @@ export type Database = {
           menus: Json | null
           mesita_categories: Json | null
           name: string | null
-          name_embedding: string | null
           opentable_url: string | null
           payments_enabled: boolean | null
           phone: string | null
