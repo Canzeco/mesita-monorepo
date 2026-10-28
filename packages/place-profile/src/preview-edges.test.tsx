@@ -126,7 +126,7 @@ describe("member preview edges", () => {
     expect(facebookAt).toBeGreaterThan(instagramAt);
     expect(html).toContain("from-purple-600");
     expect(html).toContain("bg-[#1877F2]");
-    expect(html).toContain("bg-[#EA4335]");
+    expect(html).toContain('fill="#4285F4"');
     expect(html).toContain(">-<");
     expect(html).not.toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
