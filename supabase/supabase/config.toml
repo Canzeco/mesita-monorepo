@@ -235,6 +235,14 @@ verify_jwt = true
 [functions.consumer-web-track-activity]
 verify_jwt = true
 
+# Saved locations follow the guest across devices (MESITA-2400): the guest's
+# own pins, read and written back, keyed by the session's user id.
+[functions.consumer-web-list-saved-locations]
+verify_jwt = true
+
+[functions.consumer-web-save-location]
+verify_jwt = true
+
 [functions.consumer-web-report-place]
 verify_jwt = true
 
@@ -407,6 +415,11 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.admin-web-set-guest-standing]
+verify_jwt = true
+
+# VIP partners (MESITA-2556): add or rename the partners a VIP comes through,
+# and mark which are Mesita venues. Names no rate. Super-admin only.
+[functions.admin-web-save-vip-partner]
 verify_jwt = true
 
 # THE admin config pair (MESITA-1724). Every app_config section the console

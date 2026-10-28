@@ -12,14 +12,20 @@
 // and `formattedAddress` (the street, the row's second line). It shows
 // `customName ?? suggestedName ?? "Saved location"`, kept in `name` on every
 // write so a build from before this change still reads every entry. The
-// fields map one-to-one onto MESITA-2400's future server row.
+// fields map one-to-one onto MESITA-2400's server row (public.saved_locations).
 //
 // A PIN HAS NO RADIUS (MESITA-2914): the Catalog ranks every place from the
 // point (MESITA-2909). The `radiusKm` an entry stored from MESITA-2703 on is
 // dropped on read and never written again.
 //
-// Stored in this browser, the same way Favorites are (saved-places.ts): no
-// EF, and consumer-local-reset.ts wipes them when a different guest signs in.
+// THE SERVER HOLDS THEM (MESITA-2400), the same way Favorites work
+// (saved-places.ts): public.saved_locations, one row per guest × pin. This
+// browser's list is a CACHE that paints first: every change writes through
+// the remote sink (setSavedLocationsRemote, wired by ConsumerLocalDataGuard),
+// and syncSavedLocations() adopts the server's list on every shell mount. The
+// first sync in a browser pushes the pins saved before the server held them,
+// once. consumer-local-reset.ts wipes the cache when a different guest signs
+// in.
 //
 // An entry from before MESITA-2501 (`{ id, name, lat, lng, kind, bounds? }`)
 // reads as an UNCONFIRMED point at its own lat/lng: it cannot drive Home
@@ -29,6 +35,20 @@
 import { useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "mesita:saved-locations";
+// Set once this browser's pre-server pins were pushed up (MESITA-2400).
+const SYNCED_KEY = "mesita:saved-locations-synced";
+
+/** Where a change is written through. Null until the shell wires it.
+ *  `front`: the pin moves to the front of the list (a backfill does not). */
+export type SavedLocationsRemote = {
+  upsert: (location: SavedLocation, front: boolean) => void;
+  remove: (id: string) => void;
+};
+let remote: SavedLocationsRemote | null = null;
+
+export function setSavedLocationsRemote(sink: SavedLocationsRemote | null): void {
+  remote = sink;
+}
 
 /** At most this many; see `evictionFor` for which one makes room. */
 export const SAVED_LOCATIONS_MAX = 8;
@@ -232,6 +252,9 @@ export function addSavedLocation(
   const location: SavedLocation = { ...base, name: displayName(base) };
   const rest = evict ? cache.filter((l) => l.id !== evict.id) : cache;
   const kept = write([location, ...rest]);
+  // The eviction first: the server refuses a ninth pin.
+  if (evict) remote?.remove(evict.id);
+  remote?.upsert(getSavedLocations()[0], true);
   return { location: getSavedLocations()[0], kept };
 }
 
@@ -244,6 +267,7 @@ export function updateSavedLocation(id: string, patch: SavedLocationPatch): Save
   if (!current) return null;
   const next = { ...current, ...patch, id, kind: "point" as const };
   const kept = write([next, ...cache.filter((l) => l.id !== id)]);
+  remote?.upsert(getSavedLocations()[0], true);
   return { location: getSavedLocations()[0], kept };
 }
 
@@ -251,7 +275,12 @@ export function updateSavedLocation(id: string, patch: SavedLocationPatch): Save
 export function patchSavedLocationInPlace(id: string, patch: SavedLocationPatch): boolean {
   ensureHydrated();
   if (!cache.some((l) => l.id === id)) return false;
-  return write(cache.map((l) => (l.id === id ? { ...l, ...patch, id, kind: "point" as const } : l)));
+  const kept = write(
+    cache.map((l) => (l.id === id ? { ...l, ...patch, id, kind: "point" as const } : l)),
+  );
+  const written = cache.find((l) => l.id === id);
+  if (written) remote?.upsert(written, false);
+  return kept;
 }
 
 /** A pin ready to save from the picker: the confirm screen clears the
@@ -275,6 +304,7 @@ export function removeSavedLocation(id: string): void {
   ensureHydrated();
   if (!cache.some((l) => l.id === id)) return;
   write(cache.filter((l) => l.id !== id));
+  remote?.remove(id);
 }
 
 /** Called by consumer-local-reset.ts when the signed-in guest changes. */
@@ -282,6 +312,7 @@ export function clearSavedLocationsLocal(): void {
   if (typeof window !== "undefined") {
     try {
       window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(SYNCED_KEY);
     } catch {
       /* private mode — nothing to clear */
     }
@@ -289,6 +320,67 @@ export function clearSavedLocationsLocal(): void {
   cache = EMPTY;
   hydrated = true;
   for (const l of listeners) l();
+}
+
+/**
+ * Adopt the server's list (MESITA-2400), newest first. The first sync in a
+ * browser also pushes the pins saved before the server held them, once,
+ * oldest first so the newest ends up in front, while the server has room.
+ * Never throws: a failed read keeps the cache.
+ */
+export async function syncSavedLocations(
+  read: () => Promise<unknown[]>,
+  push: (location: SavedLocation) => Promise<unknown>,
+): Promise<void> {
+  if (typeof window === "undefined") return;
+  let server: SavedLocation[];
+  try {
+    server = readStoredLocations(await read());
+  } catch {
+    return;
+  }
+  ensureHydrated();
+  let firstSync = false;
+  try {
+    firstSync = window.localStorage.getItem(SYNCED_KEY) == null;
+  } catch {
+    /* private mode: treat as synced so nothing is pushed twice */
+  }
+  if (firstSync) {
+    const onServer = new Set(server.map((l) => l.id));
+    const pending = cache.filter((l) => !onServer.has(l.id)).reverse();
+    let room = SAVED_LOCATIONS_MAX - server.length;
+    let pushed = false;
+    for (const l of pending) {
+      if (room <= 0) break;
+      try {
+        await push(l);
+        room -= 1;
+        pushed = true;
+      } catch (err) {
+        // A pin the server refuses for good (400 bad entry, 409 full) is left
+        // out. Anything else (offline, a 5xx) keeps the cache untouched and
+        // unsynced, so the next shell mount tries again: a pin saved only in
+        // this browser is never dropped by a failed push.
+        const status = (err as { status?: unknown } | null)?.status;
+        if (status !== 400 && status !== 409) return;
+      }
+    }
+    if (pushed) {
+      try {
+        server = readStoredLocations(await read());
+      } catch {
+        return;
+      }
+    }
+    try {
+      window.localStorage.setItem(SYNCED_KEY, "1");
+    } catch {
+      /* best effort */
+    }
+  }
+  write(server.slice(0, SAVED_LOCATIONS_MAX));
+  hydrated = true;
 }
 
 /** What a stored array reads as: every entry upgraded, broken ones dropped. */

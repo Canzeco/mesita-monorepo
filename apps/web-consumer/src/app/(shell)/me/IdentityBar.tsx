@@ -6,7 +6,7 @@ import type { ConsumerProfile } from "@/lib/api/profile";
 import { IdentityCard } from "@/components/consumer/IdentityCard";
 import { ClassSheet } from "@/components/consumer/me/ClassSheet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { toGuestClass, toGuestPlan } from "@/lib/guest-standing";
+import { toGuestClass, toGuestPlan, toVipDetails } from "@/lib/guest-standing";
 import {
   IDENTITY_BAR_BODY_CLASS,
   IDENTITY_BAR_CLASS,
@@ -129,6 +129,7 @@ export function IdentityBar({
           open={classOpen}
           onClose={() => setClassOpen(false)}
           guestClass={guestClass}
+          vip={toVipDetails(guestClass, profile?.vip_partner, profile?.vip_until)}
         />
       )}
     </header>

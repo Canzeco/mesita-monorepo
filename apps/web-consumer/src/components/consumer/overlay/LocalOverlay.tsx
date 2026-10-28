@@ -268,9 +268,10 @@ export function LocalDialog({
   /** Appear and disappear at once: no fade, no scale, no exit delay
    *  (Social's person card, MESITA-2546). Off for every other dialog. */
   instant?: boolean;
-  /** A tall dialog: the panel stops at the overlay's height and its child
-   *  is the scroller (Social's person card, MESITA-2845). Still sized by its
-   *  content below that. Off for every other dialog. */
+  /** A tall dialog: the panel is always the overlay's full height and its
+   *  child is the scroller (Social's person card, MESITA-2845). Never sized
+   *  by its content, so its top never moves with it (MESITA-2965). Off for
+   *  every other dialog. */
   scroll?: boolean;
 }) {
   const presence = useLocalPresence(open);
@@ -312,7 +313,7 @@ export function LocalDialog({
           tabIndex={-1}
           className={cn(
             "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border outline-none",
-            scroll && "flex max-h-full min-h-0 flex-col",
+            scroll && "flex h-full min-h-0 flex-col",
             !instant &&
               "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
             !instant && OVERLAY_EASE,

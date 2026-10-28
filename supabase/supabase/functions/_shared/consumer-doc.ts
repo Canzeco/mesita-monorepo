@@ -62,8 +62,8 @@ export type ConsumerDoc = {
   // or handle in Social, the first name still shows (MESITA-2612).
   // place_activity_visible reads it.
   appear_anonymous: boolean;
-  // Not here on purpose: plan, guest_class and the VIP audit columns
-  // (MESITA-2553). Their only writer is the admin_set_guest_standing RPC, so
+  // Not here on purpose: plan, guest_class, the VIP audit columns
+  // (MESITA-2553) and the VIP's partner and last day (MESITA-2556). Their only writer is the admin_set_guest_standing RPC, so
   // this door cannot touch them and rejects them as unknown fields.
   created_at: string;
   deleted_at: string | null;

@@ -35,6 +35,10 @@ export type ConsumerProfile = {
   // only; absent or unknown reads as the plain value (lib/guest-standing).
   guest_class?: string;
   plan?: string;
+  // MESITA-2556: for a VIP, the partner's name and the last day (YYYY-MM-DD),
+  // each null when none is recorded. Shown only on the guest's own Class sheet.
+  vip_partner?: string | null;
+  vip_until?: string | null;
 };
 
 type ConsumerOnboardingInput = {

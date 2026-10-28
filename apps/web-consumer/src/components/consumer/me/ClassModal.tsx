@@ -7,12 +7,18 @@
 
 import { ClassList } from "@/components/consumer/me/ClassSheet";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import type { GuestClass } from "@/lib/guest-standing";
+import type { GuestClass, VipDetails } from "@/lib/guest-standing";
 
-export function ClassModal({ guestClass }: { guestClass: GuestClass | null }) {
+export function ClassModal({
+  guestClass,
+  vip = null,
+}: {
+  guestClass: GuestClass | null;
+  vip?: VipDetails | null;
+}) {
   return (
     <MeScreen title="Class">
-      <ClassList guestClass={guestClass} />
+      <ClassList guestClass={guestClass} vip={vip} />
     </MeScreen>
   );
 }
