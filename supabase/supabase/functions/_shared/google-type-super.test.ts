@@ -74,7 +74,7 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(GOOGLE_SEARCH_TYPES.dinner[0], "restaurant");
   assertEquals(GOOGLE_SEARCH_TYPES.dinner.length, 50);
   assertEquals(GOOGLE_SEARCH_TYPES.coffee, [
-    "cafe", "cat_cafe", "coffee_roastery", "coffee_shop", "coffee_stand", "dog_cafe", "internet_cafe", "juice_shop", "tea_house", "tea_store",
+    "cafe", "cat_cafe", "coffee_roastery", "coffee_shop", "coffee_stand", "dog_cafe", "juice_shop", "tea_house",
   ]);
   assertEquals("go_out" in GOOGLE_SEARCH_TYPES, false);
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
@@ -103,8 +103,15 @@ Deno.test("attractions, spas and fun venues ride a battery (MESITA-2438 and 2468
   assertEquals(GOOGLE_SEARCH_TYPES.spa[0], "spa");
   assertEquals(GOOGLE_SEARCH_TYPES.family[0], "family_restaurant");
   const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
-  for (const t of ["museum", "park", "zoo", "aquarium", "amusement_park", "golf_course", "swimming_pool", "massage", "sauna"]) {
+  for (const t of ["museum", "zoo", "aquarium", "amusement_park", "golf_course", "sauna"]) {
     assertEquals(all.has(t), true, t);
+  }
+});
+
+Deno.test("the audit's reds ride no battery (MESITA-2962)", () => {
+  const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
+  for (const t of ["massage", "yoga_studio", "swimming_pool", "park", "plaza", "beach", "shopping_mall", "candy_store", "internet_cafe"]) {
+    assertEquals(all.has(t), false, t);
   }
 });
 

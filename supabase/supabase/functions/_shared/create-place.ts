@@ -61,6 +61,7 @@ import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
+import { mainGoogleCategoryOnMesita } from "./categories.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
  *  writes (`google_found` + stars + count), built from the Details response
@@ -268,6 +269,25 @@ export async function createMinimalPlace(opts: {
   // trigger derives the Google categories (google_types, all of them kept to
   // the catalog) and the shown category from them (MESITA-2836).
   const googleTypes = googleTypesPrimaryFirst(basicsRes.primaryType, basicsRes.googleTypes);
+
+  // ── Atlas gate (MESITA-2962): the main Google category must be enabled on
+  // Mesita (catalog_membership.enabled). The Map gate reads the code map;
+  // this reads the switch Atlas lists, so a category switched off there can
+  // never be minted. Before persist, like the Map gate.
+  const main = await mainGoogleCategoryOnMesita(admin, googleTypes);
+  if (!main.enabled) {
+    return {
+      ok: false,
+      status: 422,
+      body: {
+        ok: false,
+        code: "category_not_on_mesita",
+        error: "This kind of place isn't on Mesita.",
+        category: main.slug,
+      },
+    };
+  }
+
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
     ...(googleTypes[0]

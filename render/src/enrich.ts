@@ -254,7 +254,7 @@ function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>
 }
 
 /** Columns the write EF infers (MESITA-2790); Render's patch never carries them. */
-const MESITA_OWNED = ["category", "category_label", "mesita_categories", "tags"] as const;
+const MESITA_OWNED = ["category", "category_label", "tags"] as const;
 
 /** What the run commits. A fresh value replaces the saved one; an empty one
  *  (null, blank, an empty list) is dropped, so a step that found nothing or
