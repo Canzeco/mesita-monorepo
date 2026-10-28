@@ -11,9 +11,8 @@ import {
 // ADD A PLACE IS THE CAROUSEL'S FIRST CARD (Pato, MESITA-2886: "the normal
 // horizontal carousel but if you scroll to the left, you see a box to add a
 // new place"). Page 0; the carousel rests on place #1, so it waits off-screen
-// to the left. A tap puts the bar in Add mode (SearchClient): Google's names
-// for a place not yet on Mesita, and a pick opens the opening screen, which
-// calls consumer-web-create-place.
+// to the left. A tap opens AddPlaceSheet (MESITA-2902): a Google search
+// whose row button creates the profile (consumer-web-create-place).
 //
 // THE PLACE CARD'S OWN SHAPE (Pato, MESITA-2889: "same size and dimensions"):
 // RailCard's frame, height and text column, read from SearchRailCard so the
