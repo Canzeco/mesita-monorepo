@@ -297,8 +297,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     gates: ["family"],
     factors: [
       "Selected (MESITA-2717): a Mesita Selected place's score × the operator's Selected boost (default 3; 1 is off), a Boosted place's × its tier (the larger of the two), every other place's × 1.",
+      "Reach (MESITA-2920): s counts only within 2 × the half distance of the guest; past it every place scores × 1, so a paid or Selected place in another city never tops Home.",
     ],
-    scoring: "Proximity × Popularity × s, s the Selected boost (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id.",
+    scoring: "Proximity × Popularity × s, s the Selected boost (MESITA-2717), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. s counts within 2 × the half distance and is 1 beyond (MESITA-2920). No location: Popularity × s. Chat ranks the same way inside the current-location radius, with no reach (its radius bounds it). Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and comes back whole; Home draws it a Catalog page size at a time (MESITA-2909).",

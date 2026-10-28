@@ -6,6 +6,7 @@ import {
   type AreaCandidate,
   type AreaContext,
   areaScore,
+  boostReachKm,
   familyGate,
   insideBounds,
   rankArea,
@@ -241,4 +242,59 @@ Deno.test("the Selected boost multiplies a Selected place's score, every other p
   // It never saves a place from the Popularity floor.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });
   assertEquals(areaScore(thin, { ...ctx, popularityFloor: 3 }).final, 0);
+});
+
+// THE REACH (MESITA-2920, money: Boost is sold). On the Catalog the Selected
+// boost and Boost count within 2 × h of the anchor and are 1 past it; the
+// Map and Chat (a radius) keep the full factor.
+const KM = 1 / 111.195;
+const CATALOG: AreaContext = {
+  location: { kind: "point", anchor: ANCHOR, radiusKm: null },
+  families: [],
+  halfKm: 5,
+  selectedFactor: 3,
+};
+const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
+  { label: "Selected", over: { source: "selected" }, s: 3 },
+  { label: "Boost 2x", over: { source: "mesita", boostTier: 1 }, s: 2 },
+  { label: "Boost 5x", over: { source: "mesita", boostTier: 2 }, s: 5 },
+  { label: "Boost 10x", over: { source: "mesita", boostTier: 3 }, s: 10 },
+  { label: "Selected + Boost 10x", over: { source: "selected", boostTier: 3 }, s: 10 },
+];
+
+Deno.test("the Catalog reach is 2 × the half distance (MESITA-2920)", () => {
+  assertEquals(boostReachKm(5), 10);
+});
+
+Deno.test("Catalog: Selected and Boost count inside the reach, 1 past it (MESITA-2920)", () => {
+  for (const { label, over, s } of TIERS) {
+    const inside = areaScore(cand({ ...over, lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
+    const plainInside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
+    assertEquals(inside.selectedFactor, s, label);
+    assertAlmostEquals(inside.final, s * plainInside.final, 1e-9, label);
+    const outside = areaScore(cand({ ...over, lat: ANCHOR.lat + 10.1 * KM }), CATALOG);
+    const plainOutside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 10.1 * KM }), CATALOG);
+    assertEquals(outside.selectedFactor, 1, label);
+    assertAlmostEquals(outside.final, plainOutside.final, 1e-9, label);
+  }
+  // A 10x place 300 km away no longer beats a plain local one.
+  const farPaid = cand({ id: "far", source: "mesita", boostTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 5000 });
+  const local = cand({ id: "local", source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.5, reviewCount: 50 });
+  assertEquals(rankArea([farPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["local", "far"]);
+  // No coordinates: no distance, so out of reach.
+  assertEquals(areaScore(cand({ boostTier: 3, lat: null, lng: null }), CATALOG).selectedFactor, 1);
+});
+
+Deno.test("the Map, Chat and no location keep the full factor at any distance (MESITA-2920)", () => {
+  const map: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 }, halfKm: null };
+  const chat: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 } };
+  const none: AreaContext = { ...CATALOG, location: { kind: "none" } };
+  for (const { label, over, s } of TIERS) {
+    const far = cand({ ...over, lat: ANCHOR.lat + 40 * KM });
+    const plain = cand({ source: "mesita", lat: ANCHOR.lat + 40 * KM });
+    for (const [name, ctx] of [["map", map], ["chat", chat], ["none", none]] as const) {
+      assertEquals(areaScore(far, ctx).selectedFactor, s, `${label} ${name}`);
+      assertAlmostEquals(areaScore(far, ctx).final, s * areaScore(plain, ctx).final, 1e-9, `${label} ${name}`);
+    }
+  }
 });

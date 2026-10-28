@@ -19,6 +19,12 @@
 // Boost's factor for a Boosted one (the larger of the two), and 1 for every
 // other place (MESITA-2717, MESITA-2789). No exponents (MESITA-2722).
 //
+// THE REACH (MESITA-2920): the Catalog has no radius, so s counts only
+// within BOOST_REACH_HALVES × h of the anchor; past it s is 1 and a paid or
+// Selected place ranks like any other. A 10x Boost in another city never
+// tops a guest's Home. The Map's circle already bounds it; Chat keeps its
+// radius box, so neither reads the reach.
+//
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
 // apart from why it is low (a signal). A place a gate closes is dropped, not
@@ -155,6 +161,15 @@ export function selectedFactor(
   return Math.max(selected, boost);
 }
 
+/** The Selected boost and Boost reach on the Catalog, in half distances
+ *  (MESITA-2920): s counts within 2 × h of the anchor, 1 beyond. */
+export const BOOST_REACH_HALVES = 2;
+
+/** The Catalog's reach (km) for a half distance h. */
+export function boostReachKm(halfKm: number): number {
+  return BOOST_REACH_HALVES * halfKm;
+}
+
 /** Popularity, or null when the place has no rating or no review count. */
 function popularityOrNull(c: AreaCandidate): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
@@ -190,7 +205,8 @@ export type AreaDiagnostics = {
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
   /** The factor `final` carries (MESITA-2717): the Selected boost for a
-   *  Mesita Selected place, else 1. */
+   *  Mesita Selected place, else 1; on the Catalog, 1 past the reach
+   *  (MESITA-2920). */
   selectedFactor: number;
   /** Popularity × selectedFactor, × Proximity on the Catalog. */
   final: number;
@@ -216,8 +232,12 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point" && ctx.halfKm !== null
     ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
-  const sel = selectedFactor(c, ctx);
-  const popPart = popularPart(c, ctx);
+  // The reach (MESITA-2920): only the Catalog, a point with Proximity and
+  // no Radius gate; a place with no distance is out of reach.
+  const capped = loc.kind === "point" && loc.radiusKm === null && ctx.halfKm !== null &&
+    (km === null || km > boostReachKm(ctx.halfKm));
+  const sel = capped ? 1 : selectedFactor(c, ctx);
+  const popPart = capped ? factor(pop ?? 0) : popularPart(c, ctx);
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
