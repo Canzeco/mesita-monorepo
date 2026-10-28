@@ -26,11 +26,6 @@ import {
   type HistoryGuardState,
 } from "./historyGuard";
 import { ConfirmDialog } from "@/components/admin-ui/manage";
-import {
-  socialSaveLocked,
-  type SocialDraft,
-  type SocialLock,
-} from "./social-save-lock";
 
 /** Something that would throw away unsaved edits if it ran right now. */
 type GuardedIntent = {
@@ -96,10 +91,6 @@ type PlaceContextValue = {
   savePending: boolean;
   /** What the bar says while the save is in flight. */
   saveLabel: string;
-  /** A dead Instagram or Facebook link is still in the draft. Save stays off. */
-  socialLocked: boolean;
-  /** Channels reports the Instagram and Facebook drafts so the lock can lift. */
-  reportSocialDraft: (draft: SocialDraft) => void;
   /** The last save's failure, or null. Cleared when a new save starts. */
   saveError: string | null;
   /** True briefly after a save lands, for the confirmation state. */
@@ -146,9 +137,6 @@ export function PlaceProvider({
   const [saveLabel, setSaveLabel] = useState("Saving…");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
-  const [socialLock, setSocialLock] = useState<SocialLock | null>(null);
-  const [socialDraft, setSocialDraft] = useState<SocialDraft | null>(null);
-  const socialDraftRef = useRef<SocialDraft | null>(null);
 
   const setSectionDirty = useCallback((section: string, dirty: boolean) => {
     setDirtyMap((prev) => {
@@ -190,7 +178,6 @@ export function PlaceProvider({
     }
     setDirtyMap({});
     setSaveError(null);
-    setSocialLock(null);
   }, []);
 
   // ONE call for the whole page. Object.assign is safe here precisely because
@@ -217,7 +204,6 @@ export function PlaceProvider({
     } & Record<string, unknown>;
     setSaveError(null);
     setSaveOk(false);
-    setSocialLock(null);
     setSaveLabel("Saving…");
     setSavePending(true);
     void (async () => {
@@ -239,8 +225,7 @@ export function PlaceProvider({
         setProfile({ ...profile, familyStored: r.data.familyStored });
       }
       setDirtyMap({});
-      setSocialLock(null);
-      setSaveOk(true);
+        setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 2500);
     })();
   }, [place, placeId, setPlace, profile, setProfile]);
@@ -249,13 +234,6 @@ export function PlaceProvider({
     () => Object.values(dirtyMap).some(Boolean),
     [dirtyMap],
   );
-
-  const reportSocialDraft = useCallback((draft: SocialDraft) => {
-    socialDraftRef.current = draft;
-    setSocialDraft(draft);
-  }, []);
-
-  const socialLocked = socialSaveLocked(socialLock, socialDraft);
 
   const dirtyLabels = useMemo(
     () => dirtySectionLabels(dirtyMap),
@@ -341,8 +319,6 @@ export function PlaceProvider({
       dirtyLabels,
       savePending,
       saveLabel,
-      socialLocked,
-      reportSocialDraft,
       saveError,
       saveOk,
       saveAll,
@@ -361,8 +337,6 @@ export function PlaceProvider({
       dirtyLabels,
       savePending,
       saveLabel,
-      socialLocked,
-      reportSocialDraft,
       saveError,
       saveOk,
       saveAll,

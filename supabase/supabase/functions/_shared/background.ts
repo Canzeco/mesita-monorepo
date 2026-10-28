@@ -12,11 +12,15 @@
  * Run `task` past the response. `EdgeRuntime.waitUntil` keeps the isolate
  * alive for it where the runtime offers it; a plain `void` elsewhere (local
  * `deno test`, `deno serve`) so callers behave the same in both worlds.
+ * A rejection is logged, never thrown: nobody is left to hear it.
  */
 export function runInBackground(task: Promise<unknown>): void {
+  const guarded = task.catch((e) => {
+    console.error("[background] task failed:", e instanceof Error ? e.message : e);
+  });
   const edgeRuntime = (globalThis as unknown as {
     EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void };
   }).EdgeRuntime;
-  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(task);
-  else void task;
+  if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(guarded);
+  else void guarded;
 }

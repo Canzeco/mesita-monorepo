@@ -49,13 +49,15 @@ serveJson("consumer-web-get-boost", async (req) => {
   if (sessionId && user) {
     confirmed = false;
     const key = boostStripeKey();
-    const { data: open } = await admin
+    const { data: open, error: openErr } = await admin
       .from("place_backings")
       .select("id")
       .eq("stripe_checkout_session_id", sessionId)
       .eq("consumer_id", user.id)
       .eq("place_id", placeId)
       .maybeSingle();
+    // The reply stays as it was (confirmed: false); the cron confirms later.
+    if (openErr) console.error("[consumer-web-get-boost] open backing read:", openErr.message);
     if (key && open) {
       try {
         ({ confirmed } = await confirmBackingFromSession(admin, stripeClient(key), open.id, sessionId));
