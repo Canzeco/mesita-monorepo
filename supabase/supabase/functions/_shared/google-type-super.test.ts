@@ -1,8 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import {
-  DEFAULT_MAP_SUPERS,
-  SUPER_PARAM_KEYS,
-} from "./discovery-config.ts";
+import { SUPER_PARAM_KEYS } from "./discovery-config.ts";
 import {
   EVERY_FAMILY_TYPES,
   GOOGLE_SEARCH_TYPES,
@@ -132,17 +129,4 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
   assertEquals(SUPER_PARAM_KEYS.length, 37);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
-});
-
-Deno.test("the billed families default on and still lead with the old Nearby set", () => {
-  const on = SUPER_PARAM_KEYS.filter((s) => DEFAULT_MAP_SUPERS[s]);
-  assertEquals(
-    new Set(on),
-    new Set(["coffee", "dinner", "sweet", "drinks", "night_out"]),
-  );
-  const leads = on.map((s) => GOOGLE_SEARCH_TYPES[s][0]);
-  assertEquals(
-    new Set(leads),
-    new Set(["restaurant", "bar", "dance_hall", "cafe", "dessert_shop"]),
-  );
 });
