@@ -19,19 +19,8 @@
 // Deploy: supabase functions deploy admin-web-update-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {
-  corsPreflight,
-  json,
-  readJson,
-  rejectUnlessMethods,
-  serveJson,
-} from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { type ProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
@@ -105,20 +94,9 @@ type UpdateBody = {
 };
 
 serveJson("admin-web-update-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  // Auth: super-admins only, like every other admin-web-* door.
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   // Parse + validate.
   const bodyRes = await readJson<UpdateBody>(req);
@@ -287,7 +265,7 @@ serveJson("admin-web-update-place", async (req) => {
         verb: "edit",
         outcome: "failed",
         placeId,
-        actorUserId: authRes.user.id,
+        actorUserId: user.id,
         source: "admin-web-update-place",
         detail: { error: famRes.error, code: famRes.code ?? null, field: "family_keys" },
       });
@@ -321,7 +299,7 @@ serveJson("admin-web-update-place", async (req) => {
         verb: "edit",
         outcome: "failed",
         placeId,
-        actorUserId: authRes.user.id,
+        actorUserId: user.id,
         source: "admin-web-update-place",
         detail: { error: updRes.error, code: updRes.code ?? null },
       });
@@ -396,7 +374,7 @@ serveJson("admin-web-update-place", async (req) => {
     verb: "edit",
     outcome: "succeeded",
     placeId,
-    actorUserId: authRes.user.id,
+    actorUserId: user.id,
     source: "admin-web-update-place",
     detail: {
       fields: familyKeys === undefined ? Object.keys(update) : [...Object.keys(update), "family_keys"],

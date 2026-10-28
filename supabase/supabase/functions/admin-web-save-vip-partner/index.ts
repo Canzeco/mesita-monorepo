@@ -14,13 +14,8 @@
 //   409 name_taken · place_taken · 500 save_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   findPlaceByGoogleId,
   loadVipPartners,
@@ -28,19 +23,9 @@ import {
 } from "../_shared/vip-partners.ts";
 
 serveJson("admin-web-save-vip-partner", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<unknown>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -71,7 +56,7 @@ serveJson("admin-web-save-vip-partner", async (req) => {
 
   const write = parsed.id
     ? admin.from("vip_partners").update(row).eq("id", parsed.id).select("id")
-    : admin.from("vip_partners").insert({ ...row, created_by: authRes.user.id }).select("id");
+    : admin.from("vip_partners").insert({ ...row, created_by: user.id }).select("id");
   const { data, error } = await write;
   if (error) {
     if (error.code === "23505") {

@@ -9,7 +9,7 @@ const CODE = SRC.split("\n")
   .join("\n");
 
 Deno.test("admin-web-update-place-google is super-admin only", () => {
-  assertEquals(CODE.includes("requireSuperAdmin(admin, authRes.user"), true);
+  assertEquals(CODE.includes('requireAdminRequest(req, "POST"'), true);
 });
 
 Deno.test("admin-web-update-place-google delegates to shared Google update", () => {

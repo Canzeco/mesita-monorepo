@@ -16,8 +16,13 @@
 // and writes nothing. A failed list scrape writes nothing.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
+import {
+  json,
+  readJson,
+  readPlaceIdAlias,
+  serveJson,
+} from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
 import {
@@ -54,18 +59,9 @@ type PlaceRow = {
 };
 
 serveJson("admin-web-reload-place-reviews", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can reload reviews.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can reload reviews.");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;

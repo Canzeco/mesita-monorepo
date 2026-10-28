@@ -11,6 +11,6 @@ function codeOnly(src: string): string {
 
 Deno.test("the door is super-admin only", async () => {
   const admin = codeOnly(await Deno.readTextFile(ADMIN_DOOR));
-  assertStringIncludes(admin, "requireSuperAdmin(");
+  assertStringIncludes(admin, "requireAdminRequest(");
   assert(!admin.includes("requireEditor("), "the admin door must stay super-admin only");
 });
