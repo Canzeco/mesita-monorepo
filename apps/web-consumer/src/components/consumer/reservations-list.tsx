@@ -26,7 +26,7 @@ import { errMsg } from "@/lib/utils";
 
 /** The list's scroller (16px in, 16px above and below) and its 12px step:
  *  one set for the cards and their skeleton. */
-const LIST_SCROLLER = "scrollbar-hide h-full overflow-y-auto px-4 py-4";
+const LIST_SCROLLER = "scrollbar-hide h-full overflow-y-auto px-5 py-5";
 const LIST_STACK = "flex flex-col gap-3";
 
 /** The list while consumer-web-list-reservations is out, and the whole of

@@ -28,7 +28,7 @@ export type ConsumerProfile = {
   // MESITA-2590: Settings › Social › "Public profile" off = true (MESITA-2594 name).
   appear_anonymous?: boolean;
   // Consumer avatar public URL (consumer-avatars bucket). Optional — missing
-  // falls back to DefaultAvatar on Me / Personal details (MESITA-880/953).
+  // falls back to DefaultAvatar on Me / Profile (MESITA-880/953).
   avatar_url?: string | null;
   // MESITA-2553: Class (regular or vip, through a partner) and Plan (free or
   // pro), two independent facts on the identity card. Set by an operator
@@ -107,15 +107,18 @@ export async function apiFetchConsumerProfile(
 // the server learns the handle, followers and photo from Meta. `channel`
 // says whether that is switched on; until then the bio flow above is used.
 export type InstagramChannel =
-  | { channel: "dm"; account: string; link: string }
-  | { channel: "bio" };
+  { channel: "dm"; account: string; link: string } | { channel: "bio" };
 
 export async function apiInstagramChannel(
   client: SupabaseClient,
 ): Promise<InstagramChannel> {
-  return await invokeEF<InstagramChannel>(client, "consumer-web-claim-instagram", {
-    action: "channel",
-  });
+  return await invokeEF<InstagramChannel>(
+    client,
+    "consumer-web-claim-instagram",
+    {
+      action: "channel",
+    },
+  );
 }
 
 export type InstagramDmClaim = {
@@ -128,9 +131,13 @@ export type InstagramDmClaim = {
 export async function apiStartInstagramDm(
   client: SupabaseClient,
 ): Promise<InstagramDmClaim> {
-  return await invokeEF<InstagramDmClaim>(client, "consumer-web-claim-instagram", {
-    action: "start_dm",
-  });
+  return await invokeEF<InstagramDmClaim>(
+    client,
+    "consumer-web-claim-instagram",
+    {
+      action: "start_dm",
+    },
+  );
 }
 
 export type InstagramDmStatus = {
@@ -142,14 +149,21 @@ export type InstagramDmStatus = {
 export async function apiInstagramDmStatus(
   client: SupabaseClient,
 ): Promise<InstagramDmStatus> {
-  return await invokeEF<InstagramDmStatus>(client, "consumer-web-claim-instagram", {
-    action: "dm_status",
-  });
+  return await invokeEF<InstagramDmStatus>(
+    client,
+    "consumer-web-claim-instagram",
+    {
+      action: "dm_status",
+    },
+  );
 }
 
 /** The DM landed: the claim is spent and the account was proved after the
  *  code was issued. */
-export function dmVerified(status: InstagramDmStatus, issuedAt: string): boolean {
+export function dmVerified(
+  status: InstagramDmStatus,
+  issuedAt: string,
+): boolean {
   if (status.pending || !status.handle || !status.verifiedAt) return false;
   return Date.parse(status.verifiedAt) >= Date.parse(issuedAt);
 }

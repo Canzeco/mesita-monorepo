@@ -8,7 +8,7 @@
 // page never names Class or VIP, and the Class sheet never names a plan.
 //
 // READ-ONLY. There is no checkout yet, so nothing is bought here. The guest's
-// own row says "Your plan."; while the plan is unknown (loading, or the read
+// own row wears a Current pill (MESITA-2983); while the plan is unknown (loading, or the read
 // failed) neither row claims it, and nothing assumes Free.
 //
 // NO PRICE. Each plan states the monthly reservation cap the server enforces
@@ -21,33 +21,39 @@ import { CreditCard, Sparkles } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PerkList } from "@/components/consumer/me/perk-list";
-import { PLAN_ROWS, type PlanRowWords } from "@/components/consumer/me/plan-words";
+import {
+  PLAN_ROWS,
+  type PlanRowWords,
+} from "@/components/consumer/me/plan-words";
 import type { GuestPlan } from "@/lib/guest-standing";
-import { IconCircle, RowDivider, SettingsGroup } from "./settings-rows";
+import {
+  CurrentPill,
+  IconChip,
+  RowDivider,
+  SettingsGroup,
+} from "./settings-rows";
 
 function PlanRow({
   title,
   subtitle,
   icon,
-  tint,
   label,
   items,
   mine,
 }: PlanRowWords & {
   icon: React.ReactNode;
-  tint: "primary" | "muted";
   mine: boolean;
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3" data-plan-row={title}>
-      <IconCircle tint={tint}>{icon}</IconCircle>
+      <IconChip>{icon}</IconChip>
       <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{title}</span>
-        <span
-          className="text-muted-foreground type-label block"
-          data-plan-mine={mine ? "" : undefined}
-        >
-          {mine ? "Your plan." : subtitle}
+        <span className="block text-sm font-semibold">
+          {title}
+          {mine && <CurrentPill data-plan-mine="" />}
+        </span>
+        <span className="text-muted-foreground type-label block">
+          {subtitle}
         </span>
         <PerkList label={label} items={items} />
       </div>
@@ -62,14 +68,12 @@ export function PlanModal({ plan }: { plan: GuestPlan | null }) {
         <PlanRow
           {...PLAN_ROWS.free}
           icon={<CreditCard className="h-[18px] w-[18px]" />}
-          tint={plan === "free" ? "primary" : "muted"}
           mine={plan === "free"}
         />
         <RowDivider />
         <PlanRow
           {...PLAN_ROWS.premium}
           icon={<Sparkles className="h-[18px] w-[18px]" />}
-          tint={plan === "premium" ? "primary" : "muted"}
           mine={plan === "premium"}
         />
       </SettingsGroup>

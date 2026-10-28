@@ -19,35 +19,16 @@ import { NotificationsClient } from "@/components/consumer/NotificationsClient";
 // THE BODY SLOT IS A FLEX COLUMN, NOT A BLOCK. MeScreen's `flush` mode:
 // grow, min-h-0, scroll inside the feed — a block parent collapses EmptyState.
 
-function ActivityPage({
-  title,
-  blurb,
-  children,
-}: {
-  title: string;
-  blurb: string;
-  children: ReactNode;
-}) {
-  return (
-    <MeScreen title={title} flush>
-      <p className="text-muted-foreground shrink-0 px-5 pt-4 pb-3 text-xs">
-        {blurb}
-      </p>
-      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-    </MeScreen>
-  );
-}
-
-/** Me › Notifications around its feed: MeScreen's bar and title, the blurb
- *  and the flex column. The page passes the feed; /me/notifications'
- *  loading.tsx passes the feed's skeleton, so the frame and its fixed words
+/** Me › Notifications around its feed: MeScreen's bar and title and the
+ *  flex column (its blurb restated the title; gone, MESITA-2983). The page
+ *  passes the feed; /me/notifications' loading.tsx passes the feed's skeleton, so the frame and its fixed words
  *  exist once (Pato, MESITA-2701: "the placeholders must be similar to the
  *  page you are loading, like the sizes"). */
 export function NotificationsFrame({ children }: { children: ReactNode }) {
   return (
-    <ActivityPage title="Notifications" blurb="Notifications and updates">
-      {children}
-    </ActivityPage>
+    <MeScreen title="Notifications" flush>
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+    </MeScreen>
   );
 }
 

@@ -49,7 +49,7 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: "whatsapp",
       Icon: MessageCircle,
-      tint: "emerald",
+      tint: "muted",
       label: "WhatsApp",
       sub: "Chat on WhatsApp",
       href: whatsapp_url,
@@ -60,7 +60,7 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: "phone",
       Icon: Phone,
-      tint: "emerald",
+      tint: "muted",
       label: "Call",
       sub: place.phone,
       href: `tel:${place.phone.replace(/\s+/g, "")}`,
@@ -81,7 +81,7 @@ function buildContactRows(place: PlaceDetail): ContactRow[] {
     rows.push({
       key: "website",
       Icon: Globe,
-      tint: "sky",
+      tint: "muted",
       label: "Website",
       sub: prettyHost(website_url),
       href: website_url,
@@ -110,7 +110,7 @@ export function PlaceContactSheet({
     >
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
-          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
             <MessageCircle className="h-5 w-5" />
           </span>
           <div className="min-w-0">

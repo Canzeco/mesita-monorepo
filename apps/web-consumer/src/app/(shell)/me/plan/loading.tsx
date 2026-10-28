@@ -5,7 +5,6 @@ import {
   RowDivider,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
-import { SkeletonLine } from "@/components/shared";
 import type { GuestPlan } from "@/lib/guest-standing";
 import { StandingRowSkeleton } from "../me-skeletons";
 
@@ -14,8 +13,8 @@ import { StandingRowSkeleton } from "../me-skeletons";
 // loading, like the sizes"). PlanModal's card, row for row: Free and
 // Pro with their perks as themselves — PLAN_ROWS, the words PlanModal
 // draws, so they wrap where the page's do — and only what the read decides
-// waiting: each row's disc (primary on the guest's plan) and its 11px line
-// ("Your plan." or the plan's own).
+// waiting: the Current pill, which lands beside the guest's plan's title and
+// moves nothing (MESITA-2983).
 export default function PlanLoading() {
   return (
     <MeScreen title="Plan">
@@ -32,10 +31,10 @@ export default function PlanLoading() {
 }
 
 function PlanRowSkeleton({ plan }: { plan: GuestPlan }) {
-  const { title, label, items } = PLAN_ROWS[plan];
+  const { title, subtitle, label, items } = PLAN_ROWS[plan];
   return (
     <StandingRowSkeleton title={title}>
-      <SkeletonLine className="type-label" bar="w-20" />
+      <span className="text-muted-foreground type-label block">{subtitle}</span>
       <PerkList label={label} items={items} />
     </StandingRowSkeleton>
   );

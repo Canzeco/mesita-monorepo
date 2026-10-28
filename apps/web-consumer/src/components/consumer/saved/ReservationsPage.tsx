@@ -23,9 +23,9 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 // fallback (MESITA-2701), as on Favorites.
 
 const PANE =
-  "bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
+  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
 
-/** The Reservations pane while the route loads: the white pane and the
+/** The Reservations pane while the route loads: the pane and the
  *  list's own skeleton, the card silhouettes ReservationsList draws while
  *  its read is out, so the fallback hands over to the list without a jump
  *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are

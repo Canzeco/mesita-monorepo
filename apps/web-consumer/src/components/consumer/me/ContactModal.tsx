@@ -10,7 +10,8 @@ import {
   MESITA_SUPPORT_EMAIL,
 } from "@/lib/mesita-contact";
 import {
-  IconCircle,
+  IconChip,
+  MeLead,
   RowDivider,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
@@ -19,24 +20,10 @@ import {
 // Mesita: support email, help, and Instagram DMs.
 //
 // THE FRAME IS ContactFrame, AND THE FALLBACK WEARS IT (MESITA-2701): the
-// title, the 48px mail disc and its line, and the white card 20px under
+// title, the reply-time lead line, and the white card under it
 // exist once; /me/settings/contact's loading.tsx fills the card with row
 // silhouettes (Pato, MESITA-2701: "the placeholders must be similar to the
 // page you are loading, like the sizes").
-
-/** The fixed words over the card: the mail disc and the reply time. */
-function ContactIntro() {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-        <Mail className="h-5 w-5" />
-      </span>
-      <p className="text-muted-foreground text-xs">
-        We usually reply within a day
-      </p>
-    </div>
-  );
-}
 
 /** Contact's page, its rows passed in: the page's three lines out, or the
  *  fallback's silhouettes. `children` lands after the card (the fallback's
@@ -49,11 +36,9 @@ export function ContactFrame({
   children?: ReactNode;
 }) {
   return (
-    <MeScreen title="Contact us">
-      <ContactIntro />
-      <div className="mt-5">
-        <SettingsGroup>{rows}</SettingsGroup>
-      </div>
+    <MeScreen title="Contact">
+      <MeLead>We usually reply within a day.</MeLead>
+      <SettingsGroup>{rows}</SettingsGroup>
       {children}
     </MeScreen>
   );
@@ -68,9 +53,9 @@ export function ContactModal() {
             href={`mailto:${MESITA_SUPPORT_EMAIL}`}
             className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
           >
-            <IconCircle tint="emerald">
+            <IconChip>
               <Mail className="h-[18px] w-[18px]" />
-            </IconCircle>
+            </IconChip>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Email us</span>
               <span className="text-muted-foreground type-label block truncate">
@@ -85,9 +70,9 @@ export function ContactModal() {
             )}`}
             className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
           >
-            <IconCircle tint="amber">
+            <IconChip>
               <HelpCircle className="h-[18px] w-[18px]" />
-            </IconCircle>
+            </IconChip>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Get help</span>
               <span className="text-muted-foreground type-label block truncate">
@@ -102,9 +87,9 @@ export function ContactModal() {
             rel="noopener noreferrer"
             className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
           >
-            <IconCircle tint="instagram">
+            <IconChip tint="instagram">
               <Instagram className="h-[18px] w-[18px]" />
-            </IconCircle>
+            </IconChip>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">Instagram</span>
               <span className="text-muted-foreground type-label block truncate">

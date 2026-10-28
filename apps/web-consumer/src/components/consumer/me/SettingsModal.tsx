@@ -68,7 +68,7 @@ export function SettingsFrame({
 
         <SettingsGroup title="Support">{support}</SettingsGroup>
 
-        <p className="text-muted-foreground type-body text-center">
+        <p className="text-muted-foreground type-label text-center">
           Mesita · {APP_VERSION}
         </p>
       </div>

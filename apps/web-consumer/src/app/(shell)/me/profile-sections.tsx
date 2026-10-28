@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/shared";
+import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
 import { cn } from "@/lib/utils";
 
 // ─── The destination grid (MESITA-1628) ────────────────────────────────────
@@ -54,8 +55,7 @@ const TILE_FRAME =
 
 /** The 36px icon chip: the page grey, the glyph at full ink. The loading
  *  tile pulses the same box (MESITA-2701). */
-const DEST_CHIP =
-  "bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]";
+const DEST_CHIP = cn(ICON_CHIP_CLASS, "bg-muted text-foreground");
 
 /** The title over the summary, the tile's and its skeleton's: the words are
  *  fixed (hub-tiles.tsx), so the loading tile prints them too and a summary
