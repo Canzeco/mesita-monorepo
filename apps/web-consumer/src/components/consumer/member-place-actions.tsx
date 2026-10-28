@@ -37,10 +37,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
-  /** The Boost tab's body (MESITA-2861). */
+  /** The Official tab's body (MESITA-2861, MESITA-2925). */
   boost: ReactNode;
-  /** Set when ⋯ › Boost or Stripe Checkout's return asks for the Boost tab
-   *  (MESITA-2797, MESITA-2861). */
+  /** Set when ⋯ › Official or Stripe Checkout's return asks for the
+   *  Official tab (MESITA-2797, MESITA-2861). */
   openTab: { tab: PlaceTab; key: number } | null;
 } {
   const { isSaved, toggle } = useSavedPlaces();
@@ -49,12 +49,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // When ⋯ › Boost last asked for the Boost tab (ms).
+  // When ⋯ › Official last asked for the Official tab (ms).
   const [boostAskedAt, setBoostAskedAt] = useState<number | null>(null);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // ⋯ › Boost and Stripe Checkout's return both open the Boost tab; the
+  // ⋯ › Official and Stripe Checkout's return both open the Official tab; the
   // later ask wins, and each new key switches once (PlaceDetailBody).
   const boostAsk = Math.max(boostAskedAt ?? 0, boost.returnedAt ?? 0);
   const openTab = boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
@@ -148,10 +148,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   };
 }
 
-// Boost (MESITA-2789): the place's tier and backers, and the guest's own
-// backings. Checkout returns with `?boost=<session>`: confirm it, say so
-// only when Stripe confirmed it, and drop the parameter so a reload does
-// not confirm twice.
+// Official (MESITA-2925, was Boost MESITA-2789): the place's tier and
+// backers, and the guest's own backings. Checkout returns with
+// `?boost=<session>`: confirm it, say so only when Stripe confirmed it, and
+// drop the parameter so a reload does not confirm twice.
 function usePlaceBoost(placeId: string): {
   data: PlaceBoost | null;
   loading: boolean;
@@ -190,8 +190,8 @@ function usePlaceBoost(placeId: string): {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
         if (session) setReturned({ placeId, at: Date.now() });
-        if (session && data.confirmed) toast.success("Boosted. Thanks for backing this place");
-        else if (session) toast("We're confirming your payment with Stripe. Your Boost shows once it clears.");
+        if (session && data.confirmed) toast.success("It's Official. Thanks for backing this place");
+        else if (session) toast("We're confirming your payment with Stripe. Official shows once it clears.");
       })
       .catch(() => {
         if (!cancelled) setState((s) => ({ placeId, nonce, data: s.placeId === placeId ? s.data : null, failed: true }));

@@ -112,9 +112,10 @@ export type LaneItem = {
   state: PredictionState;
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
-  /** Mesita Selected: the operator's own mark, `places.selected`
-   *  (MESITA-2707). The pin's red and the tag; independent of `enriched`. */
-  selected?: boolean;
+  /** Official (MESITA-2925): the row's paid tier, `places.boost_tier`
+   *  (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); 1 or more is Official. Absent
+   *  on a Google-only row (0 on the wire). */
+  boostTier?: number;
   /**
    * Absent = "place". Only Autocomplete rows are classified; the Text and
    * Mesita lanes are places by construction. A Location never carries
@@ -326,8 +327,8 @@ export type ListedRow = {
   lng: number | null;
   content_state: string | null;
   enriched_at: string | null;
-  /** Mesita Selected, the operator's mark (MESITA-2707). */
-  selected?: boolean | null;
+  /** Official's paid tier, 0..3 (MESITA-2925). */
+  boost_tier?: number | null;
   business_state: string | null;
   google_review_count: number | null;
   google_stars_overall?: number | null;
@@ -335,6 +336,11 @@ export type ListedRow = {
   /** The About, read only for the few hits `nameGooglePlaces` returns. */
   description?: string | null;
 };
+
+/** A stored `boost_tier` as Official's tier, 0..3; anything else reads 0. */
+function officialTier(v: unknown): number {
+  return typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(Math.trunc(v), 0), 3) : 0;
+}
 
 function listedToLane(row: ListedRow): LaneItem | null {
   const gid = row.google_place_id?.trim();
@@ -349,9 +355,8 @@ function listedToLane(row: ListedRow): LaneItem | null {
     // list dot and the map pin cannot disagree (Pato, 2026-08-29).
     // `enriched_at` set (MESITA-2154): a Created row reads gray here.
     enriched: isEnrichedPlace(row),
-    // The red pin and the tag: the operator's mark, never `enriched_at`
-    // (MESITA-2707).
-    selected: row.selected === true,
+    // The Official tag (MESITA-2925): the paid tier, never `enriched_at`.
+    boostTier: officialTier(row.boost_tier),
     mesitaId: row.id,
     mesitaSlug: row.slug,
     lat: row.lat,
@@ -372,10 +377,10 @@ export function applyResolvedMesitaName(
   return {
     ...item,
     state: mesita.state,
-    // The entity is Mesita's now, so its enrichment fact and its Selected
-    // mark travel with it.
+    // The entity is Mesita's now, so its enrichment fact and its Official
+    // tier travel with it.
     enriched: mesita.enriched,
-    selected: mesita.selected,
+    boostTier: mesita.boostTier,
     mesitaId: mesita.mesitaId,
     mesitaSlug: mesita.mesitaSlug,
     lat: item.lat ?? mesita.lat,
@@ -752,7 +757,8 @@ export function toWire(item: LaneItem) {
     secondaryText: item.secondaryText,
     state: item.state,
     enriched: item.enriched === true,
-    selected: item.selected === true,
+    // Official's tier, 0..3 (MESITA-2925); 0 for a Google-only row.
+    boost_tier: officialTier(item.boostTier),
     // `kind` rides Location rows only — absent reads "place", and the
     // Places path stays byte-identical for a place query.
     ...(item.kind === "location"
@@ -805,7 +811,7 @@ export async function runLocationAnchor(rawPlaceId: string): Promise<Response> {
 /** The columns a Google hit resolves onto: a Mesita row's lane fields and
  *  the Discovery › General inputs. */
 const LISTED_COLUMNS =
-  "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, selected, boost_tier, business_state, google_review_count, google_stars_overall, family_keys";
+  "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, boost_tier, business_state, google_review_count, google_stars_overall, family_keys";
 
 // A network failure or an unreadable body is an error envelope like any
 // Google error, never a throw: in fast mode a throw escaped the handler as a

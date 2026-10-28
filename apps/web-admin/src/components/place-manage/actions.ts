@@ -145,14 +145,9 @@ export type AdminPlace = {
   /** THE Enriched fact (MESITA-2154): an Enrich run completed —
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
-  /** Mesita Selected (MESITA-2707): the operator's own mark,
-   *  `places.selected`, read off the row by admin-web-get-overview. Never
-   *  derived from Enriched, ready and Disabled; Select / Unselect writes it
-   *  through admin-web-set-place-selected. */
-  selected?: boolean;
-  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
-   *  1 2x · 2 5x · 3 10x. Derived from guests' subscriptions; never set
-   *  here. Profile States shows it as Boosted (MESITA-2795). */
+  /** Official (MESITA-2925, was Boost — MESITA-2789): the paid tier,
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from guests'
+   *  subscriptions; never set here. Profile States shows it (MESITA-2795). */
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
@@ -337,35 +332,10 @@ export async function setPlaceListed(
   };
 }
 
-/** Mark or unmark the place as Mesita Selected — the ONLY write path to
- *  places.selected, the operator's own mark (MESITA-2707). Independent of
- *  Enriched and of Disabled; the Map pins it red, Chat reads Selected places
- *  only, the Search carousel tags it. Its own admin door
- *  (admin-web-set-place-selected). */
-export async function setPlaceSelected(
-  placeId: string,
-  selected: boolean,
-): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace; selected?: boolean }>(
-    "admin-web-set-place-selected",
-    {
-      placeId,
-      selected,
-    },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  // The EF returns `selected` beside `place`; stamp it onto the row so the
-  // shell's merge cannot keep a stale overview value.
-  return {
-    ok: true,
-    data: { ...r.data.place, selected: r.data.selected ?? selected },
-  };
-}
+// ── Official (MESITA-2789; Boost renamed Official, MESITA-2925) ──────────
 
-// ── Boost (MESITA-2789) ──────────────────────────────────────────────────
-
-/** One guest's subscription behind a place's Boost, as Single Place › Boost
- *  lists it. Amounts are US cents per billing interval. */
+/** One guest's subscription behind a place's Official tier, as Single
+ *  Place › Official lists it. Amounts are US cents per billing interval. */
 export type AdminBacking = {
   id: string;
   payer: string | null;

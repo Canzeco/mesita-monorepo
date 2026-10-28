@@ -11,7 +11,7 @@ import type { PlaceDetail } from "@/lib/place-detail";
 //
 // THE TOP BAR IS THE PACKAGE'S PlaceTopBar (MESITA-2627), the same
 // Instagram-style bar the direct-link page draws: bare chevron, bold sans
-// name at the left with the Selected mark after it, three dots that open the
+// name at the left with the Official mark after it (MESITA-2925), three dots that open the
 // place's menu (MESITA-2692).
 // Until MESITA-2627 this shell drew SlideOverHeader (a bordered back square
 // and a centred serif name), so a place opened from inside the app never
@@ -37,7 +37,7 @@ export function PlaceDetailModalShell({
     <>
       <PlaceTopBar
         name={place.name}
-        selected={place.selected === true}
+        officialTier={place.boost_tier ?? 0}
         onBack={close}
         onMore={onMore}
       />

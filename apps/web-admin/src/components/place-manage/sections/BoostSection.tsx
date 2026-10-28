@@ -5,23 +5,23 @@ import { RefreshCw, Zap } from "lucide-react";
 import { getPlaceBoost, type AdminBacking, type AdminPlaceBoost } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 
-// Single Place › Boost (MESITA-2789). The place's paid tier and every guest
-// subscription behind it, read from admin-web-get-place-boost. Boost is paid
-// visibility, independent of Selected (Admin › Profile States); nothing here
+// Single Place › Official (MESITA-2789; Boost renamed Official, MESITA-2925).
+// The place's paid tier and every guest subscription behind it, read from
+// admin-web-get-place-boost. Official is paid visibility; nothing here
 // grants, cancels or refunds — the payer manages their own in the consumer
 // app, and Stripe is the record.
 
 const TIER_LABEL: Record<0 | 1 | 2 | 3, string> = {
-  0: "Not boosted",
-  1: "Boost 2x",
-  2: "Boost 5x",
-  3: "Boost 10x",
+  0: "Not Official",
+  1: "Official 2X",
+  2: "Official 5X",
+  3: "Official 10X",
 };
 
 const BACKING_TIER_LABEL: Record<AdminBacking["tier"], string> = {
-  boost_2x: "Boost 2x",
-  boost_5x: "Boost 5x",
-  boost_10x: "Boost 10x",
+  boost_2x: "Official 2X",
+  boost_5x: "Official 5X",
+  boost_10x: "Official 10X",
 };
 
 function usd(cents: number): string {
@@ -94,14 +94,14 @@ export function BoostSection({ placeId }: { placeId: string }) {
       <SectionCard
         icon={<Zap className="h-4 w-4" />}
         tint="amber"
-        title="Boost"
-        subtitle="Paid visibility a guest bought for this place. Marked Boosted; never Selected."
+        title="Official"
+        subtitle="Paid visibility a guest bought for this place. Marked Official."
         action={
           <button
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            aria-label="Reload Boost"
+            aria-label="Reload Official"
             className="text-muted-foreground hover:text-foreground inline-flex h-8 w-8 items-center justify-center rounded-full transition disabled:opacity-50"
           >
             <RefreshCw className={"h-4 w-4" + (loading ? " animate-spin" : "")} />
@@ -132,7 +132,7 @@ export function BoostSection({ placeId }: { placeId: string }) {
       {data ? (
         <SectionCard title="Backings" subtitle="Every subscription for this place, newest first.">
           {data.backings.length === 0 ? (
-            <p className="text-muted-foreground mt-3 text-sm">Nobody has boosted this place yet.</p>
+            <p className="text-muted-foreground mt-3 text-sm">Nobody has made this place Official yet.</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">

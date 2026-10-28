@@ -379,9 +379,6 @@ verify_jwt = true
 [functions.admin-web-set-place-listed]
 verify_jwt = true
 
-[functions.admin-web-set-place-selected]
-verify_jwt = true
-
 [functions.admin-web-set-place-active]
 verify_jwt = true
 

@@ -18,20 +18,6 @@ function tile(over: Partial<Place>) {
   );
 }
 
-describe("the Selected mark on a catalog card (MESITA-2913)", () => {
-  it("follows a Mesita Selected place's name", () => {
-    const html = tile({ selected: true });
-    expect(html).toContain('aria-label="Mesita Selected"');
-    expect(html.indexOf(">Casa<")).toBeLessThan(
-      html.indexOf('aria-label="Mesita Selected"'),
-    );
-  });
-
-  it("never shows for Enriched alone", () => {
-    expect(tile({ enriched: true, selected: false })).not.toContain('aria-label="Mesita Selected"');
-  });
-});
-
 describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)", () => {
   it("is a button that hands the explicit open to the parent", () => {
     const html = tile({

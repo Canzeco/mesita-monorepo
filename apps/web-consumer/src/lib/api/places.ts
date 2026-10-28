@@ -18,16 +18,10 @@ export type Place = {
    *  on an older payload — the client falls back to `enriched_at` alone
    *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
-  /** Mesita Selected (MESITA-2707): the operator's own mark,
-   *  `places.selected`, on every consumer place payload. Independent of
-   *  `enriched` and never derived from a score: the Search pins read it
-   *  (red), the carousel tags it, and the server's Area score multiplies a
-   *  Selected place by the Selected boost (MESITA-2717). Absent on an older
-   *  payload reads as not Selected. */
-  selected?: boolean | null;
-  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
-   *  1 2x · 2 5x · 3 10x. Above 0 the card says Sponsored and the pin wears
-   *  the ⚡ badge. Absent on an older payload reads as not boosted. */
+  /** Mesita Official (MESITA-2925, the paid tier since MESITA-2789):
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
+   *  wears "Official 2X" and the pin is red. Absent on an older payload
+   *  reads as not Official. */
   boost_tier?: number | null;
   id: string;
   slug: string;
@@ -98,9 +92,8 @@ export type Place = {
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
   /** The Search map's score for this place (MESITA-2504 debug): the two
-   *  signals, the Selected boost, the sources that found it and the
-   *  product. Only list-places sends it. The mark itself is the row's own
-   *  `selected`. */
+   *  signals, the sources that found it and the product. Only list-places
+   *  sends it. */
   score?: MapScore;
   /** Alias shipped on Google-only stubs (`from_google`). */
   from_google?: boolean;
@@ -133,16 +126,15 @@ export type Place = {
 // Discover surfaces (the Search map, Home's Feed) go through dedicated EFs.
 // The helpers below are thin invokers; the selection logic lives in the EFs
 // (the Area pipeline) so we can iterate on it without redeploying the web app.
-/** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
- *  Selected. The server also reads the retired `enriched`/`mesita` words. */
 
 /** One Search map place's score (MESITA-2504). `null` is "n/a", never 0. */
 export type MapScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected boost for a Mesita Selected
-   *  place, else 1 (MESITA-2717); absent from an older EF. */
+  /** The factor `final` carries: Official's tier number (2 · 5 · 10) for an
+   *  Official place, else 1 (MESITA-2925; the wire keeps the Selected-era
+   *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy?: string[];
@@ -300,9 +292,12 @@ export type AreaDiagnostics = {
     popularity?: 0 | 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
-  source: "selected" | "mesita" | "google";
-  /** The factor `final` carries: the operator's Selected boost for a
-   *  Mesita Selected place, else 1 (MESITA-2717); absent from an older EF. */
+  /** Where the card came from; diagnostics and events only. `selected`
+   *  died with the operator's mark (MESITA-2925). */
+  source: "mesita" | "google";
+  /** The factor `final` carries: Official's tier number (2 · 5 · 10) for an
+   *  Official place, else 1 (MESITA-2925; the wire keeps the Selected-era
+   *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,
    *  no card draws it. */
@@ -399,10 +394,10 @@ export type PlacePrediction = {
    *  column fallback on this lane, so an older payload reads as
    *  not-enriched (gray understates). */
   enriched?: boolean;
-  /** Server's answer: is this a Mesita Selected place — the operator's own
-   *  mark, `places.selected` (MESITA-2707)? The pin's red. An older payload
-   *  without it reads as not Selected (gray understates). */
-  selected?: boolean;
+  /** Server's answer: the place's Official tier, `places.boost_tier`
+   *  (MESITA-2925), 0..3; above 0 the pin is red. An older payload without
+   *  it (here or on `card`) reads as not Official (gray understates). */
+  boost_tier?: number | null;
   /**
    * Word's second entity (MESITA-1403). Absent = "place" — a place row
    * reads exactly as before. A Location is a region/city from

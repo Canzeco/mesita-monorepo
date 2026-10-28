@@ -160,7 +160,7 @@ export function SearchDebugCoords({
       <dd className="text-foreground truncate" data-debug-radius>
         {radiusKm == null ? "n/a" : `${radiusKm.toFixed(2)} km`}
       </dd>
-      <dt>Selected</dt>
+      <dt>Card</dt>
       <dd className="text-foreground truncate" data-debug-selected>
         {score
           ? `prox ${fmtScore(score.proximity)} · pop ${fmtScore(score.popularity)} = ${fmtScore(score.final)}`
@@ -184,11 +184,10 @@ const SOURCE_LABELS: ReadonlyArray<[string, string]> = [
  * sources found the place and its score, read from the server's
  * `score` (MESITA-2703). Remove when Pato says the ranking is verified.
  *
- * SELECTED IS A NUMBER, NOT A PILL (Pato, MESITA-2719: "the selected tag
- * must not exist, just expressed as text in the numeric data above"): the
- * red Selected pill (MESITA-2707) is gone; Selected reads only as the
- * `selected` factor on the numbers line. Nothing on the card changes when
- * the score tag goes.
+ * THE PAID FACTOR IS A NUMBER, NOT A PILL (Pato, MESITA-2719): it reads
+ * as `official` on the numbers line, Official's tier number or 1
+ * (MESITA-2925; it was Selected's). Nothing on the card changes when the
+ * score tag goes.
  */
 export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   const score = place.score;
@@ -207,13 +206,13 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
       </p>
       {/* Wraps rather than cuts: four numbers no longer fit one phone line. */}
       <p>
-        {/* Selected reads as the third signal (Pato, MESITA-2718): the factor
-            the final took (MESITA-2717), 1 for a place that is not Selected. */}
+        {/* Official reads as the third signal (MESITA-2718, MESITA-2925): the
+            factor the final took, 1 for a place that is not Official. */}
         {/* What Proximity read (Pato, MESITA-2830): the distance and the
             Distance penalty k, 1 ÷ (1 + k × km ÷ radius). */}
         proximity {fmtScore(score.proximity)}
         {proximityInputs(score)} · popularity {fmtScore(score.popularity)} ·
-        selected{" "}
+        official{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}{" "}
@@ -252,7 +251,7 @@ export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
       ) : null}
       <p>pop {fmtScore(score.popularity)}</p>
       <p>
-        sel{" "}
+        off{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}

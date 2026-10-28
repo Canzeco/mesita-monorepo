@@ -26,7 +26,7 @@ import {
   MAP_PIN_HIT_SIZE,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  MAP_SELECTED_PLACE_PIN_RADIUS,
+  MAP_OFFICIAL_PLACE_PIN_RADIUS,
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
@@ -37,7 +37,6 @@ import {
   type CameraIntent,
   type CameraState,
 } from "./camera-intent";
-import { isSponsoredPlace } from "@/components/consumer/place-card";
 import { RING_INSET, SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
@@ -59,9 +58,8 @@ function mapsPinIcon(
   strokeColor: string,
   strokeWeight?: number,
   radius?: number,
-  boosted = false,
 ) {
-  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius, boosted);
+  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius);
   const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
   if (!maps) return raw;
   return {
@@ -71,18 +69,17 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone.
- *  `boosted` adds Boost's ⚡ badge (MESITA-2789). */
-function placeIcon(tone: PinTone, held: boolean, boosted = false) {
+/** `held` is the tapped pin (ink, MESITA-2488). An Official pin is red
+ *  and a little larger (MESITA-2925). */
+function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
   const radius =
-    tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
+    tone === "official" && !held ? MAP_OFFICIAL_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
     weight,
     radius,
-    boosted,
   );
 }
 
@@ -99,8 +96,6 @@ export type SearchMapPin = {
   lng: number;
   title: string;
   tone: PinTone;
-  /** Boost (MESITA-2789): the place pays for visibility; the pin wears ⚡. */
-  boosted?: boolean;
 };
 
 export type ViewportBox = {
@@ -380,11 +375,7 @@ function SearchMapCanvas({
               key={pin.id}
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
-              icon={placeIcon(
-                pin.tone,
-                pin.id === selectedId,
-                pin.boosted === true,
-              )}
+              icon={placeIcon(pin.tone, pin.id === selectedId)}
               zIndex={pin.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
@@ -396,11 +387,7 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(
-                placePinTone(place),
-                place.id === selectedId,
-                isSponsoredPlace(place),
-              )}
+              icon={placeIcon(placePinTone(place), place.id === selectedId)}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}

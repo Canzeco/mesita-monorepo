@@ -24,8 +24,8 @@
 // GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
-// ranked by Popularity × the Selected boost (`map.selectedFactor` on a
-// Selected place, the paid Boost's factor on a Boosted one), no Proximity.
+// ranked by Popularity × the Official factor (an Official place's paid tier,
+// ×2 · ×5 · ×10, MESITA-2925), no Proximity.
 // The Map shows the top `map.placesShown`. The family chip gates; the guest
 // picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
 // however far out the guest zooms, the search is the ring they see. No
@@ -72,7 +72,7 @@ import {
   type PoolBuilder,
   screenRadiusKm,
   selectAreaPool,
-  selectedPoolQuery,
+  mesitaPoolQuery,
 } from "../_shared/area-pipeline.ts";
 import {
   stripInternal,
@@ -117,8 +117,8 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected boost for a Mesita Selected
-   *  place, else 1 (MESITA-2717). */
+  /** The factor `final` carries: the Official factor, ×2 · ×5 · ×10, else 1
+   *  (MESITA-2925; the key predates Official). */
   selectedFactor: number;
   /** Km from the cross (MESITA-2830); it screens, never scores. */
   distanceKm: number | null;
@@ -186,11 +186,11 @@ Deno.serve(async (req) => {
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
   const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Popularity × the Selected boost; the radius only gates (MESITA-2909).
-  const pool = await selectedPoolQuery(
+  // Popularity × the Official factor; the radius only gates (MESITA-2909).
+  const pool = await mesitaPoolQuery(
     supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
     cfg,
-    { center, radiusKm, families: guestSupers, selectedOnly: false },
+    { center, radiusKm, families: guestSupers },
   ).limit(NEARBY_SCAN_LIMIT);
   if (pool.error) {
     return json({ ok: false, error: pool.error.message }, 500);

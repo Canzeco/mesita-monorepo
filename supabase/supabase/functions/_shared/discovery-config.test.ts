@@ -377,11 +377,11 @@ Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () 
   assertEquals(missingAuto.name.deep.googleCount, 20);
 });
 
-Deno.test("map.selectedFactor: default 3, clamped 1–10, one decimal (MESITA-2717)", () => {
-  assertEquals(normalizeDiscoveryConfig({}).map.selectedFactor, 3);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 2.46 } }).map.selectedFactor, 2.5);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 0 } }).map.selectedFactor, 1);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 99 } }).map.selectedFactor, 10);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: "x" } }).map.selectedFactor, 3);
+Deno.test("map.selectedFactor retired with Selected (MESITA-2925): a stored key is dropped, the rest kept", () => {
+  const map = normalizeDiscoveryConfig({ map: { selectedFactor: 5, placesShown: 33, popularityFloor: 4 } }).map;
+  assertEquals("selectedFactor" in map, false);
+  assertEquals(map.placesShown, 33);
+  assertEquals(map.popularityFloor, 4);
+  assertEquals("selectedFactor" in normalizeDiscoveryConfig({}).map, false);
 });
 

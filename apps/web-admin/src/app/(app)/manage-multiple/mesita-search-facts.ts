@@ -32,13 +32,6 @@ export function factOn(
   // place must never read Enriched off either it or content_state.
   if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
-  // Mesita Selected (MESITA-2707): the operator's own mark, `places.selected`,
-  // shipped by the EF. Never derived — until MESITA-2707 it was Enriched AND
-  // ready AND Listed (MESITA-2318); now a Created place can carry it and an
-  // Enriched one need not. An older payload without it says "unknown".
-  if (key === "selected") {
-    return typeof hit.selected === "boolean" ? hit.selected : "unknown";
-  }
   return "unknown";
 }
 

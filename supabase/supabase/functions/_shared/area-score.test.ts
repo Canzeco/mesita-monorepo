@@ -30,7 +30,7 @@ const cand = (over: Partial<AreaCandidate> = {}): AreaCandidate => ({
   rating: 4.5,
   reviewCount: 1000,
   familyKeys: ["dinner"],
-  source: "selected",
+  source: "mesita",
   ...over,
 });
 
@@ -47,13 +47,11 @@ Deno.test("point: final = Proximity × Popularity (no exponents, MESITA-2722)", 
   assertEquals(Object.keys(s.gates).sort(), ["active", "family", "popularity", "radius", "ready", "reviews"]);
 });
 
-Deno.test("Selected no longer scores (MESITA-2703): equal signals score equal whatever the source", () => {
-  const sel = areaScore(cand({ source: "selected" }), CTX);
+Deno.test("the source never scores: equal signals score equal, Mesita or Google (MESITA-2703, MESITA-2925)", () => {
   const mes = areaScore(cand({ source: "mesita" }), CTX);
   const goo = areaScore(cand({ source: "google" }), CTX);
-  assertEquals(sel.final, mes.final);
-  assertEquals(sel.final, goo.final);
-  assertEquals("selected" in sel, false);
+  assertEquals(mes.final, goo.final);
+  assertEquals("selected" in mes, false);
   // The source stays as provenance.
   assertEquals(goo.source, "google");
   const twin = rankArea([cand({ id: "g", source: "google" }), cand({ id: "s" })], (c) => c, CTX);
@@ -207,10 +205,10 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
   assertEquals(order.map((r) => r.item.id), ["many", "few"]);
 });
 
-Deno.test("the Popularity floor drops any place under it, Google or Mesita, Selected or not (MESITA-2714)", () => {
+Deno.test("the Popularity floor drops any place under it, Google or Mesita, Official or not (MESITA-2714)", () => {
   const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
   // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, boostTier: 3 });
   const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
   const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
   assertEquals(areaScore(thin, ctx).gates.popularity, 0);
@@ -222,51 +220,44 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Sele
   assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
 });
 
-Deno.test("the Selected boost multiplies a Selected place's score, every other place's by 1 (MESITA-2717)", () => {
-  const ctx: AreaContext = { ...CTX, selectedFactor: 3 };
-  // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 3 ≈ 15.9,
+Deno.test("Official multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
+  // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 2 ≈ 10.6,
   // beats ln(1 + 3000 × 4.5) ≈ 9.51.
-  const picked = cand({ id: "picked", rating: 4, reviewCount: 50, source: "selected" });
+  const paid = cand({ id: "paid", rating: 4, reviewCount: 50, boostTier: 1 });
   const loved = cand({ id: "loved", rating: 4.5, reviewCount: 3000, source: "google" });
-  const plain = cand({ id: "plain", rating: 4, reviewCount: 50, source: "mesita" });
-  assertEquals(areaScore(picked, ctx).selectedFactor, 3);
-  assertEquals(areaScore(loved, ctx).selectedFactor, 1);
-  assertEquals(areaScore(plain, ctx).selectedFactor, 1);
-  assertAlmostEquals(areaScore(picked, ctx).final, 3 * areaScore(plain, ctx).final, 1e-9);
-  assertEquals(rankArea([loved, plain, picked], (c) => c, ctx).map((r) => r.item.id), ["picked", "loved", "plain"]);
-  // 1 or absent is off: the busier place leads again.
-  assertEquals(rankArea([loved, picked], (c) => c, { ...ctx, selectedFactor: 1 }).map((r) => r.item.id), ["loved", "picked"]);
-  assertEquals(rankArea([loved, picked], (c) => c, CTX).map((r) => r.item.id), ["loved", "picked"]);
+  const plain = cand({ id: "plain", rating: 4, reviewCount: 50 });
+  assertEquals(areaScore(paid, CTX).selectedFactor, 2);
+  assertEquals(areaScore(loved, CTX).selectedFactor, 1);
+  assertEquals(areaScore(plain, CTX).selectedFactor, 1);
+  assertAlmostEquals(areaScore(paid, CTX).final, 2 * areaScore(plain, CTX).final, 1e-9);
+  assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["paid", "loved", "plain"]);
   // No location: Popularity × s.
-  assertAlmostEquals(areaScore(picked, { ...NONE, selectedFactor: 3 }).final, 3 * Math.log1p(200), 1e-9);
+  assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.log1p(200), 1e-9);
   // It never saves a place from the Popularity floor.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, source: "selected" });
-  assertEquals(areaScore(thin, { ...ctx, popularityFloor: 3 }).final, 0);
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, boostTier: 3 });
+  assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
 });
 
-// THE REACH (MESITA-2920, money: Boost is sold). On the Catalog the Selected
-// boost and Boost count within 2 × h of the anchor and are 1 past it; the
+// THE REACH (MESITA-2920, money: Official is sold). On the Catalog the
+// Official factor counts within 2 × h of the anchor and is 1 past it; the
 // Map and Chat (a radius) keep the full factor.
 const KM = 1 / 111.195;
 const CATALOG: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: null },
   families: [],
   halfKm: 5,
-  selectedFactor: 3,
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
-  { label: "Selected", over: { source: "selected" }, s: 3 },
-  { label: "Boost 2x", over: { source: "mesita", boostTier: 1 }, s: 2 },
-  { label: "Boost 5x", over: { source: "mesita", boostTier: 2 }, s: 5 },
-  { label: "Boost 10x", over: { source: "mesita", boostTier: 3 }, s: 10 },
-  { label: "Selected + Boost 10x", over: { source: "selected", boostTier: 3 }, s: 10 },
+  { label: "Official 2X", over: { source: "mesita", boostTier: 1 }, s: 2 },
+  { label: "Official 5X", over: { source: "mesita", boostTier: 2 }, s: 5 },
+  { label: "Official 10X", over: { source: "mesita", boostTier: 3 }, s: 10 },
 ];
 
 Deno.test("the Catalog reach is 2 × the half distance (MESITA-2920)", () => {
   assertEquals(boostReachKm(5), 10);
 });
 
-Deno.test("Catalog: Selected and Boost count inside the reach, 1 past it (MESITA-2920)", () => {
+Deno.test("Catalog: Official counts inside the reach, 1 past it (MESITA-2920)", () => {
   for (const { label, over, s } of TIERS) {
     const inside = areaScore(cand({ ...over, lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
     const plainInside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 9.9 * KM }), CATALOG);

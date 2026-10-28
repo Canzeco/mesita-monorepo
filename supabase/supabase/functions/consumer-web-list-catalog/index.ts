@@ -9,9 +9,10 @@
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
 // radio"): distance never cuts a place. THE SCORE: Proximity × Popularity ×
-// the Selected boost, Proximity = 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the
+// the Official factor (an Official place's paid tier, ×2 · ×5 · ×10,
+// MESITA-2925), Proximity = 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the
 // operator's half distance (`params.proximity.halfKm`): 1 at the guest, ½
-// at h, falling fast and then ever slower. No point: Popularity × the boost.
+// at h, falling fast and then ever slower. No point: Popularity × the factor.
 //
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.
@@ -47,7 +48,7 @@ import {
   type PoolBuilder,
   resolveAreaLocation,
   selectAreaPool,
-  selectedPoolQuery,
+  mesitaPoolQuery,
 } from "../_shared/area-pipeline.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 
@@ -107,14 +108,14 @@ Deno.serve(async (req) => {
 
   // Card columns only: no Catalog signal reads the summary vector, so the pool
   // does not select it (MESITA-2328).
-  const { data, error } = await selectedPoolQuery(
+  const { data, error } = await mesitaPoolQuery(
     admin
       .from("profiles")
       .select(PLACE_CARD_COLUMNS)
       .eq("state", "active") as unknown as PoolBuilder,
     cfg,
     // No centre, no box: the whole catalog (MESITA-2909).
-    { center: null, radiusKm: 0, families, selectedOnly: false },
+    { center: null, radiusKm: 0, families },
   ).limit(POOL_CAP);
 
   if (error) {

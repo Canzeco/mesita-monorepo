@@ -8,7 +8,7 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 // THE PLACE SCREEN'S TOP BAR, ONE COMPONENT (MESITA-2627). Instagram's
 // profile bar (Pato, MESITA-2619: "make the header look more instagramish,
 // with the three dots"): a bare chevron, the name in bold sans at its left
-// with the Selected mark after it (MESITA-2913), and the three dots at the
+// with the Official mark after it (MESITA-2925), and the three dots at the
 // right edge. THE DOTS OPEN A MENU (Pato, MESITA-2692: "three dots in place
 // profile is not only to report"): the host's sheet of the place's actions,
 // Report last. They opened Report alone (MESITA-2684), and the share sheet
@@ -26,12 +26,13 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 // a bone where the name goes (PlaceTopBarSkeleton draws it so).
 export function PlaceTopBar({
   name,
-  selected = false,
+  officialTier = 0,
   onBack,
   onMore,
 }: {
   name: string | null;
-  selected?: boolean;
+  /** `boost_tier`; 1..3 draws "Official 2X" after the name (MESITA-2925). */
+  officialTier?: number;
   onBack?: () => void;
   onMore?: () => void;
 }) {
@@ -45,7 +46,7 @@ export function PlaceTopBar({
       >
         <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
       </button>
-      <PlaceDetailTitle placeName={name} selected={selected} />
+      <PlaceDetailTitle placeName={name} officialTier={officialTier} />
       <button
         type="button"
         aria-label="More options"

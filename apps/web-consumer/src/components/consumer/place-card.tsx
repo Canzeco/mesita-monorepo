@@ -324,25 +324,3 @@ export function CardActions({
     </div>
   );
 }
-
-/** Paid visibility, disclosed (MESITA-2789): a place whose guests pay for
- *  its Boost. */
-export function isSponsoredPlace(place: {
-  boost_tier?: number | null;
-}): boolean {
-  return typeof place.boost_tier === "number" && place.boost_tier > 0;
-}
-
-/** SPONSORED after the name (MESITA-2789), on the tile and the Search card
- *  alike: grey and small, never red (red is Selected, Mesita's own pick),
- *  and it never truncates — the name gives way first. */
-export function SponsoredMark() {
-  return (
-    <span
-      className="text-muted-foreground shrink-0 text-xs font-medium tracking-normal"
-      data-sponsored
-    >
-      Boosted
-    </span>
-  );
-}

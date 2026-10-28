@@ -12,7 +12,7 @@
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
 // corrida", paged, with Proximity's half distance as its knob.) s is the
-// Selected boost / paid Boost factor (area-score.ts). Gates: Family, Radius
+// Official factor, the paid tier's ×2 · ×5 · ×10 (area-score.ts). Gates: Family, Radius
 // (the Map), the operational ones the read applies (active, ready) and the
 // Popularity floor; no reviews floor (MESITA-2721). The two source switches
 // (Mesita Popularity / Mesita Proximity, 20 + 20, MESITA-2703) and the
@@ -20,11 +20,11 @@
 //
 // Nothing here writes a row.
 //
-// Chat (MESITA-2339) does not use the pool: `areaSelectedPlaces` reads Mesita
-// Selected places only inside `map.radiusKm`, ranked with the Catalog score.
+// Chat (MESITA-2339) does not use the pool: `areaMesitaPlaces` reads every
+// ready Mesita place inside `map.radiusKm`, ranked with the Catalog score
+// (Selected only until MESITA-2925).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isSelectedRow } from "./selected-row.ts";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
 import { applyGeneralGateQuery, type FilterableQuery } from "./discovery-general-gate.ts";
 import { familiesForPlace } from "./place-taxonomy.ts";
@@ -34,7 +34,6 @@ import {
   type AreaContext,
   type AreaDiagnostics,
   type AreaLocation,
-  type AreaSource,
   insideBounds,
   type LatLng,
   rankArea,
@@ -47,17 +46,15 @@ import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
 export type AreaSurface = "map" | "catalog";
 
 /** The numbers a pipeline reads from the blob: Proximity's half distance
- *  (the Catalog only; the Map has none, MESITA-2909), the Popularity floor
- *  and the Selected boost (both pipelines and Chat). Popularity takes no
- *  parameter (MESITA-2710: ln(1 + reviews × stars)). */
+ *  (the Catalog only; the Map has none, MESITA-2909) and the Popularity
+ *  floor (both pipelines and Chat). Popularity takes no parameter
+ *  (MESITA-2710: ln(1 + reviews × stars)); the Official factor is the row's
+ *  own tier, no knob (MESITA-2925). */
 export function areaSignalParams(
   params: SignalParams,
-  map: {
-    popularityFloor?: number;
-    selectedFactor?: number;
-  },
+  map: { popularityFloor?: number },
   surface: AreaSurface,
-): Pick<AreaContext, "halfKm" | "popularityFloor" | "selectedFactor"> {
+): Pick<AreaContext, "halfKm" | "popularityFloor"> {
   const h = params.proximity?.halfKm;
   return {
     halfKm: surface === "map"
@@ -65,8 +62,6 @@ export function areaSignalParams(
       : typeof h === "number" && Number.isFinite(h) && h > 0 ? h : PROXIMITY_HALF_KM_DEFAULT,
     // The Popularity floor (MESITA-2714), a gate on every caller.
     popularityFloor: map.popularityFloor,
-    // The Selected boost (MESITA-2717), a multiplier on every caller.
-    selectedFactor: map.selectedFactor,
   };
 }
 
@@ -79,13 +74,6 @@ export type PoolRow = Record<string, unknown> & {
 
 const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
-/** Mesita Selected (the operator's mark, `places.selected`, MESITA-2707) or
- *  merely a ready Mesita row. Never read off `enriched_at`: Selected and
- *  Enriched are independent facts. */
-function mesitaSource(row: Record<string, unknown>): AreaSource {
-  return isSelectedRow(row as { selected?: boolean | null }) ? "selected" : "mesita";
-}
-
 /** A Mesita row as an Area candidate. */
 export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
   return {
@@ -95,7 +83,7 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
     rating: numOrNull(row.google_stars_overall),
     reviewCount: numOrNull(row.google_review_count),
     familyKeys: familiesForPlace(row),
-    source: mesitaSource(row),
+    source: "mesita",
     ready: 1,
     reviews: null,
     boostTier: numOrNull(row.boost_tier) ?? 0,
@@ -184,7 +172,7 @@ export type AreaPoolDeps<T extends PoolRow> = {
   location: AreaLocation;
   /** The Family gate's requested families; empty = every family. */
   families: readonly string[];
-  /** The caller's Mesita read (gates pushed down, `selectedPoolQuery`). */
+  /** The caller's Mesita read (gates pushed down, `mesitaPoolQuery`). */
   mesitaRows: readonly T[];
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
   /** Which pipeline runs (MESITA-2909). Required, so a new caller has to
@@ -289,8 +277,8 @@ export function areaPoolLogFields(places: readonly AreaPoolPlace[]): {
 
 // ── The Mesita read ─────────────────────────────────────────────────────
 
-/** The builder `selectedPoolQuery` needs (supabase-js satisfies it). */
-export type SelectedPoolQuery<Q> =
+/** The builder `mesitaPoolQuery` needs (supabase-js satisfies it). */
+export type MesitaPoolQuery<Q> =
   & FilterableQuery<Q>
   & BboxQuery<Q>
   & {
@@ -300,8 +288,8 @@ export type SelectedPoolQuery<Q> =
   };
 
 /** A supabase-js select, seen structurally: what the EFs hand
- *  `selectedPoolQuery` (the full generic type is too deep to infer). */
-export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
+ *  `mesitaPoolQuery` (the full generic type is too deep to infer). */
+export interface PoolBuilder extends MesitaPoolQuery<PoolBuilder> {
   limit: (n: number) => PromiseLike<{
     data: unknown[] | null;
     error: { message: string } | null;
@@ -312,23 +300,19 @@ export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
  * The Mesita pool in SQL, with the gates PUSHED DOWN so a dense area does
  * not fill the row cap with rows the ranking would drop: ready, active, the
  * requested families, and the radius box around the point (no centre, no
- * box: the Catalog reads the whole catalog, MESITA-2909). `selectedOnly` (Chat, the default) also keeps only Mesita Selected
- * rows — the operator's mark, `places.selected` (MESITA-2707), never
- * `enriched_at`; the Catalog and the Map pass false, because Selected is a tag
- * on their cards, not their gate.
+ * box: the Catalog reads the whole catalog, MESITA-2909). Every caller reads
+ * the same rows: the Selected cut Chat had died with MESITA-2925.
  */
-export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
+export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
   query: Q,
   cfg: Pick<DiscoveryConfig, "general">,
   opts: {
     center: LatLng | null;
     radiusKm: number;
     families?: readonly string[];
-    selectedOnly?: boolean;
   },
 ): Q {
   let q: Q = query.eq("content_state", "ready");
-  if (opts.selectedOnly !== false) q = q.eq("selected", true);
   q = applyGeneralGateQuery(q, cfg.general);
   if (opts.families && opts.families.length > 0) {
     q = q.overlaps("family_keys", [...opts.families]);
@@ -344,9 +328,9 @@ export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
   return q.order("id", { ascending: true });
 }
 
-// ── Chat's Selected read (MESITA-2339) ──────────────────────────────────
+// ── Chat's Mesita read (MESITA-2339) ────────────────────────────────────
 
-export type SelectedOpts = {
+export type MesitaOpts = {
   /** The anchor, or null (no radius, Popularity alone orders). */
   center: LatLng | null;
   radiusKm: number;
@@ -355,22 +339,20 @@ export type SelectedOpts = {
   params: SignalParams;
   /** The Popularity floor (MESITA-2714); absent = off. */
   popularityFloor?: number;
-  /** The Selected boost (MESITA-2717). Every row here is Selected, so it
-   *  scales the scores and never reorders them. */
-  selectedFactor?: number;
   limit?: number;
 };
 
-/** Mesita Selected rows ranked by the Catalog score, inside the radius. */
-export function selectMesitaSelected<T extends Record<string, unknown>>(
+/** Ready Mesita rows ranked by the Catalog score (Official factor
+ *  included), inside the radius. */
+export function rankMesitaPlaces<T extends Record<string, unknown>>(
   rows: readonly T[],
-  opts: SelectedOpts,
+  opts: MesitaOpts,
 ): Array<T & { distance_km: number | null }> {
   const location: AreaLocation = opts.center
     ? { kind: "point", anchor: opts.center, radiusKm: opts.radiusKm }
     : { kind: "none" };
   const ranked = rankArea(
-    rows.filter((row) => mesitaSource(row) === "selected"),
+    rows,
     mesitaCandidate,
     {
       location,
@@ -386,43 +368,42 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
   return opts.limit === undefined ? out : out.slice(0, opts.limit);
 }
 
-/** What a non-view caller needs of a Selected place, About included. */
-const AREA_SELECTED_COLUMNS =
-  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, selected, boost_tier";
-/** The Selected pool cap for a non-view caller: a few answers, not a map. */
-const AREA_SELECTED_POOL = 300;
+/** What a non-view caller needs of a Mesita place, About included. */
+const AREA_MESITA_COLUMNS =
+  "id, slug, name, address, lat, lng, family_keys, google_stars_overall, google_review_count, description, enriched_at, content_state, boost_tier";
+/** The pool cap for a non-view caller: a few answers, not a map. */
+const AREA_MESITA_POOL = 300;
 
 /**
- * Mesita Selected places for a caller that is not a view — the Chat Agent
- * (MESITA-2339). The same pool query (gates pushed down, Selected only),
- * boxed to `map.radiusKm` around the guest's location when there is one,
- * and the Catalog's score (MESITA-2909). No Google
- * call. Null on error.
+ * Ready Mesita places for a caller that is not a view — the Chat Agent
+ * (MESITA-2339). The same pool query (gates pushed down), boxed to
+ * `map.radiusKm` around the guest's location when there is one, and the
+ * Catalog's score (MESITA-2909), Official factor included. Every ready place
+ * since MESITA-2925 (Selected only before it). No Google call. Null on error.
  */
-export async function areaSelectedPlaces(
+export async function areaMesitaPlaces(
   admin: SupabaseClient,
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
   opts: { center: LatLng | null; families: readonly string[]; limit: number },
 ): Promise<Array<Record<string, unknown> & { distance_km: number | null }> | null> {
-  const { data, error } = await selectedPoolQuery(
+  const { data, error } = await mesitaPoolQuery(
     admin
       .from("profiles")
-      .select(AREA_SELECTED_COLUMNS)
+      .select(AREA_MESITA_COLUMNS)
       .eq("state", "active") as unknown as PoolBuilder,
     cfg,
-    { center: opts.center, radiusKm: cfg.map.radiusKm, families: opts.families, selectedOnly: true },
-  ).limit(AREA_SELECTED_POOL);
+    { center: opts.center, radiusKm: cfg.map.radiusKm, families: opts.families },
+  ).limit(AREA_MESITA_POOL);
   if (error) {
-    console.error("[area-pipeline] selected:", error.message);
+    console.error("[area-pipeline] mesita:", error.message);
     return null;
   }
-  return selectMesitaSelected((data ?? []) as Record<string, unknown>[], {
+  return rankMesitaPlaces((data ?? []) as Record<string, unknown>[], {
     center: opts.center,
     radiusKm: cfg.map.radiusKm,
     families: opts.families,
     params: cfg.params,
     popularityFloor: cfg.map.popularityFloor,
-    selectedFactor: cfg.map.selectedFactor,
     limit: opts.limit,
   });
 }

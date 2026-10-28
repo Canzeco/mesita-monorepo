@@ -75,7 +75,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
       secondaryText: "Mesita address",
       state: "web_listed",
       enriched: true,
-      selected: true,
+      boostTier: 2,
       mesitaId: "m-1",
       mesitaSlug: "mesita-override",
     }),
@@ -84,8 +84,8 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.secondaryText, "Mesita address");
   assertEquals(out.mesitaId, "m-1");
   assertEquals(out.enriched, true);
-  // The operator's mark travels with the entity too (MESITA-2707).
-  assertEquals(out.selected, true);
+  // Official's tier travels with the entity too (MESITA-2925).
+  assertEquals(out.boostTier, 2);
 });
 
 Deno.test("mergeNameDeepQueries: Autocomplete then Text", () => {
@@ -356,6 +356,13 @@ Deno.test("admin's place picker runs the deep lane, places only", async () => {
   // absence IS the assertion — an explicit `true` here would put cities in a
   // list whose every row offers Create.
   assertEquals(code.includes("locations"), false);
+});
+
+Deno.test("toWire: Official's tier rides every row as boost_tier, 0 when absent; no Selected (MESITA-2925)", () => {
+  const paid = toWire(item({ placeId: "m", mainText: "Paid", mesitaId: "m1", boostTier: 3 }));
+  assertEquals(paid.boost_tier, 3);
+  assertEquals("selected" in paid, false);
+  assertEquals(toWire(item({ placeId: "g", mainText: "Google" })).boost_tier, 0);
 });
 
 Deno.test("toWire: a Text Search card rides Google-only rows, never a Mesita one (MESITA-2325)", () => {

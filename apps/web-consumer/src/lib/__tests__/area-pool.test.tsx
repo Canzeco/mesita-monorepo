@@ -19,7 +19,7 @@ const base: Area = {
   familyKeys: ["coffee"],
   gates: { family: 1, radius: 1, active: 1, ready: 1, reviews: null },
   signals: { proximity: 0.82, popularity: null },
-  source: "selected",
+  source: "mesita",
   final: 0.41,
   formula: "point",
 };

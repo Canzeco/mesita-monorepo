@@ -58,7 +58,6 @@ function placeHit(over: Partial<PlaceHit> = {}): PlaceHit {
     enriching: false,
     enriched: false,
     enriched_at: null,
-    selected: false,
     business_state: "OPERATIONAL",
     business_state_at: null,
     enrich_crenup: 1,
@@ -241,7 +240,6 @@ describe("Find › one table", () => {
       "Pulsing",
       "Enriching",
       "Enriched",
-      "Selected",
       "Disabled",
     ]) {
       expect(html).toContain(`>${label}<`);

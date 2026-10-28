@@ -6,8 +6,10 @@
 //      the qualitative need in their own words (`extractChatIntent`).
 //   2. Invoke the pipelines that intent calls for, in parallel:
 //        Name  a named place          → the Name pipeline: Google Text Search, Mesita-held places (MESITA-2896)
-//        Area  families or "near me"  → the Area pipeline, Mesita Selected
-//                                       scope, around the guest's location
+//        Area  families or "near me"  → the Area pipeline, every ready
+//                                       Mesita place around the guest's
+//                                       location (Selected only until
+//                                       MESITA-2925)
 //        Deep  a qualitative need     → the Deep pipeline (Description)
 //      With no usable intent, Deep runs on the guest's message: the
 //      behaviour before this agent existed.
@@ -184,12 +186,12 @@ export async function runChatAgent(
 
 const HEADINGS: Record<ChatPipelineKey, string> = {
   name: "Mesita places matching the name the guest gave (the Name pipeline):",
-  area: "Mesita Selected places around the guest, nearest and best loved first (the Area pipeline):",
+  area: "Mesita places around the guest, nearest and best loved first (the Area pipeline):",
   deep: "Mesita places whose own description may fit what the guest asked for (the Deep pipeline):",
 };
 /** Area without a location ranks on Popularity alone, anywhere. */
 const AREA_NO_ANCHOR =
-  "Mesita Selected places of the kind the guest asked for, best loved first; the guest shared no location, so these may be anywhere (the Area pipeline):";
+  "Mesita places of the kind the guest asked for, best loved first; the guest shared no location, so these may be anywhere (the Area pipeline):";
 
 /**
  * The agent's answer as context for the Chat model: the places grouped by

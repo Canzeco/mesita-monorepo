@@ -19,12 +19,12 @@ function gate(v: 0 | 1 | null): string {
 }
 
 /** The compact expression for the place's formula: Proximity ×
- *  Popularity, × the Selected boost (MESITA-2717; no exponents since
+ *  Popularity, × Official's tier number (MESITA-2925; no exponents since
  *  MESITA-2722). */
 export function diagExpression(a: Area): string {
   const fin = diagNumber(a.final);
   const sel = typeof a.selectedFactor === "number" && a.selectedFactor !== 1
-    ? ` × selected ${a.selectedFactor}`
+    ? ` × official ${a.selectedFactor}`
     : "";
   const rest = `popularity ${diagNumber(a.signals.popularity)}${sel}`;
   // Home asks from a point or nothing (MESITA-2501); anything but a point

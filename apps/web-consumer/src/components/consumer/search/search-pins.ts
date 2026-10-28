@@ -1,36 +1,30 @@
 // The pin tone is the coloured point, on the results rows AND the map pins.
 // THE LAW, three nested sets (Pato, 2026-10-12, MESITA-2158):
 //
-//   selected  red    Mesita Selected — the operator's own mark, `places.selected`
-//   mesita    gray   our own place without the mark
+//   official  red    Mesita Official — a paid tier, `boost_tier` 1..3
+//   mesita    gray   our own place that is not Official
 //   google    gray   a Google row Mesita does not hold
 //
 // THREE COLOURS ON THE MAP AND NO MORE (Pato, 2026-10-18, MESITA-2316): red
-// is Mesita Selected, blue is the guest's own location, gray is everything
-// else; the brand-ink middle tone is gone. The `mesita` tone survives as a
-// FACT, not a colour: its row says "Basic Mesita profile" and opens its own
-// profile, while a Google-only row opens through the opening screen.
+// is Official, blue is the guest's own location, gray is everything else.
+// The `mesita` tone survives as a FACT, not a colour: its row says "Basic
+// Mesita profile" and opens its own profile, while a Google-only row opens
+// through the opening screen.
 //
-// The sets still nest — Google Places ⊃ Mesita Places ⊃ Mesita Selected
-// Places — and each tone is the NARROWEST ring the place sits in. The
-// Filters sheet names only two of them (Google Places · Mesita Selected,
-// MESITA-2298): a tone is the colour's promise about the row, the scope is
-// the set the guest asked for (`placeSearchScope`).
-//
-// RED IS THE OPERATOR'S (MESITA-2707; Pato: "selected is the manual thing …
-// independent of enrichment"). Until MESITA-2707 red was earned by an Enrich
-// run (`enriched`, MESITA-2154); enrichment now paints nothing here. The
-// SERVER states `selected` on every place payload and on every name-lane
-// row, read off `places.selected`; nothing here re-derives it from any
-// other column, so an older payload without it stays gray (understating
-// beats promising a mark that is not there). The red check after a name
-// (SelectedBadge, MESITA-2913) reads the same `selected`; Enriched has no
-// guest mark. Hexes live in lib/map-defaults.ts; a HELD pin (the
-// tapped one) trades its tone for ink with a white ring (MESITA-2488).
+// RED IS OFFICIAL (Pato, MESITA-2925: "Kill Select and Boosted. Just
+// Official"). It was the operator's Selected mark (MESITA-2707), and a paid
+// Boost wore a ⚡ badge on top (MESITA-2789); now the paid tier alone paints
+// red, one treatment. The SERVER states `boost_tier` on every place payload
+// and name-lane row; an older payload without it stays gray (understating
+// beats promising a mark that is not there). The Official mark after a name
+// (OfficialBadge) reads the same `boost_tier`. Hexes live in
+// lib/map-defaults.ts; a HELD pin (the tapped one) trades its tone for ink
+// with a white ring (MESITA-2488).
 
+import { isOfficialPlace } from "@mesita/place-profile";
 import {
   MAP_GOOGLE_PIN_COLOR,
-  MAP_MESITA_SELECTED_PIN_COLOR,
+  MAP_OFFICIAL_PIN_COLOR,
   MAP_PIN_STROKE_COLOR,
   MAP_PIN_STROKE_WEIGHT,
   MAP_SELECTED_PIN_COLOR,
@@ -38,9 +32,9 @@ import {
   MAP_SELECTED_PIN_STROKE_WEIGHT,
 } from "@/lib/map-defaults";
 
-/** The tone IS the narrowest ring; only `selected` (Mesita Selected, the
- *  operator's mark) draws red. */
-export type PinTone = "selected" | "mesita" | "google";
+/** The tone IS the narrowest ring; only `official` (a paid tier,
+ *  MESITA-2925) draws red. */
+export type PinTone = "official" | "mesita" | "google";
 
 /** On Mesita per EF — mesitaId/slug win over a stale not_in_mesita state. */
 export function predictionOnMesita(item: {
@@ -63,8 +57,8 @@ export function catalogPlaceOnMesita(place: {
 }
 
 const TONE_COLORS: Record<PinTone, string> = {
-  selected: MAP_MESITA_SELECTED_PIN_COLOR,
-  // A Mesita place without the operator's mark is gray like a Google row.
+  official: MAP_OFFICIAL_PIN_COLOR,
+  // A Mesita place that is not Official is gray like a Google row.
   mesita: MAP_GOOGLE_PIN_COLOR,
   google: MAP_GOOGLE_PIN_COLOR,
 };
@@ -96,17 +90,20 @@ export function locationTypeLabel(locationType?: string | null): string {
   }
 }
 
-/** Name-lane rows. The server's `selected` alone reaches red: a Mesita row
- *  without it reads as `mesita` (gray), never red — understating beats
- *  promising a mark that is not there. Off Mesita is gray too. */
+/** Name-lane rows. The server's `boost_tier` (on the row, else on its
+ *  card) alone reaches red: a Mesita row without it reads as `mesita`
+ *  (gray), never red. Off Mesita is gray too. */
 export function predictionPinTone(item: {
   state?: string | null;
-  selected?: boolean | null;
+  boost_tier?: number | null;
+  card?: { boost_tier?: number | null } | null;
   mesitaId?: string | null;
   mesitaSlug?: string | null;
 }): PinTone {
   if (!predictionOnMesita(item)) return "google";
-  return item.selected === true ? "selected" : "mesita";
+  return isOfficialPlace({ boost_tier: item.boost_tier ?? item.card?.boost_tier })
+    ? "official"
+    : "mesita";
 }
 
 export function pinToneColor(tone: PinTone): string {
@@ -114,7 +111,7 @@ export function pinToneColor(tone: PinTone): string {
 }
 
 /** Holding a pin (the tap, MESITA-2488) CHANGES the colour: the tone gives
- *  way to ink. `held` is the tapped pin, not the Selected tone. */
+ *  way to ink. `held` is the tapped pin. */
 export function pinFillColor(tone: PinTone, held = false): string {
   return held ? MAP_SELECTED_PIN_COLOR : pinToneColor(tone);
 }
@@ -184,17 +181,15 @@ export function overlayPinDecision(input: {
   return "noop";
 }
 
-/** Map/catalog rows: a Google stub is gray, a Mesita row without the
- *  operator's mark is gray too (its own tone, `mesita`), a Selected one red.
- *  Same rule as the ring counts (`placeSearchScope`), so a dot and its ring
- *  cannot disagree. */
+/** Map/catalog rows: a Google stub is gray, a Mesita row that is not
+ *  Official is gray too (its own tone, `mesita`), an Official one red. */
 export function placePinTone(place: {
   googleOnly?: boolean;
   from_google?: boolean;
-  selected?: boolean | null;
+  boost_tier?: number | null;
 }): PinTone {
   if (place.googleOnly || place.from_google) return "google";
-  return place.selected === true ? "selected" : "mesita";
+  return isOfficialPlace(place) ? "official" : "mesita";
 }
 
 /** Live-search overlay pins. Catalog is coords only — tone follows the EF row
@@ -204,9 +199,10 @@ type SearchPinPrediction = {
   placeId: string;
   mainText: string;
   state?: string | null;
-  /** The server's `selected`. Required for the pin to reach red: a Mesita
-   *  prediction without it stays gray. */
-  selected?: boolean | null;
+  /** The server's `boost_tier` (MESITA-2925); without it, on the row, its
+   *  card or the catalog row it resolves to, a Mesita pin stays gray. */
+  boost_tier?: number | null;
+  card?: { boost_tier?: number | null } | null;
   /** Word's second entity — a Location is a camera destination, never a pin. */
   kind?: "place" | "location";
   mesitaId?: string | null;
@@ -227,7 +223,6 @@ type BuiltSearchPin = {
   lng: number;
   title: string;
   tone: PinTone;
-  boosted?: boolean;
 };
 
 export function buildSearchMapPins(
@@ -250,10 +245,12 @@ export function buildSearchMapPins(
       lat,
       lng,
       title: prediction.mainText,
-      tone: predictionPinTone(prediction),
-      // Boost's ⚡ (MESITA-2789) follows the catalog row the pick resolves
-      // to; absent when not boosted, so an unboosted pin is unchanged.
-      ...(typeof hit?.boost_tier === "number" && hit.boost_tier > 0 ? { boosted: true } : {}),
+      // The row's own tier first, else the catalog row it resolves to.
+      tone: predictionPinTone({
+        ...prediction,
+        boost_tier:
+          prediction.boost_tier ?? prediction.card?.boost_tier ?? hit?.boost_tier,
+      }),
     });
   }
   return pins.length > 0 ? pins : null;

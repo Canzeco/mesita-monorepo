@@ -2,7 +2,7 @@
 
 import { cn } from "../lib/format";
 import { PLACE_BONE_CLASS } from "../lib/ui";
-import { SelectedBadge } from "./SelectedBadge";
+import { OfficialBadge } from "./OfficialBadge";
 
 // The place-name title for the detail header (page + modal). Since
 // MESITA-2619 it sits at the LEFT beside the back chevron in bold sans, the
@@ -11,20 +11,21 @@ import { SelectedBadge } from "./SelectedBadge";
 // decision: Pato (MESITA-451, revised) — the live "Enriching" state moved
 // off the title into a dedicated chip in the profile summary (before the
 // category chip, see PlaceDetailBody), so the name stays clean in the
-// top chrome. A Mesita Selected place wears the Selected mark right after
-// its name (MESITA-2913; the Enriched mark stood there from MESITA-2296, and
-// MESITA-2628 set it after the name at 20px).
+// top chrome. An Official place wears the Official mark and its level right
+// after its name, "Official 2X" (MESITA-2925; Selected's check stood there
+// from MESITA-2913, Enriched's from MESITA-2296, at 20px since MESITA-2628).
 // A NULL NAME IS ONE STILL ON ITS WAY (Pato, MESITA-2701: "the placeholders
 // must be similar to the page you are loading, like the sizes"): a 16px
 // bone in this same row, where the name will stand (PlaceTopBarSkeleton).
 
 export function PlaceDetailTitle({
   placeName,
-  selected = false,
+  officialTier = 0,
   className,
 }: {
   placeName: string | null;
-  selected?: boolean;
+  /** `boost_tier`: 1..3 draws the Official mark, 0 nothing (MESITA-2925). */
+  officialTier?: number;
   className?: string;
 }) {
   return (
@@ -41,7 +42,7 @@ export function PlaceDetailTitle({
           {/* The name truncates and the mark is shrink-0, so a long name
               ends in an ellipsis and the mark stays whole right after it. */}
           <span className="truncate">{placeName}</span>
-          {selected ? <SelectedBadge /> : null}
+          <OfficialBadge tier={officialTier} />
         </>
       )}
     </div>

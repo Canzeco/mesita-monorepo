@@ -16,14 +16,15 @@ Deno.test("list-places: the Map is the one Area pool inside the screen radius, n
   // gates the Mesita read.
   assert(webBranch.includes("const screenKm = screenRadiusKm(body.bounds, center);"));
   assert(webBranch.includes('const location = { kind: "point" as const, anchor: center, radiusKm };'));
-  assert(webBranch.includes("{ center, radiusKm, families: guestSupers, selectedOnly: false },"));
+  assert(webBranch.includes("{ center, radiusKm, families: guestSupers },"));
   assert(webBranch.includes("    location,\n"));
   assertEquals(src.includes("resolveAreaLocation"), false);
   // The switches decide the sources, the same as Home's (MESITA-2703).
   for (const gone of ["fanoutMode", "googleCalls", "mesitaLimit", "mapGooglePlaces"]) {
     assertEquals(src.includes(gone), false, gone);
   }
-  assert(webBranch.includes("selectedOnly: false"));
+  // Selected is read by no one (MESITA-2925).
+  assertEquals(src.includes("selectedOnly"), false);
   // The guest never picks a source.
   assertEquals(src.includes("parsePlacesScope"), false);
   for (const gone of ["selectGooglePlaces", "selectMesitaSelected"]) {

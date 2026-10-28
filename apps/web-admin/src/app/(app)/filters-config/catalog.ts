@@ -167,10 +167,6 @@ const CATALOG_PAGE_SIZE_DEFAULT = 20;
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
 const MAP_POPULARITY_FLOOR_DEFAULT = 3;
-/** Mirrors MAP_SELECTED_FACTOR_* in _shared/discovery-config.ts (MESITA-2717). */
-export const MAP_SELECTED_FACTOR_MIN = 1;
-export const MAP_SELECTED_FACTOR_MAX = 10;
-const MAP_SELECTED_FACTOR_DEFAULT = 3;
 /** Mirrors MAP_RELOAD_IDLE_SEC_* in _shared/discovery-config.ts. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -202,9 +198,8 @@ export type MapConfig = {
   catalogPageSize: number;
   /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
   popularityFloor: number;
-  /** A Mesita Selected place's score × this, every other place's × 1;
-   *  1..10, default 3; 1 = off (MESITA-2717). */
-  selectedFactor: number;
+  // `selectedFactor` (the Selected boost) retired with Selected (MESITA-2925):
+  // Official's factor is the paid tier, no knob; the next Save drops it.
 };
 
 /**
@@ -939,7 +934,6 @@ export const DEFAULT_MAP: MapConfig = {
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
-  selectedFactor: MAP_SELECTED_FACTOR_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -1187,10 +1181,6 @@ function coerceMap(raw: unknown): MapConfig {
     popularityFloor:
       Math.round(
         num(m.popularityFloor, DEFAULT_MAP.popularityFloor, MAP_POPULARITY_FLOOR_MIN, MAP_POPULARITY_FLOOR_MAX) * 10,
-      ) / 10,
-    selectedFactor:
-      Math.round(
-        num(m.selectedFactor, DEFAULT_MAP.selectedFactor, MAP_SELECTED_FACTOR_MIN, MAP_SELECTED_FACTOR_MAX) * 10,
       ) / 10,
   };
 }

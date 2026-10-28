@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
-import { SelectedBadge } from "@mesita/place-profile";
+import { OfficialBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import {
   cardPhoto,
@@ -14,15 +14,13 @@ import {
   CARD_BUTTON_BOX,
   CardActions,
   PriceKindRow,
-  SponsoredMark,
   StarsOpenRow,
   cardFacts,
-  isSponsoredPlace,
 } from "@/components/consumer/place-card";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
-// four lines, not five — so the boxes are a bit shorter"): name (+ marks);
+// four lines, not five — so the boxes are a bit shorter"): name (+ mark);
 // $$ · category; ★ rating (reviews) · Open or Closed; Save and Share. 12px
 // inside, the three text rows (64px), 12px, the buttons (32px), 12px: 134px
 // with the border. The photo is the inner height, square.
@@ -122,7 +120,8 @@ export function RailCard({
   const placeholder = placePlaceholder(place);
   // THE HOME TILE'S FACTS, THE HOME TILE'S SCALE (Pato, MESITA-2651: "the
   // preview must show the same preview information"), from the same module
-  // (place-card.tsx): name (+ the Selected mark); $$ · category; ★ rating
+  // (place-card.tsx): name (+ the Official mark, rosette and level alone:
+  // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
 
@@ -179,8 +178,7 @@ export function RailCard({
         <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
-            {place.selected === true ? <SelectedBadge /> : null}
-            {isSponsoredPlace(place) ? <SponsoredMark /> : null}
+            <OfficialBadge tier={place.boost_tier} compact />
           </p>
           <PriceKindRow facts={facts} />
           <StarsOpenRow facts={facts} withDistance={withDistance} />

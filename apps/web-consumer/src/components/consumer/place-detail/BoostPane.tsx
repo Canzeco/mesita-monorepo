@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
-import { Loader2, Sparkles, XCircle, Zap } from "lucide-react";
+import { BadgeCheck, Loader2, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { RowDivider, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
 import {
@@ -15,7 +15,7 @@ import {
   type BoostInterval,
   type BoostTier,
 } from "@/lib/api/boost";
-import { MAP_MESITA_SELECTED_PIN_COLOR } from "@/lib/map-defaults";
+import { MAP_OFFICIAL_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -26,23 +26,23 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE BOOST TAB (MESITA-2861: the place's fourth tab; a sheet off ⋯ in
-// MESITA-2815, a tab in
-// MESITA-2789, Spotlight's sheet before it, MESITA-1998:
-// "cualquiera se suscriba ... desde la Consumer App"). Anyone pays for a
-// place's paid visibility with their own subscription: Boost 2x · 5x · 10x,
-// monthly or yearly (ten months for twelve), whether to be named, then
-// Stripe Checkout. Many guests can back one place, so one lapsed card never
-// takes the tier from the rest. Paid, never verified, never Selected: the
-// copy says so, and the place shows Sponsored while it holds a tier.
+// THE OFFICIAL TAB (MESITA-2925, was Boost; MESITA-2861: the place's fourth
+// tab; a sheet off ⋯ in MESITA-2815, a tab in MESITA-2789, Spotlight's
+// sheet before it, MESITA-1998: "cualquiera se suscriba ... desde la
+// Consumer App"). Anyone makes a place Official with their own
+// subscription: Official 2X · 5X · 10X, monthly or yearly (ten months for
+// twelve), whether to be named, then Stripe Checkout. Many guests can back
+// one place, so one lapsed card never takes the tier from the rest. The
+// place wears "Official 2X" after its name and a red pin while it holds a
+// tier; the copy says it is paid visibility.
 // Nothing here claims a charge: success is said only after
 // consumer-web-get-boost confirms the Checkout session (member-place-actions).
 
-/** The tile's big mark: the multiplier alone. */
+/** The tile's big mark: the level alone. */
 const TIER_MULTIPLIER: Record<BoostTier, string> = {
-  boost_2x: "2x",
-  boost_5x: "5x",
-  boost_10x: "10x",
+  boost_2x: "2X",
+  boost_5x: "5X",
+  boost_10x: "10X",
 };
 
 export function BoostPane({
@@ -64,8 +64,8 @@ export function BoostPane({
   const [tier, setTier] = useState<BoostTier>("boost_2x");
   const [interval, setBillingInterval] = useState<BoostInterval>("month");
   const [showName, setShowName] = useState(true);
-  // The choices replace the card in the same sheet (MESITA-2817): BoostPane
-  // lives inside the ⋯ menu's Boost sheet, so a second sheet would stack.
+  // The choices replace the card in the same pane (MESITA-2817), so a
+  // second sheet never stacks.
   const [choosing, setChoosing] = useState(false);
   const [starting, setStarting] = useState(false);
   const [cancelling, setCancelling] = useState<MyBacking | null>(null);
@@ -100,7 +100,7 @@ export function BoostPane({
     try {
       await apiCancelBoost(getSupabase(), cancelling.id);
       setCancelling(null);
-      toast("Your Boost ends at the close of this period");
+      toast("Your backing ends at the close of this period");
       onChanged();
     } catch (err) {
       setCancelError(errMsg(err, "Couldn't cancel. Try again."));
@@ -129,10 +129,10 @@ export function BoostPane({
           </button>
           <div className="flex items-center gap-3">
             <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-              <Zap className="h-5 w-5" aria-hidden />
+              <BadgeCheck className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Boost</h2>
+              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Make it Official</h2>
               <p className="text-muted-foreground truncate text-xs">{place.name}</p>
             </div>
           </div>
@@ -155,7 +155,7 @@ export function BoostPane({
             ))}
           </div>
 
-          <div role="radiogroup" aria-label="Boost level">
+          <div role="radiogroup" aria-label="Official level">
             <SettingsGroup>
               {BOOST_TIERS.map((t, i) => {
                 const on = tier === t.key;
@@ -211,31 +211,32 @@ export function BoostPane({
             {starting ? "Opening checkout…" : `Continue · ${boostPrice(picked.monthly, interval)}`}
           </button>
           <p className="text-muted-foreground text-center text-xs">
-            Prices in US dollars. Billed by Stripe. Paid visibility: it does not
-            verify the place. Cancel any time; your Boost runs to the end of the
-            period you paid for.
+            Prices in US dollars. Billed by Stripe. Official is paid visibility:
+            it does not verify the place. Cancel any time; your backing runs to
+            the end of the period you paid for.
           </p>
         </div>
       ) : (
         <>
       {/* A SHORT CARD, THEN THE CHOICES (Pato, MESITA-2814: "maybe create a
           modal … if i click the modal, then open something"). The card says
-          where the place stands, what Boost is in one line, and the three
+          where the place stands, what Official is in one line, and the three
           levels as tiles; a tile or the button swaps in billing, name and
-          Checkout in the same ⋯ Boost sheet (MESITA-2815, MESITA-2817). */}
+          Checkout in the same pane (MESITA-2815, MESITA-2817). */}
       <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
         <div className="flex items-center gap-3">
           <span
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-              current ? "bg-foreground text-paper" : "bg-muted text-foreground",
+              current ? "text-white" : "bg-muted text-foreground",
             )}
+            style={current ? { backgroundColor: MAP_OFFICIAL_PIN_COLOR } : undefined}
           >
-            <Zap className="h-5 w-5" aria-hidden />
+            <BadgeCheck className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
             <h2 id="boost-title" className="text-base leading-tight font-semibold">
-              {current ?? "Not boosted yet"}
+              {current ?? "Not Official yet"}
             </h2>
             <p className="text-muted-foreground truncate text-xs" aria-live="polite">
               {loading
@@ -248,9 +249,9 @@ export function BoostPane({
         </div>
 
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Show {place.name} to more guests on the Map and Home. Guests see it
-          as <span className="text-foreground font-semibold">Boosted</span>,
-          never as a Mesita Selected pick.
+          Show {place.name} to more guests on the Map and Home. Guests see{" "}
+          <span className="text-foreground font-semibold">Official</span> and
+          its level beside its name, and a red pin on the Map.
         </p>
 
         <div className="grid grid-cols-3 gap-2">
@@ -276,41 +277,14 @@ export function BoostPane({
           onClick={() => openSheet(tier)}
           className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
         >
-          <Zap className="h-4 w-4" aria-hidden />
-          {current ? "Boost it too" : "Boost it"}
+          <BadgeCheck className="h-4 w-4" aria-hidden />
+          {current ? "Back it too" : "Make it Official"}
         </button>
-      </div>
-
-      {/* MESITA SELECTED, THE SAME LADDER (Pato, MESITA-2869: "boost and
-          select in the same page … it must be same direction"). Mesita's own
-          pick, `places.selected`: shown here, never sold, never set here. */}
-      <div className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-              place.selected ? "text-white" : "bg-muted text-foreground",
-            )}
-            style={place.selected ? { backgroundColor: MAP_MESITA_SELECTED_PIN_COLOR } : undefined}
-          >
-            <Sparkles className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <h3 className="text-base leading-tight font-semibold">Mesita Selected</h3>
-            <p className="text-muted-foreground truncate text-xs">
-              {place.selected ? "Picked by Mesita" : "Not selected yet"}
-            </p>
-          </div>
-        </div>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Mesita&apos;s own pick: a red pin on the Map and Search and a red
-          check beside its name. Mesita chooses it; it can&apos;t be bought.
-        </p>
       </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Boost level.{" "}
+          Couldn&apos;t load this place&apos;s Official level.{" "}
           <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
@@ -319,7 +293,7 @@ export function BoostPane({
 
       {mine.length > 0 && (
         <div>
-          <p className="text-sm font-semibold">Your Boost</p>
+          <p className="text-sm font-semibold">Your backing</p>
           <div className="mt-2">
             <SettingsGroup>
               {mine.map((b, i) => (
@@ -328,7 +302,7 @@ export function BoostPane({
                   <div className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm">
                     <span className="min-w-0 flex-1">
                       <span className="font-semibold">
-                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Boost"}
+                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Official"}
                       </span>
                       <span className="text-muted-foreground"> · {b.interval === "year" ? "Yearly" : "Monthly"}</span>
                       <span className="text-muted-foreground block text-xs">
@@ -362,13 +336,13 @@ export function BoostPane({
       <LocalDialog
         open={cancelling != null}
         onClose={() => (cancelBusy ? undefined : setCancelling(null))}
-        ariaLabel="Cancel this Boost"
+        ariaLabel="Cancel your backing"
       >
         <div className="flex flex-col gap-3 p-5 text-center">
           <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <XCircle className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className={SHEET_TITLE_CLASS}>Cancel this Boost?</h2>
+          <h2 className={SHEET_TITLE_CLASS}>Cancel your backing?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
             It stops renewing and stays on until {formatDate(cancelling?.current_period_end ?? null)}.
           </p>
@@ -398,17 +372,17 @@ export function BoostPane({
   );
 }
 
-/** The Boost sheet on a Google-only card (MESITA-2797): no Mesita row, so
+/** The Official tab on a Google-only card (MESITA-2797): no Mesita row, so
  *  nothing to back yet. */
 export function BoostUnavailable() {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
       <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
-        <Zap className="h-7 w-7" aria-hidden />
+        <BadgeCheck className="h-7 w-7" aria-hidden />
       </span>
-      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Boost isn&apos;t open here yet</h3>
+      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Official isn&apos;t open here yet</h3>
       <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
-        You can boost this place once it has its Mesita profile.
+        You can make this place Official once it has its Mesita profile.
       </p>
     </div>
   );
