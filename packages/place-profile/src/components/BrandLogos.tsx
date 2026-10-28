@@ -14,17 +14,34 @@ import { Facebook, Instagram } from "./brand-icons";
 // channel row reads as three of one shape. It replaced a red ring around a
 // white disc holding the four-colour G, which read as a target.
 // Review cards use the larger tile; the header row uses compact.
-export function GoogleLogo({ compact = false }: { compact?: boolean }) {
+export function GoogleLogo({
+  compact = false,
+  tiny = false,
+}: {
+  compact?: boolean;
+  /** 16px, for a text line (the Reviews list's privacy line, MESITA-2927). */
+  tiny?: boolean;
+}) {
   return (
     <div
       className={
-        "flex shrink-0 items-center justify-center rounded-lg bg-[#EA4335] " +
-        (compact ? "h-6 w-6" : "h-8 w-8")
+        "flex shrink-0 items-center justify-center bg-[#EA4335] " +
+        (tiny
+          ? "h-4 w-4 rounded"
+          : compact
+            ? "h-6 w-6 rounded-lg"
+            : "h-8 w-8 rounded-lg")
       }
     >
       <svg
         viewBox="0 0 48 48"
-        className={compact ? "h-3.5 w-3.5 fill-white" : "h-4 w-4 fill-white"}
+        className={
+          tiny
+            ? "h-2.5 w-2.5 fill-white"
+            : compact
+              ? "h-3.5 w-3.5 fill-white"
+              : "h-4 w-4 fill-white"
+        }
         aria-hidden
       >
         <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />

@@ -94,11 +94,8 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Facebook Summary");
     expect(document.body.innerHTML).toContain("Reserve a table");
     expect(document.body.innerHTML).toContain("Directions in Google Maps");
-    // No sort row and no count above the list (MESITA-2618): the header's
-    // Google column already says how many.
-    expect(reviews).not.toContain("Newest");
-    expect(reviews).not.toContain("Highest");
-    expect(reviews).not.toContain("Lowest");
+    // No count above the list (MESITA-2618): the header's Google column
+    // already says how many.
     expect(reviews).not.toContain("484 reviews");
   });
 
@@ -139,6 +136,6 @@ describe("Reviews is a vertical list", () => {
       expect(html).not.toContain(name);
     }
     expect(html).not.toContain("googleusercontent");
-    expect(html).toContain("Reviewer names are hidden");
+    expect(html).toContain("Names hidden for privacy");
   });
 });

@@ -26,9 +26,25 @@ import { OutboundLink } from "./location-hours";
 // The Newest · Highest · Lowest chips and the "395 reviews" line are gone:
 // the header's Google column already prints the count ("4.9 ★ (395)"), and
 // the one order is newest first.
+//
+// SORT IS BACK AS ONE MENU (Pato, MESITA-2927: "add something to sort
+// reviews by ... time or best or worst"). Not the old chip row: a small
+// "Newest ▾" pill at the right end of the privacy line, so the first review
+// stays where it was. Newest · Best · Worst, over the reviews we store (the
+// newest 100, render/src/reviews.ts), ties newest first. Google's own
+// "relevant" order would need a second scrape, so it is not offered.
+// The red G moved off every row to that line: it says the source once.
 
 /** How many reviews the list shows before the next Show more. */
 export const REVIEW_PAGE = 5;
+
+type ReviewSort = "newest" | "best" | "worst";
+
+const SORT_LABEL: Record<ReviewSort, string> = {
+  newest: "Newest",
+  best: "Best",
+  worst: "Worst",
+};
 
 function reviewTimeMs(date: string): number {
   const t = Date.parse(date);
@@ -56,7 +72,7 @@ function LeaveGoogleReview({
     <OutboundLink
       url={url}
       onOpenLink={onOpenLink}
-      className="border-border text-foreground hover:bg-muted mt-4 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold"
+      className="bg-card text-card-foreground hover:bg-card/80 mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold"
     >
       <GoogleLogo compact />
       Leave a review on Google
@@ -73,13 +89,18 @@ export function GoogleReviewsBox({
 }) {
   const reviewUrl = place.reviews_maps.google_review_url;
   const [shown, setShown] = useState(REVIEW_PAGE);
+  const [sort, setSort] = useState<ReviewSort>("newest");
   const reviews = place.google_reviews;
   const sorted = useMemo(
     () =>
-      [...reviews].sort(
-        (a, b) => reviewTimeMs(b.date) - reviewTimeMs(a.date),
-      ),
-    [reviews],
+      [...reviews].sort((a, b) => {
+        if (sort === "best" && a.rating !== b.rating)
+          return b.rating - a.rating;
+        if (sort === "worst" && a.rating !== b.rating)
+          return a.rating - b.rating;
+        return reviewTimeMs(b.date) - reviewTimeMs(a.date);
+      }),
+    [reviews, sort],
   );
 
   // NO REVIEWS YET (Pato, MESITA-2682: "write the frontend in the case a
@@ -99,15 +120,30 @@ export function GoogleReviewsBox({
   }
   return (
     <section className="flex flex-col pb-4" aria-label="Reviews">
-      <p className="text-muted-foreground pt-4 text-xs">
-        Reviewer names are hidden to respect their privacy.
-      </p>
+      <div className="text-muted-foreground flex items-center gap-1.5 pt-4 text-xs">
+        <GoogleLogo tiny />
+        <span className="flex-1">Names hidden for privacy</span>
+        {sorted.length > 1 && (
+          <select
+            aria-label="Sort reviews"
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as ReviewSort);
+              setShown(REVIEW_PAGE);
+            }}
+            className="bg-card text-foreground -my-2 h-8 cursor-pointer rounded-full px-3 text-xs font-semibold"
+          >
+            {(Object.keys(SORT_LABEL) as ReviewSort[]).map((key) => (
+              <option key={key} value={key}>
+                {SORT_LABEL[key]}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
       <ul className="divide-border divide-y">
         {sorted.slice(0, shown).map((review, i) => (
-          <li
-            key={`google-${review.date}-${i}`}
-            className="py-4"
-          >
+          <li key={`google-${review.date}-${i}`} className="py-4">
             <ReviewCard review={review} />
           </li>
         ))}
@@ -116,7 +152,7 @@ export function GoogleReviewsBox({
         <button
           type="button"
           onClick={() => setShown((n) => n + REVIEW_PAGE)}
-          className="border-border text-foreground hover:bg-muted w-full border-t py-3 text-sm font-semibold"
+          className="bg-muted text-foreground hover:bg-muted/70 mx-auto mt-2 rounded-full px-5 py-2.5 text-sm font-semibold"
         >
           Show more
         </button>
