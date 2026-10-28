@@ -9,6 +9,9 @@ import {
   cancelBackingAtPeriodEnd,
   cancelConsumerBackings,
   openBackingCheckout,
+  reconcileStaleBacking,
+  STALE_LOOKUP_GIVE_UP_MS,
+  staleCheckoutVerdict,
   type StripeCall,
 } from "./boost.ts";
 
@@ -152,4 +155,89 @@ Deno.test("cancel-boost: a failed row write answers 500, never ok:true", async (
   const reply = await cancelBackingAtPeriodEnd(admin, stripe, { id: "b-1", stripe_subscription_id: "sub_1" });
   assertEquals(reply.status, 500);
   assertEquals(reply.body.ok, false);
+});
+
+// ── MESITA-2857: the hourly sync settles `open` rows older than a day ─────
+
+const NOW = Date.parse("2026-10-28T12:00:00Z");
+const STALE_ROW = { id: "b-9", stripe_checkout_session_id: "cs_9", created_at: "2026-10-27T00:00:00Z" };
+const PAID_SUB = { id: "sub_9", status: "active", customer: "cus_9", current_period_end: 1893456000 };
+
+Deno.test("sync: the verdict on a stale Checkout follows Stripe, never the clock", () => {
+  assertEquals(staleCheckoutVerdict({ status: "complete", subscription: PAID_SUB }), "confirm");
+  assertEquals(staleCheckoutVerdict({ status: "open", subscription: null }), "expire");
+  assertEquals(staleCheckoutVerdict({ status: "expired", subscription: null }), "drop");
+  assertEquals(staleCheckoutVerdict({ status: "complete", subscription: null }), "keep");
+  assertEquals(staleCheckoutVerdict({}), "keep");
+});
+
+Deno.test("sync: a guest who paid and never came back is confirmed, not dropped", async () => {
+  const { admin, log } = fakeAdmin({});
+  const { stripe, calls } = fakeStripe({
+    "GET checkout/sessions/cs_9": { id: "cs_9", status: "complete", subscription: PAID_SUB },
+  });
+  assertEquals(await reconcileStaleBacking(admin, stripe, STALE_ROW, NOW), "confirmed");
+  assertEquals(calls, ["GET checkout/sessions/cs_9"]);
+  assertEquals(log, ["update"]);
+});
+
+Deno.test("sync: an expired, unpaid Checkout drops its row", async () => {
+  const { admin, log } = fakeAdmin({});
+  const { stripe } = fakeStripe({ "GET checkout/sessions/cs_9": { status: "expired", subscription: null } });
+  assertEquals(await reconcileStaleBacking(admin, stripe, STALE_ROW, NOW), "dropped");
+  assertEquals(log, ["delete"]);
+});
+
+Deno.test("sync: a still-payable Checkout is expired at Stripe before its row goes", async () => {
+  const { admin, log } = fakeAdmin({});
+  const { stripe, calls } = fakeStripe({ "GET checkout/sessions/cs_9": { status: "open", subscription: null } });
+  assertEquals(await reconcileStaleBacking(admin, stripe, STALE_ROW, NOW), "dropped");
+  assertEquals(calls, ["GET checkout/sessions/cs_9", "POST checkout/sessions/cs_9/expire"]);
+  assertEquals(log, ["delete"]);
+});
+
+Deno.test("sync: a failed expire keeps the row (the guest may still pay)", async () => {
+  const { admin, log } = fakeAdmin({});
+  const { stripe } = fakeStripe({
+    "GET checkout/sessions/cs_9": { status: "open", subscription: null },
+    "POST checkout/sessions/cs_9/expire": new Error("stripe down"),
+  });
+  assertEquals(await reconcileStaleBacking(admin, stripe, STALE_ROW, NOW), "kept");
+  assertEquals(log, []);
+});
+
+Deno.test("sync: Stripe unreachable keeps the row; after a week it gives up", async () => {
+  const { stripe } = fakeStripe({ "GET checkout/sessions/cs_9": new Error("stripe down") });
+  const fresh = fakeAdmin({});
+  assertEquals(await reconcileStaleBacking(fresh.admin, stripe, STALE_ROW, NOW), "kept");
+  assertEquals(fresh.log, []);
+  const old = fakeAdmin({});
+  const later = Date.parse(STALE_ROW.created_at) + STALE_LOOKUP_GIVE_UP_MS + 1;
+  assertEquals(await reconcileStaleBacking(old.admin, stripe, STALE_ROW, later), "dropped");
+  assertEquals(old.log, ["delete"]);
+});
+
+Deno.test("sync: a paid session whose row write fails keeps the row for the next run", async () => {
+  const { admin, log } = fakeAdmin({ update: [FAIL] });
+  const { stripe } = fakeStripe({
+    "GET checkout/sessions/cs_9": { status: "complete", subscription: PAID_SUB },
+  });
+  assertEquals(await reconcileStaleBacking(admin, stripe, STALE_ROW, NOW), "kept");
+  assertEquals(log, ["update"]);
+  const late = fakeAdmin({ update: [FAIL] });
+  const later = Date.parse(STALE_ROW.created_at) + STALE_LOOKUP_GIVE_UP_MS + 1;
+  assertEquals(await reconcileStaleBacking(late.admin, stripe, STALE_ROW, later), "kept");
+  assertEquals(late.log, ["update"]);
+});
+
+Deno.test("sync: no Stripe key never drops a row that reached Checkout; one that never did goes", async () => {
+  const a = fakeAdmin({});
+  assertEquals(await reconcileStaleBacking(a.admin, null, STALE_ROW, NOW), "kept");
+  assertEquals(a.log, []);
+  const b = fakeAdmin({});
+  assertEquals(
+    await reconcileStaleBacking(b.admin, null, { ...STALE_ROW, stripe_checkout_session_id: null }, NOW),
+    "dropped",
+  );
+  assertEquals(b.log, ["delete"]);
 });
