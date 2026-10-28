@@ -6,8 +6,9 @@
 //     every ready Mesita row in the circle → gates → Popularity × s
 //     → the top `map.placesShown`
 //   Catalog (Home)         (point or nothing, NO radius)
-//     every ready Mesita row → gates → Proximity × Popularity × s
-//     → the whole ranked list; the client pages it (`map.catalogPageSize`)
+//     every ready Mesita row (scoring columns, walked by id) → gates →
+//     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
+//     the client pages it (`map.catalogPageSize`)
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -40,6 +41,7 @@ import {
 } from "./area-score.ts";
 import { PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
+import { chunked, ID_CHUNK } from "./postgrest.ts";
 
 /** Which pipeline runs: the Map (the Search tab) or the Catalog (Home),
  *  MESITA-2909. Chat ranks like the Catalog. */
@@ -290,9 +292,11 @@ export type MesitaPoolQuery<Q> =
 /** A supabase-js select, seen structurally: what the EFs hand
  *  `mesitaPoolQuery` (the full generic type is too deep to infer). */
 export interface PoolBuilder extends MesitaPoolQuery<PoolBuilder> {
+  gt: (col: string, val: unknown) => PoolBuilder;
+  in: (col: string, vals: readonly unknown[]) => PoolBuilder;
   limit: (n: number) => PromiseLike<{
     data: unknown[] | null;
-    error: { message: string } | null;
+    error: { message: string; code?: string } | null;
   }>;
 }
 
@@ -326,6 +330,165 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
   // A capped pool must be the same slice every time: without an order,
   // Postgres may hand back any N rows once the area holds more than the cap.
   return q.order("id", { ascending: true });
+}
+
+// ── The Catalog's read (MESITA-2921) ────────────────────────────────────
+//
+// A capped read ordered by id is an id-ordered slice, and ids are UUIDs: past
+// 1000 active places Home ranked an effectively random 1000, not the best.
+// So the Catalog reads in two passes:
+//   1. the scoring columns only, walked by id (`.gt("id", last)`) page after
+//      page until an EMPTY page, at most CATALOG_SCAN_PAGES_MAX pages;
+//   2. ranked with the shared scorer, the best CATALOG_RETURN_MAX kept, and
+//      only their cards read, ID_CHUNK ids per `.in()`, in parallel.
+// The page stops on an EMPTY page, not a short one: a short page would end
+// the walk early if `max_rows` ever dropped below CATALOG_SCAN_PAGE. The
+// cost is one extra read. Above the cap the cut is by id again (`scanCapped`,
+// MESITA-2921's trigger for a SQL ranking).
+
+/** Pass-1 page size: PostgREST's `max_rows` (config.toml). */
+export const CATALOG_SCAN_PAGE = 1000;
+/** Pass-1 page cap: 10,000 rows, inside the ~2 s Edge CPU budget. */
+export const CATALOG_SCAN_PAGES_MAX = 10;
+/** How many ranked places the Catalog returns. */
+export const CATALOG_RETURN_MAX = 1000;
+/** Everything `mesitaCandidate` reads, and nothing else. */
+export const CATALOG_SCORING_COLUMNS =
+  "id,lat,lng,google_stars_overall,google_review_count,family_keys,boost_tier";
+
+/** A failed Catalog read: which pass and which page or chunk. */
+export class CatalogReadError extends Error {
+  constructor(
+    readonly pass: 1 | 2,
+    /** The pass-1 page or the pass-2 chunk, from 0. */
+    readonly at: number,
+    readonly pgCode: string | null,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** A fresh `profiles` select of these columns, `state = active`. */
+export type CatalogRead = (columns: string) => PoolBuilder;
+
+type CatalogGates = { families: readonly string[] };
+
+/** Pass 1: every gated row's scoring columns, in id order. */
+export async function walkScoringRows(
+  read: CatalogRead,
+  cfg: Pick<DiscoveryConfig, "general">,
+  gates: CatalogGates,
+  pagesMax = CATALOG_SCAN_PAGES_MAX,
+): Promise<{ rows: PoolRow[]; scanCapped: boolean; lastId: string | null }> {
+  const rows: PoolRow[] = [];
+  let last: string | null = null;
+  for (let page = 0; page < pagesMax; page++) {
+    let q = mesitaPoolQuery(read(CATALOG_SCORING_COLUMNS), cfg, {
+      center: null,
+      radiusKm: 0,
+      families: gates.families,
+    });
+    // The last id from the page Postgres returned, never a re-sorted one.
+    if (last !== null) q = q.gt("id", last);
+    const { data, error } = await q.limit(CATALOG_SCAN_PAGE);
+    if (error) throw new CatalogReadError(1, page, error.code ?? null, error.message);
+    const batch = (data ?? []) as PoolRow[];
+    if (batch.length === 0) return { rows, scanCapped: false, lastId: last };
+    rows.push(...batch);
+    last = String(batch[batch.length - 1].id);
+  }
+  // Every page was full and no empty page was seen.
+  return { rows, scanCapped: true, lastId: last };
+}
+
+/** Pass 2: the cards for these ids, chunked, in parallel, same gates. */
+export async function cardsForIds(
+  read: CatalogRead,
+  cfg: Pick<DiscoveryConfig, "general">,
+  gates: CatalogGates,
+  cardColumns: string,
+  ids: readonly string[],
+): Promise<{ rows: unknown[]; chunks: number }> {
+  const parts = chunked([...ids], ID_CHUNK);
+  const results = await Promise.all(parts.map(async (chunk, i) => {
+    // `limit` is the builder's await point; a chunk never holds more rows.
+    const { data, error } = await mesitaPoolQuery(read(cardColumns), cfg, {
+      center: null,
+      radiusKm: 0,
+      families: gates.families,
+    }).in("id", chunk).limit(chunk.length);
+    if (error) throw new CatalogReadError(2, i, error.code ?? null, error.message);
+    return data ?? [];
+  }));
+  return { rows: results.flat(), chunks: parts.length };
+}
+
+export type CatalogPoolSummary = AreaPoolSummary & {
+  /** Rows that passed the gates and were ranked. `read` is pass 1's rows,
+   *  `returned` the places emitted after pass 2. */
+  total: number;
+  /** Pass-2 reads. */
+  chunks: number;
+  /** Ten full pages and no empty one: the cut is by id again past here. */
+  scanCapped: boolean;
+  /** Kept ids pass 2 did not return (no backfill from rank 1001). */
+  missing: number;
+};
+
+/**
+ * The Catalog pool (MESITA-2921): rank every gated place, keep the best
+ * CATALOG_RETURN_MAX, read only their cards. Ranking is `selectAreaPool`'s,
+ * so the order (`final` desc, then distance, then id) and every `area`
+ * breakdown are the scorer's; the card comes from pass 2 and the breakdown
+ * from pass 1's values, so a row edited between the two reads can disagree.
+ */
+export async function selectCatalogPool<T extends PoolRow>(deps: {
+  read: CatalogRead;
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
+  location: AreaLocation;
+  families: readonly string[];
+  cardColumns: string;
+  /** Shapes pass 2's raw rows (the EF's `wirePlaces`). */
+  wire: (rows: unknown[]) => T[];
+  pagesMax?: number;
+}): Promise<{ places: AreaPoolPlace[]; summary: CatalogPoolSummary; lastId: string | null }> {
+  const gates = { families: deps.families };
+  const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
+  const ranked = await selectAreaPool({
+    surface: "catalog",
+    location: deps.location,
+    families: deps.families,
+    mesitaRows: walk.rows,
+    cfg: deps.cfg,
+  });
+  const kept = ranked.places.slice(0, CATALOG_RETURN_MAX);
+  const cards = await cardsForIds(
+    deps.read,
+    deps.cfg,
+    gates,
+    deps.cardColumns,
+    kept.map((p) => p.id),
+  );
+  const byId = new Map(deps.wire(cards.rows).map((r) => [String(r.id), r]));
+  const places: AreaPoolPlace[] = [];
+  for (const p of kept) {
+    const card = byId.get(p.id);
+    if (!card) continue;
+    places.push({ ...card, distance_km: p.distance_km, area: p.area } as AreaPoolPlace);
+  }
+  return {
+    places,
+    summary: {
+      ...ranked.summary,
+      returned: places.length,
+      total: ranked.places.length,
+      chunks: cards.chunks,
+      scanCapped: walk.scanCapped,
+      missing: kept.length - places.length,
+    },
+    lastId: walk.lastId,
+  };
 }
 
 // ── Chat's Mesita read (MESITA-2339) ────────────────────────────────────

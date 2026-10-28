@@ -56,6 +56,7 @@ import {
   type AreaPool,
   type Place,
 } from "@/lib/api/places";
+import { EFError } from "@/lib/api/_invoke";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
@@ -179,6 +180,9 @@ export function CatalogRails() {
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // Try again re-runs the fetch for the same request key (MESITA-2921): the
+  // old link pointed at the page already open, so nothing refetched.
+  const [retry, setRetry] = useState(0);
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const locationSettled = useUserLocationSettled();
@@ -224,6 +228,13 @@ export function CatalogRails() {
         setFetchError(null);
       } catch (err) {
         if (cancelled) return;
+        // The EF's code and requestId join this failure to its
+        // `catalog_page_error` log line (MESITA-2921).
+        const ef = err instanceof EFError ? err : null;
+        console.warn("[catalog] load failed", {
+          code: ef?.code ?? null,
+          requestId: ef?.body?.requestId ?? null,
+        });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
         setPool({ kind: "none", places: [] });
       }
@@ -234,7 +245,7 @@ export function CatalogRails() {
       cancelAnimationFrame(raf);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, requestKey]);
+  }, [supabase, requestKey, retry]);
 
   // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
   // the create lands (Pato, MESITA-2683: "the profile has been created but i
@@ -502,8 +513,8 @@ export function CatalogRails() {
       <EmptyState
         icon={Compass}
         title="Couldn't load the catalog"
-        description="Tonight's places didn't come back. Pull the tab again in a moment."
-        action={{ label: "Try again", href: CONSUMER_ROUTES.home }}
+        description="Tonight's places didn't come back. Try again in a moment."
+        action={{ label: "Try again", onClick: () => setRetry((n) => n + 1) }}
       />,
     );
   }
