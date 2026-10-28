@@ -94,7 +94,7 @@ import {
 } from "@/lib/use-user-location";
 import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
-import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import type { OpenedGooglePlace } from "@/lib/use-open-google-place";
 import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import {
   createdPlaceId,
@@ -144,6 +144,7 @@ import {
   type LoadCoords,
 } from "./search-catalog-overlays";
 import { AddPlaceSheet } from "./AddPlaceSheet";
+import { GeneratePlaceDialog, type GenerateTarget } from "./GeneratePlaceDialog";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -221,7 +222,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
-  const openGooglePlace = useOpenGooglePlace();
   // Every place open on this screen: the surface URL, and a full load when
   // a push never moves the screen (MESITA-2816).
   const openPlaceHref = useOpenPlaceHref();
@@ -344,6 +344,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // profile"): the rail's Add card opens AddPlaceSheet; MESITA-2885's Add
   // mode on this bar is gone.
   const [addOpen, setAddOpen] = useState(false);
+  // Generate's confirm (MESITA-2935). The target outlives `open` so the
+  // dialog's exit fade keeps its text.
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateTarget, setGenerateTarget] = useState<GenerateTarget | null>(
+    null,
+  );
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -685,27 +691,34 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
-  // creates a Mesita Place. A held Google Place ID comes back `created:
-  // false` and opens as is; a new one is live immediately, ugly, and waits
-  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
-  // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
-  // once (MESITA-2311), which draws the card the guest tapped as the profile
-  // with Google's photo and a Creating fact before its category while
-  // get-or-create runs there, then becomes the profile (MESITA-2307). The
-  // catalog row rides along when the open came from a pin or a rail card;
-  // a bare prediction carries its name and address.
+  // creates a Mesita Place. Nothing creates on render or on a pin tap.
+  // Reached only from `openGoogleOnly`. The tap asks first (Pato,
+  // MESITA-2935): the Generate dialog names the place, its Generate runs
+  // get-or-create and waits, and only the REAL profile opens — no draft
+  // profile with a Creating fact. The catalog row's name and address ride
+  // along when the open came from a rail card or a pin.
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction, card?: Place) => {
-      resetSearchSession();
-      openGooglePlace(
-        card ?? {
-          name: prediction.mainText,
-          google_place_id: prediction.placeId,
-          address: prediction.secondaryText || null,
-        },
-      );
+      setGenerateTarget({
+        gid: prediction.placeId,
+        name: card?.name || prediction.mainText,
+        address: card?.address || prediction.secondaryText || null,
+      });
+      setGenerateOpen(true);
     },
-    [openGooglePlace, resetSearchSession],
+    [],
+  );
+
+  const onGenerated = useCallback(
+    (opened: OpenedGooglePlace, target: GenerateTarget) => {
+      setGenerateOpen(false);
+      resetSearchSession();
+      if (opened.created) {
+        toast.success(`${target.name} is on Mesita. Vote to enrich its profile.`);
+      }
+      openPlaceHref(opened.href);
+    },
+    [openPlaceHref, resetSearchSession],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
@@ -841,8 +854,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // A rail card's tap is THE explicit open (Pato, MESITA-2824: a tap that
-  // only selected read as "nothing opens"). A Google-only card goes to its
-  // opening screen, which is where get-or-create runs — the tap itself
+  // only selected read as "nothing opens"). A Google-only card opens the
+  // Generate dialog, whose confirm runs get-or-create — the tap itself
   // creates nothing (MESITA-2305 holds: no create on a select, a pin's
   // first tap, a prefetch or a render).
   const handleOpenPlace = (place: Place) => {
@@ -1149,14 +1162,20 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             }}
           />
         )}
-        {/* The Add card's sheet: a Google search whose row button creates the
-            profile (the opening screen's get-or-create) or opens the Mesita
-            place (MESITA-2902). */}
+        {/* The Add card's sheet: a Google search whose row button generates
+            the profile (through the Generate dialog, MESITA-2935) or opens
+            the Mesita place (MESITA-2902). */}
         <AddPlaceSheet
           open={addOpen}
           onClose={() => setAddOpen(false)}
           origin={searchOrigin}
           onPick={openGoogleOnly}
+        />
+        <GeneratePlaceDialog
+          open={generateOpen}
+          target={generateTarget}
+          onClose={() => setGenerateOpen(false)}
+          onGenerated={onGenerated}
         />
       </div>
     </div>

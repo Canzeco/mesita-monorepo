@@ -224,25 +224,22 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(client).not.toContain("fetchGooglePlacePreview");
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
-    // The explicit open goes to the opening screen at once (MESITA-2311);
-    // Search itself never creates. The ONE place that creates is the opening
-    // screen's getOrCreateGooglePlace, reached only from that screen.
+    // The explicit open asks first (MESITA-2935): it opens the Generate
+    // dialog, whose confirm tap runs getOrCreateGooglePlace.
     expect(client).not.toContain("apiCreateProject(");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
-      client.indexOf("const openGoogleOnly"),
+      client.indexOf("const onGenerated"),
     );
-    // The card rides along: the opening screen draws it as the profile's
-    // first draft (MESITA-2307).
-    expect(open).toContain("openGooglePlace(");
+    expect(open).toContain("setGenerateOpen(true)");
     const opener = readFileSync(
       join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
       "utf8",
     );
     expect(opener.match(/apiCreateProject\(/g)?.length).toBe(1);
     // ONE TAP OPENS a rail card (MESITA-2824), and still never creates: the
-    // tap goes to the opening screen, which is where get-or-create runs
-    // (MESITA-2305 holds). No select-first branch stands between the tap
+    // tap opens the Generate dialog, whose confirm runs get-or-create
+    // (MESITA-2305 holds, MESITA-2935). No select-first branch stands between the tap
     // and the open any more.
     const openPlace = client.slice(
       client.indexOf("const handleOpenPlace"),

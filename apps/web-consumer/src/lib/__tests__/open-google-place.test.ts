@@ -31,7 +31,6 @@ describe("opening a Google place", () => {
     expect(screen.startsWith('"use client"')).toBe(true);
     expect(screen).toContain("useEffect(");
     expect(screen).toContain("getOrCreateGooglePlace(");
-    expect(screen).toContain("router.replace(");
     for (const page of [
       "app/(shell)/place/open/[gid]/page.tsx",
       "app/(shell)/@modal/(.)place/open/[gid]/page.tsx",

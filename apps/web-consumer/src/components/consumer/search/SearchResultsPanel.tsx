@@ -3,7 +3,8 @@
 // Live text-search results over the map: one merged lane (max 10), no
 // source section labels. Each row is the Add a place sheet's row
 // (MESITA-2931): a mark, the name over its address, and for a Place one
-// button — Create profile when Google holds it alone, Open when Mesita does.
+// button — Generate when Google holds it alone (MESITA-2935, was Create
+// profile), Open when Mesita does.
 // The MARK still tells the two entities apart (MESITA-1404): a Place wears
 // the pin, a Location (a city, a region) the map and no button. Tapping a
 // row's body anchors the map (MESITA-1405); the button opens or creates.
