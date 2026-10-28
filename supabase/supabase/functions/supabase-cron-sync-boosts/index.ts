@@ -80,7 +80,8 @@ serveJson("supabase-cron-sync-boosts", async (req) => {
   for (const row of due ?? []) {
     try {
       const sub = await stripe("GET", `subscriptions/${encodeURIComponent(row.stripe_subscription_id!)}`);
-      await admin.from("place_backings").update(subscriptionPatch(sub)).eq("id", row.id);
+      const { error: writeErr } = await admin.from("place_backings").update(subscriptionPatch(sub)).eq("id", row.id);
+      if (writeErr) throw new Error(`backing_write: ${writeErr.message}`);
       synced++;
     } catch (err) {
       failed++;

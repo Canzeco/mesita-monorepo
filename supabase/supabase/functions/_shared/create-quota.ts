@@ -58,13 +58,13 @@ export async function consumeConsumerCreateQuota(
     .eq("consumer_id", consumerId)
     .gte("created_at", since);
   if (cntErr || count === null) {
-    await admin.from("place_creation_attempts").delete().eq("id", attempt.id);
+    await withdrawAttempt(admin, attempt.id);
     return reject(500, { error: `create_quota: ${cntErr?.message ?? "no count"}` });
   }
 
   if (count > perDay) {
     // Withdraw the rejected attempt so retries don't extend the lockout.
-    await admin.from("place_creation_attempts").delete().eq("id", attempt.id);
+    await withdrawAttempt(admin, attempt.id);
     return reject(429, {
       code: "create_quota_exceeded",
       error: "You've reached the daily limit for adding new places. Try again tomorrow.",
@@ -72,4 +72,11 @@ export async function consumeConsumerCreateQuota(
   }
 
   return { ok: true };
+}
+
+/** Delete our own attempt row. A failure is logged and swallowed: the caller
+ *  is already rejecting, and a stranded row only lengthens the window. */
+async function withdrawAttempt(admin: SupabaseClient, attemptId: string): Promise<void> {
+  const { error } = await admin.from("place_creation_attempts").delete().eq("id", attemptId);
+  if (error) console.error("[create_quota_rollback_failed]", attemptId, error.message);
 }
