@@ -396,6 +396,10 @@ export async function joinVipClass(
     p_plan: null,
     p_note: note,
     p_note_set: true,
+    p_partner: null,
+    p_partner_set: false,
+    p_vip_until: null,
+    p_vip_until_set: false,
     p_actor: null,
   });
   if (rpcErr) return { ok: false, error: `consumer_write: ${rpcErr.message}`, status: 500 };
