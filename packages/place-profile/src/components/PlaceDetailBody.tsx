@@ -104,7 +104,7 @@ export function PlaceDetailBody({
           {tab === "place" && !create && (
             <>
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
-                  presentation · location · hours · links · Mesita Families
+                  presentation · location · hours · links · Families
                   (MESITA-2924) · tags. The
                   Created/Updated dates are admin's Metadata card, never
                   here (MESITA-2788). Popular times rides

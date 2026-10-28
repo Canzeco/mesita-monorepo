@@ -17,7 +17,7 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
-// ── 9b. Mesita Families ─────────────────────────────────────────────────
+// ── 9b. Families ────────────────────────────────────────────────────────
 
 // Pato, MESITA-2924: "add a new section in overview above mesita tags where
 // you call it Mesita Families, there you mention all". The place's families
@@ -25,10 +25,14 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 // family order. No families, no box. Each wears the Tags chip
 // (PLACE_OUTLINE_CHIP_CLASS), emoji first (MESITA-2932: one chip, one type
 // size; the round semibold pill was a third treatment).
+//
+// The card is titled "Families", not "Mesita Families" (Pato, MESITA-2958:
+// "don't use word mesita families just say families"). Admin keeps the
+// longer name.
 export function FamiliesBox({ place }: { place: PlaceDetail }) {
   if (place.families.length === 0) return null;
   return (
-    <Box title="Mesita Families">
+    <Box title="Families">
       <div className="flex flex-wrap gap-2" data-place-families>
         {place.families.map((f) => (
           <span key={f.key} className={PLACE_OUTLINE_CHIP_CLASS}>
