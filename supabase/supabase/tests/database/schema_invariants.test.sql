@@ -1555,8 +1555,10 @@ select ok(
       -- MESITA-2439 added `selected` (Selected's value for other places).
       -- MESITA-2687: the weights table and the dead map keys are gone.
       -- MESITA-2703: Area's four sources replaced the stops, googleFill,
-      -- Proximity's stored reach and Selected; `params` holds Popularity only.
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity') = '{}'::jsonb
+      -- Proximity's stored reach and Selected; MESITA-2909 brought
+      -- `params.proximity` back with `halfKm` alone (MESITA-2972), so
+      -- `params` holds Proximity and Popularity only.
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
              ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount',
                       'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces',
@@ -1571,6 +1573,7 @@ select ok(
       and discovery_config #> '{name,fast,supers}' is null
       and discovery_config #> '{name,deep,supers}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfKm') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.
       and not exists (select 1 from jsonb_object_keys(enrichment_config) k where k like 'atlas%')
