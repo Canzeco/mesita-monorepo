@@ -1,34 +1,33 @@
 "use client";
 
 // Live text-search results over the map: one merged lane (max 10), no
-// source section labels. The MARK tells the two entities apart
-// (MESITA-1404): a Place wears the tone point — gray = Google's alone, ink =
-// a basic Mesita profile, red = Mesita Official — and a Location (a city, a
-// region) wears a location icon instead. The two semantics never share a mark: a colour
-// that means "we wrote a profile" cannot also mean "this is not a place".
-// Every row pick anchors the map (MESITA-1405).
+// source section labels. Each row is the Add a place sheet's row
+// (MESITA-2931): a mark, the name over its address, and for a Place one
+// button — Create profile when Google holds it alone, Open when Mesita does.
+// The MARK still tells the two entities apart (MESITA-1404): a Place wears
+// the pin, a Location (a city, a region) the map and no button. Tapping a
+// row's body anchors the map (MESITA-1405); the button opens or creates.
 
-import { MapPin, RotateCw, SearchX } from "lucide-react";
+import { Map as MapIcon, MapPin, RotateCw, SearchX } from "lucide-react";
 import { officialLabel } from "@mesita/place-profile";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/shared";
 import type { PlacePrediction } from "@/lib/api/place-search";
+import { PlaceActionRow } from "./PlaceActionRow";
 import {
   locationTypeLabel,
-  pinToneColor,
   predictionOnMesita,
   predictionPinTone,
 } from "./search-pins";
-import type { AddState } from "./add-state";
 
 export function SearchResultsPanel({
   query,
   searching,
   searchError,
   predictions,
-  addStates,
   onPick,
+  onAction,
   onClearSearch,
   onRetry,
 }: {
@@ -36,8 +35,10 @@ export function SearchResultsPanel({
   searching: boolean;
   searchError: string | null;
   predictions: PlacePrediction[];
-  addStates: Record<string, AddState>;
+  /** The row body: anchor the map (MESITA-1405). */
   onPick: (prediction: PlacePrediction) => void;
+  /** The row button: open the profile, or create it first (MESITA-2931). */
+  onAction: (prediction: PlacePrediction) => void;
   /** Dismiss the query and hand the map back its catalog rail. */
   onClearSearch?: () => void;
   /** Re-run the same query after a failure. */
@@ -106,13 +107,13 @@ export function SearchResultsPanel({
         )}
 
         {predictions.length > 0 && (
-          <div className="divide-border/60 divide-y">
+          <div className="divide-border divide-y">
             {predictions.map((p) => (
               <SuggestionLine
                 key={p.mesitaId ?? p.placeId}
                 prediction={p}
-                addState={addStates[p.placeId]}
                 onPick={onPick}
+                onAction={onAction}
               />
             ))}
           </div>
@@ -124,104 +125,64 @@ export function SearchResultsPanel({
 
 function SuggestionLine({
   prediction,
-  addState,
   onPick,
+  onAction,
 }: {
   prediction: PlacePrediction;
-  addState: AddState | undefined;
   onPick: (prediction: PlacePrediction) => void;
+  onAction: (prediction: PlacePrediction) => void;
 }) {
+  const spoken = `${prediction.mainText}${
+    prediction.secondaryText ? `, ${prediction.secondaryText}` : ""
+  }`;
+
   // Branch on `kind` BEFORE tone is ever computed: predictionPinTone answers
-  // "is this an Official place", and a Location has no profile to
-  // answer for — asking would silently paint a city as a gray Google place. The
-  // accessible label is the mark's spoken half: it names the ENTITY
-  // ("City"), never the absence of a profile.
+  // "is this an Official place", and a Location has no profile to answer
+  // for. The accessible label names the ENTITY ("City"), never the absence
+  // of a profile.
   if (prediction.kind === "location") {
     return (
-      <SuggestionRow
-        prediction={prediction}
-        ariaTail={locationTypeLabel(prediction.locationType)}
-        onPick={onPick}
+      <PlaceActionRow
         mark={
-          <MapPin
+          <MapIcon
             aria-hidden
-            className="text-muted-foreground h-3 w-3 shrink-0"
+            className="text-muted-foreground h-5 w-5"
             strokeWidth={2.25}
           />
         }
+        title={prediction.mainText}
+        subtitle={prediction.secondaryText}
+        onRowClick={() => onPick(prediction)}
+        rowLabel={`${spoken}, ${locationTypeLabel(prediction.locationType)}`}
       />
     );
   }
 
   const tone = predictionPinTone(prediction);
-  const added = addState === "added";
+  const onMesita = predictionOnMesita(prediction);
   // Three spoken answers over the three tones: a Mesita place that is not
   // Official has a profile, so it is not "No profile".
   // The word Enriched never reaches a guest (MESITA-2298).
   const toneLabel = tone === "official"
     ? (officialLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ?? "Mesita Official")
-    : predictionOnMesita(prediction)
+    : onMesita
       ? "Basic Mesita profile"
       : "No profile yet";
 
   return (
-    <SuggestionRow
-      prediction={prediction}
-      ariaTail={toneLabel}
-      onPick={onPick}
+    <PlaceActionRow
       mark={
-        <span
+        <MapPin
           aria-hidden
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ backgroundColor: pinToneColor(tone) }}
+          className="text-muted-foreground h-5 w-5"
+          strokeWidth={2.25}
         />
       }
-      added={added}
+      title={prediction.mainText}
+      subtitle={prediction.secondaryText}
+      onRowClick={() => onPick(prediction)}
+      rowLabel={`${spoken}, ${toneLabel}`}
+      action={{ onMesita, onClick: () => onAction(prediction) }}
     />
-  );
-}
-
-/** The one row shell both entities share — only the MARK and the spoken
- *  tail differ, so the lane stays visually one list. */
-function SuggestionRow({
-  prediction,
-  ariaTail,
-  mark,
-  added = false,
-  onPick,
-}: {
-  prediction: PlacePrediction;
-  ariaTail: string;
-  mark: React.ReactNode;
-  added?: boolean;
-  onPick: (prediction: PlacePrediction) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onPick(prediction)}
-      aria-label={`${prediction.mainText}${
-        prediction.secondaryText ? `, ${prediction.secondaryText}` : ""
-      }, ${ariaTail}`}
-      className="hover:bg-muted/50 flex w-full items-center gap-2 rounded-lg px-1 py-2.5 text-left transition"
-    >
-      {mark}
-      <span className="min-w-0 flex-1 truncate text-sm">
-        <span className="text-foreground font-medium">
-          {prediction.mainText}
-        </span>
-        {prediction.secondaryText && (
-          <span className="text-muted-foreground">
-            {" "}
-            · {prediction.secondaryText}
-          </span>
-        )}
-      </span>
-      {added && (
-        <span className="type-meta flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground">
-          Added
-        </span>
-      )}
-    </button>
   );
 }

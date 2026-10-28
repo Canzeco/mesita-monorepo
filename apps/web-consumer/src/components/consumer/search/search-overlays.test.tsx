@@ -343,8 +343,8 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
             mesitaId: "m-official",
           },
         ]}
-        addStates={{}}
         onPick={() => {}}
+        onAction={() => {}}
       />,
     );
     expect(html).toContain("Strana, Monterrey, Basic Mesita profile");

@@ -15,6 +15,7 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
+import { PlaceActionRow } from "./PlaceActionRow";
 import { predictionOnMesita } from "./search-pins";
 import { newSessionToken } from "./search-utils";
 
@@ -173,38 +174,19 @@ export function AddPlaceSheet({
             {results.map((row) => {
               const onMesita = predictionOnMesita(row);
               return (
-                <li
-                  key={row.mesitaId ?? row.placeId}
-                  className="flex items-center gap-3 py-3"
-                >
-                  <MapPin
-                    className="text-muted-foreground h-5 w-5 shrink-0"
-                    strokeWidth={2.25}
-                    aria-hidden
+                <li key={row.mesitaId ?? row.placeId}>
+                  <PlaceActionRow
+                    mark={
+                      <MapPin
+                        className="text-muted-foreground h-5 w-5"
+                        strokeWidth={2.25}
+                        aria-hidden
+                      />
+                    }
+                    title={row.mainText}
+                    subtitle={row.secondaryText}
+                    action={{ onMesita, onClick: () => pick(row) }}
                   />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold">
-                      {row.mainText}
-                    </span>
-                    {row.secondaryText ? (
-                      <span className="text-muted-foreground block truncate text-xs">
-                        {row.secondaryText}
-                      </span>
-                    ) : null}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => pick(row)}
-                    className={cn(
-                      "h-9 shrink-0 rounded-full px-4 text-sm font-semibold transition active:scale-[0.97]",
-                      onMesita
-                        ? "bg-muted text-foreground"
-                        : "bg-foreground text-paper",
-                    )}
-                    data-search-add-action={onMesita ? "open" : "create"}
-                  >
-                    {onMesita ? "Open" : "Create profile"}
-                  </button>
                 </li>
               );
             })}
