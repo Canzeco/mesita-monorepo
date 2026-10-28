@@ -108,7 +108,6 @@ export function enrichmentKnobs(cfg: KnobSource): EnrichmentKnobs {
 /** The profile fields the Scout's message is built from. */
 export const SAVED_KEYS = [
   "google_name",
-  "mesita_name",
   "name",
   "category",
   "category_label",
@@ -121,7 +120,7 @@ function text(value: unknown): string {
 
 /** The Scout's message for one place, from what the place already holds. */
 export function scoutInputFor(saved: Record<string, unknown>): string | null {
-  const name = text(saved.name) || text(saved.mesita_name) || text(saved.google_name);
+  const name = text(saved.name) || text(saved.google_name);
   if (!name) return null;
   const category = text(saved.category_label) || text(saved.category);
   return buildScoutInput({

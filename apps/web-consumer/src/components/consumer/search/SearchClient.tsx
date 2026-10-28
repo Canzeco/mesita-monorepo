@@ -19,22 +19,18 @@
 // keeps loading, the camera keeps its own rules, and typing only adds a pin
 // layer and swaps the bottom rail out. A viewport load is always just a load.
 //
-// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a Location or a
-// Place moves the camera to its coordinates and reloads the catalog there;
-// a Place becomes card ONE of the carousel — prepended after the operator's
-// cap, which governs the map query only — and its modal is
-// one more tap away, on the card or its pin. A Location (kind: "location")
-// is a camera destination: coordinates + viewport resolve on pick, never
-// per keystroke, and the viewport picks the zoom.
+// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a place moves the
+// camera to its coordinates and reloads the catalog there; it becomes card
+// ONE of the carousel — prepended after the operator's cap, which governs
+// the map query only — and its modal is one more tap away, on the card or
+// its pin.
 //
-// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849, Pato: "only if
-// it can be a mesita place … inside the allowed google categories and above
-// the allowed popularity"). The bar already turns a Google place outside
-// Mesita's types into a Location (MESITA-2778); a Google place under the
-// Area box's Minimum Popularity arrives `underFloor` (MESITA-2724 lists it
-// last) and its pick is a destination too — the camera lands there and the
-// Area reloads there, but no card is drawn for it, because that reload hides
-// every place under the same floor. A Mesita row is a Mesita place already.
+// THE BAR MAKES NO GOOGLE CALL (Pato, MESITA-2883: "completly remove Google
+// Places api frm Area Search"). It asks for Mesita names only (`mesita`
+// mode: Pay's engine), so no Autocomplete, no Text Search, no Location rows
+// and no Details call per pick; with no Google rows there is no Add-a-place
+// button either (MESITA-2879/2882's, which searched Google). Area itself
+// stopped calling Google in MESITA-2872.
 //
 // A Google-only result has no preview sheet and no Add button (MESITA-2298):
 // its SECOND tap (pin or rail card) is the explicit open — get-or-create on
@@ -76,7 +72,6 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
 import {
-  apiResolveLocationAnchor,
   apiSuggestPlacesWithIdle,
   type PlacePrediction,
 } from "@/lib/api/place-search";
@@ -130,9 +125,9 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import type { AddState } from "./add-state";
 import {
-  RAIL_ADD_ROWS,
-  RAIL_ROW_REM,
-  RAIL_VISIBLE_CARDS,
+  RAIL_LEAD_PAGES,
+  RAIL_PAGE_SHARE,
+  RAIL_PAGE_SIZE,
   SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
@@ -141,7 +136,6 @@ import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
-  anchorViewportBounds,
   boxAtSight,
   boxBounds,
   catalogIsStale,
@@ -155,9 +149,8 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Word is ONE search (MESITA-2322): Deep (Autocomplete · Text Search ·
-// Mesita names) once the guest has stopped typing for Discovery › Word's
-// idle seconds. The EF returns that number with every answer; until the
+// Word is ONE search (MESITA-2322): Mesita names alone (MESITA-2883) once
+// the guest has stopped typing for Discovery › Word's idle seconds. The EF returns that number with every answer; until the
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
@@ -194,16 +187,6 @@ function googlePredictionFromPlace(place: Place): PlacePrediction | null {
   };
 }
 
-/** `selectedId` while the rail's Add card is centred (MESITA-2879): not a
- *  place id, so nothing is ringed and no card is lit. */
-const RAIL_ADD_ID = "rail:add";
-
-/** One rail row in px: RAIL_ROW_REM at the root font size. */
-function railRowPx(): number {
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-  return RAIL_ROW_REM * (rem || 16);
-}
-
 export function SearchClient({ apiKey }: { apiKey: string }) {
   const supabase = useBrowserSupabase();
   const userLocation = useUserLocation();
@@ -231,9 +214,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
-  // The rail's Add card focuses the bar: a new place is added by searching
-  // Google and tapping the result (MESITA-2876 disc → MESITA-2879 card).
-  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
   // empty: no Search row is mid-add, and a re-tap goes back through it.
@@ -344,6 +324,14 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a flicker — so this stays true until the query is really gone.
   const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
+  // ADD MODE (Pato, MESITA-2885: "a button to add a profile if the place is
+  // not yet on mesita, just create place"). The rail's Add button turns the
+  // bar into a Google lookup — the ONLY Google call the bar makes; plain
+  // typing stays Mesita names (MESITA-2883). A pick is the explicit open:
+  // the opening screen calls consumer-web-create-place (get-or-create).
+  // Clearing the bar, or leaving it empty, ends Add mode.
+  const [adding, setAdding] = useState(false);
+  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -387,7 +375,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           trimmedQuery,
           token,
           searchOrigin,
-          "deep",
+          adding ? "fast" : "mesita",
         );
         if (idleSec !== null) idleMsRef.current = Math.round(idleSec * 1000);
         if (cancelled) return;
@@ -406,7 +394,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       cancelled = true;
       window.clearTimeout(search);
     };
-  }, [supabase, trimmedQuery, searchOrigin, searchNonce]);
+  }, [supabase, trimmedQuery, searchOrigin, searchNonce, adding]);
 
   // The second pin source. null hands the map back its catalog pins, so the
   // basemap is never blank while you type — results ADD to what is there.
@@ -725,54 +713,24 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     updateQuery("");
   };
 
-  // EVERY BAR PICK ANCHORS THE MAP — both entities (MESITA-1405). A Place
-  // stops opening its modal from the bar: the camera lands on the place,
-  // the catalog reloads there, and the modal is one more tap away on the
-  // card or its pin. A Google-only pick anchors too — the sheet moves to
-  // the second tap, the gesture the grey pin already speaks, so the rule
-  // has no exception to learn. The operator's cap never vetoes any of it;
-  // the Area floor does veto the CARD (MESITA-2849), never the anchor.
-  const handleBarPick = (prediction: PlacePrediction) => {
+  // EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). A Place stops opening
+  // its modal from the bar: the camera lands on the place, the catalog
+  // reloads there, and the modal is one more tap away on the card or its
+  // pin. The operator's cap never vetoes it.
+  // ADD MODE'S PICK IS THE EXPLICIT OPEN (MESITA-2885): a Mesita row opens
+  // its profile, a Google row the opening screen, which creates it. The
+  // plain bar pick below never creates; it anchors. An area is not a place.
+  const handleAddPick = (prediction: PlacePrediction) => {
     if (prediction.kind === "location") {
-      // A Location is a camera destination, never a card. Coordinates are
-      // resolved ON PICK — one Details call per selection, never per
-      // keystroke — and the viewport decides the zoom: a city opens wide,
-      // a neighbourhood close.
-      void (async () => {
-        try {
-          const resolved = await apiResolveLocationAnchor(
-            supabase,
-            prediction.placeId,
-          );
-          anchorMapTo(
-            {
-              lat: resolved.lat,
-              lng: resolved.lng,
-              bounds: anchorViewportBounds(resolved.viewport),
-            },
-            null,
-          );
-        } catch (err) {
-          toast.error(errMsg(err, "Couldn't open that location right now."));
-        }
-      })();
+      toast("Pick a place, not an area.");
       return;
     }
-    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
-    // the camera lands on it and the Area reloads there, with no card ONE —
-    // that reload hides every place under the floor, so a card for it would
-    // be a place Mesita does not list. Only a row with its own point can be
-    // a destination; without one it falls through to the no-coordinates
-    // path below, which says so.
-    if (
-      prediction.underFloor &&
-      !predictionOnMesita(prediction) &&
-      typeof prediction.lat === "number" &&
-      typeof prediction.lng === "number"
-    ) {
-      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
-      return;
-    }
+    setAdding(false);
+    updateQuery("");
+    openGoogleOnly(prediction);
+  };
+
+  const handleBarPick = (prediction: PlacePrediction) => {
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
     // snapshot; either way the EF already shipped coordinates on the row.
@@ -840,14 +798,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Center page is selected even before a tap or flick writes state —
   // first load and a catalog that dropped the old id both light card 0. A
   // Google card that became a Mesita card keeps its selection (MESITA-2683).
-  // The Add card centred (MESITA-2879) selects nothing: no card, no ring.
-  const railSelectedId =
-    selectedId === RAIL_ADD_ID
-      ? null
-      : defaultRailSelection(
-          catalog.map((p) => p.id),
-          createdPlaceId(selectedId, createdPlaces),
-        );
+  const railSelectedId = defaultRailSelection(
+    catalog.map((p) => p.id),
+    createdPlaceId(selectedId, createdPlaces),
+  );
 
   // A pin's last step before it opens: select it (if the card-0 fallback
   // only looked selected) and fly the camera there — an animated pan that
@@ -943,27 +897,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    // The rail scrolls vertically, one card per snap (MESITA-2880):
-    // railIndex is a slot, 0 the Add card, i + 1 place i, the top in view.
-    const row = railRowPx();
-    const rows = el.scrollTop / row;
-    // The Add card in view: no pin rings, the map stays (MESITA-2879).
-    if (rows < RAIL_ADD_ROWS / 2) {
-      setRailIndex(0);
-      setSelectedId(RAIL_ADD_ID);
-      return;
-    }
-    const top = railCenterIndex(
-      el.scrollTop - RAIL_ADD_ROWS * row,
-      row,
-      catalog.length,
+    const page = el.clientWidth * RAIL_PAGE_SHARE;
+    if (page <= 0) return;
+    // railIndex counts PLACE pages, RAIL_PAGE_SIZE cards each. The Add card
+    // is scroll page 0 (MESITA-2886), so place page n is scroll page n + 1.
+    // Resting on the Add card changes nothing: the ring stays where it was,
+    // and railIndex is left alone so the centring effect does not pull the
+    // rail back off it.
+    const placePages = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
+    const scrolled = railCenterIndex(
+      el.scrollLeft,
+      page,
+      placePages + RAIL_LEAD_PAGES,
     );
-    setRailIndex(top + 1);
-    const inView = catalog.slice(top, top + RAIL_VISIBLE_CARDS);
-    // A selected card still in view keeps the ring — a tap on the lower
-    // card must not hand it to the top one.
-    if (inView.some((p) => p.id === railSelectedId)) return;
-    const id = inView[0]?.id;
+    if (scrolled < RAIL_LEAD_PAGES) return;
+    const next = scrolled - RAIL_LEAD_PAGES;
+    setRailIndex(next);
+    const first = next * RAIL_PAGE_SIZE;
+    const onPage = catalog.slice(first, first + RAIL_PAGE_SIZE);
+    // A card already selected on the centred page keeps the ring — a tap
+    // on the lower card scrolls here too, and must not hand it to the top.
+    if (onPage.some((p) => p.id === railSelectedId)) return;
+    const id = onPage[0]?.id;
     // A SCROLL RINGS THE PIN, IT NEVER PANS (MESITA-2440): browsing the
     // rail must not drag the map out from under the guest.
     if (id) setSelectedId(id);
@@ -995,28 +950,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   useEffect(() => {
     if (!railSelectedId) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    const slot = idx < 0 ? idx : idx + 1;
-    if (!shouldCenterRailCard(slot, railIndex, centerOnSelect.current)) return;
+    const pageIdx = idx < 0 ? idx : Math.floor(idx / RAIL_PAGE_SIZE);
+    if (!shouldCenterRailCard(pageIdx, railIndex, centerOnSelect.current))
+      return;
     centerOnSelect.current = false;
-    // Scroll the rail itself, never its ancestors: the card lands on top.
-    railScrollRef.current?.scrollTo({
-      top: (RAIL_ADD_ROWS + idx) * railRowPx(),
+    railRefs.current.get(railSelectedId)?.scrollIntoView({
       behavior: "smooth",
+      inline: "center",
+      block: "nearest",
     });
   }, [railSelectedId, catalog, railIndex]);
 
-  // THE RAIL RESTS ON PLACE #1, NOT ON THE ADD CARD (Pato, MESITA-2879):
-  // a new set of places, or the rail coming back after the bar, puts the
-  // selected card (place #1 on a fresh set) on top at once, the Add card
-  // waiting above it (MESITA-2880). Before paint, so nothing slides. The
-  // scroll this sets fires onScroll, which writes railIndex and the ring.
+  // THE RAIL RESTS ON THE SELECTED CARD'S PAGE: a new set of places, or the
+  // rail coming back after the bar, puts it (place #1 on a fresh set) in
+  // the centre at once. Before paint, so nothing slides. The scroll this
+  // sets fires onScroll, which writes railIndex and the ring.
   const catalogKey = catalog.map((p) => p.id).join("|");
   const railShown = !searchMode && catalog.length > 0;
   useLayoutEffect(() => {
     const el = railScrollRef.current;
     if (!el || !railShown) return;
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
-    el.scrollTop = (RAIL_ADD_ROWS + Math.max(idx, 0)) * railRowPx();
+    const page = idx < 0 ? 0 : Math.floor(idx / RAIL_PAGE_SIZE);
+    // Past the Add card (scroll page 0, MESITA-2886): it waits to the left.
+    el.scrollLeft = (page + RAIL_LEAD_PAGES) * el.clientWidth * RAIL_PAGE_SHARE;
     // Only a new set or the rail's return re-rests it; a selection change
     // scrolls through the centring effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1043,11 +1000,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           <SearchBar
             inputRef={barInputRef}
             query={query}
-            showClear={query.length > 0}
+            showClear={query.length > 0 || adding}
+            placeholder={adding ? "Add a place not on Mesita…" : undefined}
             onQueryChange={updateQuery}
             onFocus={() => setBarFocused(true)}
-            onBlur={() => setBarFocused(false)}
-            onClear={() => updateQuery("")}
+            onBlur={() => {
+              setBarFocused(false);
+              if (!query.trim()) setAdding(false);
+            }}
+            onClear={() => {
+              setAdding(false);
+              updateQuery("");
+            }}
           />
         }
       >
@@ -1068,7 +1032,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searchError={searchError}
               predictions={predictions}
               addStates={addStates}
-              onPick={handleBarPick}
+              onPick={adding ? handleAddPick : handleBarPick}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
@@ -1121,7 +1085,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
-            onAdd={() => barInputRef.current?.focus()}
+            onAdd={() => {
+              setAdding(true);
+              barInputRef.current?.focus();
+            }}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}

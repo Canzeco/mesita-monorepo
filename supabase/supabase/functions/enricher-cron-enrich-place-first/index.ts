@@ -23,8 +23,8 @@
 // Output: place_research.gathered (partial place update + grounding + candidate
 // image pools + per-image metadata) → stage='second'. The profile persists once,
 // at the contents stage — exceptions written directly here (research-only):
-// `phone`, and the cached Google label (`google_name`; `places.name` is a
-// generated column and `mesita_name` belongs to the operator).
+// `phone`, and Google's own label (`google_name`; `place_profiles.name` is the
+// Mesita name, the name door's and the operator's — MESITA-2828).
 // They must land only when research re-runs (full re-enrich), never on a lighter
 // analysis/contents-only re-run.
 //
@@ -438,8 +438,8 @@ serveEnrichStage("first", async (admin, _env, row) => {
   //
   //   google_place_id ── identity spine, never changes here
   //   google_name     ── THIS write: what Google calls the place right now
-  //   mesita_name     ── operator's override; the Enricher must never touch it
-  //   name            ── GENERATED display column, not writable at all
+  //   name            ── the Mesita name (MESITA-2828): only the name door
+  //                      and the operator write it
   //
   // There is no sticky/equality check any more. It compared the operator's name
   // against the PREVIOUS google_name, a value that moves on every re-enrich, so
@@ -473,7 +473,6 @@ serveEnrichStage("first", async (admin, _env, row) => {
   }
   delete place.name;
   delete place.google_name;
-  delete place.mesita_name;
 
   const resolvedCount = ["facebook_url", "website_url", "opentable_url", "uber_eats_url"]
     .filter((k) => !!place[k]).length + (resolvedInstagram ? 1 : 0) + (basics.phone ? 1 : 0);
@@ -675,7 +674,7 @@ serveEnrichStage("first", async (admin, _env, row) => {
     // could only ever mean "Google was silent", which is not a thing it can be
     // at this point.
     //
-    // The `google_name` refresh behind the GENERATED `places.name` also lands
+    // The `google_name` refresh (Search's alias of the Mesita name) also lands
     // on this function's call. It has no rung of its own — it is one field on
     // the same fetch. What carries the name is Embedding (8).
     [

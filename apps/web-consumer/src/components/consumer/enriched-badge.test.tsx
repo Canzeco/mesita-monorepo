@@ -6,7 +6,7 @@ import { placeRowToDetail } from "@mesita/place-profile/map";
 function profile(over: Record<string, unknown>) {
   const place = placeRowToDetail({
     id: "p-1",
-    mesita_name: "Lupita",
+    name: "Lupita",
     category_label: "Restaurant",
     ...over,
   });

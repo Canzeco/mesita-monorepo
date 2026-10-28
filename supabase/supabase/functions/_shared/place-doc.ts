@@ -31,13 +31,12 @@
 //
 // LANDMINES CARRIED IN FROM REPO LAW (MESITA-1279's issue body), enforced
 // here rather than rediscovered:
-//   • `place_profiles.name` is a GENERATED column (coalesce(mesita_name,
-//     google_name)) — Postgres rejects a write to it (428C9) and
-//     `_shared/place-name-writes.test.ts` source-scans for one. `name` is
-//     simply never a member of PLACE_PROFILE_PATCH_KEYS, so any patch carrying it
-//     is rejected by the closed-key-set check below with
-//     "unknown place field: name" — belt 2 cannot contradict a guard it was
-//     never given the key to violate.
+//   • `place_profiles.name` is the stored Mesita name (MESITA-2828; it was a
+//     GENERATED coalesce(mesita_name, google_name) before). Three writers
+//     only: Create seeds it, the name door (_shared/place-name-door.ts)
+//     lands the Description step's inference, admin-web-update-place takes
+//     the operator's edit. `_shared/place-name-writes.test.ts` source-scans
+//     every other enrich-path write for a bare `name:`.
 //   • `google_place_id` is the immutable external identity spine once set.
 //     The one caller that ever WRITES it is the create path (save-place.ts,
 //     mode: "insert"); no update call site in the codebase sets it.
@@ -51,7 +50,7 @@
 // project) and the two tables' native Postgres enum columns (`place_state`,
 // `content_state`, pulled via `pg_enum`) — not invented rules. Each group
 // below names the constraint it mirrors. One invariant is only PARTIALLY checkable from a
-// patch alone (place_profiles_name_source_present, see checkPlaceNameSourceInvariant)
+// patch alone (place_profiles_name_present + the name-fallback trigger, see checkPlaceNameSourceInvariant)
 // — Postgres, which sees the whole row, is the final authority there.
 //
 // Deliberately NOT here: URL shape (`isUrl`), hours structure
@@ -89,7 +88,7 @@ export type PlaceProfileRow = {
   id: string;
   created_at: string;
   updated_at: string;
-  /** GENERATED ALWAYS AS (coalesce(mesita_name, google_name)). Never a patch key. */
+  /** The one Mesita name, stored (MESITA-2828). Blank ⇒ the trigger copies google_name. */
   name: string;
   /** Immutable once set — see the header. Settable only via mode: "insert". */
   google_place_id: string | null;
@@ -151,8 +150,8 @@ export type PlaceProfileRow = {
   products: unknown | null;
   category_label: string | null;
   embedding_source_text: string | null;
+  /** Google's own label, refreshed by Google; Search's alias, never shown. */
   google_name: string | null;
-  mesita_name: string | null;
   /** MESITA-1249: the materialized meter — see EnrichmentMapSchema. */
   enrichment: unknown;
   /** MESITA-2189: the Google place id resolved. Not an enrichment fact. */
@@ -224,7 +223,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "category_label",
   "embedding_source_text",
   "google_name",
-  "mesita_name",
+  "name",
   "enrichment",
   "google_found",
   "instagram_found",
@@ -238,14 +237,14 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "payments_enabled",
 ] as const satisfies readonly (keyof Omit<
   PlaceProfileRow,
-  "id" | "created_at" | "updated_at" | "name"
+  "id" | "created_at" | "updated_at"
 >)[];
 
 // Compile-time exhaustiveness the other direction — same discipline
 // CONSUMER_PATCH_KEYS uses (borrowed from CRENUP_STEP_META, MESITA-1222): a
 // field added to PlaceProfileRow and forgotten here fails the build, not a review.
 type _MissingFromPlaceProfilePatchKeys = Exclude<
-  keyof Omit<PlaceProfileRow, "id" | "created_at" | "updated_at" | "name">,
+  keyof Omit<PlaceProfileRow, "id" | "created_at" | "updated_at">,
   typeof PLACE_PROFILE_PATCH_KEYS[number]
 >;
 const _assertNoMissingPlaceProfileKeys: _MissingFromPlaceProfilePatchKeys extends never ? true
@@ -333,7 +332,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "didi_food_url", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
-  "embedding_source_text", "google_name", "mesita_name",
+  "embedding_source_text", "google_name", "name",
   "reservation_target", "embedding", "name_embedding",
   "google_place_id",
   "enriched_at", "business_state_at",
@@ -442,19 +441,20 @@ function checkPlaceProfileField(key: string, v: unknown): string | null {
 }
 
 /**
- * place_profiles_name_source_present: COALESCE(NULLIF(btrim(mesita_name),''),
- * NULLIF(btrim(google_name),'')) IS NOT NULL. A PARTIAL mirror — Postgres
- * checks the whole row, but this door only ever sees one patch. The one case
- * fully knowable from a patch alone: both fields present in the SAME patch,
- * both empty. Anything involving the row's CURRENT value is Postgres's call.
+ * A place always has a name (MESITA-2828): the name-fallback trigger copies
+ * google_name into a blank `name`, and place_profiles_name_present refuses
+ * the row when both are blank. A PARTIAL mirror — Postgres checks the whole
+ * row, but this door only ever sees one patch. The one case fully knowable
+ * from a patch alone: both fields present in the SAME patch, both empty.
+ * Anything involving the row's CURRENT value is Postgres's call.
  */
 function checkPlaceNameSourceInvariant(patch: Record<string, unknown>): string | null {
-  if (!("mesita_name" in patch) || !("google_name" in patch)) return null;
-  const m = typeof patch.mesita_name === "string" ? patch.mesita_name.trim() : "";
+  if (!("name" in patch) || !("google_name" in patch)) return null;
+  const n = typeof patch.name === "string" ? patch.name.trim() : "";
   const g = typeof patch.google_name === "string" ? patch.google_name.trim() : "";
-  if (!m && !g) {
-    return "mesita_name and google_name cannot both be empty in the same patch " +
-      "(place_profiles_name_source_present — place_profiles.name would have nothing to generate from)";
+  if (!n && !g) {
+    return "name and google_name cannot both be empty in the same patch " +
+      "(place_profiles_name_present — the place would have no name)";
   }
   return null;
 }

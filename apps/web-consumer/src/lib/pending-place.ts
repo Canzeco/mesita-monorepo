@@ -89,7 +89,6 @@ export function pendingPlaceDetail(
     google_place_id: gid,
     name,
     google_name: name,
-    mesita_name: null,
     address: card?.address ?? google.address ?? null,
     photos: google.photoUrl ? [google.photoUrl] : [],
     google_stars_overall: card?.google_stars_overall ?? card?.google_rating ?? null,

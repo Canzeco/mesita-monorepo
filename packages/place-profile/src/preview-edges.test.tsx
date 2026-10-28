@@ -8,7 +8,7 @@ import type { PlaceDetail } from "./place-detail";
 function detail(over: Record<string, unknown> = {}): PlaceDetail {
   return placeRowToDetail({
     id: "p-1",
-    mesita_name: "Lupita",
+    name: "Lupita",
     enriched_at: "2026-01-01T00:00:00Z",
     category_label: "Restaurant",
     reservations_enabled: true,
@@ -20,7 +20,7 @@ describe("member preview edges", () => {
   it("keeps a long name and drops an unknown distance", () => {
     const name = "Casa de la Abuela Lupita y los Compadres del Centro Histórico";
     const html = renderToStaticMarkup(
-      <PlaceProfile place={detail({ mesita_name: name })} scrollLabel="Member profile preview" />,
+      <PlaceProfile place={detail({ name: name })} scrollLabel="Member profile preview" />,
     );
     expect(html).toContain(name);
     expect(html).not.toContain("- km");
@@ -194,7 +194,7 @@ describe("member preview edges", () => {
   it("does not treat a listed-false row as hidden", () => {
     const place = placeRowToDetail({
       id: "p-1",
-      mesita_name: "Hidden",
+      name: "Hidden",
       listed: false,
       enriched_at: "2026-01-01",
     });

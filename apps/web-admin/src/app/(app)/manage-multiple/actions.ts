@@ -49,7 +49,7 @@ export type EnrichFunctionState = {
 export type PlaceHit = {
   id: string;
   slug: string | null;
-  /** Generated display label: coalesce(mesita_name, google_name). */
+  /** The Mesita name (MESITA-2828). */
   name: string;
   /** Google's own label. The catalog table shows THIS, not `name`. */
   google_name: string | null;

@@ -74,8 +74,8 @@ Deno.serve(async (req) => {
   const placeId = (data as unknown as { id: string }).id;
   const admin = adminClient(envRes.env);
 
-  // `name` is the generated display column (mesita_name → google_name); raw
-  // google_name and mesita_name stay on the payload for clients that need them.
+  // `name` is the Mesita name (MESITA-2828); google_name rides along as
+  // Google's own label, Search's alias.
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
   // Overview's Stats box (MESITA-2866): unique members who viewed / liked.

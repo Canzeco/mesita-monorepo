@@ -195,8 +195,8 @@ Deno.serve(async (req) => {
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
 
   // Trim photos to the first thumbnail to keep the payload small.
-  // `name` is the generated display column (mesita_name → google_name); the
-  // table now shows google_name specifically, so both ride along.
+  // `name` is the Mesita name (MESITA-2828); the table also shows Google's
+  // own label, so both ride along.
   const places = rows.map((v) => {
     const id = String(v.id);
     const contentState = (v.content_state as string | null) ?? null;
