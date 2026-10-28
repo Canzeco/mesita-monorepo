@@ -5,8 +5,7 @@
 // has TWO SCOPES (MESITA-2298) over the internal sets (Google Places ⊃
 // Mesita Places): Google Places is what Nearby returned inside
 // `map.radiusKm`, a Mesita owner painting its hit. Mesita Selected, the
-// third set, died with MESITA-2925. Type batteries ride the
-// Google call only. Floors exclude. There is no Google reviews minimum
+// third set, died with MESITA-2925. Floors exclude. There is no Google reviews minimum
 // (MESITA-2721): the Area pipeline's Popularity floor is the cut. Name Google
 // categories live on discovery_config.name. The Area pipeline calls no
 // Google (Nearby retired, MESITA-2872).
@@ -16,11 +15,8 @@
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
 import type { MapConfig, SignalParams } from "./discovery-config.ts";
-import { SUPER_PARAM_KEYS, type SuperParamKey } from "./discovery-config.ts";
-import { nearbyTypesForSupers } from "./google-type-super.ts";
 import { popularity, POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
-import { familiesForAtlasCategory } from "./place-taxonomy.ts";
 
 export type ListedMapRow = {
   google_place_id?: string | null;
@@ -28,16 +24,6 @@ export type ListedMapRow = {
   google_review_count?: number | null;
 };
 
-
-/** Every guest family. Stored switches do not turn a family off. */
-export function enabledMapSupers(_map: MapConfig): SuperParamKey[] {
-  return [...SUPER_PARAM_KEYS];
-}
-
-/** Their Google batteries, flattened — what one Nearby call asks for. */
-export function enabledNearbyTypes(map: MapConfig): string[] {
-  return nearbyTypesForSupers(enabledMapSupers(map));
-}
 
 /**
  * The Map popularity floor, on the Area pipeline's Popularity: 0..1 with
@@ -67,22 +53,19 @@ export type MapPlaceSignals = {
   reviewCount: number | null;
 };
 
+/**
+ * THE category gate (MESITA-2974): a Google type is on Mesita when the type
+ * map gives it a guest family. Undefined is not one, so salons, gyms, shops
+ * and hotels fail here. It used to run three paths — the Nearby batteries,
+ * the retired Atlas category twin and this map — and the twin's
+ * ["undefined"] let a guest's open mint "Hello Salon" (MESITA-2962). Atlas's
+ * switch (`catalog_membership.enabled`, read by Create) must say the same;
+ * the weekly pipeline audit flags them apart (PA-MEMBERSHIP-DRIFT:gate).
+ */
 export function primaryTypeClearsMapTypes(
   primaryType: string | null | undefined,
-  map: MapConfig,
 ): boolean {
-  const enabled = new Set(enabledNearbyTypes(map));
-  const slug = (primaryType ?? "").trim().toLowerCase();
-  if (slug && enabled.has(slug)) return true;
-  // Undefined is not a family (MESITA-2962): the Atlas twin answers
-  // ["undefined"] for a salon or a gym, and counting that as a family let a
-  // guest's open mint "Hello Salon".
-  const families = (() => {
-    const atlas = familiesForAtlasCategory(primaryType).filter((f) => f !== "undefined");
-    if (atlas.length > 0) return atlas;
-    return familiesForGoogleType(primaryType);
-  })();
-  return families.length > 0;
+  return familiesForGoogleType(primaryType).length > 0;
 }
 
 /** Text Search / Place Details / Create — full rating + review signals. */
@@ -90,7 +73,7 @@ export function evaluatePlaceForMap(
   map: MapConfig,
   signals: MapPlaceSignals,
 ): EligibilityResult {
-  if (!primaryTypeClearsMapTypes(signals.primaryType, map)) {
+  if (!primaryTypeClearsMapTypes(signals.primaryType)) {
     return {
       eligible: false,
       code: "family_not_eligible",
