@@ -18,17 +18,17 @@ function tile(over: Partial<Place>) {
   );
 }
 
-describe("the Enriched mark on a catalog card", () => {
-  it("follows an enriched place's name (MESITA-2628)", () => {
-    const html = tile({ enriched: true });
-    expect(html).toContain('aria-label="Enriched"');
+describe("the Selected mark on a catalog card (MESITA-2913)", () => {
+  it("follows a Mesita Selected place's name", () => {
+    const html = tile({ selected: true });
+    expect(html).toContain('aria-label="Mesita Selected"');
     expect(html.indexOf(">Casa<")).toBeLessThan(
-      html.indexOf('aria-label="Enriched"'),
+      html.indexOf('aria-label="Mesita Selected"'),
     );
   });
 
-  it("never shows on a Created place", () => {
-    expect(tile({ enriched: false })).not.toContain('aria-label="Enriched"');
+  it("never shows for Enriched alone", () => {
+    expect(tile({ enriched: true, selected: false })).not.toContain('aria-label="Mesita Selected"');
   });
 });
 

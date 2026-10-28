@@ -53,7 +53,7 @@ export function PlaceProfile({
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <PlaceTopBar
         name={place.name}
-        enriched={place.is_enriched}
+        selected={place.selected === true}
         onBack={onBack}
         onMore={actions?.onMore}
       />
