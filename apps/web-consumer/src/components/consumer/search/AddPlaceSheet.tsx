@@ -24,10 +24,11 @@ import { newSessionToken } from "./search-utils";
 // profile"). The carousel's Add card opens this sheet — Home's location
 // picker pattern (LocalSheet): a focused field, Google's names (`deep`:
 // Autocomplete + Text Search, MESITA-2896), and one button a row. A place
-// not on Mesita says Create profile: the tap goes to the opening screen,
-// which calls consumer-web-create-place (get-or-create, MESITA-2298) and
-// becomes the profile. A place Mesita already holds says Open. Areas
-// (Locations) are not places, so they never list here.
+// not on Mesita says Generate: the Generate dialog confirms, calls
+// consumer-web-create-place (get-or-create, MESITA-2298) and opens the
+// profile. A place Mesita already holds says Open. Areas
+// (Locations) are not places, so they never list here. Generate (was Create
+// profile) asks first in SearchClient's Generate dialog (MESITA-2935).
 
 const MIN_QUERY = 2;
 const SEARCH_DELAY_MS = 400;
@@ -128,7 +129,7 @@ export function AddPlaceSheet({
       <div className={SHEET_BODY_CLASS} data-search-add-sheet>
         <h2 className={SHEET_TITLE_CLASS}>Add a place</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Find it on Google. If it isn&apos;t on Mesita yet, create its profile.
+          Find it on Google. If it isn&apos;t on Mesita yet, generate its profile.
         </p>
         <label className="relative mt-4 block">
           <Search

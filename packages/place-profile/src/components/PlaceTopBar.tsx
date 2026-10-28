@@ -24,17 +24,24 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 // the bar while the place loads (Pato, MESITA-2701: "the placeholders must
 // be similar to the page you are loading, like the sizes"): this same bar,
 // a bone where the name goes (PlaceTopBarSkeleton draws it so).
+//
+// `backOnly` is the bar before a place exists (MESITA-2935, the consumer's
+// generating screen): the chevron alone, no name bone and no dots, since
+// there is nothing yet to name or act on.
 export function PlaceTopBar({
   name,
   officialTier = 0,
   onBack,
   onMore,
+  backOnly = false,
 }: {
   name: string | null;
   /** `boost_tier`; 1..3 draws "Official 2X" after the name (MESITA-2925). */
   officialTier?: number;
   onBack?: () => void;
   onMore?: () => void;
+  /** Chevron only: no title, no menu (a place still being generated). */
+  backOnly?: boolean;
 }) {
   return (
     <header className="bg-card z-20 flex h-14 shrink-0 items-center gap-1 px-1">
@@ -46,16 +53,20 @@ export function PlaceTopBar({
       >
         <ChevronLeft className="h-6 w-6" strokeWidth={2.25} />
       </button>
-      <PlaceDetailTitle placeName={name} officialTier={officialTier} />
-      <button
-        type="button"
-        aria-label="More options"
-        aria-haspopup="dialog"
-        className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-        {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
-      >
-        <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
-      </button>
+      {backOnly ? null : (
+        <>
+          <PlaceDetailTitle placeName={name} officialTier={officialTier} />
+          <button
+            type="button"
+            aria-label="More options"
+            aria-haspopup="dialog"
+            className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+            {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
+          >
+            <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
+          </button>
+        </>
+      )}
     </header>
   );
 }

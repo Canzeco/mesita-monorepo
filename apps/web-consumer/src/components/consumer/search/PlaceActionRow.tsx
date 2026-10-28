@@ -1,12 +1,15 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 // ONE ROW FOR BOTH PLACE LISTS (Pato, MESITA-2931: "this top bar and the
 // other shit must look really similar in the sense that you can add a place
 // super easily"). The Search bar's results and the Add a place sheet draw
 // the same row: a mark, the name over its address, and one button on the
-// right — "Create profile" (ink) for a place Google holds alone, "Open"
+// right — "Generate" (ink, sparkles: Pato, MESITA-2935, "use word generate,
+// it feels more AI, and use AI icon") for a place Google holds alone, "Open"
 // (muted) for one Mesita holds. A Location has no button: it is an area,
 // not a place.
 //
@@ -71,14 +74,17 @@ export function PlaceActionRow({
         <button
           type="button"
           onClick={action.onClick}
-          aria-label={`${action.onMesita ? "Open" : "Create profile for"} ${title}`}
+          aria-label={`${action.onMesita ? "Open" : "Generate a profile for"} ${title}`}
           className={cn(
-            "h-9 shrink-0 rounded-full px-4 text-sm font-semibold transition active:scale-[0.97]",
+            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition active:scale-[0.97]",
             action.onMesita ? "bg-muted text-foreground" : "bg-foreground text-paper",
           )}
           data-place-row-action={action.onMesita ? "open" : "create"}
         >
-          {action.onMesita ? "Open" : "Create profile"}
+          {action.onMesita ? null : (
+            <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          )}
+          {action.onMesita ? "Open" : "Generate"}
         </button>
       ) : null}
     </div>

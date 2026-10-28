@@ -123,7 +123,7 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     expect(tap).not.toContain("getOrCreateGooglePlace");
   });
 
-  it("getOrCreateGooglePlace runs from the opening screen's effect and the cards' Save/Share taps only", () => {
+  it("getOrCreateGooglePlace runs from the opening screen's effect, Search's Generate tap and the cards' Save/Share taps only", () => {
     const callers = appCode
       .filter((f) => /(?<!function )\bgetOrCreateGooglePlace\(/.test(f.src))
       .map((f) => f.path)
@@ -133,8 +133,19 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     // and Search alike through one hook (MESITA-2668) — never on render.
     expect(callers).toEqual([
       "components/consumer/OpeningGooglePlace.tsx",
+      "components/consumer/search/GeneratePlaceDialog.tsx",
       "lib/use-card-save-share.ts",
     ]);
+    // Search's Generate creates on the confirm tap (Pato, MESITA-2935:
+    // "before create, also show a confirmation modal"), never on render.
+    // Its one effect moves focus; no effect, memo or layout effect creates.
+    const dialog = code(read("components/consumer/search/GeneratePlaceDialog.tsx"));
+    for (const hook of ["useEffect", "useMemo", "useLayoutEffect"]) {
+      for (const block of callBlocks(dialog, hook)) {
+        expect(block, hook).not.toContain("getOrCreateGooglePlace");
+      }
+    }
+    expect(dialog).toContain("await getOrCreateGooglePlace(supabase, target.gid)");
     const cards = code(read("lib/use-card-save-share.ts"));
     for (const hook of ["useEffect", "useMemo", "useLayoutEffect"]) {
       expect(cards, hook).not.toContain(`${hook}(`);
@@ -202,13 +213,14 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       }
     }
     // The opener is a memoised handler whose one door is the second tap
-    // (`openGoogleOnly`); it hands the card to the hook and nothing else.
+    // (`openGoogleOnly`); it only opens the Generate dialog (MESITA-2935).
     expect(client).toContain("const openGoogleProfile = useCallback(");
     const opener = client.slice(
       client.indexOf("const openGoogleProfile"),
-      client.indexOf("const openGoogleOnly"),
+      client.indexOf("const onGenerated"),
     );
-    expect(opener).toContain("openGooglePlace(");
+    expect(opener).toContain("setGenerateOpen(true)");
+    expect(opener).not.toContain("getOrCreateGooglePlace");
     expect(client.match(/openGoogleProfile\(/g)).toHaveLength(1);
   });
 

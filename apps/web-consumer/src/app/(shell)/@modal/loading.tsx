@@ -4,6 +4,7 @@ import {
   PlaceSlideOverSkeleton,
   ReservationSlideOverSkeleton,
 } from "@/components/consumer/overlay/DetailSkeletons";
+import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { RouteSheetShell } from "@/components/consumer/overlay/RouteSheetShell";
 import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
 import AskAiSheetPage from "./(.)search/chat/page";
@@ -20,7 +21,7 @@ export default async function ModalLoading() {
   if (bare.startsWith("/place/open/")) {
     return (
       <SlideOverShell>
-        <PlaceSlideOverSkeleton creating />
+        <GeneratingPlaceScreen variant="modal" />
       </SlideOverShell>
     );
   }
