@@ -5,6 +5,8 @@
 // the only writer; no consumer EF accepts either field. A VIP also carries the
 // partner it came through and an optional last day (MESITA-2556); neither
 // drives a rule, and no rate is stored anywhere.
+// An operator can also set one guest's monthly reservation cap (MESITA-2555,
+// consumers.reservation_cap_override; null = the plan's cap).
 
 import {
   toClass,
@@ -12,10 +14,15 @@ import {
   type ConsumerClass,
   type ConsumerPlan,
 } from "./place-activity.ts";
+import {
+  planReservationCap,
+  RESERVATION_CAP_OVERRIDE_MAX,
+  readCapOverride,
+} from "./reservation-cap.ts";
 
 /** Columns both admin EFs read back. */
 export const GUEST_ROW_SELECT =
-  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, vip_partner_id, vip_until, created_at";
+  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, vip_partner_id, vip_until, reservation_cap_override, created_at";
 
 export const GUEST_LIST_LIMIT = 50;
 
@@ -40,6 +47,10 @@ export type GuestRow = {
   vipPartnerId: string | null;
   /** MESITA-2556: the VIP's last day (YYYY-MM-DD), or null for no end date. */
   vipUntil: string | null;
+  /** Operator-set reservations a month; null = the plan's cap. */
+  reservationCapOverride: number | null;
+  /** The plan's cap, what applies while there is no override. */
+  planReservationCap: number;
   createdAt: string;
 };
 
@@ -58,6 +69,7 @@ export type RawGuest = {
   guest_class_note?: unknown;
   vip_partner_id?: unknown;
   vip_until?: unknown;
+  reservation_cap_override?: unknown;
   created_at?: unknown;
 };
 
@@ -85,6 +97,8 @@ export function toGuestRow(
     guestClassNote: str(raw.guest_class_note),
     vipPartnerId: str(raw.vip_partner_id),
     vipUntil: str(raw.vip_until),
+    reservationCapOverride: readCapOverride(raw.reservation_cap_override),
+    planReservationCap: planReservationCap(raw.plan),
     createdAt: String(raw.created_at ?? ""),
   };
 }
@@ -122,6 +136,8 @@ export type StandingPatch = {
   vipPartnerId?: string | null;
   /** Present when the last day is being set (YYYY-MM-DD); null = no end date. */
   vipUntil?: string | null;
+  /** Present when the cap is being set; null goes back to the plan's cap. */
+  reservationCapOverride?: number | null;
 };
 
 /** A refusal with a stable code and a message that says the fix. */
@@ -195,6 +211,19 @@ export function readStandingBody(
     }
     patch.guestClassNote = note === "" ? null : note;
   }
+  if ("reservationCapOverride" in b) {
+    const v = b.reservationCapOverride;
+    if (v !== null && readCapOverride(v) === null) {
+      return {
+        ok: false,
+        status: 400,
+        code: "invalid_reservation_cap",
+        error:
+          `reservationCapOverride must be a whole number 0..${RESERVATION_CAP_OVERRIDE_MAX}, or null for the plan's cap (got '${String(v)}')`,
+      };
+    }
+    patch.reservationCapOverride = v as number | null;
+  }
   if ("vipPartnerId" in b) {
     const v = b.vipPartnerId;
     if (v !== null && (typeof v !== "string" || !UUID_RE.test(v.trim()))) {
@@ -245,7 +274,8 @@ export function readStandingBody(
       ok: false,
       status: 400,
       code: "nothing_to_set",
-      error: "Send guestClass, plan, guestClassNote, vipPartnerId, vipUntil, or several together",
+      error:
+        "Send guestClass, plan, guestClassNote, vipPartnerId, vipUntil, reservationCapOverride, or several together",
     };
   }
   return { ok: true, consumerId, patch };

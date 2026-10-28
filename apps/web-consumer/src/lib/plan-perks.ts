@@ -1,6 +1,10 @@
-// The one number Me › Plan states about Free (MESITA-2167).
+// The numbers Me › Plan states (MESITA-2167, MESITA-2555): reservations a
+// month on each plan.
 //
-// Pinned to MONTHLY_RESERVATION_CAP (supabase/functions/_shared/
-// reservation-cap.ts) by _shared/reservation-cap.test.ts — change the two
-// together. The page builds its line from this constant, never a literal.
+// Pinned to RESERVATION_CAP_BY_PLAN (supabase/functions/_shared/
+// reservation-cap.ts) by _shared/reservation-cap.test.ts — change them
+// together. The page builds its lines from these constants, never a literal.
+// An operator can still set one guest's own cap (Manage › Guests); the page
+// states the plan's.
 export const FREE_RESERVATIONS_PER_MONTH = 10;
+export const PRO_RESERVATIONS_PER_MONTH = 30;

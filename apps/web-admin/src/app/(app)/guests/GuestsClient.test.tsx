@@ -19,6 +19,8 @@ const base: GuestRow = {
   guestClassSetAt: null,
   guestClassSetByEmail: null,
   guestClassNote: null,
+  reservationCapOverride: null,
+  planReservationCap: 10,
   vipPartnerId: null,
   vipUntil: null,
   createdAt: "2026-10-21T00:00:00Z",
