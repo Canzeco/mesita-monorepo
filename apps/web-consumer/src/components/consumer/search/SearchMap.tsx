@@ -38,7 +38,7 @@ import {
   type CameraState,
 } from "./camera-intent";
 import { isSponsoredPlace } from "@/components/consumer/place-card";
-import { SIGHT_Y } from "./search-utils";
+import { RING_INSET, SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
@@ -246,13 +246,27 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
+/** The search ring's diameter: RING_INSET of twice the cross's distance to
+ *  the nearest edge of the map — the full width, or twice the gap to the
+ *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
+ *  server's screen radius on screen. Container units of the map's box. */
+const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
+  Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
+}cqh)`;
+
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
- *  MESITA-2514) — the catalog fetch point: the plus and its dot. THE RINGS
- *  ARE GONE (Pato, MESITA-2906: "remove the stupid circle · we don't need it
- *  anymore"): MESITA-2508's dashed search ring and MESITA-2773's inner
- *  density ring no longer draw. The search radius is unchanged — RING_INSET
- *  (search-utils.ts) still sizes the screen radius each load sends; only the
- *  picture of it went. While a load is in flight the cross pulses. */
+ *  MESITA-2514) — the catalog fetch point: the plus and its dot, and ONE
+ *  DISCREET WHITE RING for the search radius (Pato, MESITA-2908: "draw the
+ *  circle of the radious, but only one circle, not two, make the radious
+ *  kinda white, like really discreet and pretty"). MESITA-2906 had removed
+ *  both dashed rings; the inner density ring (MESITA-2773) stays gone. A
+ *  solid 2px white line with a hair-thin dark halo, so it reads on the light
+ *  basemap, and a whisper of white fill. It never pulses; the cross does
+ *  during a load. Screen CSS, never map geometry (MESITA-2847: it rides the
+ *  cross in real time). */
+const RING_CLASS =
+  "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/85 bg-white/[0.06] shadow-[0_0_0_0.5px_rgba(0,0,0,0.10),inset_0_0_0_0.5px_rgba(0,0,0,0.06)]";
+
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
     <div
@@ -262,8 +276,11 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       data-search-sight
     >
       <div
-        className={cn("relative h-3.5 w-3.5", searching && "animate-pulse")}
-      >
+        className={RING_CLASS}
+        style={{ width: SEARCH_RING_SIZE }}
+        data-search-ring
+      />
+      <div className={cn("relative h-3.5 w-3.5", searching && "animate-pulse")}>
         <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
         <div className="bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
@@ -364,7 +381,11 @@ function SearchMapCanvas({
               key={pin.id}
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
-              icon={placeIcon(pin.tone, pin.id === selectedId, pin.boosted === true)}
+              icon={placeIcon(
+                pin.tone,
+                pin.id === selectedId,
+                pin.boosted === true,
+              )}
               zIndex={pin.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
@@ -376,7 +397,11 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(placePinTone(place), place.id === selectedId, isSponsoredPlace(place))}
+              icon={placeIcon(
+                placePinTone(place),
+                place.id === selectedId,
+                isSponsoredPlace(place),
+              )}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
