@@ -11,11 +11,10 @@
 // own row says "Your plan."; while the plan is unknown (loading, or the read
 // failed) neither row claims it, and nothing assumes Free.
 //
-// NO PRICE, NO HYPOTHESIS. Free states today's enforced cap, the live rule
-// (FREE_RESERVATIONS_PER_MONTH). Pro states no number and no price: those are
-// working hypotheses, not decisions. Pro opens with "Everything in Free"
-// (true for a Pro guest today), then its unbuilt perks, each tagged Soon, so a
-// Pro guest is never told their plan does not exist. The words live in
+// NO PRICE. Each plan states the monthly reservation cap the server enforces
+// for it (FREE_/PRO_RESERVATIONS_PER_MONTH, MESITA-2555). Pro opens with
+// "Everything in Free", then its cap, then its unbuilt perks, each tagged
+// Soon. There is no checkout, so no price is shown. The words live in
 // plan-words.ts, which /me/plan's fallback reads too (MESITA-2701).
 
 import { CreditCard, Sparkles } from "lucide-react";

@@ -21,6 +21,10 @@ export type GuestRow = {
   guestClassSetByEmail: string | null;
   /** Operator-only: where a VIP came from. Never shown to the guest. */
   guestClassNote: string | null;
+  /** Operator-set reservations a month (MESITA-2555); null = the plan's cap. */
+  reservationCapOverride: number | null;
+  /** The plan's monthly cap, what applies while there is no override. */
+  planReservationCap: number;
   /** MESITA-2556: the partner this VIP came through, or null. */
   vipPartnerId: string | null;
   /** MESITA-2556: the VIP's last day (YYYY-MM-DD), or null for no end date. */
@@ -41,6 +45,8 @@ export type StandingPatch = {
   plan?: GuestPlan;
   /** null or blank clears it. */
   guestClassNote?: string | null;
+  /** null goes back to the plan's cap. */
+  reservationCapOverride?: number | null;
   /** null clears it. */
   vipPartnerId?: string | null;
   /** YYYY-MM-DD; null = no end date. */

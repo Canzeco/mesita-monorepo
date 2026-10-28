@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(173);
+select plan(175);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -711,6 +711,20 @@ select ok(
     and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE'),
   'only the service role can set a guest''s Class and Plan (MESITA-2553)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_reservation_cap_override_check'
+      and conrelid = 'public.consumers'::regclass)) like '%1000%',
+  'a guest''s reservation cap override is null or 0..1000 (MESITA-2555)'
+);
+
+select ok(
+  has_function_privilege('service_role', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE'),
+  'only the service role can set a guest''s reservation cap (MESITA-2555)'
 );
 
 -- MESITA-2556: VIP partners are EF-only; a Regular guest holds no partner or end date.
