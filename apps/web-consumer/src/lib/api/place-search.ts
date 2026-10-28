@@ -47,6 +47,37 @@ export async function apiResolveLocationAnchor(
   return anchor;
 }
 
+/** A Google-only place as the Generate dialog previews it (MESITA-2941):
+ *  Google's facts and first photo, read live, never stored. */
+export type GooglePlacePreview = {
+  name: string;
+  address: string | null;
+  category: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  photoUrl: string | null;
+  photoAuthor: string | null;
+  mapsUrl: string | null;
+};
+
+/**
+ * One Details call per Generate dialog open, so a guest sees the place
+ * before they create it — the photo, category and stars tell two places
+ * with one name apart.
+ */
+export async function apiPreviewGooglePlace(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<GooglePlacePreview> {
+  const { preview } = await invokeEF<{ preview: GooglePlacePreview }>(
+    client,
+    "consumer-web-suggest-places",
+    { previewPlaceId: placeId },
+    "Couldn't load that place right now.",
+  );
+  return preview;
+}
+
 type CreatedProject = {
   ok: boolean;
   /** False when Mesita already held this Google Place ID: the row opens as is. */
