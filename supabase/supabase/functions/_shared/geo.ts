@@ -102,9 +102,16 @@ export function nearbyBbox(
   radiusKm: number,
 ): GeoBbox {
   const { latDelta, lngDelta } = radiusBoundingBox(lat, radiusKm);
+  const south = Math.max(-90, lat - latDelta);
+  const north = Math.min(90, lat + latDelta);
+  // A circle that reaches a pole or wraps the globe covers every longitude
+  // (MESITA-2918: the screen radius has no ceiling).
+  if (lngDelta >= 180 || south <= -90 || north >= 90) {
+    return { south, north, west: -180, east: 180 };
+  }
   return {
-    south: Math.max(-90, lat - latDelta),
-    north: Math.min(90, lat + latDelta),
+    south,
+    north,
     west: wrapLng(lng - lngDelta),
     east: wrapLng(lng + lngDelta),
   };

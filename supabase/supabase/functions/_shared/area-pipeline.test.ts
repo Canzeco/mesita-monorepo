@@ -5,7 +5,6 @@ import {
   parseAreaBounds,
   type PoolRow,
   resolveAreaLocation,
-  SCREEN_RADIUS_KM_MAX,
   SCREEN_RADIUS_KM_MIN,
   screenRadiusKm,
   selectAreaPool,
@@ -284,12 +283,14 @@ Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the b
 });
 
 // Territory is retired (MESITA-2500, MESITA-2603): a point or nothing.
-Deno.test("parseAreaBounds: valid, inverted, partial and oversized", () => {
+Deno.test("parseAreaBounds: valid, inverted, partial and any size", () => {
   const ok = { low: { lat: 25.6, lng: -100.4 }, high: { lat: 25.7, lng: -100.3 } };
   assertEquals(parseAreaBounds(ok), ok);
   assertEquals(parseAreaBounds({ low: ok.high, high: ok.low }), null);
   assertEquals(parseAreaBounds({ low: ok.low }), null);
-  assertEquals(parseAreaBounds({ low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } }), null);
+  // Any size is read (MESITA-2918): a state-wide map is still a screen.
+  const wide = { low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } };
+  assertEquals(parseAreaBounds(wide), wide);
   assertEquals(parseAreaBounds("x"), null);
   // A centre is a point, gated by a radius or not (the Catalog); no centre, no location.
   assertEquals(resolveAreaLocation(CENTER, 5), { kind: "point", anchor: CENTER, radiusKm: 5 });
@@ -387,16 +388,20 @@ Deno.test("screen radius: 0.9 of the cross's distance to the nearest edge, so it
   assert(Math.abs(off - wide) < 1e-9, String(off));
 });
 
-Deno.test("screen radius: no readable screen is null; a tiny screen is clamped", () => {
+Deno.test("screen radius: no readable screen is null; a tiny screen is floored; a huge one is not capped (MESITA-2918)", () => {
   assertEquals(screenRadiusKm(null), null);
   assertEquals(screenRadiusKm({ low: { lat: 1, lng: 1 }, high: { lat: 0, lng: 2 } }), null);
-  assertEquals(screenRadiusKm({ low: { lat: 0, lng: 0 }, high: { lat: 2, lng: 2 } }), null);
+  // Pato's Nuevo León screenshot: ~4° tall, ~3.6° wide around Monterrey.
+  const state = screenRadiusKm({
+    low: { lat: 23.6, lng: -102.1 },
+    high: { lat: 27.6, lng: -98.5 },
+  }, { lat: 25.7, lng: -100.3 })!;
+  assert(state > 150 && state < 200, String(state));
   const tiny = screenRadiusKm({
     low: { lat: 25.67, lng: -100.3 },
     high: { lat: 25.67001, lng: -100.29999 },
   });
   assertEquals(tiny, SCREEN_RADIUS_KM_MIN);
-  assertEquals(SCREEN_RADIUS_KM_MAX, 50);
 });
 
 Deno.test("screen radius: the circle gates the Map's pool and never scores (MESITA-2909)", async () => {
