@@ -12,7 +12,7 @@
 //   · _shared/save-place.ts            — Create seeds `name` from google_name
 //   · _shared/place-name-door.ts       — the Description step's inference,
 //                                        gate D2 (machine-owned values only)
-//   · admin-web-update-place/index.ts  — the operator's edit
+//   · admin-web-update-place/build-update.ts — the operator's edit
 //
 // The Enricher writes google_name (Google's own label, Search's alias) and
 // reaches `name` ONLY through the door.
@@ -108,7 +108,8 @@ function placeWriteCalls(src: string): string[] {
 const NAME_WRITERS = new Set([
   "_shared/save-place.ts",
   "_shared/place-name-door.ts",
-  "admin-web-update-place/index.ts",
+  // The operator's edit: the whitelist builds `update.name` (MESITA-2982).
+  "admin-web-update-place/build-update.ts",
 ]);
 
 Deno.test("only Create, the name door and the operator's save write place_profiles.name", async () => {
