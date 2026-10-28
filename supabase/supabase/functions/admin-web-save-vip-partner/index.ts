@@ -38,12 +38,9 @@ serveJson("admin-web-save-vip-partner", async (req) => {
   if (parsed.googlePlaceId === null) {
     row.place_id = null;
   } else if (parsed.googlePlaceId !== undefined) {
-    let place;
-    try {
-      place = await findPlaceByGoogleId(admin, parsed.googlePlaceId);
-    } catch (err) {
-      return json({ ok: false, code: "save_failed", error: (err as Error).message }, 500);
-    }
+    const found = await findPlaceByGoogleId(admin, parsed.googlePlaceId);
+    if (!found.ok) return json({ ok: false, code: "save_failed", error: found.error }, 500);
+    const place = found.place;
     if (!place) {
       return json({
         ok: false,
@@ -81,12 +78,11 @@ serveJson("admin-web-save-vip-partner", async (req) => {
     venueChanged: parsed.googlePlaceId !== undefined,
   }));
 
-  let partners;
-  try {
-    partners = await loadVipPartners(admin);
-  } catch (err) {
-    return json({ ok: false, code: "save_failed", error: `saved, but ${(err as Error).message}` }, 500);
+  const loaded = await loadVipPartners(admin);
+  if (!loaded.ok) {
+    return json({ ok: false, code: "save_failed", error: `saved, but ${loaded.error}` }, 500);
   }
+  const partners = loaded.partners;
   return json({
     ok: true,
     partner: partners.find((p) => p.id === savedId) ?? null,

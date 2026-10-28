@@ -60,16 +60,12 @@ serveJson("admin-web-list-guests", async (req) => {
     }
   }
 
-  let partners;
-  try {
-    partners = await loadVipPartners(admin);
-  } catch (err) {
-    return json({ ok: false, error: (err as Error).message }, 500);
-  }
+  const partners = await loadVipPartners(admin);
+  if (!partners.ok) return json({ ok: false, error: partners.error }, 500);
 
   return json({
     ok: true,
     guests: rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null)),
-    partners,
+    partners: partners.partners,
   });
 });
