@@ -3,6 +3,7 @@ import {
   GOOGLE_PLACES_TEXT_SEARCH_URL,
   googleErrorFromResponse,
 } from "../_shared/google-places.ts";
+import { googleFetch } from "../_shared/google-fetch.ts";
 import { applyPlacesCallerRegion } from "../_shared/sourcing.ts";
 
 const PAGE_SIZE = 20;
@@ -49,15 +50,11 @@ export async function searchTextWithPagination(
     applyPlacesCallerRegion(body, regionCodeOverride, "text");
     if (pageToken) body.pageToken = pageToken;
 
-    const r = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.primaryType,nextPageToken",
-      },
-      body: JSON.stringify(body),
+    const r = await googleFetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+      apiKey,
+      fieldMask:
+        "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.primaryType,nextPageToken",
+      body,
     });
 
     if (!r.ok) {
@@ -112,14 +109,9 @@ export async function fetchPlaceLiteById(
   placeId: string,
   apiKey: string,
 ): Promise<PlaceLite> {
-  const r = await fetch(
+  const r = await googleFetch(
     `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
-    {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": PLACE_LITE_FIELD_MASK,
-      },
-    },
+    { apiKey, fieldMask: PLACE_LITE_FIELD_MASK },
   );
   if (!r.ok) throw await googleErrorFromResponse(r);
   const p = (await r.json()) as {

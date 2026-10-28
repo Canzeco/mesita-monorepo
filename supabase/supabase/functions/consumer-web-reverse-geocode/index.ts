@@ -40,6 +40,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
+import { googleFetch } from "../_shared/google-fetch.ts";
 import {
   cacheKey,
   geocodeStatus,
@@ -68,7 +69,7 @@ type Answer = {
  *  the header's answers out. Bounded, oldest out. */
 const caches: Record<Precision, Map<string, Answer>> = { std: new Map(), pin: new Map() };
 const CACHE_MAX = 2000;
-const GOOGLE_TIMEOUT_MS = 4000;
+const GEOCODE_TIMEOUT_MS = 4000;
 
 serveJson("consumer-web-reverse-geocode", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -102,8 +103,8 @@ serveJson("consumer-web-reverse-geocode", async (req) => {
 
   let payload: unknown;
   try {
-    const res = await fetch(reverseGeocodeUrl(snapped, keyRes.key, precision), {
-      signal: AbortSignal.timeout(GOOGLE_TIMEOUT_MS),
+    const res = await googleFetch(reverseGeocodeUrl(snapped, keyRes.key, precision), {
+      timeoutMs: GEOCODE_TIMEOUT_MS,
     });
     payload = await res.json();
   } catch (err) {

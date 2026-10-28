@@ -373,7 +373,7 @@ Deno.test("toWire: a Text Search card rides Google-only rows, never a Mesita one
 Deno.test("Text Search asks for the listing mask and builds its card with googleStub", async () => {
   const src = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
   const fn = src.slice(src.indexOf("async function fetchTextSearch("));
-  assertEquals(fn.includes('"X-Goog-FieldMask": LISTING_FIELD_MASK'), true);
+  assertEquals(fn.includes("fieldMask: LISTING_FIELD_MASK"), true);
   assertEquals(fn.includes("googleHitFromPlace(p)"), true);
   assertEquals(fn.includes("card: googleStub(hit, null)"), true);
 });

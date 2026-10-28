@@ -8,6 +8,7 @@
 // `supabase-edgefunc-discover-places`, and related product EFs that import here.
 
 import { json } from "./http.ts";
+import { googleFetch } from "./google-fetch.ts";
 
 export {
   classifyGoogleError,
@@ -86,14 +87,9 @@ export async function fetchLocationAnchor(
   apiKey: string,
 ): Promise<LocationAnchorResult> {
   try {
-    const r = await fetch(
+    const r = await googleFetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
-      {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "location,viewport",
-        },
-      },
+      { apiKey, fieldMask: "location,viewport" },
     );
     if (!r.ok) {
       return { ok: false, reason: r.status === 400 || r.status === 404 ? "not_found" : "upstream" };
@@ -167,14 +163,9 @@ export async function fetchPlacePreview(
   apiKey: string,
 ): Promise<PlacePreviewResult> {
   try {
-    const r = await fetch(
+    const r = await googleFetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
-      {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": PREVIEW_FIELD_MASK,
-        },
-      },
+      { apiKey, fieldMask: PREVIEW_FIELD_MASK },
     );
     if (!r.ok) {
       return { ok: false, reason: r.status === 400 || r.status === 404 ? "not_found" : "upstream" };
@@ -199,9 +190,9 @@ export async function fetchPlacePreview(
     if (first?.name) {
       // A failed photo still answers the preview: the facts are the point.
       try {
-        const pr = await fetch(
+        const pr = await googleFetch(
           `https://places.googleapis.com/v1/${first.name}/media?maxWidthPx=1200&skipHttpRedirect=true`,
-          { headers: { "X-Goog-Api-Key": apiKey } },
+          { apiKey },
         );
         if (pr.ok) {
           photoUrl = ((await pr.json()) as { photoUri?: string }).photoUri ?? null;

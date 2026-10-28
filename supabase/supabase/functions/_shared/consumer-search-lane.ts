@@ -50,6 +50,7 @@ import {
   readGooglePlacesKey,
   stripPlacesPrefix,
 } from "./google-places.ts";
+import { googleFetch } from "./google-fetch.ts";
 import {
   applyPlacesAutocompleteRegion,
   applyPlacesTextSearchRegion,
@@ -857,14 +858,7 @@ export async function fetchAutocomplete(
     }>;
   };
   try {
-    r = await fetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-      },
-      body: JSON.stringify(body),
-    });
+    r = await googleFetch(GOOGLE_PLACES_AUTOCOMPLETE_URL, { apiKey, body });
     if (!r.ok) {
       const text = await r.text();
       const code = classifyGoogleError(r.status, text);
@@ -927,17 +921,13 @@ export async function fetchTextSearch(
   applyPlacesTextSearchRegion(body, origin);
   let r: Response;
   try {
-    r = await fetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        // The listing mask (MESITA-2325): Text Search bills the same
-        // Pro/Enterprise tiers, and `rating` already puts the call on
-        // Enterprise, so the card's other fields add no spend.
-        "X-Goog-FieldMask": LISTING_FIELD_MASK,
-      },
-      body: JSON.stringify(body),
+    r = await googleFetch(GOOGLE_PLACES_TEXT_SEARCH_URL, {
+      apiKey,
+      // The listing mask (MESITA-2325): Text Search bills the same
+      // Pro/Enterprise tiers, and `rating` already puts the call on
+      // Enterprise, so the card's other fields add no spend.
+      fieldMask: LISTING_FIELD_MASK,
+      body,
     });
   } catch (err) {
     console.error(
