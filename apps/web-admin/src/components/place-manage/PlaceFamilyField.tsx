@@ -5,7 +5,7 @@ import { PlaceFamilyPicker } from "./PlaceFamilyPicker";
 import { usePlaceContext } from "./PlaceContext";
 
 // Editable since MESITA-2893 (Pato, 2026-10-27: "the places actually save
-// their family"). A place's Mesita Families are 1–5 of the forty, picked by
+// their family"). A place's Mesita Families are 1–5 of the thirty-seven, picked by
 // the Description step's model on Create and every Enrich (MESITA-2891) and
 // stored; the operator may set them here, saved with Basics through
 // admin-web-update-place. A hand-set list is operator-owned: Enrich keeps it

@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
     // An unknown slug is refused by the taxonomy trigger.
     update.tags = tags;
   }
-  // Mesita Families (MESITA-2893): the operator's 1–5 of the forty. Validated
+  // Mesita Families (MESITA-2893): the operator's 1–5 of the thirty-seven. Validated
   // against the live vocabulary here, so the 400 names the slug instead of the
   // trigger's bare "unknown family"; written on place_profiles directly below,
   // because the profiles view's INSTEAD OF trigger drops family_keys.

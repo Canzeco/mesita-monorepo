@@ -1,4 +1,4 @@
-// Forty guest families, plus Undefined last. Undefined is not a filter.
+// Thirty-seven guest families, plus Undefined last. Undefined is not a filter.
 // Each guest family has one emoji. That mark is the rail title and the
 // same mark in the admin console. A place may wear more than one (MESITA-2749);
 // its families are a dictionary of its Google categories, never a model's
@@ -34,9 +34,6 @@ export type FamilyKey =
   | "fancy"
   | "family"
   | "drinks"
-  | "beer"
-  | "cocktails"
-  | "wine"
   | "sports"
   | "hookah"
   | "night_out"
@@ -83,9 +80,6 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "fancy", label: "Fancy", emoji: "🥂" },
   { key: "family", label: "Family", emoji: "👨‍👩‍👧" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
-  { key: "beer", label: "Beer", emoji: "🍺" },
-  { key: "cocktails", label: "Cocktails", emoji: "🍸" },
-  { key: "wine", label: "Wine", emoji: "🍷" },
   { key: "sports", label: "Sports", emoji: "📺" },
   { key: "hookah", label: "Hookah", emoji: "💨" },
   { key: "night_out", label: "Night", emoji: "🌙" },

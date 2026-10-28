@@ -3,7 +3,7 @@
 // the Google Categories that are NOT enabled on Mesita." · "Kill the Google
 // Categories vs Mesita Families matrix … Remove it. Delete it."
 //
-// So: the Mesita Families (the forty the Description step picks from), every
+// So: the Mesita Families (the thirty-seven the Description step picks from), every
 // Google category split by `catalog_membership.enabled`, and the tag catalog.
 // No category ↔ family join is returned or stored any more.
 import type { GoogleCategory, PlaceFamily } from "./categories.ts";

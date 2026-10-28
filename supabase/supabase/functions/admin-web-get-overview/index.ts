@@ -194,7 +194,7 @@ Deno.serve(async (req) => {
     // The stored families (MESITA-2891), named for the row; `place.family_keys`
     // carries the slugs the Basics editor toggles (MESITA-2893).
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
-    // The forty the editor offers, in catalog (day-arc) order; Undefined is
+    // The thirty-seven the editor offers, in catalog (day-arc) order; Undefined is
     // never a pick.
     families: families
       .filter((f) => f.slug !== "undefined")
