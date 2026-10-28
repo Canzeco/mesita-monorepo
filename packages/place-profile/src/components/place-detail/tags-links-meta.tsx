@@ -52,7 +52,8 @@ export function FamiliesBox({ place }: { place: PlaceDetail }) {
 // ── 10. Tags ────────────────────────────────────────────────────────────
 
 export function TagsBox({ place }: { place: PlaceDetail }) {
-  // Google atmosphere chips. NO TAGS, NO BOX (Pato, MESITA-2700).
+  // Mesita tags, else Google atmosphere chips (MESITA-2792). NO TAGS, NO BOX
+  // (Pato, MESITA-2700).
   if (place.tags.length === 0) return null;
   return (
     <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
