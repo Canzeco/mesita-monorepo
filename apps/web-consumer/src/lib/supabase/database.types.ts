@@ -1127,7 +1127,6 @@ export type Database = {
           created_at: string
           currency: string
           id: string
-          selected: boolean
           slug: string
           state: Database["public"]["Enums"]["place_state"]
           updated_at: string
@@ -1138,7 +1137,6 @@ export type Database = {
           created_at?: string
           currency?: string
           id: string
-          selected?: boolean
           slug: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1149,7 +1147,6 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
-          selected?: boolean
           slug?: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1447,7 +1444,6 @@ export type Database = {
           reservation_target: string | null
           reservations_enabled: boolean | null
           resy_url: string | null
-          selected: boolean | null
           slug: string | null
           source_sync: Json | null
           state: Database["public"]["Enums"]["place_state"] | null
