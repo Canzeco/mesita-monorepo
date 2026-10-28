@@ -69,7 +69,6 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       catalogPageSize: 33,
       popularityFloor: 5,
     },
-    catalog: { ...live.catalog, seedCount: 99 },
     name: {
       ...live.name,
       locations: !live.name.locations,
@@ -91,13 +90,13 @@ beforeEach(() => {
 // (MESITA-2338): a box that changes its slices changes what this proves.
 const ALL_BOX_SLICES: DiscoverySlice[][] = Object.values(BOX_SLICES).map((s) => [...s]);
 
-describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
+describe("no Save sends a retired key (MESITA-2328, MESITA-2337, MESITA-2923)", () => {
   it.each(ALL_BOX_SLICES)("saving %s sends none of them", async (...slices) => {
     const live = liveConfig();
     const sent = armed(storedBlob(live));
     await updateDiscoveryConfig(editedEverywhere(live), slices);
     expect(sent.config).toBeDefined();
-    for (const dead of ["swipe", "engines", "weights", "weightsByMode", "filters"]) {
+    for (const dead of ["swipe", "engines", "weights", "weightsByMode", "filters", "catalog"]) {
       expect(sent.config).not.toHaveProperty(dead);
     }
     expect(sent.config?.params).not.toHaveProperty("balance");
@@ -105,7 +104,7 @@ describe("no Save sends a retired key (MESITA-2328, MESITA-2337)", () => {
 });
 
 describe("the Map box (MESITA-2909)", () => {
-  it("writes map but the Catalog page size; leaves params, catalog seed, Name, Deep and the prompt", async () => {
+  it("writes map but the Catalog page size; leaves params, Name, Deep and the prompt", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.map]);
@@ -114,7 +113,6 @@ describe("the Map box (MESITA-2909)", () => {
     expect(sent.config?.map.popularityFloor).toBe(5);
     expect(sent.config?.map.catalogPageSize).toBe(live.map.catalogPageSize);
     expect(sent.config?.params).toEqual(live.params);
-    expect(sent.config?.catalog.seedCount).toBe(live.catalog.seedCount);
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.general).toEqual(live.general);
     expect(sent.config?.deep).toEqual(live.deep);
@@ -143,7 +141,6 @@ describe("the Deep box", () => {
     expect(sent.config?.deep).toEqual({ limit: 9, minSimilarity: 0.3 });
     expect(sent.config?.chat.prompt).toBe("Be brief.");
     expect(sent.config?.map).toEqual(live.map);
-    expect(sent.config?.catalog).toEqual(live.catalog);
     expect(sent.config?.params).toEqual(live.params);
     expect(sent.config?.name).toEqual(live.name);
   });

@@ -76,16 +76,6 @@ export type SignalParams = {
   popularity: { halfReviews: number };
 };
 
-export type CatalogConfig = {
-  /** Atlas category rails that currently have inventory. */
-  seedCount: number;
-  /** Vibe-query rails, sampled from the code-defined bank (not Atlas slugs). */
-  generatedCount: number;
-  placesPerRail: number;
-  /** Seed category must have at least this many listed places. */
-  minSeedPlaces: number;
-};
-
 /**
  * The Deep pipeline (MESITA-2327): open-ended discovery over Mesita Places by
  * the Description signal, called by Chat. `limit` caps the places handed to
@@ -278,7 +268,6 @@ export type GeneralConfig = {
 export type DiscoveryConfig = {
   params: SignalParams;
   general: GeneralConfig;
-  catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
   deep: DeepConfig;
@@ -290,12 +279,6 @@ export const CHAT_PROMPT_MAX = 12_000;
 
 /** Google stars top out at 5: the ceiling of `map.minRating`. */
 export const MIN_RATING_MAX = 5;
-
-export const CATALOG_COUNT_MAX = 20;
-export const CATALOG_PLACES_PER_RAIL_MIN = 4;
-export const CATALOG_PLACES_PER_RAIL_MAX = 20;
-export const CATALOG_MIN_SEED_PLACES_MAX = 20;
-export const CATALOG_RAILS_CAP = 24;
 
 export const MAP_MIN_POPULARITY_MAX = 1;
 
@@ -391,13 +374,6 @@ export const DEFAULT_MAP: MapConfig = {
   popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
 };
 
-export const DEFAULT_CATALOG: CatalogConfig = {
-  seedCount: 8,
-  generatedCount: 8,
-  placesPerRail: 8,
-  minSeedPlaces: 2,
-};
-
 export const DEFAULT_NAME_FAST: NameFastConfig = {
   googleCount: NAME_FAST_COUNT_DEFAULT,
   count: NAME_FAST_COUNT_DEFAULT,
@@ -462,42 +438,11 @@ export const SIGNAL_PARAM_BOUNDS = {
 export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   params: DEFAULT_SIGNAL_PARAMS,
   general: DEFAULT_GENERAL,
-  catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
 };
-
-export function normalizeCatalogConfig(raw: unknown): CatalogConfig {
-  const r = (raw ?? {}) as Record<string, unknown>;
-  const seedCount = Math.round(
-    num(r.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX),
-  );
-  const generatedCount = Math.round(
-    num(r.generatedCount, DEFAULT_CATALOG.generatedCount, 0, CATALOG_COUNT_MAX),
-  );
-  return {
-    seedCount,
-    generatedCount,
-    placesPerRail: Math.round(
-      num(
-        r.placesPerRail,
-        DEFAULT_CATALOG.placesPerRail,
-        CATALOG_PLACES_PER_RAIL_MIN,
-        CATALOG_PLACES_PER_RAIL_MAX,
-      ),
-    ),
-    minSeedPlaces: Math.round(
-      num(
-        r.minSeedPlaces,
-        DEFAULT_CATALOG.minSeedPlaces,
-        1,
-        CATALOG_MIN_SEED_PLACES_MAX,
-      ),
-    ),
-  };
-}
 
 export function normalizeDeepConfig(raw: unknown): DeepConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -706,7 +651,8 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
 /**
  * Tolerant read: any missing or invalid key falls back to its default, and
  * the blob is rebuilt key by key, so a retired key (`weights`,
- * `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337)
+ * `weightsByMode`, `engines`, `swipe`, MESITA-2328; `filters`, MESITA-2337;
+ * the rails engine's `catalog`, MESITA-2923)
  * is dropped on the next save rather than lingering in jsonb forever.
  */
 export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
@@ -715,7 +661,6 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
   return {
     params: normalizeSignalParams(r.params),
     general: normalizeGeneralConfig(r.general),
-    catalog: normalizeCatalogConfig(r.catalog),
     map: normalizeMapConfig(r.map),
     name: normalizeNameConfig(r.name),
     deep: normalizeDeepConfig(r.deep),
