@@ -24,6 +24,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writeConsumer } from "./consumer-doc.ts";
+import { savePhotoSizes } from "./photo-sizes.ts";
 
 export const AVATAR_BUCKET = "consumer-avatars";
 /** The bucket's own limits (20260807200655_consumer_avatars_bucket.sql). */
@@ -129,6 +130,8 @@ export async function adoptInstagramAvatar(
       upsert: true,
     });
     if (upErr) return { ok: false, reason: `upload_${upErr.message}` };
+    // The three sizes screens load (MESITA-2966). A miss keeps the original.
+    await savePhotoSizes(admin, supabaseUrl, AVATAR_BUCKET, path);
     const avatarUrl = `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/${AVATAR_BUCKET}/${path}`;
 
     const written = await writeConsumer(admin, {
@@ -143,7 +146,7 @@ export async function adoptInstagramAvatar(
     const { data: files } = await bucket.list(consumerId, { limit: 100 });
     const stale = (files ?? [])
       .map((f) => `${consumerId}/${f.name}`)
-      .filter((p) => isInstagramAvatar(p, consumerId) && p !== path);
+      .filter((p) => isInstagramAvatar(p, consumerId) && !p.startsWith(path));
     if (stale.length > 0) await bucket.remove(stale);
 
     return { ok: true, avatarUrl };

@@ -4,7 +4,7 @@ import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { DefaultAvatar } from "@mesita/place-profile";
+import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import {
   CLASS_LABEL,
   PLAN_LABEL,
@@ -317,9 +317,9 @@ export function IdentityCard({
       <span className={IDENTITY_RING_CLASS} aria-hidden>
         <span className={cn("bg-muted", IDENTITY_PHOTO_CLASS)}>
           {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <SizedImg
               src={avatarUrl}
+              size="thumb"
               alt=""
               className="h-full w-full object-cover"
             />

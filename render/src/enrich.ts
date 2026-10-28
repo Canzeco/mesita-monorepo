@@ -147,6 +147,7 @@ export async function buildEnrichment(
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
+    website: stringField(spine.patch.website_url),
     // Every link is looked for again; one the Resolver keeps replaces the saved one.
     have: {},
     counts,

@@ -9,6 +9,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
 import { runInBackground } from "./background.ts";
+import { savePhotoSizes } from "./photo-sizes.ts";
 import { writePlace } from "./place-doc.ts";
 import type { SavedAnalysis, StoredPhoto } from "./photo-analysis.ts";
 import {
@@ -329,6 +330,8 @@ async function mirrorOne(
       };
     }
     const publicUrl = `${publicPrefix}${path}`;
+    // The three sizes screens load (MESITA-2966); the original is already safe.
+    runInBackground(savePhotoSizes(admin, supabaseUrl, IMAGE_BUCKET, path));
     return {
       ok: true,
       url: publicUrl,
