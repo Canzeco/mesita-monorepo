@@ -1,18 +1,5 @@
 // Small JSON / string parsing helpers shared by the Enricher and business onboarding.
 
-/** De-dupe string URLs (or any strings) preserving first-seen order. */
-export function dedup(arr: string[]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const u of arr) {
-    if (typeof u === "string" && u && !seen.has(u)) {
-      seen.add(u);
-      out.push(u);
-    }
-  }
-  return out;
-}
-
 export function numOf(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
   if (typeof v === "string") {

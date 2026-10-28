@@ -1,13 +1,8 @@
-// Shared social/web channel URL classification + canonicalisation. Used by the
-// place create path (it classified business-web-create-place's bag of links
-// into channel columns until MESITA-2090 retired it) and the Enricher (which picks the
-// canonical profile out of search results). Keeping the host table + URL
-// normalisers in one place stops the two from drifting.
-
-import { instagramHandleFromUrl } from "./apify.ts";
-import { facebookPageFromUrl } from "./channels-facebook.ts";
-
-export { fbSlugCandidate } from "./channels-facebook.ts";
+// Shared social/web channel URL classification + canonicalisation: the host
+// table that maps a link to its channel column, and classifyLinks, which the
+// Google Basics step uses to file a place's website. The search-result pickers
+// (pickWebsite / pickInstagram / pickFacebook / pickChannel) left with the
+// server's social-link verify path (MESITA-2979, MESITA-2988).
 
 export type ChannelKey =
   | "website_url"
@@ -86,7 +81,7 @@ function isGoogleMapsUrl(url: string): boolean {
 // Hosts that are not a place's own website and that `matchChannel` does NOT
 // already claim: search engines, encyclopaedias, link-in-bio pages, and the
 // delivery aggregators Mesita has no column for. Anything matchChannel DOES
-// claim is excluded by derivation inside pickWebsite, never by being re-typed
+// claim is excluded by derivation inside classifyLinks, never by being re-typed
 // here — the hand-typed list used to be the only guard and it had drifted: it
 // named opentable.com but not ubereats.com, so an Uber Eats store page
 // resolved as a place's official website and landed in `website_url` beside
@@ -106,11 +101,8 @@ const NOT_A_WEBSITE_BRANDS =
 // any `bio.<place>.com`) or that have no country variant to chase.
 const NOT_A_WEBSITE_HOSTS = ["goo.gl", "youtu.be", "bio.link"];
 
-/** True when this host can never be a place's own site. Both website doors
- * ask it: classifyLinks (the create path, which bags a place's links) and
- * pickWebsite (the Links step, which picks one out of search results). They
- * used to guard differently — classifyLinks derived from matchChannel while
- * pickWebsite kept a hand-typed copy — which is how the copy drifted. */
+/** True when this host can never be a place's own site. classifyLinks asks it
+ * before a link may land in website_url. */
 function isNotAWebsiteHost(host: string): boolean {
   const h = host.replace(/^www\./, "").toLowerCase();
   if (NOT_A_WEBSITE_BRANDS.test(h)) return true;
@@ -119,7 +111,7 @@ function isNotAWebsiteHost(host: string): boolean {
 
 // Trim tracking junk + trailing slashes so two near-identical links from the
 // same host collapse to one before we pick the shortest.
-export function canonicaliseUrl(raw: string): string | null {
+function canonicaliseUrl(raw: string): string | null {
   try {
     const u = new URL(raw);
     if (u.protocol !== "https:" && u.protocol !== "http:") return null;
@@ -185,93 +177,4 @@ export function classifyLinks(input: (string | null | undefined)[]): Channels {
     didi_food_url: pickShortest(buckets.didi_food_url),
     google_maps_url: pickShortest(buckets.google_maps_url),
   };
-}
-
-// Bare host (no www) of a URL, or null if unparseable.
-export function domainOf(url: string | null | undefined): string | null {
-  if (!url || typeof url !== "string") return null;
-  try {
-    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
-  } catch {
-    return null;
-  }
-}
-
-// Accept a string only if it parses as an http(s) URL. When `allowed` is set,
-// the host must match one of those domains (or a subdomain) AND carry a path
-// beyond "/" — guards against a bare host or a hallucinated one. `allowed=null`
-// accepts any web host (used for resolving an arbitrary official website).
-function validHost(v: unknown, allowed: string[] | null): string | null {
-  if (typeof v !== "string" || !v) return null;
-  let u: URL;
-  try {
-    u = new URL(v);
-  } catch {
-    return null;
-  }
-  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
-  const h = u.hostname.toLowerCase().replace(/^www\./, "");
-  if (allowed) {
-    const match = allowed.some((a) => h === a || h.endsWith(`.${a}`));
-    if (!match) return null;
-    if (u.pathname === "/" || u.pathname === "") return null;
-  }
-  return u.toString();
-}
-
-// First search result that resolves to a real Instagram profile (skips /p/,
-// /reel/, /explore/ etc. via instagramHandleFromUrl) → canonical URL.
-export function pickInstagram(urls: string[]): string | null {
-  for (const u of urls) {
-    const handle = instagramHandleFromUrl(u);
-    if (handle) return `https://www.instagram.com/${handle}`;
-  }
-  return null;
-}
-
-// First search result that resolves to a real Facebook page → canonical URL.
-export function pickFacebook(urls: string[]): string | null {
-  for (const u of urls) {
-    const page = facebookPageFromUrl(u);
-    if (page) return page;
-  }
-  return null;
-}
-
-// First search result that's a plausible official website: an http(s) URL
-// whose host isn't a social network, directory, or aggregator.
-export function pickWebsite(urls: string[]): string | null {
-  for (const u of urls) {
-    const valid = validHost(u, null);
-    if (!valid) continue;
-    const h = domainOf(valid);
-    if (!h) continue;
-    // A host that IS another channel cannot also be the official website.
-    // Derived from matchChannel so a channel added there is blocked here the
-    // same day, instead of waiting for someone to remember this list.
-    if (matchChannel(h)) continue;
-    if (isRetiredSocialHost(h)) continue;
-    if (isNotAWebsiteHost(h)) continue;
-    return valid;
-  }
-  return null;
-}
-
-// First search result whose host maps to `channel` → canonical URL. For
-// directory / reservation / delivery channels (OpenTable, UberEats, …) any
-// path on the right host is acceptable — unlike Instagram/Facebook, which need
-// a profile-path check. Tracking junk is stripped via canonicaliseUrl.
-export function pickChannel(urls: string[], channel: ChannelKey): string | null {
-  for (const u of urls) {
-    const canon = canonicaliseUrl(u);
-    if (!canon) continue;
-    let host: string;
-    try {
-      host = new URL(canon).hostname;
-    } catch {
-      continue;
-    }
-    if (matchChannel(host) === channel) return canon;
-  }
-  return null;
 }

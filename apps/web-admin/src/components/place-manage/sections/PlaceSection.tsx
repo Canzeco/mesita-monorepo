@@ -1,7 +1,7 @@
 "use client";
 
 import { ActionStatesCard } from "./ActionStatesCard";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Clock,
   Globe,
@@ -285,7 +285,7 @@ export function PlaceSection({
   /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
-  const { savePending, profile, reportSocialDraft, setPlace } = usePlaceContext();
+  const { savePending, profile, setPlace } = usePlaceContext();
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
   const owned = new Set(place.operator_fields ?? []);
@@ -385,17 +385,6 @@ export function PlaceSection({
       setSaved(next);
     },
   );
-
-  useEffect(() => {
-    reportSocialDraft({
-      instagram_url: form.channels.instagram_url ?? "",
-      facebook_url: form.channels.facebook_url ?? "",
-    });
-  }, [
-    form.channels.instagram_url,
-    form.channels.facebook_url,
-    reportSocialDraft,
-  ]);
 
   const anyPending = savePending;
 
