@@ -42,11 +42,9 @@ export type ActivityFeedItem = {
   kind: ActivityKind;
   at: string;
   person: ActivityPerson;
+  /** Km from the guest's point to the PLACE, the only distance a row shows
+   *  (MESITA-2946). Null without a guest point. */
   distanceKm: number | null;
-  /** Km from the guest's point to where this event happened: the member's
-   *  device fix when they liked or viewed (MESITA-2853), measured on the
-   *  server, which never sends the point. Null without either point. */
-  eventKm: number | null;
   place: Place;
 };
 
