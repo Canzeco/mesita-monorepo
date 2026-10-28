@@ -15,7 +15,8 @@ import {
   type SupabaseClient,
   type User,
 } from "jsr:@supabase/supabase-js@2";
-import { json } from "./http.ts";
+import { corsPreflight, json, rejectUnlessMethods } from "./http.ts";
+import { requireSuperAdmin } from "./auth-super-admin.ts";
 
 // ─── Env ────────────────────────────────────────────────────────────
 
@@ -157,3 +158,39 @@ export function anonClient(env: AnonEnv): SupabaseClient {
 // ─── Super-admin (re-export — implementation in auth-super-admin.ts) ─
 
 export { checkSuperAdmin, requireSuperAdmin } from "./auth-super-admin.ts";
+
+// ─── Admin request opening ─────────────────────────────────────────
+
+export type AdminRequest = {
+  env: EFEnv;
+  admin: SupabaseClient;
+  user: AuthedUser;
+};
+
+// The opening every admin-web-* EF shares, in this order: CORS preflight,
+// method, env (500), bearer session (401), service-role client, then the
+// super_admins gate (401 no identity / 403 with `forbiddenMessage`). Each
+// failure is the exact Response the inline sequence returned. Callers:
+//
+//   const ctx = await requireAdminRequest(req, "POST");
+//   if (ctx instanceof Response) return ctx;
+//   const { env, admin, user } = ctx;
+export async function requireAdminRequest(
+  req: Request,
+  method: string,
+  forbiddenMessage?: string,
+): Promise<AdminRequest | Response> {
+  if (req.method === "OPTIONS") return corsPreflight();
+  const methodReject = rejectUnlessMethods(req, method);
+  if (methodReject) return methodReject;
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const authRes = await getAuthedUser(req, envRes.env);
+  if (!authRes.ok) return authRes.response;
+
+  const admin = adminClient(envRes.env);
+  const saRes = await requireSuperAdmin(admin, authRes.user, forbiddenMessage);
+  if (!saRes.ok) return saRes.response;
+  return { env: envRes.env, admin, user: authRes.user };
+}
