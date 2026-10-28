@@ -194,10 +194,7 @@ export async function applyPlaceRequest(
     // run already in flight (another guest's vote). A refused start is logged
     // and the place goes back to ready or failed, so the next vote retries.
     if (googlePlaceId) {
-      const started = await startEnrichment(admin, {
-        placeIds: [opts.placeId],
-        claim: true,
-      });
+      const started = await startEnrichment(admin, { placeIds: [opts.placeId] });
       if (started.ok) {
         enrichmentTriggered = true;
       } else if (started.blocked === "enriching") {
