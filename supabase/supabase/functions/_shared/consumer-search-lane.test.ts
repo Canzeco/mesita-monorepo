@@ -171,15 +171,10 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
   const on = {
     autoCount: 3,
     googleCount: 3,
-    typesOn: true,
   };
   const cases: Array<
     [string, Partial<typeof on>, ReturnType<typeof deepModuleFlags>]
   > = [
-    ["types off skip Autocomplete and Text Search", { typesOn: false }, {
-      wantAuto: false,
-      wantText: false,
-    }],
     ["googleCount 0 keeps Autocomplete, skips Text Search", { googleCount: 0 }, {
       wantAuto: true,
       wantText: false,

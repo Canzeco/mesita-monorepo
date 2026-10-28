@@ -1534,6 +1534,9 @@ select ok(
                       'googlePopular', 'googleClosest'])
       -- MESITA-2702: no Name reviews floor (`general.minReviews`).
       and discovery_config #> '{general,minReviews}' is null
+      -- MESITA-2767: the Search bar's always-on family switches.
+      and discovery_config #> '{name,fast,supers}' is null
+      and discovery_config #> '{name,deep,supers}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.

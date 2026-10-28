@@ -5,6 +5,8 @@
 // profile. Vision off keeps that order and does not call the model. A failed
 // describe keeps the order too.
 
+import { APIFY_USD, charge, openaiUsd } from "./cost.ts";
+
 const GALLERY_CAP = 10;
 const GOOGLE_CAP = 10;
 const INSTAGRAM_CAP = 30;
@@ -16,6 +18,11 @@ const SORTING_PROMPT =
   "Rank these place photos best to worst for a should-we-go-tonight decision. We sell EXPERIENCES: weight beautiful place / ambience / vibe shots EQUALLY with food. Favor visual quality, representativeness, and a balanced mix. Drop duplicates, blurry, dark, or text-heavy images. As a minor tie-breaker only (never a primary or secondary criterion), prefer a hero whose shape is close to square over a strongly horizontal or vertical one, because the app shows it in a square tile.";
 
 type FetchImpl = typeof fetch;
+
+type ChatBody = {
+  choices?: { message?: { content?: string } }[];
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
+};
 
 export type ImageKnobs = {
   gatherGoogleImages: number;
@@ -122,7 +129,9 @@ export async function fetchInstagramPosts(opts: {
       return [];
     }
     const data = await res.json();
-    return Array.isArray(data) ? data as InstagramPost[] : [];
+    const posts = Array.isArray(data) ? data as InstagramPost[] : [];
+    charge("apify", posts.length * APIFY_USD.instagramPost, `instagram-post-scraper ${posts.length} posts`);
+    return posts;
   } catch (err) {
     const why = ctrl.signal.aborted
       ? "timeout after 60000ms"
@@ -262,7 +271,8 @@ async function describeOne(
       signal: ctrl.signal,
     });
     if (!res.ok) return "";
-    const body = await res.json() as { choices?: { message?: { content?: string } }[] };
+    const body = await res.json() as ChatBody;
+    charge("openai", openaiUsd(knobs.visionModel, body.usage), `vision ${knobs.visionModel}`);
     return (body.choices?.[0]?.message?.content ?? "").trim();
   } catch {
     return "";
@@ -295,7 +305,8 @@ async function rankPhotos(
     }),
   });
   if (!res.ok) return null;
-  const body = await res.json() as { choices?: { message?: { content?: string } }[] };
+  const body = await res.json() as ChatBody;
+  charge("openai", openaiUsd(knobs.sortModel, body.usage), `sort ${knobs.sortModel}`);
   const text = body.choices?.[0]?.message?.content ?? "";
   try {
     return (JSON.parse(text) as { order?: unknown }).order ?? null;
