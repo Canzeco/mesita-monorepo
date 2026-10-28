@@ -137,7 +137,7 @@ describe("the boxes' controls", () => {
 
   it("Map and Catalog: the Always-on rules state no Google call and the fixed numbers (MESITA-2603, MESITA-2872, MESITA-2909)", () => {
     const map = render(<MapBox {...seed} />);
-    for (const text of ["the Map calls no Google", "has no ceiling", "at most 1000 ready rows"]) {
+    for (const text of ["the Map calls no Google", "has no ceiling"]) {
       expect(map, text).toContain(text);
     }
     const catalog = render(<CatalogBox {...seed} />);

@@ -285,7 +285,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
       "The screen radius is at least 0.05 km and has no ceiling (MESITA-2918): however far out the guest zooms, the search is the ring they see. No visible map yet uses the current-location radius instead.",
-      "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
+      "Mesita's read ranks every ready place in the radius box (up to 10,000) and the Map shows the best Map places shown by score (MESITA-2950).",
     ],
     callers: ["Map (the Search tab)"],
     live: true,

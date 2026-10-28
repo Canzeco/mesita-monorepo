@@ -11,6 +11,7 @@ import {
   type PoolRow,
   resolveAreaLocation,
   selectCatalogPool,
+  selectMapPool,
   walkScoringRows,
 } from "./area-pipeline.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
@@ -191,4 +192,41 @@ Deno.test("list-catalog: a pass-2 error is a 502 with the code and no PostgREST 
   // The PostgREST message goes to the log line only.
   assertEquals(/json\(\{[^}]*err\.message/s.test(src), false);
   assertEquals(src.includes("error: error.message"), false);
+});
+
+Deno.test("the Map ranks every place in its ring and keeps the best placesShown, not the first 1000 by id (MESITA-2950)", async () => {
+  // 1,500 places inside the ring; the 50 most loved have the highest ids, so
+  // the old id-ordered 1000-row read never saw them.
+  const rows = Array.from({ length: 1500 }, (_, i) =>
+    row(i, i >= 1450 ? { google_stars_overall: 4.9, google_review_count: 5000 } : {}));
+  const fake = fakeRead(rows);
+  const cfg = { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, placesShown: 50 } };
+  const { places, summary } = await selectMapPool({
+    read: fake.read,
+    cfg,
+    center: CENTER,
+    radiusKm: 3,
+    families: [],
+    cardColumns: CARDS,
+    wire,
+  });
+  assertEquals(places.length, 50);
+  for (let i = 1450; i < 1500; i++) assert(places.some((p) => p.id === pid(i)), pid(i));
+  assertEquals(summary.surface, "map");
+  assertEquals([summary.read, summary.total, summary.returned, summary.chunks], [1500, 1500, 50, 1]);
+  assertEquals(summary.halfKm, null);
+  // Both passes are boxed to the ring; pass 2 reads only the kept cards.
+  for (const s of fake.seen) assertEquals(s.bbox, true);
+  const cards = fake.seen.filter((s) => s.columns === CARDS);
+  assertEquals(cards.length, 1);
+  assertEquals(cards[0].in!.length, 50);
+});
+
+Deno.test("list-places: a failed read is a 502 with the code and no PostgREST text", async () => {
+  const src = await Deno.readTextFile(new URL("../consumer-web-list-places/index.ts", import.meta.url));
+  assert(src.includes("selectMapPool"));
+  assert(src.includes('code: "places_read_failed"'));
+  assertEquals(/json\(\{[^}]*err\.message/s.test(src), false);
+  // No capped single read is left to rank a slice.
+  assertEquals(src.includes(".limit("), false);
 });
