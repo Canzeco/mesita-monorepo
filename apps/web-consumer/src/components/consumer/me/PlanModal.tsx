@@ -1,6 +1,6 @@
 "use client";
 
-// Plan — the subscription, Free or Premium (MESITA-2134, MESITA-2167, MESITA-2553).
+// Plan — the subscription, Free or Premier (MESITA-2134, MESITA-2167, MESITA-2553).
 // Opened from the Me › Plan tile and from the Plan chip on Me's card.
 //
 // PLAN IS NOT CLASS (Pato, MESITA-2553). Plan is what a guest pays for; Class
@@ -12,10 +12,10 @@
 // failed) neither row claims it, and nothing assumes Free.
 //
 // NO PRICE, NO HYPOTHESIS. Free states today's enforced cap, the live rule
-// (FREE_RESERVATIONS_PER_MONTH). Premium states no number and no price: those are
-// working hypotheses, not decisions. Premium opens with "Everything in Free"
-// (true for a Premium guest today), then its unbuilt perks, each tagged Soon, so a
-// Premium guest is never told their plan does not exist. The words live in
+// (FREE_RESERVATIONS_PER_MONTH). Premier states no number and no price: those are
+// working hypotheses, not decisions. Premier opens with "Everything in Free"
+// (true for a Premier guest today), then its unbuilt perks, each tagged Soon, so a
+// Premier guest is never told their plan does not exist. The words live in
 // plan-words.ts, which /me/plan's fallback reads too (MESITA-2701).
 
 import { CreditCard, Sparkles } from "lucide-react";

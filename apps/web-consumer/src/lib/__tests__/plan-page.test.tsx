@@ -21,9 +21,9 @@ const soonCount = (section: string) =>
 
 const render = (plan: "free" | "premium" | null) => {
   const html = renderToStaticMarkup(<PlanModal plan={plan} />);
-  // Free ends where Premium's row begins.
-  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Premium"'));
-  const premium = html.slice(html.indexOf('data-plan-row="Premium"'));
+  // Free ends where Premier's row begins.
+  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Premier"'));
+  const premium = html.slice(html.indexOf('data-plan-row="Premier"'));
   return { html, free, premium };
 };
 
@@ -39,7 +39,7 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(soonCount(free)).toBe(0);
   });
 
-  it("gives Premium everything in Free today, then its unbuilt perks, each tagged Soon", () => {
+  it("gives Premier everything in Free today, then its unbuilt perks, each tagged Soon", () => {
     expect(perks(premium)).toEqual([
       `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
       "More reservations every month",
@@ -56,7 +56,7 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(premium.match(/lucide-check/g)).toHaveLength(1);
   });
 
-  it("states no price and no hypothesis for Premium — neither is decided", () => {
+  it("states no price and no hypothesis for Premier — neither is decided", () => {
     const words = text(premium).replace(`${FREE_RESERVATIONS_PER_MONTH}`, "");
     expect(words).not.toMatch(/\d/);
     expect(words).not.toMatch(/\$|MX|price|per month|\/mo|\/yr|year/i);
@@ -68,7 +68,7 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
 
   it("exposes each list as a named list", () => {
     expect(html).toContain('aria-label="Included in Free"');
-    expect(html).toContain('aria-label="Included in Premium"');
+    expect(html).toContain('aria-label="Included in Premier"');
     expect(html.match(/<ul[^>]*role="list"/g)).toHaveLength(2);
   });
 
