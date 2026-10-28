@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import { BadgeCheck, Loader2, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import { RowDivider, SettingsGroup, Switch } from "@/components/consumer/me/settings-rows";
+import { RowDivider, SettingsGroup } from "@/components/consumer/me/settings-rows";
 import {
   apiCancelBoost,
   apiStartBoost,
@@ -31,7 +31,8 @@ import { cn, errMsg } from "@/lib/utils";
 // sheet before it, MESITA-1998: "cualquiera se suscriba ... desde la
 // Consumer App"). Anyone makes a place Official with their own
 // subscription: Official 2X · 5X · 10X, monthly or yearly (ten months for
-// twelve), whether to be named, then Stripe Checkout. Many guests can back
+// twelve), then Stripe Checkout. Backers are anonymous (MESITA-2928): no
+// name is asked for, sent or shown, only how many guests back it. Many guests can back
 // one place, so one lapsed card never takes the tier from the rest. The
 // place wears "Official 2X" after its name and a red pin while it holds a
 // tier; the copy says it is paid visibility.
@@ -63,7 +64,6 @@ export function BoostPane({
   const getSupabase = useLazyBrowserSupabase();
   const [tier, setTier] = useState<BoostTier>("boost_2x");
   const [interval, setBillingInterval] = useState<BoostInterval>("month");
-  const [showName, setShowName] = useState(true);
   // The choices replace the card in the same pane (MESITA-2817), so a
   // second sheet never stacks.
   const [choosing, setChoosing] = useState(false);
@@ -83,7 +83,6 @@ export function BoostPane({
         placeId: place.id,
         tier,
         interval,
-        showName,
         returnUrl: `${window.location.origin}${window.location.pathname}`,
       });
       window.location.assign(url);
@@ -192,17 +191,6 @@ export function BoostPane({
 
           <button
             type="button"
-            role="switch"
-            aria-checked={showName}
-            onClick={() => setShowName((v) => !v)}
-            className="flex w-full items-center gap-3 px-1 py-1 text-left text-sm"
-          >
-            <span className="min-w-0 flex-1">Show my first name as a backer</span>
-            <Switch on={showName} />
-          </button>
-
-          <button
-            type="button"
             onClick={() => void start()}
             disabled={starting}
             className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
@@ -221,7 +209,7 @@ export function BoostPane({
       {/* A SHORT CARD, THEN THE CHOICES (Pato, MESITA-2814: "maybe create a
           modal … if i click the modal, then open something"). The card says
           where the place stands, what Official is in one line, and the three
-          levels as tiles; a tile or the button swaps in billing, name and
+          levels as tiles; a tile or the button swaps in billing and
           Checkout in the same pane (MESITA-2815, MESITA-2817). */}
       <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
         <div className="flex items-center gap-3">
@@ -242,7 +230,7 @@ export function BoostPane({
               {loading
                 ? "Loading…"
                 : current && boost
-                  ? `Backed by ${backedBy(boost)}`
+                  ? `Backed by ${backedBy(boost.backers)}`
                   : "Be the first to back it"}
             </p>
           </div>
@@ -388,13 +376,9 @@ export function BoostUnavailable() {
   );
 }
 
-/** "Ana, Luis and 2 others" — names first, then the unnamed backers. */
-export function backedBy(s: Pick<PlaceBoost, "backers" | "names">): string {
-  const named = s.names.slice(0, 2);
-  const others = Math.max(0, s.backers - named.length);
-  if (named.length === 0) return s.backers === 1 ? "1 guest" : `${s.backers} guests`;
-  const tail = others > 0 ? ` and ${others} ${others === 1 ? "other" : "others"}` : "";
-  return named.length === 2 && others === 0 ? `${named[0]} and ${named[1]}` : `${named.join(", ")}${tail}`;
+/** "1 guest" · "3 guests": a count, never a name (MESITA-2928). */
+export function backedBy(backers: number): string {
+  return backers === 1 ? "1 guest" : `${backers} guests`;
 }
 
 function formatDate(iso: string | null): string {

@@ -69,7 +69,7 @@ Deno.test("boost: Checkout charges the server's price and comes back only to Mes
   assertEquals(isAllowedReturnUrl("https://evil.example/place/x"), false);
   assertEquals(isAllowedReturnUrl("http://consumer.mesita.ai/place/x"), false);
   const p = checkoutParams(
-    { placeId: "p", tier: "boost_5x", interval: "year", showName: false, returnUrl: "https://consumer.mesita.ai/place/p" },
+    { placeId: "p", tier: "boost_5x", interval: "year", returnUrl: "https://consumer.mesita.ai/place/p" },
     { backingId: "b", consumerId: "c", placeName: "Nectar" },
   ) as { line_items: Array<{ price_data: { unit_amount: number; recurring: { interval: string } } }>; success_url: string };
   assertEquals(p.line_items[0].price_data.unit_amount, 50000);

@@ -6,10 +6,11 @@
 // confirms it when Checkout sends the guest back.
 //
 // Body: { place_id: uuid, tier: "boost_2x" | "boost_5x" | "boost_10x",
-//         interval?: "month" | "year", show_name?: boolean,
+//         interval?: "month" | "year",
 //         return_url: string }   return_url: the place screen (_shared/boost.ts)
 // Response: { ok: true, url }   the Checkout page
 //
+// Backers are anonymous (MESITA-2928): no name is asked for or stored.
 // Many guests may back one place; one guest may hold several backings.
 // Stripe stays in test mode until Pato flips STRIPE_MODE and STRIPE_ALLOW_LIVE.
 
@@ -62,7 +63,6 @@ Deno.serve(async (req) => {
       billing_interval: start.interval,
       amount_cents: boostAmountCents(start.tier, start.interval),
       currency: BOOST_CURRENCY,
-      show_name: start.showName,
       status: "open",
     })
     .select("id")

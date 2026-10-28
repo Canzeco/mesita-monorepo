@@ -1,24 +1,21 @@
 // Supabase Edge Function — consumer-web-get-boost
 //
 // MESITA-1998: a place's Boost as the place screen shows it — its tier,
-// how many guests back it, the first names of those who chose to be shown,
-// and the signed-in guest's own backings (to cancel). With `session_id`
+// how many guests back it (never who: MESITA-2928), and the signed-in guest's own backings (to cancel). With `session_id`
 // (Checkout's return, `?boost=`) it first confirms that guest's backing
 // from Stripe, so the tier is right the moment they land.
 //
 // Body: { place_id: uuid, session_id?: string }
 // Response: { ok: true, tier: 0|1|2, backers: number,
-//             names: string[], mine: Backing[], confirmed?: boolean }
+//             mine: Backing[], confirmed?: boolean }
 //
-// Anonymous callers get the tier, the count and the names; never a Stripe id.
+// Anonymous callers get the tier and the count; never a Stripe id.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
   isLiveBacking,
-  readBackerNames,
   readBoostPlace,
   boostStripeKey,
   stripeClient,
@@ -79,7 +76,7 @@ Deno.serve(async (req) => {
     readBoostPlace(admin, placeId),
     admin
       .from("place_backings")
-      .select("id, consumer_id, tier, billing_interval, amount_cents, status, current_period_end, cancel_at_period_end, show_name, created_at")
+      .select("id, consumer_id, tier, billing_interval, amount_cents, status, current_period_end, cancel_at_period_end, created_at")
       .eq("place_id", placeId)
       .order("created_at", { ascending: true }),
   ]);
@@ -87,8 +84,6 @@ Deno.serve(async (req) => {
   if (error) return json({ ok: false, error: `backings_read: ${error.message}` }, 500);
 
   const live = (rows ?? []).filter((r) => isLiveBacking(r));
-  const shownIds = [...new Set(live.filter((r) => r.show_name && r.consumer_id).map((r) => r.consumer_id as string))];
-  const names = await readBackerNames(admin, shownIds, MEMBER_FALLBACK_NAME);
 
   const mine = user
     ? (rows ?? [])
@@ -109,7 +104,6 @@ Deno.serve(async (req) => {
     ok: true,
     tier: placeRes.place?.boost_tier ?? 0,
     backers: new Set(live.map((r) => r.consumer_id ?? r.id)).size,
-    names,
     mine,
     ...(confirmed === undefined ? {} : { confirmed }),
   });
