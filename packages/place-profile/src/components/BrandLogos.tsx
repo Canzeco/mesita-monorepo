@@ -34,11 +34,11 @@ function GoogleG({ className }: { className: string }) {
   );
 }
 
-// The G on a black tile, the size and corner of the Instagram and Facebook
-// tiles beside it, so the channel row reads as three tiles (MESITA-2963).
-// Black, the Mesita Reserve fill, since gray read as disabled and azure as a
-// second Facebook (MESITA-2985). Review cards use the larger tile; the header
-// row uses compact.
+// The G on a white tile with a black border, the size and corner of the
+// Instagram and Facebook tiles beside it, so the channel row reads as three
+// tiles (MESITA-2963). Gray read as disabled (MESITA-2985); the border is
+// black, not blue, so it never reads as a second Facebook (MESITA-2990).
+// Review cards use the larger tile; the header row uses compact.
 export function GoogleLogo({
   compact = false,
   tiny = false,
@@ -50,7 +50,7 @@ export function GoogleLogo({
   return (
     <div
       className={
-        "flex shrink-0 items-center justify-center bg-foreground " +
+        "flex shrink-0 items-center justify-center border border-foreground bg-white " +
         (tiny
           ? "h-4 w-4 rounded"
           : compact
