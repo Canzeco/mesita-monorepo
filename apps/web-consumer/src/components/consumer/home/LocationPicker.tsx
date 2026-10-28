@@ -12,11 +12,12 @@
 // (MESITA-2452..2454), a borderless line (MESITA-2456), an oval
 // (MESITA-2459), beside the logo (MESITA-2470).
 //
-// A tap opens the location sheet (MESITA-2464): a search field on top, then
-// Current location, "Around you" (MESITA-2471: the areas the guest stands
-// in) and the guest's saved locations. EVERY SAVED LOCATION IS A CONFIRMED
-// PIN (Pato, 2026-10-20, MESITA-2501): a match, an "Around you" row, a
-// saved row's pencil and an old unconfirmed entry all open the pin picker
+// A tap opens the location sheet (MESITA-2464), lean since MESITA-2919
+// (Pato: "far leaner"): a search field, Current location and the guest's
+// saved locations, one line each, no title, no dividers. "Around you"
+// (MESITA-2471) is gone: it repeated Current location's own neighbourhood.
+// EVERY SAVED LOCATION IS A CONFIRMED PIN (Pato, 2026-10-20, MESITA-2501): a
+// match, a saved row's pencil and an old unconfirmed entry all open the pin picker
 // (`PinPicker.tsx`) in the same sheet; nothing is saved until the guest
 // confirms the pin. Saved areas (MESITA-2383) are gone. The choice lives in
 // `lib/active-location.ts`, which Home's catalog reads.
@@ -37,14 +38,12 @@ import {
   ERROR_BOX_CLASS,
   INPUT_CLASS,
   SHEET_BODY_CLASS,
-  SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { apiSuggestPlaces, type PlacePrediction } from "@/lib/api/place-search";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { useHere } from "@/lib/use-here-name";
-import type { NearbyArea } from "@/lib/api/place-search";
 import { newSessionToken } from "@/components/consumer/search/search-utils";
-import { aroundYouCamera, pickCamera, type PickerCamera } from "@/lib/location-pick";
+import { pickCamera, type PickerCamera } from "@/lib/location-pick";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
 import {
   useLocateUser,
@@ -117,23 +116,6 @@ export function headerLocation(
 
 const ICON = "h-4 w-4 shrink-0";
 
-/** The grey word at the end of an "Around you" row (MESITA-2471). */
-const AREA_LEVEL_WORD: Record<NearbyArea["level"], string> = {
-  neighborhood: "Neighborhood",
-  district: "District",
-  city: "City",
-};
-
-/** "Around you" (MESITA-2471, Instagram's Add location): the areas around
- *  the guest, minus any already saved under the same display name. */
-export function aroundYouRows(
-  areas: readonly NearbyArea[],
-  saved: readonly Pick<SavedLocation, "customName" | "suggestedName">[],
-): NearbyArea[] {
-  const savedNames = new Set(saved.map((l) => displayName(l).trim().toLowerCase()));
-  return areas.filter((a) => !savedNames.has(a.name.trim().toLowerCase()));
-}
-
 /** A saved pin reopened in the picker. */
 const SAVED_PIN_ZOOM = 16;
 
@@ -168,11 +150,9 @@ export function LocationPicker() {
   const [token, setToken] = useState(newSessionToken);
   const { label, off } = headerLocation(active, coords !== null, locating, settled);
   // Asked only while the sheet is open, once per ~110 m (MESITA-2466): the
-  // neighbourhood for the Current location row and the "Around you" areas
-  // (MESITA-2471). An area already saved shows once, as the saved row.
+  // neighbourhood for the Current location row.
   const here = useHere(coords, picking);
   const hereName = here.name;
-  const aroundYou = aroundYouRows(here.areas, savedLocations);
   const typing = query.trim().length >= 2;
   const activeId = activeKey?.startsWith("saved:") ? activeKey.slice(6) : null;
   const listFull = evictionFor(savedLocations, activeId) === undefined;
@@ -251,7 +231,6 @@ export function LocationPicker() {
   const row = (r: {
     key: string;
     label: string;
-    detail?: string | null;
     icon: ReactNode;
     selected: boolean;
     onClick: () => void;
@@ -265,7 +244,7 @@ export function LocationPicker() {
         onClick={r.onClick}
         aria-pressed={r.selected}
         className={cn(
-          "flex w-full items-center gap-3 py-3.5 pr-12 text-left text-sm transition",
+          "flex w-full items-center gap-3 py-3 pr-12 text-left text-sm transition",
           r.selected ? "font-semibold" : "hover:bg-muted",
           r.muted && !r.selected && "text-muted-foreground",
         )}
@@ -273,9 +252,6 @@ export function LocationPicker() {
         {r.icon}
         <span className="min-w-0">
           <span className="block truncate">{r.label}</span>
-          {r.detail ? (
-            <span className="text-muted-foreground block truncate text-xs font-normal">{r.detail}</span>
-          ) : null}
           {r.alert ? (
             <span
               className="text-destructive mt-0.5 block text-xs font-normal"
@@ -333,8 +309,7 @@ export function LocationPicker() {
           />
         ) : (
         <div className={SHEET_BODY_CLASS} data-places-location-sheet>
-          <h2 className={SHEET_TITLE_CLASS}>Location</h2>
-          <label className="relative mt-3 block">
+          <label className="relative block">
             <Search
               className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
               aria-hidden
@@ -359,7 +334,7 @@ export function LocationPicker() {
             <ul
               role="list"
               aria-label="Matches"
-              className="divide-border mt-2 divide-y"
+              className="mt-2"
               data-places-location-results
             >
               {results.map((r) => (
@@ -398,7 +373,7 @@ export function LocationPicker() {
           <ul
             role="list"
             aria-label="Location"
-            className="divide-border mt-2 divide-y"
+            className="mt-2"
             data-places-location
           >
             {row({
@@ -424,35 +399,10 @@ export function LocationPicker() {
                 locate();
               },
             })}
-            {aroundYou.length > 0 ? (
-              <li
-                className="text-muted-foreground pt-4 pb-1 text-xs font-semibold"
-                data-places-around-you
-              >
-                Around you
-              </li>
-            ) : null}
-            {aroundYou.map((a) => (
-              <li key={`around:${a.name}`}>
-                <button
-                  type="button"
-                  onClick={() => setPicker({ mode: "new", camera: aroundYouCamera(a), entry: null })}
-                  className="hover:bg-muted flex w-full items-center gap-3 py-3 text-left transition"
-                  data-places-around-area
-                >
-                  <MapPin className={ICON} strokeWidth={2.25} aria-hidden />
-                  <span className="min-w-0 truncate text-sm">{a.name}</span>
-                  <span className="text-muted-foreground ml-auto shrink-0 text-xs">
-                    {AREA_LEVEL_WORD[a.level]}
-                  </span>
-                </button>
-              </li>
-            ))}
             {savedLocations.map((l) =>
               row({
                 key: savedLocationKey(l.id),
                 label: displayName(l),
-                detail: l.formattedAddress,
                 icon: (
                   <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />
                 ),

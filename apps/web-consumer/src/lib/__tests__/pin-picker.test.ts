@@ -151,7 +151,6 @@ describe("the picker's map and sheet (source)", () => {
   it("nothing is saved by a pick: every way in opens the picker", () => {
     expect(sheet).not.toContain("addSavedLocation");
     expect(sheet).toContain('setPicker({ mode: "new", camera: await pickCamera(supabase, r), entry: null });');
-    expect(sheet).toContain('setPicker({ mode: "new", camera: aroundYouCamera(a), entry: null })');
     expect(sheet).toContain('openSaved(l, "confirm");');
     expect(sheet).toContain('openSaved(l, "edit")');
   });
