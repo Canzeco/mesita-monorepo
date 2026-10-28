@@ -193,7 +193,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
   );
 }
 
-function OutboundLink({
+export function OutboundLink({
   url,
   onOpenLink,
   className,

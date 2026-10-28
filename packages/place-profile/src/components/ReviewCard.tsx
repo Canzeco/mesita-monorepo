@@ -2,18 +2,18 @@
 
 import { useState } from "react";
 import { GoogleLogo } from "./BrandLogos";
-import { Header, Quote, StarRow, Thumbnail } from "./review-card-parts";
-import { firstInitial } from "../lib/format";
+import { Quote, StarRow } from "./review-card-parts";
 import type { PlaceDetail } from "../place-detail";
 
 // One Google review card. Lives in its own client file because the
 // long-quote read-more toggle needs state.
 //
-//   [Avatar] [Name]                                 [Google logo]
-//   ★★★★★  date
+// ANONYMOUS (Pato, MESITA-2916): no name, no initial, no reviewer photo —
+// only the stars, the date and the comment.
+//
+//   ★★★★★  date                                     [Google logo]
 //   Quote... (truncated)
 //   [Read more]                                     (when truncated)
-//   [Photo thumbnail]                               (when present)
 
 const LONG_QUOTE_THRESHOLD = 220;
 
@@ -26,33 +26,18 @@ export function ReviewCard({
   const isLong = review.quote.length > LONG_QUOTE_THRESHOLD;
   return (
     <article className="flex w-full flex-col gap-2">
-      <Header
-        avatar={
-          <div className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-            {firstInitial(review.author)}
-          </div>
-        }
-        name={review.author}
-        sourceLogo={<GoogleLogo compact />}
-      />
       <div className="flex items-center gap-2">
         <StarRow rating={review.rating} />
-        <span className="text-muted-foreground text-xs">
+        <span className="text-muted-foreground flex-1 text-xs">
           {formatReviewDate(review.date)}
         </span>
+        <GoogleLogo compact />
       </div>
       <Quote
         text={review.quote}
         truncated={isLong && !expanded}
         onExpand={isLong && !expanded ? () => setExpanded(true) : undefined}
       />
-      {review.photo_url && (
-        <Thumbnail
-          src={review.photo_url}
-          alt={`${review.author}'s photo`}
-          aspect={review.photo_aspect ?? "landscape"}
-        />
-      )}
     </article>
   );
 }

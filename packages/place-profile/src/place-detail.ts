@@ -90,19 +90,13 @@ export type PlaceDetail = {
   facebook: { followers: number | null };
   instagram: { followers: number | null };
 
-  // 4. Google reviews
+  // 4. Google reviews — ANONYMOUS (Pato, MESITA-2916: "don't mention the
+  // names, just mention the stars and the comments"). No author, no
+  // avatar, no reviewer photo: the shape has no field that could draw one.
   google_reviews: Array<{
-    author: string;
     rating: number;
     quote: string;
     date: string;
-    // Optional dish / dining-room photo attached by the reviewer (Google
-    // Maps surfaces these on the review card). Shown as a thumbnail under
-    // the truncated quote. photo_aspect drives the container ratio so
-    // landscape food shots, square IG-style posts, and portrait/story
-    // images all render at their native shape.
-    photo_url?: string;
-    photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
   // 5. Menus (stored under `products`) — for restaurants the menu lives
@@ -156,6 +150,10 @@ export type PlaceDetail = {
   };
   reviews_maps: {
     google_maps_url?: string;
+    /** Google's write-review form for this place, from google_place_id
+     *  (MESITA-2916). The stored maps URL is a `?cid=` link and cannot open
+     *  the form. Absent when the payload carries no Google id. */
+    google_review_url?: string;
   };
 
   phone?: string;

@@ -50,6 +50,12 @@ function profileStats(raw: unknown): PlaceDetail["profile_stats"] {
   return { viewed: Math.max(0, viewed), saved: Math.max(0, saved) };
 }
 
+// Google's documented write-review link (MESITA-2916).
+function googleReviewUrl(placeId: string | undefined): string | undefined {
+  if (!placeId) return undefined;
+  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
+}
+
 export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDetail {
   // Catalog tags stay stored and are not the Profile field (MESITA-2255).
   void catalogTags;
@@ -140,14 +146,13 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
     // Enricher (enricher-cron-enrich-place-*) stores each review as
     // { author, rating, text, published } — map those onto the detail shape
-    // (quote/date) and keep the legacy keys as fallbacks.
+    // (quote/date) and keep the legacy keys as fallbacks. The author and any
+    // photo are dropped here: guests see reviews anonymously (MESITA-2916).
     google_reviews: arr<Record<string, unknown>>(row.google_reviews).map(
       (r) => ({
-        author: str(r.author) ?? "Google reviewer",
         rating: num(r.rating) ?? 0,
         quote: str(r.text) ?? str(r.quote) ?? "",
         date: str(r.published) ?? str(r.date) ?? "",
-        photo_url: str(r.photo_url),
       }),
     ),
 
@@ -228,6 +233,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     },
     reviews_maps: {
       google_maps_url: str(row.google_maps_url),
+      google_review_url: googleReviewUrl(str(row.google_place_id)),
     },
 
     phone: str(row.phone),

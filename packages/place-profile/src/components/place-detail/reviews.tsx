@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { MessageSquare } from "lucide-react";
 
+import { GoogleLogo } from "../BrandLogos";
 import { ReviewCard } from "../ReviewCard";
+import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { PlaceEmptyScreen } from "./empty-screen";
+import { OutboundLink } from "./location-hours";
 
 // decision: Pato (2026-10-16) — the channel counts live in the header and
 // hide while this tab is selected. What remains is Google's reviews, stacked
@@ -32,7 +35,43 @@ function reviewTimeMs(date: string): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
+// ANONYMOUS (Pato, MESITA-2916: "to minimize legal problems ... don't
+// mention the names, just mention the stars and the comments"). Each review
+// is stars · date · comment; one line above the list says why there are no
+// names. consumer-web-get-place strips the author before the payload leaves.
+//
+// LEAVE A REVIEW (Pato, MESITA-2916: "a button pointing to google to leave
+// reviews"): Google's own write-review form for this place, under the list
+// and on the empty screen. No Google id, no button.
+
+function LeaveGoogleReview({
+  url,
+  onOpenLink,
+}: {
+  url: string | undefined;
+  onOpenLink?: PlaceActions["onOpenLink"];
+}) {
+  if (!url) return null;
+  return (
+    <OutboundLink
+      url={url}
+      onOpenLink={onOpenLink}
+      className="border-border text-foreground hover:bg-muted mt-4 flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-semibold"
+    >
+      <GoogleLogo compact />
+      Leave a review on Google
+    </OutboundLink>
+  );
+}
+
+export function GoogleReviewsBox({
+  place,
+  onOpenLink,
+}: {
+  place: PlaceDetail;
+  onOpenLink?: PlaceActions["onOpenLink"];
+}) {
+  const reviewUrl = place.reviews_maps.google_review_url;
   const [shown, setShown] = useState(REVIEW_PAGE);
   const reviews = place.google_reviews;
   const sorted = useMemo(
@@ -48,19 +87,25 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
   // It is the Soon tabs' empty screen, with a speech bubble.
   if (reviews.length === 0) {
     return (
-      <PlaceEmptyScreen
-        icon={MessageSquare}
-        title="No reviews yet"
-        line="Reviews of this place will show up here."
-      />
+      <div className="flex flex-col pb-4">
+        <PlaceEmptyScreen
+          icon={MessageSquare}
+          title="No reviews yet"
+          line="Reviews of this place will show up here."
+        />
+        <LeaveGoogleReview url={reviewUrl} onOpenLink={onOpenLink} />
+      </div>
     );
   }
   return (
-    <section className="flex flex-col" aria-label="Reviews">
+    <section className="flex flex-col pb-4" aria-label="Reviews">
+      <p className="text-muted-foreground pt-4 text-xs">
+        Reviewer names are hidden to respect their privacy.
+      </p>
       <ul className="divide-border divide-y">
         {sorted.slice(0, shown).map((review, i) => (
           <li
-            key={`google-${review.author}-${review.date}-${i}`}
+            key={`google-${review.date}-${i}`}
             className="py-4"
           >
             <ReviewCard review={review} />
@@ -76,10 +121,10 @@ export function GoogleReviewsBox({ place }: { place: PlaceDetail }) {
           Show more
         </button>
       )}
+      <LeaveGoogleReview url={reviewUrl} onOpenLink={onOpenLink} />
     </section>
   );
 }
 
-// ── Individual review cards live in @/components/consumer/ReviewCard
-//    (client) — taller layout, optional photo thumbnail, "Read more"
-//    toggle when the quote runs long.
+// ── Individual review cards live in ../ReviewCard (client) — stars,
+//    date, and a "Read more" toggle when the quote runs long.
