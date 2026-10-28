@@ -368,3 +368,36 @@ export async function readSocialStanding(
       : null,
   };
 }
+
+// ── joinVipClass — Me › Class's join (MESITA-2984) ────────────────────────
+
+/** Make a Regular guest VIP. Already VIP: nothing is written, so an
+ *  operator's note and partner stay. The write is admin_set_guest_standing,
+ *  guest_class's one writer, with no actor (the guest joined, no operator
+ *  set it); `note` says how. */
+export async function joinVipClass(
+  admin: SupabaseClient,
+  consumerId: string,
+  note: string,
+): Promise<{ ok: true; joined: boolean } | { ok: false; error: string; status: number }> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("guest_class")
+    .eq("id", consumerId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) return { ok: false, error: `consumer_read: ${error.message}`, status: 500 };
+  if (!data) return { ok: false, error: "consumer_not_found", status: 404 };
+  if (data.guest_class === "vip") return { ok: true, joined: false };
+
+  const { error: rpcErr } = await admin.rpc("admin_set_guest_standing", {
+    p_consumer: consumerId,
+    p_guest_class: "vip",
+    p_plan: null,
+    p_note: note,
+    p_note_set: true,
+    p_actor: null,
+  });
+  if (rpcErr) return { ok: false, error: `consumer_write: ${rpcErr.message}`, status: 500 };
+  return { ok: true, joined: true };
+}
