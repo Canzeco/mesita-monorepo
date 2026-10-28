@@ -5,6 +5,7 @@ import {
   applyResolvedMesitaName,
   classifyPredictionKind,
   deepModuleFlags,
+  detailsTargets,
   fetchAutocomplete,
   fetchTextSearch,
   gatedGoogleKind,
@@ -18,6 +19,7 @@ import {
 } from "./consumer-search-lane.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { stripPlacesPrefix } from "./google-places.ts";
+import type { GoogleHit } from "./google-listing.ts";
 
 function item(over: Partial<LaneItem> & Pick<LaneItem, "placeId" | "mainText">): LaneItem {
   return {
@@ -413,4 +415,13 @@ Deno.test("fetchTextSearch: a 200 with an unreadable body is an empty lane, not 
   } finally {
     globalThis.fetch = orig;
   }
+});
+
+// Money (MESITA-2881): every id in `fetch` is one billed Place Details call.
+Deno.test("detailsTargets reuses paid listings and stops at the lane cap", () => {
+  const known = new Map([["B", { placeId: "B" } as GoogleHit]]);
+  const out = detailsTargets(["A", "B", "A", "C", "D"], known, 3);
+  assertEquals([...out.reused.keys()], ["B"]);
+  assertEquals(out.fetch, ["A", "C"]);
+  assertEquals(detailsTargets(["A", "B"], undefined, 0).fetch, []);
 });
