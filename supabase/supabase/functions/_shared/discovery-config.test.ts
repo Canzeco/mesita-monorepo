@@ -77,8 +77,9 @@ const LIVE_BLOB_2026_10_18 = {
   chat: { prompt: "Be Memo." },
 };
 
-const LIVE_KEYS = ["catalog", "chat", "deep", "general", "map", "name", "params"];
-const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters"];
+// The rails engine's `catalog` section retired with it (MESITA-2923).
+const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params"];
+const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters", "catalog"];
 
 Deno.test("the live blob loads: the retired keys drop, every live value stands", () => {
   const cfg = normalizeDiscoveryConfig(LIVE_BLOB_2026_10_18);
@@ -207,7 +208,6 @@ Deno.test("an early-migration blob reads back with every live section defaulted"
   assertEquals("slotting" in keys, false);
   // ...and the live sections arrive at their defaults rather than undefined.
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
-  assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
   assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);

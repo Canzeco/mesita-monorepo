@@ -1532,7 +1532,8 @@ select ok(
       and not (models_config ?| array['supabase', 'ojo'])
       and models_config #> '{memo,perplexity}' is null
       and not (memo_config ?| array['provider', 'openaiModel', 'webGrounding', 'perplexityModel'])
-      and not (discovery_config ?| array['social', 'slotting'])
+      -- MESITA-2923: the rails engine's whole `catalog` section.
+      and not (discovery_config ?| array['social', 'slotting', 'catalog'])
       -- MESITA-2337: the deck's keys (MESITA-2328), `catalog.ranking`
       -- (MESITA-2327) and the operator `filters` have no reader.
       and not (discovery_config ?| array['filters', 'swipe', 'engines', 'weights', 'weightsByMode'])
