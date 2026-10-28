@@ -30,6 +30,8 @@ Deno.test("guest row: name falls back, the handle shows only when proved, plain 
       guestClassSetAt: null,
       guestClassSetByEmail: null,
       guestClassNote: null,
+      vipPartnerId: null,
+      vipUntil: null,
       createdAt: "2026-10-21T00:00:00Z",
     },
   );
@@ -135,8 +137,32 @@ Deno.test("set body: Class, Plan and the note are each optional and independent"
   assertEquals(readStandingBody({ consumerId: ID, guestClassNote: "z".repeat(280) }).ok, true);
 });
 
+Deno.test("set body: a VIP's partner and last day (MESITA-2556)", () => {
+  const P = "a1b2c3d4-0000-4000-8000-000000000001";
+  const T = "2026-10-28";
+  const set = (b: Record<string, unknown>) => readStandingBody({ consumerId: ID, ...b }, T);
+  assertEquals(set({ vipPartnerId: P, vipUntil: "2026-12-31" }), {
+    ok: true,
+    consumerId: ID,
+    patch: { vipPartnerId: P, vipUntil: "2026-12-31" },
+  });
+  // null clears either; today is allowed.
+  assertEquals(set({ vipPartnerId: null, vipUntil: null }).ok, true);
+  assertEquals(set({ vipUntil: T }).ok, true);
+  const code = (b: Record<string, unknown>) => {
+    const r = set(b);
+    return r.ok ? "ok" : `${r.status} ${r.code}`;
+  };
+  assertEquals(code({ vipPartnerId: "x" }), "400 invalid_partner");
+  assertEquals(code({ vipUntil: "2026-02-30" }), "400 invalid_vip_until");
+  assertEquals(code({ vipUntil: "2026-10-27" }), "400 vip_until_past");
+  // Going Regular in the same call refuses a partner or a last day.
+  assertEquals(code({ guestClass: "regular", vipPartnerId: P }), "400 not_vip");
+  assertEquals(code({ guestClass: "regular", vipPartnerId: null }), "ok");
+});
+
 Deno.test("the consumer door cannot write Class, Plan or the VIP audit (MESITA-2553)", () => {
-  for (const key of ["plan", "guest_class", "guest_class_note", "guest_class_set_at", "diamond"]) {
+  for (const key of ["plan", "guest_class", "guest_class_note", "guest_class_set_at", "vip_partner_id", "vip_until", "diamond"]) {
     const r = validateConsumerPatch({ [key]: "x" });
     assertEquals(r.ok ? "accepted" : r.error, `unknown consumer field: ${key}`);
   }
@@ -146,6 +172,7 @@ Deno.test("consumer-web-update-profile refuses Plan and Class keys loudly", () =
   assertEquals(notWritableKey({ first_name: "Ana", plan: "premium" }), "plan");
   assertEquals(notWritableKey({ guestClass: "vip" }), "guestClass");
   assertEquals(notWritableKey({ guest_class_note: "x" }), "guest_class_note");
+  assertEquals(notWritableKey({ vip_until: "2027-01-01" }), "vip_until");
   assertEquals(notWritableKey({ first_name: "Ana" }), null);
   assertEquals(notWritableKey(null), null);
 });

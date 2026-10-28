@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, use_instagram_photo, appear_anonymous, guest_class, plan, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, use_instagram_photo, appear_anonymous, guest_class, plan, vip_partner_id, vip_until, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin
@@ -95,5 +95,25 @@ Deno.serve(async (req) => {
     consumer = updated.row as typeof consumer;
   }
 
-  return json({ ok: true, consumer });
+  // MESITA-2556: the guest's own Class sheet names the partner their VIP came
+  // through. The id stays server-side; only the name goes out. A failed read
+  // drops the name and never fails the profile.
+  const { vip_partner_id: partnerId, ...rest } = consumer as typeof consumer & {
+    vip_partner_id?: string | null;
+  };
+  let vipPartner: string | null = null;
+  if (partnerId) {
+    const partner = await admin
+      .from("vip_partners")
+      .select("name")
+      .eq("id", partnerId)
+      .maybeSingle();
+    if (partner.error) {
+      console.warn("vip_partner_read_failed", JSON.stringify({ error: partner.error.message }));
+    } else {
+      vipPartner = (partner.data?.name as string | undefined) ?? null;
+    }
+  }
+
+  return json({ ok: true, consumer: { ...rest, vip_partner: vipPartner } });
 });

@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { GuestRow } from "./actions";
 import { GuestsClient } from "./GuestsClient";
 
-vi.mock("./actions", () => ({ listGuests: vi.fn(), setGuestStanding: vi.fn() }));
+vi.mock("./actions", () => ({ listGuests: vi.fn(), setGuestStanding: vi.fn(), saveVipPartner: vi.fn() }));
 
 const base: GuestRow = {
   id: "g1",
@@ -19,6 +19,8 @@ const base: GuestRow = {
   guestClassSetAt: null,
   guestClassSetByEmail: null,
   guestClassNote: null,
+  vipPartnerId: null,
+  vipUntil: null,
   createdAt: "2026-10-21T00:00:00Z",
 };
 
