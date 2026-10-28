@@ -16,7 +16,7 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
-import { LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
+import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -104,7 +104,8 @@ export function PlaceDetailBody({
           {tab === "place" && !create && (
             <>
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
-                  presentation · location · hours · links · tags. The
+                  presentation · location · hours · links · Mesita Families
+                  (MESITA-2924) · tags. The
                   Created/Updated dates are admin's Metadata card, never
                   here (MESITA-2788). Popular times rides
                   with hours (it draws nothing while nothing writes it,
@@ -116,6 +117,7 @@ export function PlaceDetailBody({
               <HoursBox place={place} />
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
+              <FamiliesBox place={place} />
               <TagsBox place={place} />
               <StatsBox place={place} />
             </>

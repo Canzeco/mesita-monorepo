@@ -632,3 +632,20 @@ export function familiesForCatalogSlug(
   const fallback = COARSE_FALLBACK[coarse];
   return fallback ? [fallback] : [];
 }
+
+/**
+ * The place screen's Mesita Families box (Pato, MESITA-2924: "add a new
+ * section in overview above mesita tags where you call it Mesita Families"):
+ * a place's family keys as the chips the box draws, label and emoji from
+ * CATALOG_FAMILIES, in family (day-arc) order. Unknown keys and Undefined
+ * drop; no families is an empty list (no box).
+ */
+export function familyChips(
+  keys: unknown,
+): Array<{ key: CatalogFamilySlug; label: string; emoji: string }> {
+  if (!Array.isArray(keys)) return [];
+  const wanted = new Set(keys.filter((k): k is string => typeof k === "string"));
+  return CATALOG_FAMILIES.filter((f) => wanted.has(f.slug))
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((f) => ({ key: f.slug as CatalogFamilySlug, label: f.label, emoji: f.emoji }));
+}

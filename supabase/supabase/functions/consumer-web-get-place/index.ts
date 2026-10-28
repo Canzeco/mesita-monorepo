@@ -17,6 +17,7 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
+import { familyChips } from "../_shared/catalog-families.ts";
 import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
@@ -110,6 +111,8 @@ Deno.serve(async (req) => {
     google_reviews: anonymousReviews(row.google_reviews),
     ...request,
     profile_stats: await profileStatsP,
+    // Overview's Mesita Families box (MESITA-2924): the keys, named.
+    families: familyChips(row.family_keys),
   };
 
   return json({ ok: true, place, tags });

@@ -60,6 +60,7 @@ import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 import { reviewFoundFromRow } from "../_shared/review-found.ts";
 import { photoAnalysisMap } from "../_shared/photo-analysis.ts";
 import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
+import { familyChips } from "../_shared/catalog-families.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
@@ -156,6 +157,8 @@ Deno.serve(async (req) => {
   // (MESITA-2828); google_name rides along as Google's own label.
   const place = {
     ...placeFields,
+    // The Preview's Mesita Families box (MESITA-2924), as the guest sees it.
+    families: familyChips(placeFields.family_keys),
     seeded: isPlaceSeeded(placeFields.google_place_id),
     listed: isPlaceListed(placeFields.state),
     requested: isPlaceRequested({
