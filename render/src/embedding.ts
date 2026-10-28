@@ -1,3 +1,4 @@
+// vectorLiteral: twin of supabase _shared/embeddings-vector.ts, pinned by twins.test.ts.
 // The summary search vector for the one write (no name vector since
 // MESITA-2900: Google's name is canonical). The literal is what pgvector stores.
 // A short or missing vector is omitted; it does not reject the place.
