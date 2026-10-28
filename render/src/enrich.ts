@@ -90,7 +90,7 @@ export function isPermanentlyClosed(details: { businessStatus?: string }): boole
 // Enrichment page asked for, the 100 newest Google reviews from Apify, and a
 // description of at most 500 characters. The description is Google's own
 // summary when it has one, otherwise one written from those facts. The write
-// then infers the Mesita categories (1–3) and Mesita tags from the saved row
+// then infers the families and tags from the saved row
 // on every run, and writes the synthesized presentation. A listing Google calls permanently
 // closed stops right after Details, before any paid step. Anything else short
 // of a finished profile throws before the write. Places itself never supplies

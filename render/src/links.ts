@@ -121,10 +121,6 @@ type DiscoverOptions = {
   fetchImpl?: FetchImpl;
 };
 
-export async function discoverOfficialLinks(opts: DiscoverOptions): Promise<Partial<Record<LinkField, string>>> {
-  return (await discoverLinks(opts)).links;
-}
-
 /** The links found, and step 3's outcome: finding nothing is a result, a
  *  vendor that did not answer is a failure. */
 export async function discoverLinks(opts: DiscoverOptions): Promise<{
