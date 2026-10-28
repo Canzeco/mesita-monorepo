@@ -13,7 +13,7 @@
 //   workflows         red on main, or red on half of the last 20 human PR runs
 //   edge functions    cloud slugs vs folders on main; the last functions merge redeployed
 //   bot PRs           Dependabot PRs open over 7 days (re-land the month's set under one issue)
-//   membership        cloud catalog_membership rows vs the checked-out code map (MESITA-2766)
+//   membership        cloud catalog_membership: not empty, some enabled, one row per Google type (MESITA-2933)
 //
 // Exit 0: no finding outside scripts/pipeline-audit.accepted.json. Exit 1: an unaccepted
 // finding, or a check that could not run. Exit 2: bad usage. A check whose call fails reports
@@ -26,7 +26,7 @@
 // longer fires (delete it). A PA-UNKNOWN code cannot be accepted.
 
 import { dirname, fromFileUrl, join } from "@std/path";
-import { membershipSeedRows } from "../supabase/scripts/catalog-membership-sql.ts";
+import { GOOGLE_TYPE_SUPER } from "../supabase/supabase/functions/_shared/google-type-super.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -438,60 +438,57 @@ export function describeUnknown(u: Unknown): string {
   return `${u.endpoint} → ${u.status === null ? "no HTTP status" : `HTTP ${u.status}`}; needs ${u.permission}; ${u.message}`;
 }
 
-// ── catalog_membership (MESITA-2766) ────────────────────────────────────────
+// ── catalog_membership (MESITA-2766, MESITA-2933) ───────────────────────────
 
 /** The read the membership check runs against the cloud. */
-export const MEMBERSHIP_SQL = "select slug, family_keys from public.catalog_membership order by slug";
-/** Past this many drifted rows the check reports one summary finding, not one per slug. */
-export const MEMBERSHIP_DRIFT_ROWS = 10;
+export const MEMBERSHIP_SQL = "select slug, enabled from public.catalog_membership order by slug";
 
-export function parseMembership(data: unknown): Map<string, string[]> {
+export function parseMembership(data: unknown): Map<string, boolean> {
   if (!Array.isArray(data)) throw new Error("the catalog_membership query did not return a JSON list");
-  const rows = new Map<string, string[]>();
+  const rows = new Map<string, boolean>();
   for (const r of data) {
-    if (typeof r?.slug !== "string" || !Array.isArray(r?.family_keys)) {
+    if (typeof r?.slug !== "string" || typeof r?.enabled !== "boolean") {
       throw new Error(`unreadable catalog_membership row: ${JSON.stringify(r).slice(0, 120)}`);
     }
-    rows.set(r.slug, r.family_keys.map(String));
+    rows.set(r.slug, r.enabled);
   }
   return rows;
 }
 
-// families_for_category() reads place_categories, then this table, and the place_profiles
-// taxonomy trigger refuses a category found in neither. An admin Reset once emptied it: the
-// cloud refused most restaurant Creates while CI, rebuilt from migrations, stayed green
-// (MESITA-2759). The code map is the checked-out one, main in the workflow.
+// catalog_membership is Google's canonical type list (Table A), each type enabled on Mesita or
+// not (MESITA-2891); a place whose main Google category is not enabled gets no families. An
+// admin Reset once emptied the table and the cloud refused most restaurant Creates while CI,
+// rebuilt from migrations, stayed green (MESITA-2759). So the check flags an empty table, a
+// table with nothing enabled, and a row set that is not the checked-out GOOGLE_TYPE_SUPER map
+// (main in the workflow). Which types are enabled is an Atlas choice, never judged here.
 async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
   const got = await io.sql(MEMBERSHIP_SQL);
   if (!got.ok) {
     throw new Blind({ endpoint: `supabase db query --linked "${MEMBERSHIP_SQL}"`, status: got.status, permission: NEEDS.membership, message: got.message });
   }
   const cloud = parseMembership(got.data);
-  const code = membershipSeedRows();
-  const notes: string[] = [];
+  const types = Object.keys(GOOGLE_TYPE_SUPER).sort();
   if (cloud.size === 0) {
     return {
-      findings: [{ code: "PA-MEMBERSHIP-DRIFT:empty", detail: `the cloud table is empty (the code map has ${code.length} rows), so Create refuses every Google type outside place_categories: ship a migration carrying the full seed (supabase/scripts/catalog-membership-sql.ts)` }],
-      notes,
+      findings: [{ code: "PA-MEMBERSHIP-DRIFT:empty", detail: `the cloud table is empty (the code map has ${types.length} Google types), so every Google category reads as not enabled and every new place is Undefined: reseed it from GOOGLE_TYPE_SUPER` }],
+      notes: [],
     };
   }
-  const drifted: { slug: string; detail: string }[] = [];
-  for (const { slug, keys } of code) {
-    const have = cloud.get(slug);
-    if (!have) drifted.push({ slug, detail: `missing in the cloud; the code map says ${keys.join(", ")}` });
-    else if (have.join(",") !== keys.join(",")) drifted.push({ slug, detail: `the cloud says ${have.join(", ")}; the code map says ${keys.join(", ")}` });
+  const findings: Finding[] = [];
+  const enabled = [...cloud.values()].filter(Boolean).length;
+  if (enabled === 0) {
+    findings.push({ code: "PA-MEMBERSHIP-DRIFT:none-enabled", detail: `none of the ${cloud.size} cloud rows is enabled, so every new place is Undefined: enable the Google categories on Atlas` });
   }
-  const types = new Set(code.map((r) => r.slug));
-  const extra = [...cloud.keys()].filter((s) => !types.has(s));
-  if (extra.length > 0) notes.push(`${extra.length} cloud row(s) are not Google types (place_categories answers for them first): ${extra.slice(0, 5).join(", ")}`);
-  if (drifted.length > MEMBERSHIP_DRIFT_ROWS) {
-    const first = drifted.slice(0, 3).map((d) => `${d.slug} (${d.detail})`).join("; ");
-    return {
-      findings: [{ code: "PA-MEMBERSHIP-DRIFT:many", detail: `${drifted.length} of ${code.length} rows differ from the code map, first ${first}: a family change merged without its full seed, or the seed never reached the cloud` }],
-      notes,
-    };
+  const missing = types.filter((t) => !cloud.has(t));
+  const known = new Set(types);
+  const extra = [...cloud.keys()].filter((s) => !known.has(s));
+  if (cloud.size !== types.length || missing.length > 0) {
+    const parts = [`the cloud has ${cloud.size} rows, the code map ${types.length} Google types`];
+    if (missing.length > 0) parts.push(`missing ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}`);
+    if (extra.length > 0) parts.push(`not in the map ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? ` and ${extra.length - 5} more` : ""}`);
+    findings.push({ code: "PA-MEMBERSHIP-DRIFT:count", detail: `${parts.join("; ")}: a Table A change merged without its seed, or the seed never reached the cloud` });
   }
-  return { findings: drifted.map((d) => ({ code: `PA-MEMBERSHIP-DRIFT:${d.slug}`, detail: d.detail })), notes };
+  return { findings, notes: [] };
 }
 
 const CHECKS: [CheckId, (io: Io) => Promise<Omit<CheckResult, "check">>][] = [
