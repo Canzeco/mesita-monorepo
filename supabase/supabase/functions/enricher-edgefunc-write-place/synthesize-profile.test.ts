@@ -70,7 +70,7 @@ Deno.test("a failed inference leaves tags out of the patch (MESITA-2827)", () =>
   assertEquals(noTags.tags, []);
 });
 
-Deno.test("the franchise anchor is the saved zone and city, else Google's structured address", () => {
+Deno.test("the anchor zone is Google's neighborhood, else the saved one; city the saved, else Google's", () => {
   assertEquals(branchAnchor({ zone: "Polanco", city: "Ciudad de México" }), {
     zone: "Polanco",
     city: "Ciudad de México",
@@ -85,6 +85,17 @@ Deno.test("the franchise anchor is the saved zone and city, else Google's struct
       },
     }),
     { zone: "Roma Nte.", city: "Ciudad de México" },
+  );
+  // The stored Mesita Zone is the model's own reply (MESITA-2937): Google's
+  // neighborhood outranks it so an inference never feeds itself.
+  assertEquals(
+    branchAnchor({
+      zone: "Roma",
+      google_address: {
+        addressComponents: [{ types: ["neighborhood"], longText: "Roma Norte" }],
+      },
+    }).zone,
+    "Roma Norte",
   );
   assertEquals(branchAnchor({}), { zone: null, city: null });
 });

@@ -261,8 +261,9 @@ export async function fetchGoogleBasics(
   const country = findAddressComponent(details.addressComponents, ["country"]);
   // Zone = the neighborhood / colonia. Google carries it as a sublocality or
   // neighborhood component when it has one (not every place does) — prefer the
-  // colloquial `neighborhood`, then the administrative sublocality tiers. When
-  // Google has none, synthesis fills zone downstream (fill-only-when-empty).
+  // colloquial `neighborhood`, then the administrative sublocality tiers. It
+  // only seeds a new place's zone and hints the Description step, which
+  // infers the Mesita Zone and writes over it (MESITA-2937).
   const zone = findAddressComponent(details.addressComponents, [
     "neighborhood",
     "sublocality_level_1",
