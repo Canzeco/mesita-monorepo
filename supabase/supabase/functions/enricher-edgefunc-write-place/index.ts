@@ -13,7 +13,8 @@
 // Around the commit (MESITA-2420): a field a person pinned is withheld, so
 // an Enrich writes around a correction instead of over it; the Mesita Name
 // the synthesis inferred lands through _shared/place-name-door.ts; and each
-// step the run bought is stamped from what landed (./steps.ts).
+// step the run bought is stamped from what landed (./steps.ts). What the run
+// spent, per step, is stored as one place_enrichment_runs row (./run-cost.ts).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
@@ -32,6 +33,7 @@ import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
 import { galleryFromPatch, patchWithoutGallery } from "./photos.ts";
 import { closedListingPatch, contentStateAfterStop, enrichmentStop } from "./stop.ts";
 import { enrichStepOutcomes } from "./steps.ts";
+import { readRunCost, recordRunCost } from "./run-cost.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -52,9 +54,18 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
 
   const admin = adminClient(envRes.env);
+  const runCost = readRunCost(bodyRes.body);
   const stop = enrichmentStop(bodyRes.body);
   if (stop.kind === "invalid") return json({ ok: false, error: stop.error }, 400);
   if (stop.kind === "stop") {
+    // A failed run still paid; a closed listing stopped before the paid steps.
+    await recordRunCost(
+      admin,
+      stop.placeId,
+      runCost,
+      stop.closed ? "abandoned" : "failed",
+      stop.closed ? "Google reports the place permanently closed" : "The Render task failed",
+    );
     if (stop.closed) {
       // Recorded first, so the fact stays queryable whatever the clear does.
       const recorded = await writePlace(admin, {
@@ -236,5 +247,6 @@ Deno.serve(async (req) => {
       gallery: { sent: gallery.length, stored: stored.length },
     }),
   );
+  await recordRunCost(admin, commit.placeId, runCost, "succeeded");
   return json({ ok: true, placeId: commit.placeId, content_state: "ready" });
 });
