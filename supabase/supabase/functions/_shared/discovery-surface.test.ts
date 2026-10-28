@@ -79,7 +79,7 @@ Deno.test("every gate pushdown names a source that provides the gate's field", (
 });
 
 Deno.test("the call sites match the model", async () => {
-  const name = await text("functions/_shared/consumer-search-lane.ts");
+  const name = await text("functions/_shared/name-pipeline.ts");
   const area = await text("functions/_shared/area-pipeline.ts");
   const deep = await text("functions/_shared/deep-pipeline.ts");
   const map = await text("functions/consumer-web-list-places/index.ts");

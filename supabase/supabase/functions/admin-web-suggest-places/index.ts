@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-suggest-places (product caller)
 //
 // Manage Single Place name bar. Same Name Deep Search engine as consumer
-// Search (`runConsumerSearchLane`, mode deep): Autocomplete + Text Search
+// Search (`_shared/name-pipeline.ts`, `runAdminNamePipeline`, mode deep): Autocomplete + Text Search
 // + Lineup Name, then Mesita → Google after dropping overlaps.
 // Super-admin gated.
 //
@@ -15,7 +15,7 @@ import {
   readEFEnv,
   requireSuperAdmin,
 } from "../_shared/auth.ts";
-import { runConsumerSearchLane } from "../_shared/consumer-search-lane.ts";
+import { runAdminNamePipeline } from "../_shared/name-pipeline.ts";
 
 type Body = {
   input?: string;
@@ -42,11 +42,10 @@ serveJson("admin-web-suggest-places", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  return await runConsumerSearchLane(env, "admin-web-suggest-places", {
+  // Word by Admin's caps (MESITA-2322), never the consumer bar's.
+  return await runAdminNamePipeline(env, {
     input: body.input,
     sessionToken: body.sessionToken,
     mode: typeof body.mode === "string" ? body.mode : "deep",
-    // Word by Admin's caps (MESITA-2322), never the consumer bar's.
-    admin: true,
   });
 });

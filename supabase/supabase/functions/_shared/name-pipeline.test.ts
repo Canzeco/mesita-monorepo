@@ -1,4 +1,4 @@
-// deno test supabase/functions/_shared/consumer-search-lane.test.ts
+// deno test supabase/functions/_shared/name-pipeline.test.ts
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   resolveMode,
@@ -16,7 +16,7 @@ import {
   toWire,
   weaveStampedAutocomplete,
   type LaneItem,
-} from "./consumer-search-lane.ts";
+} from "./name-pipeline.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
 import { stripPlacesPrefix } from "./google-places.ts";
 import type { GoogleHit } from "./google-listing.ts";
@@ -197,7 +197,7 @@ Deno.test("deepModuleFlags: which Deep modules fire", () => {
 
 Deno.test("Deep source never calls searchNearbyPlaces", async () => {
   const src = await Deno.readTextFile(
-    new URL("./consumer-search-lane.ts", import.meta.url),
+    new URL("./name-pipeline.ts", import.meta.url),
   );
   assertEquals(src.includes("searchNearbyPlaces"), false);
   assertEquals(src.includes("applyPlacesCallerRegion"), false);
@@ -345,7 +345,7 @@ Deno.test("admin's place picker runs the deep lane, places only", async () => {
   );
   const code = src.split("\n").filter((l) => !l.trimStart().startsWith("//"))
     .join("\n");
-  assertEquals(code.includes("runConsumerSearchLane"), true);
+  assertEquals(code.includes("runAdminNamePipeline("), true);
   assertEquals(code.includes('"deep"'), true);
   // The engine it left. A comment may name it; the code may not call it.
   assertEquals(code.includes("suggestPlaces"), false);
@@ -373,7 +373,7 @@ Deno.test("toWire: a Text Search card rides Google-only rows, never a Mesita one
 });
 
 Deno.test("Text Search asks for the listing mask and builds its card with googleStub", async () => {
-  const src = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
+  const src = await Deno.readTextFile(new URL("./name-pipeline.ts", import.meta.url));
   const fn = src.slice(src.indexOf("async function fetchTextSearch("));
   assertEquals(fn.includes("fieldMask: LISTING_FIELD_MASK"), true);
   assertEquals(fn.includes("googleHitFromPlace(p)"), true);
