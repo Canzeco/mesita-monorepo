@@ -67,15 +67,19 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 // how many people have liked/saved that profile — below tags". Unique members
 // from place_activity; counts only, never who. No counts on the payload, no box.
 // Titled "Mesita Stats" (MESITA-2867): these are Mesita members, not Google.
+// MESITA-2958 (Pato: "same for stats but call them Mesita Views and Mesita
+// Likes"): the card is "Stats" and the cells carry the Mesita word instead.
+// A profile open is a VIEW, never a visit: "visit" is reserved for a guest
+// physically at the place.
 export function StatsBox({ place }: { place: PlaceDetail }) {
   const stats = place.profile_stats;
   if (!stats) return null;
   const cells = [
-    { key: "viewed", label: stats.viewed === 1 ? "View" : "Views", n: stats.viewed, Icon: Eye },
-    { key: "saved", label: stats.saved === 1 ? "Like" : "Likes", n: stats.saved, Icon: Heart },
+    { key: "viewed", label: "Mesita Views", n: stats.viewed, Icon: Eye },
+    { key: "saved", label: "Mesita Likes", n: stats.saved, Icon: Heart },
   ];
   return (
-    <Box title="Mesita Stats">
+    <Box title="Stats">
       <div className="grid grid-cols-2 gap-2">
         {cells.map(({ key, label, n, Icon }) => (
           <div key={key} className="bg-muted flex flex-col gap-1 rounded-xl p-3">

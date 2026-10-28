@@ -1,17 +1,17 @@
-// Visits — consumer demand for an Enrich run on a Created profile.
+// Views — consumer demand for an Enrich run on a Created profile.
 //
 // Create mints a viewable profile (content_state ready, enriched_at null).
-// Enriched is `place_profiles.enriched_at`. Every signed-in guest's visit to a
+// Enriched is `place_profiles.enriched_at`. Every signed-in guest's view of a
 // place counts once (apply_place_request; consumer-web-track-activity on
 // `viewed`, MESITA-2642 — it replaced the guest vote). When request_count
-// reaches the enrichment config's "Enrich after N visits"
+// reaches the enrichment config's "Enrich after N views"
 // (enrichRequestThreshold) this door starts the same Render run admin Enrich
 // starts (_shared/enrich-start.ts): there is one Enrich. Admin Enrich never
 // calls this door — that is the bypass.
 //
-// `enriching` tells the visitor the place is mid-run after this visit
+// `enriching` tells the guest the place is mid-run after this view
 // (MESITA-2952): the page loaded before the run began, so the guest whose
-// visit started it would otherwise never see the Enriching tag.
+// view started it would otherwise never see the Enriching tag.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
@@ -204,7 +204,7 @@ export async function applyPlaceRequest(
         claimedElsewhere = true;
       } else {
         console.error(
-          `[${opts.callerName}] the visit did not start an Enrich run: ${started.error}`,
+          `[${opts.callerName}] the view did not start an Enrich run: ${started.error}`,
         );
       }
     }

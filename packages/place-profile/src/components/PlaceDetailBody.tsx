@@ -36,7 +36,7 @@ import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-li
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
-//      panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
+//      panel (MESITA-2642: views enrich) — and Reviews holds Google's up-to-5 from
 //      the create-time Details call (MESITA-2317). Enriched: Reviews holds
 //      Apify's 100.
 //   3. The active tab's boxes.

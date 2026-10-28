@@ -248,7 +248,7 @@ export function CrenupClient({
             <div className="mt-4">
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Create mints the ugly profile without queuing the Enricher.
-                Enrichment&apos;s &ldquo;Enrich after N visits&rdquo; decides
+                Enrichment&apos;s &ldquo;Enrich after N views&rdquo; decides
                 when it runs by itself.
               </p>
               <div className="mt-4 flex flex-col gap-3">
@@ -350,7 +350,7 @@ export function CrenupClient({
               <Fields>
                 <NumberField
                   icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Enrich after N visits"
+                  label="Enrich after N views"
                   value={settings.requestThreshold}
                   min={1}
                   max={100}

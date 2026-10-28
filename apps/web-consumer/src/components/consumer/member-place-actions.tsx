@@ -34,13 +34,13 @@ import { toast } from "@/lib/toast";
 // under the title comes from consumer-web-list-activity. There is no
 // "I went" (MESITA-2567: Social is liked and viewed only).
 //
-// THE VISIT THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the
+// THE VIEW THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the
 // enriching tag when created, just for user to understand that the place is
-// being enriched"). With "Enrich after N visits" at 1, this open is the visit
+// being enriched"). With "Enrich after N views" at 1, this open is the view
 // that starts the run, after the page loaded `ready`. The `viewed` answer
 // says so, and `place` comes back Enriching until the place is Enriched.
 export function useMemberPlaceActions(place: PlaceDetail): {
-  /** The place to draw: Enriching once a visit found it mid-run. */
+  /** The place to draw: Enriching once a view found it mid-run. */
   place: PlaceDetail;
   actions: PlaceActions;
   sheets: ReactNode;
@@ -230,7 +230,7 @@ function usePlaceActivity(placeId: string): { social: ReactNode; enriching: bool
     placeId: string;
     activity: PlaceActivity | null;
   }>({ placeId, activity: null });
-  // The place this page's visit found mid-Enrich (MESITA-2952).
+  // The place this page's view found mid-Enrich (MESITA-2952).
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   useEffect(() => {
