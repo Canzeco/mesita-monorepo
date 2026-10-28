@@ -55,9 +55,11 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   const consumerEf = await Deno.readTextFile(
     new URL("../consumer-web-suggest-places/index.ts", import.meta.url),
   );
-  const lane = await Deno.readTextFile(new URL("./consumer-search-lane.ts", import.meta.url));
-  assertEquals(adminEf.includes("admin: true"), true);
-  assertEquals(consumerEf.includes("admin: true"), false);
+  const lane = await Deno.readTextFile(new URL("./name-pipeline.ts", import.meta.url));
+  assertEquals(adminEf.includes("runAdminNamePipeline("), true);
+  assertEquals(adminEf.includes("runConsumerNamePipeline"), false);
+  assertEquals(consumerEf.includes("runConsumerNamePipeline("), true);
+  assertEquals(consumerEf.includes("runAdminNamePipeline"), false);
   assertEquals(lane.includes("idleSec: cfg.name.idleSec"), true);
   assertEquals(lane.includes("cfg.name.admin.autoCount"), true);
 });

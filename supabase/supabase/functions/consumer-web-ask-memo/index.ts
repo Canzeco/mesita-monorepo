@@ -19,7 +19,7 @@ import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
 import { areaMesitaPlaces } from "../_shared/area-pipeline.ts";
-import { nameGooglePlaces } from "../_shared/consumer-search-lane.ts";
+import { nameGooglePlaces } from "../_shared/name-pipeline.ts";
 import {
   type ChatPipelines,
   type ChatPlace,

@@ -23,10 +23,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { readEFEnv } from "../_shared/auth.ts";
 import {
-  runConsumerSearchLane,
+  runConsumerNamePipeline,
   runLocationAnchor,
   runPlacePreview,
-} from "../_shared/consumer-search-lane.ts";
+} from "../_shared/name-pipeline.ts";
 
 type Body = {
   input?: string;
@@ -67,14 +67,13 @@ serveJson("consumer-web-suggest-places", async (req) => {
     ? body.lng
     : null;
 
-  return await runConsumerSearchLane(env, "consumer-web-suggest-places", {
+  // Word alone answers with Locations (the matrix) — Admin Name stays
+  // Places-only.
+  return await runConsumerNamePipeline(env, {
     input: body.input,
     sessionToken: body.sessionToken,
     lat,
     lng,
     mode: typeof body.mode === "string" ? body.mode : "fast",
-    // Word alone answers with Locations (the matrix) — the admin caller
-    // of this same lane stays Places-only.
-    locations: true,
   });
 });

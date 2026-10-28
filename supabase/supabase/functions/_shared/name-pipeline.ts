@@ -7,8 +7,11 @@
 // Mesita holds (same google_place_id) is stamped as the Mesita place and
 // carries its Mesita card; a place neither Google API returns is not found.
 //
-// TWO NAME BARS RUN THIS LANE: consumer Search and admin Manage Single Place
-// (admin-web-suggest-places, mode deep).
+// TWO NAME PIPELINES SHARE THIS MODULE (MESITA-2922), one entry each:
+// `runConsumerNamePipeline` (consumer Search, consumer-web-suggest-places)
+// and `runAdminNamePipeline` (admin Manage Single Place,
+// admin-web-suggest-places, mode deep). The Google fetchers, gate, stamp and
+// merge below are one code path for both.
 //
 // Fast: Google Autocomplete only. Cap min(googleCount, count) — the two
 // Fast numbers are the same list; they stay locked.
@@ -56,6 +59,7 @@ import {
   applyPlacesTextSearchRegion,
 } from "./sourcing.ts";
 import {
+  type DiscoveryConfig,
   type GeneralConfig,
   loadDiscoveryConfig,
   type MapConfig,
@@ -293,23 +297,71 @@ export function takeFastLane(items: LaneItem[], cap: number): LaneItem[] {
   return order;
 }
 
-export type ConsumerSearchArgs = {
+export type NamePipelineArgs = {
   input?: string;
   sessionToken?: string;
   lat?: number | null;
   lng?: number | null;
-  /** Single Place › Find: Word by Admin's caps, not the consumer bar's
-   *  (MESITA-2322). Only `admin-web-suggest-places` sets it. */
-  admin?: boolean;
   /** Default fast — pickers and older clients stay Autocomplete. */
   mode?: SuggestPlacesMode | string | null;
+};
+
+/** What separates the two Name pipelines; everything else is shared. */
+type NamePipelineShape = {
+  /** `admin` in the search-lane log line. */
+  admin: boolean;
+  /** The Name caps this pipeline runs with. */
+  name: (cfg: DiscoveryConfig) => NameConfig;
   /**
    * Locations ride Word alone (the matrix, MESITA-1402): only the consumer
-   * searchbar caller opts in. Off, Location rows drop BEFORE the stamp, so
-   * a place picker never pays a Details call for a city it would discard.
+   * pipeline opts in. Off, Location rows drop BEFORE the stamp, so a place
+   * picker never pays a Details call for a city it would discard.
    */
-  locations?: boolean;
+  locations: (cfg: DiscoveryConfig) => boolean;
+  /** The guest bar's popularity order (MESITA-2724); Admin keeps Google's. */
+  demoteUnderFloor: boolean;
 };
+
+/**
+ * Consumer Name: the guest searchbar. The operator can switch Locations off
+ * for it on Discovery › Word (MESITA-2319); Google-only places under the
+ * popularity floor sort last.
+ */
+export function runConsumerNamePipeline(
+  env: EFEnv,
+  args: NamePipelineArgs,
+): Promise<Response> {
+  return runNamePipeline(env, "consumer-web-suggest-places", args, {
+    admin: false,
+    name: (cfg) => cfg.name,
+    locations: (cfg) => cfg.name.locations,
+    demoteUnderFloor: true,
+  });
+}
+
+/**
+ * Admin Name: Single Place › Find. Word by Admin swaps in its own caps
+ * (MESITA-2322): Autocomplete rows for `fast` (Text Search is the Find
+ * page's own call). Places only, Google's own order.
+ */
+export function runAdminNamePipeline(
+  env: EFEnv,
+  args: NamePipelineArgs,
+): Promise<Response> {
+  return runNamePipeline(env, "admin-web-suggest-places", args, {
+    admin: true,
+    name: (cfg) => ({
+      ...cfg.name,
+      fast: {
+        ...cfg.name.fast,
+        count: cfg.name.admin.autoCount,
+        googleCount: cfg.name.admin.autoCount,
+      },
+    }),
+    locations: () => false,
+    demoteUnderFloor: false,
+  });
+}
 
 export type ListedRow = {
   id: string;
@@ -422,7 +474,7 @@ export async function nameGooglePlaces(
     general,
   ) as unknown as typeof base);
   if (error) {
-    console.error("[consumer-search-lane] name google:", error.message);
+    console.error("[name-pipeline] name google:", error.message);
     return [];
   }
   const rank = new Map(order.map((id, i) => [id, i]));
@@ -487,10 +539,11 @@ export function demoteGoogleUnderFloor(
   return { items: [...front, ...back], demoted: back.length, unknown };
 }
 
-export async function runConsumerSearchLane(
+async function runNamePipeline(
   env: EFEnv,
   callerName: string,
-  args: ConsumerSearchArgs,
+  args: NamePipelineArgs,
+  shape: NamePipelineShape,
 ): Promise<Response> {
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
@@ -505,21 +558,8 @@ export async function runConsumerSearchLane(
   const origin = originOf(args.lat, args.lng);
   const cfg = await loadDiscoveryConfig(admin);
   const mode = resolveMode(args.mode);
-  // The caller opts in (the consumer bar only); the operator can switch
-  // Locations off for it on Discovery › Word (MESITA-2319).
-  const locations = args.locations === true && cfg.name.locations;
-  // Word by Admin swaps in its own caps: Autocomplete rows for `fast`
-  // (Text Search is the Find page's own call).
-  const name = args.admin === true
-    ? {
-      ...cfg.name,
-      fast: {
-        ...cfg.name.fast,
-        count: cfg.name.admin.autoCount,
-        googleCount: cfg.name.admin.autoCount,
-      },
-    }
-    : cfg.name;
+  const locations = shape.locations(cfg);
+  const name = shape.name(cfg);
 
   const predictions = mode === "deep"
     ? await runDeepSearch(
@@ -558,15 +598,14 @@ export async function runConsumerSearchLane(
   // sort after the rest. Nothing is removed (a guest typing an exact name
   // must still find it), unlike Home, the Map and Chat, where the same floor
   // hides a place. Admin Find and Word keep Google's own order.
-  const isAdmin = args.admin === true;
-  const ordered = isAdmin
-    ? { items: predictions, demoted: 0, unknown: 0 }
-    : demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor);
+  const ordered = shape.demoteUnderFloor
+    ? demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor)
+    : { items: predictions, demoted: 0, unknown: 0 };
   console.info(JSON.stringify({
     fn: "search-lane",
     caller: callerName,
     mode,
-    admin: isAdmin,
+    admin: shape.admin,
     popularityFloor: cfg.map.popularityFloor,
     popularityDemoted: ordered.demoted,
     popularityUnknown: ordered.unknown,
@@ -889,7 +928,7 @@ export async function fetchAutocomplete(
     data = await r.json();
   } catch (err) {
     console.error(
-      "[consumer-search-lane] autocomplete unreachable:",
+      "[name-pipeline] autocomplete unreachable:",
       err instanceof Error ? err.message : String(err),
     );
     return {
@@ -946,7 +985,7 @@ export async function fetchTextSearch(
     });
   } catch (err) {
     console.error(
-      "[consumer-search-lane] text search threw:",
+      "[name-pipeline] text search threw:",
       err instanceof Error ? err.message : err,
     );
     return [];
@@ -954,7 +993,7 @@ export async function fetchTextSearch(
   if (!r.ok) {
     const t = await r.text();
     console.error(
-      "[consumer-search-lane] text search:",
+      "[name-pipeline] text search:",
       friendlyGoogleError(classifyGoogleError(r.status, t), r.status, t),
     );
     return [];
@@ -964,7 +1003,7 @@ export async function fetchTextSearch(
     data = await r.json();
   } catch (err) {
     console.error(
-      "[consumer-search-lane] text search body:",
+      "[name-pipeline] text search body:",
       err instanceof Error ? err.message : String(err),
     );
     return [];
@@ -1154,7 +1193,7 @@ async function attachMesitaCards(
     .in("id", ids)
     .eq("state", "active");
   if (error) {
-    console.error("[consumer-search-lane] mesita cards:", error.message);
+    console.error("[name-pipeline] mesita cards:", error.message);
     return items;
   }
   const rows = (data ?? []) as unknown as Array<
@@ -1179,7 +1218,7 @@ async function fetchListedByGoogleIds(
     .in("google_place_id", placeIds)
     .eq("state", "active");
   if (error) {
-    console.error("[consumer-search-lane] enrich:", error.message);
+    console.error("[name-pipeline] enrich:", error.message);
     return [];
   }
   return (data ?? []) as ListedRow[];

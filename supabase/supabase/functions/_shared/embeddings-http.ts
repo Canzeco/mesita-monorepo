@@ -1,4 +1,4 @@
-// Low-level OpenAI embeddings HTTP — used by consumer-search-lane.ts (embeds
+// Low-level OpenAI embeddings HTTP — used by name-pipeline.ts (embeds
 // the search query), consumer-web-list-catalog (embeds its rail queries) and
 // place-embeddings.ts (On-Update path) so model/dims/request shape cannot
 // drift. No DB imports; safe for either side of the synth↔embed cycle.

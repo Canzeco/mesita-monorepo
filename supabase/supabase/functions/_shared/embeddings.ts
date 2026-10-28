@@ -1,5 +1,5 @@
 // Resolves the place-embedding model for the EFs that embed a query against
-// the place vectors (`_shared/consumer-search-lane.ts`). The OpenAI HTTP call
+// the place vectors (`_shared/name-pipeline.ts`). The OpenAI HTTP call
 // lives in `embeddings-http.ts`, the cosine math in `embeddings-vector.ts`.
 //
 // MESITA-720: place vectors are produced from a short synthesized blurb
