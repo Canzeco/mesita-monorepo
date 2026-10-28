@@ -164,13 +164,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
   const vector = parseEmbeddingVector(place.embedding);
   const preview = vector?.slice(0, 24) ?? null;
   const dims = vector?.length ?? 0;
-  const nameVector = parseEmbeddingVector(place.name_embedding);
-  const namePreview = nameVector?.slice(0, 24) ?? null;
-  const nameDims = nameVector?.length ?? 0;
-  // The Mesita name is what reaches the source text (MESITA-2828); it is
-  // Google's label only until the name door or an operator renames the place.
-  const resolvedName = (place.name ?? "").trim();
-  const renamed = resolvedName !== "" && resolvedName !== (place.google_name ?? "").trim();
   return (
     <details
       className="border-border bg-card shadow-card group rounded-2xl border"
@@ -185,7 +178,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
             Vectors
           </h2>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Two vectors — Mesita Name, and the Semantic Summary.
+            One vector — the Semantic Summary.
           </p>
         </div>
         <ChevronDown
@@ -194,22 +187,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         />
       </summary>
       <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField label="Mesita Name" boxed>
-          {resolvedName ? (
-            <span className="flex min-w-0 flex-col gap-0.5 py-0.5">
-              <span className="text-sm">{resolvedName}</span>
-              <span className="text-muted-foreground type-label">
-                {renamed
-                  ? "The Mesita name — this is what the Name vector embeds."
-                  : "Still Google's label — no Mesita name yet."}
-              </span>
-            </span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              Unnamed — nothing to embed.
-            </span>
-          )}
-        </ReadField>
         <ReadField
           label={`Semantic Summary${summary ? ` \u00b7 ${wordCount}/${EMBEDDING_SOURCE_TEXT_MAX_WORDS} words` : ""}`}
           boxed
@@ -219,20 +196,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           ) : (
             <span className="text-muted-foreground text-xs italic">
               Not written yet — produced on create and whenever the profile changes.
-            </span>
-          )}
-        </ReadField>
-        <ReadField label="Name vector" boxed>
-          {nameVector && namePreview ? (
-            <code className="text-muted-foreground break-all font-mono type-meta leading-snug">
-              [{namePreview.map((n) => n.toFixed(4)).join(", ")}
-              {nameDims > namePreview.length
-                ? `, \u2026 +${nameDims - namePreview.length} dims`
-                : ""}]
-            </code>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              No name vector yet — produced from the Mesita Name above.
             </span>
           )}
         </ReadField>
@@ -250,7 +213,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
         </ReadField>
         <ReadField label="Model" boxed>
           <span className="text-muted-foreground type-label tabular-nums">
-            text-embedding-3-small{dims || nameDims ? ` \u00b7 ${dims || nameDims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
+            text-embedding-3-small{dims ? ` \u00b7 ${dims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
           </span>
         </ReadField>
       </div>

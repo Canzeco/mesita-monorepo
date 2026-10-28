@@ -23,7 +23,7 @@
 //                   Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   A later Enrich run's step 7 redoes it with rich grounding.
-//   8 embedding   → embed-only: Name vector + Summary vector of what the
+//   8 embedding   → embed-only: the Summary vector of what the
 //                   door wrote, awaited in this same function.
 //
 // Details, Description and Embedding are SHARED with the ENRICH queue — create
@@ -403,7 +403,7 @@ export async function createMinimalPlace(opts: {
         });
       }
     }
-    // 8 EMBEDDING — embed-only vectors of what the door just wrote; the
+    // 8 EMBEDDING — embed-only summary vector of what the door just wrote; the
     // embedding stamp lands where the vector write is observed
     // (place-embeddings).
     await runPlaceEmbeddingsOnUpdate(

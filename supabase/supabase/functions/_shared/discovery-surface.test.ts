@@ -84,7 +84,7 @@ Deno.test("the call sites match the model", async () => {
   // Name: Autocomplete · Text Search, Google's order; no Mesita name lane
   // (MESITA-2896).
   assert(name.includes("fetchAutocomplete") && name.includes("fetchTextSearch"));
-  assertEquals(/fetchEmbedPool|nameSimilarity|rankMesitaByName/.test(name), false);
+  assertEquals(/fetchEmbedPool|rankMesitaByName/.test(name), false);
   // Area: Mesita Places only, the Area score; Map and the Catalog are its
   // views. No Google Nearby anywhere (MESITA-2872).
   assert(area.includes("selectedPoolQuery") && area.includes("rankArea"));

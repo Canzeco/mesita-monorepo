@@ -10,7 +10,7 @@
 //   5 reviews      the Sync's Google reviews status
 //   6 images       the gallery that landed
 //   7 description  a persisted Presentation
-//   8 embedding    written vectors
+//   8 embedding    the summary vector written
 //
 // Weak buys no Scout and no Links, so it stamps 1 and 4–8 and leaves 2 and 3
 // as they were (rule 3: a step a run did not buy writes nothing). Absence is
@@ -122,8 +122,8 @@ export function enrichStepOutcomes(input: {
     : stepFailed("No Presentation was written.", META);
 
   out.embedding = filled(written.embedding)
-    ? stepDone(filled(written.name_embedding) ? "Name and summary vectors written." : "Summary vector written.", META)
-    : stepFailed("The vectors did not write. Re-enrich to retry.", META);
+    ? stepDone("Summary vector written.", META)
+    : stepFailed("The summary vector did not write. Re-enrich to retry.", META);
 
   return out;
 }

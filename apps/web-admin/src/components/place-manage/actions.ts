@@ -130,7 +130,6 @@ export type AdminPlace = {
   // overview only. Tags are never part of the source text.
   embedding?: string | number[] | null;
   embedding_source_text?: string | null;
-  name_embedding?: string | number[] | null;
   // ── State, super-admin overview only (MESITA-1186) ───────────────────────
   // Computed by admin-web-get-overview off _shared/place-state.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
