@@ -154,21 +154,6 @@ export type GalleryRank = {
   analyses: PhotoAnalysis[];
 };
 
-export async function sortPlacePhotos(
-  urls: string[],
-  openaiKey: string | undefined,
-  fetchImpl: FetchImpl = fetch,
-): Promise<string[]> {
-  const ranked = await rankGallery({
-    google: urls,
-    instagram: [],
-    knobs: defaultImageKnobs(),
-    openaiKey,
-    fetchImpl,
-  });
-  return ranked.urls;
-}
-
 export async function rankGallery(opts: {
   google: string[];
   instagram: string[];

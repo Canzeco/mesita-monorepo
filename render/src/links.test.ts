@@ -4,7 +4,6 @@ import {
   brandFromWebsite,
   confirmedLink,
   discoverLinks,
-  discoverOfficialLinks,
   poolFromUrls,
   resolverBackground,
   searchQueries,
@@ -89,7 +88,7 @@ test("a sourced link is kept and an invented one is dropped", async () => {
     });
   };
 
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Pujol",
     city: "Mexico City",
     have: { website_url: null, instagram_url: null, facebook_url: null, opentable_url: null, uber_eats_url: null },
@@ -99,7 +98,7 @@ test("a sourced link is kept and an invented one is dropped", async () => {
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
-  });
+  })).links;
   assert.equal(found.website_url, "https://www.pujol.com.mx/menu");
   assert.equal(found.instagram_url, undefined);
   // The plain query and the `site:instagram.com` one; no website, so no brand query.
@@ -127,7 +126,7 @@ test("a count of zero does not search that source", async () => {
       }],
     });
   };
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Pujol",
     city: "Mexico City",
     have: {},
@@ -135,7 +134,7 @@ test("a count of zero does not search that source", async () => {
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
-  });
+  })).links;
   assert.equal(found.website_url, "https://www.pujol.com.mx/");
   assert.equal(queries.length, 1);
   assert.equal(queries[0]?.includes("instagram"), false);
@@ -173,14 +172,14 @@ test("a citation is kept only when Firecrawl already returned it", async () => {
       }],
     });
   };
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Pujol",
     city: "Mexico City",
     have: {},
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
-  });
+  })).links;
   assert.equal(found.website_url, "https://www.pujol.com.mx/menu");
   assert.equal(found.instagram_url, undefined);
 });
@@ -196,7 +195,7 @@ test("Google's own link is not searched again", async () => {
     }
     throw new Error("Perplexity should not run when every pool is empty");
   };
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Pujol",
     city: "Mexico City",
     have: {
@@ -209,21 +208,21 @@ test("Google's own link is not searched again", async () => {
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
-  });
+  })).links;
   assert.deepEqual(found, {});
   assert.equal(queries.some((query) => query.includes("official website")), false);
   assert.equal(queries.some((query) => query.includes("instagram")), true);
 });
 
 test("missing vendor keys write no links and make no request", async () => {
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Pujol",
     city: null,
     have: {},
     fetchImpl: async () => {
       throw new Error("network");
     },
-  });
+  })).links;
   assert.deepEqual(found, {});
 });
 
@@ -338,7 +337,7 @@ test("the brand account found by the brand search reaches the Resolver and is ke
       output: [{ type: "message", content: [{ text: JSON.stringify({ instagram_url: "https://www.instagram.com/starbucksmex" }) }] }],
     });
   };
-  const found = await discoverOfficialLinks({
+  const found = (await discoverLinks({
     name: "Starbucks Biblioteca ITESM MTY II",
     city: "Monterrey",
     website: "https://www.starbucks.com.mx/",
@@ -347,7 +346,7 @@ test("the brand account found by the brand search reaches the Resolver and is ke
     firecrawlKey: "fc",
     perplexityKey: "px",
     fetchImpl,
-  });
+  })).links;
   assert.equal(found.instagram_url, "https://www.instagram.com/starbucksmex");
   assert.match(input, /location of the "starbucks" brand/);
 });
