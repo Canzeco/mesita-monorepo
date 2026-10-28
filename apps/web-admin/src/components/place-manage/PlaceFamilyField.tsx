@@ -1,25 +1,31 @@
 "use client";
 
 import { ReadField } from "@/components/admin-ui/manage";
-import { ChipList } from "./PlaceCategoryListFields";
-import { usePlaceContext } from "./PlaceContext";
+import { PlaceFamilyPicker } from "./PlaceFamilyPicker";
 
-// Read-only (MESITA-2891): a place's Mesita Families are 1–5 picked by the
-// Description step's model on Create and every Enrich, and stored; no editor
-// saves them. The overview already named them, as
-// one " · "-joined string, split here into the same chips as the category
-// rows (MESITA-2810). Families keep their emoji.
+// Editable since MESITA-2893 (Pato, 2026-10-27: "the places actually save
+// their family"). A place's Mesita Families are 1–5 of the forty, picked by
+// the Description step's model on Create and every Enrich (MESITA-2891) and
+// stored; the operator may set them here, saved with Basics through
+// admin-web-update-place. A hand-set list is operator-owned: Enrich keeps it
+// until the row's Reset (MESITA-2829's mark, the same as name, presentation
+// and tags). Clearing the list makes the place Undefined and owns nothing.
 
-export function PlaceFamilyField() {
-  const { profile } = usePlaceContext();
+export function PlaceFamilyField({
+  value,
+  onChange,
+  disabled,
+  labelRight,
+}: {
+  value: string[];
+  onChange: (families: string[]) => void;
+  disabled?: boolean;
+  /** Basics' Reset (MESITA-2829): "Enrich keeps it · Reset" while owned. */
+  labelRight?: React.ReactNode;
+}) {
   return (
-    <ReadField label="Mesita families" auto boxed>
-      <ChipList
-        items={profile.familyStored.text
-          .split(" · ")
-          .map((s) => s.trim())
-          .filter(Boolean)}
-      />
+    <ReadField label="Mesita families" auto boxed labelRight={labelRight}>
+      <PlaceFamilyPicker value={value} onChange={onChange} disabled={disabled} />
     </ReadField>
   );
 }

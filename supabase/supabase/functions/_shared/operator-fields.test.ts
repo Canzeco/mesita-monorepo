@@ -10,8 +10,9 @@ import {
   withOperatorFields,
 } from "./operator-fields.ts";
 
-Deno.test("readOperatorFields: only the three Basics fields, and junk reads as none", () => {
+Deno.test("readOperatorFields: only the four Basics fields, and junk reads as none", () => {
   assertEquals(readOperatorFields({ operator_fields: ["name", "hours", "tags"] }), ["name", "tags"]);
+  assertEquals(readOperatorFields({ operator_fields: ["family_keys"] }), ["family_keys"]);
   assertEquals(readOperatorFields({ operator_fields: "name" }), []);
   assertEquals(readOperatorFields(null), []);
   assertEquals(readOperatorFields({ pins: {} }), []);
@@ -24,6 +25,10 @@ Deno.test("operatorFieldsInPatch: a typed value is owned, a clearing is not", ()
   );
   assertEquals(operatorFieldsInPatch({ name: null, tags: ["cozy"] }), ["tags"]);
   assertEquals(operatorFieldsInPatch({ phone: "+52" }), []);
+  // Families (MESITA-2893): a picked list is owned, an emptied one is not.
+  assertEquals(operatorFieldsInPatch({ family_keys: ["tacos", "mexican"] }), ["family_keys"]);
+  assertEquals(operatorFieldsInPatch({ family_keys: [] }), []);
+  assertEquals(operatorFieldsInPatch({ family_keys: null }), []);
 });
 
 Deno.test("stripOperatorFields: an Enrich write skips the owned columns and reports them", () => {

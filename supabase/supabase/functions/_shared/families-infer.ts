@@ -12,9 +12,11 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { PlaceFamily } from "./categories.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 export const FAMILIES_MIN = 1;
-export const FAMILIES_MAX = 5;
+/** One number with the editor's cap and the trigger's literal (MESITA-2893). */
+export const FAMILIES_MAX = ENRICH_FIELD_LIMITS.familiesPerPlace.max;
 
 /** The families the model may pick: every live family except Undefined. */
 export function familyChoices(families: readonly PlaceFamily[]): PlaceFamily[] {

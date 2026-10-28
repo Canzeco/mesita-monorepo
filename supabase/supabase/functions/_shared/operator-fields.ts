@@ -1,17 +1,19 @@
 // Operator-owned fields (MESITA-2829) — the other durable mark in
 // `enrichment_sources`, beside the 90-day pins of enrich-corrections.ts.
 //
-// Basics has three fields the Description step infers on Create and every
-// Enrich AND the operator may edit: the Mesita name, the Presentation and the
-// Mesita tags. An operator edit must stick: the next Enrich would otherwise
-// overwrite it with a fresh inference, silently. So an accepted edit of one
-// of these records the field in `enrichment_sources.operator_fields`, and
-// every Enrich write — and the name door — skips a field listed there.
-// Unlike a pin, a mark never expires: only the operator's Reset (per row on
-// Single Place › Basics) clears it, and the next Enrich infers again.
+// Basics has four fields the Description step infers on Create and every
+// Enrich AND the operator may edit: the Mesita name, the Presentation, the
+// Mesita tags and, since MESITA-2893, the Mesita families. An operator edit
+// must stick: the next Enrich would otherwise overwrite it with a fresh
+// inference, silently. So an accepted edit of one of these records the field
+// in `enrichment_sources.operator_fields`, and every Enrich write — and the
+// name door — skips a field listed there. Unlike a pin, a mark never expires:
+// only the operator's Reset (per row on Single Place › Basics) clears it, and
+// the next Enrich infers again.
 //
 // A cleared field is not owned: blanking the name (it follows Google again),
-// the Presentation or the tags records nothing, so Enrich may refill it.
+// the Presentation, the tags or the families records nothing, so Enrich may
+// refill it.
 //
 // The bag is rebuilt wholesale by the paused stage path (S8), so like the
 // pins the marks must be carried forward explicitly (`withOperatorFields`).
@@ -19,9 +21,14 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writePlace } from "./place-doc.ts";
 
-export type OperatorField = "name" | "description" | "tags";
+export type OperatorField = "name" | "description" | "tags" | "family_keys";
 
-export const OPERATOR_FIELDS: readonly OperatorField[] = ["name", "description", "tags"];
+export const OPERATOR_FIELDS: readonly OperatorField[] = [
+  "name",
+  "description",
+  "tags",
+  "family_keys",
+];
 
 /** Where inside `enrichment_sources` the marks live. */
 export const OPERATOR_FIELDS_KEY = "operator_fields";
@@ -50,14 +57,15 @@ export function withOperatorFields(
 
 /**
  * Which operator fields a save patch claims: a non-empty value. A null name
- * or Presentation and an empty tag list are a clearing, not an edit.
+ * or Presentation and an empty tag or family list are a clearing, not an
+ * edit.
  */
 export function operatorFieldsInPatch(patch: Record<string, unknown>): OperatorField[] {
   const out: OperatorField[] = [];
   for (const field of OPERATOR_FIELDS) {
     if (!(field in patch)) continue;
     const v = patch[field];
-    const owned = field === "tags"
+    const owned = field === "tags" || field === "family_keys"
       ? Array.isArray(v) && v.length > 0
       : typeof v === "string" && v.trim() !== "";
     if (owned) out.push(field);

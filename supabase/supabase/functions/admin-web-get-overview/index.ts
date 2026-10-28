@@ -190,9 +190,14 @@ Deno.serve(async (req) => {
   };
 
   const profile = {
-    // Families are the Google categories' dictionary, derived in the profiles
-    // view (MESITA-2834); this only names the keys the view handed back.
+    // The stored families (MESITA-2891), named for the row; `place.family_keys`
+    // carries the slugs the Basics editor toggles (MESITA-2893).
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
+    // The forty the editor offers, in catalog (day-arc) order; Undefined is
+    // never a pick.
+    families: families
+      .filter((f) => f.slug !== "undefined")
+      .map((f) => ({ slug: f.slug, label: f.label, emoji: f.emoji, sortOrder: f.sort_order })),
     categories,
     tags,
     facets: TAG_FACETS,

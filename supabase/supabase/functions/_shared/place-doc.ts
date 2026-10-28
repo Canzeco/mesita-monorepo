@@ -97,7 +97,7 @@ export type PlaceProfileRow = {
   google_types: unknown;
   /** Google's own types as last fetched: the categories model's input. */
   google_source_types: unknown;
-  /** Families (0–1). Create path stamps ['undefined'] until contents infers a classified Category. */
+  /** Mesita Families, 1–5 place_families slugs (MESITA-2891); null = Undefined. Written on place_profiles only: the profiles view's INSTEAD OF trigger drops it. */
   family_keys: string[] | null;
   price_level: number | null;
   lat: number | null;

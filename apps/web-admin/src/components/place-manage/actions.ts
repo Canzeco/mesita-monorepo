@@ -65,7 +65,8 @@ export type AdminPlace = {
   category_label: string | null;
   /** Google categories: Google's own types, primary first (MESITA-2836); Basics shows the first. */
   google_types?: unknown;
-  /** Mesita Families: 1–5 inferred by the Description step's model (MESITA-2891); Undefined when none. */
+  /** Mesita Families: 1–5 inferred by the Description step's model (MESITA-2891),
+   *  or set by hand on Basics (MESITA-2893); Undefined when none. */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;
@@ -156,8 +157,9 @@ export type AdminPlace = {
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
-  /** Basics fields the operator owns (MESITA-2829): name · description · tags.
-   *  Enrich skips them until the row's Reset clears the mark. */
+  /** Basics fields the operator owns (MESITA-2829, MESITA-2893): name ·
+   *  description · tags · family_keys. Enrich skips them until the row's
+   *  Reset clears the mark. */
   operator_fields?: string[];
   /** Unique members who viewed / saved (admin-web-get-overview). */
   profile_stats?: { viewed?: number; saved?: number };
@@ -420,7 +422,17 @@ export type PlaceFieldLimits = {
   placeNameMax: number;
   descriptionMax: number;
   tagsPerPlaceMax: number;
+  /** Mesita families per place (MESITA-2893); the trigger refuses a sixth. */
+  familiesPerPlaceMax: number;
   photosMax: number;
+};
+
+/** One of the forty Mesita Families the Basics editor offers (MESITA-2893). */
+export type PlaceFamilyOption = {
+  slug: string;
+  label: string;
+  emoji: string;
+  sortOrder: number;
 };
 
 export type ResolvedFamily = {
@@ -438,6 +450,8 @@ export type PlaceCategoryOption = {
 export type ProfileRead = {
   /** Mesita Families: the stored 1–5, inferred by the Description step (MESITA-2891). */
   familyStored: ResolvedFamily;
+  /** The forty the operator may pick from, in catalog (day-arc) order (MESITA-2893). */
+  families: PlaceFamilyOption[];
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
@@ -448,6 +462,7 @@ const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 500,
   tagsPerPlaceMax: 20,
+  familiesPerPlaceMax: 5,
   photosMax: 10,
 };
 
@@ -460,6 +475,8 @@ function readPlaceFieldLimits(
       fieldLimits?.description?.max ?? DEFAULT_PLACE_FIELD_LIMITS.descriptionMax,
     tagsPerPlaceMax:
       fieldLimits?.tagsPerPlace?.max ?? DEFAULT_PLACE_FIELD_LIMITS.tagsPerPlaceMax,
+    familiesPerPlaceMax:
+      fieldLimits?.familiesPerPlace?.max ?? DEFAULT_PLACE_FIELD_LIMITS.familiesPerPlaceMax,
     photosMax: fieldLimits?.photos?.max ?? DEFAULT_PLACE_FIELD_LIMITS.photosMax,
   };
 }
@@ -475,6 +492,7 @@ function readProfile(value: unknown): ProfileRead | null {
   if (!value || typeof value !== "object") return null;
   const row = value as {
     familyStored?: unknown;
+    families?: unknown;
     categories?: unknown;
     tags?: unknown;
     facets?: unknown;
@@ -497,8 +515,19 @@ function readProfile(value: unknown): ProfileRead | null {
     }
     categories.push(c);
   }
+  // The family vocabulary (MESITA-2893): a payload without it still paints;
+  // the editor then offers nothing to add.
+  const families: PlaceFamilyOption[] = Array.isArray(row.families)
+    ? row.families.filter(
+      (f): f is PlaceFamilyOption =>
+        !!f && typeof f === "object" &&
+        typeof (f as PlaceFamilyOption).slug === "string" &&
+        typeof (f as PlaceFamilyOption).label === "string",
+    )
+    : [];
   return {
     familyStored,
+    families,
     categories,
     tags: row.tags as PlaceTagOption[],
     facets: row.facets as PlaceTagFacet[],
