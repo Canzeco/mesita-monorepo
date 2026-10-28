@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import { RotateCw } from "lucide-react";
 
 import type { MapScore, Place } from "@/lib/api/places";
 import { Skeleton, Spinner } from "@/components/shared";
@@ -100,25 +99,6 @@ export function MapVeil() {
           className="border-border border-t-primary"
         />
       </div>
-    </div>
-  );
-}
-
-/** "Search this area" (Pato, MESITA-2874: "a button to load instead of
- *  automatic loading"): a guest move no longer reloads the Area at rest;
- *  this pill, centred at the map's top, loads the view the guest is on.
- *  z-20: over the canvas and its veil, under the header (z-30). */
-export function SearchHereButton({ onClick }: { onClick: () => void }) {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
-      <button
-        type="button"
-        onClick={onClick}
-        className="bg-card text-foreground border-border shadow-elev hover:bg-muted pointer-events-auto flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-      >
-        <RotateCw aria-hidden className="size-4" />
-        Search this area
-      </button>
     </div>
   );
 }
