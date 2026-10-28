@@ -257,7 +257,7 @@ export const RING_INSET = 0.9;
 /**
  * The screen radius the NEXT load would send (MESITA-2512): RING_INSET of
  * the cross's distance to the nearest edge of `box`, km — the client mirror of the
- * EF's `screenRadiusKm` (MESITA-2511), clamped 0.05–50. Null with no view,
+ * EF's `screenRadiusKm` (MESITA-2511), at least 0.05, no ceiling (MESITA-2918). Null with no view,
  * across the dateline, or a cross off the view.
  */
 export function viewRadiusKm(
@@ -279,7 +279,7 @@ export function viewRadiusKm(
     haversineKm(cross.lat, cross.lng, box.south, cross.lng),
     haversineKm(cross.lat, cross.lng, box.north, cross.lng),
   );
-  return Number.isFinite(r) ? Math.min(50, Math.max(0.05, r * RING_INSET)) : null;
+  return Number.isFinite(r) ? Math.max(0.05, r * RING_INSET) : null;
 }
 
 /** The view `box` becomes once `target` sits under the sight at the same

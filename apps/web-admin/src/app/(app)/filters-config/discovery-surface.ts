@@ -282,7 +282,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Before the cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Selected or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
-      "The screen radius is clamped to 0.05–50 km; a visible map wider than 100 km, or none yet, uses the current-location radius instead.",
+      "The screen radius is at least 0.05 km and has no ceiling (MESITA-2918): however far out the guest zooms, the search is the ring they see. No visible map yet uses the current-location radius instead.",
       "Mesita's read keeps at most 1000 ready rows in the radius box before scoring.",
     ],
     callers: ["Map (the Search tab)"],

@@ -27,8 +27,9 @@
 // ranked by Popularity × the Selected boost (`map.selectedFactor` on a
 // Selected place, the paid Boost's factor on a Boosted one), no Proximity.
 // The Map shows the top `map.placesShown`. The family chip gates; the guest
-// picks no mode, so `prefer` is ignored. No bounds, or a box wider than
-// AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`. The
+// picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
+// however far out the guest zooms, the search is the ring they see. No
+// bounds falls back to the centre inside `map.radiusKm`. The
 // answer carries R and each place's breakdown for the debug readout
 // (MESITA-2504). Mesita's places only (Google Nearby retired in
 // MESITA-2872), the operator's Popularity floor on every place. A stale

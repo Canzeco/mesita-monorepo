@@ -104,10 +104,6 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
 
 // ── Locations ───────────────────────────────────────────────────────────
 
-/** A visible map wider than this (diagonal, km) has no screen radius: the
- *  Map falls back to the operator's `map.radiusKm` around its cross. */
-export const AREA_BOUNDS_MAX_KM = 100;
-
 function latLngOrNull(raw: unknown): LatLng | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -118,7 +114,9 @@ function latLngOrNull(raw: unknown): LatLng | null {
   return { lat, lng };
 }
 
-/** The Map's visible `bounds`, or null when absent, inverted or too wide. */
+/** The Map's visible `bounds`, or null when absent or inverted. Any size is
+ *  read (Pato, MESITA-2918: "should work doesn't matter how big is the
+ *  radius"); the 100 km ceiling that fell back to `map.radiusKm` is gone. */
 export function parseAreaBounds(raw: unknown): AreaBounds | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -126,8 +124,6 @@ export function parseAreaBounds(raw: unknown): AreaBounds | null {
   const high = latLngOrNull(o.high);
   if (!low || !high) return null;
   if (!(low.lat < high.lat) || !(low.lng < high.lng)) return null;
-  const diag = haversineKm(low.lat, low.lng, high.lat, high.lng);
-  if (!Number.isFinite(diag) || diag > AREA_BOUNDS_MAX_KM) return null;
   return { low, high };
 }
 
@@ -141,9 +137,9 @@ export function resolveAreaLocation(
   return { kind: "none" };
 }
 
-/** The screen radius's bounds (km). */
+/** The screen radius's floor (km). It has no ceiling (MESITA-2918): the
+ *  search is the ring the guest sees, however far out they zoom. */
 export const SCREEN_RADIUS_KM_MIN = 0.05;
-export const SCREEN_RADIUS_KM_MAX = 50;
 
 /** The circle's share of the cross's distance to the nearest edge (Pato,
  *  MESITA-2825: "the edge of the circle must nto be touching the broders,
@@ -158,9 +154,9 @@ export const SCREEN_RING_INSET = 0.9;
  * always"). Measured from the cross itself — it sits 45% down, not in the
  * middle — and from the box's middle when the cross is missing or off the
  * box. It was half the width (MESITA-2507), and before that the average of
- * the half-width and half-height. Clamped to SCREEN_RADIUS_KM_MIN..MAX. Null
- * when the bounds are missing, inverted or wider than AREA_BOUNDS_MAX_KM
- * (the caller falls back to its operator radius). Scaled by
+ * the half-width and half-height. At least SCREEN_RADIUS_KM_MIN, no ceiling
+ * (MESITA-2918). Null when the bounds are missing or inverted (the caller
+ * falls back to its operator radius). Scaled by
  * SCREEN_RING_INSET first, so the circle stops short of the edge.
  */
 export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | null {
@@ -175,7 +171,7 @@ export function screenRadiusKm(raw: unknown, cross?: LatLng | null): number | nu
     haversineKm(c.lat, c.lng, b.high.lat, c.lng),
   );
   if (!Number.isFinite(r)) return null;
-  return Math.min(SCREEN_RADIUS_KM_MAX, Math.max(SCREEN_RADIUS_KM_MIN, r * SCREEN_RING_INSET));
+  return Math.max(SCREEN_RADIUS_KM_MIN, r * SCREEN_RING_INSET);
 }
 
 function mid(a: LatLng, b: LatLng): LatLng {

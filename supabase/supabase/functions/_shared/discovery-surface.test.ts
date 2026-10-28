@@ -14,8 +14,6 @@ import {
   sourcesFeedingSignal,
 } from "./discovery-surface.ts";
 import {
-  AREA_BOUNDS_MAX_KM,
-  SCREEN_RADIUS_KM_MAX,
   SCREEN_RADIUS_KM_MIN,
 } from "./area-pipeline.ts";
 import { NEARBY_SCAN_LIMIT } from "./geo.ts";
@@ -185,8 +183,7 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
   const rules = DISCOVERY_PIPELINES.find((p) => p.key === "map")!.rules.join(" ");
   const facts = [
     "the Map calls no Google",
-    `clamped to ${SCREEN_RADIUS_KM_MIN}–${SCREEN_RADIUS_KM_MAX} km`,
-    `wider than ${AREA_BOUNDS_MAX_KM} km`,
+    `at least ${SCREEN_RADIUS_KM_MIN} km and has no ceiling`,
     `at most ${NEARBY_SCAN_LIMIT} ready rows`,
   ];
   for (const f of facts) assert(rules.includes(f), f);
