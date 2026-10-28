@@ -8,7 +8,7 @@
 // Self-contained: own JWT verification, own DB writes via the service role.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -34,7 +34,7 @@ import {
 const CONSUMER_PROFILE_SELECT =
   "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, use_instagram_photo, appear_anonymous, guest_class, plan";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-update-profile", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

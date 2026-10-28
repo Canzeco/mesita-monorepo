@@ -14,7 +14,7 @@
 // Internal enricher control — super-admin gated, admin console only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { startEnrichment } from "../_shared/enrich-start.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
@@ -27,7 +27,7 @@ type Body = {
   // `overwrite` or `depth`; neither is read.
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-enrich-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

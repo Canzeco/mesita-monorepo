@@ -32,6 +32,7 @@ import {
   readJsonOr,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -75,7 +76,7 @@ type Body = {
   placeId?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-overview", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

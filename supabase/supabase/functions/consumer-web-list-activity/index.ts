@@ -43,7 +43,7 @@
 // public; otherwise every other member's handle leaves masked ("per***").
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, anonClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { type PlaceCategoryRow, withFamilyKeysList } from "../_shared/place-family-keys.ts";
@@ -112,7 +112,7 @@ function finite(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-activity", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

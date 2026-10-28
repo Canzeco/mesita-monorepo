@@ -29,7 +29,7 @@
 // Deploy: supabase functions deploy admin-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
@@ -38,7 +38,7 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: string; onOpen?: boolean };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-create-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

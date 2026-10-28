@@ -42,7 +42,7 @@
 // the DB, so a stuck purge can also be drained later without re-wiping.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -55,7 +55,7 @@ type Body = { confirm?: string; storageOnly?: boolean };
 
 const CONFIRM_PHRASE = "RESET";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-reset-database", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

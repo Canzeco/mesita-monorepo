@@ -17,7 +17,7 @@
 // spent, per step, is stored as one place_enrichment_runs row (./run-cost.ts).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-images.ts";
@@ -35,7 +35,7 @@ import { closedListingPatch, contentStateAfterStop, enrichmentStop } from "./sto
 import { enrichStepOutcomes } from "./steps.ts";
 import { readRunCost, recordRunCost } from "./run-cost.ts";
 
-Deno.serve(async (req) => {
+serveJson("enricher-edgefunc-write-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

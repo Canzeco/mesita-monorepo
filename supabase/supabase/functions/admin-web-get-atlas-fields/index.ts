@@ -6,7 +6,7 @@
 // editor reads to enforce its caps.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -17,7 +17,7 @@ import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-atlas-fields", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

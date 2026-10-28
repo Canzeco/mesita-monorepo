@@ -8,7 +8,7 @@
 // naming convention.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   anonClient,
@@ -35,7 +35,7 @@ const GOOGLE_REVIEW_FORM_COLUMN = ", google_place_id";
 
 type Body = { id?: string; slug?: string };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-get-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

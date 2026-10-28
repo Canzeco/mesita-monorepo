@@ -4,7 +4,7 @@
 // written. Render folds the patch into the draft and commits once.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { runPlaceSync } from "../_shared/place-sync-run.ts";
 
@@ -18,7 +18,7 @@ function link(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-Deno.serve(async (req) => {
+serveJson("enricher-edgefunc-sync-sources", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

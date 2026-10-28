@@ -37,7 +37,7 @@
 // Deploy: supabase functions deploy consumer-web-reverse-geocode
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import {
@@ -70,7 +70,7 @@ const caches: Record<Precision, Map<string, Answer>> = { std: new Map(), pin: ne
 const CACHE_MAX = 2000;
 const GOOGLE_TIMEOUT_MS = 4000;
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-reverse-geocode", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

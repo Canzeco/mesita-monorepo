@@ -23,14 +23,14 @@
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import { normalizeMemoConfig } from "../_shared/memo-config.ts";
 import { normalizeDiscoveryConfig } from "../_shared/discovery-config.ts";
 
-Deno.serve(async (req) => {
+serveJson("supabase-edgefunc-get-memo-config", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

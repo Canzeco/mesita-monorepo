@@ -34,7 +34,7 @@
 // Deploy: supabase functions deploy supabase-cron-reservation-retries
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
 import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
@@ -54,7 +54,7 @@ const MAX_LIMIT = 100;
 const EXPIRE_AFTER_MS = 4 * 3600_000; // mirrors the app's passed-grace window
 const STALE_CLAIM_MS = 10 * 60_000; // any leg's longest legal run is < 5 min
 
-Deno.serve(async (req) => {
+serveJson("supabase-cron-reservation-retries", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

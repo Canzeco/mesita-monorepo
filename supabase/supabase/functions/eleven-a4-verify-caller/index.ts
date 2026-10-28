@@ -14,7 +14,7 @@
 // Deploy: supabase functions deploy eleven-a4-verify-caller
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
   phoneTail,
@@ -24,7 +24,7 @@ import {
   ticketsOfPlace,
 } from "../_shared/agent-tools.ts";
 
-Deno.serve(async (req) => {
+serveJson("eleven-a4-verify-caller", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

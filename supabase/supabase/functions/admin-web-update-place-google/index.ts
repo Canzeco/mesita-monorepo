@@ -14,6 +14,7 @@ import {
   readJson,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -26,7 +27,7 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-update-place-google", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

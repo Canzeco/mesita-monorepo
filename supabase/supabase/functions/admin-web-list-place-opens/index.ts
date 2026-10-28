@@ -11,7 +11,7 @@
 // Deploy: supabase functions deploy admin-web-list-place-opens
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -26,7 +26,7 @@ import {
 const WINDOW_DAYS = 30;
 const ROW_CAP = 10_000;
 
-Deno.serve(async (req) => {
+serveJson("admin-web-list-place-opens", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

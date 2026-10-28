@@ -17,7 +17,7 @@
 // body field, so a guest can only ever write under their own id.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   fromWire,
@@ -29,7 +29,7 @@ import {
 
 type Body = { op?: string; location?: unknown; front?: boolean; id?: unknown };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-save-location", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

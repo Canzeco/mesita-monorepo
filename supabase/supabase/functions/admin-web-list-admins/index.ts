@@ -5,7 +5,7 @@
 // card in the admin app's Admin Configuration page.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -13,7 +13,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-list-admins", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

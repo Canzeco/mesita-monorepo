@@ -17,7 +17,7 @@
 // wall already, so this requires a session like the rest of consumer-web.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 
 // Add a new event here before a client ships it.
@@ -34,7 +34,7 @@ const ALLOWED_EVENTS = new Set([
 
 type Body = { event?: string; payload?: Record<string, unknown> };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-track-event", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

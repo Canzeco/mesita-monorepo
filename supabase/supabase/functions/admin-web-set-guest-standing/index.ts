@@ -20,7 +20,7 @@
 //   404 guest_not_found · 409 account_closed · not_vip · 500 update_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -29,7 +29,7 @@ import {
 } from "../_shared/auth.ts";
 import { readStandingBody, type RawGuest, toGuestRow } from "../_shared/guest-standing.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-set-guest-standing", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

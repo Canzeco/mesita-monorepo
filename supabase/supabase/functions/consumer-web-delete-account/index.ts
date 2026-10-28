@@ -13,7 +13,7 @@
 // Deploy: supabase functions deploy consumer-web-delete-account
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -22,7 +22,7 @@ import {
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 import { cancelConsumerBackings, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-delete-account", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

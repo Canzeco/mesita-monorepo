@@ -21,6 +21,7 @@ import {
   readJson,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -38,7 +39,7 @@ import {
   type BoostInterval,
 } from "../_shared/boost.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-place-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

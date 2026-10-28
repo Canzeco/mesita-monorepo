@@ -15,7 +15,7 @@
 // Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
@@ -30,7 +30,7 @@ const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 const OPEN_TTL_MS = 24 * 3600_000;
 
-Deno.serve(async (req) => {
+serveJson("supabase-cron-sync-boosts", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

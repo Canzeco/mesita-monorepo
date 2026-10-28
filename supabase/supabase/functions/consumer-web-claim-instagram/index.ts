@@ -34,7 +34,7 @@
 //     account's verifiedAt is at or after the code's issuedAt.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
 import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
@@ -57,7 +57,7 @@ const QUIET_PHOTO_REASONS = new Set(["uploaded_photo_kept", "no_photo", "photo_o
 // The profile scrape is synchronous; a cold actor takes ~10–20s.
 const SCRAPE_TIMEOUT_MS = 45_000;
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-claim-instagram", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

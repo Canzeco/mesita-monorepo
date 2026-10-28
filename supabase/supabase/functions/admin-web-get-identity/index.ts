@@ -15,10 +15,10 @@
 // Deploy: supabase functions deploy admin-web-get-identity
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, jsonOk, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, jsonOk, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, checkSuperAdmin, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-identity", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

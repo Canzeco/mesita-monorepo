@@ -18,14 +18,14 @@
 // Deploy: supabase functions deploy consumer-web-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { cancelTicket, fireCancelNotice } from "../_shared/agent-tools.ts";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 
 type Body = { reservation_id?: string; reason?: string };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-cancel-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
