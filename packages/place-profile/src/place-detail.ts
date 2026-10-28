@@ -69,7 +69,7 @@ export type PlaceDetail = {
   // 2. Media
   photos: string[];
 
-  // Google atmosphere chips (Takeout, Dine-in, Live music). Empty hides the box.
+  // Mesita tags, else Google atmosphere chips (MESITA-2792). Empty hides the box.
   tags: Array<{
     slug: string;
     label: string;

@@ -8,10 +8,9 @@
 
 import { Facebook, Instagram } from "./brand-icons";
 
-// GOOGLE'S OWN FOUR-COLOUR G, BARE (Pato, MESITA-2960: "USE THE ACTUAL
-// GOOGLE LOGO THE G WITH THE COLORS"). No tile, no ring: it reverses
-// MESITA-2618's solid red tile with a white G. The box keeps the old tile
-// sizes (32 / 24 / 16px) so nothing beside it reflows.
+// GOOGLE'S OWN FOUR-COLOUR G (Pato, MESITA-2960: "USE THE ACTUAL
+// GOOGLE LOGO THE G WITH THE COLORS"). It reverses
+// MESITA-2618's solid red tile with a white G.
 function GoogleG({ className }: { className: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden>
@@ -35,7 +34,10 @@ function GoogleG({ className }: { className: string }) {
   );
 }
 
-// Review cards use the larger mark; the header row uses compact.
+// The G on a light gray tile (Google's own #F1F3F4), the size and corner of
+// the Instagram and Facebook tiles beside it, so the channel row reads as
+// three tiles (Pato, MESITA-2963: "add a gray border or gray background to
+// google box"). Review cards use the larger tile; the header row uses compact.
 export function GoogleLogo({
   compact = false,
   tiny = false,
@@ -47,11 +49,17 @@ export function GoogleLogo({
   return (
     <div
       className={
-        "flex shrink-0 items-center justify-center " +
-        (tiny ? "h-4 w-4" : compact ? "h-6 w-6" : "h-8 w-8")
+        "flex shrink-0 items-center justify-center bg-[#F1F3F4] " +
+        (tiny
+          ? "h-4 w-4 rounded"
+          : compact
+            ? "h-6 w-6 rounded-lg"
+            : "h-8 w-8 rounded-lg")
       }
     >
-      <GoogleG className={tiny ? "h-4 w-4" : compact ? "h-6 w-6" : "h-7 w-7"} />
+      <GoogleG
+        className={tiny ? "h-2.5 w-2.5" : compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+      />
     </div>
   );
 }

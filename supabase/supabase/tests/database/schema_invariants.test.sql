@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(166);
+select plan(173);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1319,6 +1319,12 @@ select is_empty(
 select hasnt_column('public', 'places', 'selected', 'places.selected retired (MESITA-2926)');
 select hasnt_column('public', 'profiles', 'selected', 'profiles.selected retired (MESITA-2926)');
 
+-- ━━━ MESITA-2959 — mesita_categories is gone ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Nothing read or wrote it since 20261027060000 (families are stored on
+-- family_keys); MESITA-2959 dropped the column and its slot in the view.
+select hasnt_column('public', 'place_profiles', 'mesita_categories', 'place_profiles.mesita_categories retired (MESITA-2959)');
+select hasnt_column('public', 'profiles', 'mesita_categories', 'profiles.mesita_categories retired (MESITA-2959)');
+
 -- Function bodies are strings, so every one of these would have survived its
 -- tables and 42P01'd on its next call.
 select is_empty(
@@ -1683,6 +1689,47 @@ select hasnt_column('public', 'place_profiles', 'google_primary_type',
   'place_profiles has no google_primary_type: google_types[0] is the primary');
 select hasnt_column('public', 'profiles', 'google_primary_type',
   'profiles has no google_primary_type');
+
+-- ━━━ MESITA-2804: a place left enriching by a dead run is put back ━━━━━━━━━
+-- Last in the file on purpose: the forced sweep below resets EVERY probe
+-- still 'generating', including the ones above.
+
+select ok(
+  (select active from cron.job where jobname = 'unstick-enriching-places'
+      and command like '%public.unstick_enriching_places()%'),
+  'the enriching sweep is scheduled and active'
+);
+
+insert into public.place_profiles (id, google_name, enriched_at) values
+  ('00000000-0000-4000-8000-000000002804', 'Unstick Enriched Probe', now() - interval '3 days'),
+  ('00000000-0000-4000-8000-000000002805', 'Unstick Never Probe', null);
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000002804', 'mesita-2804-enriched', 'active', 'generating', 'USD'),
+  ('00000000-0000-4000-8000-000000002805', 'mesita-2804-never', 'active', 'generating', 'USD');
+
+do $$ begin perform public.unstick_enriching_places(); end $$;
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002804'),
+  'generating',
+  'a place enriching for less than the bound is left alone (a live run is never swept)'
+);
+
+-- Every row here was written this transaction, so a negative bound stands in
+-- for "older than the bound".
+select cmp_ok(
+  public.unstick_enriching_places(interval '-1 second'), '>=', 2,
+  'the forced sweep resets the stuck places'
+);
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002804'),
+  'ready',
+  'a stuck place enriched before goes back to ready'
+);
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002805'),
+  'failed',
+  'a stuck place never enriched goes to failed'
+);
 
 select * from finish();
 

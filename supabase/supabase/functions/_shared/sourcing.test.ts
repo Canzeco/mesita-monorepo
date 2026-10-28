@@ -18,16 +18,11 @@ Deno.test("familiesForGoogleType: a place that is not a trip sits in no family (
   );
   const slugs = [...sql.matchAll(/^\s+'([a-z_]+)',?$/gm)].map((m) => m[1]);
   assertEquals(slugs.length, 23);
-  // MESITA-2888 made rails of seven: a cafeteria is Quick, a picnic ground
-  // Family, and a plaza, fountain, sculpture, marina or race course is
-  // Tourist or Fun. The other sixteen stay out.
+  // MESITA-2888 made rails of seven; MESITA-2962 sent the picnic ground,
+  // plaza, fountain, sculpture and marina back out. A cafeteria is Quick and
+  // a race course Fun; the other twenty-one stay out.
   const rails: Record<string, string[]> = {
     cafeteria: ["quick_bite"],
-    picnic_ground: ["family"],
-    plaza: ["tourist"],
-    fountain: ["tourist"],
-    sculpture: ["tourist"],
-    marina: ["tourist"],
     race_course: ["fun"],
   };
   for (const slug of [...slugs.filter((s) => !(s in rails)), "car_repair", "church", "hotel"]) {
