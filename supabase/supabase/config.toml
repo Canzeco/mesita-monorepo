@@ -259,6 +259,12 @@ verify_jwt = true
 [functions.consumer-web-report-place]
 verify_jwt = true
 
+# Single Place › Admin › Reports (MESITA-2686): one place's guest reports,
+# newest first, with the guest's first name and member number. Super-admin
+# only. Read-only.
+[functions.admin-web-list-place-reports]
+verify_jwt = true
+
 # Boost (MESITA-2789, was Spotlight MESITA-1998): a guest backs a place's
 # paid tier with their own Stripe subscription; place_backings mirrors it,
 # places.boost_tier is derived. No webhook: supabase-cron-sync-boosts polls

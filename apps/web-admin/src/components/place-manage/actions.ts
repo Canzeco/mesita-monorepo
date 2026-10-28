@@ -368,6 +368,28 @@ export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceB
   return { ok: true, data: r.data };
 }
 
+export type AdminPlaceReport = {
+  consumer_id: string;
+  first_name: string | null;
+  member_number: string | null;
+  reason: string;
+  note: string | null;
+  created_at: string;
+};
+
+/** The place's guest reports, newest first (admin-web-list-place-reports,
+ *  MESITA-2686). Read-only. */
+export async function listPlaceReports(
+  placeId: string,
+): Promise<Result<{ reports: AdminPlaceReport[]; capped: boolean }>> {
+  const r = await efInvoke<{ reports?: AdminPlaceReport[]; capped?: boolean }>(
+    "admin-web-list-place-reports",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: { reports: r.data.reports ?? [], capped: r.data.capped === true } };
+}
+
 // ── Profile vocabulary ───────────────────────────────────────────────────
 // Arrives on admin-web-get-overview, the one profile read. Family and
 // Category are already resolved there. The editor does not fetch them.
