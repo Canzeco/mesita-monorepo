@@ -438,6 +438,11 @@ verify_jwt = true
 [functions.admin-web-set-guest-standing]
 verify_jwt = true
 
+# VIP partners (MESITA-2556): add or rename the partners a VIP comes through,
+# and mark which are Mesita venues. Names no rate. Super-admin only.
+[functions.admin-web-save-vip-partner]
+verify_jwt = true
+
 # THE admin config pair (MESITA-1724). Every app_config section the console
 # edits arrives here under `section`, and the no-section read is the Crenup
 # page's own payload. Registry: functions/_shared/config-sections.ts. Both

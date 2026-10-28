@@ -11,6 +11,11 @@ export const NOT_WRITABLE_FROM_APP = [
   "guest_class_note",
   "guest_class_set_at",
   "guest_class_set_by",
+  // MESITA-2556: the VIP's partner and last day, operator-set like the class.
+  "vipPartnerId",
+  "vip_partner_id",
+  "vipUntil",
+  "vip_until",
   "diamond",
 ] as const;
 

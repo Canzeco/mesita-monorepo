@@ -3,6 +3,7 @@
 // Manage › Guests (MESITA-2550). The 50 newest guests, or those whose name,
 // member number or Instagram handle matches `q`, with their Class and Plan
 // (MESITA-2553) and who last set the class. Closed accounts are left out.
+// Also every VIP partner (MESITA-2556), for the partner choice on a VIP row.
 // Read-only; super-admin only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -20,6 +21,7 @@ import {
   type RawGuest,
   toGuestRow,
 } from "../_shared/guest-standing.ts";
+import { loadVipPartners } from "../_shared/vip-partners.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -73,8 +75,16 @@ Deno.serve(async (req) => {
     }
   }
 
+  let partners;
+  try {
+    partners = await loadVipPartners(admin);
+  } catch (err) {
+    return json({ ok: false, error: (err as Error).message }, 500);
+  }
+
   return json({
     ok: true,
     guests: rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null)),
+    partners,
   });
 });
