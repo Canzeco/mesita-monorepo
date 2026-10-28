@@ -6,6 +6,7 @@
 
 import {
   ENRICH_DESCRIPTION_MAX,
+  ENRICH_DESCRIPTION_TARGET_CHARS,
   ENRICH_DESCRIPTION_TARGET_WORDS,
   OPENAI_URL,
   QUALITY_MODEL,
@@ -183,15 +184,17 @@ export function buildPresentationInput(place: {
     `English, even when the source material is Spanish. Translate facts ` +
     `into English; do not leave Spanish prose in any field. ` +
     `Write "description" as the public Presentation for the Place page: ` +
-    `a short, inviting, factual narrative of roughly ` +
-    `${ENRICH_DESCRIPTION_TARGET_WORDS} words (max ` +
-    `${ENRICH_DESCRIPTION_MAX} characters). ` +
-    `CRITICAL — paragraphs: "description" MUST be several short paragraphs ` +
+    `an inviting, factual narrative of about ` +
+    `${ENRICH_DESCRIPTION_TARGET_CHARS} characters (roughly ` +
+    `${ENRICH_DESCRIPTION_TARGET_WORDS} words), never more than ` +
+    `${ENRICH_DESCRIPTION_MAX} characters. ` +
+    `CRITICAL — paragraphs: "description" MUST be several paragraphs ` +
     `separated by a blank line (the two-character sequence \\n\\n). Never ` +
-    `return one unbroken wall of text. Aim for 2–3 paragraphs; each ` +
-    `paragraph is 2–3 sentences on one idea (atmosphere, cuisine, signature ` +
+    `return one unbroken wall of text. Aim for 3–4 paragraphs; each ` +
+    `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
     `dishes or experiences, history or neighborhood, why visit) — only when ` +
-    `the sources support it. No filler or invented detail. ` +
+    `the sources support it. Write shorter only when the sources cannot ` +
+    `fill that length; never pad with filler or invented detail. ` +
     `"mesita_name" is the clean public display name, in proper case: strip ` +
     `slogans, legal forms (S.A. de C.V., LLC, Inc.), store numbers and ` +
     `internal branch codes. ` +
