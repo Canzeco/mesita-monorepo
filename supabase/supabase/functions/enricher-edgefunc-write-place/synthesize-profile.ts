@@ -20,6 +20,14 @@ import { findAddressComponent } from "../_shared/enrich-google-basics-normalizer
 export { capPresentation } from "../_shared/presentation-cap.ts";
 import { capPresentation } from "../_shared/presentation-cap.ts";
 import { fetchPlaceTags, pickVocabularyTags } from "../_shared/tags.ts";
+import { fetchPlaceFamilies } from "../_shared/categories.ts";
+import {
+  familiesToStore,
+  familyVocabularyLines,
+  isGoogleCategoryEnabled,
+  mainGoogleCategory,
+  pickFamilies,
+} from "../_shared/families-infer.ts";
 
 export function reviewQuotes(value: unknown): string {
   if (!Array.isArray(value)) return "";
@@ -95,6 +103,11 @@ export type FilledProfile = {
   patch: Record<string, unknown>;
   /** The synthesis's clean display name, for the Mesita Name door. */
   mesitaName: string | null;
+  /**
+   * Mesita Families to store on place_profiles (MESITA-2891): 1–5 slugs, null
+   * for a not-enabled main Google category, undefined to keep the stored list.
+   */
+  families?: string[] | null;
 };
 
 /**
@@ -115,7 +128,7 @@ export async function fillAtlasProfile(
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
     console.error(`[enrich] profile synthesis skipped: ${why}`);
-    return { patch, mesitaName: null };
+    return { patch, mesitaName: null, families: undefined };
   }
 }
 
@@ -127,11 +140,13 @@ async function fillAtlasProfileInner(
   saved: SavedSignals,
 ): Promise<FilledProfile> {
   const openaiKey = Deno.env.get("OPENAI_KEY")?.trim() ?? "";
-  if (!openaiKey) return { patch, mesitaName: null };
+  if (!openaiKey) return { patch, mesitaName: null, families: undefined };
 
-  const [tagVocabulary, cfg] = await Promise.all([
+  const [tagVocabulary, cfg, familyVocabulary, enabled] = await Promise.all([
     fetchPlaceTags(admin),
     loadEnrichConfig(admin),
+    fetchPlaceFamilies(admin),
+    isGoogleCategoryEnabled(admin, mainGoogleCategory(saved.google_types, saved.category)),
   ]);
   const name = textField(patch.google_name) || textField(patch.name);
   const address = textField(patch.address);
@@ -149,6 +164,7 @@ async function fillAtlasProfileInner(
   let presentation: string | null = null;
   let mesitaName: string | null = null;
   let tags: string[] | null = null;
+  let pickedFamilies: string[] | null = null;
   const anchor = branchAnchor(patch);
   if (name) {
     const { parsed } = await synthesizeProfile({
@@ -160,6 +176,7 @@ async function fillAtlasProfileInner(
       googleTypes,
       googleTags,
       tagVocabulary: [...tagSlugs],
+      familyVocabulary: enabled ? familyVocabularyLines(familyVocabulary) : [],
       // The franchise rule's anchor: a chain branch is named brand + zone.
       zone: anchor.zone,
       city: anchor.city,
@@ -173,7 +190,12 @@ async function fillAtlasProfileInner(
       presentation = textField(drafted.description) || null;
       mesitaName = textField(parsed.mesita_name) || null;
       tags = pickVocabularyTags(parsed.tags, tagSlugs);
+      pickedFamilies = pickFamilies(parsed.families, familyVocabulary);
     }
+  }
+  const families = familiesToStore(pickedFamilies, enabled);
+  if (families === undefined) {
+    console.warn(`[enrich] ${placeId}: Mesita families not inferred; stored families kept`);
   }
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
@@ -186,5 +208,6 @@ async function fillAtlasProfileInner(
       tags,
     }),
     mesitaName,
+    families,
   };
 }

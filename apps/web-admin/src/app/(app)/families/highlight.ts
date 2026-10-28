@@ -1,6 +1,7 @@
-// Bidirectional highlight for the Families page. The stored relations
-// map a category to its list of families (MESITA-2808: no primary family).
-// The other direction is derived here and never stored.
+// The Atlas page's payload types (MESITA-2891). The category ↔ family matrix
+// and its bidirectional highlight are gone: a place's Mesita Families are the
+// Description step's model pick, and every Google category is either enabled
+// on Mesita or not.
 
 export type FamilyRow = {
   slug: string;
@@ -9,15 +10,9 @@ export type FamilyRow = {
   sortOrder: number;
 };
 
-export type CategoryRow = {
+export type GoogleCategoryRow = {
   slug: string;
   label: string;
-  familyKeys: string[];
-};
-
-export type GoogleTypeRow = {
-  slug: string;
-  family: string;
 };
 
 export type TagRow = {
@@ -29,59 +24,9 @@ export type TagRow = {
   sortOrder: number;
 };
 
-export type GoogleMembershipRow = {
-  slug: string;
-  familyKeys: string[];
-};
-
 export type FamiliesMap = {
   families: FamilyRow[];
-  categories: CategoryRow[];
-  googleTypes: GoogleTypeRow[];
-  googleMembership: GoogleMembershipRow[];
+  enabledCategories: GoogleCategoryRow[];
+  disabledCategories: GoogleCategoryRow[];
   tags: TagRow[];
 };
-
-export type FamiliesSelection =
-  | { kind: "family"; slug: string }
-  | { kind: "google"; slug: string }
-  | { kind: "category"; slug: string };
-
-export type FamiliesHighlight = {
-  families: Set<string>;
-  google: Set<string>;
-  categories: Set<string>;
-};
-
-export function highlightFamilies(
-  map: FamiliesMap,
-  sel: FamiliesSelection,
-): FamiliesHighlight {
-  const families = new Set<string>();
-  const google = new Set<string>();
-  const categories = new Set<string>();
-
-  const addFamily = (slug: string) => {
-    families.add(slug);
-    for (const row of map.googleTypes) {
-      if (row.family === slug) google.add(row.slug);
-    }
-    for (const row of map.categories) {
-      if (row.familyKeys.includes(slug)) categories.add(row.slug);
-    }
-  };
-
-  if (sel.kind === "family") addFamily(sel.slug);
-  if (sel.kind === "google") {
-    const row = map.googleTypes.find((g) => g.slug === sel.slug);
-    if (row) addFamily(row.family);
-  }
-  if (sel.kind === "category") {
-    const row = map.categories.find((c) => c.slug === sel.slug);
-    if (row) {
-      categories.add(row.slug);
-      for (const key of row.familyKeys) addFamily(key);
-    }
-  }
-  return { families, google, categories };
-}

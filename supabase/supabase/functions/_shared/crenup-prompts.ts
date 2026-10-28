@@ -142,13 +142,16 @@ function presentationPrompt(): CrenupPrompt {
       "the source material the earlier functions gathered.",
     writes:
       "The Presentation (place_profiles.description), the Mesita tags (picked " +
-      "from the live tag vocabulary), the machine summary that the Embedding " +
+      "from the live tag vocabulary), 1–5 Mesita Families (picked from the " +
+      "live family list; none when the main Google category is not enabled), " +
+      "the machine summary that the Embedding " +
       "step vectorises and the Mesita name candidate.",
     instructions: PRESENTATION_INSTRUCTIONS,
     input: buildPresentationInput({
       ...PLACE,
       branchAnchor: "Neighborhood / zone: {zone} · City: {city}",
       tagVocabulary: ["{tag slug}", "… one per live tag"],
+      familyVocabulary: ["{family slug} — {Family label}", "… one per live family"],
       grounding:
         "Google categories: {google types, primary first}\n\n" +
         "Google attributes: {google tags}\n\n" +
