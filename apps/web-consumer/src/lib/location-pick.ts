@@ -9,7 +9,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   apiResolveLocationAnchor,
-  type NearbyArea,
   type PlacePrediction,
 } from "@/lib/api/place-search";
 
@@ -45,13 +44,4 @@ export async function pickCamera(
   return isRegionPick(row) && anchor.viewport
     ? { center, zoom: LOCATION_PICK_ZOOM, fit: anchor.viewport }
     : { center, zoom: LOCATION_PICK_ZOOM };
-}
-
-/** An "Around you" row (MESITA-2471): its level picks the zoom; a city
- *  fits its own rectangle. */
-export function aroundYouCamera(area: NearbyArea): PickerCamera {
-  const center = { lat: area.lat, lng: area.lng };
-  if (area.level === "neighborhood") return { center, zoom: 15 };
-  if (area.level === "district") return { center, zoom: 14 };
-  return { center, zoom: 13, fit: area.bounds };
 }
