@@ -17,7 +17,7 @@ import {
   PLACE_TZ_LABEL,
   placeDateIso,
   placeDateParts,
-} from "@/lib/place-time";
+} from "@mesita/place-profile/lib/place-time";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [

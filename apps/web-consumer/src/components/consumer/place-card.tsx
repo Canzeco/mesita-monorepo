@@ -1,7 +1,7 @@
 import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { formatPlacePriceLevelSymbols } from "@/lib/place-price";
+import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 // THE PREVIEW CARD'S ROWS AND BUTTONS, ONE SOURCE (MESITA-2668): the Home

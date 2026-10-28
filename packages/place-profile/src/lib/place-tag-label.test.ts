@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { displayPlaceTagLabel } from "../place-tag-label";
+import { displayPlaceTagLabel } from "./place-tag-label";
 
 describe("displayPlaceTagLabel (MESITA-963)", () => {
   it("prefers English even when Spanish is present", () => {

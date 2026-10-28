@@ -39,10 +39,6 @@ export const SHEET_BODY_CLASS =
 export const INSTAGRAM_ICON_GRADIENT_CLASS =
   "bg-[linear-gradient(135deg,oklch(0.70_0.20_30),oklch(0.65_0.20_350))]";
 
-// The phone glyph's green badge on Me's identity header — the Instagram
-// badge's sibling, solid instead of a gradient (MESITA-2491).
-export const PHONE_ICON_BADGE_CLASS = "bg-emerald-500";
-
 // Secondary Cancel action used in LocalSheet footers (bordered, card fill).
 export const SHEET_CANCEL_BUTTON_CLASS =
   "border-border bg-card hover:bg-muted flex-1 rounded-lg border py-3 text-sm font-semibold transition";

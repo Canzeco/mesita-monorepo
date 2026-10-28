@@ -9,8 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   computeOpenState,
   opensOnDay,
-} from "@/lib/adapters/place-to-detail-helpers";
-import { getOpeningStateLabel } from "@/lib/place-state";
+} from "./place-to-detail-helpers";
+import { getOpeningStateLabel } from "./lib/place-state";
 
 const DOS_AMORES = Object.fromEntries(
   ["monday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { PopularTimesBox } from "@/components/consumer/place-detail/popular-times";
+import { PopularTimesBox } from "@mesita/place-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 
 const withTimes = (popular_times: PlaceDetail["popular_times"]) =>

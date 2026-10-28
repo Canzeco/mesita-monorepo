@@ -28,7 +28,7 @@ import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
+import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
 
 const DEFAULT_PARTY = 2;
 

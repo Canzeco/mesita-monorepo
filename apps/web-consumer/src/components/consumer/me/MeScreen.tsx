@@ -15,8 +15,8 @@ import { cn } from "@/lib/utils";
 // THE BOTTOM NAV STAYS. (shell)/layout.tsx shows it on every shell route.
 // A full-page view here owns the BODY, not the frame.
 //
-// BACK IS A HISTORY POP with a fallback, the same shape PlaceDetailPageHeader
-// settled on: a guest who arrived from /me returns to their scroll position;
+// BACK IS A HISTORY POP with a fallback (decided for the place page's back
+// arrow, MESITA-1070): a guest who arrived from /me returns to their scroll position;
 // a cold load of /me/profile lands on /me rather than off the end of the app.
 
 export function MeScreen({

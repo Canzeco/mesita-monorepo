@@ -30,7 +30,7 @@ import {
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, placeDateTime } from "@/lib/place-time";
+import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
 
 // Action cluster for reservation detail. The two that MOVE the reservation —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a

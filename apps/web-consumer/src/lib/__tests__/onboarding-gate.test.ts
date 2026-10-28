@@ -7,7 +7,6 @@ import {
   consumerCanBrowse,
   isConsumerSex,
   ONBOARD_FIELDS,
-  ONBOARD_STEPS,
 } from "../consumer-onboarding";
 import { MIN_SIGNUP_AGE } from "../utils";
 
@@ -85,7 +84,6 @@ describe("the three onboarding fields (MESITA-2746)", () => {
       "sex",
     ]);
     expect(ONBOARD_FIELDS).toHaveLength(3);
-    expect(ONBOARD_STEPS).toBe(ONBOARD_FIELDS);
   });
 
   it("gives every field a label", () => {

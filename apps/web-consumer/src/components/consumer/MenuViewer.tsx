@@ -16,8 +16,8 @@ import {
 } from "@/components/consumer/menu-viewer-panes";
 import { PdfPane } from "@/components/consumer/pdf-pane";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@/lib/menu-url";
-import { nutritionLine, type MenuNutrition } from "@/lib/nutrition";
+import { drivePreviewUrl, menuKindLabel, type MenuKind } from "@mesita/place-profile/lib/menu-url";
+import { nutritionLine, type MenuNutrition } from "@mesita/place-profile/lib/nutrition";
 import { cn } from "@/lib/utils";
 
 type MenuViewerItem = {

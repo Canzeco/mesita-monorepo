@@ -25,7 +25,7 @@ import {
   placeDateIso,
   placeDateParts,
   WEEK_KEYS,
-} from "@/lib/place-time";
+} from "@mesita/place-profile/lib/place-time";
 
 /**
  * How far ahead a table can be requested: ONE calendar month, and no more.
