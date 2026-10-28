@@ -3,7 +3,8 @@
 // MESITA-1998: a place's Boost as the place screen shows it — its tier,
 // how many guests back it (never who: MESITA-2928), and the signed-in guest's own backings (to cancel). With `session_id`
 // (Checkout's return, `?boost=`) it first confirms that guest's backing
-// from Stripe, so the tier is right the moment they land.
+// from Stripe, so the tier is right the moment they land. A guest who never
+// comes back is confirmed by supabase-cron-sync-boosts (MESITA-2857).
 //
 // Body: { place_id: uuid, session_id?: string }
 // Response: { ok: true, tier: 0|1|2, backers: number,
@@ -15,11 +16,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
+  boostStripeKey,
+  confirmBackingFromSession,
   isLiveBacking,
   readBoostPlace,
-  boostStripeKey,
   stripeClient,
-  subscriptionPatch,
 } from "../_shared/boost.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -57,15 +58,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (key && open) {
       try {
-        const stripe = stripeClient(key);
-        const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, {
-          expand: ["subscription"],
-        });
-        const sub = session.subscription as Record<string, unknown> | string | null;
-        if (sub && typeof sub === "object") {
-          await admin.from("place_backings").update(subscriptionPatch(sub)).eq("id", open.id);
-          confirmed = true;
-        }
+        ({ confirmed } = await confirmBackingFromSession(admin, stripeClient(key), open.id, sessionId));
       } catch (err) {
         console.error("[consumer-web-get-boost] confirm:", err);
       }
