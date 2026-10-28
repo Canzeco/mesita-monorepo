@@ -370,6 +370,20 @@ const REMINDER_STATE_VALUES = new Set<string>([
 ]);
 const CANCELLED_BY_VALUES = new Set<string>(["consumer", "business", "agent"]);
 const CONSUMER_NOTIFY_VALUES = new Set<string>(["call", "app"]);
+/** The closed-set text columns, in validation order: [key, allowed values,
+ *  nullable]. One loop checks them all with one error shape. */
+const CLOSED_SET_FIELDS: ReadonlyArray<
+  readonly [typeof RESERVATION_PATCH_KEYS[number], ReadonlySet<string>, boolean]
+> = [
+  ["attempts_state", ATTEMPTS_STATE_VALUES, false],
+  ["callback_state", CALLBACK_STATE_VALUES, false],
+  ["notice_state", NOTICE_STATE_VALUES, false],
+  ["reminder_state", REMINDER_STATE_VALUES, false],
+  ["notice_kind", NOTICE_KIND_VALUES, true],
+  ["cancelled_by", CANCELLED_BY_VALUES, true],
+  ["consumer_notify", CONSUMER_NOTIFY_VALUES, false],
+  ["reported_verdict", REPORTED_VERDICT_VALUES, true],
+];
 const REFERENCE_CODE_RE = /^\d{8}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
@@ -537,85 +551,20 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
     }
     patch.reschedules_day = v as string | null;
   }
-  if ("attempts_state" in raw) {
-    const v = raw.attempts_state;
-    if (typeof v !== "string" || !ATTEMPTS_STATE_VALUES.has(v)) {
+  for (const [key, values, nullable] of CLOSED_SET_FIELDS) {
+    if (!(key in raw)) continue;
+    const v = raw[key];
+    if (nullable && v === null) {
+      (patch as Record<string, unknown>)[key] = null;
+      continue;
+    }
+    if (typeof v !== "string" || !values.has(v)) {
       return {
         ok: false,
-        error: `attempts_state must be one of ${[...ATTEMPTS_STATE_VALUES].join(", ")}`,
+        error: `${key} must be ${nullable ? "null or " : ""}one of ${[...values].join(", ")}`,
       };
     }
-    patch.attempts_state = v as AttemptsState;
-  }
-  if ("callback_state" in raw) {
-    const v = raw.callback_state;
-    if (typeof v !== "string" || !CALLBACK_STATE_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: `callback_state must be one of ${[...CALLBACK_STATE_VALUES].join(", ")}`,
-      };
-    }
-    patch.callback_state = v as CallbackState;
-  }
-  if ("notice_state" in raw) {
-    const v = raw.notice_state;
-    if (typeof v !== "string" || !NOTICE_STATE_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: `notice_state must be one of ${[...NOTICE_STATE_VALUES].join(", ")}`,
-      };
-    }
-    patch.notice_state = v as NoticeState;
-  }
-  if ("reminder_state" in raw) {
-    const v = raw.reminder_state;
-    if (typeof v !== "string" || !REMINDER_STATE_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: `reminder_state must be one of ${[...REMINDER_STATE_VALUES].join(", ")}`,
-      };
-    }
-    patch.reminder_state = v as ReminderState;
-  }
-  if ("notice_kind" in raw) {
-    const v = raw.notice_kind;
-    if (v !== null && (typeof v !== "string" || !NOTICE_KIND_VALUES.has(v))) {
-      return {
-        ok: false,
-        error: `notice_kind must be null or one of ${[...NOTICE_KIND_VALUES].join(", ")}`,
-      };
-    }
-    patch.notice_kind = v as NoticeKind | null;
-  }
-  if ("cancelled_by" in raw) {
-    const v = raw.cancelled_by;
-    if (v !== null && (typeof v !== "string" || !CANCELLED_BY_VALUES.has(v))) {
-      return {
-        ok: false,
-        error: `cancelled_by must be null or one of ${[...CANCELLED_BY_VALUES].join(", ")}`,
-      };
-    }
-    patch.cancelled_by = v as CancelledBy | null;
-  }
-  if ("consumer_notify" in raw) {
-    const v = raw.consumer_notify;
-    if (typeof v !== "string" || !CONSUMER_NOTIFY_VALUES.has(v)) {
-      return {
-        ok: false,
-        error: `consumer_notify must be one of ${[...CONSUMER_NOTIFY_VALUES].join(", ")}`,
-      };
-    }
-    patch.consumer_notify = v as ConsumerNotify;
-  }
-  if ("reported_verdict" in raw) {
-    const v = raw.reported_verdict;
-    if (v !== null && (typeof v !== "string" || !REPORTED_VERDICT_VALUES.has(v))) {
-      return {
-        ok: false,
-        error: `reported_verdict must be null or one of ${[...REPORTED_VERDICT_VALUES].join(", ")}`,
-      };
-    }
-    patch.reported_verdict = v as ReportedVerdict | null;
+    (patch as Record<string, unknown>)[key] = v;
   }
   if ("alternatives" in raw) {
     const v = raw.alternatives;
