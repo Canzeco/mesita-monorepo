@@ -128,15 +128,15 @@ export type Database = {
       }
       catalog_membership: {
         Row: {
-          family_keys: string[]
+          enabled: boolean
           slug: string
         }
         Insert: {
-          family_keys: string[]
+          enabled?: boolean
           slug: string
         }
         Update: {
-          family_keys?: string[]
+          enabled?: boolean
           slug?: string
         }
         Relationships: []
@@ -439,7 +439,6 @@ export type Database = {
       place_categories: {
         Row: {
           created_at: string
-          family_keys: string[]
           label: string
           section: string
           slug: string
@@ -447,7 +446,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          family_keys?: string[]
           label: string
           section: string
           slug: string
@@ -455,7 +453,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          family_keys?: string[]
           label?: string
           section?: string
           slug?: string
@@ -1551,11 +1548,6 @@ export type Database = {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
       }
-      families_for_categories: {
-        Args: { cats: Json; fallback: string }
-        Returns: string[]
-      }
-      families_for_category: { Args: { cat: string }; Returns: string[] }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
       open_place_enrichment_run: {
