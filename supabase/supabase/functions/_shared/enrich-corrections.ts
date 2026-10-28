@@ -17,10 +17,9 @@
 //
 // ━━━ WHAT IS BUILT (MESITA-1190) ━━━
 // The PIN HALF is live. `readFieldPins` / `carryFieldPins` / `stripPinnedColumns`
-// are wired into the two EFs that persist enriched facts onto `place_profiles`:
-// enricher-cron-enrich-place-research (phone) and
-// enricher-cron-enrich-place-contents (everything else). A pin that exists is
-// obeyed today.
+// are wired into the paths that persist enriched facts onto `place_profiles`:
+// enricher-edgefunc-write-place (Render's Enrich commit) and google-refetch.ts
+// (the wrong-number phone). A pin that exists is obeyed today.
 //
 // ━━━ WHAT IS NOT ━━━
 // Reservationist and Ojo writers. Business-console edits write pins via

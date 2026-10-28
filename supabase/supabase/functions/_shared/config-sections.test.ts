@@ -189,22 +189,23 @@ const CASES: Record<string, SectionCase> = {
   },
 
   reservations: {
-    // The deployed console still posts the retired priority / disabled /
-    // attempts keys (MESITA-2144): the save lands, and they are not written back.
+    // A deployed console may still post the retired priority / disabled /
+    // attempts (MESITA-2144) and respectAdminOverride (MESITA-2424) keys: the
+    // save lands, and they are not written back.
     valid: {
       config: { priority: ["phone"], disabled: [], respectAdminOverride: true, attempts: 2 },
     },
     assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).respectAdminOverride, true);
+      assertEquals((saved.config as Row).reminder, { enabled: false });
       const stored = row.reservations_config as Row;
-      for (const key of ["priority", "disabled", "attempts"]) {
+      for (const key of ["priority", "disabled", "attempts", "respectAdminOverride"]) {
         assertEquals(key in stored, false, `${key} was written back`);
       }
     },
     invalid: {
-      config: { respectAdminOverride: "yes" },
+      config: { testCall: "yes" },
     },
-    refuse: { status: 400, contains: "respectAdminOverride must be a boolean" },
+    refuse: { status: 400, contains: "testCall must be an object" },
   },
 
 };

@@ -1,8 +1,7 @@
 // Supabase Edge Function — admin-web-reload-place-reviews (MESITA-2189)
 //
 // One source, one click. Calls the shared verifier and writes that
-// source's found flag and numbers. Does not touch place_research,
-// enriched_at, photos, or google_reviews. Keeps no fetch of its own.
+// source's found flag and numbers. Does not touch enriched_at, photos, or google_reviews. Keeps no fetch of its own.
 //
 //   instagram       saved instagram_url → follower count
 //   facebook        saved facebook_url  → follower count

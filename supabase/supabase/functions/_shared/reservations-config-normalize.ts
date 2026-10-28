@@ -3,7 +3,6 @@
 import { TEST_CALL_SEED, type TestCall } from "./reservations-config.ts";
 
 type ReservationsConfig = {
-  respectAdminOverride: boolean;
   testCall: TestCall;
   /** Testing escape hatch: ignore the monthly reservation cap (reservation-cap.ts). */
   unlimitedReservations: boolean;
@@ -18,11 +17,12 @@ type ReservationsConfig = {
 };
 
 // RETIRED KEYS (MESITA-2144): `priority` and `disabled` (they ranked and parked
-// a one-channel list; enrich-reservation-policy.ts no longer reads them),
-// `attempts` (fixed at 2 by protocol — ATTEMPTS in reservations-config.ts) and
-// `testCall.consumerNumber` (the retired Playground's guest line). The deployed
-// admin build still posts all four with every whole-blob save, so they are
-// ACCEPTED and dropped — never validated, never written back.
+// a one-channel list nothing reads), `attempts` (fixed at 2 by protocol —
+// ATTEMPTS in reservations-config.ts) and `testCall.consumerNumber` (the
+// retired Playground's guest line). MESITA-2424 retired `respectAdminOverride`
+// with the enrichment stage that read it. A deployed admin build may still post
+// any of them with a whole-blob save, so they are ACCEPTED and dropped — never
+// validated, never written back.
 
 // A leading + and 8–15 digits. Mirrors looksLikePhone in the admin catalog. The
 // real validity check is placing the call — this only stops an obvious typo.
@@ -31,9 +31,8 @@ function looksLikePhone(v: string): boolean {
 }
 
 // Coerce the whole policy. Returns an error string on invalid input — the row is
-// never touched on a malformed body. `respectAdminOverride` is the one REQUIRED
-// key; every other knob is OPTIONAL and defaults when omitted, so deploying this
-// stays backward-compatible with the currently-shipped page.
+// never touched on a malformed body. Every knob is OPTIONAL and defaults when
+// omitted, so deploying this stays backward-compatible with the shipped page.
 export function normalizeConfig(
   raw: unknown,
 ): { ok: true; value: ReservationsConfig } | { ok: false; error: string } {
@@ -41,10 +40,6 @@ export function normalizeConfig(
     return { ok: false, error: "config must be an object" };
   }
   const c = raw as Record<string, unknown>;
-
-  if (typeof c.respectAdminOverride !== "boolean") {
-    return { ok: false, error: "config.respectAdminOverride must be a boolean" };
-  }
 
   // testCall — optional. An ABSENT testCall falls back to TEST_CALL_SEED (test
   // mode ON, the test line), matching coerceReservationsCallConfig's read-path
@@ -132,7 +127,6 @@ export function normalizeConfig(
   return {
     ok: true,
     value: {
-      respectAdminOverride: c.respectAdminOverride,
       testCall,
       unlimitedReservations,
       limits,

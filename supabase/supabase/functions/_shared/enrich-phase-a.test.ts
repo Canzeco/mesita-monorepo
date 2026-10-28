@@ -79,13 +79,3 @@ Deno.test("Firecrawl search reads v2 web hits and logs a refusal as empty", asyn
     globalThis.fetch = realFetch;
   }
 });
-
-Deno.test("a skipped Serp restores its summary before channel discovery", async () => {
-  const src = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-first/index.ts", import.meta.url),
-  );
-  const restore = src.indexOf("row.gathered?.grounding.serpSummary");
-  const discover = src.indexOf("resolveChannels(");
-  assertEquals(restore > 0 && discover > restore, true);
-  assertEquals(src.includes("ok: true, via:"), false);
-});

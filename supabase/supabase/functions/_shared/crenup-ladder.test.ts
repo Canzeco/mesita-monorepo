@@ -28,7 +28,7 @@ Deno.test("crenup: every stamped step matches the DB's step CHECK", () => {
   // This guard earned its keep: the constraint used to be '^S[0-9]$', and the
   // tenth rung of MESITA-1230 would have type-checked (reportEnrichmentStep
   // takes the open template `S${number}`), been REJECTED by Postgres, and had
-  // its error swallowed by enrich-pipeline.ts — the step would never record,
+  // its error swallowed by the beacon writer — the step would never record,
   // the meter would cap at 9 forever, and nothing would report a failure. The
   // widening migration (20260823005422) went in FIRST because this failed.
   //
@@ -331,49 +331,6 @@ Deno.test("high water: never exceeds the total, and never goes negative", () => 
   const n = crenupHighWater([...fullQueue(), ...fullQueue()]);
   assertEquals(n >= 0 && n <= CRENUP_TOTAL, true);
   assertEquals(n, 8);
-});
-
-// ── the guard MESITA-1209 needed ──────────────────────────────────────────
-//
-// The bug: enricher-cron-enrich-place-analysis wrote a STAGE beacon as
-// { step_name: "images", state: "skipped" } on the "matrix did not buy the
-// funnel" path. `images` is a function key, so the high-water reader saw a
-// non-completed function mid-ladder and stopped short of it — a cheap refresh
-// knocked a complete place down every time it ran. (It presented as 9 -> 6
-// under the order of the day; `images` is function 6 now, so the same bug would
-// read 9 -> 5. The number was never the point.)
-//
-// Nothing in TypeScript stops a beacon borrowing a function's name, because
-// step_name is just a string. This reads the stage EFs and asserts that only
-// reportCrenupSteps ever writes one, so the next person to add a beacon cannot
-// reintroduce it silently. `seed` is a function key now too, and a beacon
-// borrowing THAT one would be the worst of the family — it would put an event
-// on the floor the walk deliberately skips.
-Deno.test("no raw beacon may use a CRENUP step key as its step_name", async () => {
-  const dir = new URL("../", import.meta.url);
-  const stages = [
-    "enricher-cron-enrich-place-first",
-    "enricher-cron-enrich-place-second",
-    "enricher-cron-enrich-place-third",
-  ];
-  const pieces = new Set<string>(CRENUP_LADDER);
-  const offenders: string[] = [];
-
-  for (const stage of stages) {
-    const src = await Deno.readTextFile(new URL(`${stage}/index.ts`, dir));
-    // reportEnrichmentStep(admin, id, "S_", "<step_name>", ...) — 4th argument.
-    const re =
-      /reportEnrichmentStep\(\s*[^,]+,\s*[^,]+,\s*"[^"]*",\s*"([^"]+)"/g;
-    for (const m of src.matchAll(re)) {
-      if (pieces.has(m[1])) offenders.push(`${stage}: "${m[1]}"`);
-    }
-  }
-
-  assertEquals(
-    offenders,
-    [],
-    `A raw beacon is using a function key as step_name, which corrupts the high-water. Use reportCrenupSteps, or rename the beacon.`,
-  );
 });
 
 // ── the reason beside the number (MESITA-1243 follow-up) ──────────────────

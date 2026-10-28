@@ -531,14 +531,7 @@ function readProfile(value: unknown): ProfileRead | null {
 
 export type PlaceEnrichmentState = {
   content_state: string | null;
-  stage: string | null;
-  stage_state: string | null;
-  error: string | null;
   last_enriched_at: string | null;
-  updated_at: string | null;
-  /** The SERP Summary from the last run — the Scout's soft editorial read.
-   *  Soft context only: never a source of facts, ratings or prices. */
-  serp_summary: string | null;
 };
 
 type PlaceEnrichment = {
