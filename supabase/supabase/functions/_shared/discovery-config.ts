@@ -27,7 +27,8 @@
 //
 // RETIRED AS UNREAD (MESITA-2687): `params.modes` (the weights table: no view
 // read it after MESITA-2516, and its stored Nearby row ranked Chat by distance
-// alone), `map.supers` (every guest family is on, `enabledMapSupers`) and
+// alone), `map.supers` (every guest family is on; its keys and the Map's
+// Nearby batteries were deleted by MESITA-2974) and
 // `map.reloadMinKm` / `reloadMinSec` (the Map's distance gate, MESITA-2451).
 //
 // RETIRED WITH THE FOUR SOURCES (MESITA-2703): `map.googlePlaces`,
@@ -93,62 +94,6 @@ export type DeepConfig = {
 export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
-
-/**
- * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the thirty-seven
- * guest families, in `FAMILIES` sort order — the same thirty-seven, in the same
- * order, the guest sees as pills on the Filters sheet (MESITA-2834, 2888).
- *
- * Google's own type slugs are not a param. Twenty-two switches asked the
- * operator to think in Google's vocabulary, and the ordered "first N" cap on
- * top of them (`general.categoryCount`, now deleted) silently forced four
- * whole families off. One family on = its whole `GOOGLE_SEARCH_TYPES`
- * battery on.
- *
- * Super `undefined` is NOT here: its battery is empty, so a toggle for it
- * could never change a Google call. `google-type-super.test.ts` pins this list
- * to the taxonomy.
- */
-export const SUPER_PARAM_KEYS = [
-  "coffee",
-  "breakfast",
-  "bakery",
-  "sweet",
-  "healthy",
-  "quick_bite",
-  "tacos",
-  "burgers",
-  "pizza",
-  "chicken",
-  "sushi",
-  "mexican",
-  "steak",
-  "seafood",
-  "italian",
-  "japanese",
-  "chinese",
-  "asian",
-  "indian",
-  "arabic",
-  "european",
-  "american",
-  "dinner",
-  "fancy",
-  "family",
-  "drinks",
-  "sports",
-  "hookah",
-  "night_out",
-  "nightclub",
-  "music",
-  "karaoke",
-  "fun",
-  "cinema",
-  "casino",
-  "spa",
-  "tourist",
-] as const;
-export type SuperParamKey = (typeof SUPER_PARAM_KEYS)[number];
 
 /**
  * The Map and Catalog pipelines' policy (MESITA-2909): the Map ranks every
