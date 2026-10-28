@@ -267,6 +267,8 @@ export type Database = {
           plan: string
           sex: string | null
           use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
         }
         Insert: {
           appear_anonymous?: boolean
@@ -290,6 +292,8 @@ export type Database = {
           plan?: string
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_partner_id?: string | null
+          vip_until?: string | null
         }
         Update: {
           appear_anonymous?: boolean
@@ -313,8 +317,18 @@ export type Database = {
           plan?: string
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_partner_id?: string | null
+          vip_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "consumers_vip_partner_id_fkey"
+            columns: ["vip_partner_id"]
+            isOneToOne: false
+            referencedRelation: "vip_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_activity: {
         Row: {
@@ -1357,6 +1371,71 @@ export type Database = {
           },
         ]
       }
+      saved_locations: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          custom_name: string | null
+          formatted_address: string | null
+          id: string
+          lat: number
+          legacy_name: string | null
+          lng: number
+          location_kind: string
+          name_edited: boolean
+          named_at: string | null
+          needs_name: boolean
+          ordered_at: string
+          suggested_name: string | null
+          unconfirmed: boolean
+          updated_at: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          custom_name?: string | null
+          formatted_address?: string | null
+          id: string
+          lat: number
+          legacy_name?: string | null
+          lng: number
+          location_kind?: string
+          name_edited?: boolean
+          named_at?: string | null
+          needs_name?: boolean
+          ordered_at?: string
+          suggested_name?: string | null
+          unconfirmed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          custom_name?: string | null
+          formatted_address?: string | null
+          id?: string
+          lat?: number
+          legacy_name?: string | null
+          lng?: number
+          location_kind?: string
+          name_edited?: boolean
+          named_at?: string | null
+          needs_name?: boolean
+          ordered_at?: string
+          suggested_name?: string | null
+          unconfirmed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_locations_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admins: {
         Row: {
           added_by: string | null
@@ -1380,6 +1459,38 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      vip_partners: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          place_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          place_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          place_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_partners_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1478,7 +1589,11 @@ export type Database = {
           p_guest_class: string
           p_note: string
           p_note_set: boolean
+          p_partner: string
+          p_partner_set: boolean
           p_plan: string
+          p_vip_until: string
+          p_vip_until_set: boolean
         }
         Returns: {
           appear_anonymous: boolean
@@ -1502,6 +1617,8 @@ export type Database = {
           plan: string
           sex: string | null
           use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -1536,6 +1653,7 @@ export type Database = {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
       }
+      expire_saved_location_names: { Args: never; Returns: number }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
       open_place_enrichment_run: {
