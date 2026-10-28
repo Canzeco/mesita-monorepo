@@ -1,8 +1,14 @@
 import { cn } from "../lib/format";
 
-// The Enriched mark (MESITA-2296): it sits right after a place's name when an
-// Enrich run has completed, so a guest can tell the finished profiles from
-// the many that are only Created. Display only; it is never a button.
+// The Selected mark: it sits right after the name of a place Mesita picked
+// (`places.selected`, MESITA-2707), the same red as its pin. Display only;
+// it is never a button.
+//
+// THREE STATES, NEVER ONE ANOTHER (Pato, MESITA-2913: "an enriched place
+// doesn't mean a partner place, just divide those states"). Selected wears
+// this mark; Enriched (an Enrich run completed) has no guest mark at all;
+// Boost (paid, 2x · 5x · 10x) says "Boosted" after the name, grey. The mark
+// was Enriched's from MESITA-2296 until MESITA-2913.
 //
 // It IS the classic Twitter verified badge, rosette and white check, in red
 // instead of blue (Pato, MESITA-2865: "use the iconic twitter verified icon
@@ -12,15 +18,15 @@ import { cn } from "../lib/format";
 // better, but make it bigger"). The size is this default, so every caller
 // grows with it.
 
-export function EnrichedBadge({ className }: { className?: string }) {
+export function SelectedBadge({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       role="img"
-      aria-label="Enriched"
+      aria-label="Mesita Selected"
       className={cn("inline-block h-5 w-5 shrink-0", className)}
     >
-      <title>Enriched</title>
+      <title>Mesita Selected</title>
       <path
         d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34Z"
         fill="#F4212E"

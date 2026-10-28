@@ -100,7 +100,7 @@ export function BoostPane({
     try {
       await apiCancelBoost(getSupabase(), cancelling.id);
       setCancelling(null);
-      toast("Your partnership ends at the close of this period");
+      toast("Your Boost ends at the close of this period");
       onChanged();
     } catch (err) {
       setCancelError(errMsg(err, "Couldn't cancel. Try again."));
@@ -132,7 +132,7 @@ export function BoostPane({
               <Zap className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Partner</h2>
+              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Boost</h2>
               <p className="text-muted-foreground truncate text-xs">{place.name}</p>
             </div>
           </div>
@@ -155,7 +155,7 @@ export function BoostPane({
             ))}
           </div>
 
-          <div role="radiogroup" aria-label="Partner level">
+          <div role="radiogroup" aria-label="Boost level">
             <SettingsGroup>
               {BOOST_TIERS.map((t, i) => {
                 const on = tier === t.key;
@@ -212,7 +212,7 @@ export function BoostPane({
           </button>
           <p className="text-muted-foreground text-center text-xs">
             Prices in US dollars. Billed by Stripe. Paid visibility: it does not
-            verify the place. Cancel any time; your partnership runs to the end of the
+            verify the place. Cancel any time; your Boost runs to the end of the
             period you paid for.
           </p>
         </div>
@@ -235,7 +235,7 @@ export function BoostPane({
           </span>
           <div className="min-w-0">
             <h2 id="boost-title" className="text-base leading-tight font-semibold">
-              {current ?? "Not a Partner yet"}
+              {current ?? "Not boosted yet"}
             </h2>
             <p className="text-muted-foreground truncate text-xs" aria-live="polite">
               {loading
@@ -249,7 +249,7 @@ export function BoostPane({
 
         <p className="text-muted-foreground text-sm leading-relaxed">
           Show {place.name} to more guests on the Map and Home. Guests see it
-          as <span className="text-foreground font-semibold">Partner</span>,
+          as <span className="text-foreground font-semibold">Boosted</span>,
           never as a Mesita Selected pick.
         </p>
 
@@ -277,7 +277,7 @@ export function BoostPane({
           className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
         >
           <Zap className="h-4 w-4" aria-hidden />
-          {current ? "Back it too" : "Make it a Partner"}
+          {current ? "Boost it too" : "Boost it"}
         </button>
       </div>
 
@@ -303,14 +303,14 @@ export function BoostPane({
           </div>
         </div>
         <p className="text-muted-foreground text-sm leading-relaxed">
-          Mesita&apos;s own pick, shown in red on the Map and Search. Mesita
-          chooses it; it can&apos;t be bought.
+          Mesita&apos;s own pick: a red pin on the Map and Search and a red
+          check beside its name. Mesita chooses it; it can&apos;t be bought.
         </p>
       </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Partner level.{" "}
+          Couldn&apos;t load this place&apos;s Boost level.{" "}
           <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
@@ -319,7 +319,7 @@ export function BoostPane({
 
       {mine.length > 0 && (
         <div>
-          <p className="text-sm font-semibold">Your partnership</p>
+          <p className="text-sm font-semibold">Your Boost</p>
           <div className="mt-2">
             <SettingsGroup>
               {mine.map((b, i) => (
@@ -328,7 +328,7 @@ export function BoostPane({
                   <div className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm">
                     <span className="min-w-0 flex-1">
                       <span className="font-semibold">
-                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Partner"}
+                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Boost"}
                       </span>
                       <span className="text-muted-foreground"> · {b.interval === "year" ? "Yearly" : "Monthly"}</span>
                       <span className="text-muted-foreground block text-xs">
@@ -362,13 +362,13 @@ export function BoostPane({
       <LocalDialog
         open={cancelling != null}
         onClose={() => (cancelBusy ? undefined : setCancelling(null))}
-        ariaLabel="Cancel this partnership"
+        ariaLabel="Cancel this Boost"
       >
         <div className="flex flex-col gap-3 p-5 text-center">
           <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <XCircle className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className={SHEET_TITLE_CLASS}>Cancel this partnership?</h2>
+          <h2 className={SHEET_TITLE_CLASS}>Cancel this Boost?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
             It stops renewing and stays on until {formatDate(cancelling?.current_period_end ?? null)}.
           </p>
@@ -406,7 +406,7 @@ export function BoostUnavailable() {
       <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
         <Zap className="h-7 w-7" aria-hidden />
       </span>
-      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Partner isn&apos;t open here yet</h3>
+      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Boost isn&apos;t open here yet</h3>
       <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
         You can boost this place once it has its Mesita profile.
       </p>

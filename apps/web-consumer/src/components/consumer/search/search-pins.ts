@@ -23,9 +23,9 @@
 // SERVER states `selected` on every place payload and on every name-lane
 // row, read off `places.selected`; nothing here re-derives it from any
 // other column, so an older payload without it stays gray (understating
-// beats promising a mark that is not there). The Enriched mark after a
-// name (the sparkle seal) is a different fact and keeps its own reader,
-// lib/place-enriched.ts. Hexes live in lib/map-defaults.ts; a HELD pin (the
+// beats promising a mark that is not there). The red check after a name
+// (SelectedBadge, MESITA-2913) reads the same `selected`; Enriched has no
+// guest mark. Hexes live in lib/map-defaults.ts; a HELD pin (the
 // tapped one) trades its tone for ink with a white ring (MESITA-2488).
 
 import {

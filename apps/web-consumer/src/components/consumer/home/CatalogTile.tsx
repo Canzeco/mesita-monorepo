@@ -3,9 +3,8 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { EnrichedBadge } from "@mesita/place-profile";
+import { SelectedBadge } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
-import { isEnrichedPlace } from "@/lib/place-enriched";
 import { placeHref } from "@/lib/place-route";
 import { sharePlace } from "@/lib/share-place";
 import {
@@ -82,8 +81,8 @@ function TileLink({
  * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
  * a white band below carrying three rows — name; category · $$ · stars;
  * hours · distance (MESITA-2645) — and two buttons, Save and Share
- * (MESITA-2650, MESITA-2668). An enriched place wears the Enriched mark
- * after its name (MESITA-2296). A Google-only card opens its profile
+ * (MESITA-2650, MESITA-2668). A Mesita Selected place wears the Selected
+ * mark after its name (MESITA-2913; Enriched has no guest mark). A Google-only card opens its profile
  * through `onOpenGoogle`, and its one button, Generate Profile, does the
  * same (MESITA-2843).
  */
@@ -196,7 +195,7 @@ export function CatalogTile({
           <div className={cn("text-foreground", TILE_TEXT)}>
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
-              {isEnrichedPlace(place) ? <EnrichedBadge /> : null}
+              {place.selected === true ? <SelectedBadge /> : null}
               {isSponsoredPlace(place) ? <SponsoredMark /> : null}
             </p>
             <KindRow facts={facts} />

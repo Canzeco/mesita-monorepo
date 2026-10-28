@@ -16,19 +16,19 @@ export type BoostInterval = "month" | "year";
 export const BOOST_TIERS = [
   {
     key: "boost_2x",
-    label: "Partner 2x",
+    label: "Boost 2x",
     monthly: 10,
     blurb: "Twice as likely to show on the Map and Home",
   },
   {
     key: "boost_5x",
-    label: "Partner 5x",
+    label: "Boost 5x",
     monthly: 50,
     blurb: "Five times as likely to show",
   },
   {
     key: "boost_10x",
-    label: "Partner 10x",
+    label: "Boost 10x",
     monthly: 200,
     blurb: "Ten times as likely to show, the most there is",
   },
@@ -38,9 +38,9 @@ export const BOOST_YEAR_MONTHS = 10;
 
 export const BOOST_TIER_LABEL: Record<0 | 1 | 2 | 3, string | null> = {
   0: null,
-  1: "Partner 2x",
-  2: "Partner 5x",
-  3: "Partner 10x",
+  1: "Boost 2x",
+  2: "Boost 5x",
+  3: "Boost 10x",
 };
 
 const USD = new Intl.NumberFormat("en-US", {

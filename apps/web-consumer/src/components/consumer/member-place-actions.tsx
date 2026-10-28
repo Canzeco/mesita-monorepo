@@ -190,8 +190,8 @@ function usePlaceBoost(placeId: string): {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
         if (session) setReturned({ placeId, at: Date.now() });
-        if (session && data.confirmed) toast.success("You're a Partner now. Thanks for backing this place");
-        else if (session) toast("We're confirming your payment with Stripe. Your partnership shows once it clears.");
+        if (session && data.confirmed) toast.success("Boosted. Thanks for backing this place");
+        else if (session) toast("We're confirming your payment with Stripe. Your Boost shows once it clears.");
       })
       .catch(() => {
         if (!cancelled) setState((s) => ({ placeId, nonce, data: s.placeId === placeId ? s.data : null, failed: true }));

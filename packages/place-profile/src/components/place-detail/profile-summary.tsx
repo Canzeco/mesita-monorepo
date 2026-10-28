@@ -131,7 +131,7 @@ export function ProfileSummary({
         {/* SPONSORED (MESITA-2789): a paid Boost is disclosed, plain and
             grey like every fact. Never red (red is Selected, Mesita's own
             pick) and never "Verified": paying buys visibility only. */}
-        {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Partner</ProfileFact>}
+        {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Boosted</ProfileFact>}
         {place.category && (
           // The category's own emoji, Tag only when it has none (MESITA-2813).
           <ProfileFact icon={Tag} emoji={place.category_emoji}>

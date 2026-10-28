@@ -522,7 +522,7 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
               ) : row.held ? (
                 <StatePill on="unknown" />
               ) : (
-                <Miss label="Partner" />
+                <Miss label="Boost" />
               )}
             </td>
           ) : null}
