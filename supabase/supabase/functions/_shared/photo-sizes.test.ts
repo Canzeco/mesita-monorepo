@@ -58,7 +58,7 @@ Deno.test("a failed render uploads nothing for that size and never throws", asyn
         ? new Response("no", { status: 500 })
         : new Response(new Uint8Array([1]), { headers: { "content-type": "image/webp" } }),
     )) as unknown as typeof fetch;
-  const out = await savePhotoSizes(fakeAdmin(uploads), "https://x.supabase.co", "b", "p.jpg", fetchImpl);
+  const out = await savePhotoSizes(fakeAdmin(uploads), "https://x.supabase.co", "b", "p.jpg", fetchImpl, 0);
   assertEquals(out.saved, 2);
   assertEquals(uploads.length, 2);
 });

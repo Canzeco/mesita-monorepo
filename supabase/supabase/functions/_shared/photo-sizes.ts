@@ -37,43 +37,81 @@ export function renderUrl(
 
 export type PhotoSizesResult = { saved: number; errors: string[] };
 
+// Storage refuses bursts (render 429, "too many connections" on upload), and
+// an Enrich gallery is ten photos at once: sizes run two photos at a time,
+// one width after another, each retried once.
+const PARALLEL_PHOTOS = 2;
+const RETRY_DELAY_MS = 1_500;
+let running = 0;
+const waiting: (() => void)[] = [];
+
+async function inTurn<T>(task: () => Promise<T>): Promise<T> {
+  if (running >= PARALLEL_PHOTOS) await new Promise<void>((go) => waiting.push(go));
+  running++;
+  try {
+    return await task();
+  } finally {
+    running--;
+    waiting.shift()?.();
+  }
+}
+
+async function saveOneSize(
+  admin: SupabaseClient,
+  supabaseUrl: string,
+  bucket: string,
+  path: string,
+  width: PhotoWidth,
+  fetchImpl: typeof fetch,
+): Promise<string | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetchImpl(renderUrl(supabaseUrl, bucket, path, width), {
+      headers: { Accept: "image/webp" },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) return `${width}: render_http_${res.status}`;
+    const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+    if (type !== "image/webp") return `${width}: render_type_${type || "none"}`;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.byteLength === 0) return `${width}: render_empty`;
+    const { error } = await admin.storage.from(bucket).upload(
+      sizePath(path, width),
+      bytes,
+      { contentType: "image/webp", upsert: true, cacheControl: "31536000" },
+    );
+    return error ? `${width}: upload_${error.message}` : null;
+  } catch (err) {
+    return `${width}: ${err instanceof Error ? err.message : "failed"}`;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Render and upload the three sizes of one stored original. Never throws. */
-export async function savePhotoSizes(
+export function savePhotoSizes(
   admin: SupabaseClient,
   supabaseUrl: string,
   bucket: string,
   path: string,
   fetchImpl: typeof fetch = fetch,
+  retryDelayMs = RETRY_DELAY_MS,
 ): Promise<PhotoSizesResult> {
-  if (isSizePath(path)) return { saved: 0, errors: [] };
-  const results = await Promise.all(PHOTO_WIDTHS.map(async (width) => {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-    try {
-      const res = await fetchImpl(renderUrl(supabaseUrl, bucket, path, width), {
-        headers: { Accept: "image/webp" },
-        signal: ctrl.signal,
-      });
-      if (!res.ok) return `${width}: render_http_${res.status}`;
-      const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
-      if (type !== "image/webp") return `${width}: render_type_${type || "none"}`;
-      const bytes = new Uint8Array(await res.arrayBuffer());
-      if (bytes.byteLength === 0) return `${width}: render_empty`;
-      const { error } = await admin.storage.from(bucket).upload(
-        sizePath(path, width),
-        bytes,
-        { contentType: "image/webp", upsert: true, cacheControl: "31536000" },
-      );
-      return error ? `${width}: upload_${error.message}` : null;
-    } catch (err) {
-      return `${width}: ${err instanceof Error ? err.message : "failed"}`;
-    } finally {
-      clearTimeout(timer);
+  if (isSizePath(path)) return Promise.resolve({ saved: 0, errors: [] });
+  return inTurn(async () => {
+    const errors: string[] = [];
+    for (const width of PHOTO_WIDTHS) {
+      let error = await saveOneSize(admin, supabaseUrl, bucket, path, width, fetchImpl);
+      if (error) {
+        await new Promise((r) => setTimeout(r, retryDelayMs));
+        error = await saveOneSize(admin, supabaseUrl, bucket, path, width, fetchImpl);
+      }
+      if (error) errors.push(error);
     }
-  }));
-  const errors = results.filter((e): e is string => e !== null);
-  if (errors.length > 0) {
-    console.warn("photo-sizes", bucket, path, errors.join("; "));
-  }
-  return { saved: PHOTO_WIDTHS.length - errors.length, errors };
+    if (errors.length > 0) {
+      console.warn("photo-sizes", bucket, path, errors.join("; "));
+    }
+    return { saved: PHOTO_WIDTHS.length - errors.length, errors };
+  });
 }
