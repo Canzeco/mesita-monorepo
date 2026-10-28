@@ -93,7 +93,7 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, Heart, RotateCw, Users, X } from "lucide-react";
+import { ArrowUp, Crown, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -270,12 +270,12 @@ function Face({ person }: { person: ActivityPerson }) {
 /** The place's photo, else the card placeholder — never an empty box
  *  (a Google-only place never shows a photo, lib/place-placeholder.ts).
  *  Its box is `block`: inside the row's place link an inline span drops
- *  its 44px size and the photo renders full size (MESITA-2544). */
+ *  its 48px size and the photo renders full size (MESITA-2544). */
 function Thumb({ place }: { place: Place }) {
   const photo = cardPhoto(place);
   if (photo) {
     return (
-      <span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-lg">
+      <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={photo} alt="" className="h-full w-full object-cover" />
       </span>
@@ -284,7 +284,7 @@ function Thumb({ place }: { place: Place }) {
   const placeholder = placePlaceholder(place);
   return (
     <span
-      className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
+      className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
       data-placeholder={placeholder.kind}
     >
       {placeholder.kind === "emoji" ? (
@@ -371,14 +371,15 @@ function FeedRow({
             </>
           ) : null}
           <span className="shrink-0">{ago}</span>
-          {item.eventKm != null ? (
+          {item.distanceKm != null ? (
             <>
               <span aria-hidden>·</span>
-              {/* WHERE IT HAPPENED (MESITA-2853, Pato: "not only this event
-                  happened 1mins ago, but its also where that event happened,
-                  1km away"): the member's spot, never the place's. */}
-              <span className="shrink-0" data-social-event-km>
-                {formatKm(item.eventKm)} away
+              {/* THE PLACE'S DISTANCE, NEVER THE EVENT'S (MESITA-2946, Pato:
+                  "someone can move between two notifications and use some
+                  trigonometry … to find someone"). */}
+              <span className="flex shrink-0 items-center gap-0.5" data-social-place-km>
+                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                {formatKm(item.distanceKm)}
               </span>
             </>
           ) : null}
@@ -389,7 +390,7 @@ function FeedRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 px-4 py-3 transition-colors duration-1000",
+        "hover:bg-muted/40 flex items-center gap-3 px-4 py-3.5 transition-colors duration-1000",
         fresh && "bg-muted",
       )}
       data-social-row
@@ -407,7 +408,7 @@ function FeedRow({
       <Link
         href={href}
         aria-label={item.place.name}
-        className="focus-visible:ring-ring block shrink-0 rounded-lg outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring block shrink-0 rounded-xl outline-none focus-visible:ring-2"
         data-social-place
       >
         <Thumb place={item.place} />

@@ -121,8 +121,6 @@ Deno.test("every row is its own event, newest first, never collapsed", () => {
     "kind",
     "person",
     "placeId",
-    // Server-side only: the feed strips it for eventKm (MESITA-2853).
-    "point",
   ]);
 });
 
