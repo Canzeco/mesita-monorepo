@@ -12,7 +12,7 @@
 //       then the enriched profile persisted onto place_profiles (direct
 //       UPDATE — this EF is already the DB layer; no HTTP hop), and only then
 //       does content_state flip to 'ready'
-//   S8  EMBEDDING (function 8) — both vectors, persisted. Closes the queue;
+//   S8  EMBEDDING (function 8) — the summary vector, persisted. Closes the queue;
 //       the images are stored via enricher-edgefunc-store-place-images after.
 //
 // PERSIST AND STORE ARE NOT STEPS (MESITA-2027). They used to be S8 and S9 —
@@ -505,8 +505,9 @@ serveEnrichStage("third", async (admin, env, row) => {
     return;
   }
 
-  // EMBEDDING (function 8, §8.4) — embed-only: vectors of the STORED
-  // Mesita Name and Semantic Summary that Description just persisted. It
+  // EMBEDDING (function 8, §8.4) — embed-only: the vector of the STORED
+  // Semantic Summary that Description just persisted (no name vector since
+  // MESITA-2900 — Google's name is canonical). It
   // never synthesizes; a missing summary text stamps an honest failure.
   // Best-effort: the profile is already ready, so a failed embed leaves the
   // place at rung 7 rather than failing the run — a stuck vector needs a
@@ -593,12 +594,12 @@ serveEnrichStage("third", async (admin, env, row) => {
       : stepFailed("Synthesis ran but no Presentation was persisted.");
   }
   if (embeddingAttempted) {
-    // EMBEDDING — function 8. Embed-only: vectors of the words function 7
+    // EMBEDDING — function 8. Embed-only: the vector of the summary function 7
     // wrote. It CLOSES the queue.
     contentPieces.embedding = embeddingWrote
-      ? stepDone("Vectors — Mesita Name and Semantic Summary vectors written.")
+      ? stepDone("Vector — Semantic Summary vector written.")
       : stepFailed(
-        "Vectors did not write (no summary text, or the embed failed). Re-enrich to retry.",
+        "The summary vector did not write (no summary text, or the embed failed). Re-enrich to retry.",
       );
   }
   await reportCrenupSteps(admin, placeId, contentPieces);

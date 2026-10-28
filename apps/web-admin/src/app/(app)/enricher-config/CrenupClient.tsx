@@ -585,14 +585,13 @@ export function CrenupClient({
                 index="8 · $"
                 flows={flowTagFor("embedding")}
                 name="Vectors"
-                blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 8."
+                blurb="Semantic Summary Embedding. One vector. Closes Enrich at 8."
                 knobs="locked"
               >
                 <NoKnobs>
                   Locked to <b>text-embedding-3-small</b>. It only embeds what
-                  Description wrote — never synthesizes text. One function
-                  writes both vectors. Swapping the model re-embeds the
-                  catalog.
+                  Description wrote — never synthesizes text. Swapping the
+                  model re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

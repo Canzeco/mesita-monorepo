@@ -20,14 +20,15 @@ test("a vector is the pgvector literal", () => {
 });
 
 test("a short vector is left off the place", () => {
-  assert.equal(embeddingFields([0.1], [0.2], "text"), null);
+  assert.equal(embeddingFields([0.1], "text"), null);
   const full = Array.from({ length: EMBEDDING_DIMS }, () => 0.1);
-  const fields = embeddingFields(full, null, "text");
+  const fields = embeddingFields(full, "text");
   assert.equal(fields?.embedding_source_text, "text");
-  assert.equal("name_embedding" in (fields ?? {}), false);
+  // The summary vector only: no name vector is written (MESITA-2900).
+  assert.deepEqual(Object.keys(fields ?? {}).sort(), ["embedding", "embedding_source_text"]);
 });
 
-test("the vectors read the profile as written: a saved name, address and description win (MESITA-2801)", async () => {
+test("the vector reads the profile as written: a saved name, address and description win (MESITA-2801)", async () => {
   const subject = writtenSubject({
     google_name: "Strana",
     name: "Strana Zona Hotelera",
@@ -42,11 +43,11 @@ test("the vectors read the profile as written: a saved name, address and descrip
   assert.match(subject.facts, /^Address: Saved address 1$/m);
   assert.match(subject.facts, /^About: The saved presentation\.$/m);
   // The stored text is the text the vector embeds.
-  const fields = embeddingFields(new Array(EMBEDDING_DIMS).fill(0), null, subject.facts);
+  const fields = embeddingFields(new Array(EMBEDDING_DIMS).fill(0), subject.facts);
   assert.equal(fields?.embedding_source_text, subject.facts);
 });
 
-test("the vector name is the one the profile shows: the Mesita name, else Google's (MESITA-2828)", () => {
+test("the facts name is the one the profile shows: the Mesita name, else Google's (MESITA-2828)", () => {
   assert.equal(writtenSubject({ name: "A", google_name: "C" })?.name, "A");
   assert.equal(writtenSubject({ name: " ", google_name: "C" })?.name, "C");
   assert.equal(writtenSubject({ google_name: "C" })?.name, "C");

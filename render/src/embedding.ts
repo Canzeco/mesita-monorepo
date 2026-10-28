@@ -1,4 +1,5 @@
-// Search vectors for the one write. The literal is what pgvector stores.
+// The summary search vector for the one write (no name vector since
+// MESITA-2900: Google's name is canonical). The literal is what pgvector stores.
 // A short or missing vector is omitted; it does not reject the place.
 
 export const EMBEDDING_DIMS = 1536;
@@ -20,8 +21,8 @@ export function embeddingFacts(place: {
   return lines.join("\n");
 }
 
-/** The vectors describe the profile as it is written (MESITA-2801). The name
- *  is what the profile shows: the Mesita name, else Google's label (MESITA-2828). */
+/** The vector describes the profile as it is written (MESITA-2801). The name
+ *  in its facts is what the profile shows: the Mesita name, else Google's label (MESITA-2828). */
 export function writtenSubject(patch: Record<string, unknown>): { name: string; facts: string } | null {
   const text = (key: string) => {
     const value = patch[key];
@@ -47,37 +48,31 @@ export function vectorLiteral(values: number[]): string {
 
 export function embeddingFields(
   summary: number[] | null,
-  name: number[] | null,
   summaryText: string,
 ): Record<string, string> | null {
   if (!summary || summary.length !== EMBEDDING_DIMS) return null;
-  const patch: Record<string, string> = {
+  return {
     embedding: vectorLiteral(summary),
     embedding_source_text: summaryText,
   };
-  if (name && name.length === EMBEDDING_DIMS) {
-    patch.name_embedding = vectorLiteral(name);
-  }
-  return patch;
 }
 
-export async function embedPair(
+export async function embedSummary(
   summary: string,
-  name: string,
   apiKey: string,
-): Promise<{ summary: number[] | null; name: number[] | null }> {
+): Promise<number[] | null> {
   const res = await fetch("https://api.openai.com/v1/embeddings", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ model: EMBEDDING_MODEL, input: [summary, name] }),
+    body: JSON.stringify({ model: EMBEDDING_MODEL, input: [summary] }),
   });
   const body = await res.json().catch(() => null) as {
     data?: { embedding?: number[]; index?: number }[];
   } | null;
-  if (!res.ok || !body?.data) return { summary: null, name: null };
+  if (!res.ok || !body?.data) return null;
   const byIndex = new Map(body.data.map((row) => [row.index, row.embedding ?? null]));
-  return { summary: byIndex.get(0) ?? null, name: byIndex.get(1) ?? null };
+  return byIndex.get(0) ?? null;
 }

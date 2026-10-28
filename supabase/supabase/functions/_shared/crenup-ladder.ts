@@ -76,7 +76,7 @@
 //
 // The high-water is NOT a count of functions that worked. It is HOW FAR THE QUEUE
 // GOT: the index of the last good function, 0-8, where 0 is the SEEDED floor
-// and 8 is a complete profile including both vectors. The queue is strictly
+// and 8 is a complete profile including the summary vector. The queue is strictly
 // linear, so ">= N" is a MEANINGFUL question to ask of it. It is not, today, a
 // question anything can ask in SQL: this value is a read-time fold over the
 // run-event log, not a column, so it cannot appear in a WHERE clause. The

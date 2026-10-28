@@ -5,7 +5,7 @@ import {
   fetchTimezone,
   profileFromGoogle,
 } from "./google-spine.ts";
-import { embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
+import { embedSummary, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
   defaultImageKnobs,
   fetchInstagramPosts,
@@ -196,12 +196,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     content_state: "ready",
     enriched_at: new Date().toISOString(),
   });
-  // The vectors read the profile this run writes, with its description.
+  // The summary vector reads the profile this run writes, with its description.
   const subject = writtenSubject({ ...patch, description });
   if (openaiKey && subject) {
     const fields = await timed("embedding", async () => {
-      const vectors = await embedPair(subject.facts, subject.name, openaiKey);
-      return embeddingFields(vectors.summary, vectors.name, subject.facts);
+      const vector = await embedSummary(subject.facts, openaiKey);
+      return embeddingFields(vector, subject.facts);
     }, (written) => written ? "written" : "none");
     if (fields) Object.assign(patch, fields);
   }

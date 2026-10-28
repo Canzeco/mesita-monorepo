@@ -21,7 +21,6 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "enriched_at",
   "embedding",
   "embedding_source_text",
-  "name_embedding",
   // Update writes google_source_types; the taxonomy trigger derives the
   // Google categories and the shown category from it (MESITA-2836), and the
   // profiles view the families (MESITA-2834). None of the four is patched.

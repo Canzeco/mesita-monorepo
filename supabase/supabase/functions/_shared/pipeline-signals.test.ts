@@ -2,9 +2,6 @@
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   descriptionSimilarity,
-  lexicalNameSimilarity,
-  nameSimilarity,
-  normalizeName,
   popularity,
   POPULARITY_HALF_REVIEWS_DEFAULT,
   proximity,
@@ -89,32 +86,13 @@ Deno.test("popularity missing data: no rating or no review count is 0 (no new-pl
   assertEquals(popularity({ rating: 4.8, reviewCount: 0 }, K), 0);
 });
 
-Deno.test("name: the embedding cosine when both vectors exist", () => {
-  const sim = nameSimilarity(
-    { text: "pangea", vector: [1, 0, 0] },
-    { name: "Pangea", nameEmbedding: [0.8, 0.6, 0] },
-  );
-  assertEquals(sim.method, "embedding");
-  assertAlmostEquals(sim.score, 0.8, 1e-9);
-});
-
-Deno.test("name missing data: no embedding falls back to lexical, never a silent 0", () => {
-  const noPlaceVec = nameSimilarity({ text: "Pangea", vector: [1, 0] }, { name: "Pangea", nameEmbedding: null });
-  assertEquals(noPlaceVec, { score: 1, method: "lexical" });
-  const noQueryVec = nameSimilarity({ text: "tacos el", vector: null }, { name: "Tacos el Güero" });
-  assertEquals(noQueryVec.method, "lexical");
-  assert(noQueryVec.score >= 0.8, "a typed prefix is a strong hit");
-  assertEquals(lexicalNameSimilarity("Café Nin", "cafe nin"), 1);
-  assert(lexicalNameSimilarity("sushi", "Pangea") < 0.2);
-});
-
 Deno.test("description: cosine of the request against the summary; no summary vector cannot judge", () => {
   assertAlmostEquals(descriptionSimilarity([1, 0], [1, 0])!, 1, 1e-12);
   assertEquals(descriptionSimilarity([1, 0], null), null);
   assertEquals(descriptionSimilarity([1, 0, 0], [1, 0]), null);
 });
 
-// ── MESITA-2338: non-finite inputs and names outside Latin ─────────────────
+// ── MESITA-2338: non-finite inputs ───────────────────────────────────────
 
 Deno.test("proximity: an unplaceable distance scores 0, never 1", () => {
   assertEquals(proximityFromDistance(Number.NaN, 10), 0);
@@ -129,17 +107,3 @@ Deno.test("popularity: NaN or infinite numbers score 0, never NaN", () => {
   assertEquals(popularity({ rating: 4.5, reviewCount: Number.POSITIVE_INFINITY }, K), 0);
 });
 
-Deno.test("name: letters of every script survive normalization", () => {
-  assertEquals(normalizeName("寿司 Kyo!"), "寿司 kyo");
-  assertEquals(normalizeName("Кафе Пушкин"), "кафе пушкин");
-  assertEquals(normalizeName("Café Niño — Güero!"), "cafe nino guero");
-  assertEquals(lexicalNameSimilarity("寿司", "寿司"), 1);
-  assert(lexicalNameSimilarity("Кафе", "Кафе Пушкин") >= 0.8);
-});
-
-Deno.test("name: other scripts keep their marks, so different names never collide", () => {
-  assert(normalizeName("カフェ") !== normalizeName("ガフェ"));
-  assert(normalizeName("कमल") !== normalizeName("कमाल"));
-  assertEquals(normalizeName("Café"), normalizeName("Cafe"));
-  assertEquals(normalizeName("La 1ª Taquería"), "la 1a taqueria");
-});

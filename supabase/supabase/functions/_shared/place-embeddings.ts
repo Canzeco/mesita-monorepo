@@ -10,7 +10,8 @@
 //   · synthesizePlaceSummaryText — Description-owned: synthesizes the
 //     Semantic Summary; never embeds.
 //   · computeAndPersistPlaceEmbedding mode "stored" — embed-only: embeds the
-//     STORED summary text + the name; never synthesizes.
+//     STORED summary text; never synthesizes. (MESITA-2900: the name vector
+//     is gone — Google's name is canonical.)
 //   · mode "synth" — the on-update path (profile edits): Description's
 //     synthesis helper then the embed, composed in one call.
 // Called after enrich-contents publish and after admin-web-update-place
@@ -21,7 +22,6 @@ import { runInBackground } from "./background.ts";
 import {
   type EmbeddablePlace,
   placeEmbeddingFacts,
-  placeNameEmbedText,
   vectorLiteral,
 } from "./embeddings-vector.ts";
 import {
@@ -159,8 +159,6 @@ export async function synthesizePlaceEmbeddingText(
 export type PlaceEmbeddingWrite = {
   embedding: number[];
   text: string;
-  /** False when the place has no name text to embed. */
-  wroteName: boolean;
 };
 
 /**
@@ -171,8 +169,8 @@ export type PlaceEmbeddingWrite = {
  */
 export type EmbeddingVia = "create" | "update" | "third";
 
-// On-Update S2+S3 for one place. Every run regenerates the summary vector and,
-// when the place has a name, the name vector — even if their text is unchanged.
+// On-Update S2+S3 for one place. Every run regenerates the summary vector —
+// even if its text is unchanged.
 async function computeAndPersistPlaceEmbedding(
   admin: SupabaseClient,
   place: EmbeddablePlace,
@@ -181,7 +179,6 @@ async function computeAndPersistPlaceEmbedding(
   via: EmbeddingVia = "update",
   mode: "synth" | "stored" = "synth",
 ): Promise<PlaceEmbeddingWrite | null> {
-  const nameText = placeNameEmbedText(place);
   const models = await loadModelsConfig(admin);
   const model = models.embeddingModel || DEFAULT_EMBEDDING_MODEL;
   const patch: PlaceProfilePatch = {};
@@ -218,23 +215,6 @@ async function computeAndPersistPlaceEmbedding(
   patch.embedding = vectorLiteral(vector);
   if (mode !== "stored") patch.embedding_source_text = text;
 
-  let wroteName = false;
-  if (nameText) {
-    let nameVector: number[];
-    try {
-      nameVector = await embedSingle(nameText, apiKey, model);
-    } catch (err) {
-      console.error(`[${logPrefix}] name embed failed:`, err);
-      return null;
-    }
-    if (nameVector.length !== EMBEDDING_DIMS) {
-      console.error(`[${logPrefix}] name bad dims ${nameVector.length}`);
-      return null;
-    }
-    patch.name_embedding = vectorLiteral(nameVector);
-    wroteName = true;
-  }
-
   const writeRes = await writePlace(admin, {
     table: "profiles",
     mode: "update",
@@ -248,17 +228,12 @@ async function computeAndPersistPlaceEmbedding(
   }
 
   // ── EMBEDDING stamp ─────────────────────────────────────────────────────
-  // One function writes both vectors. `via` names the caller so the Monitor
-  // attributes the beacon.
-  const bits = [
-    `Semantic Summary embedded — ${countWords(text)} word(s).`,
-    wroteName ? `Mesita Name embedded — ${nameText}.` : null,
-  ].filter((s): s is string => s != null);
+  // `via` names the caller so the Monitor attributes the beacon.
   await reportCrenupSteps(admin, place.id, {
-    embedding: stepDone(bits.join(" "), { via }),
+    embedding: stepDone(`Semantic Summary embedded — ${countWords(text)} word(s).`, { via }),
   });
 
-  return { embedding: vector, text, wroteName };
+  return { embedding: vector, text };
 }
 
 async function loadEmbeddablePlace(
@@ -268,7 +243,7 @@ async function loadEmbeddablePlace(
   const { data, error } = await admin
     .from("profiles")
     .select(
-      "id, name, category, description, zone, city, address, price_level, embedding, embedding_source_text, name_embedding",
+      "id, name, category, description, zone, city, address, price_level, embedding, embedding_source_text",
     )
     .eq("id", placeId)
     .maybeSingle();

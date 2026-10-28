@@ -128,7 +128,7 @@ Deno.test("reportCrenupSteps: Embedding at 8 cannot skip a gap", async () => {
   };
   const { admin, placeUpdates } = fakeAdmin(seeded);
   await reportCrenupSteps(admin, "place-1", {
-    embedding: stepDone("Mesita Name and Semantic Summary vectors written."),
+    embedding: stepDone("Semantic Summary vector written."),
   });
   const enrichment = placeUpdates[0].enrichment as EnrichmentMap;
   assertEquals(enrichment.functions.embedding?.state, "completed");

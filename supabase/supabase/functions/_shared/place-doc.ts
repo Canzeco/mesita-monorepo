@@ -124,8 +124,6 @@ export type PlaceProfileRow = {
   hours: unknown | null;
   /** pgvector literal, e.g. "[0.1,0.2,...]" — always a string on the JS side. */
   embedding: string | null;
-  /** MESITA-1238: name-only vector. Same literal shape as `embedding`. */
-  name_embedding: string | null;
   description: string | null;
   menu_pdf_url: string | null;
   tags: string[];
@@ -200,7 +198,6 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "didi_food_url",
   "hours",
   "embedding",
-  "name_embedding",
   "description",
   "menu_pdf_url",
   "tags",
@@ -333,7 +330,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
   "embedding_source_text", "google_name", "name",
-  "reservation_target", "embedding", "name_embedding",
+  "reservation_target", "embedding",
   "google_place_id",
   "enriched_at", "business_state_at",
 ]);

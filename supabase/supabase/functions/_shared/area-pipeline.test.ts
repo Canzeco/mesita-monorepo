@@ -225,7 +225,7 @@ Deno.test("Area never embeds: no Area file calls an embedding or a vector signal
     "../consumer-web-list-catalog/index.ts",
   ]) {
     const src = await Deno.readTextFile(new URL(file, import.meta.url));
-    for (const banned of ["embedSingle", "embeddings-http", "descriptionSimilarity", "nameSimilarity", "searchNearby", "consumeQuota", "lookupOwned"]) {
+    for (const banned of ["embedSingle", "embeddings-http", "descriptionSimilarity", "searchNearby", "consumeQuota", "lookupOwned"]) {
       assertEquals(src.includes(banned), false, `${file}: ${banned}`);
     }
   }

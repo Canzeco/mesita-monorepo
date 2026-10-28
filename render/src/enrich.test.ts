@@ -46,7 +46,7 @@ test("the halt comes right after Place Details, before any paid step", () => {
   const full = src.slice(src.indexOf("export async function buildEnrichment"));
   const halt = full.indexOf("if (isPermanentlyClosed(details)) return { closed: true };");
   assert.ok(halt > full.indexOf("await fetchGooglePlace("));
-  for (const paid of ["fetchTimezone(", "scoutPlace(", "discoverLinks(", "fetchDraftSync(", "fetchInstagramPosts(", "rankGallery(", "embedPair("]) {
+  for (const paid of ["fetchTimezone(", "scoutPlace(", "discoverLinks(", "fetchDraftSync(", "fetchInstagramPosts(", "rankGallery(", "embedSummary("]) {
     assert.ok(full.indexOf(paid) > halt, `${paid} runs after the halt`);
   }
 });

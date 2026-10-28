@@ -268,16 +268,14 @@ function AdminTabSkeleton() {
         body="px-5 pb-6 sm:px-6 sm:pb-8"
         fields={[{ label: "w-24" }]}
       />
-      {/* Vectors: Mesita Name (name over its note), the Semantic Summary's
-          paragraph, the two vector previews, Model. */}
+      {/* Vectors: the Semantic Summary's paragraph, the summary vector
+          preview, Model. */}
       <DisclosureSkeleton
         title="w-20"
         subtitle="text-xs"
         body="px-5 pb-6 sm:px-6 sm:pb-8"
         fields={[
-          { label: "w-20", box: "h-11" },
           { label: "w-44", box: "h-24" },
-          { label: "w-20", box: "h-14" },
           { label: "w-24", box: "h-14" },
           { label: "w-10" },
         ]}
