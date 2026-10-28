@@ -70,9 +70,11 @@ select is(
   'a signed-in guest querying the table directly is refused, so guest A''s pins never reach guest B'
 );
 
-select is(
-  pg_temp.guest_b_runs($$select public.expire_saved_location_names()$$),
-  '42501',
+-- A privilege check, not a probe: executing the refused security-definer
+-- function from inside the probe crashed CI's local Postgres (MESITA-2400).
+select ok(
+  not has_function_privilege('anon', 'public.expire_saved_location_names()', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.expire_saved_location_names()', 'EXECUTE'),
   'client roles cannot run the expiry job'
 );
 
