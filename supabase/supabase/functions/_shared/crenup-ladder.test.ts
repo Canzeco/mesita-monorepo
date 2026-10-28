@@ -8,7 +8,6 @@ import {
   CRENUP_TOTAL,
   crenupBlockedAt,
   crenupHighWater,
-  crenupOf,
   type CrenupEvent,
 } from "./crenup-ladder.ts";
 
@@ -356,8 +355,8 @@ Deno.test("blocked: a fresh place is blocked at function 1, MISSING not failed",
 });
 
 Deno.test("blocked: a permanently-closed place is FAILED at 1, not merely absent", () => {
-  // The exact shape enricher-cron-enrich-place-research writes on
-  // CLOSED_PERMANENTLY. High-water and reason must agree: 0, because details
+  // The shape a run records when Google reports CLOSED_PERMANENTLY
+  // (render/src/enrich.ts halts at Details). High-water and reason must agree: 0, because details
   // failed — NOT 0 because nothing ran.
   const events = [{ step_name: "details", state: "failed", created_at: at(1) }];
   assertEquals(crenupHighWater(events), 0);
@@ -418,20 +417,4 @@ Deno.test("blocked: a legacy `skipped` counts as ran-and-did-not-deliver", () =>
   ]);
   assertEquals(b?.key, "details");
   assertEquals(b?.state, "failed");
-});
-
-Deno.test("crenupOf: the shared reader off places.enrichment (MESITA-1598)", () => {
-  assertEquals(crenupOf({ highWater: 7 }), 7);
-  assertEquals(crenupOf({ highWater: 0 }), 0);
-  // Malformed or absent reads the CREATED floor, never throws.
-  assertEquals(crenupOf(null), 0);
-  assertEquals(crenupOf(undefined), 0);
-  assertEquals(crenupOf("not an object"), 0);
-  assertEquals(crenupOf({}), 0);
-  assertEquals(crenupOf({ highWater: "nope" }), 0);
-  assertEquals(crenupOf({ highWater: -3 }), 0);
-  // Clamped at CRENUP_TOTAL and truncated — never a fractional or out-of-range
-  // rung, whatever a stray write puts in the jsonb.
-  assertEquals(crenupOf({ highWater: CRENUP_TOTAL + 5 }), CRENUP_TOTAL);
-  assertEquals(crenupOf({ highWater: 3.9 }), 3);
 });

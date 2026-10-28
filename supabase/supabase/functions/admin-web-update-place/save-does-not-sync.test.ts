@@ -11,7 +11,6 @@ const CODE = SRC.split("\n")
 
 Deno.test("a profile save does not verify or sync a link", () => {
   assertEquals(CODE.includes("reviewPatchForSocialEdit"), false);
-  assertEquals(CODE.includes("verifyChangedSocialLinks"), false);
   assertEquals(CODE.includes("runPlaceSync"), false);
   assertEquals(CODE.includes("reviewsTileKeyInBody"), true);
 });

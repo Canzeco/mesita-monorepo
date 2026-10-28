@@ -1,89 +1,12 @@
-// LLM gate for the guest Reserve CTA (Description → Actions).
-//
-// Answers: does this KIND of place typically take reservations?
-// Fast food, taquerías, street food → false. Sit-down restaurants, clubs
-// with tables, tasting menus → true. Missing key / fetch error → true
+// The guest Reserve CTA gate (Description → Actions). The Create-door profile
+// model answers `reservations_likely` (create-door-profile.ts); this reads it.
+// Fast food, taquerías, street food → false. Sit-down restaurants, clubs with
+// tables, tasting menus → true. A missing or junk answer offers Reserve
 // (MESITA-1799: fail open so a miss cannot padlock Reserve).
-
-import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
-
-const DEFAULT_MODEL = DEFAULT_MODELS_CONFIG.enricher.model!;
-
-export type ReservationInferSignals = {
-  name: string;
-  category?: string | null;
-  categoryLabel?: string | null;
-  description?: string | null;
-  priceLevel?: number | null;
-  editorialSummary?: string | null;
-};
 
 /** Explicit false is a confirmed walk-in; anything else offers Reserve. */
 export function reservationsLikelyFromInference(
   parsed: { reservations_likely?: unknown } | null | undefined,
 ): boolean {
   return parsed?.reservations_likely !== false;
-}
-
-export async function inferPlaceReservationsLikely(
-  openaiKey: string | undefined,
-  signals: ReservationInferSignals,
-  model = DEFAULT_MODEL,
-): Promise<boolean> {
-  if (!openaiKey) return true;
-
-  const lines = [
-    `Name: ${signals.name}`,
-    signals.categoryLabel
-      ? `Category: ${signals.categoryLabel}`
-      : signals.category
-        ? `Category slug: ${signals.category}`
-        : "",
-    signals.priceLevel != null ? `Price level (1–4): ${signals.priceLevel}` : "",
-    signals.editorialSummary ? `Summary: ${signals.editorialSummary}` : "",
-    signals.description ? `About: ${signals.description.slice(0, 1200)}` : "",
-  ].filter(Boolean).join("\n");
-
-  const system =
-    "You decide whether guests typically NEED or EXPECT reservations at this kind of place. " +
-    "Walk-in casual (fast food, taquería, street tacos, coffee to-go, food court) → false. " +
-    "Sit-down dining, fine dining, tasting menu, nightclub with tables, omakase → true. " +
-    'Respond with JSON only: {"reservations_likely":true} or {"reservations_likely":false}.';
-  const user =
-    `Place:\n${lines}\n\n` +
-    "Would a typical guest reserve a table or time slot here? Return reservations_likely.";
-
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
-    });
-    if (!r.ok) return true;
-    const data = (await r.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const content = data.choices?.[0]?.message?.content ?? "";
-    let parsed: { reservations_likely?: unknown };
-    try {
-      parsed = JSON.parse(content) as { reservations_likely?: unknown };
-    } catch {
-      return true;
-    }
-    return reservationsLikelyFromInference(parsed);
-  } catch {
-    return true;
-  }
 }

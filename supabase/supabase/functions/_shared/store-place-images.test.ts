@@ -1,5 +1,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { storeFirstPlaceImage } from "./store-place-images.ts";
 import {
   extFor,
   imageIdFromPath,
@@ -7,8 +8,7 @@ import {
   type PlaceImageAssetInput,
   sanitiseAssets,
   sanitiseUrls,
-  storeFirstPlaceImage,
-} from "./store-place-images.ts";
+} from "./store-place-images-sanitize.ts";
 
 Deno.test("sanitiseAssets dedupes and caps invalid rows", () => {
   const assets = sanitiseAssets([

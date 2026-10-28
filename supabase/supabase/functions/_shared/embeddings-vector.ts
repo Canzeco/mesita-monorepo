@@ -65,16 +65,3 @@ export function cosineSim(a: number[], b: number[]): number {
   for (let i = 0; i < a.length; i += 1) dot += a[i] * b[i];
   return dot;
 }
-
-export function rankByCosine<T extends { embedding: unknown }>(
-  rows: T[],
-  queryVec: number[],
-): T[] {
-  const scored = rows.map((r) => {
-    const v = parseVector(r.embedding);
-    const score = v ? cosineSim(v, queryVec) : -1; // no embedding → tail
-    return { row: r, score };
-  });
-  scored.sort((a, b) => b.score - a.score);
-  return scored.map((s) => s.row);
-}

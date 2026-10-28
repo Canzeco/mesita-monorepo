@@ -1,109 +1,25 @@
-import { assert, assertEquals } from "jsr:@std/assert";
-import { resolveChannels, validateFieldUrl } from "./enrich-channel-discovery.ts";
+import { assertEquals } from "jsr:@std/assert@1";
+import { buildResolverInput, RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
 
-// Zero candidate counts — irrelevant to the no-network paths below (they return
-// before any Firecrawl/Perplexity call), but the field is required.
-const NO_COUNTS = {
-  website_url: 0,
-  instagram_url: 0,
-  facebook_url: 0,
-  opentable_url: 0,
-  uber_eats_url: 0,
-};
-
-// validateFieldUrl is the single host+shape gate every candidate passes through
-// (footer link, Perplexity answer, citation, degraded search) before it's trusted.
-
-Deno.test("opentable: accepts /r/<slug>, rejects other paths", () => {
-  assert(validateFieldUrl("opentable_url", "https://www.opentable.com/r/pujol-mexico-city"));
-  assertEquals(validateFieldUrl("opentable_url", "https://www.opentable.com/pujol"), null);
+Deno.test("the production Resolver prefers this branch over the parent group", () => {
+  const input = buildResolverInput(
+    { name: "Strana", locationLine: "San Pedro Garza García", category: "night_club" },
+    ["website_url"],
+    {},
+  );
+  assertEquals(input.includes("own branch wins over a parent group"), true);
+  assertEquals(input.includes("MAIN account or page IS acceptable"), false);
+  assertEquals(RESOLVER_INSTRUCTIONS.includes("own branch"), true);
 });
 
-Deno.test("ubereats: accepts /store/, rejects category page", () => {
-  assert(validateFieldUrl("uber_eats_url", "https://www.ubereats.com/mx/store/pujol/abc123"));
-  assertEquals(validateFieldUrl("uber_eats_url", "https://www.ubereats.com/mx/category/food"), null);
-});
-
-Deno.test("instagram: accepts profile, rejects a /p/ post", () => {
-  assert(validateFieldUrl("instagram_url", "https://www.instagram.com/pujol"));
-  assertEquals(validateFieldUrl("instagram_url", "https://www.instagram.com/p/Cabc123/"), null);
-});
-
-Deno.test("facebook: accepts a page, rejects a reserved path", () => {
-  assert(validateFieldUrl("facebook_url", "https://www.facebook.com/pujolmx"));
-  assertEquals(validateFieldUrl("facebook_url", "https://www.facebook.com/events/123456789"), null);
-});
-
-Deno.test("website: accepts a real site, rejects a social host", () => {
-  assert(validateFieldUrl("website_url", "https://pujol.com.mx/menu"));
-  assertEquals(validateFieldUrl("website_url", "https://www.instagram.com/pujol"), null);
-});
-
-Deno.test("wrong host for the field returns null", () => {
-  assertEquals(validateFieldUrl("opentable_url", "https://www.instagram.com/pujol"), null);
-});
-
-// ── resolveChannels orchestration (no-network early-return paths) ────────────
-
-const BASE = {
-  name: "Pujol",
-  city: "Mexico City",
-  locationLine: "Mexico City",
-  category: "restaurant",
-  discoverCandidates: NO_COUNTS,
-};
-
-Deno.test("resolveChannels: fully seeded + no provider keys → freezes every field", async () => {
-  const r = await resolveChannels({
-    ...BASE,
-    have: {
-      website: "https://pujol.com.mx",
-      instagram: "https://www.instagram.com/pujolrestaurant",
-      facebook: "https://www.facebook.com/pujolmx",
-      opentable: null,
-      uberEats: null,
-    },
-  });
-  // Seeded channels are returned verbatim, tagged 'seed'. (Phone + email are not
-  // part of this contract — they come from Mesita input or the Google spine.)
-  assertEquals(r.website_url, "https://pujol.com.mx");
-  assertEquals(r.via.website_url, "seed");
-  assertEquals(r.instagram_url, "https://www.instagram.com/pujolrestaurant");
-  assertEquals(r.via.instagram_url, "seed");
-});
-
-Deno.test("resolveChannels: missing fields but no keys → no fill, no network, missing stays null", async () => {
-  const r = await resolveChannels({
-    ...BASE,
-    // both keys absent → the guard returns the seed unchanged before any call.
-    have: {
-      website: null,
-      instagram: null,
-      facebook: null,
-      opentable: null,
-      uberEats: null,
-    },
-  });
-  assertEquals(r.website_url, null);
-  assertEquals(r.instagram_url, null);
-  // Nothing was resolved, so no provenance/via was recorded.
-  assertEquals(Object.keys(r.via).length, 0);
-  assertEquals(Object.keys(r.provenance).length, 0);
-});
-
-Deno.test("resolveChannels: a seeded channel is frozen even when a sibling is missing (no keys)", async () => {
-  const r = await resolveChannels({
-    ...BASE,
-    have: {
-      website: "https://pujol.com.mx",
-      instagram: null,
-      facebook: null,
-      opentable: null,
-      uberEats: null,
-    },
-  });
-  assertEquals(r.website_url, "https://pujol.com.mx");
-  assertEquals(r.via.website_url, "seed");
-  // The missing sibling stays null (no keys → no network fill).
-  assertEquals(r.opentable_url, null);
+// MESITA-2969: a Starbucks kiosk has no account of its own; null there is the miss.
+Deno.test("the production Resolver takes the brand account when the branch has none", () => {
+  const input = buildResolverInput(
+    { name: "Starbucks Biblioteca ITESM MTY II", locationLine: "Monterrey", category: "cafe" },
+    ["instagram_url"],
+    {},
+  );
+  assertEquals(input.includes("the brand's account is the answer"), true);
+  assertEquals(RESOLVER_INSTRUCTIONS.includes("brand's main account IS this place's channel"), true);
+  assertEquals(RESOLVER_INSTRUCTIONS.includes("unmistakably"), false);
 });

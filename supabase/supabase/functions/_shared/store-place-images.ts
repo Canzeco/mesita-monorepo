@@ -7,25 +7,13 @@
 // mirrorPlacePhotos.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { dedup } from "./parse-utils.ts";
 import { runInBackground } from "./background.ts";
 import { savePhotoSizes } from "./photo-sizes.ts";
 import { writePlace } from "./place-doc.ts";
 import type { SavedAnalysis, StoredPhoto } from "./photo-analysis.ts";
 import {
-  type AssetRow,
   extFor,
   imageIdFromPath,
-  type PlaceImageAssetInput,
-  sanitiseAssets,
-  sanitiseUrls,
-} from "./store-place-images-sanitize.ts";
-
-export type { PlaceImageAssetInput, SourceKind } from "./store-place-images-sanitize.ts";
-export {
-  extFor,
-  imageIdFromPath,
-  isHttpUrl,
   sanitiseAssets,
   sanitiseUrls,
 } from "./store-place-images-sanitize.ts";
@@ -33,11 +21,6 @@ export {
 const IMAGE_BUCKET = "place-images";
 const MAX_FETCH_BYTES = 12_000_000;
 const FETCH_TIMEOUT_MS = 15_000;
-const PLACE_PHOTOS_CAP = 50;
-
-export type StorePlaceImagesResult =
-  | { ok: true; queued: number; preferred: number }
-  | { ok: false; error: string };
 
 /**
  * CREATE Details: mirror ONE Google photo now so a Created (not-yet-Enriched)
@@ -153,91 +136,6 @@ export async function saveGalleryAnalyses(
     { onConflict: "place_id,source_url" },
   );
   if (error) console.error(`[store-place-images] analysis: ${error.message}`);
-}
-
-/** Upsert metadata rows and kick off background mirroring. */
-export async function storePlaceImages(
-  admin: SupabaseClient,
-  supabaseUrl: string,
-  projectId: string,
-  rawAssets: PlaceImageAssetInput[],
-  preferredPhotoUrls: string[] = [],
-): Promise<StorePlaceImagesResult> {
-  const assets = sanitiseAssets(rawAssets);
-  const preferred = sanitiseUrls(preferredPhotoUrls);
-  if (assets.length === 0) {
-    return { ok: true, queued: 0, preferred: preferred.length };
-  }
-
-  const upsertRows = assets.map((a) => ({
-    place_id: projectId,
-    source: a.source,
-    source_url: a.source_url,
-    state: "pending",
-    likes_count: a.likes_count,
-    caption: a.caption,
-    analysis_text: a.analysis_text,
-    source_metadata: a.source_metadata,
-    last_error: null,
-  }));
-
-  const { error: upsertErr } = await admin
-    .from("place_media_assets")
-    .upsert(upsertRows, { onConflict: "place_id,source_url" });
-  if (upsertErr) {
-    return { ok: false, error: `media_upsert: ${upsertErr.message}` };
-  }
-
-  runInBackground(processAssetsInBackground(admin, supabaseUrl, projectId, assets, preferred));
-  return { ok: true, queued: assets.length, preferred: preferred.length };
-}
-
-async function processAssetsInBackground(
-  admin: SupabaseClient,
-  supabaseUrl: string,
-  projectId: string,
-  assets: AssetRow[],
-  preferredPhotoUrls: string[],
-) {
-  const mirroredBySource = new Map<string, string>();
-
-  for (const asset of assets) {
-    const mirrored = await mirrorOne(admin, supabaseUrl, asset.source_url);
-    mirroredBySource.set(asset.source_url, mirrored.url);
-    const { error } = await admin
-      .from("place_media_assets")
-      .update({
-        state: mirrored.ok ? "saved" : "failed",
-        storage_path: mirrored.path,
-        public_url: mirrored.publicUrl,
-        mime_type: mirrored.contentType,
-        bytes: mirrored.bytes,
-        last_error: mirrored.error,
-      })
-      .eq("place_id", projectId)
-      .eq("source_url", asset.source_url);
-    if (error) {
-      console.error("[store-place-images] asset_update:", error.message);
-    }
-  }
-
-  const preferred = preferredPhotoUrls.length > 0
-    ? preferredPhotoUrls
-    : assets.map((a) => a.source_url);
-  const finalPhotos = dedup(
-    preferred.map((url) => mirroredBySource.get(url) ?? url),
-  ).slice(0, PLACE_PHOTOS_CAP);
-  if (finalPhotos.length === 0) return;
-
-  const placeRes = await writePlace(admin, {
-    table: "profiles",
-    mode: "update",
-    id: projectId,
-    patch: { photos: finalPhotos },
-  });
-  if (!placeRes.ok) {
-    console.error("[store-place-images] place_update:", placeRes.error);
-  }
 }
 
 async function mirrorOne(

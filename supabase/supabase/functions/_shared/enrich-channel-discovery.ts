@@ -1,45 +1,12 @@
-// Atlas channel URL discovery — Steps S4 (gather) + S5 (select). New model
-// (MESITA-197): NO website-footer scraping. Link discovery gathers candidates
-// with Firecrawl Search — PER SOURCE, count-controlled — then a SINGLE Resolver
-// pass ("Review & Select Links", one Perplexity Agent call) reviews every
-// candidate pool and picks the one official URL per field (or null).
+// The Resolver's prompt — "Review & Select Links" (MESITA-197). The Enricher on
+// Render (render/src/links.ts) runs the Firecrawl gather and the Perplexity
+// select. This file keeps the Resolver's instructions, which enrich-start.ts
+// sends to Render, and the per-place message template admin Crenup renders
+// (crenup-prompts.ts).
 //
-// SCOPE — CHANNELS ONLY. This pass resolves the place's OWN online channel URLs.
-// It does NOT discover phone or email: those come from Mesita input (a business
-// editing its own Place) or the Google Places identity spine (fetchGoogleBasics),
-// never from a web search. The enricher must never fabricate a contact detail.
-//
-//   Phase 0  SEED     keep anything already supplied (Google/Mesita); freeze it.
-//   S4       GATHER   one Firecrawl Search per still-missing source (per-source N
-//                     from config); shape-validate + dedup into a candidate pool.
-//   S5       SELECT   one Resolver pass (Perplexity Agent) reviews the pools + web context
-//                     and returns the best URL per field.
-//                     Leniency: FALSE POSITIVES > FALSE NEGATIVES — keep a
-//                     plausible official link over dropping a correct one; null
-//                     ONLY when nothing in-hand is even plausibly this place's.
-//
-// Degraded leg (no Perplexity key): per-field Firecrawl Search, first shape-valid
-// candidate wins. Every URL — from the agent answer, its citations, or the
-// candidate pool — passes validateFieldUrl (host + shape) before it is trusted.
-
-import {
-  canonicaliseUrl,
-  domainOf,
-  pickChannel,
-  pickFacebook,
-  pickInstagram,
-  pickWebsite,
-} from "./channels.ts";
-import { firecrawlSearch } from "./firecrawl-search.ts";
-import { callPerplexityAgent } from "./perplexity-agent.ts";
-import { dedup } from "./parse-utils.ts";
-import {
-  hostNameCoverage,
-  pathIncludes,
-  pathStartsWith,
-} from "./enrich-channel-url-helpers.ts";
-
-// ── Types ────────────────────────────────────────────────────────────────────
+// SCOPE — CHANNELS ONLY. The Resolver resolves the place's OWN online channel
+// URLs. It does NOT discover phone or email: those come from Mesita input or
+// the Google Places identity spine, never from a web search.
 
 export type ChannelField =
   | "website_url"
@@ -49,13 +16,6 @@ export type ChannelField =
   | "uber_eats_url";
 
 type ChannelMap = Record<ChannelField, string | null>;
-type ChannelSource = "seed" | "search" | "perplexity";
-
-// Per-source Firecrawl candidate counts (child C). Keyed to the active fields.
-export type DiscoverCandidateCounts = Record<
-  "website_url" | "instagram_url" | "facebook_url" | "opentable_url" | "uber_eats_url",
-  number
->;
 
 // Channels the discovery pass actively searches for. TripAdvisor / Yelp are
 // RETIRED product-wide (same posture as TikTok) — not discovered, not
@@ -68,15 +28,6 @@ export const CHANNEL_FIELDS: ChannelField[] = [
   "uber_eats_url",
 ];
 
-// Per-field search term used to gather candidate URLs.
-const CHANNEL_SEARCH_TERM: Record<ChannelField, string> = {
-  website_url: "official website",
-  instagram_url: "instagram",
-  facebook_url: "facebook",
-  opentable_url: "opentable",
-  uber_eats_url: "uber eats",
-};
-
 // Human-readable field spec for the Resolver selection prompt.
 const FIELD_SPEC: Record<ChannelField, string> = {
   website_url: "website_url: the place's own official website (its homepage domain).",
@@ -88,106 +39,6 @@ const FIELD_SPEC: Record<ChannelField, string> = {
   uber_eats_url:
     "uber_eats_url: the canonical Uber Eats store page (ubereats.com/.../store/...).",
 };
-
-export type ResolvedChannels = ChannelMap & {
-  // Diagnostics only (orchestrator stuffs these into sources.discovery).
-  via: Partial<Record<ChannelField, ChannelSource>>;
-  provenance: Partial<Record<ChannelField, { source: ChannelSource; url: string }>>;
-  /**
-   * Whether the Resolver answered. null = it was not called (no key, or
-   * nothing was missing). false = the call returned null. A Google seed
-   * must not count as the Resolver having answered (MESITA-2198).
-   */
-  resolverAnswered: boolean | null;
-};
-
-/** `sources.discovery.ok`. A skipped Resolver is not a failure; a null call is. */
-export function discoveryRecordedOk(answered: boolean | null): boolean {
-  return answered !== false;
-}
-
-// Canonicalise + host-route + shape-gate a candidate for one field. Returns the
-// canonical URL or null. The single gate every candidate (Agent answer, citation,
-// candidate pool, degraded search) passes through before it is trusted.
-export function validateFieldUrl(field: ChannelField, rawUrl: string): string | null {
-  const canon = canonicaliseUrl(rawUrl);
-  if (!canon) return null;
-  switch (field) {
-    case "website_url":
-      return pickWebsite([canon]);
-    case "instagram_url":
-      return pickInstagram([canon]);
-    case "facebook_url":
-      return pickFacebook([canon]);
-    case "opentable_url": {
-      const hit = pickChannel([canon], "opentable_url");
-      return hit && pathStartsWith(hit, "/r/") ? hit : null;
-    }
-    case "uber_eats_url": {
-      const hit = pickChannel([canon], "uber_eats_url");
-      return hit && pathIncludes(hit, "/store/") ? hit : null;
-    }
-  }
-}
-
-function firstValidFromList(field: ChannelField, urls: string[]): string | null {
-  for (const u of urls) {
-    const v = validateFieldUrl(field, u);
-    if (v) return v;
-  }
-  return null;
-}
-
-// ── S4 — per-source candidate gather (Firecrawl Search) ──────────────────────
-// One Firecrawl Search per still-missing field, count-controlled by the per-source
-// config knob. Shape-validate + dedup into a per-field candidate pool. Website
-// candidates are name-ranked (best coverage first) so the Resolver anchors correctly.
-async function gatherCandidates(
-  firecrawlKey: string,
-  name: string,
-  city: string | null,
-  fields: ChannelField[],
-  counts: DiscoverCandidateCounts,
-): Promise<Partial<Record<ChannelField, string[]>>> {
-  const scope = [name, city ?? ""].map((s) => s.trim()).filter(Boolean).join(" ");
-  // MESITA-192: IG retrieval-recall — a second site:instagram.com query so
-  // punctuated / city-suffixed handles enter the candidate pool (footer-trust
-  // alone cannot recover handles that were never retrieved).
-  const runs = await Promise.all(
-    fields.map(async (f) => {
-      const n = counts[f as keyof DiscoverCandidateCounts] ?? 5;
-      if (n <= 0) return [] as string[];
-      const primary = await firecrawlSearch(
-        firecrawlKey,
-        `${scope} ${CHANNEL_SEARCH_TERM[f]}`,
-        n,
-      );
-      if (f !== "instagram_url") return primary;
-      const altN = Math.min(n, 6);
-      const alt = await firecrawlSearch(
-        firecrawlKey,
-        `"${name}" site:instagram.com`,
-        altN,
-      );
-      return dedup([...primary, ...alt]);
-    }),
-  );
-  const pools: Partial<Record<ChannelField, string[]>> = {};
-  fields.forEach((f, i) => {
-    const valid = dedup(runs[i])
-      .map((u) => validateFieldUrl(f, u))
-      .filter((u): u is string => !!u);
-    if (f === "website_url") {
-      valid.sort((a, b) =>
-        hostNameCoverage(domainOf(b) ?? "", name) - hostNameCoverage(domainOf(a) ?? "", name)
-      );
-    }
-    pools[f] = dedup(valid);
-  });
-  return pools;
-}
-
-// ── S5 — Resolver, "Review & Select Links" (single Perplexity Agent pass) ──────
 
 // Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The
 // console shows this exact constant, so what an operator reads is what the
@@ -204,52 +55,6 @@ export const RESOLVER_INSTRUCTIONS =
   "worse miss than a brand-level one. When the same handle is linked from the " +
   "website and from another channel, that agreement wins. Output ONLY strict JSON " +
   "matching the schema. Never fabricate a URL.";
-
-export async function selectChannels(
-  key: string,
-  place: { name: string; locationLine: string; category: string | null },
-  want: Set<ChannelField>,
-  candidates: Partial<Record<ChannelField, string[]>>,
-  opts: {
-    siblings?: Partial<ChannelMap>;
-    serpContext?: string;
-    website?: string | null;
-    preset?: string;
-  } = {},
-): Promise<{ channels: Partial<ChannelMap>; answered: boolean }> {
-  const fields = CHANNEL_FIELDS.filter((f) => want.has(f));
-  if (!fields.length) return { channels: {}, answered: true };
-
-  // Schema: every requested channel field, each string-or-null.
-  const properties: Record<string, { type: string[] }> = {};
-  for (const f of fields) properties[f] = { type: ["string", "null"] };
-  const schema = { type: "object", properties };
-
-  const input = buildResolverInput(place, fields, candidates, opts);
-
-  const res = await callPerplexityAgent(key, input, schema, {
-    instructions: RESOLVER_INSTRUCTIONS,
-    maxSteps: 10,
-    preset: opts.preset,
-  });
-  if (!res) return { channels: {}, answered: false };
-
-  const answer = res.answer;
-  const hitUrls = res.hitUrls;
-  const channels: Partial<ChannelMap> = {};
-  for (const f of fields) {
-    const fromAnswer = typeof answer[f] === "string" ? validateFieldUrl(f, answer[f] as string) : null;
-    // FP > FN fallback: if the agent's own pick fails validation, fall back to a
-    // cited URL, then to the best candidate we gathered — keeping a plausible link
-    // beats dropping the field. All still shape-validated for the field.
-    const valid = fromAnswer ??
-      firstValidFromList(f, hitUrls) ??
-      firstValidFromList(f, candidates[f] ?? []);
-    if (valid) channels[f] = valid;
-  }
-
-  return { channels, answered: true };
-}
 
 // The per-place message. Pure and exported so crenup-prompts.ts can render the
 // REAL template with sentinel values — the console never re-types this prose.
@@ -320,90 +125,4 @@ export function buildResolverInput(
     `Never invent a URL.`;
 
   return input;
-}
-
-// ── resolveChannels — S4 gather → S5 Resolver select entry point ──────────────
-export async function resolveChannels(opts: {
-  firecrawlKey?: string;
-  perplexityKey?: string;
-  name: string;
-  city: string | null;
-  locationLine: string;
-  category: string | null;
-  serpContext?: string;
-  discoverCandidates: DiscoverCandidateCounts;
-  perplexityPreset?: string;
-  have: {
-    instagram: string | null;
-    facebook: string | null;
-    website: string | null;
-    opentable: string | null;
-    uberEats: string | null;
-  };
-}): Promise<ResolvedChannels> {
-  const { firecrawlKey, perplexityKey, name, city, locationLine, category, serpContext } = opts;
-  const counts = opts.discoverCandidates;
-
-  // Phase 0 — SEED. Anything already supplied is frozen, never re-resolved.
-  const out: ChannelMap = {
-    website_url: opts.have.website,
-    instagram_url: opts.have.instagram,
-    facebook_url: opts.have.facebook,
-    opentable_url: opts.have.opentable,
-    uber_eats_url: opts.have.uberEats,
-  };
-  const via: ResolvedChannels["via"] = {};
-  const provenance: ResolvedChannels["provenance"] = {};
-  for (const f of CHANNEL_FIELDS) {
-    if (out[f]) {
-      via[f] = "seed";
-      provenance[f] = { source: "seed", url: out[f]! };
-    }
-  }
-
-  const missing = (): Set<ChannelField> => new Set(CHANNEL_FIELDS.filter((f) => !out[f]));
-  const fill = (field: ChannelField, url: string | null, source: ChannelSource): void => {
-    if (!url || out[field]) return;
-    out[field] = url;
-    via[field] = source;
-    provenance[field] = { source, url };
-  };
-
-  let resolverAnswered: boolean | null = null;
-  const assemble = (): ResolvedChannels => ({ ...out, via, provenance, resolverAnswered });
-
-  const nothingToDo = missing().size === 0;
-  if (nothingToDo || (!firecrawlKey && !perplexityKey)) return assemble();
-
-  // S4 — GATHER candidate pools (Firecrawl Search, per-source N). Best-effort.
-  let pools: Partial<Record<ChannelField, string[]>> = {};
-  if (firecrawlKey && missing().size > 0) {
-    pools = await gatherCandidates(firecrawlKey, name, city, [...missing()], counts);
-  }
-
-  // S5 — SELECT with the Resolver (channels only). Degraded to per-field Firecrawl
-  // first-hit when no Perplexity key.
-  if (perplexityKey) {
-    const siblings: Partial<ChannelMap> = {
-      website_url: out.website_url,
-      instagram_url: out.instagram_url,
-      facebook_url: out.facebook_url,
-    };
-    const sel = await selectChannels(
-      perplexityKey,
-      { name, locationLine, category },
-      missing(),
-      pools,
-      { siblings, serpContext, website: out.website_url, preset: opts.perplexityPreset },
-    );
-    resolverAnswered = sel.answered;
-    for (const f of CHANNEL_FIELDS) fill(f, sel.channels[f] ?? null, "perplexity");
-  } else if (firecrawlKey) {
-    // Degraded leg (no Perplexity key): no Resolver to review, so take the first
-    // shape-valid candidate per field from the pools we already gathered above
-    // (reuse — never re-search: Firecrawl is metered budget).
-    for (const f of CHANNEL_FIELDS) fill(f, (pools[f] ?? [])[0] ?? null, "search");
-  }
-
-  return assemble();
 }

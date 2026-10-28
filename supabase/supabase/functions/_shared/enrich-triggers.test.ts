@@ -3,7 +3,6 @@ import {
   ENRICHMENT_TRIGGERS_DEFAULTS,
   normalizeEnrichmentTriggers,
   RUN_TRIGGERS,
-  stampsEnrichedAt,
   subprocessesFor,
   TRIGGER_KEYS,
   TRIGGER_META,
@@ -257,25 +256,3 @@ Deno.test("runs: `manual` is a run trigger and NOT a matrix trigger", () => {
 // run that paid for synthesis. The wrong-number refetch buys `google` alone;
 // if it stamped, a Created place would read as Enriched after one bad phone
 // number, with every other gate green.
-
-Deno.test("stampsEnrichedAt: a run that buys everything (null) stamps", () => {
-  assertEquals(stampsEnrichedAt(null), true);
-  assertEquals(stampsEnrichedAt(undefined), true);
-});
-
-Deno.test("stampsEnrichedAt: a google-only run does NOT stamp", () => {
-  assertEquals(stampsEnrichedAt(["google"]), false);
-  assertEquals(stampsEnrichedAt([]), false);
-  assertEquals(stampsEnrichedAt(["google", "photos", "embedding"]), false);
-});
-
-Deno.test("stampsEnrichedAt: any purchase that includes synthesis stamps", () => {
-  assertEquals(stampsEnrichedAt(["synthesis"]), true);
-  assertEquals(stampsEnrichedAt(["google", "reviews", "synthesis"]), true);
-});
-
-Deno.test("stampsEnrichedAt: the shipped wrong-number refetch never stamps; on_create does", () => {
-  const cfg = ENRICHMENT_TRIGGERS_DEFAULTS;
-  assertEquals(stampsEnrichedAt(subprocessesFor(cfg, "on_reservation_failed")), false);
-  assertEquals(stampsEnrichedAt(subprocessesFor(cfg, "on_create")), true);
-});

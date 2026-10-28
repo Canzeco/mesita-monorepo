@@ -511,21 +511,6 @@ export const GOOGLE_TYPE_SUPER: Readonly<Record<string, GuestSuper>> = {
   "zoo": "experiences",
 };
 
-const GUEST_SUPERS = new Set<string>([
-  "restaurants",
-  "bars_nightlife",
-  "cafes_bakeries",
-  "sports_fitness",
-  "wellness_beauty",
-  "experiences",
-  "culture_arts",
-  "undefined",
-]);
-
-export function isGuestSuper(value: string): value is GuestSuper {
-  return GUEST_SUPERS.has(value);
-}
-
 /**
  * One of the eight families for a Google Table A slug.
  * Truncated `*_restaurant` aliases (`fine_dining` → `fine_dining_restaurant`)

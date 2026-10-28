@@ -1,9 +1,5 @@
-// Pure place-tag sanitizers: exclusive-group conflict resolution + top-N pick.
+// Pure place-tag sanitizer: exclusive-group conflict resolution.
 // Extracted from tags.ts (no I/O).
-
-import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
-
-const MAX_INFERRED_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 // Mutually exclusive slug groups. When more than one member appears on a place,
 // keep the first-seen slug (LLM order ≈ confidence; business picker order ≈
@@ -47,15 +43,4 @@ export function sanitizePlaceTags(slugs: readonly string[]): string[] {
     }
   }
   return out;
-}
-
-// Takes a best-first ranked slug list and returns exactly `limit` conflict-free
-// tags (or fewer only when the catalog itself cannot supply that many). Used by
-// Enricher so every place gets a full tag set — always the strongest matches.
-export function selectTopPlaceTags(
-  rankedSlugs: readonly string[],
-  limit: number = MAX_INFERRED_TAGS,
-): string[] {
-  if (limit <= 0 || rankedSlugs.length === 0) return [];
-  return sanitizePlaceTags(rankedSlugs).slice(0, limit);
 }

@@ -84,39 +84,3 @@ export function familiesForPlace(
   if (carried.length > 0) return carried;
   return ["undefined"];
 }
-
-/**
- * Enrichment does not assign families. `inferred` is ignored. Membership
- * is the dictionary when the caller has it, otherwise Undefined.
- */
-export function resolveEnrichedFamilyKeys(
-  category: string | null | undefined,
-  inferred: unknown,
-  mapping?: CategoryFamilyMap,
-): FamilyKey[] {
-  void inferred;
-  return familiesForPlace({ category }, mapping);
-}
-
-/** Enrichment may keep only Categories and Tags Atlas already defines. */
-export function keepAtlasValues(opts: {
-  category: string | null | undefined;
-  tags: readonly unknown[] | null | undefined;
-  categories: readonly string[];
-  tagVocabulary: readonly string[];
-}): { category: string; tags: string[] } {
-  const categories = new Set(
-    opts.categories.map((slug) => slug.trim().toLowerCase()).filter(Boolean),
-  );
-  const vocabulary = new Set(opts.tagVocabulary);
-  const raw = typeof opts.category === "string" ? opts.category.trim().toLowerCase() : "";
-  const category = raw && categories.has(raw) ? raw : "undefined";
-  const tags: string[] = [];
-  for (const tag of opts.tags ?? []) {
-    if (typeof tag !== "string") continue;
-    const slug = tag.trim();
-    if (!slug || !vocabulary.has(slug) || tags.includes(slug)) continue;
-    tags.push(slug);
-  }
-  return { category, tags };
-}

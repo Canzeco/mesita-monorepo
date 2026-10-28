@@ -44,12 +44,6 @@ export const GOOGLE_TABLE_B_TYPES: ReadonlySet<string> = new Set([
   "town_square",
 ]);
 
-/** google_types without Table B; anything that is not a list passes through. */
-export function withoutTableB(value: unknown): unknown {
-  if (!Array.isArray(value)) return value;
-  return value.filter((t) => !(typeof t === "string" && GOOGLE_TABLE_B_TYPES.has(t)));
-}
-
 /** google_types cleaned for storage: strings only, deduped, no Table B. */
 export function cleanGoogleTypes(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
