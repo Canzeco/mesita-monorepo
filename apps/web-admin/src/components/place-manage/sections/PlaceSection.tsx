@@ -12,6 +12,7 @@ import {
 import {
   type AdminPlace,
   type PlaceFieldLimits,
+  updatePlace,
 } from "../actions";
 import { PlaceFamilyField } from "../PlaceFamilyField";
 import {
@@ -268,7 +269,30 @@ export function PlaceSection({
   /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
-  const { savePending, profile, reportSocialDraft } = usePlaceContext();
+  const { savePending, profile, reportSocialDraft, setPlace } = usePlaceContext();
+  // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
+  const [resetting, setResetting] = useState<string | null>(null);
+  const owned = new Set(place.operator_fields ?? []);
+  const resetField = async (field: "name" | "description" | "tags") => {
+    setResetting(field);
+    const r = await updatePlace({ id: place.id, reset_fields: [field] });
+    setResetting(null);
+    if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
+  };
+  const resetControl = (field: "name" | "description" | "tags") =>
+    owned.has(field) ? (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-muted-foreground type-meta">Enrich keeps it</span>
+        <button
+          type="button"
+          className="text-primary type-meta font-medium underline-offset-4 hover:underline disabled:opacity-50"
+          disabled={savePending || resetting !== null}
+          onClick={() => void resetField(field)}
+        >
+          {resetting === field ? "Resetting…" : "Reset"}
+        </button>
+      </span>
+    ) : undefined;
   const limits = profile.fieldLimits;
   const [form, setForm] = useState<Form>(() => placeToForm(place, limits));
   const [saved, setSaved] = useState<Form>(form);
@@ -382,9 +406,12 @@ export function PlaceSection({
         title="Basics"
         subtitle="What this place is."
       >
-        {/* Pato's fields, in his order (MESITA-2790; Mesita categories left
-            with MESITA-2827): one list, so a reorder or a restored row is one
-            edit. One field per row. */}
+        {/* The seven Basics rows, in Pato's order (2026-10-27, "things to
+            save": Google Name · Google Price · Google Category · Mesita Name ·
+            Mesita Families · Mesita Presentation · Mesita Tags). One list, so
+            a reorder or a restored row is one edit. One field per row.
+            Mesita name, presentation and tags are the operator's to edit; an
+            edit sticks through Enrich until its Reset (MESITA-2829). */}
         <div className="mt-5 grid gap-4">
           {[
             <ReadField key="google-name" label="Google name" auto boxed>
@@ -393,22 +420,27 @@ export function PlaceSection({
             <ReadField key="google-price" label="Google price" auto boxed>
               <PriceDisplay level={place.price_level} currency={place.currency} />
             </ReadField>,
-            <PlaceGoogleCategoriesField key="google-categories" />,
+            <PlaceGoogleCategoriesField key="google-category" />,
             <TextField
               key="name"
-              label="Name"
+              label="Mesita name"
+              labelRight={resetControl("name")}
               value={form.name}
               onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
               maxLength={limits.placeNameMax}
               disabled={anyPending}
               placeholder={(place.google_name ?? "").trim() || undefined}
             />,
+            <PlaceFamilyField key="families" />,
             <TextArea
-              key="mesita-presentation"
+              key="presentation"
               label="Mesita presentation"
               labelRight={
-                <span className="text-muted-foreground type-label tabular-nums">
-                  {form.description.length} / {limits.descriptionMax}
+                <span className="inline-flex items-center gap-3">
+                  {resetControl("description")}
+                  <span className="text-muted-foreground type-label tabular-nums">
+                    {form.description.length} / {limits.descriptionMax}
+                  </span>
                 </span>
               }
               value={form.description}
@@ -420,12 +452,12 @@ export function PlaceSection({
               disabled={anyPending}
             />,
             <PlaceMesitaTagsField
-              key="mesita-tags"
+              key="tags"
+              labelRight={resetControl("tags")}
               value={form.tags}
               onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
               disabled={anyPending}
             />,
-            <PlaceFamilyField key="families" />,
           ]}
         </div>
       </SectionCard>

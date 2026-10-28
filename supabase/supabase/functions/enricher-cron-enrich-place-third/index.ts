@@ -94,6 +94,11 @@ import {
   readFieldPins,
   stripPinnedColumns,
 } from "../_shared/enrich-corrections.ts";
+import {
+  readOperatorFields,
+  stripOperatorFields,
+  withOperatorFields,
+} from "../_shared/operator-fields.ts";
 import { omitReviewsTileColumns } from "../_shared/reviews-state.ts";
 import { applyGatheredReviews } from "../_shared/review-sources.ts";
 
@@ -356,11 +361,16 @@ serveEnrichStage("third", async (admin, env, row) => {
   if (descriptionRan) keep.add("description");
   omitUnrunKeys(place, keep);
 
-  const { update: persisted, skipped: pinnedSkipped } = stripPinnedColumns(
+  const { update: pinStripped, skipped: pinnedSkipped } = stripPinnedColumns(
     place,
     pins,
   );
   if (pinnedSkipped.length > 0) sources.pins_respected = pinnedSkipped;
+  // An operator's name, Presentation or tags stick through every Enrich
+  // (MESITA-2829), until the operator's Reset.
+  const owned = readOperatorFields(live?.enrichment_sources);
+  const { update: persisted, skipped: ownedSkipped } = stripOperatorFields(pinStripped, owned);
+  if (ownedSkipped.length > 0) sources.operator_respected = ownedSkipped;
 
   // `enriched_at` IS the Enriched fact (MESITA-2154): every reader in the
   // server and both apps asks only "is it set". Stamp it only when this run
@@ -375,7 +385,7 @@ serveEnrichStage("third", async (admin, env, row) => {
   // NEVER `= sources` on its own: the pins are durable state stored in this
   // otherwise per-run blob, so a plain overwrite deletes every correction on the
   // next enrichment. `_shared/enrich-corrections.test.ts` is the gate.
-  persisted.enrichment_sources = carryFieldPins(sources, pins);
+  persisted.enrichment_sources = withOperatorFields(carryFieldPins(sources, pins), owned);
 
   // Captured for the single stage beacon below — a dropped/missing About must
   // be visible in the feed, not claimed as written.

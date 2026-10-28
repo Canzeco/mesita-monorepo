@@ -114,15 +114,16 @@ function useCategoryLabels(): Map<string, string> {
   return new Map(profile.categories.map((c) => [c.slug, c.label]));
 }
 
+// The main Google category only (Pato, 2026-10-27: "Google Category (only
+// the main one)"): the first of Google's own types, the stored `category`.
 export function PlaceGoogleCategoriesField() {
   const { place } = usePlaceContext();
   const labels = useCategoryLabels();
+  const main = slugsOf(place.google_types).filter((s) => !GOOGLE_TABLE_B.has(s))[0] ??
+    (typeof place.category === "string" ? place.category : null);
   return (
-    <ReadField label="Google categories" auto boxed>
-      <Chips
-        slugs={slugsOf(place.google_types).filter((s) => !GOOGLE_TABLE_B.has(s))}
-        labels={labels}
-      />
+    <ReadField label="Google category" auto boxed>
+      <Chips slugs={main ? [main] : []} labels={labels} />
     </ReadField>
   );
 }
@@ -134,13 +135,16 @@ export function PlaceMesitaTagsField({
   value,
   onChange,
   disabled,
+  labelRight,
 }: {
   value: string[];
   onChange: (tags: string[]) => void;
   disabled?: boolean;
+  /** Basics' Reset (MESITA-2829). */
+  labelRight?: React.ReactNode;
 }) {
   return (
-    <ReadField label="Mesita tags" auto boxed>
+    <ReadField label="Mesita tags" auto boxed labelRight={labelRight}>
       <PlaceTagsPicker value={value} onChange={onChange} disabled={disabled} />
     </ReadField>
   );
