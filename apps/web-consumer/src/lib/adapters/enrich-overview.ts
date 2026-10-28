@@ -27,9 +27,9 @@ import {
   num,
   str,
 } from "@/lib/adapters/place-to-detail-helpers";
-import { formatPlacePriceChip } from "@/lib/place-price";
+import { formatPlacePriceChip } from "@mesita/place-profile/lib/place-price";
 import { relativeLabel } from "@/lib/utils";
-import { DEFAULT_CURRENCY } from "@/lib/money";
+import { DEFAULT_CURRENCY } from "@mesita/place-profile/lib/money";
 
 // Derives the overview-parity fields from the raw places columns on Place.
 // Mirrors placeRowToDetail so the card and the detail modal compute

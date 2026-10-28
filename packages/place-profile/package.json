@@ -8,7 +8,8 @@
     "./types": "./src/place-detail.ts",
     "./map": "./src/place-to-detail.ts",
     "./helpers": "./src/place-to-detail-helpers.ts",
-    "./photo": "./src/photo-url.ts"
+    "./photo": "./src/photo-url.ts",
+    "./lib/*": "./src/lib/*.ts"
   },
   "peerDependencies": {
     "lucide-react": "*",

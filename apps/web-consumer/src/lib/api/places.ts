@@ -14,9 +14,8 @@ import type { PlaceDetail } from "@/lib/place-detail";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
-   *  MESITA-2154)? Drives the Enriched colour and the Enriched ring. Absent
-   *  on an older payload — the client falls back to `enriched_at` alone
-   *  (lib/place-enriched.ts), never `content_state`. */
+   *  MESITA-2154)? Absent on an older payload, where `enriched_at` alone
+   *  answers, never `content_state`. */
   enriched?: boolean | null;
   /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
    *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
@@ -359,14 +358,6 @@ export async function apiListAreaPool(
     ...(typeof size === "number" && Number.isFinite(size) && size > 0 ? { pageSize: size } : {}),
   };
 }
-
-export type CatalogRail = {
-  key: string;
-  label: string;
-  emoji?: string;
-  source: "signal" | "family" | "seed" | "generated";
-  places: Place[];
-};
 
 // Per-row state mirrored from atlas-suggest-places — the server's words,
 // kept verbatim because they are the wire:

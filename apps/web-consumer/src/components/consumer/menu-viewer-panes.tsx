@@ -1,5 +1,5 @@
 import { ExternalLink, FileText } from "lucide-react";
-import { menuKindLabel, type MenuKind } from "@/lib/menu-url";
+import { menuKindLabel, type MenuKind } from "@mesita/place-profile/lib/menu-url";
 import { cn } from "@/lib/utils";
 
 export function ImagePane({

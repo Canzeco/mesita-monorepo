@@ -105,9 +105,6 @@ export const ONBOARD_FIELDS: readonly OnboardField[] = [
   { key: "sex", label: "Sex", hint: null },
 ];
 
-/** @deprecated Use `ONBOARD_FIELDS`. Kept so drift alarms can grep stable names. */
-export const ONBOARD_STEPS = ONBOARD_FIELDS;
-
 /**
  * The one field the reservation flow may still have to ask for. Only the last
  * name on purpose: a profile that fails canBrowse is bounced to /onboard by

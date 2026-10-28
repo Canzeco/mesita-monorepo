@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { PlaceTabBar, placeTabs } from "./tabs";
+import { PlaceTabBar, placeTabs } from "@mesita/place-profile";
 
 // The vote panel and its copy are gone (MESITA-2642: views enrich a place,
 // no guest votes); only the section strip's pins remain here.

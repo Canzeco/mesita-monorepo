@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { ImageCarousel } from "@/components/consumer/ImageCarousel";
+import { ImageCarousel } from "@mesita/place-profile";
 
 // ImageCarousel serves two masters (MESITA-2105, eng review R1). The place
 // page pages its photos with a single tap on the left or right third; Scroll

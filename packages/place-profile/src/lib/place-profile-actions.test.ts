@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isReserveActionEnabled } from "@/lib/place-profile-actions";
+import { isReserveActionEnabled } from "./place-profile-actions";
 
 describe("isReserveActionEnabled", () => {
   it("offers Reserve unless the place has explicitly opted out", () => {
