@@ -15,7 +15,7 @@ import {
   type BoostInterval,
   type BoostTier,
 } from "@/lib/api/boost";
-import { MAP_OFFICIAL_PIN_COLOR } from "@/lib/map-defaults";
+import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -26,15 +26,15 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE OFFICIAL TAB (MESITA-2925, was Boost; MESITA-2861: the place's fourth
+// THE PREMIER TAB (MESITA-2925, was Boost; MESITA-2861: the place's fourth
 // tab; a sheet off ⋯ in MESITA-2815, a tab in MESITA-2789, Spotlight's
 // sheet before it, MESITA-1998: "cualquiera se suscriba ... desde la
-// Consumer App"). Anyone makes a place Official with their own
-// subscription: Official 2X · 5X · 10X, monthly or yearly (ten months for
+// Consumer App"). Anyone makes a place Premier with their own
+// subscription: Premier 2X · 5X · 10X, monthly or yearly (ten months for
 // twelve), then Stripe Checkout. Backers are anonymous (MESITA-2928): no
 // name is asked for, sent or shown, only how many guests back it. Many guests can back
 // one place, so one lapsed card never takes the tier from the rest. The
-// place wears "Official 2X" after its name and a red pin while it holds a
+// place wears "Premier 2X" after its name and a red pin while it holds a
 // tier; the copy says it is paid visibility.
 // Nothing here claims a charge: success is said only after
 // consumer-web-get-boost confirms the Checkout session (member-place-actions).
@@ -131,7 +131,7 @@ export function BoostPane({
               <BadgeCheck className="h-5 w-5" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Make it Official</h2>
+              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Make it Premier</h2>
               <p className="text-muted-foreground truncate text-xs">{place.name}</p>
             </div>
           </div>
@@ -154,7 +154,7 @@ export function BoostPane({
             ))}
           </div>
 
-          <div role="radiogroup" aria-label="Official level">
+          <div role="radiogroup" aria-label="Premier level">
             <SettingsGroup>
               {BOOST_TIERS.map((t, i) => {
                 const on = tier === t.key;
@@ -199,7 +199,7 @@ export function BoostPane({
             {starting ? "Opening checkout…" : `Continue · ${boostPrice(picked.monthly, interval)}`}
           </button>
           <p className="text-muted-foreground text-center text-xs">
-            Prices in US dollars. Billed by Stripe. Official is paid visibility:
+            Prices in US dollars. Billed by Stripe. Premier is paid visibility:
             it does not verify the place. Cancel any time; your backing runs to
             the end of the period you paid for.
           </p>
@@ -208,7 +208,7 @@ export function BoostPane({
         <>
       {/* A SHORT CARD, THEN THE CHOICES (Pato, MESITA-2814: "maybe create a
           modal … if i click the modal, then open something"). The card says
-          where the place stands, what Official is in one line, and the three
+          where the place stands, what Premier is in one line, and the three
           levels as tiles; a tile or the button swaps in billing and
           Checkout in the same pane (MESITA-2815, MESITA-2817). */}
       <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
@@ -218,13 +218,13 @@ export function BoostPane({
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
               current ? "text-white" : "bg-muted text-foreground",
             )}
-            style={current ? { backgroundColor: MAP_OFFICIAL_PIN_COLOR } : undefined}
+            style={current ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined}
           >
             <BadgeCheck className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
             <h2 id="boost-title" className="text-base leading-tight font-semibold">
-              {current ?? "Not Official yet"}
+              {current ?? "Not Premier yet"}
             </h2>
             <p className="text-muted-foreground truncate text-xs" aria-live="polite">
               {loading
@@ -238,7 +238,7 @@ export function BoostPane({
 
         <p className="text-muted-foreground text-sm leading-relaxed">
           Show {place.name} to more guests on the Map and Home. Guests see{" "}
-          <span className="text-foreground font-semibold">Official</span> and
+          <span className="text-foreground font-semibold">Premier</span> and
           its level beside its name, and a red pin on the Map.
         </p>
 
@@ -266,13 +266,13 @@ export function BoostPane({
           className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
         >
           <BadgeCheck className="h-4 w-4" aria-hidden />
-          {current ? "Back it too" : "Make it Official"}
+          {current ? "Back it too" : "Make it Premier"}
         </button>
       </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Official level.{" "}
+          Couldn&apos;t load this place&apos;s Premier level.{" "}
           <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
@@ -290,7 +290,7 @@ export function BoostPane({
                   <div className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm">
                     <span className="min-w-0 flex-1">
                       <span className="font-semibold">
-                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Official"}
+                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Premier"}
                       </span>
                       <span className="text-muted-foreground"> · {b.interval === "year" ? "Yearly" : "Monthly"}</span>
                       <span className="text-muted-foreground block text-xs">
@@ -360,7 +360,7 @@ export function BoostPane({
   );
 }
 
-/** The Official tab on a Google-only card (MESITA-2797): no Mesita row, so
+/** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
  *  nothing to back yet. */
 export function BoostUnavailable() {
   return (
@@ -368,9 +368,9 @@ export function BoostUnavailable() {
       <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
         <BadgeCheck className="h-7 w-7" aria-hidden />
       </span>
-      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Official isn&apos;t open here yet</h3>
+      <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Premier isn&apos;t open here yet</h3>
       <p className="text-muted-foreground mt-1.5 max-w-[30ch] text-sm leading-relaxed">
-        You can make this place Official once it has its Mesita profile.
+        You can make this place Premier once it has its Mesita profile.
       </p>
     </div>
   );

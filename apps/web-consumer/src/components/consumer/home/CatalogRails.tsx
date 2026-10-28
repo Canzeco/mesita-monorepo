@@ -25,7 +25,7 @@
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity ×
-// Popularity × Official's tier (MESITA-2925), and so is every family chip. All is the
+// Popularity × Premier's tier (MESITA-2925), and so is every family chip. All is the
 // server's ONE ranked Area pool (MESITA-2379/2384):
 // Google and Mesita places merged, scored and ranked there; this screen
 // pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN
@@ -440,7 +440,7 @@ export function CatalogRails() {
                 {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
                     score and sub scores in the home feed"): the Search
                     map's tag above each tile, from the server's breakdown;
-                    Official's factor is its `official` number (MESITA-2925).
+                    Premier's factor is its `premier` number (MESITA-2925).
                     Remove with the Search tag once the ranking is verified. */}
                 {place.area ? (
                   <li className="-mb-1.5" data-home-score-tag>

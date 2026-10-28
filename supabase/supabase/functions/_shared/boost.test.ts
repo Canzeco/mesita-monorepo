@@ -14,7 +14,7 @@ import {
   subscriptionPatch,
   tierFromMonthlyCents,
 } from "./boost.ts";
-import { officialFactor } from "./area-score.ts";
+import { premierFactor } from "./area-score.ts";
 
 Deno.test("boost: $10 · $50 · $200 a month, a year for the price of ten months", () => {
   assertEquals(boostAmountCents("boost_2x", "month"), 1000);
@@ -89,11 +89,11 @@ Deno.test("boost: the period is read from the item when the top level lacks it",
   assertEquals(isLiveBacking({ status: "past_due", current_period_end: patch.current_period_end }, 0), false);
 });
 
-Deno.test("official: the factor is the tier's number; a Google stub is never Official (MESITA-2925)", () => {
-  assertEquals(officialFactor({ source: "mesita", boostTier: 0 }), 1);
-  assertEquals(officialFactor({ source: "mesita", boostTier: 1 }), 2);
-  assertEquals(officialFactor({ source: "mesita", boostTier: 2 }), 5);
-  assertEquals(officialFactor({ source: "mesita", boostTier: 3 }), 10);
-  assertEquals(officialFactor({ source: "mesita" }), 1);
-  assertEquals(officialFactor({ source: "google", boostTier: 3 }), 1);
+Deno.test("premier: the factor is the tier's number; a Google stub is never Premier (MESITA-2925)", () => {
+  assertEquals(premierFactor({ source: "mesita", boostTier: 0 }), 1);
+  assertEquals(premierFactor({ source: "mesita", boostTier: 1 }), 2);
+  assertEquals(premierFactor({ source: "mesita", boostTier: 2 }), 5);
+  assertEquals(premierFactor({ source: "mesita", boostTier: 3 }), 10);
+  assertEquals(premierFactor({ source: "mesita" }), 1);
+  assertEquals(premierFactor({ source: "google", boostTier: 3 }), 1);
 });

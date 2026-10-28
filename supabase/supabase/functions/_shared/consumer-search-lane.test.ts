@@ -84,7 +84,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.secondaryText, "Mesita address");
   assertEquals(out.mesitaId, "m-1");
   assertEquals(out.enriched, true);
-  // Official's tier travels with the entity too (MESITA-2925).
+  // Premier's tier travels with the entity too (MESITA-2925).
   assertEquals(out.boostTier, 2);
 });
 
@@ -358,7 +358,7 @@ Deno.test("admin's place picker runs the deep lane, places only", async () => {
   assertEquals(code.includes("locations"), false);
 });
 
-Deno.test("toWire: Official's tier rides every row as boost_tier, 0 when absent; no Selected (MESITA-2925)", () => {
+Deno.test("toWire: Premier's tier rides every row as boost_tier, 0 when absent; no Selected (MESITA-2925)", () => {
   const paid = toWire(item({ placeId: "m", mainText: "Paid", mesitaId: "m1", boostTier: 3 }));
   assertEquals(paid.boost_tier, 3);
   assertEquals("selected" in paid, false);

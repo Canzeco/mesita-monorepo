@@ -83,7 +83,7 @@ export function anchorPlaceFromPrediction(
     price_level: card.price_level ?? null,
     currency: card.currency ?? "MXN",
     enriched: prediction.enriched ?? false,
-    // Official rides the prediction too (MESITA-2925): the synthesized
+    // Premier rides the prediction too (MESITA-2925): the synthesized
     // card's pin and mark keep the lane's answer.
     boost_tier: prediction.boost_tier ?? card.boost_tier ?? 0,
     lat: prediction.lat,

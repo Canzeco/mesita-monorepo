@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       // `enriched: false` here whatever its content_state or high-water.
       enriched: isPlaceEnriched(v.enriched_at),
       enriched_at: (v.enriched_at as string | null) ?? null,
-      // Official (MESITA-2925, was Boost MESITA-2809): the paid tier,
+      // Premier (MESITA-2925, was Boost MESITA-2809): the paid tier,
       // 0 · 1 · 2 · 3 = Off · 2X · 5X · 10X. Selected is no longer read.
       boost_tier: typeof v.boost_tier === "number" ? v.boost_tier : null,
       // Missing when the read failed — the table says "?", never a false 0.

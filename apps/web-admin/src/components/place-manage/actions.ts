@@ -145,7 +145,7 @@ export type AdminPlace = {
   /** THE Enriched fact (MESITA-2154): an Enrich run completed —
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
-  /** Official (MESITA-2925, was Boost — MESITA-2789): the paid tier,
+  /** Premier (MESITA-2925, was Boost — MESITA-2789): the paid tier,
    *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from guests'
    *  subscriptions; never set here. Profile States shows it (MESITA-2795). */
   boost_tier?: number;
@@ -332,10 +332,10 @@ export async function setPlaceListed(
   };
 }
 
-// ── Official (MESITA-2789; Boost renamed Official, MESITA-2925) ──────────
+// ── Premier (MESITA-2789; Boost renamed Premier, MESITA-2925) ──────────
 
-/** One guest's subscription behind a place's Official tier, as Single
- *  Place › Official lists it. Amounts are US cents per billing interval. */
+/** One guest's subscription behind a place's Premier tier, as Single
+ *  Place › Premier lists it. Amounts are US cents per billing interval. */
 export type AdminBacking = {
   id: string;
   payer: string | null;

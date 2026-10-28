@@ -128,8 +128,8 @@ export function ProfileSummary({
         ) : place.is_enriching ? (
           <RunningFact label="Enriching" tone="green" />
         ) : null}
-        {/* No Official fact here (MESITA-2925): the place's one mark,
-            "Official 2X", stands after its name in the top bar. */}
+        {/* No Premier fact here (MESITA-2925): the place's one mark,
+            "Premier 2X", stands after its name in the top bar. */}
         {place.category && (
           // The category's own emoji, Tag only when it has none (MESITA-2813).
           <ProfileFact icon={Tag} emoji={place.category_emoji}>

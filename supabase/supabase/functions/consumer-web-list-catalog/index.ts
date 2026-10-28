@@ -9,7 +9,7 @@
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
 // radio"): distance never cuts a place. THE SCORE: Proximity × Popularity ×
-// the Official factor (an Official place's paid tier, ×2 · ×5 · ×10,
+// the Premier factor (a Premier place's paid tier, ×2 · ×5 · ×10,
 // MESITA-2925), Proximity = 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the
 // operator's half distance (`params.proximity.halfKm`): 1 at the guest, ½
 // at h, falling fast and then ever slower. No point: Popularity × the factor.

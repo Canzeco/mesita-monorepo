@@ -39,7 +39,7 @@ import {
 //
 //                  (64px photo)
 //   ( 👤 Diego                                 )
-//   ( ♛ VIP Class       ) ( ▭ Premier Plan     )
+//   ( ♛ VIP Class       ) ( ▭ Pro Plan         )
 //   ( ◎ @diego · 1.2K followers                )
 //
 // THE PAIR SITS BETWEEN THE TWO WIDE BOXES (Pato, MESITA-2621: "for more
@@ -52,7 +52,7 @@ import {
 // long. Class and Plan share a row, Class left, the same order as the Class ·
 // Plan tile pair below on Me. The column is the full width of the card (no
 // cap), so on Me each half box is exactly one tile column (167px at 375px)
-// and "Premier Plan" fits. UNDER 360px THE PAIR STACKS: a half box would be
+// and "Pro Plan" fits. UNDER 360px THE PAIR STACKS: a half box would be
 // 140px at 320px and ellipsize, so there the four boxes are four rows again.
 // Social's person card is this component and gets the same grid.
 //
@@ -61,7 +61,7 @@ import {
 // text style, 14px semibold, in every box (Pato, MESITA-2599: "standardize
 // the size of those letters inside the four boxes"); the defaults (Regular,
 // Free) look exactly like the rest: same size, weight and ink (Pato:
-// "standardize the font here"). Only VIP (filled) and Premier (ink border)
+// "standardize the font here"). Only VIP (filled) and Pro (ink border)
 // stand out.
 // Nothing truncates but the name and the Instagram label. No chevrons
 // (Pato, MESITA-2604: "remove the > … just name … it looks really dirty"):
@@ -69,8 +69,8 @@ import {
 //
 // CLASS AND PLAN ARE TWO THINGS (MESITA-2553). Class is partnership status:
 // Regular or VIP, through a partner, never sold; VIP filled, Regular muted,
-// the Crown names it. Plan is the subscription, Free or Premier, under a
-// card icon (never the gem, MESITA-2551); Premier outlined, Free muted.
+// the Crown names it. Plan is the subscription, Free or Pro, under a
+// card icon (never the gem, MESITA-2551); Pro outlined, Free muted.
 // Plan is back on the card (MESITA-2595 reverses MESITA-2576). On Me both
 // are doors — Class opens its explainer, Plan opens /me/plan; on Social both
 // are facts.

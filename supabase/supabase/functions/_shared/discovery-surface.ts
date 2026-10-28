@@ -1,5 +1,5 @@
 // What Discovery IS (MESITA-2327): five Sources, four Pipelines, four
-// Signals, two Gates, one Factor (Official, the paid tier, MESITA-2925;
+// Signals, two Gates, one Factor (Premier, the paid tier, MESITA-2925;
 // Selected's multiplier before it), and who uses whom. The admin console
 // renders this file (its twin, apps/web-admin filters-config/discovery-surface.ts, is pinned
 // equal by discovery-surface.contract.test.ts) and discovery-surface.test.ts
@@ -11,7 +11,7 @@
 //   Signal    a continuous score in 0..1
 //   Gate      a binary eligibility check (0 or 1)
 //   Factor    a multiplier on the score: it orders, never excludes (none
-//             from MESITA-2439 until Selected, MESITA-2717; Official since
+//             from MESITA-2439 until Selected, MESITA-2717; Premier since
 //             MESITA-2925)
 //
 // The Map and the Catalog are two pipelines since MESITA-2909 (one Area
@@ -30,7 +30,7 @@ export const DISCOVERY_FIELDS = [
   "open_now",
   "description_embedding",
   "about",
-  "official",
+  "premier",
   "event",
 ] as const;
 export type DiscoveryField = (typeof DISCOVERY_FIELDS)[number];
@@ -46,7 +46,7 @@ export const DISCOVERY_FIELD_LABELS: Record<DiscoveryField, string> = {
   open_now: "Open now",
   description_embedding: "Description embedding",
   about: "About",
-  official: "Official",
+  premier: "Premier",
   event: "Events",
 };
 
@@ -107,7 +107,7 @@ export const DISCOVERY_SOURCES: readonly DiscoverySourceFact[] = [
       "family",
       "description_embedding",
       "about",
-      "official",
+      "premier",
     ],
     live: true,
   },
@@ -174,7 +174,7 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, never clamped: Popularity × the Official factor on the Map, × Proximity on the Catalog.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, never clamped: Popularity × the Premier factor on the Map, × Proximity on the Catalog.",
   },
 ];
 
@@ -229,7 +229,7 @@ export type DiscoveryPipelineFact = {
   gates: readonly DiscoveryGateKey[];
   scoring: string;
   /** Multipliers on the score that never exclude (the Map's and the
-   *  Catalog's Official since MESITA-2925, Selected from MESITA-2717; none
+   *  Catalog's Premier since MESITA-2925, Selected from MESITA-2717; none
    *  from MESITA-2439 until then). */
   factors: readonly string[];
   /** Sources whose rows keep the source's own order: no signal scores them,
@@ -275,13 +275,13 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["popularity"],
     gates: ["family", "radius"],
     factors: [
-      "Official (MESITA-2925): an Official place's score × its paid tier, Official 2X · 5X · 10X; every other place's × 1.",
+      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X · 10X; every other place's × 1.",
     ],
-    scoring: "Popularity × s, s the Official factor (2, 5 or 10 for an Official place, 1 for every other place, MESITA-2925), a plain product never clamped or normalized (MESITA-2710). Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown. Ties break on distance, then id.",
+    scoring: "Popularity × s, s the Premier factor (2, 5 or 10 for a Premier place, 1 for every other place, MESITA-2925), a plain product never clamped or normalized (MESITA-2710). Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown. Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Mesita places only: Google Nearby Search is gone (MESITA-2872), so the Map calls no Google. Every ready Mesita place inside the screen radius is a candidate (the two 20-place source switches retired in MESITA-2909); the guest never picks a source.",
-      "Before the cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Official or not.",
+      "Before the cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Premier or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
       "The screen radius is at least 0.05 km and has no ceiling (MESITA-2918): however far out the guest zooms, the search is the ring they see. No visible map yet uses the current-location radius instead.",
@@ -298,14 +298,14 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family"],
     factors: [
-      "Official (MESITA-2925): an Official place's score × its paid tier, Official 2X · 5X · 10X; every other place's × 1.",
-      "Reach (MESITA-2920): s counts only within 2 × the half distance of the guest; past it every place scores × 1, so an Official place in another city never tops Home.",
+      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X · 10X; every other place's × 1.",
+      "Reach (MESITA-2920): s counts only within 2 × the half distance of the guest; past it every place scores × 1, so a Premier place in another city never tops Home.",
     ],
-    scoring: "Proximity × Popularity × s, s the Official factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. s counts within 2 × the half distance and is 1 beyond (MESITA-2920). No location: Popularity × s. Chat ranks the same way inside the current-location radius, with no reach (its radius bounds it). Ties break on distance, then id.",
+    scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is ½ at the operator's half distance (MESITA-2909). No radius: a far place is never cut, only lowered. s counts within 2 × the half distance and is 1 beyond (MESITA-2920). No location: Popularity × s. Chat ranks the same way inside the current-location radius, with no reach (its radius bounds it). Ties break on distance, then id.",
     keepsOrder: [],
     rules: [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and comes back whole; Home draws it a Catalog page size at a time (MESITA-2909).",
-      "A place whose Popularity is under the Minimum Popularity is dropped, Official or not (MESITA-2714).",
+      "A place whose Popularity is under the Minimum Popularity is dropped, Premier or not (MESITA-2714).",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "Mesita's read keeps at most 1000 ready rows before scoring.",
       "Chat reads every ready Mesita place inside the current-location radius (Selected only until MESITA-2925).",

@@ -5,7 +5,7 @@
 // Consumer Catalog · Consumer Deep. Each box is a PipelineBox and saves only
 // its own slices, so two boxes can never overwrite each other. The Map and the
 // Catalog were one Area pipeline until MESITA-2909; the Minimum Popularity
-// they share sits in the Map box. Official's factor is the paid tier, no knob
+// they share sits in the Map box. Premier's factor is the paid tier, no knob
 // (the Selected boost retired with Selected, MESITA-2925). The Chat Agent is
 // Deep's caller, so its prompt sits in the Deep box.
 
@@ -284,7 +284,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
             The Search tab&apos;s pins: every Mesita place inside the
             <strong> screen radius</strong> (the distance from the cross to the
             nearest edge of the visible map), ranked by{" "}
-            <strong>Popularity</strong> × the Official factor.
+            <strong>Popularity</strong> × the Premier factor.
           </p>
           <p className="mt-2">
             Distance only decides who is on the map, never the order: a place
@@ -347,9 +347,9 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
           On the guest Search bar it only reorders: Google places under it sort
           last, none are removed. Popularity is ln(1 + reviews × stars), never
           normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
-          no Google numbers scores 0 and sinks, never disappears. An Official
-          place&apos;s score is multiplied by its paid tier (Official 2X · 5X ·
-          10X), every other place&apos;s by 1; being Official never saves a place
+          no Google numbers scores 0 and sinks, never disappears. A Premier
+          place&apos;s score is multiplied by its paid tier (Premier 2X · 5X ·
+          10X), every other place&apos;s by 1; being Premier never saves a place
           from the Minimum Popularity.
         </p>
       </Group>
@@ -422,17 +422,17 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
         <>
           <p>
             Home&apos;s Places: <strong>every</strong> Mesita place, ranked in
-            one run by <strong>Proximity × Popularity</strong> × the Official
+            one run by <strong>Proximity × Popularity</strong> × the Premier
             factor from the guest&apos;s device or saved pin, and drawn a page at
             a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
-            Official counts within {2 * h} km (twice the half distance); past
-            it an Official place ranks like any other,
+            Premier counts within {2 * h} km (twice the half distance); past
+            it a Premier place ranks like any other,
             so one in another city never tops Home.
           </p>
           <p className="mt-2">
-            No location: Popularity × the Official factor alone. Mesita places
+            No location: Popularity × the Premier factor alone. Mesita places
             only (no Google call). Chat ranks every ready Mesita place in its
             radius the same way.
           </p>

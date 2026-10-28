@@ -73,12 +73,12 @@ Deno.test("chat: every ready row inside the radius, a stale Selected mark ignore
   assertEquals(new Set(ids(out)), new Set(["ok", "unmarked", "created"]));
 });
 
-Deno.test("chat: an Official place outranks a plain twin by its tier (MESITA-2925)", () => {
+Deno.test("chat: a Premier place outranks a plain twin by its tier (MESITA-2925)", () => {
   const out = rankMesitaPlaces([
     mrow("plain", { google_review_count: 400 }),
-    mrow("official", { google_review_count: 120, boost_tier: 1 }),
+    mrow("premier", { google_review_count: 120, boost_tier: 1 }),
   ], selOpts);
-  assertEquals(ids(out), ["official", "plain"]);
+  assertEquals(ids(out), ["premier", "plain"]);
 });
 
 Deno.test("chat: has no review floor — a two-review place is kept", () => {
@@ -244,14 +244,14 @@ Deno.test("pool: the Family gate drops a row outside the requested families", as
   assertEquals(ids((await selectAreaPool(deps({ families: [], mesitaRows: rows }).d)).places), ["a-dinner"]);
 });
 
-Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the Official factor (MESITA-2909, MESITA-2925)", async () => {
-  const official = mrow("off", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
+Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the Premier factor (MESITA-2909, MESITA-2925)", async () => {
+  const premier = mrow("off", { lat: 25.6702, google_stars_overall: 4.0, google_review_count: 200 });
   // A stale Selected mark scores nothing (MESITA-2925).
   const plain = mrow("plain", { selected: true, lat: 25.6702, google_stars_overall: 4.9, google_review_count: 9000 });
   // 330 km away: kept, only lowered.
   const far = mrow("far", { lat: 28.6, google_stars_overall: 4.9, google_review_count: 9000 });
   const run = (tier: number) =>
-    selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: [{ ...official, boost_tier: tier }, plain, far] }).d);
+    selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: [{ ...premier, boost_tier: tier }, plain, far] }).d);
   const out = await run(3);
   const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
   assertEquals(ids(out.places).length, 3);
@@ -264,7 +264,7 @@ Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the O
     assertEquals(Math.abs(a.final - want) < 1e-12, true);
   }
   assertEquals(ids(out.places)[2], "far");
-  // Official 10X lifts the quieter row over the loved plain one; tier 0 does not.
+  // Premier 10X lifts the quieter row over the loved plain one; tier 0 does not.
   assert(ids(out.places).indexOf("off") < ids(out.places).indexOf("plain"));
   const none = await run(0);
   assert(ids(none.places).indexOf("plain") < ids(none.places).indexOf("off"));
@@ -402,7 +402,7 @@ Deno.test("screen radius: the circle gates the Map's pool and never scores (MESI
   assertEquals(ids(out.places), ["inside"]);
   const a = out.places[0].area;
   assertEquals(a.signals.proximity, null);
-  // final = popularity × the Official factor.
+  // final = popularity × the Premier factor.
   assert(Math.abs(a.final - (a.signals.popularity ?? 0) * a.selectedFactor) < 1e-9);
 });
 

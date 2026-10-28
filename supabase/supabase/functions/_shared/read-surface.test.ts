@@ -220,7 +220,7 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/enrich-start.ts",
   // The Enrichment card's state: content_state and enriched_at, since Render never writes place_research (MESITA-2811).
   "admin-web-get-place-enrichment/index.ts",
-  // Official (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
+  // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
 ];
 

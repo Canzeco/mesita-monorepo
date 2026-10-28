@@ -12,7 +12,7 @@
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
 // corrida", paged, with Proximity's half distance as its knob.) s is the
-// Official factor, the paid tier's ×2 · ×5 · ×10 (area-score.ts). Gates: Family, Radius
+// Premier factor, the paid tier's ×2 · ×5 · ×10 (area-score.ts). Gates: Family, Radius
 // (the Map), the operational ones the read applies (active, ready) and the
 // Popularity floor; no reviews floor (MESITA-2721). The two source switches
 // (Mesita Popularity / Mesita Proximity, 20 + 20, MESITA-2703) and the
@@ -48,7 +48,7 @@ export type AreaSurface = "map" | "catalog";
 /** The numbers a pipeline reads from the blob: Proximity's half distance
  *  (the Catalog only; the Map has none, MESITA-2909) and the Popularity
  *  floor (both pipelines and Chat). Popularity takes no parameter
- *  (MESITA-2710: ln(1 + reviews × stars)); the Official factor is the row's
+ *  (MESITA-2710: ln(1 + reviews × stars)); the Premier factor is the row's
  *  own tier, no knob (MESITA-2925). */
 export function areaSignalParams(
   params: SignalParams,
@@ -342,7 +342,7 @@ export type MesitaOpts = {
   limit?: number;
 };
 
-/** Ready Mesita rows ranked by the Catalog score (Official factor
+/** Ready Mesita rows ranked by the Catalog score (Premier factor
  *  included), inside the radius. */
 export function rankMesitaPlaces<T extends Record<string, unknown>>(
   rows: readonly T[],
@@ -378,7 +378,7 @@ const AREA_MESITA_POOL = 300;
  * Ready Mesita places for a caller that is not a view — the Chat Agent
  * (MESITA-2339). The same pool query (gates pushed down), boxed to
  * `map.radiusKm` around the guest's location when there is one, and the
- * Catalog's score (MESITA-2909), Official factor included. Every ready place
+ * Catalog's score (MESITA-2909), Premier factor included. Every ready place
  * since MESITA-2925 (Selected only before it). No Google call. Null on error.
  */
 export async function areaMesitaPlaces(

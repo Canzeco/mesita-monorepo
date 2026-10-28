@@ -21,9 +21,9 @@ const soonCount = (section: string) =>
 
 const render = (plan: "free" | "premium" | null) => {
   const html = renderToStaticMarkup(<PlanModal plan={plan} />);
-  // Free ends where Premier's row begins.
-  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Premier"'));
-  const premium = html.slice(html.indexOf('data-plan-row="Premier"'));
+  // Free ends where Pro's row begins.
+  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Pro"'));
+  const premium = html.slice(html.indexOf('data-plan-row="Pro"'));
   return { html, free, premium };
 };
 
@@ -39,7 +39,7 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(soonCount(free)).toBe(0);
   });
 
-  it("gives Premier everything in Free today, then its unbuilt perks, each tagged Soon", () => {
+  it("gives Pro everything in Free today, then its unbuilt perks, each tagged Soon", () => {
     expect(perks(premium)).toEqual([
       `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
       "More reservations every month",
@@ -56,19 +56,19 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(premium.match(/lucide-check/g)).toHaveLength(1);
   });
 
-  it("states no price and no hypothesis for Premier — neither is decided", () => {
+  it("states no price and no hypothesis for Pro — neither is decided", () => {
     const words = text(premium).replace(`${FREE_RESERVATIONS_PER_MONTH}`, "");
     expect(words).not.toMatch(/\d/);
     expect(words).not.toMatch(/\$|MX|price|per month|\/mo|\/yr|year/i);
   });
 
-  it("never names Class, VIP, Pro or Diamond", () => {
-    expect(text(html)).not.toMatch(/\b(Class|VIP|Regular|Pro|Diamond|Select)\b/);
+  it("never names Class, VIP, Premier, Premium or Diamond", () => {
+    expect(text(html)).not.toMatch(/\b(Class|VIP|Regular|Premier|Premium|Diamond|Select)\b/);
   });
 
   it("exposes each list as a named list", () => {
     expect(html).toContain('aria-label="Included in Free"');
-    expect(html).toContain('aria-label="Included in Premier"');
+    expect(html).toContain('aria-label="Included in Pro"');
     expect(html.match(/<ul[^>]*role="list"/g)).toHaveLength(2);
   });
 
