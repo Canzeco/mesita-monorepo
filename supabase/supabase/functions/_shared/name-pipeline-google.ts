@@ -145,7 +145,7 @@ function listedToLane(row: ListedRow): LaneItem | null {
     // `enriched_at` set (MESITA-2154): a Created row reads gray here.
     enriched: isEnrichedPlace(row),
     // The Premier tag (MESITA-2925): the paid tier, never `enriched_at`.
-    boostTier: premierTier(row.boost_tier),
+    premierTier: premierTier(row.boost_tier),
     mesitaId: row.id,
     mesitaSlug: row.slug,
     lat: row.lat,
@@ -169,7 +169,7 @@ export function applyResolvedMesitaName(
     // The entity is Mesita's now, so its enrichment fact and its Premier
     // tier travel with it.
     enriched: mesita.enriched,
-    boostTier: mesita.boostTier,
+    premierTier: mesita.premierTier,
     mesitaId: mesita.mesitaId,
     mesitaSlug: mesita.mesitaSlug,
     lat: item.lat ?? mesita.lat,

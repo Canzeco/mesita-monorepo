@@ -58,7 +58,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/admin-ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
-import { boostTierChip, stateBoolChip } from "@/lib/state-vocabulary";
+import { premierTierChip, stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
 // enrichment states. Chips never repeat the row name.
 //
@@ -171,15 +171,15 @@ export function StateCard({ place }: { place: AdminPlace }) {
   // MESITA-2795): paid visibility guests bought, read off `places.boost_tier`
   // (1 · 2 · 3 = 2X · 5X · 10X). Read-only: payers manage it in the consumer
   // app; the Premier view lists them.
-  const boostTier =
+  const premierTier =
     typeof place.boost_tier === "number" ? place.boost_tier : null;
   const premier: boolean | "unknown" =
-    boostTier == null ? "unknown" : boostTier > 0;
+    premierTier == null ? "unknown" : premierTier > 0;
   const premierDetail =
     premier === "unknown"
       ? "Couldn't read the Premier tier."
       : premier
-        ? `Premier ${boostTierChip(boostTier)}: guests pay for its visibility and see it marked Premier. Payers are on the Premier view.`
+        ? `Premier ${premierTierChip(premierTier)}: guests pay for its visibility and see it marked Premier. Payers are on the Premier view.`
         : "Not Premier. Guests make a place Premier from its ⋯ menu.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
@@ -219,7 +219,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
         <StateRow
           name="Premier"
           on={premier === true}
-          chip={boostTierChip(boostTier)}
+          chip={premierTierChip(premierTier)}
           detail={premierDetail}
         />
         <StateRow

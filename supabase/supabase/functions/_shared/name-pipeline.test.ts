@@ -79,7 +79,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
       secondaryText: "Mesita address",
       state: "web_listed",
       enriched: true,
-      boostTier: 2,
+      premierTier: 2,
       mesitaId: "m-1",
       mesitaSlug: "mesita-override",
     }),
@@ -89,7 +89,7 @@ Deno.test("applyResolvedMesitaName keeps Mesita places.name, not the Google labe
   assertEquals(out.mesitaId, "m-1");
   assertEquals(out.enriched, true);
   // Premier's tier travels with the entity too (MESITA-2925).
-  assertEquals(out.boostTier, 2);
+  assertEquals(out.premierTier, 2);
 });
 
 Deno.test("mergeNameDeepQueries: Autocomplete then Text", () => {
@@ -358,7 +358,7 @@ Deno.test("admin's place picker runs the deep lane, places only", async () => {
 });
 
 Deno.test("toWire: Premier's tier rides every row as boost_tier, 0 when absent; no Selected (MESITA-2925)", () => {
-  const paid = toWire(item({ placeId: "m", mainText: "Paid", mesitaId: "m1", boostTier: 3 }));
+  const paid = toWire(item({ placeId: "m", mainText: "Paid", mesitaId: "m1", premierTier: 3 }));
   assertEquals(paid.boost_tier, 3);
   assertEquals("selected" in paid, false);
   assertEquals(toWire(item({ placeId: "g", mainText: "Google" })).boost_tier, 0);

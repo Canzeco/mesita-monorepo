@@ -6,7 +6,7 @@ import {
   type AreaCandidate,
   type AreaContext,
   areaScore,
-  boostReachKm,
+  premierReachKm,
   familyGate,
   insideBounds,
   rankArea,
@@ -208,7 +208,7 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
 Deno.test("the Popularity floor drops any place under it, Google or Mesita, Premier or not (MESITA-2714)", () => {
   const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
   // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, boostTier: 3 });
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 3 });
   const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
   const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
   assertEquals(areaScore(thin, ctx).gates.popularity, 0);
@@ -223,7 +223,7 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Prem
 Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
   // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 2 ≈ 10.6,
   // beats ln(1 + 3000 × 4.5) ≈ 9.51.
-  const paid = cand({ id: "paid", rating: 4, reviewCount: 50, boostTier: 1 });
+  const paid = cand({ id: "paid", rating: 4, reviewCount: 50, premierTier: 1 });
   const loved = cand({ id: "loved", rating: 4.5, reviewCount: 3000, source: "google" });
   const plain = cand({ id: "plain", rating: 4, reviewCount: 50 });
   assertEquals(areaScore(paid, CTX).selectedFactor, 2);
@@ -234,7 +234,7 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   // No location: Popularity × s.
   assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.log1p(200), 1e-9);
   // It never saves a place from the Popularity floor.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, boostTier: 3 });
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 3 });
   assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
 });
 
@@ -248,13 +248,13 @@ const CATALOG: AreaContext = {
   halfKm: 5,
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
-  { label: "Premier 2X", over: { source: "mesita", boostTier: 1 }, s: 2 },
-  { label: "Premier 5X", over: { source: "mesita", boostTier: 2 }, s: 5 },
-  { label: "Premier 10X", over: { source: "mesita", boostTier: 3 }, s: 10 },
+  { label: "Premier 2X", over: { source: "mesita", premierTier: 1 }, s: 2 },
+  { label: "Premier 5X", over: { source: "mesita", premierTier: 2 }, s: 5 },
+  { label: "Premier 10X", over: { source: "mesita", premierTier: 3 }, s: 10 },
 ];
 
 Deno.test("the Catalog reach is 2 × the half distance (MESITA-2920)", () => {
-  assertEquals(boostReachKm(5), 10);
+  assertEquals(premierReachKm(5), 10);
 });
 
 Deno.test("Catalog: Premier counts inside the reach, 1 past it (MESITA-2920)", () => {
@@ -269,11 +269,11 @@ Deno.test("Catalog: Premier counts inside the reach, 1 past it (MESITA-2920)", (
     assertAlmostEquals(outside.final, plainOutside.final, 1e-9, label);
   }
   // A 10x place 300 km away no longer beats a plain local one.
-  const farPaid = cand({ id: "far", source: "mesita", boostTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 5000 });
+  const farPaid = cand({ id: "far", source: "mesita", premierTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 5000 });
   const local = cand({ id: "local", source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.5, reviewCount: 50 });
   assertEquals(rankArea([farPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["local", "far"]);
   // No coordinates: no distance, so out of reach.
-  assertEquals(areaScore(cand({ boostTier: 3, lat: null, lng: null }), CATALOG).selectedFactor, 1);
+  assertEquals(areaScore(cand({ premierTier: 3, lat: null, lng: null }), CATALOG).selectedFactor, 1);
 });
 
 Deno.test("the Map, Chat and no location keep the full factor at any distance (MESITA-2920)", () => {

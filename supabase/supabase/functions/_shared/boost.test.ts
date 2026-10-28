@@ -90,10 +90,10 @@ Deno.test("boost: the period is read from the item when the top level lacks it",
 });
 
 Deno.test("premier: the factor is the tier's number; a Google stub is never Premier (MESITA-2925)", () => {
-  assertEquals(premierFactor({ source: "mesita", boostTier: 0 }), 1);
-  assertEquals(premierFactor({ source: "mesita", boostTier: 1 }), 2);
-  assertEquals(premierFactor({ source: "mesita", boostTier: 2 }), 5);
-  assertEquals(premierFactor({ source: "mesita", boostTier: 3 }), 10);
+  assertEquals(premierFactor({ source: "mesita", premierTier: 0 }), 1);
+  assertEquals(premierFactor({ source: "mesita", premierTier: 1 }), 2);
+  assertEquals(premierFactor({ source: "mesita", premierTier: 2 }), 5);
+  assertEquals(premierFactor({ source: "mesita", premierTier: 3 }), 10);
   assertEquals(premierFactor({ source: "mesita" }), 1);
-  assertEquals(premierFactor({ source: "google", boostTier: 3 }), 1);
+  assertEquals(premierFactor({ source: "google", premierTier: 3 }), 1);
 });

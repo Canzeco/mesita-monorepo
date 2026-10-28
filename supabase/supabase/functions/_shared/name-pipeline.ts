@@ -93,7 +93,7 @@ export type LaneItem = {
   /** Premier (MESITA-2925): the row's paid tier, `places.boost_tier`
    *  (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); 1 or more is Premier. Absent
    *  on a Google-only row (0 on the wire). */
-  boostTier?: number;
+  premierTier?: number;
   /**
    * Absent = "place". Only Autocomplete rows are classified; the Text and
    * Mesita lanes are places by construction. A Location never carries
@@ -638,7 +638,7 @@ export function toWire(item: LaneItem) {
     state: item.state,
     enriched: item.enriched === true,
     // Premier's tier, 0..3 (MESITA-2925); 0 for a Google-only row.
-    boost_tier: premierTier(item.boostTier),
+    boost_tier: premierTier(item.premierTier),
     // `kind` rides Location rows only — absent reads "place", and the
     // Places path stays byte-identical for a place query.
     ...(item.kind === "location"
