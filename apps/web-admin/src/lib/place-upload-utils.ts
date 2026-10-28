@@ -85,7 +85,7 @@ export function validateMenuUploadFile(file: File): string | null {
 }
 
 /**
- * Shrink a menu image to 2048px on its longest edge as WebP (MESITA-2936);
+ * Shrink a menu image to 2048px on its longest edge as JPEG (MESITA-2936/2938);
  * PDFs pass through. Returns the file to upload, or an error when even the
  * shrunk file is over the 8 MB limit.
  */
