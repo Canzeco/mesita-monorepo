@@ -709,13 +709,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [],
   );
 
+  // No toast on success: the profile opening is the payoff, and its Enrich
+  // tab asks for votes (design review D7).
   const onGenerated = useCallback(
-    (opened: OpenedGooglePlace, target: GenerateTarget) => {
+    (opened: OpenedGooglePlace) => {
       setGenerateOpen(false);
       resetSearchSession();
-      if (opened.created) {
-        toast.success(`${target.name} is on Mesita. Vote to enrich its profile.`);
-      }
       openPlaceHref(opened.href);
     },
     [openPlaceHref, resetSearchSession],

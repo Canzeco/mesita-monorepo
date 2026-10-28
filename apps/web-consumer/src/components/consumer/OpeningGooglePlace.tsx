@@ -22,7 +22,6 @@ import {
   readPendingPlaceRaw,
 } from "@/lib/pending-place";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
 import { getOrCreateGooglePlace } from "@/lib/use-open-google-place";
 import { errMsg } from "@/lib/utils";
 
@@ -63,9 +62,8 @@ export function OpeningGooglePlace({
         const opened = await getOrCreateGooglePlace(supabase, gid);
         clearPendingPlace(gid);
         if (!live) return;
-        if (opened.created) {
-          toast.success(`${title ?? "This place"} is on Mesita. Vote to enrich its profile.`);
-        }
+        // No toast: the profile opening is the payoff, and its Enrich tab
+        // asks for votes (design review D7).
         // The slide-over replaces itself in place. A hard-loaded page must
         // load the real profile as a page: a soft replace from here lets the
         // (.)place intercept paint the profile as a modal over this screen,
@@ -79,8 +77,6 @@ export function OpeningGooglePlace({
     return () => {
       live = false;
     };
-    // The name only decorates the toast; a retry is `attempt`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gid, router, supabase, variant, attempt]);
 
   const retry = useCallback(() => {
@@ -95,6 +91,7 @@ export function OpeningGooglePlace({
       address={card?.address ?? null}
       error={error}
       onRetry={retry}
+      attempt={attempt}
     />
   );
 }

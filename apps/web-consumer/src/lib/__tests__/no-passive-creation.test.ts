@@ -138,10 +138,14 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     ]);
     // Search's Generate creates on the confirm tap (Pato, MESITA-2935:
     // "before create, also show a confirmation modal"), never on render.
+    // Its one effect moves focus; no effect, memo or layout effect creates.
     const dialog = code(read("components/consumer/search/GeneratePlaceDialog.tsx"));
     for (const hook of ["useEffect", "useMemo", "useLayoutEffect"]) {
-      expect(dialog, hook).not.toContain(`${hook}(`);
+      for (const block of callBlocks(dialog, hook)) {
+        expect(block, hook).not.toContain("getOrCreateGooglePlace");
+      }
     }
+    expect(dialog).toContain("await getOrCreateGooglePlace(supabase, target.gid)");
     const cards = code(read("lib/use-card-save-share.ts"));
     for (const hook of ["useEffect", "useMemo", "useLayoutEffect"]) {
       expect(cards, hook).not.toContain(`${hook}(`);

@@ -2,17 +2,29 @@
 
 // GENERATE, CONFIRMED, AWAITED (Pato, MESITA-2935: "before create, also show
 // a confirmation modal … create the place, and after the place is created
-// open the profile"). A Search row's Generate opens this dialog: the place's
-// name and address, Cancel and Generate profile. Generate turns the dialog
-// into the generating view and awaits get-or-create (one shared request per
-// Google Place ID); landed, the parent opens the REAL profile. The opening
-// route's draft profile never shows from Search any more. A refusal stays
-// here, with Try again. The tap creates, never a render or an effect.
+// open the profile"). A Search row's Generate opens this dialog: the
+// sparkles tile, "Generate a profile?", one line, the place's name and
+// address, Cancel and Generate. The tap creates, never a render or an
+// effect; landed, the parent opens the REAL profile. The opening route's
+// generating screen never shows from Search.
+//
+// ONE CARD, THREE STATES, ONE HEIGHT (design review, 2026-10-28). Confirm,
+// generating and error share the tile, the title line, the body line and the
+// place box; only the words change. The footer is a fixed 48px slot whose
+// two layers cross-fade: the button row (confirm: Cancel · Generate; error:
+// Cancel · Try again) and the step line (GenerateSteps, about ten seconds,
+// measured). Nothing jumps (D6); the icon stays still (D8); the error keeps
+// two full-size buttons (D10). Focus moves with the state: Generate on
+// open, the card while it runs (the status is announced), Try again on an
+// error (D11). While the create runs a backdrop tap or Esc does nothing.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPin, Sparkles } from "lucide-react";
 
-import { GeneratingPlace } from "@/components/consumer/GeneratingPlace";
+import {
+  GenerateSteps,
+  GenerateTile,
+} from "@/components/consumer/GeneratingPlace";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -33,6 +45,8 @@ export type GenerateTarget = {
   address?: string | null;
 };
 
+type Phase = "confirm" | "generating" | "error";
+
 export function GeneratePlaceDialog({
   open,
   target,
@@ -43,10 +57,8 @@ export function GeneratePlaceDialog({
   /** Kept after close so the exit fade still has its text. */
   target: GenerateTarget | null;
   onClose: () => void;
-  onGenerated: (opened: OpenedGooglePlace, target: GenerateTarget) => void;
+  onGenerated: (opened: OpenedGooglePlace) => void;
 }) {
-  // While get-or-create runs the dialog holds: a stray backdrop tap or Esc
-  // must not drop the guest out of a create that is about to open a profile.
   const [busy, setBusy] = useState(false);
   return (
     <LocalDialog
@@ -55,7 +67,7 @@ export function GeneratePlaceDialog({
       ariaLabel="Generate a profile"
     >
       {target ? (
-        // A fresh body per open: no confirm/generating state carries over.
+        // A fresh body per place: no state carries over between opens.
         <GenerateBody
           key={target.gid}
           target={target}
@@ -76,25 +88,40 @@ function GenerateBody({
 }: {
   target: GenerateTarget;
   onClose: () => void;
-  onGenerated: (opened: OpenedGooglePlace, target: GenerateTarget) => void;
+  onGenerated: (opened: OpenedGooglePlace) => void;
   onBusy: (busy: boolean) => void;
 }) {
   const supabase = useBrowserSupabase();
-  const [generating, setGenerating] = useState(false);
+  const [phase, setPhase] = useState<Phase>("confirm");
   const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const run = useRef(0);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const primaryRef = useRef<HTMLButtonElement | null>(null);
+
+  // Focus follows the state (D11). The dialog fades in over a frame, so the
+  // first focus waits one.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      if (phase === "generating") cardRef.current?.focus();
+      else primaryRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
 
   const generate = async () => {
     const mine = ++run.current;
-    setGenerating(true);
+    setPhase("generating");
     setError(null);
+    setAttempt((n) => n + 1);
     onBusy(true);
     try {
       const opened = await getOrCreateGooglePlace(supabase, target.gid);
-      if (run.current === mine) onGenerated(opened, target);
+      if (run.current === mine) onGenerated(opened);
     } catch (err) {
       if (run.current === mine) {
         setError(errMsg(err, "Couldn't generate that profile right now."));
+        setPhase("error");
       }
     } finally {
       if (run.current === mine) onBusy(false);
@@ -109,43 +136,29 @@ function GenerateBody({
     onClose();
   };
 
-  if (generating) {
-    return (
-      <div className="py-8" data-generate-place="generating">
-        <GeneratingPlace
-          name={target.name}
-          address={target.address}
-          error={error}
-          onRetry={() => void generate()}
-        />
-        {error ? (
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={cancel}
-              className="text-muted-foreground hover:text-foreground text-sm font-semibold"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : null}
-      </div>
-    );
-  }
+  const running = phase === "generating";
+  const failed = phase === "error";
 
   return (
     <div
-      className="flex flex-col items-center px-6 pt-7 pb-6 text-center"
-      data-generate-place="confirm"
+      ref={cardRef}
+      tabIndex={-1}
+      className="flex flex-col items-center px-6 pt-7 pb-6 text-center outline-none"
+      data-generate-place={phase}
     >
-      <span className="bg-foreground text-paper flex h-14 w-14 items-center justify-center rounded-2xl">
-        <Sparkles className="h-6 w-6" strokeWidth={2} aria-hidden />
-      </span>
-      <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>Generate a profile?</h2>
-      <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
-        This place isn&apos;t on Mesita yet. We&apos;ll build its profile from
-        Google, and anyone can vote to enrich it.
-      </p>
+      <GenerateTile muted={failed} />
+      <div role="status" aria-live="polite" aria-busy={running}>
+        <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
+          {running
+            ? "Generating profile…"
+            : failed
+              ? "Couldn't generate this profile"
+              : "Generate a profile?"}
+        </h2>
+        <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
+          {failed ? error : "We'll build its profile from Google."}
+        </p>
+      </div>
       <div className="bg-muted mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left">
         <MapPin
           className="text-muted-foreground h-5 w-5 shrink-0"
@@ -163,23 +176,44 @@ function GenerateBody({
           ) : null}
         </span>
       </div>
-      <div className="mt-5 flex w-full gap-2">
-        <button
-          type="button"
-          onClick={cancel}
-          className={SHEET_CANCEL_BUTTON_CLASS}
+
+      {/* The fixed footer slot: buttons and steps cross-fade in place. */}
+      <div className="relative mt-5 h-12 w-full">
+        <div
+          className={cn(
+            "absolute inset-0 flex gap-2 transition-opacity duration-200 motion-reduce:transition-none",
+            running ? "pointer-events-none opacity-0" : "opacity-100",
+          )}
+          aria-hidden={running}
+          inert={running}
         >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={() => void generate()}
-          className={cn(PRIMARY_BUTTON_CLASS, "h-auto flex-1 py-3")}
-          data-generate-place-confirm
+          <button
+            type="button"
+            onClick={cancel}
+            className={SHEET_CANCEL_BUTTON_CLASS}
+          >
+            Cancel
+          </button>
+          <button
+            ref={primaryRef}
+            type="button"
+            onClick={() => void generate()}
+            className={cn(PRIMARY_BUTTON_CLASS, "h-auto flex-1 py-3")}
+            data-generate-place-confirm
+          >
+            <Sparkles className="h-4 w-4" aria-hidden />
+            {failed ? "Try again" : "Generate"}
+          </button>
+        </div>
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none",
+            running ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+          aria-hidden={!running}
         >
-          <Sparkles className="h-4 w-4" aria-hidden />
-          Generate
-        </button>
+          {running ? <GenerateSteps key={attempt} /> : null}
+        </div>
       </div>
     </div>
   );
