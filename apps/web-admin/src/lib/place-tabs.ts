@@ -25,7 +25,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   reviews: "Reviews",
   preview: "Preview",
   admin: "Admin",
-  boost: "Partner",
+  boost: "Boost",
 };
 
 /** A view's address. No organization rides along any more (MESITA-1807), and

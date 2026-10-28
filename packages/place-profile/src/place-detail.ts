@@ -55,11 +55,11 @@ export type PlaceDetail = {
   /** Enricher finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
   /** Boost (MESITA-2789): the paid tier, 0 none · 1 2x · 2 5x · 3 10x
-   *  (`places.boost_tier`). Above 0 the summary shows Partner. Absent on
+   *  (`places.boost_tier`). Above 0 the summary shows Boosted. Absent on
    *  callers that never read it. */
   boost_tier?: number;
   /** Mesita Selected (MESITA-2707): the operator's own pick, `places.selected`,
-   *  never bought. The Partner tab shows it on the same ladder (MESITA-2869). */
+   *  never bought. The Boost tab shows it on the same ladder (MESITA-2869). */
   selected?: boolean;
   /** Consumer vote count. Progress toward the Crenup threshold. */
   request_count: number;

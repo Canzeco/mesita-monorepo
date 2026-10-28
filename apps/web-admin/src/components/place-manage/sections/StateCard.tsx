@@ -194,12 +194,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
     typeof place.boost_tier === "number" ? place.boost_tier : null;
   const boosted: boolean | "unknown" =
     boostTier == null ? "unknown" : boostTier > 0;
-  const boostLabel = ["", "Partner 2x", "Partner 5x", "Partner 10x"][boostTier ?? 0] ?? "Partner";
+  const boostLabel = ["", "Boost 2x", "Boost 5x", "Boost 10x"][boostTier ?? 0] ?? "Boost";
   const boostedDetail =
     boosted === "unknown"
-      ? "Couldn't read the Partner tier."
+      ? "Couldn't read the Boost tier."
       : boosted
-        ? `${boostLabel}: guests pay for its visibility. Marked Partner on cards and pins; never Selected. Payers are on Partner.`
+        ? `${boostLabel}: guests pay for its visibility. Marked Boosted on cards, ⚡ on pins; never Selected. Payers are on Boost.`
         : "Nobody pays to boost it. Guests buy Boost from the place's ⋯ menu.";
   const enrichingDetail = enriching
     ? "A run is in progress. Nothing is saved until the profile is finished."
@@ -244,7 +244,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
           action={<SelectedToggle place={place} selected={selected} />}
         />
         <StateRow
-          name="Partner"
+          name="Boost"
           on={boosted === true}
           chip={boostTierChip(boostTier)}
           detail={boostedDetail}
