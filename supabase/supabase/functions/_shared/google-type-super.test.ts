@@ -74,7 +74,7 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(GOOGLE_SEARCH_TYPES.dinner[0], "restaurant");
   assertEquals(GOOGLE_SEARCH_TYPES.dinner.length, 50);
   assertEquals(GOOGLE_SEARCH_TYPES.coffee, [
-    "cafe", "cat_cafe", "coffee_roastery", "coffee_shop", "coffee_stand", "dog_cafe", "juice_shop", "tea_house",
+    "cafe", "cat_cafe", "coffee_roastery", "coffee_shop", "coffee_stand", "dog_cafe", "internet_cafe", "juice_shop", "tea_house", "tea_store",
   ]);
   assertEquals("go_out" in GOOGLE_SEARCH_TYPES, false);
   assertEquals(GOOGLE_SEARCH_TYPES.undefined, []);
@@ -88,17 +88,23 @@ Deno.test("search batteries stay inside Google's API caps", () => {
   assertEquals(nearbyTypesForSupers(["other", "nope"]), []);
 });
 
-Deno.test("no gym, studio, spa, salon or barber rides a battery (MESITA-2468)", () => {
+Deno.test("no gym, court, salon or barber rides a battery (MESITA-2468, kept by MESITA-2888)", () => {
   const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
-  for (const t of ["gym", "fitness_center", "yoga_studio", "sports_club", "swimming_pool", "spa", "massage", "barber_shop", "hair_salon", "nail_salon", "beauty_salon"]) {
+  for (const t of ["gym", "fitness_center", "sports_club", "tennis_court", "barber_shop", "hair_salon", "nail_salon", "beauty_salon"]) {
     assertEquals(all.has(t), false, t);
   }
 });
 
-Deno.test("no attraction rides a battery (MESITA-2438)", () => {
+Deno.test("attractions, spas and fun venues ride a battery (MESITA-2438 and 2468 reversed by MESITA-2888)", () => {
+  assertEquals(GOOGLE_SEARCH_TYPES.tourist[0], "tourist_attraction");
+  assertEquals(GOOGLE_SEARCH_TYPES.fun[0], "bowling_alley");
+  assertEquals(GOOGLE_SEARCH_TYPES.cinema[0], "movie_theater");
+  assertEquals(GOOGLE_SEARCH_TYPES.casino, ["casino"]);
+  assertEquals(GOOGLE_SEARCH_TYPES.spa[0], "spa");
+  assertEquals(GOOGLE_SEARCH_TYPES.family[0], "family_restaurant");
   const all = new Set(Object.values(GOOGLE_SEARCH_TYPES).flat());
-  for (const t of ["tourist_attraction", "museum", "park", "zoo", "bowling_alley", "movie_theater", "aquarium", "amusement_park"]) {
-    assertEquals(all.has(t), false, t);
+  for (const t of ["museum", "park", "zoo", "aquarium", "amusement_park", "golf_course", "swimming_pool", "massage", "sauna"]) {
+    assertEquals(all.has(t), true, t);
   }
 });
 
@@ -106,9 +112,10 @@ Deno.test("every family's battery leads the every-family list, inside Google's 5
   assertEquals(EVERY_FAMILY_TYPES.length, 50);
   assertEquals(new Set(EVERY_FAMILY_TYPES).size, 50);
   const leads = Object.entries(GOOGLE_SEARCH_TYPES).filter(([k]) => k !== "undefined").map(([, v]) => v[0]);
-  assertEquals(EVERY_FAMILY_TYPES.slice(0, 50), leads);
+  assertEquals(leads.length, 40);
+  assertEquals(EVERY_FAMILY_TYPES.slice(0, 40), leads);
   const covered = Object.values(GOOGLE_SEARCH_TYPES).filter((types) => types.length > 0);
-  assertEquals(covered.length, 50);
+  assertEquals(covered.length, 40);
 });
 
 Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () => {
@@ -116,7 +123,7 @@ Deno.test("SUPER_PARAM_KEYS is the guest families, minus the empty battery", () 
     .filter(([, types]) => types.length > 0)
     .map(([slug]) => slug);
   assertEquals(new Set(SUPER_PARAM_KEYS), new Set(withBattery));
-  assertEquals(SUPER_PARAM_KEYS.length, 50);
+  assertEquals(SUPER_PARAM_KEYS.length, 40);
   assertEquals((SUPER_PARAM_KEYS as readonly string[]).includes("undefined"), false);
 });
 

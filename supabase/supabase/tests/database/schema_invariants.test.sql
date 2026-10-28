@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(182);
+select plan(185);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -801,8 +801,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  51::bigint,
-  'place family catalog is fifty guest families plus Undefined (MESITA-2834)'
+  41::bigint,
+  'place family catalog is forty guest families plus Undefined (MESITA-2888)'
 );
 
 select is(
@@ -813,15 +813,15 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','brunch','bakery','sweet','gelato','healthy','vegan','quick_bite','tacos','burgers','pizza','sandwiches','chicken','wings','kebab','dinner','mexican','steak','bbq','seafood','italian','sushi','japanese','ramen','noodles','chinese','dumplings','korean','thai','indian','asian','arabic','mediterranean','spanish','french','european','american','latin','fancy','drinks','beer','cocktails','wine','sports','hookah','night_out','nightclub','music','karaoke',
+  array['coffee','breakfast','bakery','sweet','healthy','quick_bite','tacos','burgers','pizza','chicken','sushi','mexican','steak','seafood','italian','japanese','chinese','asian','indian','arabic','european','american','dinner','fancy','family','drinks','beer','cocktails','wine','sports','hookah','night_out','nightclub','music','karaoke','fun','cinema','casino','spa','tourist',
         'undefined']::text[],
-  'family catalog order is the fifty guest rails, Undefined last (MESITA-2834)'
+  'family catalog order is the forty guest rails, Undefined last (MESITA-2888)'
 );
 
 select is(
   (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['breakfast','brunch']::text[],
-  'breakfast is Breakfast and Brunch (MESITA-2834)'
+  array['breakfast']::text[],
+  'breakfast is Breakfast alone: Brunch folded into it (MESITA-2888)'
 );
 
 select is(
@@ -833,8 +833,8 @@ select is(
 select is(
   (select array_agg(slug order by slug) from public.place_categories
     where 'night_out' = any(family_keys) and slug <> 'night_club'),
-  array['billiards','board_game_cafe','cocktail_bar','escape_room','karaoke']::text[],
-  'Nightlife took Go out whole, a cocktail bar is a night out, and no attraction is (MESITA-2438, MESITA-2486, MESITA-2834)'
+  array['cocktail_bar','karaoke']::text[],
+  'Night keeps karaoke and the cocktail bar; billiards, escape rooms and board-game cafes moved to Fun (MESITA-2486, MESITA-2888)'
 );
 
 select ok(
@@ -864,8 +864,8 @@ select ok(
 select is(
   (select count(*)::bigint from public.place_categories
     where cardinality(family_keys) = 2),
-  24::bigint,
-  'twenty-four categories sit on two families (MESITA-2834)'
+  37::bigint,
+  'thirty-seven categories sit on two families (MESITA-2888)'
 );
 
 select is(
@@ -885,9 +885,29 @@ select is(
 select is(
   (select array_agg(distinct k) from public.place_categories,
      unnest(family_keys) as k
-    where slug in ('gym','padel_club','spa','barbershop','hair_salon','yoga_studio')),
+    where slug in ('gym','padel_club','barbershop','hair_salon','crossfit_box')),
   array['undefined']::text[],
-  'a gym, a padel club, a spa, a barbershop, a salon and a yoga studio are in no family (MESITA-2468)'
+  'a gym, a padel club, a barbershop, a salon and a crossfit box are still in no family (MESITA-2468, kept by MESITA-2888)'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.place_categories
+    where family_keys = array['spa']::text[]),
+  array['hot_springs','massage','sauna','spa','temazcal','wellness_center','yoga_studio']::text[],
+  'Spa is a rail: spas, massage, saunas, temazcales and hot springs (MESITA-2888)'
+);
+
+select is(
+  (select array_agg(slug order by slug) from public.place_categories
+    where 'fun' = any(family_keys)),
+  array['amusement_park','arcade','axe_throwing','billiards','board_game_cafe','bowling_alley','escape_room','go_kart','golf_course','laser_tag','mini_golf','swimming_pool','trampoline_park','water_park']::text[],
+  'Fun is what a group does with its hands: bowling, arcades, karts, Topgolf (MESITA-2888)'
+);
+
+select is(
+  (select family_keys from public.catalog_membership where slug = 'tourist_attraction'),
+  array['tourist']::text[],
+  'a tourist attraction is Tourist: attractions are rails again (MESITA-2438 reversed by MESITA-2888)'
 );
 
 select is(

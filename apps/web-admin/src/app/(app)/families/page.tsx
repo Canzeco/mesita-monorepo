@@ -11,7 +11,7 @@ export default async function FamiliesPage() {
       <PageHeader
         eyebrow="Operations · Atlas"
         title="Atlas"
-        description="Each Google category maps to a list of families: one, several or none, never a primary and a secondary. A place sits in every family of its categories. The fifty families are always on. The table is that join, loaded from the catalog. Mesita Tags are below. Places are not listed."
+        description="Each Google category maps to a list of families: one, several or none, never a primary and a secondary. A place sits in every family of its categories. The forty families are always on. The table is that join, loaded from the catalog. Mesita Tags are below. Places are not listed."
       />
       {map.ok ? (
         <FamiliesExplorer map={map} />
