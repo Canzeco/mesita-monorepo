@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MessageSquare } from "lucide-react";
+import { ChevronDown, MessageSquare } from "lucide-react";
 
 import { GoogleLogo } from "../BrandLogos";
 import { ReviewCard } from "../ReviewCard";
@@ -34,6 +34,14 @@ import { OutboundLink } from "./location-hours";
 // newest 100, render/src/reviews.ts), ties newest first. Google's own
 // "relevant" order would need a second scrape, so it is not offered.
 // The red G moved off every row to that line: it says the source once.
+//
+// NO PILL (Pato, MESITA-2956: "the newest / best / worst sorting looks like
+// shit"). The white pill was a native select, so the browser drew its own
+// chevron jammed against the pill's edge. Now the select draws nothing of
+// its own (appearance-none): "Newest" and a lucide chevron in the line's own
+// type, on the grey page. Still a native select, so a phone opens its own
+// picker; the 44px tap height is padding, cancelled by negative margin so
+// the line keeps its height.
 //
 // ONE WHITE CARD (Pato, MESITA-2944: "white backgrounf for the reviews with
 // a small gray border beteween them"). The reviews sit in one white card on
@@ -130,21 +138,28 @@ export function GoogleReviewsBox({
         <GoogleLogo tiny />
         <span className="flex-1">Names hidden for privacy</span>
         {sorted.length > 1 && (
-          <select
-            aria-label="Sort reviews"
-            value={sort}
-            onChange={(e) => {
-              setSort(e.target.value as ReviewSort);
-              setShown(REVIEW_PAGE);
-            }}
-            className="bg-card text-foreground -my-2 h-8 cursor-pointer rounded-full px-3 text-xs font-semibold"
-          >
-            {(Object.keys(SORT_LABEL) as ReviewSort[]).map((key) => (
-              <option key={key} value={key}>
-                {SORT_LABEL[key]}
-              </option>
-            ))}
-          </select>
+          <div className="text-foreground relative -my-3.5 flex items-center">
+            <select
+              aria-label="Sort reviews"
+              value={sort}
+              onChange={(e) => {
+                setSort(e.target.value as ReviewSort);
+                setShown(REVIEW_PAGE);
+              }}
+              className="h-11 cursor-pointer appearance-none bg-transparent pr-5 pl-3 text-xs font-semibold"
+            >
+              {(Object.keys(SORT_LABEL) as ReviewSort[]).map((key) => (
+                <option key={key} value={key}>
+                  {SORT_LABEL[key]}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              aria-hidden
+              className="pointer-events-none absolute right-0 size-3.5"
+              strokeWidth={2.5}
+            />
+          </div>
         )}
       </div>
       <div className="bg-card divide-border mt-3 flex flex-col divide-y overflow-hidden rounded-xl">
