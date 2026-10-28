@@ -9,16 +9,16 @@ import { Plug } from "lucide-react";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PerkList } from "@/components/consumer/me/perk-list";
-import { IconCircle, SettingsGroup } from "./settings-rows";
+import { IconChip, SettingsGroup } from "./settings-rows";
 
 export function ConnectorModal() {
   return (
     <MeScreen title="Connector">
       <SettingsGroup>
         <div className="flex items-start gap-3 px-4 py-3" data-connector>
-          <IconCircle tint="muted">
+          <IconChip>
             <Plug className="h-[18px] w-[18px]" />
-          </IconCircle>
+          </IconChip>
           <div className="min-w-0 flex-1">
             <span className="block text-sm font-semibold">
               Mesita in your AI assistant

@@ -9,7 +9,7 @@ import {
   apiFetchConsumerProfile,
   apiUpdateConsumerProfile,
 } from "@/lib/api/profile";
-import { IconCircle, Switch } from "@/components/consumer/me/settings-rows";
+import { IconChip, Switch } from "@/components/consumer/me/settings-rows";
 import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 
 // "PUBLIC PROFILE" (Pato, MESITA-2590: "a Settings switch where private
@@ -65,9 +65,9 @@ export function SocialNameRow() {
       className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60"
       data-social-name-switch
     >
-      <IconCircle tint="muted">
+      <IconChip>
         <UserRound className="h-[18px] w-[18px]" />
-      </IconCircle>
+      </IconChip>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">
           {PUBLIC_PROFILE_SWITCH.label}

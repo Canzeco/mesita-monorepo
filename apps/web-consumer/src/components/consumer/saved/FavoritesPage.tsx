@@ -36,8 +36,8 @@ import { useUserLocation } from "@/lib/use-user-location";
 // block parent collapses EmptyState.
 
 const PANE =
-  "bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
-const LIST = "flex flex-col gap-2 px-3 pt-3 pb-6";
+  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
+const LIST = "flex flex-col gap-2 px-5 pt-5 pb-6";
 
 /** Three of Search's own loading cards (RailCardSkeleton, the RailCard
  *  frame, photo, rows and Save · Share) on the list's step: what this list
@@ -54,7 +54,7 @@ function FavoritesListSkeleton() {
   );
 }
 
-/** The Favorites pane while the route loads: the white pane and the list. */
+/** The Favorites pane while the route loads: the pane and the list. */
 export function FavoritesSkeleton() {
   return (
     <div className={PANE}>

@@ -16,11 +16,23 @@
 import { Crown, UsersRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { CLASS_ROWS, type ClassRowWords } from "@/components/consumer/me/class-words";
+import {
+  CLASS_ROWS,
+  type ClassRowWords,
+} from "@/components/consumer/me/class-words";
 import { PerkList } from "@/components/consumer/me/perk-list";
-import { formatVipUntil, type GuestClass, type VipDetails } from "@/lib/guest-standing";
+import {
+  formatVipUntil,
+  type GuestClass,
+  type VipDetails,
+} from "@/lib/guest-standing";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
-import { IconCircle, RowDivider, SettingsGroup } from "./settings-rows";
+import {
+  CurrentPill,
+  IconChip,
+  RowDivider,
+  SettingsGroup,
+} from "./settings-rows";
 
 function ClassRow({
   title,
@@ -37,22 +49,28 @@ function ClassRow({
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3" data-class-row={title}>
-      <IconCircle tint={mine ? "primary" : "muted"}>{icon}</IconCircle>
+      <IconChip>{icon}</IconChip>
       <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{title}</span>
-        {mine && (
-          <span className="text-foreground type-label block font-medium" data-class-mine="">
-            Your class.
-          </span>
-        )}
-        <span className="text-muted-foreground type-label block">{subtitle}</span>
+        <span className="block text-sm font-semibold">
+          {title}
+          {mine && <CurrentPill data-class-mine="" />}
+        </span>
+        <span className="text-muted-foreground type-label block">
+          {subtitle}
+        </span>
         {mine && vip?.partner && (
-          <span className="text-foreground type-label block" data-class-vip-partner="">
+          <span
+            className="text-foreground type-label block"
+            data-class-vip-partner=""
+          >
             Through {vip.partner}.
           </span>
         )}
         {mine && vip?.until && (
-          <span className="text-foreground type-label block" data-class-vip-until="">
+          <span
+            className="text-foreground type-label block"
+            data-class-vip-until=""
+          >
             Until {formatVipUntil(vip.until)}.
           </span>
         )}
@@ -89,7 +107,7 @@ export function ClassList({
       </SettingsGroup>
       {guestClass === "regular" && (
         <p
-          className="text-muted-foreground type-body mt-3"
+          className="text-muted-foreground type-label mt-3"
           data-class-regular-note=""
         >
           VIP is added by Mesita when you come through a partner.

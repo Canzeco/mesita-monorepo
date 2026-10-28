@@ -5,7 +5,6 @@ import {
   RowDivider,
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
-import { SkeletonLine } from "@/components/shared";
 import { StandingRowSkeleton } from "../me-skeletons";
 
 // /me/class' fallback while the page reads the guest's class (Pato,
@@ -13,12 +12,8 @@ import { StandingRowSkeleton } from "../me-skeletons";
 // loading, like the sizes"). ClassList's card, row for row: Regular and VIP
 // with their fixed words as themselves — CLASS_ROWS, the words ClassList
 // draws, so they wrap where the page's do — and only what the read decides
-// waiting: each disc (primary on the guest's class) and the "Your class."
-// line.
-//
-// THAT LINE IS HELD UNDER REGULAR: almost every guest is Regular (VIP comes
-// only through a partner), so the common page lands with nothing moving.
-// The note ClassList adds under the card for a Regular guest is not drawn:
+// waiting: the Current pill, which lands beside a title and moves nothing
+// (MESITA-2983). The note ClassList adds under the card for a Regular guest is not drawn:
 // it lands below everything, so it moves nothing either.
 export default function ClassLoading() {
   const { regular, vip } = CLASS_ROWS;
@@ -26,7 +21,6 @@ export default function ClassLoading() {
     <MeScreen title="Class">
       <SettingsGroup>
         <StandingRowSkeleton title={regular.title}>
-          <SkeletonLine className="type-label" bar="w-16" />
           <span className="text-muted-foreground type-label block">
             {regular.subtitle}
           </span>

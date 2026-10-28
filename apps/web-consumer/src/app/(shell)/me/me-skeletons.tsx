@@ -10,6 +10,7 @@ import {
   IDENTITY_PHOTO_CLASS,
   IDENTITY_RING_CLASS,
 } from "@/components/consumer/identity-card-layout";
+import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
 import { cn } from "@/lib/utils";
 
 // ─── Me's loading silhouettes (MESITA-2701) ─────────────────────────────────
@@ -80,10 +81,8 @@ export function IdentityBarSkeleton() {
 }
 
 /** A Plan or Class row while the guest's own is unknown (PlanModal's
- *  PlanRow, ClassSheet's ClassRow): px-4 py-3, the IconCircle's 36px disc —
- *  its tint marks the guest's own, so it waits — the title, then `children`:
- *  the fixed lines as themselves and the "Your plan." / "Your class." slot as
- *  a bar on its own line. */
+ *  PlanRow, ClassSheet's ClassRow): px-4 py-3, the 36px icon chip, the
+ *  title, then `children`: the fixed lines as themselves. */
 export function StandingRowSkeleton({
   title,
   children,
@@ -93,7 +92,7 @@ export function StandingRowSkeleton({
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3">
-      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      <Skeleton className={ICON_CHIP_CLASS} />
       <div className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{title}</span>
         {children}
@@ -104,7 +103,7 @@ export function StandingRowSkeleton({
 
 /** One settings row (settings-rows.tsx: SettingsInfoRow, SettingsLinkRow,
  *  SocialNameRow, Contact's links, Instagram's photo switch): px-4 py-3, the
- *  36px IconCircle, a 14px label over an 11px line, and the 40×24 switch
+ *  36px icon chip, a 14px label over an 11px line, and the 40×24 switch
  *  when the row has one.
  *
  *  A SWITCH ROW'S WORDS ARE ITS OWN (MESITA-2701). SocialNameRow and the
@@ -124,7 +123,7 @@ export function SettingsRowSkeleton({
 }) {
   return (
     <div aria-hidden className="flex w-full items-center gap-3 px-4 py-3">
-      <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+      <Skeleton className={ICON_CHIP_CLASS} />
       <span className="min-w-0 flex-1">
         {label ? (
           <span className="block text-sm font-semibold">{label}</span>

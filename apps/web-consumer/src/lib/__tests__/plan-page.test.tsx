@@ -2,7 +2,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { PlanModal } from "@/components/consumer/me/PlanModal";
-import { FREE_RESERVATIONS_PER_MONTH, PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
+import {
+  FREE_RESERVATIONS_PER_MONTH,
+  PRO_RESERVATIONS_PER_MONTH,
+} from "@/lib/plan-perks";
 
 // MeScreen calls useRouter(); the plan page itself needs no router.
 vi.mock("next/navigation", () => ({
@@ -14,7 +17,10 @@ const text = (html: string) => html.replace(/<[^>]*>/g, " ");
 const perks = (section: string) =>
   // `<li(\s|>)`, not `<li`: lucide's CreditCard draws an svg <line>.
   [...section.matchAll(/<li(?:\s[^>]*)?>(.*?)<\/li>/g)].map((m) =>
-    text(m[1]).replace(/\bSoon\b/, "").replace(/\s+/g, " ").trim(),
+    text(m[1])
+      .replace(/\bSoon\b/, "")
+      .replace(/\s+/g, " ")
+      .trim(),
   );
 const soonCount = (section: string) =>
   (section.match(/data-perk-soon/g) ?? []).length;
@@ -22,7 +28,10 @@ const soonCount = (section: string) =>
 const render = (plan: "free" | "premium" | null) => {
   const html = renderToStaticMarkup(<PlanModal plan={plan} />);
   // Free ends where Pro's row begins.
-  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Pro"'));
+  const free = html.slice(
+    html.indexOf('data-plan-row="Free"'),
+    html.indexOf('data-plan-row="Pro"'),
+  );
   const premium = html.slice(html.indexOf('data-plan-row="Pro"'));
   return { html, free, premium };
 };
@@ -63,7 +72,9 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
   });
 
   it("never names Class, VIP, Premier, Premium or Diamond", () => {
-    expect(text(html)).not.toMatch(/\b(Class|VIP|Regular|Premier|Premium|Diamond|Select)\b/);
+    expect(text(html)).not.toMatch(
+      /\b(Class|VIP|Regular|Premier|Premium|Diamond|Select)\b/,
+    );
   });
 
   it("exposes each list as a named list", () => {
@@ -74,16 +85,16 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
 
   it("claims no plan while it is unknown", () => {
     expect(html).not.toContain("data-plan-mine");
-    expect(html).not.toContain("Your plan.");
+    expect(html).not.toContain(">Current<");
   });
 
   it("marks the guest's own plan, and only that one", () => {
     const f = render("free");
-    expect(f.free).toContain("Your plan.");
-    expect(f.premium).not.toContain("Your plan.");
+    expect(f.free).toContain("data-plan-mine");
+    expect(f.premium).not.toContain("data-plan-mine");
     const p = render("premium");
-    expect(p.premium).toContain("Your plan.");
-    expect(p.free).not.toContain("Your plan.");
+    expect(p.premium).toContain("data-plan-mine");
+    expect(p.free).not.toContain("data-plan-mine");
     expect(p.free).toContain("The free plan.");
   });
 });

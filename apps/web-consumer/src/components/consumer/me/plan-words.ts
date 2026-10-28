@@ -1,6 +1,9 @@
 import type { Perk } from "@/components/consumer/me/perk-list";
 import type { GuestPlan } from "@/lib/guest-standing";
-import { FREE_RESERVATIONS_PER_MONTH, PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
+import {
+  FREE_RESERVATIONS_PER_MONTH,
+  PRO_RESERVATIONS_PER_MONTH,
+} from "@/lib/plan-perks";
 
 // Me › Plan's words, row by row. PlanModal draws them, and so does /me/plan's
 // loading.tsx, which draws the perks as themselves so its lines wrap where
@@ -17,7 +20,7 @@ import { FREE_RESERVATIONS_PER_MONTH, PRO_RESERVATIONS_PER_MONTH } from "@/lib/p
 
 export type PlanRowWords = {
   title: string;
-  /** The row's line when it is not the guest's plan ("Your plan." when it is). */
+  /** The row's fixed line; the guest's own row adds a Current pill. */
   subtitle: string;
   /** The perk list's accessible name. */
   label: string;

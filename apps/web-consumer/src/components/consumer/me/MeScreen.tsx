@@ -41,19 +41,19 @@ export function MeScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <header className="border-border bg-background/90 sticky top-0 z-20 flex shrink-0 items-center gap-2 border-b px-3 py-3 backdrop-blur-xl">
+      <header className="border-border bg-background/90 sticky top-0 z-20 flex shrink-0 items-center gap-2 border-b px-3 py-2 backdrop-blur-xl">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="bg-card text-foreground border-border hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition active:scale-[0.98]"
+          className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-[0.98]"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
         <h1 className="font-display min-w-0 flex-1 truncate text-center text-xl font-semibold tracking-tight">
           {title}
         </h1>
-        <div className="h-9 w-9 shrink-0" aria-hidden />
+        <div className="h-11 w-11 shrink-0" aria-hidden />
       </header>
 
       <div

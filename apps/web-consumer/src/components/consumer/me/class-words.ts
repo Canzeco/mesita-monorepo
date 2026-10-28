@@ -16,7 +16,7 @@ import type { GuestClass } from "@/lib/guest-standing";
 
 export type ClassRowWords = {
   title: string;
-  /** The row's fixed line, under "Your class." when it is the guest's. */
+  /** The row's fixed line; the guest's own row adds a Current pill. */
   subtitle: string;
   perks?: { label: string; items: Perk[] };
 };
