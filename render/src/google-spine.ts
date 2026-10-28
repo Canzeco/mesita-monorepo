@@ -303,8 +303,11 @@ export async function describeFromFacts(
   return capPresentation(body?.choices?.[0]?.message?.content ?? "") ?? "";
 }
 
-/** Guest Presentation ceiling. Same number as ENRICH_FIELD_LIMITS.description. */
-export const PRESENTATION_MAX = 500;
+/** Guest Presentation ceiling. Same number as ENRICH_FIELD_LIMITS.description
+ *  (2000, MESITA-2739): pitch and story are the write's Google fallback
+ *  Presentation, so a lower number here cut stored Presentations. The twin
+ *  fixture pins both (MESITA-2989). */
+export const PRESENTATION_MAX = 2000;
 
 // Cut at the last full sentence, never mid-word (MESITA-2641). The twin of
 // supabase/_shared/presentation-cap.ts; Render is its own package and cannot

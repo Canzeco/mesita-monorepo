@@ -18,7 +18,7 @@ export function ClassModal({
 }) {
   return (
     <MeScreen title="Class">
-      <ClassList guestClass={guestClass} vip={vip} />
+      <ClassList guestClass={guestClass} vip={vip} joinable />
     </MeScreen>
   );
 }
