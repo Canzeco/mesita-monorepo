@@ -14,7 +14,7 @@
 // Secrets: OPENAI_KEY. Never leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
@@ -53,7 +53,7 @@ const CONFIG_CACHE_MS = 30_000;
 const LINE_DROPPED =
   "Hmm, my line dropped for a second — give it another try in a moment.";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-ask-memo", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

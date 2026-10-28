@@ -20,6 +20,7 @@ import {
   readJson,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -39,7 +40,7 @@ type ReportRow = {
 
 type GuestRow = { id: string; first_name: string | null; code: string | null };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-list-place-reports", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

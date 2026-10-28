@@ -20,7 +20,7 @@
 // Deploy: supabase functions deploy consumer-web-suggest-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { readEFEnv } from "../_shared/auth.ts";
 import {
   runConsumerSearchLane,
@@ -40,7 +40,7 @@ type Body = {
   previewPlaceId?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-suggest-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

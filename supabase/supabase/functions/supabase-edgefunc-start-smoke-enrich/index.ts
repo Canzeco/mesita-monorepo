@@ -26,7 +26,7 @@
 // Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { startSmokeEnrich } from "../_shared/smoke-enrich.ts";
@@ -34,7 +34,7 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const SOURCE = "supabase-edgefunc-start-smoke-enrich";
 
-Deno.serve(async (req) => {
+serveJson("supabase-edgefunc-start-smoke-enrich", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

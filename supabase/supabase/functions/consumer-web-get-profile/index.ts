@@ -8,7 +8,7 @@
 // service role, never calls another Edge Function.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -20,7 +20,7 @@ import {
   isDeletedConsumer,
 } from "../_shared/delete-history-free.ts";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-get-profile", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "GET", "POST");
   if (methodReject) return methodReject;

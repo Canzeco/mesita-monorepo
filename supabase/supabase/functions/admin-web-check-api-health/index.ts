@@ -25,7 +25,7 @@
 // Deploy: supabase functions deploy admin-web-check-api-health
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -722,7 +722,7 @@ async function runProbe(
   }
 }
 
-Deno.serve(async (req) => {
+serveJson("admin-web-check-api-health", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

@@ -13,7 +13,7 @@
 // Deploy: supabase functions deploy consumer-web-create-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
@@ -40,7 +40,7 @@ type Body = {
   consumer_notify?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-create-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

@@ -25,6 +25,7 @@ import {
   jsonOk,
   readJsonOr,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -40,7 +41,7 @@ import {
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { crenupPromptsMeta } from "../_shared/crenup-prompts.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-config", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

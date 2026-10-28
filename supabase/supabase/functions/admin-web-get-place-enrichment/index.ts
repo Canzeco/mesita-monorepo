@@ -13,7 +13,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-enrichment
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -23,7 +23,7 @@ import {
 
 type Body = { projectId?: string; placeId?: string };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-place-enrichment", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

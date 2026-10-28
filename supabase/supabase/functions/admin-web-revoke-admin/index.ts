@@ -9,7 +9,7 @@
 // the list is a no-op success.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -19,7 +19,7 @@ import {
 
 type Body = { email?: string };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-revoke-admin", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

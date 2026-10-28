@@ -13,7 +13,7 @@
 // Anonymous callers get the tier and the count; never a Stripe id.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   boostStripeKey,
@@ -25,7 +25,7 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-get-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

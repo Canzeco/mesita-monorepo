@@ -45,6 +45,7 @@ import {
   json,
   readJsonOr,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { stripInternal } from "../_shared/place-pool-shape.ts";
@@ -92,7 +93,7 @@ function wirePlaces(rows: unknown[]): PoolRow[] {
   });
 }
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-catalog", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

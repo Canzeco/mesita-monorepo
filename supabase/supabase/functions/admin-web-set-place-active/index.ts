@@ -19,6 +19,7 @@ import {
   readJson,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -33,7 +34,7 @@ import { activeWritePatch } from "../_shared/place-active.ts";
 
 type Body = { placeId?: unknown; projectId?: unknown; active?: unknown };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-set-place-active", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

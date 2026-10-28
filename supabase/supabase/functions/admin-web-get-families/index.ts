@@ -5,7 +5,7 @@
 // enabled on Mesita, and the tag catalog — all live tables (MESITA-2891).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -19,7 +19,7 @@ import {
 import { buildFamiliesMap } from "../_shared/families-map.ts";
 import { fetchPlaceTags } from "../_shared/tags.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-families", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

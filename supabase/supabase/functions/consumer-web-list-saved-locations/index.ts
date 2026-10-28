@@ -13,7 +13,7 @@
 // and the consumer's backfill names it again.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   SAVED_LOCATION_COLUMNS,
@@ -22,7 +22,7 @@ import {
   toWire,
 } from "../_shared/saved-locations.ts";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-saved-locations", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

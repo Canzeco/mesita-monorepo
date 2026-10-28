@@ -14,7 +14,7 @@
 //   409 name_taken · place_taken · 500 save_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -27,7 +27,7 @@ import {
   readPartnerBody,
 } from "../_shared/vip-partners.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-save-vip-partner", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

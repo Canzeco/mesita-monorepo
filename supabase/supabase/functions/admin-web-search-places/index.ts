@@ -13,7 +13,7 @@
 // verify_jwt = true gates non-bearer callers at the gateway.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
@@ -55,7 +55,7 @@ type Body = {
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
 
-Deno.serve(async (req) => {
+serveJson("admin-web-search-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

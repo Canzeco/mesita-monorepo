@@ -9,13 +9,13 @@
 // Response: { ok: true, current_period_end }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostStripeKey, cancelBackingAtPeriodEnd, stripeClient } from "../_shared/boost.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-cancel-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

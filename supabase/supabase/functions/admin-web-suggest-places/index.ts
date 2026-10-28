@@ -8,7 +8,7 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -23,7 +23,7 @@ type Body = {
   mode?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-suggest-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

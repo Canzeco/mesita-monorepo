@@ -7,7 +7,7 @@
 // Deploy: supabase functions deploy admin-web-get-activity-summary
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -32,7 +32,7 @@ const FEED_CAP = 50;
 
 type Body = { windowDays?: number };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-activity-summary", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

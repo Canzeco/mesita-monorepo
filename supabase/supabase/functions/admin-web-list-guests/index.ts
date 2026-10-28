@@ -7,7 +7,7 @@
 // Read-only; super-admin only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -23,7 +23,7 @@ import {
 } from "../_shared/guest-standing.ts";
 import { loadVipPartners } from "../_shared/vip-partners.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-list-guests", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

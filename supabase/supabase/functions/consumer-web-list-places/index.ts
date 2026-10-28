@@ -56,6 +56,7 @@ import {
   json,
   readJsonOr,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -141,7 +142,7 @@ type CardRow = {
   google_review_count?: number | null;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

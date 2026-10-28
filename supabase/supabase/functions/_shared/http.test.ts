@@ -5,6 +5,7 @@ import {
   readJson,
   readJsonOr,
   rejectUnlessMethods,
+  withJsonErrors,
 } from "./http.ts";
 
 Deno.test("rejectUnlessMethods allows listed verbs", () => {
@@ -127,4 +128,29 @@ Deno.test("readJson passes a JSON literal that is not an object through", async 
     ok: true,
     body: [] as never,
   });
+});
+
+// MESITA-2856: a throw inside a handler is a JSON 500 the browser can read
+// (CORS on), not the runtime's bare 500.
+Deno.test("withJsonErrors turns a throw into a JSON 500 with CORS", async () => {
+  const handler = withJsonErrors("test-fn", () => {
+    throw new Error("boom");
+  });
+  const origError = console.error;
+  console.error = () => {};
+  try {
+    const res = await handler(new Request("https://x", { method: "POST" }));
+    assertEquals(res.status, 500);
+    assertEquals(res.headers.get("Access-Control-Allow-Origin") !== null, true);
+    assertEquals(await res.json(), { ok: false, error: "Internal error" });
+  } finally {
+    console.error = origError;
+  }
+});
+
+Deno.test("withJsonErrors passes a normal response through", async () => {
+  const handler = withJsonErrors("test-fn", () => new Response("hi", { status: 201 }));
+  const res = await handler(new Request("https://x"));
+  assertEquals(res.status, 201);
+  assertEquals(await res.text(), "hi");
 });
