@@ -68,6 +68,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -348,6 +349,17 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const [generateTarget, setGenerateTarget] = useState<GenerateTarget | null>(
     null,
   );
+  // The hand-off (MESITA-2957: "transition from second image to fourth image
+  // directly, even if we await in the second image"). A landed create keeps
+  // the dialog up and pushes the profile; the dialog closes only once the
+  // address has moved, so the profile is what replaces it — never bare
+  // Search, never the blank frame of the push's hard-load fallback.
+  const pathname = usePathname();
+  const [handoffFrom, setHandoffFrom] = useState<string | null>(null);
+  if (handoffFrom !== null && pathname !== handoffFrom) {
+    setHandoffFrom(null);
+    setGenerateOpen(false);
+  }
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -711,11 +723,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // tab asks for votes (design review D7).
   const onGenerated = useCallback(
     (opened: OpenedGooglePlace) => {
-      setGenerateOpen(false);
+      setHandoffFrom(pathname);
       resetSearchSession();
       openPlaceHref(opened.href);
     },
-    [openPlaceHref, resetSearchSession],
+    [openPlaceHref, pathname, resetSearchSession],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
@@ -1168,7 +1180,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         <GeneratePlaceDialog
           open={generateOpen}
           target={generateTarget}
-          onClose={() => setGenerateOpen(false)}
+          onClose={() => {
+            setHandoffFrom(null);
+            setGenerateOpen(false);
+          }}
           onGenerated={onGenerated}
         />
       </div>

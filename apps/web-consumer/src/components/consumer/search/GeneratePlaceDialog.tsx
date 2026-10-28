@@ -6,7 +6,9 @@
 // sparkles tile, "Generate a profile?", one line, the place's name and
 // address, Cancel and Generate. The tap creates, never a render or an
 // effect; landed, the parent opens the REAL profile. The opening route's
-// generating screen never shows from Search.
+// generating screen never shows from Search. Landed, the card reads
+// "Opening profile…" and stays up until the profile replaces it; the parent
+// closes it when the address moves (MESITA-2957).
 //
 // ONE CARD, THREE STATES, ONE HEIGHT (design review, 2026-10-28). Confirm,
 // generating and error share the tile, the title line, the body line and the
@@ -56,7 +58,9 @@ export type GenerateTarget = {
   address?: string | null;
 };
 
-type Phase = "confirm" | "generating" | "error";
+// "opening": the create landed and the profile is on its way; the parent
+// closes the dialog once the address moves (MESITA-2957).
+type Phase = "confirm" | "generating" | "opening" | "error";
 
 export function GeneratePlaceDialog({
   open,
@@ -71,6 +75,17 @@ export function GeneratePlaceDialog({
   onGenerated: (opened: OpenedGooglePlace) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // Each open starts clean: an opening hand-off ends with the dialog closed
+  // while still busy, and a reopen must not inherit it.
+  const [opens, setOpens] = useState(0);
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setBusy(false);
+      setOpens((n) => n + 1);
+    }
+  }
   return (
     <LocalDialog
       open={open}
@@ -80,7 +95,7 @@ export function GeneratePlaceDialog({
       {target ? (
         // A fresh body per place: no state carries over between opens.
         <GenerateBody
-          key={target.gid}
+          key={`${target.gid}:${opens}`}
           target={target}
           onClose={onClose}
           onGenerated={onGenerated}
@@ -130,7 +145,8 @@ function GenerateBody({
   // first focus waits one.
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
-      if (phase === "generating") cardRef.current?.focus();
+      if (phase === "generating" || phase === "opening")
+        cardRef.current?.focus();
       else primaryRef.current?.focus();
     });
     return () => cancelAnimationFrame(raf);
@@ -144,14 +160,18 @@ function GenerateBody({
     onBusy(true);
     try {
       const opened = await getOrCreateGooglePlace(supabase, target.gid);
-      if (run.current === mine) onGenerated(opened);
+      // Still busy: the dialog holds the screen until the profile replaces
+      // it (MESITA-2957).
+      if (run.current === mine) {
+        setPhase("opening");
+        onGenerated(opened);
+      }
     } catch (err) {
       if (run.current === mine) {
         setError(errMsg(err, "Couldn't generate that profile right now."));
         setPhase("error");
+        onBusy(false);
       }
-    } finally {
-      if (run.current === mine) onBusy(false);
     }
   };
 
@@ -163,7 +183,8 @@ function GenerateBody({
     onClose();
   };
 
-  const running = phase === "generating";
+  const opening = phase === "opening";
+  const running = phase === "generating" || opening;
   const failed = phase === "error";
   const address = preview?.address || target.address;
   const rating = preview?.rating
@@ -264,7 +285,13 @@ function GenerateBody({
           )}
           aria-hidden={!running}
         >
-          {running ? <GenerateSteps key={attempt} /> : null}
+          {opening ? (
+            <span className="text-foreground animate-in fade-in text-sm font-semibold duration-300 motion-reduce:animate-none">
+              Opening profile…
+            </span>
+          ) : running ? (
+            <GenerateSteps key={attempt} />
+          ) : null}
         </div>
       </div>
       </div>
