@@ -11,8 +11,8 @@
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat). One token set for every control lives in header-classes.ts. NO ADD
-// DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: the bar
-// searches Mesita names only, so it cannot add a Google place. Under the bar's row one chip row:
+// DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
+// place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
 // icon at the super left"), pinned outside the scroll, then Top, then every
 // family, each with its line icon (MESITA-2478: line icons, not emoji).

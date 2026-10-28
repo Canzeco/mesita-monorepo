@@ -1,5 +1,5 @@
 // Small pure helpers for the Search surface: session tokens for Google
-// Places autocomplete billing, prediction↔catalog matching, the anchored
+// Places autocomplete billing, prediction↔catalog matching by id, the anchored
 // searchbar pick, and distance derivation/formatting for the rail cards.
 
 import type { MapBounds, Place } from "@/lib/api/places";
@@ -16,37 +16,30 @@ export function newSessionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-// Accent/case-insensitive name key so "Café Nómada" matches "cafe nomada".
-function normalizeName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 /**
- * Best-effort resolution of a suggest prediction to a catalog Place.
- *
- * Predictions carry the Google placeId, and the public places projection
- * doesn't expose google_place_id, so the only client-side join available
- * is the (normalized) name. Exact equality ONLY: Mesita-side rows use the
- * place name verbatim as mainText, so equality hits the honest cases,
- * while any substring fallback misroutes look-alikes ("Casa Luminar"
- * contains-matching "Casa Lu"). Predictions the EF stamps with a Mesita
- * id/slug skip this join entirely.
+ * Resolution of a suggest prediction to a catalog Place, by identity only:
+ * the Mesita id the EF stamps on a held hit, else the Google Place ID. Never
+ * by name — Google's name is canonical and the Mesita name is display only
+ * (MESITA-2896, MESITA-2907). A Google-only row carries its Place ID as its
+ * slug.
  */
 export function matchPredictionToPlace(
   prediction: PlacePrediction,
   places: Place[],
 ): Place | null {
-  const target = normalizeName(prediction.mainText);
-  if (!target) return null;
-  for (const place of places) {
-    if (normalizeName(place.name) === target) return place;
+  if (prediction.mesitaId) {
+    const held = places.find((p) => p.id === prediction.mesitaId);
+    if (held) return held;
   }
-  return null;
+  const googleId = prediction.placeId;
+  if (!googleId) return null;
+  return (
+    places.find(
+      (p) =>
+        (p.google_place_id ??
+          (p.googleOnly || p.from_google ? p.slug : null)) === googleId,
+    ) ?? null
+  );
 }
 
 // ── The anchored searchbar pick (MESITA-1405) ─────────────────────────

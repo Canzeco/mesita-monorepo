@@ -7,18 +7,18 @@ import {
 } from "@/lib/state-vocabulary";
 
 // Single Place › Find draws ONE table for a name (MESITA-2124): every place
-// any of the three sources returned, once, with a column per source saying
+// either Google source returned, once, with a column per source saying
 // where that source ranked it. This file is the pure half — which rows,
 // in what order, with what text — so the table component only draws.
 //
-// A name is Google's alone (MESITA-2896): Autocomplete and Text Search, plus
-// the admin's full view of the catalogue. A Google hit Mesita holds is that
-// Mesita place; a place neither Google source returns is not found. Nearby
+// A name is Google's alone (MESITA-2896): Autocomplete and Text Search. The
+// catalogue is never searched by name (MESITA-2907); it only says which
+// Google hits Mesita holds. A Google hit Mesita holds is that Mesita place; a place neither Google source returns is not found. Nearby
 // is not one: it takes a point, not a name, and Map owns it.
 
-export type FindSource = "catalogue" | "autocomplete" | "text";
+export type FindSource = "autocomplete" | "text";
 
-/** What a word search shows. Catalogue is the empty list, not a search.
+/** What a word search shows. The catalogue is the empty list, not a search.
  *  Autocomplete is not a column. Google is the deep search. `long` is what
  *  a screen reader says. */
 export const WORD_RANK_COLUMNS: readonly {
@@ -28,22 +28,19 @@ export const WORD_RANK_COLUMNS: readonly {
   long: string;
 }[] = [{ key: "text", label: "Google", short: "Google", long: "Google" }];
 
-/** The sources a name can still merge. The table draws WORD_RANK_COLUMNS. */
+/** The sources a name merges. The table draws WORD_RANK_COLUMNS. */
 export const FIND_SOURCES: readonly {
   key: FindSource;
-  group: "mesita" | "google";
   label: string;
   short: string;
   long: string;
 }[] = [
-  { key: "catalogue", group: "mesita", label: "Catalogue", short: "Catalogue", long: "Mesita catalogue" },
-  { key: "autocomplete", group: "google", label: "Autocomplete", short: "Autocomplete", long: "Google Autocomplete" },
-  { key: "text", group: "google", label: "Text Search", short: "Text", long: "Google Text Search" },
+  { key: "autocomplete", label: "Autocomplete", short: "Autocomplete", long: "Google Autocomplete" },
+  { key: "text", label: "Text Search", short: "Text", long: "Google Text Search" },
 ];
 
-/** Agreement ties break on Text Search rank, then Autocomplete, then
- *  Catalogue (D3). */
-const TIE_ORDER: readonly FindSource[] = ["text", "autocomplete", "catalogue"];
+/** Agreement ties break on Text Search rank, then Autocomplete (D3). */
+const TIE_ORDER: readonly FindSource[] = ["text", "autocomplete"];
 
 /** Rows per page (MESITA-2335: 50, Previous · Next). */
 export const FIND_PAGE_ROWS = 50;
@@ -81,9 +78,8 @@ export type TextSearchResult = {
 };
 
 export type FindInputs = {
-  /** The catalogue name match, already filtered and capped, in rank order. */
-  catalogue: SourceResult<PlaceHit[]>;
-  /** The whole catalogue: the held lookup and the Mesita name (D16). */
+  /** The whole catalogue: which hits Mesita holds, and the name it shows
+   *  them by (D16). Never matched against the query. */
   catalog: readonly PlaceHit[];
   autocomplete: SourceResult<SuggestHit[]>;
   text: SourceResult<TextSearchResult>;
@@ -104,7 +100,7 @@ export type FindRow = {
   reviews: number | null;
   /** Catalogue row when Mesita knows this place — drives the Profile and
    *  Enrichment columns. Null when Google-only or held only per Text Search's
-   *  join without a catalogue match. */
+   *  join without a catalogue row. */
   placeHit: PlaceHit | null;
   /** 1-based position in each source; null = that source missed it. */
   ranks: Record<FindSource, number | null>;
@@ -124,7 +120,6 @@ type Draft = {
   googleId: string | null;
   mesitaId: string | null;
   heldByJoin: boolean;
-  catalogue: PlaceHit | null;
   autocomplete: SuggestHit | null;
   text: PlaceLite | null;
   ranks: Record<FindSource, number | null>;
@@ -163,7 +158,7 @@ export function catalogueList(places: readonly PlaceHit[], total: number): FindR
         rating: hit.google_stars_overall,
         reviews: hit.google_review_count,
         placeHit: hit,
-        ranks: { catalogue: null, autocomplete: null, text: null },
+        ranks: { autocomplete: null, text: null },
       };
     }),
     failed: [],
@@ -194,10 +189,9 @@ export function mergeFindResults(input: FindInputs): FindResult {
       googleId: googleId || null,
       mesitaId,
       heldByJoin: false,
-      catalogue: null,
       autocomplete: null,
       text: null,
-      ranks: { catalogue: null, autocomplete: null, text: null },
+      ranks: { autocomplete: null, text: null },
     };
     byKey.set(key, d);
     if (mesitaId) byKey.set(`mesita:${mesitaId}`, d);
@@ -205,14 +199,6 @@ export function mergeFindResults(input: FindInputs): FindResult {
     return d;
   }
 
-  if (input.catalogue.status === "ok") {
-    input.catalogue.data.forEach((hit, i) => {
-      const d = draftFor(hit.google_place_id, hit.id);
-      if (!d || d.ranks.catalogue != null) return;
-      d.ranks.catalogue = i + 1;
-      d.catalogue = hit;
-    });
-  }
   if (input.autocomplete.status === "ok") {
     input.autocomplete.data.forEach((hit, i) => {
       const d = draftFor(hit.placeId || null, hit.mesitaId ?? null);
@@ -232,10 +218,14 @@ export function mergeFindResults(input: FindInputs): FindResult {
   }
 
   const byGoogleId = new Map<string, PlaceHit>();
-  for (const p of input.catalog) if (p.google_place_id) byGoogleId.set(p.google_place_id, p);
+  const byId = new Map<string, PlaceHit>();
+  for (const p of input.catalog) {
+    byId.set(p.id, p);
+    if (p.google_place_id) byGoogleId.set(p.google_place_id, p);
+  }
 
   // Array#sort is stable, so equal rows keep first-seen order.
-  const rows = drafts.map((d) => toRow(d, byGoogleId)).sort(compareRows);
+  const rows = drafts.map((d) => toRow(d, byGoogleId, byId)).sort(compareRows);
 
   const failed: FindSource[] = [];
   const notes: FindNote[] = [];
@@ -265,8 +255,15 @@ export function mergeFindResults(input: FindInputs): FindResult {
   return { rows, failed, notes };
 }
 
-function toRow(d: Draft, byGoogleId: ReadonlyMap<string, PlaceHit>): FindRow {
-  const record = d.catalogue ?? (d.googleId ? byGoogleId.get(d.googleId) ?? null : null);
+function toRow(
+  d: Draft,
+  byGoogleId: ReadonlyMap<string, PlaceHit>,
+  byId: ReadonlyMap<string, PlaceHit>,
+): FindRow {
+  const record =
+    (d.googleId ? byGoogleId.get(d.googleId) : undefined) ??
+    (d.mesitaId ? byId.get(d.mesitaId) : undefined) ??
+    null;
   const mesitaId = d.mesitaId ?? record?.id ?? null;
   const held = mesitaId != null || d.heldByJoin;
   const mesitaName = record?.name || "";
@@ -290,8 +287,8 @@ function toRow(d: Draft, byGoogleId: ReadonlyMap<string, PlaceHit>): FindRow {
   };
 }
 
-/** D3: most sources first, then Text Search rank, Autocomplete,
- *  Catalogue. A missing rank sorts after any present one. */
+/** D3: most sources first, then Text Search rank, then Autocomplete. A
+ *  missing rank sorts after any present one. */
 export function compareRows(a: FindRow, b: FindRow): number {
   const agreement = sourceCount(b) - sourceCount(a);
   if (agreement !== 0) return agreement;

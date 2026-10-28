@@ -17,8 +17,8 @@ function failed(err: unknown): { status: "error"; error: string } {
   return { status: "error", error: err instanceof Error ? err.message : String(err) };
 }
 
-/** The whole catalogue: the Catalogue column matches inside it, and it is
- *  how a held row learns its Mesita id and name. */
+/** The whole catalogue: never matched against a name (MESITA-2907), only
+ *  how a held row learns its Mesita id and display name. */
 export async function loadCatalogSource(): Promise<SourceResult<PlaceHit[]>> {
   const r = await loadCatalogueWithTotal();
   return r.status === "ok" ? { status: "ok", data: r.data.places } : r;

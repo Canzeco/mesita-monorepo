@@ -27,7 +27,7 @@ function row(over: Partial<FindRow>): FindRow {
     rating: null,
     reviews: null,
     placeHit: null,
-    ranks: { catalogue: 1, autocomplete: 2, text: 1 },
+    ranks: { autocomplete: 2, text: 1 },
     ...over,
   };
 }
@@ -79,7 +79,7 @@ const NEW = row({
   address: "Parque Central 455",
   rating: 4.7,
   reviews: 266,
-  ranks: { catalogue: null, autocomplete: 1, text: 2 },
+  ranks: { autocomplete: 1, text: 2 },
 });
 
 function render(
@@ -165,7 +165,7 @@ describe("Find › one table", () => {
   });
 
   it("shows each rank, a dash where it missed, both read aloud", () => {
-    const missed = row({ key: "k-miss", googleId: null, ranks: { catalogue: 1, autocomplete: null, text: null } });
+    const missed = row({ key: "k-miss", googleId: null, ranks: { autocomplete: 1, text: null } });
     const html = render({ rows: [HELD, NEW, missed], failed: [], notes: [] });
     expect(html).toContain(">#2<");
     expect(html).toContain("Google: rank 2");
@@ -344,7 +344,7 @@ describe("Find › one table", () => {
 
   it("marks a failed source's column and says why under the table", () => {
     const html = render({
-      rows: [row({ ranks: { catalogue: 1, autocomplete: null, text: null } })],
+      rows: [row({ ranks: { autocomplete: 1, text: null } })],
       failed: ["text"],
       notes: [{ tone: "error", text: "Google Text Search failed: quota" }],
     });

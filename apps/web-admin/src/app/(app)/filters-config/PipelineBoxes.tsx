@@ -211,9 +211,10 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           removed. A Google hit Mesita holds shows as that Mesita place; a
           place neither returns is not found. A Location (a city, a region)
           shows with a location icon, and picking one moves the map. Picking
-          a place moves the map there and makes it the first card. Neither
-          gate applies: a place Mesita has created is findable by name before
-          its profile is written. The always-on rules below still hold:
+          a place moves the map there and makes it the first card. Mesita
+          never searches its own places by name: Google&apos;s name finds
+          them, Mesita&apos;s name only labels them. The always-on rules below
+          still hold:
           closed places never show and a row must be one of Mesita&apos;s
           place types. Places under the Minimum Popularity (now{" "}
           {cfg.map.popularityFloor}, set in the Area box; 0 is off) sort after

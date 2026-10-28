@@ -193,7 +193,6 @@ export function SinglePlaceClient({
       query,
       variant: "search",
       result: mergeFindResults({
-        catalogue: { status: "ok", data: [] },
         catalog: all.status === "ok" ? all.data : [],
         autocomplete,
         text: textSearch,
