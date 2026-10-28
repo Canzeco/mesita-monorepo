@@ -136,7 +136,6 @@ import {
 import { SearchBar } from "./SearchBar";
 import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
-import type { AddState } from "./add-state";
 import {
   RAIL_LEAD_PAGES,
   RAIL_PAGE_SHARE,
@@ -234,7 +233,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
   // empty: no Search row is mid-add, and a re-tap goes back through it.
-  const [addStates] = useState<Record<string, AddState>>({});
   const [addedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (the profile,
@@ -1095,8 +1093,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searching={searching}
               searchError={searchError}
               predictions={predictions}
-              addStates={addStates}
               onPick={handleBarPick}
+              onAction={openGoogleOnly}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
