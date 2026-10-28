@@ -383,6 +383,115 @@ export async function cancelBackingAtPeriodEnd(
   return { status: 200, body: { ok: true, current_period_end: patch.current_period_end } };
 }
 
+/** Checkout's return and the hourly sync both confirm a backing from its
+ *  Checkout Session: the subscription Stripe opened for it is written onto
+ *  the row. "unpaid" when the session holds no subscription yet; the
+ *  session itself rides along so the sync can decide what to do next.
+ *  A Stripe or row-write failure throws. */
+export async function confirmBackingFromSession(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  backingId: string,
+  sessionId: string,
+): Promise<{ confirmed: boolean; session: Record<string, unknown> }> {
+  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, {
+    expand: ["subscription"],
+  });
+  const sub = session.subscription as Record<string, unknown> | string | null | undefined;
+  if (!sub || typeof sub !== "object") return { confirmed: false, session };
+  const err = await updateBacking(admin, backingId, subscriptionPatch(sub));
+  if (err) throw new BackingWriteError(err);
+  return { confirmed: true, session };
+}
+
+/** Stripe answered and the row write failed: never a reason to give up. */
+export class BackingWriteError extends Error {
+  constructor(detail: string) {
+    super(`backings_update: ${detail}`);
+  }
+}
+
+/** What the hourly sync does with an `open` backing older than a day
+ *  (MESITA-2857): a guest who paid and closed the tab must keep the backing
+ *  Stripe bills them for, so the row is only dropped once Stripe says the
+ *  Checkout can no longer be paid.
+ *  - confirm: the session holds a subscription (written by the caller).
+ *  - expire: still payable; expire it at Stripe first, then drop the row.
+ *  - drop: expired at Stripe, nothing was paid.
+ *  - keep: completed without a subscription, or a status we do not know;
+ *    ask again next hour. */
+export type StaleCheckoutVerdict = "confirm" | "expire" | "drop" | "keep";
+
+export function staleCheckoutVerdict(session: Record<string, unknown>): StaleCheckoutVerdict {
+  const sub = session.subscription;
+  if (sub && (typeof sub === "object" || typeof sub === "string")) return "confirm";
+  if (session.status === "expired") return "drop";
+  if (session.status === "open") return "expire";
+  return "keep";
+}
+
+/** A stale row whose session Stripe will not answer for this long is
+ *  dropped anyway (a session from the other Stripe mode never resolves). */
+export const STALE_LOOKUP_GIVE_UP_MS = 7 * 24 * 3600_000;
+
+export type StaleOutcome = "confirmed" | "dropped" | "kept";
+
+/** supabase-cron-sync-boosts: settle one `open` row older than a day.
+ *  A row that never reached Checkout (no session id) is dropped. Never
+ *  throws; a failure keeps the row for the next run. */
+export async function reconcileStaleBacking(
+  admin: SupabaseClient,
+  stripe: StripeCall | null,
+  row: { id: string; stripe_checkout_session_id: string | null; created_at: string },
+  now = Date.now(),
+): Promise<StaleOutcome> {
+  const sessionId = row.stripe_checkout_session_id;
+  if (!sessionId) return (await dropOpenBacking(admin, row.id)) ? "dropped" : "kept";
+  if (!stripe) return "kept";
+  let verdict: StaleCheckoutVerdict;
+  try {
+    const { confirmed, session } = await confirmBackingFromSession(admin, stripe, row.id, sessionId);
+    if (confirmed) return "confirmed";
+    verdict = staleCheckoutVerdict(session);
+    // A subscription id that did not expand is not a confirmation: retry.
+    if (verdict === "confirm") verdict = "keep";
+  } catch (err) {
+    const age = now - Date.parse(row.created_at);
+    if (!(err instanceof BackingWriteError) && Number.isFinite(age) && age > STALE_LOOKUP_GIVE_UP_MS) {
+      console.error(
+        "[supabase-cron-sync-boosts] give_up",
+        JSON.stringify({ backing_id: row.id, session_id: sessionId, error: errorText(err) }),
+      );
+      return (await dropOpenBacking(admin, row.id)) ? "dropped" : "kept";
+    }
+    console.error("[supabase-cron-sync-boosts] lookup", row.id, errorText(err));
+    return "kept";
+  }
+  if (verdict === "keep") return "kept";
+  if (verdict === "expire") {
+    try {
+      await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
+    } catch (err) {
+      console.error("[supabase-cron-sync-boosts] expire", row.id, errorText(err));
+      return "kept";
+    }
+  }
+  return (await dropOpenBacking(admin, row.id)) ? "dropped" : "kept";
+}
+
+/** Deletes a row only while it is still `open`: a guest confirming at the
+ *  same moment wins. */
+async function dropOpenBacking(admin: SupabaseClient, backingId: string): Promise<boolean> {
+  try {
+    const { error } = await admin.from("place_backings").delete().eq("id", backingId).eq("status", "open");
+    if (!error) return true;
+    console.error("[supabase-cron-sync-boosts] drop", backingId, error.message);
+  } catch (err) {
+    console.error("[supabase-cron-sync-boosts] drop", backingId, errorText(err));
+  }
+  return false;
+}
+
 /** One backing row write; the error text, or null when it landed. */
 async function updateBacking(
   admin: SupabaseClient,
