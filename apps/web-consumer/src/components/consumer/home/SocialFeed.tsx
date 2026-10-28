@@ -93,7 +93,7 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
+import { ArrowUp, Clock, Crown, Heart, MapPin, RotateCw, Users, X } from "lucide-react";
 import { DefaultAvatar } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -370,7 +370,10 @@ function FeedRow({
               <span aria-hidden>·</span>
             </>
           ) : null}
-          <span className="shrink-0">{ago}</span>
+          <span className="flex shrink-0 items-center gap-0.5" data-social-ago>
+            <Clock className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            {ago}
+          </span>
           {item.distanceKm != null ? (
             <>
               <span aria-hidden>·</span>
