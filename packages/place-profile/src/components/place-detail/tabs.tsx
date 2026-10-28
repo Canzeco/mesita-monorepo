@@ -13,10 +13,11 @@ import { cn } from "../../lib/format";
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
-// OVERVIEW · REVIEWS · PRODUCTS · BOOST (Pato, MESITA-2861: "call Products
-// & Rewards coming soon … but make a Boost page"): Rewards folds into the
-// Products Soon screen, and Boost is the fourth tab again. It was a tab
-// (MESITA-2789), then a sheet off ⋯ (MESITA-2815); ⋯ › Boost now opens it.
+// OVERVIEW · REVIEWS · PRODUCTS · PREMIER (Pato, MESITA-2861: "call
+// Products & Rewards coming soon … but make a Boost page"): Rewards folds
+// into the Products Soon screen, and the paid tier is the fourth tab. It was
+// a tab (MESITA-2789), then a sheet off ⋯ (MESITA-2815); ⋯ › Premier now
+// opens it. Its word is Premier since MESITA-2925; the key stays `boost`.
 export type PlaceTab = "place" | "reviews" | "products" | "boost";
 
 export type PlaceTabDef = {
@@ -29,7 +30,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
-  { key: "boost", label: "Partner" },
+  { key: "boost", label: "Premier" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {

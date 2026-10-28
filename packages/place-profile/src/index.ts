@@ -2,7 +2,14 @@ export { PlaceProfile } from "./components/PlaceProfile";
 export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
 export { PlaceTopBar } from "./components/PlaceTopBar";
-export { EnrichedBadge } from "./components/EnrichedBadge";
+export { PremierBadge } from "./components/PremierBadge";
+export {
+  PREMIER_LEVELS,
+  isPremierPlace,
+  premierLabel,
+  premierLevel,
+  premierTier,
+} from "./premier";
 export { DefaultAvatar } from "./components/DefaultAvatar";
 export { ImageCarousel } from "./components/ImageCarousel";
 export { PlaceCreateFailedPanel } from "./components/place-detail/PlaceCreateFailedPanel";
@@ -27,3 +34,5 @@ export type {
 export type { PlaceDetail } from "./place-detail";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";
+export { SizedImage, SizedImg } from "./components/SizedPhoto";
+export { isStoredPhoto, photoUrl, type PhotoSize } from "./photo-url";

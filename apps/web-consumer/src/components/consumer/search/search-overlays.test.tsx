@@ -9,7 +9,6 @@ import {
   ANCHOR_DROP_KM,
   anchorPlaceFromPrediction,
   anchorSurvivesReload,
-  anchorViewportBounds,
   catalogIsStale,
   prependAnchorPlace,
 } from "@/components/consumer/search/search-utils";
@@ -22,7 +21,7 @@ function read(name: string): string {
   return readFileSync(join(SEARCH_DIR, name), "utf8");
 }
 
-describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)", () => {
+describe("Search map catalog reloads once the map is still (MESITA-2440)", () => {
   it("loads the operator's How many, not an SSR 200 dump", () => {
     expect(read("SearchClient.tsx")).toContain("apiFetchNearbyCatalog");
     // How many, the source and the Google reviews minimum are the
@@ -32,7 +31,11 @@ describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)
     expect(read("SearchClient.tsx")).toContain("familyKeys");
     expect(read("SearchClient.tsx")).not.toContain("minReviews");
     expect(read("SearchClient.tsx")).toContain("onFirstViewport");
+    expect(read("SearchClient.tsx")).toContain("reloadWaitMs");
     expect(read("SearchClient.tsx")).not.toContain("idleReloadDue");
+    expect(read("SearchClient.tsx")).toContain("armIdleReload");
+    expect(read("SearchClient.tsx")).not.toContain("handleSearchHere");
+    expect(read("SearchClient.tsx")).not.toContain("SearchHereButton");
     expect(read("SearchClient.tsx")).not.toContain("VIEWPORT_IDLE_MS");
     expect(read("SearchMap.tsx")).toContain("ViewportReporter");
     expect(read("SearchMap.tsx")).toContain("SearchMapReticle");
@@ -43,6 +46,7 @@ describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)
     // The "Finding / Updating nearby" line left with the readout (MESITA-2670);
     // a reload dims the floating cards instead.
     expect(read("search-catalog-overlays.tsx")).toContain("opacity-55");
+    expect(read("search-catalog-overlays.tsx")).not.toContain("Search here");
     expect(read("SearchClient.tsx")).toContain("++viewportGen.current");
     expect(read("SearchClient.tsx")).not.toContain("toFixed(3)");
     // `google: true` survives and is NOT the ring: it says this client can
@@ -51,6 +55,47 @@ describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
     expect(read("../../../lib/api/places.ts")).toContain("reloadMinViewportPct");
+  });
+
+  it("arms one timer per guest move, timed from the last reload; any camera move cancels it", () => {
+    const src = read("SearchClient.tsx");
+    // MESITA-2451: the gap counts from the last reload, not the last move.
+    expect(src).toMatch(
+      /reloadWaitMs\(\s*lastLoadAtRef\.current,\s*Date\.now\(\),\s*reloadIdleMsRef\.current,?\s*\)/,
+    );
+    expect(src).toContain("lastLoadAtRef.current = Date.now();");
+    expect(src).toContain("clampReloadIdleSec(result.reloadIdleSec)");
+    expect(src).toContain("clampReloadMinViewportPct(");
+    expect(src).toContain("reloadMoveMeetsMin(");
+    expect(src).toContain("lastReloadBoxRef.current");
+    expect(src).toContain("markViewport(box)");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*return;[\s\S]*armIdleReload\(\)/,
+    );
+    expect(src).toContain("onCameraMoveStart={clearPendingReload}");
+    const map = read("SearchMap.tsx");
+    expect(map).toContain('addListener("bounds_changed"');
+    // The old distance-AND-time gate is gone, not left half-wired.
+    expect(src).not.toContain("reloadMinSec");
+    expect(src).not.toContain("forceNextLoad");
+  });
+
+  it("never reloads under a finger: the timer re-arms while one is down", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(
+      /if \(mapFingerIsDown\(\)\) \{\s*pendingReload\.current = setTimeout\(fire/,
+    );
+    const map = read("SearchMap.tsx");
+    expect(map).toContain('div.addEventListener("pointerdown", down, true)');
+    expect(map).toContain('window.addEventListener("pointerup", up, true)');
+  });
+
+  it("a pan the page made never reloads; only the guest's own moves do", () => {
+    const src = read("SearchClient.tsx");
+    expect(src).toMatch(
+      /if \(meta\.programmatic\) \{[\s\S]*clearPendingReload\(\);\s*return;/,
+    );
+    expect(src).toContain("Only the guest's own moves");
   });
 
   it("spends the programmatic flag on the idle that ends the move", () => {
@@ -66,6 +111,32 @@ describe("Search map catalog loads on the guest's tap, not at rest (MESITA-2874)
     );
     expect(src).not.toContain("PROGRAMMATIC_IDLE_MS");
     expect(src).not.toContain("programmaticIdleUntil");
+  });
+
+  // MESITA-2510 (Pato: "you are uplaoading every second eve if i don't
+  // move"): a resize keeps the camera, so its idle is not a move — it never
+  // reloads, and it re-arms a guest move the resize's bounds_changed cancelled.
+  it("a resize idle (camera unchanged) never reloads, and re-arms an unserved move", () => {
+    const map = read("SearchMap.tsx");
+    const client = read("SearchClient.tsx");
+    expect(map).toContain(
+      "const unmoved = sameCamera(lastCamera.current, camera);",
+    );
+    const handler = client.slice(
+      client.indexOf("const onUserViewport = useCallback("),
+      client.indexOf("useEffect(() => () => clearPendingReload()"),
+    );
+    const resized = handler.slice(
+      handler.indexOf("if (meta.resized) {"),
+      handler.indexOf("if (meta.programmatic) {"),
+    );
+    expect(resized).toContain("if (moveUnservedRef.current) armIdleReload();");
+    expect(resized).toContain("return;");
+    expect(resized).not.toContain("loadAt(");
+    expect(handler).toContain("moveUnservedRef.current = true;");
+    expect(client).toMatch(
+      /lastLoadAtRef\.current = Date\.now\(\);\s*lastReloadBoxRef\.current = box;\s*moveUnservedRef\.current = false;/,
+    );
   });
 
   it("a GPS fix moves the dot; only the first or an asked-for fix moves the map", () => {
@@ -110,11 +181,14 @@ const RAIL_PLACE = {
 } as Place;
 
 describe("Name search is ONE search after Word's idle seconds (MESITA-2322)", () => {
-  it("calls suggest-places once, Deep, after the EF's idle wait", () => {
+  it("calls suggest-places once, Google's names only, after the EF's idle wait", () => {
     const src = read("SearchClient.tsx");
     expect(src).toContain("DEFAULT_IDLE_MS");
     expect(src).toContain("idleMsRef.current");
+    // MESITA-2896: Google's names only — `deep` (Autocomplete + Text
+    // Search); the Mesita Name mode is gone.
     expect(src).toContain('"deep"');
+    expect(src).not.toContain('"mesita"');
     expect(src).not.toContain('"fast"');
     expect(src).not.toContain("FAST_DEBOUNCE_MS");
     expect(src).not.toContain("DEEP_IDLE_MS");
@@ -150,25 +224,22 @@ describe("a Google-only result opens through get-or-create, never a preview or a
     expect(client).not.toContain("fetchGooglePlacePreview");
     expect(client).not.toContain("setPreviewOpen");
     expect(client).not.toContain("places.googleapis.com");
-    // The explicit open goes to the opening screen at once (MESITA-2311);
-    // Search itself never creates. The ONE place that creates is the opening
-    // screen's getOrCreateGooglePlace, reached only from that screen.
+    // The explicit open asks first (MESITA-2935): it opens the Generate
+    // dialog, whose confirm tap runs getOrCreateGooglePlace.
     expect(client).not.toContain("apiCreateProject(");
     const open = client.slice(
       client.indexOf("const openGoogleProfile"),
-      client.indexOf("const openGoogleOnly"),
+      client.indexOf("const onGenerated"),
     );
-    // The card rides along: the opening screen draws it as the profile's
-    // first draft (MESITA-2307).
-    expect(open).toContain("openGooglePlace(");
+    expect(open).toContain("setGenerateOpen(true)");
     const opener = readFileSync(
       join(SEARCH_DIR, "../../../lib/use-open-google-place.ts"),
       "utf8",
     );
     expect(opener.match(/apiCreateProject\(/g)?.length).toBe(1);
     // ONE TAP OPENS a rail card (MESITA-2824), and still never creates: the
-    // tap goes to the opening screen, which is where get-or-create runs
-    // (MESITA-2305 holds). No select-first branch stands between the tap
+    // tap opens the Generate dialog, whose confirm runs get-or-create
+    // (MESITA-2305 holds, MESITA-2935). No select-first branch stands between the tap
     // and the open any more.
     const openPlace = client.slice(
       client.indexOf("const handleOpenPlace"),
@@ -192,32 +263,29 @@ describe("a Google-only result opens through get-or-create, never a preview or a
 
 describe("every searchbar pick anchors the map (MESITA-1405)", () => {
   it("a searchbar pick never creates a place", () => {
-    // Data guard: openGoogleOnly/openGoogleProfile end in get-or-create, so a
-    // pick routed through them would create a place on a mere selection.
+    // Data guard: a Google-only pick opens the Generate dialog (MESITA-2941),
+    // and only the dialog's Generate tap runs get-or-create. Neither the
+    // pick nor the dialog opener may create on a mere selection.
     const client = read("SearchClient.tsx");
     const barPick = client.slice(
       client.indexOf("const handleBarPick"),
       client.indexOf("const handleOpenPlace"),
     );
-    expect(barPick).not.toContain("openGoogleOnly");
-    expect(barPick).not.toContain("openGoogleProfile");
+    const opener = client.slice(
+      client.indexOf("const openGoogleProfile"),
+      client.indexOf("const onGenerated"),
+    );
+    for (const body of [barPick, opener]) {
+      expect(body).not.toContain("getOrCreateGooglePlace");
+      expect(body).not.toContain("apiCreateProject");
+      expect(body).not.toContain("openGooglePlace(");
+    }
+    expect(opener).toContain("setGenerateOpen(true)");
   });
 
-  it("resolves a Location on PICK — one Details call, viewport decides zoom", () => {
+  it("resolves a Location on pick, once (MESITA-1405, back in MESITA-2896)", () => {
     const client = read("SearchClient.tsx");
-    const barPick = client.slice(
-      client.indexOf("const handleBarPick"),
-      client.indexOf("const handleOpenPlace"),
-    );
-    expect(barPick).toContain('prediction.kind === "location"');
-    expect(barPick).toContain("apiResolveLocationAnchor");
-    expect(barPick).toContain("anchorViewportBounds(resolved.viewport)");
-    // Never resolved while typing: the suggest debounce effect stays clean.
-    const debounce = client.slice(
-      client.indexOf("const fast = window.setTimeout"),
-      client.indexOf("const searchPins"),
-    );
-    expect(debounce).not.toContain("apiResolveLocationAnchor");
+    expect(client).toContain("apiResolveLocationAnchor");
     // The camera side: a bounds anchor FITS (city wide, neighbourhood
     // close); a place anchor pans.
     const map = read("SearchMap.tsx");
@@ -262,8 +330,8 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
             mesitaId: "m-created",
           },
           {
-            // Enriched, yet not marked: the row speaks the basic profile.
-            // Selected is the operator's mark, never enrichment (MESITA-2707).
+            // Enriched, yet not Premier: the row speaks the basic profile.
+            // Premier is a paid tier, never enrichment (MESITA-2925).
             placeId: "ChIJ-enriched",
             mainText: "Casa",
             secondaryText: "Monterrey",
@@ -272,22 +340,22 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
             mesitaId: "m-enriched",
           },
           {
-            placeId: "ChIJ-selected",
+            placeId: "ChIJ-premier",
             mainText: "Nectarworks",
             secondaryText: "Monterrey",
             state: "web_listed",
             enriched: false,
-            selected: true,
-            mesitaId: "m-selected",
+            boost_tier: 1,
+            mesitaId: "m-premier",
           },
         ]}
-        addStates={{}}
         onPick={() => {}}
+        onAction={() => {}}
       />,
     );
     expect(html).toContain("Strana, Monterrey, Basic Mesita profile");
     expect(html).toContain("Casa, Monterrey, Basic Mesita profile");
-    expect(html).toContain("Nectarworks, Monterrey, Mesita Selected");
+    expect(html).toContain("Nectarworks, Monterrey, Premier 2X");
     expect(html).not.toContain("No profile yet");
     expect(html).not.toMatch(/enriched/i);
   });
@@ -427,13 +495,4 @@ describe("anchor helpers", () => {
     expect(anchorSurvivesReload({ lat: null, lng: null }, at)).toBe(false);
   });
 
-  it("anchorViewportBounds converts the wire viewport and passes null through", () => {
-    expect(
-      anchorViewportBounds({
-        low: { lat: 19.18, lng: -99.32 },
-        high: { lat: 19.59, lng: -98.96 },
-      }),
-    ).toEqual({ south: 19.18, west: -99.32, north: 19.59, east: -98.96 });
-    expect(anchorViewportBounds(null)).toBe(null);
-  });
 });

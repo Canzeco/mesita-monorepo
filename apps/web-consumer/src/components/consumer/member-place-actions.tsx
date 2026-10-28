@@ -33,14 +33,22 @@ import { toast } from "@/lib/toast";
 // Social v1 (MESITA-2442): opening the profile records `viewed`; the line
 // under the title comes from consumer-web-list-activity. There is no
 // "I went" (MESITA-2567: Social is liked and viewed only).
+//
+// THE VIEW THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the
+// enriching tag when created, just for user to understand that the place is
+// being enriched"). With "Enrich after N views" at 1, this open is the view
+// that starts the run, after the page loaded `ready`. The `viewed` answer
+// says so, and `place` comes back Enriching until the place is Enriched.
 export function useMemberPlaceActions(place: PlaceDetail): {
+  /** The place to draw: Enriching once a view found it mid-run. */
+  place: PlaceDetail;
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
-  /** The Boost tab's body (MESITA-2861). */
+  /** The Premier tab's body (MESITA-2861, MESITA-2925). */
   boost: ReactNode;
-  /** Set when ⋯ › Boost or Stripe Checkout's return asks for the Boost tab
-   *  (MESITA-2797, MESITA-2861). */
+  /** Set when ⋯ › Premier or Stripe Checkout's return asks for the
+   *  Premier tab (MESITA-2797, MESITA-2861). */
   openTab: { tab: PlaceTab; key: number } | null;
 } {
   const { isSaved, toggle } = useSavedPlaces();
@@ -49,12 +57,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // When ⋯ › Boost last asked for the Boost tab (ms).
+  // When ⋯ › Premier last asked for the Premier tab (ms).
   const [boostAskedAt, setBoostAskedAt] = useState<number | null>(null);
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // ⋯ › Boost and Stripe Checkout's return both open the Boost tab; the
+  // ⋯ › Premier and Stripe Checkout's return both open the Premier tab; the
   // later ask wins, and each new key switches once (PlaceDetailBody).
   const boostAsk = Math.max(boostAskedAt ?? 0, boost.returnedAt ?? 0);
   const openTab = boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
@@ -139,7 +147,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
+  const enriching = activity.enriching && !place.is_enriched && !place.is_enriching;
   return {
+    place: enriching ? { ...place, is_enriching: true } : place,
     actions,
     sheets,
     social: activity.social,
@@ -148,10 +158,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   };
 }
 
-// Boost (MESITA-2789): the place's tier and backers, and the guest's own
-// backings. Checkout returns with `?boost=<session>`: confirm it, say so
-// only when Stripe confirmed it, and drop the parameter so a reload does
-// not confirm twice.
+// Premier (MESITA-2925, was Boost MESITA-2789): the place's tier and
+// backers, and the guest's own backings. Checkout returns with
+// `?boost=<session>`: confirm it, say so only when Stripe confirmed it, and
+// drop the parameter so a reload does not confirm twice.
 function usePlaceBoost(placeId: string): {
   data: PlaceBoost | null;
   loading: boolean;
@@ -190,8 +200,8 @@ function usePlaceBoost(placeId: string): {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
         if (session) setReturned({ placeId, at: Date.now() });
-        if (session && data.confirmed) toast.success("You're a Partner now. Thanks for backing this place");
-        else if (session) toast("We're confirming your payment with Stripe. Your partnership shows once it clears.");
+        if (session && data.confirmed) toast.success("It's Premier. Thanks for backing this place");
+        else if (session) toast("We're confirming your payment with Stripe. Premier shows once it clears.");
       })
       .catch(() => {
         if (!cancelled) setState((s) => ({ placeId, nonce, data: s.placeId === placeId ? s.data : null, failed: true }));
@@ -213,13 +223,15 @@ function usePlaceBoost(placeId: string): {
   };
 }
 
-function usePlaceActivity(placeId: string): { social: ReactNode } {
+function usePlaceActivity(placeId: string): { social: ReactNode; enriching: boolean } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{
     placeId: string;
     activity: PlaceActivity | null;
   }>({ placeId, activity: null });
+  // The place this page's view found mid-Enrich (MESITA-2952).
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mesita) return;
@@ -232,6 +244,9 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
       placeId,
       at: locationSnapshot().coords,
     })
+      .then((tracked) => {
+        if (!cancelled && tracked.enriching) setEnrichingId(placeId);
+      })
       .catch(() => {})
       .then(() => apiPlaceActivity(supabase, placeId))
       .then((activity) => {
@@ -252,6 +267,9 @@ function usePlaceActivity(placeId: string): { social: ReactNode } {
   ) : null;
 
   // A Google-only card has no place row yet: no line.
-  return { social: mesita ? social : null };
+  return {
+    social: mesita ? social : null,
+    enriching: mesita && enrichingId === placeId,
+  };
 }
 

@@ -8,7 +8,7 @@
 // naming convention.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   anonClient,
@@ -17,6 +17,8 @@ import {
 } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
+import { familyChips } from "../_shared/catalog-families.ts";
+import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 import { resolvePlaceTags } from "../_shared/tags.ts";
 import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
 import {
@@ -26,9 +28,14 @@ import {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
+// Google's place id: the write-review form takes no `?cid=`. This EF only;
+// PLACE_PUBLIC_COLUMNS stays as it is.
+const GOOGLE_REVIEW_FORM_COLUMN = ", google_place_id";
+
 type Body = { id?: string; slug?: string };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-get-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -52,7 +59,7 @@ Deno.serve(async (req) => {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select(PLACE_PROFILE_COLUMNS)
+    .select(PLACE_PROFILE_COLUMNS + GOOGLE_REVIEW_FORM_COLUMN)
     .eq(column, idOrSlug)
     .maybeSingle();
 
@@ -74,8 +81,8 @@ Deno.serve(async (req) => {
   const placeId = (data as unknown as { id: string }).id;
   const admin = adminClient(envRes.env);
 
-  // `name` is the generated display column (mesita_name → google_name); raw
-  // google_name and mesita_name stay on the payload for clients that need them.
+  // `name` is the Mesita name (MESITA-2828); google_name rides along as
+  // Google's own label, Search's alias.
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
   // Overview's Stats box (MESITA-2866): unique members who viewed / liked.
@@ -99,7 +106,14 @@ Deno.serve(async (req) => {
     contentState: row.content_state,
     enrichedAt: row.enriched_at,
   });
-  const place = { ...row, ...request, profile_stats: await profileStatsP };
+  const place = {
+    ...row,
+    google_reviews: anonymousReviews(row.google_reviews),
+    ...request,
+    profile_stats: await profileStatsP,
+    // Overview's Mesita Families box (MESITA-2924): the keys, named.
+    families: familyChips(row.family_keys),
+  };
 
   return json({ ok: true, place, tags });
 });

@@ -11,15 +11,49 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
+import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
+// ── 9b. Families ────────────────────────────────────────────────────────
+
+// Pato, MESITA-2924: "add a new section in overview above mesita tags where
+// you call it Mesita Families, there you mention all". The place's families
+// (1–5, inferred by the Description step, MESITA-2891), emoji + label, in
+// family order. No families, no box. Each wears the Tags chip
+// (PLACE_OUTLINE_CHIP_CLASS), emoji first (MESITA-2932: one chip, one type
+// size; the round semibold pill was a third treatment).
+//
+// The card is titled "Families", not "Mesita Families" (Pato, MESITA-2958:
+// "don't use word mesita families just say families"). Admin keeps the
+// longer name.
+export function FamiliesBox({ place }: { place: PlaceDetail }) {
+  if (place.families.length === 0) return null;
+  return (
+    <Box title="Families">
+      <div className="flex flex-wrap gap-2" data-place-families>
+        {place.families.map((f) => (
+          <span key={f.key} className={PLACE_OUTLINE_CHIP_CLASS}>
+            {f.emoji ? (
+              <span aria-hidden className="text-base leading-none">
+                {f.emoji}
+              </span>
+            ) : null}
+            {f.label}
+          </span>
+        ))}
+      </div>
+    </Box>
+  );
+}
+
 // ── 10. Tags ────────────────────────────────────────────────────────────
 
 export function TagsBox({ place }: { place: PlaceDetail }) {
-  // Google atmosphere chips. NO TAGS, NO BOX (Pato, MESITA-2700).
+  // Mesita tags, else Google atmosphere chips (MESITA-2792). NO TAGS, NO BOX
+  // (Pato, MESITA-2700).
   if (place.tags.length === 0) return null;
   return (
     <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
@@ -34,15 +68,19 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 // how many people have liked/saved that profile — below tags". Unique members
 // from place_activity; counts only, never who. No counts on the payload, no box.
 // Titled "Mesita Stats" (MESITA-2867): these are Mesita members, not Google.
+// MESITA-2958 (Pato: "same for stats but call them Mesita Views and Mesita
+// Likes"): the card is "Stats" and the cells carry the Mesita word instead.
+// A profile open is a VIEW, never a visit: "visit" is reserved for a guest
+// physically at the place.
 export function StatsBox({ place }: { place: PlaceDetail }) {
   const stats = place.profile_stats;
   if (!stats) return null;
   const cells = [
-    { key: "viewed", label: stats.viewed === 1 ? "View" : "Views", n: stats.viewed, Icon: Eye },
-    { key: "saved", label: stats.saved === 1 ? "Like" : "Likes", n: stats.saved, Icon: Heart },
+    { key: "viewed", label: "Mesita Views", n: stats.viewed, Icon: Eye },
+    { key: "saved", label: "Mesita Likes", n: stats.saved, Icon: Heart },
   ];
   return (
-    <Box title="Mesita Stats">
+    <Box title="Stats">
       <div className="grid grid-cols-2 gap-2">
         {cells.map(({ key, label, n, Icon }) => (
           <div key={key} className="bg-muted flex flex-col gap-1 rounded-xl p-3">

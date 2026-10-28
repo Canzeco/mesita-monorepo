@@ -4,8 +4,9 @@
 // hourly (job `sync-boosts`); it re-reads every subscription whose
 // period ends within the hour (a renewal moves the end forward, a failed
 // card or a cancellation changes the status) and writes it back, which
-// fires the trigger that recomputes the place's tier. Checkouts left open
-// for a day are dropped.
+// fires the trigger that recomputes the place's tier. A Checkout left open
+// for a day is asked about at Stripe first (MESITA-2857): paid ones are
+// confirmed, still-payable ones expired, and only then is the row dropped.
 //
 // There is no Stripe webhook: the EF name is the ACL and no caller prefix
 // is Stripe's (Rules §2), so Mesita polls instead.
@@ -14,16 +15,22 @@
 // Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { boostStripeKey, stripeClient, subscriptionPatch } from "../_shared/boost.ts";
+import {
+  boostStripeKey,
+  reconcileStaleBacking,
+  type StaleOutcome,
+  stripeClient,
+  subscriptionPatch,
+} from "../_shared/boost.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 const OPEN_TTL_MS = 24 * 3600_000;
 
-Deno.serve(async (req) => {
+serveJson("supabase-cron-sync-boosts", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -38,15 +45,24 @@ Deno.serve(async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  const stale = new Date(Date.now() - OPEN_TTL_MS).toISOString();
-  const { count: dropped } = await admin
-    .from("place_backings")
-    .delete({ count: "exact" })
-    .eq("status", "open")
-    .lt("created_at", stale);
-
   const key = boostStripeKey();
-  if (!key) return json({ ok: true, synced: 0, dropped: dropped ?? 0, skipped: "no_stripe_key" });
+  const stripe = key ? stripeClient(key) : null;
+
+  const stale = new Date(Date.now() - OPEN_TTL_MS).toISOString();
+  const { data: staleRows, error: staleErr } = await admin
+    .from("place_backings")
+    .select("id, stripe_checkout_session_id, created_at")
+    .eq("status", "open")
+    .lt("created_at", stale)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (staleErr) return json({ ok: false, error: `stale_read: ${staleErr.message}` }, 500);
+  const settled: Record<StaleOutcome, number> = { confirmed: 0, dropped: 0, kept: 0 };
+  for (const row of staleRows ?? []) settled[await reconcileStaleBacking(admin, stripe, row)]++;
+  const dropped = settled.dropped;
+  const reconciled = settled.confirmed;
+
+  if (!stripe) return json({ ok: true, synced: 0, dropped, reconciled, skipped: "no_stripe_key" });
 
   const soon = new Date(Date.now() + 3600_000).toISOString();
   const { data: due, error } = await admin
@@ -59,7 +75,6 @@ Deno.serve(async (req) => {
     .limit(limit);
   if (error) return json({ ok: false, error: `due_read: ${error.message}` }, 500);
 
-  const stripe = stripeClient(key);
   let synced = 0;
   let failed = 0;
   for (const row of due ?? []) {
@@ -72,5 +87,5 @@ Deno.serve(async (req) => {
       console.error("[supabase-cron-sync-boosts]", row.id, err);
     }
   }
-  return json({ ok: true, synced, failed, dropped: dropped ?? 0 });
+  return json({ ok: true, synced, failed, dropped, reconciled, kept: settled.kept });
 });

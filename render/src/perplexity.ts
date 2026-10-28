@@ -3,6 +3,8 @@
 // Any non-2xx, timeout or network failure is null, so a caller can tell "the
 // agent did not answer" from "the agent answered null".
 
+import { charge, perplexityUsd } from "./cost.ts";
+
 const AGENT_URL = "https://api.perplexity.ai/v1/agent";
 export const AGENT_TIMEOUT_MS = 45_000;
 
@@ -40,7 +42,10 @@ export async function callAgent(opts: {
       console.error(`[${opts.tag}] perplexity ${res.status} ${body}`);
       return null;
     }
-    return agentResult(await res.json());
+    const payload = await res.json();
+    const cost = perplexityUsd(payload);
+    charge("perplexity", cost.usd, `${opts.tag} ${opts.preset}${cost.reported ? "" : " (estimated)"}`);
+    return agentResult(payload);
   } catch (err) {
     const why = ctrl.signal.aborted
       ? `timeout after ${AGENT_TIMEOUT_MS}ms`

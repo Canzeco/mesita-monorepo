@@ -20,8 +20,6 @@ export type EmbeddablePlace = {
   price_level: number | null;
   embedding: unknown | null;
   embedding_source_text?: string | null;
-  /** MESITA-1238: vector over the resolved display name only. */
-  name_embedding?: unknown | null;
 };
 
 // Deterministic fallback / facts block used when the LLM synthesizer is
@@ -38,11 +36,6 @@ export function placeEmbeddingFacts(v: EmbeddablePlace): string {
     lines.push(`About: ${v.description.trim().slice(0, 900)}`);
   }
   return lines.join("\n");
-}
-
-/** The name vector's source is the resolved display name, nothing else. */
-export function placeNameEmbedText(v: EmbeddablePlace): string {
-  return (v.name ?? "").replace(/\s+/g, " ").trim();
 }
 
 // pgvector accepts vectors as text literals like "[0.01,0.02,...]". We build

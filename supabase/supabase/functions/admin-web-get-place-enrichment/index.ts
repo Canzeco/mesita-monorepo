@@ -1,14 +1,10 @@
 // Supabase Edge Function — admin-web-get-place-enrichment (product caller / admin)
 //
 // Read-only per-place Enricher inspector for the admin console. Given a
-// place id, returns `state` — enrichment progress for the place:
-// places.content_state + the place_research stage/state/error +
-// last_enriched_at (enriched_at via the profiles view, the one Render write; the old
-// stage path's 'done' time only when that is absent, MESITA-2811) +
-// serp_summary, the SERP Summary (the Scout's soft editorial read) for the last
-// run. That one is selected as a JSON PATH, never as the whole `gathered` blob:
-// the column is tens of KB and shipping it wholesale is the regression
-// MESITA-1198 already had to undo once.
+// place id, returns `state`: places.content_state and last_enriched_at
+// (enriched_at via the profiles view, the one Render write, MESITA-2811). The
+// place_research stage row and its SERP Summary went with the retired stage
+// path (MESITA-2424).
 //
 // Internal enricher output — super-admin gated, admin console only. Never
 // exposed through a shared business EF.
@@ -17,7 +13,7 @@
 // Deploy: supabase functions deploy admin-web-get-place-enrichment
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, readPlaceIdAlias } from "../_shared/http.ts";
+import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -27,7 +23,7 @@ import {
 
 type Body = { projectId?: string; placeId?: string };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-place-enrichment", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -50,53 +46,19 @@ Deno.serve(async (req) => {
   if (!placeId) return jsonError("Missing placeId", 400);
 
   // The profiles view carries both content_state (places) and enriched_at.
-  const [placeRes, researchRes] = await Promise.all([
-    admin
-      .from("profiles")
-      .select("content_state, enriched_at")
-      .eq("id", placeId)
-      .maybeSingle(),
-    admin
-      .from("place_research")
-      .select(
-        "stage, state, error, updated_at, serp_summary:gathered->grounding->>serpSummary",
-      )
-      .eq("place_id", placeId)
-      .maybeSingle(),
-  ]);
-
+  const placeRes = await admin
+    .from("profiles")
+    .select("content_state, enriched_at")
+    .eq("id", placeId)
+    .maybeSingle();
   if (placeRes.error) {
     return jsonError(`places: ${placeRes.error.message}`, 500);
   }
-  if (researchRes.error) {
-    return jsonError(`place_research: ${researchRes.error.message}`, 500);
-  }
 
-  const research = researchRes.data as
-    | {
-        stage: string | null;
-        state: string | null;
-        error: string | null;
-        updated_at: string | null;
-        serp_summary: string | null;
-      }
-    | null;
-
-  const enrichedAt = (placeRes.data?.enriched_at ?? null) as string | null;
   const state = {
     content_state: (placeRes.data?.content_state ?? null) as string | null,
-    stage: research?.stage ?? null,
-    stage_state: research?.state ?? null,
-    error: research?.error ?? null,
-    // Enriched is enriched_at: Render's write stamps it and never touches
-    // place_research. The stage row's 'done' time covers places from the old path.
-    last_enriched_at: enrichedAt ??
-      (research?.stage === "done" ? (research?.updated_at ?? null) : null),
-    updated_at: research?.updated_at ?? null,
-    // One of the three enrichment texts (SERP Summary · Presentation ·
-    // Semantic Summary). It grounds link selection and the description, and it
-    // is never a source of facts, ratings or prices.
-    serp_summary: research?.serp_summary ?? null,
+    // Enriched is enriched_at: Render's write stamps it.
+    last_enriched_at: (placeRes.data?.enriched_at ?? null) as string | null,
   };
 
   return json({ ok: true, state });

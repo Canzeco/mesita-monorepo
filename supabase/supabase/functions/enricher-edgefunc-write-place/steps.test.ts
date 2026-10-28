@@ -22,7 +22,6 @@ const STRONG = {
   category: "fine_dining",
   tags: ["tasting-menu"],
   embedding: "[0.1]",
-  name_embedding: "[0.2]",
 };
 
 function states(out: Record<string, { state: string } | undefined>): Record<string, string> {
@@ -80,7 +79,7 @@ Deno.test("a Sync error fails its step; no link and no photos are results", () =
   assertEquals(out.images?.detail, "No photos to keep.");
 });
 
-Deno.test("photos that did not reach storage, a missing Presentation and missing vectors fail", () => {
+Deno.test("photos that did not reach storage, a missing Presentation and a missing vector fail", () => {
   const out = enrichStepOutcomes({
     written: { ...SYNCED, google_name: "Pujol" },
     steps: { links: { state: "failed", detail: "The Resolver did not answer." } },

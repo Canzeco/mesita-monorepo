@@ -15,13 +15,12 @@ const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PE
 /** Keys the Update path must never send to writePlace. */
 export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "photos",
-  "mesita_name",
+  // The Mesita name is the operator's / the name door's (MESITA-2828).
   "name",
   "description",
   "enriched_at",
   "embedding",
   "embedding_source_text",
-  "name_embedding",
   // Update writes google_source_types; the taxonomy trigger derives the
   // Google categories and the shown category from it (MESITA-2836), and the
   // profiles view the families (MESITA-2834). None of the four is patched.
@@ -29,6 +28,9 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "category",
   "category_label",
   "family_keys",
+  // The Mesita Zone is the Description step's inference (MESITA-2937), not
+  // Google's neighborhood: a Google refetch leaves it alone.
+  "zone",
 ] as const;
 
 export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): void {
@@ -66,7 +68,6 @@ export function googleBasicsToUpdatePatch(input: {
     lat: input.basics.lat,
     lng: input.basics.lng,
     address: input.basics.address,
-    zone: input.basics.zone,
     city: input.basics.city,
     timezone: input.basics.timezone,
     closes_at: input.basics.closes_at,

@@ -25,7 +25,8 @@ function review(author: string, rating: number, day: number) {
   return {
     author,
     rating,
-    text: `${author} liked the room.`,
+    author_photo: `https://lh3.googleusercontent.com/${author}`,
+    text: `Review ${author.slice(1)} liked the room.`,
     published: `2026-10-${String(day).padStart(2, "0")}`,
   };
 }
@@ -38,7 +39,7 @@ function mount() {
   const story = "A short presentation that stays fully visible. ".repeat(8);
   const place = placeRowToDetail({
     id: "p-1",
-    mesita_name: "Strana",
+    name: "Strana",
     enriched_at: "2026-01-01T00:00:00Z",
     description: story,
     google_stars_overall: 3.8,
@@ -93,11 +94,8 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Facebook Summary");
     expect(document.body.innerHTML).toContain("Reserve a table");
     expect(document.body.innerHTML).toContain("Directions in Google Maps");
-    // No sort row and no count above the list (MESITA-2618): the header's
-    // Google column already says how many.
-    expect(reviews).not.toContain("Newest");
-    expect(reviews).not.toContain("Highest");
-    expect(reviews).not.toContain("Lowest");
+    // No count above the list (MESITA-2618): the header's Google column
+    // already says how many.
     expect(reviews).not.toContain("484 reviews");
   });
 
@@ -114,17 +112,30 @@ describe("Reviews is a vertical list", () => {
     expect(html).toContain("flex-col");
 
     let text = document.body.textContent ?? "";
-    for (const name of ["R1", "R2", "R3", "R4", "R5"]) {
-      expect(text).toContain(name);
+    for (const n of ["1", "2", "3", "4", "5"]) {
+      expect(text).toContain(`Review ${n} liked`);
     }
-    expect(text).not.toContain("R6");
-    expect(text).not.toContain("R7");
+    expect(text).not.toContain("Review 6 liked");
+    expect(text).not.toContain("Review 7 liked");
     expect(text).toContain("Show more");
 
     clickNamed("Show more");
     text = document.body.textContent ?? "";
-    expect(text).toContain("R6");
-    expect(text).toContain("R7");
+    expect(text).toContain("Review 6 liked");
+    expect(text).toContain("Review 7 liked");
     expect(text).not.toContain("Show more");
+  });
+
+  it("never prints a reviewer's name or photo (MESITA-2916)", () => {
+    mount();
+    clickNamed("Reviews");
+    clickNamed("Show more");
+    const html =
+      document.querySelector('section[aria-label="Reviews"]')?.outerHTML ?? "";
+    for (const name of ["R1", "R2", "R3", "R4", "R5", "R6", "R7"]) {
+      expect(html).not.toContain(name);
+    }
+    expect(html).not.toContain("googleusercontent");
+    expect(html).toContain("Names hidden for privacy");
   });
 });

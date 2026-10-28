@@ -1,6 +1,11 @@
 /** Shared upload constraints for admin place media uploads. */
 
+import { resizeImageFile } from "@/lib/image-resize";
+
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+/** A menu photo may arrive this large; it is shrunk before the 8 MB check. */
+const MAX_SOURCE_IMAGE_BYTES = 25 * 1024 * 1024;
+const MENU_IMAGE_EDGE = 2048;
 
 /** Mirrors admin-web-update-place `MENU_MAX_COUNT` (place-media-update.ts). */
 export const MENU_MAX_COUNT = 20;
@@ -73,7 +78,23 @@ export function validateMenuUploadFile(file: File): string | null {
   if (!ALLOWED_MENU_MIME_TYPES.has(file.type)) {
     return "Use a PDF or image (JPG, PNG, WEBP, AVIF).";
   }
+  if (file.type !== "application/pdf" && file.size <= MAX_SOURCE_IMAGE_BYTES) {
+    return null;
+  }
   return fileSizeError(file);
+}
+
+/**
+ * Shrink a menu image to 2048px on its longest edge as JPEG (MESITA-2936/2938);
+ * PDFs pass through. Returns the file to upload, or an error when even the
+ * shrunk file is over the 8 MB limit.
+ */
+export async function prepareMenuUploadFile(
+  file: File,
+): Promise<{ file: File; error: string | null }> {
+  if (file.type === "application/pdf") return { file, error: null };
+  const shrunk = await resizeImageFile(file, { maxEdge: MENU_IMAGE_EDGE });
+  return { file: shrunk, error: fileSizeError(shrunk) };
 }
 
 function extForMenuFile(file: File): string {

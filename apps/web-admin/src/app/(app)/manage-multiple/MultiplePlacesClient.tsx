@@ -113,7 +113,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[3].id}
         tint="amber"
         title={PIPELINE_STEPS[3].label}
-        blurb="The only way a place becomes Enriched. Starts one Render run for the list. Selected stays whatever it already is."
+        blurb="The only way a place becomes Enriched. Starts one Render run for the list."
       >
         <WriteBox
           id={PIPELINE_STEPS[3].id}
@@ -143,7 +143,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[5].id}
         tint="rose"
         title={PIPELINE_STEPS[5].label}
-        blurb="Writes to places already on Mesita. Select and Unselect set Mesita Selected directly. Enable and Disable toggle guest visibility. Only the Enrich box sets Enriched. Delete archives, no Undo here."
+        blurb="Writes to places already on Mesita. Enable and Disable toggle guest visibility. Only the Enrich box sets Enriched. Delete archives, no Undo here."
       >
         <WriteBox
           id={PIPELINE_STEPS[5].id}

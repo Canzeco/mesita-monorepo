@@ -63,7 +63,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/visit/:id", destination: "/pay", permanent: true },
   { source: "/gift/:code", destination: "/pay", permanent: true },
   // Me's Second Stage boxes (MESITA-2087): the class ladder, the Diamond
-  // pair and its invite PIN, Plan and the Premium checkout, Visits,
+  // pair and its invite PIN, Plan and the Pro checkout, Visits,
   // Metrics, the Passport, the referral Share deck. The `/me/[tab]`
   // catch-all already 308s a retired ONE-segment /me address onto the
   // hub; the two-segment ones need an entry or they 404.

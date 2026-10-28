@@ -292,8 +292,7 @@ function row(
 // Defaults encode two rules. High-frequency triggers may never spend money, so
 // visit/order/reservation buy nothing beyond the Google refetch they already
 // pass through. A failed reservation does NOT also buy `links` (MESITA-1189):
-// the reservation selector is phone-only since MESITA-842
-// (enrich-reservation-endpoint.ts's RESERVATION_CHANNELS = ["phone"]), and
+// the reservation endpoint is phone-only since MESITA-842, and
 // link discovery never finds a phone number — it discovers website/Instagram/
 // Facebook URLs, never phone or email (enrich-channel-discovery.ts). A wrong
 // number has no causal path to a links re-run; only `google` can fix it,
@@ -354,8 +353,8 @@ export function normalizeEnrichmentTriggers(
 }
 
 /**
- * The subprocess set a trigger buys, as the list persisted on the
- * place_research row. An empty list means the trigger is off — do not seed.
+ * The subprocess set a trigger buys. An empty list means the trigger is off —
+ * start nothing.
  */
 export function subprocessesFor(
   cfg: EnrichmentTriggersConfig,
@@ -367,9 +366,9 @@ export function subprocessesFor(
 }
 
 /**
- * Read side for the stage EFs. `null`/absent means a row seeded before this
- * feature (or by a caller with explicit operator intent, e.g. the manual
- * re-enrich button) — those run everything, which is the pre-matrix behaviour.
+ * Read side of a stored purchase. `null`/absent means a caller with explicit
+ * operator intent (e.g. the manual Enrich button) — that runs everything,
+ * which is the pre-matrix behaviour.
  */
 export function wants(
   stored: unknown,
@@ -383,9 +382,9 @@ export function wants(
  * Does a run with this purchase stamp `enriched_at`, THE Enriched fact
  * (MESITA-2154)? Only when it paid for synthesis. The wrong-number refetch
  * (`on_reservation_failed`) buys only `google`, so it must not turn a Created
- * place into an Enriched one: _shared/google-refetch.ts never writes it. The
- * paused contents stage asks only this; Render's one write stamps it on every
- * Enrich, and admin Enrich and the vote door buy everything.
+ * place into an Enriched one: _shared/google-refetch.ts never writes it.
+ * Render's one write stamps it on every Enrich, and admin Enrich and the vote
+ * door buy everything.
  */
 export function stampsEnrichedAt(stored: unknown): boolean {
   return wants(stored, "synthesis");

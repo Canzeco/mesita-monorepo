@@ -93,8 +93,18 @@
 
 import { useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
-import { ArrowUp, Crown, Heart, RotateCw, Users, X } from "lucide-react";
-import { DefaultAvatar } from "@mesita/place-profile";
+import {
+  ArrowUp,
+  Clock,
+  Crown,
+  Eye,
+  Heart,
+  MapPin,
+  RotateCw,
+  Users,
+  X,
+} from "lucide-react";
+import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
@@ -220,9 +230,9 @@ function Face({ person }: { person: ActivityPerson }) {
   return (
     <span className="relative block h-11 w-11 shrink-0">
       {person.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SizedImg
           src={person.avatarUrl}
+          size="thumb"
           alt=""
           className="h-11 w-11 rounded-full object-cover"
         />
@@ -270,21 +280,20 @@ function Face({ person }: { person: ActivityPerson }) {
 /** The place's photo, else the card placeholder — never an empty box
  *  (a Google-only place never shows a photo, lib/place-placeholder.ts).
  *  Its box is `block`: inside the row's place link an inline span drops
- *  its 44px size and the photo renders full size (MESITA-2544). */
+ *  its 48px size and the photo renders full size (MESITA-2544). */
 function Thumb({ place }: { place: Place }) {
   const photo = cardPhoto(place);
   if (photo) {
     return (
-      <span className="bg-muted block h-11 w-11 shrink-0 overflow-hidden rounded-lg">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo} alt="" className="h-full w-full object-cover" />
+      <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
+        <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
       </span>
     );
   }
   const placeholder = placePlaceholder(place);
   return (
     <span
-      className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg"
+      className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
       data-placeholder={placeholder.kind}
     >
       {placeholder.kind === "emoji" ? (
@@ -370,15 +379,22 @@ function FeedRow({
               <span aria-hidden>·</span>
             </>
           ) : null}
-          <span className="shrink-0">{ago}</span>
-          {item.eventKm != null ? (
+          <span className="flex shrink-0 items-center gap-0.5" data-social-ago>
+            <Clock className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            {ago}
+          </span>
+          {item.distanceKm != null ? (
             <>
               <span aria-hidden>·</span>
-              {/* WHERE IT HAPPENED (MESITA-2853, Pato: "not only this event
-                  happened 1mins ago, but its also where that event happened,
-                  1km away"): the member's spot, never the place's. */}
-              <span className="shrink-0" data-social-event-km>
-                {formatKm(item.eventKm)} away
+              {/* THE PLACE'S DISTANCE, NEVER THE EVENT'S (MESITA-2946, Pato:
+                  "someone can move between two notifications and use some
+                  trigonometry … to find someone"). */}
+              <span
+                className="flex shrink-0 items-center gap-0.5"
+                data-social-place-km
+              >
+                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                {formatKm(item.distanceKm)}
               </span>
             </>
           ) : null}
@@ -389,7 +405,7 @@ function FeedRow({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 px-4 py-3 transition-colors duration-1000",
+        "hover:bg-muted/40 flex items-center gap-3 px-4 py-3.5 transition-colors duration-1000",
         fresh && "bg-muted",
       )}
       data-social-row
@@ -407,7 +423,7 @@ function FeedRow({
       <Link
         href={href}
         aria-label={item.place.name}
-        className="focus-visible:ring-ring block shrink-0 rounded-lg outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring block shrink-0 rounded-xl outline-none focus-visible:ring-2"
         data-social-place
       >
         <Thumb place={item.place} />
@@ -517,7 +533,10 @@ function PersonCard({
       {/* ONE SCROLLER, THE WHOLE CARD (Pato, MESITA-2845: "make this UI
           easier to scroll"): the identity boxes scroll away with the
           history, Instagram's profile, instead of a 45vh box under a header
-          that never moved. The card stops at the screen's height; the X is
+          that never moved. The card is always the screen's full height, a
+          short history or a tab switch never moves its top (Pato,
+          MESITA-2965: "the header must be always at the same vertical
+          coords"); the X is
           positioned on the panel, not this scroller, so it stays put. No bar,
           and a fling at either end stays in the card. */}
       <div
@@ -558,10 +577,13 @@ function PersonCard({
             (-mx-5 undoes the card's padding) and is there in every state,
             rows, skeleton or "No activity yet". */}
         <div
-          className="border-border -mx-5 mt-4 border-t pt-0.5"
+          className="border-border -mx-5 mt-4 border-t"
           data-social-history-divider
         >
-          <HistoryList items={history ? history.items : null} />
+          <HistoryList
+            key={`${item.placeId}:${item.kind}:${item.at}`}
+            items={history ? history.items : null}
+          />
         </div>
         {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
             underneath; every tap is counted to measure who leaves. Under
@@ -596,25 +618,36 @@ function PersonCard({
   );
 }
 
-/** One tile per place in the card's grid (MESITA-2854): a view and a like
- *  of the same place are one tile, liked wins, at the newest time; newest
- *  first. The server's list is newest first already, so the first event of
- *  a place sets its slot. */
-export type HistoryTile = { place: Place; liked: boolean; at: string };
+/** The card's two tabs (MESITA-2951, Pato: "make an instagramish list of
+ *  views and likes. views left and likes right"): Instagram's profile strip,
+ *  an icon per tab, Views (an eye) left, Likes (a heart) right. The keys are
+ *  the stored verbs; the labels changed, never the keys. */
+export type HistoryTab = "viewed" | "saved";
 
-export function historyTiles(items: MemberHistoryItem[]): HistoryTile[] {
+const HISTORY_TABS: {
+  tab: HistoryTab;
+  label: string;
+  Icon: typeof Eye;
+  empty: string;
+}[] = [
+  { tab: "viewed", label: "Views", Icon: Eye, empty: "No views yet" },
+  { tab: "saved", label: "Likes", Icon: Heart, empty: "No likes yet" },
+];
+
+/** One tile per place in a tab's grid (MESITA-2854, MESITA-2951): only that
+ *  tab's verb, one tile per place at its newest time, newest first. The
+ *  server's list is newest first already, so the first event of a place sets
+ *  its slot. */
+export type HistoryTile = { place: Place; at: string };
+
+export function historyTiles(
+  items: MemberHistoryItem[],
+  tab: HistoryTab,
+): HistoryTile[] {
   const byPlace = new Map<string, HistoryTile>();
   for (const it of items) {
-    const tile = byPlace.get(it.placeId);
-    if (!tile) {
-      byPlace.set(it.placeId, {
-        place: it.place,
-        liked: it.kind === "saved",
-        at: it.at,
-      });
-    } else if (it.kind === "saved") {
-      tile.liked = true;
-    }
+    if (it.kind !== tab || byPlace.has(it.placeId)) continue;
+    byPlace.set(it.placeId, { place: it.place, at: it.at });
   }
   return [...byPlace.values()];
 }
@@ -624,66 +657,116 @@ export function historyTiles(items: MemberHistoryItem[]): HistoryTile[] {
 const HISTORY_GRID_CLASS = "grid grid-cols-3 gap-0.5";
 
 /** The card's history (MESITA-2854, Pato: "this ui to scroll profile events
- *  is shit"): Instagram's profile grid, not a list. Each tile is the place's
- *  photo (or its placeholder), the name on a dark fade at the foot, a heart
- *  in the corner when liked, and a door to the place; one tile per place.
- *  It was MESITA-2609's rows, "Viewed <underlined name>" over a time, a
- *  sentence per event that read as a wall of the same word. Not a scroller
- *  of its own: it scrolls with the whole card (MESITA-2845), which draws no
- *  bar and keeps a fling at either end from scrolling Home behind it. */
+ *  is shit"): Instagram's profile, a tab strip over a grid, not a list. The
+ *  strip (MESITA-2951) splits it, Views left, Likes right, the lit tab ink
+ *  with a bar under its icon, the other muted; it opens on Views. Each tile
+ *  is the place's photo (or its placeholder), the name on a dark fade at the
+ *  foot, and a door to the place; one tile per place. It was one grid of
+ *  both verbs with a heart in a liked tile's corner (MESITA-2854), and
+ *  before that MESITA-2609's rows. Not a scroller of its own: it scrolls
+ *  with the whole card (MESITA-2845), which draws no bar and keeps a fling
+ *  at either end from scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
-  if (items == null) {
-    // The grid's own tiles, empty (Pato, MESITA-2701: "the placeholders must
-    // be similar to the page you are loading, like the sizes").
-    return (
-      <div className={HISTORY_GRID_CLASS} aria-busy data-social-history-loading>
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skeleton key={i} className="aspect-square w-full rounded-none" />
-        ))}
-      </div>
-    );
-  }
-  if (items.length === 0) {
-    return (
-      <p
-        className="text-muted-foreground mt-3 px-5 text-center text-sm"
-        data-social-history-empty
-      >
-        No activity yet
-      </p>
-    );
-  }
+  const [tab, setTab] = useState<HistoryTab>("viewed");
+  const current = HISTORY_TABS.find((t) => t.tab === tab) ?? HISTORY_TABS[0];
+  const tiles = items ? historyTiles(items, tab) : null;
   return (
-    <ul
-      role="list"
-      aria-label="Activity"
-      className={HISTORY_GRID_CLASS}
-      data-social-history
-    >
-      {historyTiles(items).map((tile) => (
-        <li key={tile.place.id}>
-          <HistoryTileLink tile={tile} />
-        </li>
-      ))}
-    </ul>
+    <>
+      <div
+        role="tablist"
+        aria-label="Activity"
+        className="border-border mb-0.5 flex border-b"
+        data-social-history-tabs
+      >
+        {HISTORY_TABS.map(({ tab: t, label, Icon }) => {
+          const on = t === tab;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              aria-label={label}
+              onClick={() => setTab(t)}
+              className={cn(
+                "focus-visible:ring-ring relative flex h-11 flex-1 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset",
+                on ? "text-foreground" : "text-muted-foreground",
+              )}
+              data-social-history-tab={t}
+            >
+              <Icon
+                aria-hidden
+                className="h-6 w-6"
+                strokeWidth={on ? 2.25 : 2}
+              />
+              {on && (
+                <span
+                  aria-hidden
+                  className="bg-foreground absolute bottom-0 left-1/2 h-px w-16 -translate-x-1/2"
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {tiles == null ? (
+        // The grid's own tiles, empty (Pato, MESITA-2701: "the placeholders
+        // must be similar to the page you are loading, like the sizes").
+        <div
+          className={HISTORY_GRID_CLASS}
+          aria-busy
+          data-social-history-loading
+        >
+          {Array.from({ length: 6 }, (_, i) => (
+            <Skeleton key={i} className="aspect-square w-full rounded-none" />
+          ))}
+        </div>
+      ) : tiles.length === 0 ? (
+        <p
+          className="text-muted-foreground mt-3 px-5 text-center text-sm"
+          data-social-history-empty
+        >
+          {current.empty}
+        </p>
+      ) : (
+        <ul
+          role="list"
+          aria-label={current.label}
+          className={HISTORY_GRID_CLASS}
+          data-social-history={tab}
+        >
+          {tiles.map((tile) => (
+            <li key={tile.place.id}>
+              <HistoryTileLink tile={tile} tab={tab} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 
-function HistoryTileLink({ tile }: { tile: HistoryTile }) {
-  const { place, liked, at } = tile;
+function HistoryTileLink({
+  tile,
+  tab,
+}: {
+  tile: HistoryTile;
+  tab: HistoryTab;
+}) {
+  const { place, at } = tile;
   const photo = cardPhoto(place);
   const placeholder = photo ? null : placePlaceholder(place);
   return (
     <Link
       href={placeHref(place.slug || place.id)}
-      aria-label={`${liked ? "Liked" : "Viewed"} ${place.name}, ${shortAgo(at)}`}
+      aria-label={`${tab === "saved" ? "Liked" : "Viewed"} ${place.name}, ${shortAgo(at)}`}
       className="focus-visible:ring-ring bg-muted relative block aspect-square overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-inset"
-      data-social-history-event={liked ? "saved" : "viewed"}
+      data-social-history-event={tab}
     >
       {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SizedImg
           src={photo}
+          size="card"
           alt=""
           loading="lazy"
           className="h-full w-full object-cover"
@@ -700,13 +783,6 @@ function HistoryTileLink({ tile }: { tile: HistoryTile }) {
             <span className="text-lg font-semibold">{placeholder?.text}</span>
           )}
         </span>
-      )}
-      {liked && (
-        <Heart
-          aria-hidden
-          className="absolute top-1.5 right-1.5 h-4 w-4 fill-white text-white drop-shadow"
-          data-social-history-liked
-        />
       )}
       <span
         aria-hidden

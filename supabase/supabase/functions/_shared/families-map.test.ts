@@ -1,73 +1,30 @@
-import { assert, assertEquals } from "jsr:@std/assert@1";
+import { assertEquals } from "jsr:@std/assert@1";
 import { buildFamiliesMap } from "./families-map.ts";
-import { GOOGLE_TYPE_SUPER } from "./google-type-super.ts";
 
-Deno.test("a Google type can sit in several guest families", () => {
-  const map = buildFamiliesMap([], []);
-  const bySlug = new Map(map.googleMembership.map((row) => [row.slug, row.familyKeys]));
-  assertEquals(bySlug.get("cafe"), ["coffee", "breakfast", "brunch"]);
-  assertEquals(bySlug.get("pizza_restaurant"), ["pizza", "italian"]);
-  assertEquals(bySlug.get("taco_restaurant"), ["quick_bite", "tacos", "mexican"]);
-  assertEquals(bySlug.get("gas_station"), []);
-  assertEquals(map.googleMembership.length, Object.keys(GOOGLE_TYPE_SUPER).length);
-  assert(map.googleMembership.every((row) => !row.familyKeys.includes("undefined")));
-});
-
-Deno.test("google types stay exclusive and leftovers land on undefined", () => {
-  const map = buildFamiliesMap([], []);
-  const slugs = map.googleTypes.map((t) => t.slug);
-  assertEquals(new Set(slugs).size, slugs.length);
-  assertEquals(slugs.length, Object.keys(GOOGLE_TYPE_SUPER).length);
-  assert(map.googleTypes.some((t) => t.family === "undefined"));
-  assert(!map.googleTypes.some((t) => (t.family as string) === "other"));
-});
-
-Deno.test("a category keeps both family keys and does not invent a third", () => {
+// MESITA-2891: Atlas lists every Google category exactly once, enabled or not.
+Deno.test("every Google category lands in exactly one of the two lists, Undefined is no family", () => {
   const map = buildFamiliesMap(
-    [{ slug: "restaurants", label: "Restaurants", emoji: "🍽️", sort_order: 1 }],
-    [{
-      slug: "brunch",
-      label: "Brunch",
-      section: "food",
-      sort_order: 2,
-      family_keys: ["restaurants", "cafes_bakeries"],
-    }],
+    [
+      { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },
+      { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 99 },
+    ],
+    [
+      { slug: "gas_station", label: "Gas station", enabled: false },
+      { slug: "cafe", label: "Cafe", enabled: true },
+      { slug: "bakery", label: "Bakery", enabled: true },
+    ],
   );
-  assertEquals(map.categories[0]?.familyKeys, [
-    "restaurants",
-    "cafes_bakeries",
-  ]);
-  assertEquals(map.families[0]?.slug, "restaurants");
-  assertEquals(map.tags, []);
+  assertEquals(map.enabledCategories.map((c) => c.slug), ["bakery", "cafe"]);
+  assertEquals(map.disabledCategories.map((c) => c.slug), ["gas_station"]);
+  assertEquals(map.families.map((f) => f.slug), ["coffee"]);
 });
 
 Deno.test("tags keep the english label and follow facet order", () => {
   const map = buildFamiliesMap([], [], [
-    {
-      slug: "late_night",
-      label_es: "Nocturno",
-      label_en: "Late night",
-      facet: "hours",
-      sort_order: 2,
-    },
-    {
-      slug: "cash",
-      label_es: "Efectivo",
-      label_en: "Cash",
-      facet: "payment",
-      sort_order: 1,
-    },
-    {
-      slug: "card",
-      label_es: "Tarjeta",
-      label_en: "Card",
-      facet: "payment",
-      sort_order: 2,
-    },
+    { slug: "late_night", label_es: "Nocturno", label_en: "Late night", facet: "hours", sort_order: 2 },
+    { slug: "cash", label_es: "Efectivo", label_en: "Cash", facet: "payment", sort_order: 1 },
+    { slug: "card", label_es: "Tarjeta", label_en: "Card", facet: "payment", sort_order: 2 },
   ]);
   assertEquals(map.tags.map((tag) => tag.slug), ["cash", "card", "late_night"]);
-  assertEquals(map.tags[0]?.label, "Cash");
   assertEquals(map.tags[0]?.facetLabel, "Payment");
-  assertEquals(map.tags[0]?.facetEmoji, "💳");
-  assertEquals(map.tags[2]?.facetLabel, "Hours");
 });

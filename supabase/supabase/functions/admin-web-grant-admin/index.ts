@@ -8,7 +8,7 @@
 // _shared/auth.ts checkSuperAdmin).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -21,7 +21,7 @@ type Body = { email?: string; note?: string };
 // Pragmatic email shape check — the same lenient pattern used elsewhere.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-Deno.serve(async (req) => {
+serveJson("admin-web-grant-admin", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

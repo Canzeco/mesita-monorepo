@@ -51,22 +51,22 @@ export type AdminPlace = {
   id: string;
   slug: string | null;
   /**
-   * Resolved display label. GENERATED in Postgres as
-   * coalesce(mesita_name, google_name) — read-only, never send it in a patch.
+   * The one Mesita name (MESITA-2828): stored, editable. Blank on save ⇒ the
+   * place follows google_name again.
    */
   name: string;
-  /** Operator override. Null/empty ⇒ the place follows google_name. Editable. */
-  mesita_name?: string | null;
   /**
-   * Cached Google Places displayName. Not an identity spine (google_place_id
-   * is) — it changes whenever the Google listing does. Enricher-only write.
+   * Google's own label. Not an identity spine (google_place_id is) — it
+   * changes whenever the Google listing does. Google-only write; Search's
+   * alias of the Mesita name, never shown to a guest.
    */
   google_name?: string | null;
   category: string | null;
   category_label: string | null;
-  /** Google categories: 1–3 model-picked slugs from Google's list (MESITA-2827). */
+  /** Google categories: Google's own types, primary first (MESITA-2836); Basics shows the first. */
   google_types?: unknown;
-  /** Families: the Google categories' dictionary, mapped in the profiles view (MESITA-2834). */
+  /** Mesita Families: 1–5 inferred by the Description step's model (MESITA-2891),
+   *  or set by hand on Basics (MESITA-2893); Undefined when none. */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;
@@ -131,7 +131,6 @@ export type AdminPlace = {
   // overview only. Tags are never part of the source text.
   embedding?: string | number[] | null;
   embedding_source_text?: string | null;
-  name_embedding?: string | number[] | null;
   // ── State, super-admin overview only (MESITA-1186) ───────────────────────
   // Computed by admin-web-get-overview off _shared/place-state.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
@@ -146,17 +145,16 @@ export type AdminPlace = {
   /** THE Enriched fact (MESITA-2154): an Enrich run completed —
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
-  /** Mesita Selected (MESITA-2707): the operator's own mark,
-   *  `places.selected`, read off the row by admin-web-get-overview. Never
-   *  derived from Enriched, ready and Disabled; Select / Unselect writes it
-   *  through admin-web-set-place-selected. */
-  selected?: boolean;
-  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
-   *  1 2x · 2 5x · 3 10x. Derived from guests' subscriptions; never set
-   *  here. Profile States shows it as Boosted (MESITA-2795). */
+  /** Premier (MESITA-2925, was Boost — MESITA-2789): the paid tier,
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from guests'
+   *  subscriptions; never set here. Profile States shows it (MESITA-2795). */
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
+  /** Basics fields the operator owns (MESITA-2829, MESITA-2893): name ·
+   *  description · tags · family_keys. Enrich skips them until the row's
+   *  Reset clears the mark. */
+  operator_fields?: string[];
   /** Unique members who viewed / saved (admin-web-get-overview). */
   profile_stats?: { viewed?: number; saved?: number };
   /** Votes required before Enrich starts. Settings `enrichRequestThreshold`. */
@@ -334,35 +332,10 @@ export async function setPlaceListed(
   };
 }
 
-/** Mark or unmark the place as Mesita Selected — the ONLY write path to
- *  places.selected, the operator's own mark (MESITA-2707). Independent of
- *  Enriched and of Disabled; the Map pins it red, Chat reads Selected places
- *  only, the Search carousel tags it. Its own admin door
- *  (admin-web-set-place-selected). */
-export async function setPlaceSelected(
-  placeId: string,
-  selected: boolean,
-): Promise<Result<AdminPlace>> {
-  const r = await efInvoke<{ place: AdminPlace; selected?: boolean }>(
-    "admin-web-set-place-selected",
-    {
-      placeId,
-      selected,
-    },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  // The EF returns `selected` beside `place`; stamp it onto the row so the
-  // shell's merge cannot keep a stale overview value.
-  return {
-    ok: true,
-    data: { ...r.data.place, selected: r.data.selected ?? selected },
-  };
-}
+// ── Premier (MESITA-2789; Boost renamed Premier, MESITA-2925) ──────────
 
-// ── Boost (MESITA-2789) ──────────────────────────────────────────────────
-
-/** One guest's subscription behind a place's Boost, as Single Place › Boost
- *  lists it. Amounts are US cents per billing interval. */
+/** One guest's subscription behind a place's Premier tier, as Single
+ *  Place › Premier lists it. Amounts are US cents per billing interval. */
 export type AdminBacking = {
   id: string;
   payer: string | null;
@@ -395,6 +368,28 @@ export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceB
   return { ok: true, data: r.data };
 }
 
+export type AdminPlaceReport = {
+  consumer_id: string;
+  first_name: string | null;
+  member_number: string | null;
+  reason: string;
+  note: string | null;
+  created_at: string;
+};
+
+/** The place's guest reports, newest first (admin-web-list-place-reports,
+ *  MESITA-2686). Read-only. */
+export async function listPlaceReports(
+  placeId: string,
+): Promise<Result<{ reports: AdminPlaceReport[]; capped: boolean }>> {
+  const r = await efInvoke<{ reports?: AdminPlaceReport[]; capped?: boolean }>(
+    "admin-web-list-place-reports",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: { reports: r.data.reports ?? [], capped: r.data.capped === true } };
+}
+
 // ── Profile vocabulary ───────────────────────────────────────────────────
 // Arrives on admin-web-get-overview, the one profile read. Family and
 // Category are already resolved there. The editor does not fetch them.
@@ -418,7 +413,17 @@ export type PlaceFieldLimits = {
   placeNameMax: number;
   descriptionMax: number;
   tagsPerPlaceMax: number;
+  /** Mesita families per place (MESITA-2893); the trigger refuses a sixth. */
+  familiesPerPlaceMax: number;
   photosMax: number;
+};
+
+/** One of the thirty-seven Mesita Families the Basics editor offers (MESITA-2893). */
+export type PlaceFamilyOption = {
+  slug: string;
+  label: string;
+  emoji: string;
+  sortOrder: number;
 };
 
 export type ResolvedFamily = {
@@ -430,16 +435,14 @@ export type PlaceCategoryOption = {
   label: string;
   section: string;
   sort_order: number;
-  /** 1–2 place family parents (multi-parent law). */
-  family_keys?: string[];
-  /** Membership already joined by the profile read. */
-  family_display: string;
 };
 
 /** Everything the profile editor needs besides the place row. One read. */
 export type ProfileRead = {
-  /** Families: the stored family_keys, derived from the Mesita categories. */
+  /** Mesita Families: the stored 1–5, inferred by the Description step (MESITA-2891). */
   familyStored: ResolvedFamily;
+  /** The thirty-seven the operator may pick from, in catalog (day-arc) order (MESITA-2893). */
+  families: PlaceFamilyOption[];
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
   facets: PlaceTagFacet[];
@@ -450,6 +453,7 @@ const DEFAULT_PLACE_FIELD_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 500,
   tagsPerPlaceMax: 20,
+  familiesPerPlaceMax: 5,
   photosMax: 10,
 };
 
@@ -462,6 +466,8 @@ function readPlaceFieldLimits(
       fieldLimits?.description?.max ?? DEFAULT_PLACE_FIELD_LIMITS.descriptionMax,
     tagsPerPlaceMax:
       fieldLimits?.tagsPerPlace?.max ?? DEFAULT_PLACE_FIELD_LIMITS.tagsPerPlaceMax,
+    familiesPerPlaceMax:
+      fieldLimits?.familiesPerPlace?.max ?? DEFAULT_PLACE_FIELD_LIMITS.familiesPerPlaceMax,
     photosMax: fieldLimits?.photos?.max ?? DEFAULT_PLACE_FIELD_LIMITS.photosMax,
   };
 }
@@ -477,6 +483,7 @@ function readProfile(value: unknown): ProfileRead | null {
   if (!value || typeof value !== "object") return null;
   const row = value as {
     familyStored?: unknown;
+    families?: unknown;
     categories?: unknown;
     tags?: unknown;
     facets?: unknown;
@@ -493,15 +500,25 @@ function readProfile(value: unknown): ProfileRead | null {
     if (
       typeof c.slug !== "string" ||
       typeof c.label !== "string" ||
-      typeof c.section !== "string" ||
-      typeof c.family_display !== "string"
+      typeof c.section !== "string"
     ) {
       return null;
     }
     categories.push(c);
   }
+  // The family vocabulary (MESITA-2893): a payload without it still paints;
+  // the editor then offers nothing to add.
+  const families: PlaceFamilyOption[] = Array.isArray(row.families)
+    ? row.families.filter(
+      (f): f is PlaceFamilyOption =>
+        !!f && typeof f === "object" &&
+        typeof (f as PlaceFamilyOption).slug === "string" &&
+        typeof (f as PlaceFamilyOption).label === "string",
+    )
+    : [];
   return {
     familyStored,
+    families,
     categories,
     tags: row.tags as PlaceTagOption[],
     facets: row.facets as PlaceTagFacet[],
@@ -514,14 +531,7 @@ function readProfile(value: unknown): ProfileRead | null {
 
 export type PlaceEnrichmentState = {
   content_state: string | null;
-  stage: string | null;
-  stage_state: string | null;
-  error: string | null;
   last_enriched_at: string | null;
-  updated_at: string | null;
-  /** The SERP Summary from the last run — the Scout's soft editorial read.
-   *  Soft context only: never a source of facts, ratings or prices. */
-  serp_summary: string | null;
 };
 
 type PlaceEnrichment = {

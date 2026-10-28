@@ -27,7 +27,7 @@
 // Deploy: supabase functions deploy supabase-edgefunc-discover-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
@@ -68,7 +68,7 @@ type QueryResult = {
   error: string | null;
 };
 
-Deno.serve(async (req) => {
+serveJson("supabase-edgefunc-discover-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

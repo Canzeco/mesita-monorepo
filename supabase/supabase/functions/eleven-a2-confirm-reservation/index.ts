@@ -19,7 +19,7 @@
 // Deploy: supabase functions deploy eleven-a2-confirm-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
@@ -41,7 +41,7 @@ import { reminderParkPatch } from "../_shared/reservation-reminder.ts";
 
 const MAX_NEGOTIATION_ROUNDS = 2;
 
-Deno.serve(async (req) => {
+serveJson("eleven-a2-confirm-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

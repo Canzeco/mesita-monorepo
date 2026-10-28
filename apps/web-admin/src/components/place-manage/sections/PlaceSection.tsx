@@ -12,6 +12,7 @@ import {
 import {
   type AdminPlace,
   type PlaceFieldLimits,
+  updatePlace,
 } from "../actions";
 import { PlaceFamilyField } from "../PlaceFamilyField";
 import {
@@ -47,6 +48,9 @@ const DAYS = [
 type Day = (typeof DAYS)[number];
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
+
+/** The Basics fields an operator may own (MESITA-2829, families MESITA-2893). */
+type OperatorField = "name" | "description" | "tags" | "family_keys";
 
 // Brand marks live in /public/channels (Simple Icons SVGs, same set as
 // consumer). Generic contact fields keep lucide fallbacks.
@@ -167,13 +171,15 @@ type DayHours = { closed: boolean; open: string; close: string };
 // Address is deliberately absent: it is native (Google/Enricher-sourced) and
 // admin-web-update-place does not accept it — Location renders read-only.
 type Form = {
-  /** Operator override → places.mesita_name. Blank ⇒ the place follows Google. */
-  mesitaName: string;
+  /** The Mesita name → place_profiles.name (MESITA-2828). Blank ⇒ the place follows Google. */
+  name: string;
   /** Canonical Presentation — English (Mesita core). The column stays
    * `description`; the FIELD is Presentation (Pato, 2026-08-23). */
   description: string;
   /** Mesita tags, place_tags slugs (editable, MESITA-2836). */
   tags: string[];
+  /** Mesita families, place_families slugs (editable, MESITA-2893). */
+  family_keys: string[];
   phone: string;
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
@@ -185,6 +191,7 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 500,
   tagsPerPlaceMax: 20,
+  familiesPerPlaceMax: 5,
   photosMax: 10,
 };
 
@@ -203,11 +210,15 @@ function placeToForm(
   const channels: Record<string, string> = {};
   for (const c of CHANNELS) channels[c.key as string] = str(v[c.key]);
   return {
-    mesitaName: (v.mesita_name ?? "").slice(0, limits.placeNameMax),
+    name: (v.name ?? "").slice(0, limits.placeNameMax),
     description: (v.description ?? "").slice(0, limits.descriptionMax),
     tags: (Array.isArray(v.tags) ? v.tags : [])
       .filter((t): t is string => typeof t === "string")
       .slice(0, limits.tagsPerPlaceMax),
+    // Undefined is the view's word for "none stored", never a pick.
+    family_keys: (Array.isArray(v.family_keys) ? v.family_keys : [])
+      .filter((f): f is string => typeof f === "string" && f !== "undefined")
+      .slice(0, limits.familiesPerPlaceMax),
     phone: v.phone ?? "",
     channels,
     hours,
@@ -223,16 +234,22 @@ function boxToPatch(
   f: Form,
   id: string,
   limits: PlaceFieldLimits,
+  opts: { familiesChanged?: boolean } = {},
 ): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
-    // Empty Mesita name clears the override → UI falls back to google_name.
-    const mesitaName = f.mesitaName.trim().slice(0, limits.placeNameMax);
+    // An empty name clears it → the place follows google_name again.
+    const name = f.name.trim().slice(0, limits.placeNameMax);
     return {
       id,
-      mesita_name: mesitaName.length > 0 ? mesitaName : null,
+      name: name.length > 0 ? name : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
+      // Families ride only when touched (MESITA-2893): the door marks a sent
+      // list as operator-owned, and an untouched list must stay the model's.
+      ...(opts.familiesChanged
+        ? { family_keys: f.family_keys.slice(0, limits.familiesPerPlaceMax) }
+        : {}),
     };
   }
   if (box === "time") {
@@ -268,7 +285,30 @@ export function PlaceSection({
   /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
-  const { savePending, profile, reportSocialDraft } = usePlaceContext();
+  const { savePending, profile, reportSocialDraft, setPlace } = usePlaceContext();
+  // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
+  const [resetting, setResetting] = useState<string | null>(null);
+  const owned = new Set(place.operator_fields ?? []);
+  const resetField = async (field: OperatorField) => {
+    setResetting(field);
+    const r = await updatePlace({ id: place.id, reset_fields: [field] });
+    setResetting(null);
+    if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
+  };
+  const resetControl = (field: OperatorField) =>
+    owned.has(field) ? (
+      <span className="inline-flex items-center gap-2">
+        <span className="text-muted-foreground type-meta">Enrich keeps it</span>
+        <button
+          type="button"
+          className="text-primary type-meta font-medium underline-offset-4 hover:underline disabled:opacity-50"
+          disabled={savePending || resetting !== null}
+          onClick={() => void resetField(field)}
+        >
+          {resetting === field ? "Resetting…" : "Reset"}
+        </button>
+      </span>
+    ) : undefined;
   const limits = profile.fieldLimits;
   const [form, setForm] = useState<Form>(() => placeToForm(place, limits));
   const [saved, setSaved] = useState<Form>(form);
@@ -277,18 +317,30 @@ export function PlaceSection({
     () =>
       !sliceEqual(
         {
-          mesitaName: form.mesitaName,
+          name: form.name,
           description: form.description,
           tags: form.tags.join(","),
+          family_keys: form.family_keys.join(","),
         },
         {
-          mesitaName: saved.mesitaName,
+          name: saved.name,
           description: saved.description,
           tags: saved.tags.join(","),
+          family_keys: saved.family_keys.join(","),
         },
       ),
-    [form.mesitaName, form.description, form.tags, saved.mesitaName, saved.description, saved.tags],
+    [
+      form.name,
+      form.description,
+      form.tags,
+      form.family_keys,
+      saved.name,
+      saved.description,
+      saved.tags,
+      saved.family_keys,
+    ],
   );
+  const familiesChanged = form.family_keys.join(",") !== saved.family_keys.join(",");
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
     [form.hours, saved.hours],
@@ -312,7 +364,7 @@ export function PlaceSection({
     placeDirty,
     () => {
       const parts: Record<string, unknown>[] = [];
-      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits));
+      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits, { familiesChanged }));
       if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
       if (dirtyChannels)
         parts.push(boxToPatch("channels", form, place.id, limits));
@@ -372,7 +424,7 @@ export function PlaceSection({
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
-          Basics → Location → Hours → Links. Mesita photos live on Admin.
+          Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin;
           Team on Controls; the reputation rail on Activity. */}
@@ -382,9 +434,13 @@ export function PlaceSection({
         title="Basics"
         subtitle="What this place is."
       >
-        {/* Pato's fields, in his order (MESITA-2790; Mesita categories left
-            with MESITA-2827): one list, so a reorder or a restored row is one
-            edit. One field per row. */}
+        {/* The seven Basics rows, in Pato's order (2026-10-27, "things to
+            save": Google Name · Google Price · Google Category · Mesita Name ·
+            Mesita Families · Mesita Presentation · Mesita Tags). One list, so
+            a reorder or a restored row is one edit. One field per row.
+            Mesita name, families, presentation and tags are the operator's to
+            edit; an edit sticks through Enrich until its Reset (MESITA-2829,
+            families since MESITA-2893). */}
         <div className="mt-5 grid gap-4">
           {[
             <ReadField key="google-name" label="Google name" auto boxed>
@@ -393,22 +449,35 @@ export function PlaceSection({
             <ReadField key="google-price" label="Google price" auto boxed>
               <PriceDisplay level={place.price_level} currency={place.currency} />
             </ReadField>,
-            <PlaceGoogleCategoriesField key="google-categories" />,
+            <PlaceGoogleCategoriesField key="google-category" />,
             <TextField
-              key="mesita-name"
+              key="name"
               label="Mesita name"
-              value={form.mesitaName}
-              onChange={(x) => set("mesitaName", x.slice(0, limits.placeNameMax))}
+              labelRight={resetControl("name")}
+              value={form.name}
+              onChange={(x) => set("name", x.slice(0, limits.placeNameMax))}
               maxLength={limits.placeNameMax}
               disabled={anyPending}
               placeholder={(place.google_name ?? "").trim() || undefined}
             />,
+            <PlaceFamilyField
+              key="families"
+              labelRight={resetControl("family_keys")}
+              value={form.family_keys}
+              onChange={(families) =>
+                set("family_keys", families.slice(0, limits.familiesPerPlaceMax))
+              }
+              disabled={anyPending}
+            />,
             <TextArea
-              key="mesita-presentation"
+              key="presentation"
               label="Mesita presentation"
               labelRight={
-                <span className="text-muted-foreground type-label tabular-nums">
-                  {form.description.length} / {limits.descriptionMax}
+                <span className="inline-flex items-center gap-3">
+                  {resetControl("description")}
+                  <span className="text-muted-foreground type-label tabular-nums">
+                    {form.description.length} / {limits.descriptionMax}
+                  </span>
                 </span>
               }
               value={form.description}
@@ -420,12 +489,12 @@ export function PlaceSection({
               disabled={anyPending}
             />,
             <PlaceMesitaTagsField
-              key="mesita-tags"
+              key="tags"
+              labelRight={resetControl("tags")}
               value={form.tags}
               onChange={(tags) => set("tags", tags.slice(0, limits.tagsPerPlaceMax))}
               disabled={anyPending}
             />,
-            <PlaceFamilyField key="families" />,
           ]}
         </div>
       </SectionCard>
@@ -442,6 +511,13 @@ export function PlaceSection({
           </ReadField>
           <ReadField label="Google Address" auto boxed>
             {locationAddress(place)}
+          </ReadField>
+          {/* Google Place ID and Google Address are Google's canonical
+              location; the Mesita Zone is Mesita's, inferred by the
+              Description step's LLM on every Create and Enrich, and the
+              fact the place header draws after the category (MESITA-2937). */}
+          <ReadField label="Mesita Zone" auto boxed>
+            {place.zone?.trim() ? place.zone : "—"}
           </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (

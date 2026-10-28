@@ -1,9 +1,7 @@
 // EF-side reader for the reservation-agent knobs on app_config.reservations_config
 // (Test mode number, limits, reminder). Mirrors the coerce in
 // apps/web-admin/src/app/(app)/reservations-config/catalog.ts so the admin page and
-// the calling EF agree on the shape. The one CHANNEL knob (respectAdminOverride)
-// lives in enrich-reservation-policy.ts; this module owns the agent-runtime knobs
-// the Reservations Config page added.
+// the calling EF agree on the shape.
 
 // `number` is the BUSINESS-side test line (what the agent dials instead of a
 // place while test mode is on). The retired Playground's guest-side

@@ -3,8 +3,8 @@
 // Single Place › Find — the picker in front of the place surface
 // (MESITA-2084, MESITA-2086). One box, read two ways: a Google Place ID looks
 // the place up by its identity spine; anything else is a word, and a word
-// asks Mesita Name Search and Google, and draws one table of every place
-// they returned. Opening the page lists every Mesita
+// asks Google (Autocomplete and Text Search; MESITA-2896), and draws one
+// table of every place they returned. Opening the page lists every Mesita
 // place and leaves the field open: no Google call, and the field is not an
 // autocomplete (MESITA-2172). Enter is the deep search. A hit
 // OPENS the place at
@@ -41,7 +41,6 @@ import {
   loadCatalogSource,
   loadCatalogueWithTotal,
   searchAutocompleteSource,
-  searchNameSource,
   searchTextSource,
 } from "./find-sources";
 import { DEFAULT_NAME_ADMIN, type NameAdminConfig } from "../filters-config/catalog";
@@ -63,9 +62,8 @@ export function SinglePlaceClient({
 }: {
   /** Creation › "Create the profile on open · admin app" (MESITA-2298). */
   createOnOpen?: boolean;
-  /** Discovery › Word by Admin (MESITA-2322). Mesita name rows are capped
-   *  server-side; Autocomplete rows, Text Search rows and the empty query
-   *  are read here. */
+  /** Discovery › Word by Admin (MESITA-2322). Autocomplete rows, Text
+   *  Search rows and the empty query are read here. */
   find?: NameAdminConfig;
 } = {}) {
   const router = useRouter();
@@ -172,17 +170,16 @@ export function SinglePlaceClient({
     setView({ kind: "absent", googleId, google: peek.place, note: peek.note });
   }
 
-  /** Name Search and Google, together. The table draws when both settle,
-   *  so no row moves after it appears. The catalogue only says which hits
+  /** Text Search and Autocomplete, together. The table draws when both
+   *  settle, so no row moves after it appears. The catalogue only says which hits
    *  Mesita already holds; it is not a search. */
   async function findByName(query: string) {
     const seq = findSeq.current;
     const catalogue: Promise<SourceResult<PlaceHit[]>> = catalog
       ? Promise.resolve({ status: "ok", data: catalog })
       : loadCatalogSource();
-    const [all, name, textSearch, autocomplete] = await Promise.all([
+    const [all, textSearch, autocomplete] = await Promise.all([
       catalogue,
-      searchNameSource(query),
       searchTextSource(query, findCaps.textCount),
       findCaps.autoCount > 0
         ? searchAutocompleteSource(query)
@@ -196,9 +193,7 @@ export function SinglePlaceClient({
       query,
       variant: "search",
       result: mergeFindResults({
-        catalogue: { status: "ok", data: [] },
         catalog: all.status === "ok" ? all.data : [],
-        name,
         autocomplete,
         text: textSearch,
       }),

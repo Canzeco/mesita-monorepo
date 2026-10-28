@@ -1,6 +1,8 @@
 // Enrichment calls the same Sync edge function the Reviews button uses.
 // The result stays in the draft until the one profile commit.
 
+import { charge, syncSourcesUsd } from "./cost.ts";
+
 export type DraftLinks = {
   googlePlaceId: string;
   instagramUrl: string | null;
@@ -29,8 +31,13 @@ export async function fetchDraftSync(
         body: JSON.stringify(links),
       },
     );
-    const body = await res.json().catch(() => null) as { ok?: boolean; patch?: Record<string, unknown> } | null;
+    const body = await res.json().catch(() => null) as
+      | { ok?: boolean; patch?: Record<string, unknown>; sources?: unknown }
+      | null;
     if (!res.ok || !body?.ok || !body.patch) return errorPatch("Sync did not return a result");
+    const reviews = body.patch.google_reviews;
+    const apify = syncSourcesUsd(body.sources, Array.isArray(reviews) ? reviews.length : 0);
+    charge("apify", apify.usd, `sync ${apify.basis} (estimated)`);
     return body.patch;
   } catch {
     return errorPatch("Sync did not respond");

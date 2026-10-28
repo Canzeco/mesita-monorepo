@@ -12,6 +12,7 @@
 // the same status codes the old seed used (409/422/502/503).
 
 import { classifyLinks } from "./channels.ts";
+import { googleFetch } from "./google-fetch.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
@@ -115,9 +116,9 @@ export type GoogleBasics = {
   google_place_id: string;
   /**
    * Google Places displayName — a cached observation, not an identity spine
-   * (google_place_id is). There is deliberately no `name` here: `place_profiles.name`
-   * is a generated column and `mesita_name` belongs to the operator, so the
-   * Enricher has nothing to say about either.
+   * (google_place_id is). There is deliberately no `name` here:
+   * `place_profiles.name` is the Mesita name (MESITA-2828), the name door's
+   * and the operator's, so the Google spine has nothing to say about it.
    */
   google_name: string;
   category: string | null;
@@ -261,8 +262,9 @@ export async function fetchGoogleBasics(
   const country = findAddressComponent(details.addressComponents, ["country"]);
   // Zone = the neighborhood / colonia. Google carries it as a sublocality or
   // neighborhood component when it has one (not every place does) — prefer the
-  // colloquial `neighborhood`, then the administrative sublocality tiers. When
-  // Google has none, synthesis fills zone downstream (fill-only-when-empty).
+  // colloquial `neighborhood`, then the administrative sublocality tiers. It
+  // only seeds a new place's zone and hints the Description step, which
+  // infers the Mesita Zone and writes over it (MESITA-2937).
   const zone = findAddressComponent(details.addressComponents, [
     "neighborhood",
     "sublocality_level_1",
@@ -330,10 +332,9 @@ export async function fetchGoogleBasics(
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an
-      // identity spine (google_place_id is). The Enricher never writes `name`
-      // or `mesita_name`: `name` is a generated display column
-      // (coalesce(mesita_name, google_name)) and `mesita_name` belongs to the
-      // operator. Writing either would clobber an editorial label.
+      // identity spine (google_place_id is). The spine never writes `name`:
+      // that is the Mesita name (MESITA-2828), the name door's and the
+      // operator's. Writing it here would clobber an editorial label.
       google_name: placeName,
       category: categorySlug,
       category_label: categoryLabel ?? humanizeCategorySlug(categorySlug ?? ""),
@@ -386,12 +387,7 @@ export async function fetchGoogleDetails(
     encodeURIComponent(placeId)
   }?languageCode=es-MX&regionCode=MX`;
   const doFetch = () =>
-    fetch(url, {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": GOOGLE_FIELD_MASK,
-      },
-    });
+    googleFetch(url, { apiKey, fieldMask: GOOGLE_FIELD_MASK });
 
   try {
     let r = await doFetch();
@@ -434,9 +430,9 @@ async function fetchGooglePhotos(
   const settled = await Promise.allSettled(
     photos.slice(0, max).map(async (p) => {
       if (!p.name) throw new Error("photo missing name");
-      const r = await fetch(
+      const r = await googleFetch(
         `https://places.googleapis.com/v1/${p.name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
-        { headers: { "X-Goog-Api-Key": apiKey } },
+        { apiKey },
       );
       if (!r.ok) throw new Error(`photo HTTP ${r.status}`);
       const d = (await r.json()) as { photoUri?: string };
@@ -459,7 +455,7 @@ async function fetchTimezone(
   if (typeof lat !== "number" || typeof lng !== "number") return null;
   try {
     const ts = Math.floor(Date.now() / 1000);
-    const r = await fetch(
+    const r = await googleFetch(
       `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${apiKey}`,
     );
     if (!r.ok) return null;

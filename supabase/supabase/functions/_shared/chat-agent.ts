@@ -5,9 +5,11 @@
 //      names, the families they ask for, whether they mean "around me", and
 //      the qualitative need in their own words (`extractChatIntent`).
 //   2. Invoke the pipelines that intent calls for, in parallel:
-//        Name  a named place          → the Name pipeline's Mesita lane
-//        Area  families or "near me"  → the Area pipeline, Mesita Selected
-//                                       scope, around the guest's location
+//        Name  a named place          → the Name pipeline: Google Text Search, Mesita-held places (MESITA-2896)
+//        Area  families or "near me"  → the Area pipeline, every ready
+//                                       Mesita place around the guest's
+//                                       location (Selected only until
+//                                       MESITA-2925)
 //        Deep  a qualitative need     → the Deep pipeline (Description)
 //      With no usable intent, Deep runs on the guest's message: the
 //      behaviour before this agent existed.
@@ -19,8 +21,8 @@
 //
 // The agent calls pipelines through `ChatPipelines`; it holds no database
 // client and never calls a source (Google, Mesita's tables, embeddings).
-// Chat names only Mesita places, so neither Name nor Area spends a Google
-// call here. Every step fails soft: a failed intent read falls back to
+// Chat names only Mesita places. Area spends no Google call; Name spends one
+// Text Search, because Google's name is canonical (MESITA-2896). Every step fails soft: a failed intent read falls back to
 // Deep, a failed pipeline contributes nothing. Nothing here writes.
 
 import { CATALOG_FAMILIES, CATALOG_FAMILY_SLUGS } from "./catalog-families.ts";
@@ -184,12 +186,12 @@ export async function runChatAgent(
 
 const HEADINGS: Record<ChatPipelineKey, string> = {
   name: "Mesita places matching the name the guest gave (the Name pipeline):",
-  area: "Mesita Selected places around the guest, nearest and best loved first (the Area pipeline):",
+  area: "Mesita places around the guest, nearest and best loved first (the Area pipeline):",
   deep: "Mesita places whose own description may fit what the guest asked for (the Deep pipeline):",
 };
 /** Area without a location ranks on Popularity alone, anywhere. */
 const AREA_NO_ANCHOR =
-  "Mesita Selected places of the kind the guest asked for, best loved first; the guest shared no location, so these may be anywhere (the Area pipeline):";
+  "Mesita places of the kind the guest asked for, best loved first; the guest shared no location, so these may be anywhere (the Area pipeline):";
 
 /**
  * The agent's answer as context for the Chat model: the places grouped by

@@ -8,6 +8,7 @@ import {
   GOOGLE_PLACES_DETAILS_BASE,
   stripPlacesPrefix,
 } from "./google-places.ts";
+import { googleFetch } from "./google-fetch.ts";
 import type { GooglePriceRange } from "./enrich-google-basics-normalizers.ts";
 
 /** THE listing fields, one place's worth: everything a Google-only card and
@@ -152,14 +153,9 @@ export async function fetchPlaceListing(
   apiKey: string,
 ): Promise<GoogleHit | null> {
   try {
-    const r = await fetch(
+    const r = await googleFetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
-      {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": DETAILS_LISTING_FIELD_MASK,
-        },
-      },
+      { apiKey, fieldMask: DETAILS_LISTING_FIELD_MASK },
     );
     if (!r.ok) {
       const text = await r.text();

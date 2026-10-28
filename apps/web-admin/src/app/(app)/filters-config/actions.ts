@@ -33,18 +33,20 @@ type UpdateDiscoveryConfigResult = ActionResult<{
 
 export type DiscoverySlice =
   | "general"
-  | "map"
+  // The Map box (MESITA-2909): all of `map` but the Catalog's page size.
+  | "mapPipeline"
   // A narrow map slice (MESITA-1681): the Map floors write only
-  // its own fields of `map`. `map` stays for the Area box, which owns the
-  // rest (the Families switches, `mapSupers`, went in MESITA-2687).
+  // its own fields of `map` (the Families switches, `mapSupers`, went in
+  // MESITA-2687).
   | "mapFloors"
   | "nameFast"
   | "nameDeep"
   // The Chat Agent's prompt (MESITA-2303), on the Deep box since MESITA-2327.
   | "chat"
-  // The Area box's Proximity half distance and Popularity reference: all of
-  // `params` since the deck's numbers retired (MESITA-2328).
-  | "areaSignals"
+  // The Catalog box (MESITA-2909): `map.catalogPageSize` and all of
+  // `params` (Proximity's half distance; Popularity's stored reference rides
+  // along, MESITA-2328).
+  | "catalogPipeline"
   | "deep"
   // Name's Locations switch (MESITA-2319).
   | "nameLocations"
@@ -63,7 +65,10 @@ export async function updateDiscoveryConfig(
     ...live.config,
     general: keys.has("general") ? config.general : live.config.general,
     map: {
-      ...(keys.has("map") ? config.map : live.config.map),
+      ...(keys.has("mapPipeline") ? config.map : live.config.map),
+      catalogPageSize: keys.has("catalogPipeline")
+        ? config.map.catalogPageSize
+        : live.config.map.catalogPageSize,
       ...(keys.has("mapFloors")
         ? { minRating: config.map.minRating, minReviews: config.map.minReviews }
         : null),
@@ -77,10 +82,9 @@ export async function updateDiscoveryConfig(
       idleSec: keys.has("nameIdle") ? config.name.idleSec : live.config.name.idleSec,
       admin: keys.has("nameAdmin") ? config.name.admin : live.config.name.admin,
     },
-    params: keys.has("areaSignals") ? config.params : live.config.params,
+    params: keys.has("catalogPipeline") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
-    catalog: live.config.catalog,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

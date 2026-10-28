@@ -8,7 +8,6 @@ vi.mock("@/app/(app)/manage-multiple/actions", () => ({
   autocompleteGooglePlaces: vi.fn(),
   createPlaceFromGooglePlaceId: vi.fn(),
   listAllPlaces: vi.fn(),
-  searchMesitaNames: vi.fn(),
   searchPlacesByGoogleIds: vi.fn(),
 }));
 

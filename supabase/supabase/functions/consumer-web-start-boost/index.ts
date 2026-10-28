@@ -6,15 +6,16 @@
 // confirms it when Checkout sends the guest back.
 //
 // Body: { place_id: uuid, tier: "boost_2x" | "boost_5x" | "boost_10x",
-//         interval?: "month" | "year", show_name?: boolean,
+//         interval?: "month" | "year",
 //         return_url: string }   return_url: the place screen (_shared/boost.ts)
 // Response: { ok: true, url }   the Checkout page
 //
+// Backers are anonymous (MESITA-2928): no name is asked for or stored.
 // Many guests may back one place; one guest may hold several backings.
 // Stripe stays in test mode until Pato flips STRIPE_MODE and STRIPE_ALLOW_LIVE.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   openBackingCheckout,
@@ -26,7 +27,7 @@ import {
   stripeClient,
 } from "../_shared/boost.ts";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-start-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -62,7 +63,6 @@ Deno.serve(async (req) => {
       billing_interval: start.interval,
       amount_cents: boostAmountCents(start.tier, start.interval),
       currency: BOOST_CURRENCY,
-      show_name: start.showName,
       status: "open",
     })
     .select("id")

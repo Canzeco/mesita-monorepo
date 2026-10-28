@@ -17,7 +17,6 @@ export default async function OpeningGooglePlacePage({
       <OpeningGooglePlace
         gid={decodeURIComponent(gid)}
         name={typeof name === "string" ? name : ""}
-        apiKey={process.env.NEXT_PUBLIC_GMP_KEY ?? ""}
         variant="page"
       />
     </div>

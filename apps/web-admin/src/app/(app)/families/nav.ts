@@ -1,8 +1,8 @@
 import { Map } from "lucide-react";
 
-// Configurations › Atlas — the seven Google-search switches, then the
-// taxonomy: FamiliesIA DNA, Google categories, Mesita categories, and every
-// tag. Not a Discovery page. The switches write discovery_config.
+// Configurations › Atlas — the Mesita Families, Google's categories split
+// into enabled and not enabled on Mesita, and every tag (MESITA-2891). Not a
+// Discovery page.
 export const FAMILIES_PARENT = {
   href: "/families",
   label: "Atlas",

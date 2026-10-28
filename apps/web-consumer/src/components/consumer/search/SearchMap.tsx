@@ -26,7 +26,7 @@ import {
   MAP_PIN_HIT_SIZE,
   MAP_USER_LOCATION_STROKE_COLOR,
   MAP_USER_LOCATION_PIN_COLOR,
-  MAP_SELECTED_PLACE_PIN_RADIUS,
+  MAP_PREMIER_PLACE_PIN_RADIUS,
   mapPinIcon,
 } from "@/lib/map-defaults";
 import type { Coords } from "@/lib/use-user-location";
@@ -37,7 +37,6 @@ import {
   type CameraIntent,
   type CameraState,
 } from "./camera-intent";
-import { isSponsoredPlace } from "@/components/consumer/place-card";
 import { RING_INSET, SIGHT_Y } from "./search-utils";
 import { MapVeil } from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
@@ -59,9 +58,8 @@ function mapsPinIcon(
   strokeColor: string,
   strokeWeight?: number,
   radius?: number,
-  boosted = false,
 ) {
-  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius, boosted);
+  const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius);
   const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
   if (!maps) return raw;
   return {
@@ -71,18 +69,17 @@ function mapsPinIcon(
   };
 }
 
-/** `held` is the tapped pin (ink, MESITA-2488), not the Selected tone.
- *  `boosted` adds Boost's ⚡ badge (MESITA-2789). */
-function placeIcon(tone: PinTone, held: boolean, boosted = false) {
+/** `held` is the tapped pin (ink, MESITA-2488). A Premier pin is red
+ *  and a little larger (MESITA-2925). */
+function placeIcon(tone: PinTone, held: boolean) {
   const weight = pinStrokeWeight(held);
   const radius =
-    tone === "selected" && !held ? MAP_SELECTED_PLACE_PIN_RADIUS : undefined;
+    tone === "premier" && !held ? MAP_PREMIER_PLACE_PIN_RADIUS : undefined;
   return mapsPinIcon(
     pinFillColor(tone, held),
     pinStrokeColor(held),
     weight,
     radius,
-    boosted,
   );
 }
 
@@ -99,8 +96,6 @@ export type SearchMapPin = {
   lng: number;
   title: string;
   tone: PinTone;
-  /** Boost (MESITA-2789): the place pays for visibility; the pin wears ⚡. */
-  boosted?: boolean;
 };
 
 export type ViewportBox = {
@@ -249,32 +244,24 @@ export function mapFingerIsDown(): boolean {
 /** The search ring's diameter: RING_INSET of twice the cross's distance to
  *  the nearest edge of the map — the full width, or twice the gap to the
  *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
- *  server's screen radius on screen. The inset keeps a margin between the
- *  ring and the map's border (MESITA-2825). Container units of the map's box. */
-export const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
+ *  server's screen radius on screen. Container units of the map's box. */
+const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
   Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
 }cqh)`;
 
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
- *  MESITA-2514) — the catalog fetch point: the plus, its dot, and THE
- *  SEARCH RING (Pato, MESITA-2508: "keep the circle, but make it doted …
- *  and move it realative to the cruz … it must feel more dynamic"). The ring
- *  is the circle the next load searches — the server's screen radius, the
- *  cross's distance to the nearest edge, so it always fits on the map
- *  (MESITA-2511), inset to 0.9 so it never touches the border
- *  (MESITA-2825) — dashed, riding the cross while the guest pans, and it
- *  pulses while a load is in flight. A second ring at half the diameter says
- *  the centre is denser (Pato, MESITA-2773: "double circle for density") —
- *  the proximity half-strength distance at the default radiusDivisor of 2
- *  (MESITA-2720). Both rings are the same dashed line and nothing is shaded
- *  (Pato, MESITA-2820: "remove those dark backgrounds … just keep the borders
- *  … both borders must be the same dotted"), so the map reads as one surface.
- *  Screen CSS, never map geometry: MESITA-2842/2844 drew them as Google
- *  polylines, which trail the cross a frame behind on a drag and keep the
- *  last load's size after a zoom (Pato, MESITA-2847: "must move with the
- *  cruz in real time … the animation must not look lagged"). */
+ *  MESITA-2514) — the catalog fetch point, marked by ONE
+ *  DISCREET WHITE RING for the search radius (Pato, MESITA-2908: "draw the
+ *  circle of the radious, but only one circle, not two, make the radious
+ *  kinda white, like really discreet and pretty"). MESITA-2906 had removed
+ *  both dashed rings; the inner density ring (MESITA-2773) stays gone. A
+ *  solid 3px white line with a thin dark outline and a soft glow, so it
+ *  reads on the light basemap (MESITA-2912: "a bit more visible"; MESITA-2908
+ *  drew 2px at 85% with a hair halo), and a whisper of white fill. It pulses during a load; the cross
+ *  that sat at its centre is gone (MESITA-2917). Screen CSS, never map geometry (MESITA-2847: it rides the
+ *  cross in real time). */
 const RING_CLASS =
-  "border-foreground/45 absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[1.5px] border-dashed";
+  "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-white/[0.06] shadow-[0_0_0_1px_rgba(0,0,0,0.18),inset_0_0_0_0.5px_rgba(0,0,0,0.10),0_1px_6px_rgba(0,0,0,0.12)]";
 
 function SearchMapReticle({ searching }: { searching: boolean }) {
   return (
@@ -284,21 +271,14 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       style={{ top: `${SIGHT_Y * 100}%` }}
       data-search-sight
     >
+      {/* No cross (Pato, MESITA-2917: "remove the cruz as the center, the
+          circle is enough"): the ring alone marks the sight, and it is
+          what pulses while a load is in flight. */}
       <div
         className={cn(RING_CLASS, searching && "animate-pulse")}
         style={{ width: SEARCH_RING_SIZE }}
         data-search-ring
       />
-      <div
-        className={cn(RING_CLASS, searching && "animate-pulse")}
-        style={{ width: `calc(${SEARCH_RING_SIZE} / 2)` }}
-        data-search-ring-inner
-      />
-      <div className="relative h-3.5 w-3.5">
-        <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        <div className="bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-      </div>
     </div>
   );
 }
@@ -395,7 +375,7 @@ function SearchMapCanvas({
               key={pin.id}
               position={{ lat: pin.lat, lng: pin.lng }}
               title={pin.title}
-              icon={placeIcon(pin.tone, pin.id === selectedId, pin.boosted === true)}
+              icon={placeIcon(pin.tone, pin.id === selectedId)}
               zIndex={pin.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}
@@ -407,7 +387,7 @@ function SearchMapCanvas({
               key={place.id}
               position={{ lat: place.lat, lng: place.lng }}
               title={place.name}
-              icon={placeIcon(placePinTone(place), place.id === selectedId, isSponsoredPlace(place))}
+              icon={placeIcon(placePinTone(place), place.id === selectedId)}
               zIndex={place.id === selectedId ? 10 : 0}
               optimized={false}
               cursor={MAP_PIN_CURSOR}

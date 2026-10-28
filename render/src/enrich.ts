@@ -5,7 +5,7 @@ import {
   fetchTimezone,
   profileFromGoogle,
 } from "./google-spine.ts";
-import { embedPair, embeddingFields, writtenSubject } from "./embedding.ts";
+import { embedSummary, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
   defaultImageKnobs,
   fetchInstagramPosts,
@@ -18,6 +18,7 @@ import { discoverLinks, linkCounts, type LinkField } from "./links.ts";
 import { fetchDraftSync } from "./draft-sync.ts";
 import { scoutPlace } from "./scout.ts";
 import type { RanSteps } from "./steps.ts";
+import { CostLedger, inStep } from "./cost.ts";
 
 // Paid vendor calls must not be replayed by the platform.
 export const NO_RETRY = { maxRetries: 0, waitDurationMs: 1000, backoffScaling: 1 };
@@ -94,7 +95,12 @@ export function isPermanentlyClosed(details: { businessStatus?: string }): boole
 // closed stops right after Details, before any paid step. Anything else short
 // of a finished profile throws before the write. Places itself never supplies
 // the review list: it returns five.
-export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment | ClosedListing> {
+// Each timed step's vendor calls charge `ledger` (MESITA-2806). The caller
+// owns it, so a run that throws still reports what it spent.
+export async function buildEnrichment(
+  job: EnrichJob,
+  ledger: CostLedger = new CostLedger(),
+): Promise<BuiltEnrichment | ClosedListing> {
   const googlePlaceId = job.googlePlaceId?.trim() ?? "";
   if (!job.placeId?.trim() || !googlePlaceId) {
     throw new Error("Enrichment needs a place id and a Google place id.");
@@ -105,7 +111,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const ran: StepRun[] = [];
   const timed = async <T>(step: string, work: () => Promise<T>, produced: (value: T) => string): Promise<T> => {
     const started = Date.now();
-    const value = await work();
+    const value = await inStep(ledger, step, work);
     ran.push({ step, ms: Date.now() - started, produced: produced(value) });
     return value;
   };
@@ -141,6 +147,7 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
+    website: stringField(spine.patch.website_url),
     // Every link is looked for again; one the Resolver keeps replaces the saved one.
     have: {},
     counts,
@@ -196,12 +203,12 @@ export async function buildEnrichment(job: EnrichJob): Promise<BuiltEnrichment |
     content_state: "ready",
     enriched_at: new Date().toISOString(),
   });
-  // The vectors read the profile this run writes, with its description.
+  // The summary vector reads the profile this run writes, with its description.
   const subject = writtenSubject({ ...patch, description });
   if (openaiKey && subject) {
     const fields = await timed("embedding", async () => {
-      const vectors = await embedPair(subject.facts, subject.name, openaiKey);
-      return embeddingFields(vectors.summary, vectors.name, subject.facts);
+      const vector = await embedSummary(subject.facts, openaiKey);
+      return embeddingFields(vector, subject.facts);
     }, (written) => written ? "written" : "none");
     if (fields) Object.assign(patch, fields);
   }
@@ -248,7 +255,7 @@ function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>
 }
 
 /** Columns the write EF infers (MESITA-2790); Render's patch never carries them. */
-const MESITA_OWNED = ["category", "category_label", "mesita_categories", "tags"] as const;
+const MESITA_OWNED = ["category", "category_label", "tags"] as const;
 
 /** What the run commits. A fresh value replaces the saved one; an empty one
  *  (null, blank, an empty list) is dropped, so a step that found nothing or

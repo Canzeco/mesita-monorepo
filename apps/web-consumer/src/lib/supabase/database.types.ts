@@ -128,15 +128,15 @@ export type Database = {
       }
       catalog_membership: {
         Row: {
-          family_keys: string[]
+          enabled: boolean
           slug: string
         }
         Insert: {
-          family_keys: string[]
+          enabled?: boolean
           slug: string
         }
         Update: {
-          family_keys?: string[]
+          enabled?: boolean
           slug?: string
         }
         Relationships: []
@@ -265,8 +265,11 @@ export type Database = {
           last_name: string | null
           phone: string | null
           plan: string
+          reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
         }
         Insert: {
           appear_anonymous?: boolean
@@ -288,8 +291,11 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           plan?: string
+          reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_partner_id?: string | null
+          vip_until?: string | null
         }
         Update: {
           appear_anonymous?: boolean
@@ -311,10 +317,21 @@ export type Database = {
           last_name?: string | null
           phone?: string | null
           plan?: string
+          reservation_cap_override?: number | null
           sex?: string | null
           use_instagram_photo?: boolean
+          vip_partner_id?: string | null
+          vip_until?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "consumers_vip_partner_id_fkey"
+            columns: ["vip_partner_id"]
+            isOneToOne: false
+            referencedRelation: "vip_partners"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_activity: {
         Row: {
@@ -439,7 +456,6 @@ export type Database = {
       place_categories: {
         Row: {
           created_at: string
-          family_keys: string[]
           label: string
           section: string
           slug: string
@@ -447,7 +463,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          family_keys?: string[]
           label: string
           section: string
           slug: string
@@ -455,7 +470,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          family_keys?: string[]
           label?: string
           section?: string
           slug?: string
@@ -783,10 +797,7 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
-          mesita_categories: Json
-          mesita_name: string | null
           name: string
-          name_embedding: string | null
           opentable_url: string | null
           payments_enabled: boolean
           phone: string | null
@@ -855,10 +866,7 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
-          mesita_categories?: Json
-          mesita_name?: string | null
-          name?: string
-          name_embedding?: string | null
+          name: string
           opentable_url?: string | null
           payments_enabled?: boolean
           phone?: string | null
@@ -927,10 +935,7 @@ export type Database = {
           menu_pdf_name?: string | null
           menu_pdf_url?: string | null
           menus?: Json | null
-          mesita_categories?: Json
-          mesita_name?: string | null
           name?: string
-          name_embedding?: string | null
           opentable_url?: string | null
           payments_enabled?: boolean
           phone?: string | null
@@ -1039,69 +1044,6 @@ export type Database = {
           },
         ]
       }
-      place_research: {
-        Row: {
-          analysis: Json | null
-          attempts: number
-          created_at: string
-          created_by: string | null
-          error: string | null
-          gathered: Json | null
-          google_place_id: string
-          place_id: string
-          run_id: string | null
-          stage: string
-          state: string
-          subprocesses: Json | null
-          updated_at: string
-        }
-        Insert: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id: string
-          place_id: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Update: {
-          analysis?: Json | null
-          attempts?: number
-          created_at?: string
-          created_by?: string | null
-          error?: string | null
-          gathered?: Json | null
-          google_place_id?: string
-          place_id?: string
-          run_id?: string | null
-          stage?: string
-          state?: string
-          subprocesses?: Json | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "place_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_research_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       place_tags: {
         Row: {
           created_at: string
@@ -1136,7 +1078,6 @@ export type Database = {
           created_at: string
           currency: string
           id: string
-          selected: boolean
           slug: string
           state: Database["public"]["Enums"]["place_state"]
           updated_at: string
@@ -1147,7 +1088,6 @@ export type Database = {
           created_at?: string
           currency?: string
           id: string
-          selected?: boolean
           slug: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1158,7 +1098,6 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
-          selected?: boolean
           slug?: string
           state?: Database["public"]["Enums"]["place_state"]
           updated_at?: string
@@ -1372,6 +1311,71 @@ export type Database = {
           },
         ]
       }
+      saved_locations: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          custom_name: string | null
+          formatted_address: string | null
+          id: string
+          lat: number
+          legacy_name: string | null
+          lng: number
+          location_kind: string
+          name_edited: boolean
+          named_at: string | null
+          needs_name: boolean
+          ordered_at: string
+          suggested_name: string | null
+          unconfirmed: boolean
+          updated_at: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          custom_name?: string | null
+          formatted_address?: string | null
+          id: string
+          lat: number
+          legacy_name?: string | null
+          lng: number
+          location_kind?: string
+          name_edited?: boolean
+          named_at?: string | null
+          needs_name?: boolean
+          ordered_at?: string
+          suggested_name?: string | null
+          unconfirmed?: boolean
+          updated_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          custom_name?: string | null
+          formatted_address?: string | null
+          id?: string
+          lat?: number
+          legacy_name?: string | null
+          lng?: number
+          location_kind?: string
+          name_edited?: boolean
+          named_at?: string | null
+          needs_name?: boolean
+          ordered_at?: string
+          suggested_name?: string | null
+          unconfirmed?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_locations_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       super_admins: {
         Row: {
           added_by: string | null
@@ -1395,6 +1399,38 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      vip_partners: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          place_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          place_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          place_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_partners_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -1439,10 +1475,7 @@ export type Database = {
           menu_pdf_name: string | null
           menu_pdf_url: string | null
           menus: Json | null
-          mesita_categories: Json | null
-          mesita_name: string | null
           name: string | null
-          name_embedding: string | null
           opentable_url: string | null
           payments_enabled: boolean | null
           phone: string | null
@@ -1458,7 +1491,6 @@ export type Database = {
           reservation_target: string | null
           reservations_enabled: boolean | null
           resy_url: string | null
-          selected: boolean | null
           slug: string | null
           source_sync: Json | null
           state: Database["public"]["Enums"]["place_state"] | null
@@ -1490,6 +1522,41 @@ export type Database = {
         }[]
       }
       admin_revoke_admin: { Args: { p_email: string }; Returns: number }
+      admin_set_guest_reservation_cap: {
+        Args: { p_cap: number; p_consumer: string }
+        Returns: {
+          appear_anonymous: boolean
+          avatar_url: string | null
+          birthday: string | null
+          code: string | null
+          created_at: string
+          deleted_at: string | null
+          first_name: string | null
+          full_name: string | null
+          guest_class: string
+          guest_class_note: string | null
+          guest_class_set_at: string | null
+          guest_class_set_by: string | null
+          id: string
+          instagram_followers_count: number | null
+          instagram_handle: string | null
+          instagram_verified_at: string | null
+          last_name: string | null
+          phone: string | null
+          plan: string
+          reservation_cap_override: number | null
+          sex: string | null
+          use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "consumers"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       admin_set_guest_standing: {
         Args: {
           p_actor: string
@@ -1497,7 +1564,11 @@ export type Database = {
           p_guest_class: string
           p_note: string
           p_note_set: boolean
+          p_partner: string
+          p_partner_set: boolean
           p_plan: string
+          p_vip_until: string
+          p_vip_until_set: boolean
         }
         Returns: {
           appear_anonymous: boolean
@@ -1519,8 +1590,11 @@ export type Database = {
           last_name: string | null
           phone: string | null
           plan: string
+          reservation_cap_override: number | null
           sex: string | null
           use_instagram_photo: boolean
+          vip_partner_id: string | null
+          vip_until: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -1555,11 +1629,7 @@ export type Database = {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
       }
-      families_for_categories: {
-        Args: { cats: Json; fallback: string }
-        Returns: string[]
-      }
-      families_for_category: { Args: { cat: string }; Returns: string[] }
+      expire_saved_location_names: { Args: never; Returns: number }
       generate_consumer_code: { Args: never; Returns: string }
       is_super_admin: { Args: never; Returns: boolean }
       open_place_enrichment_run: {
@@ -1644,11 +1714,14 @@ export type Database = {
         Returns: string[]
       }
       recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
-      run_place_enrichment_stages: { Args: never; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
+      unstick_enriching_places: {
+        Args: { older_than?: string }
+        Returns: number
+      }
     }
     Enums: {
       content_state: "generating" | "ready" | "failed"

@@ -16,7 +16,7 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
-import { LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
+import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -32,11 +32,11 @@ import { LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
 //   2. The sticky strip, Overview · Reviews · Products (Soon, with Rewards)
-//      · Boost, for every place (MESITA-2332, MESITA-2861). While a Google-only profile is being
+//      · Premier, for every place (MESITA-2332, MESITA-2861, MESITA-2925). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
-//      panel (MESITA-2642: visits enrich) — and Reviews holds Google's up-to-5 from
+//      panel (MESITA-2642: views enrich) — and Reviews holds Google's up-to-5 from
 //      the create-time Details call (MESITA-2317). Enriched: Reviews holds
 //      Apify's 100.
 //   3. The active tab's boxes.
@@ -51,9 +51,9 @@ export function PlaceDetailBody({
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** The Boost tab's body (MESITA-2861), drawn by the host: the consumer
-   *  passes its subscribe/cancel pane; without it the tab explains where
-   *  Boost is bought. */
+  /** The Premier tab's body (MESITA-2861, MESITA-2925), drawn by the
+   *  host: the consumer passes its subscribe/cancel pane; without it the
+   *  tab explains where a place is made Premier. */
   boost?: React.ReactNode;
   /** The host asks for a tab. Each new `key` switches once; the guest's own
    *  taps win after. */
@@ -104,7 +104,8 @@ export function PlaceDetailBody({
           {tab === "place" && !create && (
             <>
               {/* OVERVIEW'S ORDER (Pato, MESITA-2630): photos ·
-                  presentation · location · hours · links · tags. The
+                  presentation · location · hours · links · Families
+                  (MESITA-2924) · tags. The
                   Created/Updated dates are admin's Metadata card, never
                   here (MESITA-2788). Popular times rides
                   with hours (it draws nothing while nothing writes it,
@@ -116,11 +117,14 @@ export function PlaceDetailBody({
               <HoursBox place={place} />
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
+              <FamiliesBox place={place} />
               <TagsBox place={place} />
               <StatsBox place={place} />
             </>
           )}
-          {tab === "reviews" && <GoogleReviewsBox place={place} />}
+          {tab === "reviews" && (
+            <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
+          )}
           {tab === "products" && <SoonScreen />}
           {tab === "boost" && (boost ?? <PlaceEmptyScreen {...NO_BOOST} />)}
       </div>

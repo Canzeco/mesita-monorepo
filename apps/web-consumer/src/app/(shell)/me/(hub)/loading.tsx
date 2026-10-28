@@ -9,7 +9,7 @@ import { IdentityBarSkeleton } from "../me-skeletons";
 //
 //   the app bar          IdentityBar's band and its skeleton card, the same
 //                        one the page draws while its profile read is out
-//   2 · 2 · 2 · 2 · 1    the nine tiles, from the page's own rows
+//   2 · 2 · 2 · 2 · 2    the ten tiles, from the page's own rows
 //
 // The rows, the scroller and the words are hub-tiles.tsx's, the page's own
 // source. Each tile prints its title and summary as itself: most summaries

@@ -36,13 +36,12 @@ import { cn } from "@/lib/utils";
 
 /** The direct link (/place/[id], PlaceDetailPageBody): the grey ground, the
  *  shell's bar hidden as the page hides it, the package's PlaceProfile
- *  silhouette. `creating` is the opening screen of a Google-only place
- *  (OpeningGooglePlace), whose Overview is the "No overview yet" screen.
+ *  silhouette.
  *  THE CHEVRON IS LIVE: this page hides the bottom bar, so an inert Back
  *  would leave a slow load with no way out. It does what the loaded page's
- *  does (PlaceDetailPageBody, OpeningGooglePlace): back, or Home when this
+ *  does (PlaceDetailPageBody): back, or Home when this
  *  tab has no history. */
-export function PlacePageSkeleton({ creating = false }: { creating?: boolean }) {
+export function PlacePageSkeleton() {
   const router = useRouter();
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -54,7 +53,7 @@ export function PlacePageSkeleton({ creating = false }: { creating?: boolean }) 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       <style>{`nav[data-shell-nav]{display:none}`}</style>
-      <PlaceProfileSkeleton onBack={onBack} creating={creating} />
+      <PlaceProfileSkeleton onBack={onBack} />
     </div>
   );
 }
@@ -62,17 +61,13 @@ export function PlacePageSkeleton({ creating = false }: { creating?: boolean }) 
 /** The in-app slide-over (PlaceDetailModalShell): PlaceTopBar's silhouette
  *  with its chevron live (a slow load can be dismissed), then the grey
  *  scroller with the body silhouette. */
-export function PlaceSlideOverSkeleton({
-  creating = false,
-}: {
-  creating?: boolean;
-}) {
+export function PlaceSlideOverSkeleton() {
   const close = useSlideOverClose();
   return (
     <>
       <PlaceTopBarSkeleton onBack={close} />
       <div className="bg-background min-h-0 flex-1 overflow-y-auto">
-        <PlaceDetailBodySkeleton creating={creating} />
+        <PlaceDetailBodySkeleton />
       </div>
     </>
   );

@@ -31,7 +31,6 @@ const GAP_FIXTURE: PlaceHit = {
   enriching: false,
   enriched: false,
   enriched_at: null,
-  selected: false,
   business_state: "OPERATIONAL",
   business_state_at: null,
   enrich_crenup: 2,
@@ -118,31 +117,5 @@ describe("factOn enriched — an Enrich run completed (MESITA-2154)", () => {
     expect(
       factOn({ ...GAP_FIXTURE, enrich_crenup: 8, enriched: false }, "enriched"),
     ).toBe(false);
-  });
-});
-
-describe("factOn selected — Mesita Selected, the operator's own mark (MESITA-2707)", () => {
-  it("reads the stored mark and nothing else", () => {
-    expect(factOn({ ...GAP_FIXTURE, selected: true }, "selected")).toBe(true);
-    expect(factOn({ ...GAP_FIXTURE, selected: false }, "selected")).toBe(false);
-  });
-  it("is independent of Enriched, of a run in flight and of Disabled", () => {
-    // A Created place the operator marked is Selected…
-    expect(
-      factOn({ ...GAP_FIXTURE, selected: true, enriched: false, enriched_at: null }, "selected"),
-    ).toBe(true);
-    expect(factOn({ ...GAP_FIXTURE, selected: true, content_state: "generating" }, "selected")).toBe(true);
-    expect(factOn({ ...GAP_FIXTURE, selected: true, listed: false }, "selected")).toBe(true);
-    // …and an Enriched, ready, switched-on place is not until the operator says so.
-    expect(
-      factOn(
-        { ...GAP_FIXTURE, selected: false, enriched: true, enriched_at: "2026-10-01T00:00:00Z", content_state: "ready", listed: true },
-        "selected",
-      ),
-    ).toBe(false);
-  });
-  it("says unknown on a payload that predates the mark, never a false no", () => {
-    const { selected: _omitted, ...older } = GAP_FIXTURE;
-    expect(factOn(older as PlaceHit, "selected")).toBe("unknown");
   });
 });

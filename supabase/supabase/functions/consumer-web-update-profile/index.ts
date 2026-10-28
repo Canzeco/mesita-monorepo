@@ -8,7 +8,7 @@
 // Self-contained: own JWT verification, own DB writes via the service role.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -17,9 +17,12 @@ import {
 import { clean } from "../_shared/input.ts";
 import { isInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
+import { runInBackground } from "../_shared/background.ts";
+import { savePhotoSizes } from "../_shared/photo-sizes.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import {
   buildProfilePatch,
+  AVATAR_BUCKET,
   parseAvatarUrl,
   parseBirthday,
   parseName,
@@ -31,7 +34,7 @@ import {
 const CONSUMER_PROFILE_SELECT =
   "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, use_instagram_photo, appear_anonymous, guest_class, plan";
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-update-profile", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -149,6 +152,13 @@ Deno.serve(async (req) => {
   });
   if (!update.ok) {
     return json({ ok: false, error: `consumer_update: ${update.error}` }, 500);
+  }
+
+  // A new upload gets the three sizes screens load (MESITA-2966).
+  if (typeof avatarUrl === "string" && avatarUrl !== existing.data?.avatar_url) {
+    const base = envRes.env.url.replace(/\/+$/, "");
+    const path = avatarUrl.slice(`${base}/storage/v1/object/public/${AVATAR_BUCKET}/`.length);
+    runInBackground(savePhotoSizes(admin, envRes.env.url, AVATAR_BUCKET, path));
   }
 
   return json({ ok: true, consumer: update.row });

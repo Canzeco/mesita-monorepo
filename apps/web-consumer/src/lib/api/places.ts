@@ -11,7 +11,6 @@ import { EFError, invokeEF } from "./_invoke";
 import { placeRowToDetail } from "@/lib/adapters/place-to-detail";
 import type { ResolvedTag } from "@/lib/adapters/place-to-detail";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { rememberOperatorRadiusKm } from "@/lib/operator-radius";
 
 export type Place = {
   /** Server's answer: did an Enrich run complete (`enriched_at` set,
@@ -19,16 +18,10 @@ export type Place = {
    *  on an older payload — the client falls back to `enriched_at` alone
    *  (lib/place-enriched.ts), never `content_state`. */
   enriched?: boolean | null;
-  /** Mesita Selected (MESITA-2707): the operator's own mark,
-   *  `places.selected`, on every consumer place payload. Independent of
-   *  `enriched` and never derived from a score: the Search pins read it
-   *  (red), the carousel tags it, and the server's Area score multiplies a
-   *  Selected place by the Selected boost (MESITA-2717). Absent on an older
-   *  payload reads as not Selected. */
-  selected?: boolean | null;
-  /** Boost (MESITA-2789): the paid tier, `places.boost_tier`, 0 none ·
-   *  1 2x · 2 5x · 3 10x. Above 0 the card says Sponsored and the pin wears
-   *  the ⚡ badge. Absent on an older payload reads as not boosted. */
+  /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
+   *  wears "Premier 2X" and the pin is red. Absent on an older payload
+   *  reads as not Premier. */
   boost_tier?: number | null;
   id: string;
   slug: string;
@@ -99,9 +92,8 @@ export type Place = {
    *  (MESITA-2379); only the one-pool Feed wire carries it. */
   area?: AreaDiagnostics;
   /** The Search map's score for this place (MESITA-2504 debug): the two
-   *  signals, the Selected boost, the sources that found it and the
-   *  product. Only list-places sends it. The mark itself is the row's own
-   *  `selected`. */
+   *  signals, the sources that found it and the product. Only list-places
+   *  sends it. */
   score?: MapScore;
   /** Alias shipped on Google-only stubs (`from_google`). */
   from_google?: boolean;
@@ -134,16 +126,15 @@ export type Place = {
 // Discover surfaces (the Search map, Home's Feed) go through dedicated EFs.
 // The helpers below are thin invokers; the selection logic lives in the EFs
 // (the Area pipeline) so we can iterate on it without redeploying the web app.
-/** The wire word for a Places scope (MESITA-2298): Google Places or Mesita
- *  Selected. The server also reads the retired `enriched`/`mesita` words. */
 
 /** One Search map place's score (MESITA-2504). `null` is "n/a", never 0. */
 export type MapScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected boost for a Mesita Selected
-   *  place, else 1 (MESITA-2717); absent from an older EF. */
+  /** The factor `final` carries: Premier's tier number (2 · 5 · 10) for an
+   *  Premier place, else 1 (MESITA-2925; the wire keeps the Selected-era
+   *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only. */
   foundBy?: string[];
@@ -301,9 +292,12 @@ export type AreaDiagnostics = {
     popularity?: 0 | 1 | null;
   };
   signals: { proximity: number | null; popularity: number | null };
-  source: "selected" | "mesita" | "google";
-  /** The factor `final` carries: the operator's Selected boost for a
-   *  Mesita Selected place, else 1 (MESITA-2717); absent from an older EF. */
+  /** Where the card came from; diagnostics and events only. `selected`
+   *  died with the operator's mark (MESITA-2925). */
+  source: "mesita" | "google";
+  /** The factor `final` carries: Premier's tier number (2 · 5 · 10) for an
+   *  Premier place, else 1 (MESITA-2925; the wire keeps the Selected-era
+   *  name). Absent from an older EF. */
   selectedFactor?: number;
   /** The sources that found the place (MESITA-2703); diagnostics only,
    *  no card draws it. */
@@ -316,17 +310,17 @@ export type AreaDiagnostics = {
   formula: "point" | "none";
 };
 
-/** Where Places searches from: always a point (MESITA-2501) — the device, a
- *  confirmed saved pin, or the city's centre — and, for a pin, its radius
- *  (MESITA-2703). No radius = the operator's current-location radius. */
-export type AreaOrigin = { lat: number; lng: number; radiusKm?: number | null };
+/** Where Places ranks from: always a point (MESITA-2501) — the device, a
+ *  confirmed saved pin, or the city's centre. No radius (MESITA-2914). */
+export type AreaOrigin = { lat: number; lng: number };
 
-/** The Feed's one ranked Area pool (MESITA-2379). */
+/** Home's ranked Catalog (MESITA-2379, the Catalog pipeline since
+ *  MESITA-2909): every Mesita place, best first. */
 export type AreaPool = {
   kind: "point" | "none";
   places: Place[];
-  /** The radius the server searched (km), when it says (MESITA-2703). */
-  radiusKm?: number;
+  /** Tiles per page, the operator's `map.catalogPageSize` (MESITA-2909). */
+  pageSize?: number;
 };
 
 function cleanPlace(place: Place): Place {
@@ -337,12 +331,11 @@ function cleanPlace(place: Place): Place {
 }
 
 /**
- * Places' one ranked Area pool (MESITA-2384): Google and Mesita places the
- * server merged, scored and ranked; the client pages it in the server's
- * order. `familyKeys` is a family row's question (MESITA-2438): the server
- * asks Google for that family's full type list and lists its primary
- * places first. None = every family. One ranking for every row, the
- * Map's (MESITA-2516): no `prefer`.
+ * Places' Catalog (MESITA-2384, MESITA-2909): every Mesita place the server
+ * scored and ranked, Proximity × Popularity from `origin`, with no radius;
+ * the client pages it in the server's order by the server's `pageSize`.
+ * `familyKeys` is a family row's question (MESITA-2438). None = every
+ * family. No `prefer`.
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
@@ -351,23 +344,19 @@ export async function apiListAreaPool(
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
-    location?: { kind?: "point" | "none"; radiusKm?: number; operatorRadiusKm?: number };
+    location?: { kind?: "point" | "none" };
+    pageSize?: number;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+    // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
-    // The pin's own radius; none = the operator's (MESITA-2703).
-    ...(origin && typeof origin.radiusKm === "number" && Number.isFinite(origin.radiusKm)
-      ? { radiusKm: origin.radiusKm }
-      : {}),
   });
-  const op = data.location?.operatorRadiusKm;
-  if (typeof op === "number" && Number.isFinite(op)) rememberOperatorRadiusKm(op);
-  const km = data.location?.radiusKm;
+  const size = data.pageSize;
   return {
     kind: data.location?.kind ?? (origin ? "point" : "none"),
     places: (data.places ?? []).map(cleanPlace),
-    ...(typeof km === "number" && Number.isFinite(km) ? { radiusKm: km } : {}),
+    ...(typeof size === "number" && Number.isFinite(size) && size > 0 ? { pageSize: size } : {}),
   };
 }
 
@@ -405,10 +394,10 @@ export type PlacePrediction = {
    *  column fallback on this lane, so an older payload reads as
    *  not-enriched (gray understates). */
   enriched?: boolean;
-  /** Server's answer: is this a Mesita Selected place — the operator's own
-   *  mark, `places.selected` (MESITA-2707)? The pin's red. An older payload
-   *  without it reads as not Selected (gray understates). */
-  selected?: boolean;
+  /** Server's answer: the place's Premier tier, `places.boost_tier`
+   *  (MESITA-2925), 0..3; above 0 the pin is red. An older payload without
+   *  it (here or on `card`) reads as not Premier (gray understates). */
+  boost_tier?: number | null;
   /**
    * Word's second entity (MESITA-1403). Absent = "place" — a place row
    * reads exactly as before. A Location is a region/city from
@@ -433,12 +422,14 @@ export type PlacePrediction = {
   underFloor?: boolean;
 };
 
-/** `fast` Search while typing · `deep` Search after idle. */
+/** `fast` Autocomplete · `deep` Autocomplete + Text Search, the Search
+ *  tab's bar. Google's name is canonical (MESITA-2896): the Mesita Name
+ *  mode (`mesita`, MESITA-2883) is gone. */
 type SuggestPlacesMode = "fast" | "deep";
 
 /**
  * Name search for the consumer /search bar and pickers.
- * Fast (default) = Autocomplete. Deep = Mesita · Google.
+ * Fast (default) = Autocomplete. Deep = Autocomplete + Text Search.
  * Map Filters never ride this call — power and Family are map-only.
  * Country is always Any: Autocomplete and Text Search do not take a region.
  */

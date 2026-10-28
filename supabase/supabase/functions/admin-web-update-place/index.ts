@@ -24,6 +24,7 @@ import {
   json,
   readJson,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -50,18 +51,26 @@ import {
   subprocessesFor,
 } from "../_shared/enrich-triggers.ts";
 import { persistBusinessFieldPins } from "../_shared/field-correction-writer.ts";
+import {
+  isOperatorField,
+  markOperatorFields,
+  type OperatorField,
+  operatorFieldsInPatch,
+} from "../_shared/operator-fields.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
+import { readFamilyKeysBody } from "./place-families-body.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
-const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "google_types", "google_source_types", "family_keys"] as const;
+const READ_ONLY_FIELDS = ["category", "category_label", "google_types", "google_source_types"] as const;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
 
 type UpdateBody = {
   id?: string;
-  mesita_name?: string | null;
+  /** The Mesita name (MESITA-2828). Blank ⇒ the place follows Google's label. */
+  name?: string | null;
   // Native fields (google_name, price_level, address, google_maps_url,
   // google_place_id) are Google/Enricher-owned and not editable here: the
   // whitelist below never reads them.
@@ -81,6 +90,8 @@ type UpdateBody = {
   description?: string | null;
   /** Mesita tags: place_tags slugs, editable since MESITA-2836. Null clears. */
   tags?: string[] | null;
+  /** Mesita families: 1–5 place_families slugs, editable since MESITA-2893. Null clears. */
+  family_keys?: string[] | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.
   menu_pdf_name?: string | null;
@@ -89,9 +100,11 @@ type UpdateBody = {
   /** Profile's Actions toggle, sent with the operator's reservation channel. */
   reservations_enabled?: boolean;
   reservation_channel?: string;
+  /** Basics' Reset (MESITA-2829): hand these fields back to Enrich. */
+  reset_fields?: unknown;
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-update-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -125,8 +138,8 @@ Deno.serve(async (req) => {
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
   // The Google fields are Google's own (MESITA-2836): the categories derive
-  // from google_source_types in the trigger, the families from the categories
-  // in the view. Name, Presentation and Tags are the operator's to edit.
+  // from google_source_types in the trigger. Name, Presentation, Tags and,
+  // since MESITA-2893, Families are the operator's to edit.
   const readOnly = READ_ONLY_FIELDS.find((field) => field in body);
   if (readOnly) {
     return json(
@@ -138,15 +151,15 @@ Deno.serve(async (req) => {
   // Build the update payload from the whitelist. Missing keys are not
   // touched. Explicit null clears the field.
   const update: Record<string, unknown> = {};
-  // Operator name override → places.mesita_name (`name` is a GENERATED
-  // display column, coalesce(mesita_name, google_name), and is not writable).
-  // Empty/whitespace CLEARS the override so the place falls back to Google.
-  if ("mesita_name" in body) {
-    const n = (body.mesita_name ?? "").toString().trim();
+  // The Mesita name → place_profiles.name (MESITA-2828: stored, the one
+  // name). Empty/whitespace CLEARS it and the name-fallback trigger copies
+  // Google's label back in, so the place is never nameless.
+  if ("name" in body) {
+    const n = (body.name ?? "").toString().trim();
     if (n.length > ENRICH_FIELD_LIMITS.placeName.max) {
       return json({ ok: false, error: "name too long" }, 400);
     }
-    update.mesita_name = n.length > 0 ? n : null;
+    update.name = n.length > 0 ? n : null;
   }
   if ("hours" in body) {
     const cleaned = sanitiseHours(body.hours);
@@ -216,6 +229,20 @@ Deno.serve(async (req) => {
     // An unknown slug is refused by the taxonomy trigger.
     update.tags = tags;
   }
+  // Mesita Families (MESITA-2893): the operator's 1–5 of the thirty-seven. Validated
+  // against the live vocabulary here, so the 400 names the slug instead of the
+  // trigger's bare "unknown family"; written on place_profiles directly below,
+  // because the profiles view's INSTEAD OF trigger drops family_keys.
+  const families = await fetchPlaceFamilies(admin);
+  let familyKeys: string[] | null | undefined;
+  if ("family_keys" in body) {
+    if (families.length === 0) {
+      return json({ ok: false, error: "Family vocabulary unavailable" }, 500);
+    }
+    const read = readFamilyKeysBody(body.family_keys, families);
+    if (!read.ok) return json(read.body, read.status);
+    familyKeys = read.keys;
+  }
   // Profile's Actions toggle (MESITA-2787). The answer is stored as the
   // operator's reservation channel, the one column a later Enrich cannot
   // overwrite (place_reservations_follow_channel, MESITA-1737). The console
@@ -233,45 +260,112 @@ Deno.serve(async (req) => {
     update.reservations_enabled = body.reservations_enabled;
     update.reservation_channel = channel;
   }
-  if (Object.keys(update).length === 0) {
+  // Basics' Reset (MESITA-2829): a list of operator-owned fields to hand
+  // back to Enrich. It may ride alone, with no edit.
+  const resetFields: OperatorField[] = [];
+  if ("reset_fields" in body) {
+    if (!Array.isArray(body.reset_fields) || !body.reset_fields.every(isOperatorField)) {
+      return json({ ok: false, error: "reset_fields must list name, description, tags or family_keys" }, 400);
+    }
+    resetFields.push(...body.reset_fields);
+  }
+  if (Object.keys(update).length === 0 && resetFields.length === 0 && familyKeys === undefined) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
   }
 
-  const updRes = await writePlace(admin, {
-    table: "profiles",
-    mode: "update",
-    id: placeId,
-    patch: update as ProfilePatch,
-    select: PLACE_PROFILE_COLUMNS,
-  });
-
-  if (!updRes.ok) {
-    await recordAdminOperatorEvent(admin, {
-      verb: "edit",
-      outcome: "failed",
-      placeId,
-      actorUserId: authRes.user.id,
-      source: "admin-web-update-place",
-      detail: { error: updRes.error, code: updRes.code ?? null },
+  // Families first, so the profile row read back below already carries them
+  // (profiles.family_keys is the stored list, MESITA-2891).
+  if (familyKeys !== undefined) {
+    const famRes = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: { family_keys: familyKeys },
     });
-    return json(
-      {
-        ok: false,
-        error: `place_update: ${updRes.error}`,
-        code: updRes.code ?? null,
-      },
-      400,
-    );
+    if (!famRes.ok) {
+      await recordAdminOperatorEvent(admin, {
+        verb: "edit",
+        outcome: "failed",
+        placeId,
+        actorUserId: authRes.user.id,
+        source: "admin-web-update-place",
+        detail: { error: famRes.error, code: famRes.code ?? null, field: "family_keys" },
+      });
+      return json(
+        { ok: false, error: `family_keys: ${famRes.error}`, code: famRes.code ?? null },
+        400,
+      );
+    }
+    console.log(JSON.stringify({
+      fn: "families",
+      caller: "admin-web-update-place",
+      placeId,
+      source: "operator",
+      picked: familyKeys ?? [],
+      outcome: familyKeys ? "written" : "cleared",
+    }));
   }
-  const place = updRes.row as Record<string, unknown>;
 
-  const pinRes = await persistBusinessFieldPins(admin, placeId, update);
-  if (!pinRes.ok) {
-    return json(
-      { ok: false, error: `field_pin: ${pinRes.error}` },
-      500,
-    );
+  let place: Record<string, unknown>;
+  if (Object.keys(update).length > 0) {
+    const updRes = await writePlace(admin, {
+      table: "profiles",
+      mode: "update",
+      id: placeId,
+      patch: update as ProfilePatch,
+      select: PLACE_PROFILE_COLUMNS,
+    });
+
+    if (!updRes.ok) {
+      await recordAdminOperatorEvent(admin, {
+        verb: "edit",
+        outcome: "failed",
+        placeId,
+        actorUserId: authRes.user.id,
+        source: "admin-web-update-place",
+        detail: { error: updRes.error, code: updRes.code ?? null },
+      });
+      return json(
+        {
+          ok: false,
+          error: `place_update: ${updRes.error}`,
+          code: updRes.code ?? null,
+        },
+        400,
+      );
+    }
+    place = updRes.row as Record<string, unknown>;
+
+    const pinRes = await persistBusinessFieldPins(admin, placeId, update);
+    if (!pinRes.ok) {
+      return json(
+        { ok: false, error: `field_pin: ${pinRes.error}` },
+        500,
+      );
+    }
+  } else {
+    const { data: row, error } = await admin
+      .from("profiles")
+      .select(PLACE_PROFILE_COLUMNS)
+      .eq("id", placeId)
+      .maybeSingle();
+    if (error || !row) return json({ ok: false, error: error?.message ?? "Place not found" }, 404);
+    place = row as unknown as Record<string, unknown>;
   }
+
+  // An operator's name, Presentation, tags or families stick through every
+  // Enrich (MESITA-2829, MESITA-2893): a typed value marks the field, a Reset
+  // clears the mark.
+  const marks = await markOperatorFields(admin, placeId, {
+    mark: operatorFieldsInPatch(
+      familyKeys === undefined ? update : { ...update, family_keys: familyKeys },
+    ),
+    clear: resetFields,
+  });
+  if (!marks.ok) {
+    return json({ ok: false, error: `operator_fields: ${marks.error}` }, 500);
+  }
+  place.operator_fields = marks.fields;
 
   // The on_update row's `embedding` cell re-synthesises when the blurb
   // inputs change. Sync is not this save. A disabled row buys nothing.
@@ -292,10 +386,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Families are the categories' dictionary, derived in the profiles view
-  // (MESITA-2834); the row just read back carries them. A vocabulary miss
-  // leaves the string off.
-  const families = await fetchPlaceFamilies(admin);
+  // The row just read back carries the stored families (MESITA-2891); this
+  // names them. A vocabulary miss leaves the string off.
   const familyStored = families.length > 0
     ? resolveStoredFamily((place as { family_keys?: unknown }).family_keys, families)
     : undefined;
@@ -306,7 +398,10 @@ Deno.serve(async (req) => {
     placeId,
     actorUserId: authRes.user.id,
     source: "admin-web-update-place",
-    detail: { fields: Object.keys(update) },
+    detail: {
+      fields: familyKeys === undefined ? Object.keys(update) : [...Object.keys(update), "family_keys"],
+      reset: resetFields,
+    },
   });
 
   return json({ ok: true, place, familyStored });

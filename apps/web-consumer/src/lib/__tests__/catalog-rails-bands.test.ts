@@ -33,8 +33,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
         reviews: 1 as const,
       },
       signals: { proximity: 1, popularity: 0.5 },
-      selected: 1,
-      source: "selected" as const,
+      source: "mesita" as const,
       base: final,
       final,
       formula: "point" as const,
@@ -63,7 +62,7 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
 
   it("pages after ranking: 20 at a time, a sentinel asks for more, no request", () => {
     expect(PLACES_PAGE).toBe(20);
-    expect(src).toContain("list.slice(0, pageCount * PLACES_PAGE)");
+    expect(src).toContain("list.slice(0, pageCount * pageSize)");
     expect(src).toContain("data-places-more");
     expect(src).toContain("new IntersectionObserver(");
     // A kept pool paints without a request.

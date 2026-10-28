@@ -2,45 +2,27 @@
 import { assert, assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   descriptionSimilarity,
-  lexicalNameSimilarity,
-  nameSimilarity,
-  normalizeName,
   popularity,
   POPULARITY_HALF_REVIEWS_DEFAULT,
   proximity,
-  halfDistanceKm,
-  PROXIMITY_RADIUS_DIVISOR_DEFAULT,
+  PROXIMITY_HALF_KM_DEFAULT,
   proximityFromDistance,
 } from "./pipeline-signals.ts";
 
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
 const D = 10;
 
-Deno.test("proximity: 1 ÷ (1 + d ÷ D) — 1 at the point, ½ at D, ⅓ at 2D, never 0 (MESITA-2706)", () => {
+Deno.test("proximity: 1 ÷ (1 + ln(1 + (e − 1) d ÷ h)) — 1 at the point, ½ at h, steep then flat, never 0 (MESITA-2909)", () => {
+  assertEquals(PROXIMITY_HALF_KM_DEFAULT, 5);
   assertEquals(proximityFromDistance(0, D), 1);
   assertAlmostEquals(proximityFromDistance(D, D), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(2 * D, D), 1 / 3, 1e-12);
-  assertAlmostEquals(proximityFromDistance(D / 2, D), 2 / 3, 1e-12);
-  // The edge of a circle is never 0: the Radius gate drops what lies past it.
+  const at = (k: number) => proximityFromDistance(k * D, D);
+  // Falls fast near the guest, ever slower after.
+  assert(1 - at(0.5) > at(1) - at(2));
+  assert(at(1) - at(2) > at(2) - at(4));
+  // A far place is lowered, never cut.
   assert(proximityFromDistance(10_000, D) > 0);
-  assert(proximityFromDistance(10_000, D) < 0.01);
   assert(proximityFromDistance(1, D) < 1);
-});
-
-Deno.test("proximity: D = radius ÷ k; k = 2 puts the edge of any circle at ⅓ (MESITA-2720)", () => {
-  assertEquals(PROXIMITY_RADIUS_DIVISOR_DEFAULT, 2);
-  for (const r of [1, 15, 50]) {
-    const h = halfDistanceKm(r, PROXIMITY_RADIUS_DIVISOR_DEFAULT);
-    assertAlmostEquals(h, r / 2, 1e-12);
-    assertAlmostEquals(proximityFromDistance(r, h), 1 / 3, 1e-12);
-    assertAlmostEquals(proximityFromDistance(r / 2, h), 0.5, 1e-12);
-  }
-  // The edge scores 1 ÷ (1 + k): k = 1 → ½, k = 4 → ⅕.
-  assertAlmostEquals(proximityFromDistance(15, halfDistanceKm(15, 1)), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(15, halfDistanceKm(15, 4)), 0.2, 1e-12);
-  // A non-positive divisor reads the default.
-  assertEquals(halfDistanceKm(15, 0), 7.5);
-  assertEquals(halfDistanceKm(15, Number.NaN), 7.5);
 });
 
 Deno.test("proximity: a non-positive D cannot place a distance", () => {
@@ -89,32 +71,13 @@ Deno.test("popularity missing data: no rating or no review count is 0 (no new-pl
   assertEquals(popularity({ rating: 4.8, reviewCount: 0 }, K), 0);
 });
 
-Deno.test("name: the embedding cosine when both vectors exist", () => {
-  const sim = nameSimilarity(
-    { text: "pangea", vector: [1, 0, 0] },
-    { name: "Pangea", nameEmbedding: [0.8, 0.6, 0] },
-  );
-  assertEquals(sim.method, "embedding");
-  assertAlmostEquals(sim.score, 0.8, 1e-9);
-});
-
-Deno.test("name missing data: no embedding falls back to lexical, never a silent 0", () => {
-  const noPlaceVec = nameSimilarity({ text: "Pangea", vector: [1, 0] }, { name: "Pangea", nameEmbedding: null });
-  assertEquals(noPlaceVec, { score: 1, method: "lexical" });
-  const noQueryVec = nameSimilarity({ text: "tacos el", vector: null }, { name: "Tacos el Güero" });
-  assertEquals(noQueryVec.method, "lexical");
-  assert(noQueryVec.score >= 0.8, "a typed prefix is a strong hit");
-  assertEquals(lexicalNameSimilarity("Café Nin", "cafe nin"), 1);
-  assert(lexicalNameSimilarity("sushi", "Pangea") < 0.2);
-});
-
 Deno.test("description: cosine of the request against the summary; no summary vector cannot judge", () => {
   assertAlmostEquals(descriptionSimilarity([1, 0], [1, 0])!, 1, 1e-12);
   assertEquals(descriptionSimilarity([1, 0], null), null);
   assertEquals(descriptionSimilarity([1, 0, 0], [1, 0]), null);
 });
 
-// ── MESITA-2338: non-finite inputs and names outside Latin ─────────────────
+// ── MESITA-2338: non-finite inputs ───────────────────────────────────────
 
 Deno.test("proximity: an unplaceable distance scores 0, never 1", () => {
   assertEquals(proximityFromDistance(Number.NaN, 10), 0);
@@ -129,17 +92,3 @@ Deno.test("popularity: NaN or infinite numbers score 0, never NaN", () => {
   assertEquals(popularity({ rating: 4.5, reviewCount: Number.POSITIVE_INFINITY }, K), 0);
 });
 
-Deno.test("name: letters of every script survive normalization", () => {
-  assertEquals(normalizeName("寿司 Kyo!"), "寿司 kyo");
-  assertEquals(normalizeName("Кафе Пушкин"), "кафе пушкин");
-  assertEquals(normalizeName("Café Niño — Güero!"), "cafe nino guero");
-  assertEquals(lexicalNameSimilarity("寿司", "寿司"), 1);
-  assert(lexicalNameSimilarity("Кафе", "Кафе Пушкин") >= 0.8);
-});
-
-Deno.test("name: other scripts keep their marks, so different names never collide", () => {
-  assert(normalizeName("カフェ") !== normalizeName("ガフェ"));
-  assert(normalizeName("कमल") !== normalizeName("कमाल"));
-  assertEquals(normalizeName("Café"), normalizeName("Cafe"));
-  assertEquals(normalizeName("La 1ª Taquería"), "la 1a taqueria");
-});

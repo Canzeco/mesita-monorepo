@@ -40,7 +40,7 @@ export const COST_RATES = {
   visionEconomy: 0.001, // gpt-4o-mini vision, one image (detail:low)
   visionStandard: 0.008, // gpt-4o vision, one image
   sort: 0.001, // gpt-4o-mini text sort / short judge
-  synthEconomy: 0.002, // gpt-4o-mini synthesis (1,000-char Presentation)
+  synthEconomy: 0.002, // gpt-4o-mini synthesis (1,500-char Presentation)
   synthStandard: 0.028, // gpt-4o synthesis (standard)
 } as const;
 
@@ -74,7 +74,7 @@ const TIME_RATES = {
 } as const;
 
 // Vision describes every analyzed image CONCURRENTLY (the enricher fires the
-// whole analyze pool at once — see _shared/enrich-image-funnel.ts). Up to 40
+// whole analyze pool at once). Up to 40
 // run in flight; the analyze caps top out at 60 (Google ≤10 + Instagram ≤50),
 // so a typical config is one round and the absolute max is two — analysis time
 // ≈ one describe (or two), not N of them.

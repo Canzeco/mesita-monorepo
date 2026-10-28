@@ -1,41 +1,23 @@
-import Image from "next/image";
 import { Star } from "lucide-react";
 import { cn } from "../lib/format";
 
-export function Header({
-  avatar,
-  name,
-  sub,
-  sourceLogo,
-}: {
-  avatar: React.ReactNode;
-  name: string;
-  sub?: string;
-  sourceLogo: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3">
-      {avatar}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{name}</p>
-        {sub ? (
-          <p className="text-muted-foreground truncate text-xs">{sub}</p>
-        ) : null}
-      </div>
-      {sourceLogo}
-    </div>
-  );
-}
-
+// Google's yellow for the earned stars, a pale grey for the rest (Pato,
+// MESITA-2916: "use yellow here ... all gray just feels weird"). The empty
+// stars used to have no fill at all, so a 1★ review drew one star and a gap.
 export function StarRow({ rating }: { rating: number }) {
   return (
-    <div className="flex items-center gap-0.5 text-muted-foreground">
+    <div
+      className="flex items-center gap-0.5"
+      role="img"
+      aria-label={`${rating} out of 5 stars`}
+    >
       {Array.from({ length: 5 }).map((_, i) => (
         <Star
           key={i}
+          aria-hidden
           className={cn(
-            "h-3.5 w-3.5",
-            i < rating ? "fill-current" : "opacity-30",
+            "h-4 w-4",
+            i < rating ? "fill-[#FBBC04]" : "fill-muted-foreground/25",
           )}
           strokeWidth={0}
         />
@@ -67,49 +49,11 @@ export function Quote({
         <button
           type="button"
           onClick={onExpand}
-          className="text-foreground self-start text-xs font-semibold hover:underline"
+          className="text-foreground min-h-11 self-start text-sm font-semibold hover:underline"
         >
           Read more
         </button>
       )}
-    </div>
-  );
-}
-
-export function Thumbnail({
-  src,
-  alt,
-  aspect,
-}: {
-  src: string;
-  alt: string;
-  aspect: "square" | "portrait" | "landscape";
-}) {
-  // Photos sit in a 40-unit-wide (160px) frame centered in the card
-  // rather than spanning full width — full-width portrait shots were
-  // dominating the layout. The aspect class drives the height so a
-  // story stays tall (160 × 213), a square food shot stays square
-  // (160 × 160), and a landscape dining shot stays wide-short
-  // (160 × 90).
-  const aspectClass =
-    aspect === "portrait"
-      ? "aspect-[3/4]"
-      : aspect === "landscape"
-        ? "aspect-[16/9]"
-        : "aspect-square";
-  return (
-    <div className="mt-auto flex justify-center">
-      <div
-        className={cn("relative w-40 overflow-hidden rounded-lg", aspectClass)}
-      >
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes="160px"
-          className="object-cover"
-        />
-      </div>
     </div>
   );
 }

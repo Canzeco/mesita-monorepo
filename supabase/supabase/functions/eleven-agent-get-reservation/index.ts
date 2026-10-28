@@ -23,7 +23,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { phoneDigits } from "../_shared/phone.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
@@ -162,7 +162,7 @@ async function searchReservations(
   });
 }
 
-Deno.serve(async (req) => {
+serveJson("eleven-agent-get-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

@@ -154,6 +154,11 @@ export function PipelineBox({
       </Part>
 
       <Part label="Signals">
+        {p.signals.length === 0 ? (
+          <p className="text-muted-foreground text-sm">
+            None: no signal scores these rows; each keeps its source&apos;s own rank.
+          </p>
+        ) : null}
         <ul className="flex flex-col gap-3">
           {p.signals.map((key) => {
             const sig = signalByKey(key);

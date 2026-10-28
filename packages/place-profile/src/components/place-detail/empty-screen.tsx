@@ -1,6 +1,6 @@
 "use client";
 
-import { Store, Zap, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Store, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/format";
 import { PLACE_SCREEN_TITLE_CLASS } from "../../lib/ui";
 
@@ -21,11 +21,11 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
   line: "The overview of this place will show up here.",
 };
 
-/** The Boost tab where the host draws no pane (admin Preview). */
+/** The Premier tab where the host draws no pane (admin Preview). */
 export const NO_BOOST: PlaceEmptyScreenProps = {
-  icon: Zap,
-  title: "Partner",
-  line: "Guests make this place a Partner from the Mesita app. Paid visibility, never Verified.",
+  icon: BadgeCheck,
+  title: "Premier",
+  line: "Guests make this place Premier from the Mesita app: Premier 2X, 5X or 10X.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products

@@ -14,7 +14,7 @@ function place(over: Partial<Place> = {}): Place {
 }
 
 describe("placeSearchScope", () => {
-  it("is Google's alone for a stub and Mesita Selected for every Mesita row", () => {
+  it("is Google's alone for a stub and Mesita's for every Mesita row", () => {
     expect(placeSearchScope(place({ googleOnly: true }))).toBe("google");
     expect(placeSearchScope(place({ from_google: true }))).toBe("google");
     // A stub stays Google's even if a payload claims a stamp.
@@ -23,13 +23,13 @@ describe("placeSearchScope", () => {
     ).toBe("google");
     expect(
       placeSearchScope(place({ enriched_at: "2026-08-01T00:00:00Z" })),
-    ).toBe("selected");
-    expect(placeSearchScope(place({ enriched: true }))).toBe("selected");
+    ).toBe("mesita");
+    expect(placeSearchScope(place({ enriched: true }))).toBe("mesita");
     // The server sends no Created row on this surface; one that slips
     // through is still a Mesita row, never Google's.
     expect(
       placeSearchScope(place({ content_state: "ready", enriched_at: null })),
-    ).toBe("selected");
+    ).toBe("mesita");
   });
 });
 
@@ -41,59 +41,46 @@ describe("the family chips are the only guest filter (MESITA-2384, MESITA-2417)"
 });
 
 describe("PLACE_FAMILIES catalog (final law)", () => {
-  it("is fifty guest families plus Undefined last", () => {
-    expect(PLACE_FAMILIES).toHaveLength(51);
+  it("is thirty-seven guest families plus Undefined last", () => {
+    expect(PLACE_FAMILIES).toHaveLength(38);
     expect(PLACE_FAMILIES.map((f) => f.key)).toEqual([
       "coffee",
       "breakfast",
-      "brunch",
       "bakery",
       "sweet",
-      "gelato",
       "healthy",
-      "vegan",
       "quick_bite",
       "tacos",
       "burgers",
       "pizza",
-      "sandwiches",
       "chicken",
-      "wings",
-      "kebab",
-      "dinner",
+      "sushi",
       "mexican",
       "steak",
-      "bbq",
       "seafood",
       "italian",
-      "sushi",
       "japanese",
-      "ramen",
-      "noodles",
       "chinese",
-      "dumplings",
-      "korean",
-      "thai",
-      "indian",
       "asian",
+      "indian",
       "arabic",
-      "mediterranean",
-      "spanish",
-      "french",
       "european",
       "american",
-      "latin",
+      "dinner",
       "fancy",
+      "family",
       "drinks",
-      "beer",
-      "cocktails",
-      "wine",
       "sports",
       "hookah",
       "night_out",
       "nightclub",
       "music",
       "karaoke",
+      "fun",
+      "cinema",
+      "casino",
+      "spa",
+      "tourist",
       "undefined",
     ]);
     const last = PLACE_FAMILIES[PLACE_FAMILIES.length - 1]!;

@@ -26,6 +26,7 @@ import {
   jsonError,
   readJson,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -38,7 +39,7 @@ import {
   writeConfigSection,
 } from "../_shared/config-sections.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-update-config", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

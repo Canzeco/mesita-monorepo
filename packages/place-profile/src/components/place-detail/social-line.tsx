@@ -5,6 +5,7 @@
 // Reviews. The caller passes what the server said; nobody visible → nothing.
 
 import { DefaultAvatar } from "../DefaultAvatar";
+import { SizedImg } from "../SizedPhoto";
 
 /** No account id: faces are keyed by position (MESITA-2460). */
 export type SocialFace = {
@@ -27,10 +28,10 @@ export function SocialLine({
         <span className="flex shrink-0 -space-x-2" aria-hidden>
           {shown.map((f, i) =>
             f.avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <SizedImg
                 key={i}
                 src={f.avatarUrl}
+                size="thumb"
                 alt=""
                 className="border-card h-6 w-6 rounded-full border-2 object-cover"
               />

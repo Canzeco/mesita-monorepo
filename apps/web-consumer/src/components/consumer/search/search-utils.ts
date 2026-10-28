@@ -1,5 +1,5 @@
 // Small pure helpers for the Search surface: session tokens for Google
-// Places autocomplete billing, prediction↔catalog matching, the anchored
+// Places autocomplete billing, prediction↔catalog matching by id, the anchored
 // searchbar pick, and distance derivation/formatting for the rail cards.
 
 import type { MapBounds, Place } from "@/lib/api/places";
@@ -16,37 +16,30 @@ export function newSessionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-// Accent/case-insensitive name key so "Café Nómada" matches "cafe nomada".
-function normalizeName(name: string): string {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
 /**
- * Best-effort resolution of a suggest prediction to a catalog Place.
- *
- * Predictions carry the Google placeId, and the public places projection
- * doesn't expose google_place_id, so the only client-side join available
- * is the (normalized) name. Exact equality ONLY: Mesita-side rows use the
- * place name verbatim as mainText, so equality hits the honest cases,
- * while any substring fallback misroutes look-alikes ("Casa Luminar"
- * contains-matching "Casa Lu"). Predictions the EF stamps with a Mesita
- * id/slug skip this join entirely.
+ * Resolution of a suggest prediction to a catalog Place, by identity only:
+ * the Mesita id the EF stamps on a held hit, else the Google Place ID. Never
+ * by name — Google's name is canonical and the Mesita name is display only
+ * (MESITA-2896, MESITA-2907). A Google-only row carries its Place ID as its
+ * slug.
  */
 export function matchPredictionToPlace(
   prediction: PlacePrediction,
   places: Place[],
 ): Place | null {
-  const target = normalizeName(prediction.mainText);
-  if (!target) return null;
-  for (const place of places) {
-    if (normalizeName(place.name) === target) return place;
+  if (prediction.mesitaId) {
+    const held = places.find((p) => p.id === prediction.mesitaId);
+    if (held) return held;
   }
-  return null;
+  const googleId = prediction.placeId;
+  if (!googleId) return null;
+  return (
+    places.find(
+      (p) =>
+        (p.google_place_id ??
+          (p.googleOnly || p.from_google ? p.slug : null)) === googleId,
+    ) ?? null
+  );
 }
 
 // ── The anchored searchbar pick (MESITA-1405) ─────────────────────────
@@ -90,9 +83,9 @@ export function anchorPlaceFromPrediction(
     price_level: card.price_level ?? null,
     currency: card.currency ?? "MXN",
     enriched: prediction.enriched ?? false,
-    // The operator's mark rides the prediction too (MESITA-2707): the
-    // synthesized card's pin keeps the lane's colour.
-    selected: prediction.selected ?? false,
+    // Premier rides the prediction too (MESITA-2925): the synthesized
+    // card's pin and mark keep the lane's answer.
+    boost_tier: prediction.boost_tier ?? card.boost_tier ?? 0,
     lat: prediction.lat,
     lng: prediction.lng,
     address: card.address ?? (prediction.secondaryText || null),
@@ -264,7 +257,7 @@ export const RING_INSET = 0.9;
 /**
  * The screen radius the NEXT load would send (MESITA-2512): RING_INSET of
  * the cross's distance to the nearest edge of `box`, km — the client mirror of the
- * EF's `screenRadiusKm` (MESITA-2511), clamped 0.05–50. Null with no view,
+ * EF's `screenRadiusKm` (MESITA-2511), at least 0.05, no ceiling (MESITA-2918). Null with no view,
  * across the dateline, or a cross off the view.
  */
 export function viewRadiusKm(
@@ -286,7 +279,7 @@ export function viewRadiusKm(
     haversineKm(cross.lat, cross.lng, box.south, cross.lng),
     haversineKm(cross.lat, cross.lng, box.north, cross.lng),
   );
-  return Number.isFinite(r) ? Math.min(50, Math.max(0.05, r * RING_INSET)) : null;
+  return Number.isFinite(r) ? Math.max(0.05, r * RING_INSET) : null;
 }
 
 /** The view `box` becomes once `target` sits under the sight at the same

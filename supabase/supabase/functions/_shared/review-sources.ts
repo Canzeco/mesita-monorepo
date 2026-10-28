@@ -16,6 +16,7 @@ import {
   GOOGLE_PLACES_DETAILS_BASE,
   readGooglePlacesKey,
 } from "./google-places.ts";
+import { googleFetch } from "./google-fetch.ts";
 import { numOf } from "./parse-utils.ts";
 import {
   socialAccountReplaced,
@@ -235,16 +236,14 @@ export async function verifyGoogle(
   }
   let response: Response;
   try {
-    response = await fetch(
+    response = await googleFetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${
         encodeURIComponent(googlePlaceId)
       }?languageCode=es-MX&regionCode=MX`,
       {
-        signal: AbortSignal.timeout(REVIEW_VERIFY_TIMEOUT_MS),
-        headers: {
-          "X-Goog-Api-Key": key.key,
-          "X-Goog-FieldMask": "rating,userRatingCount",
-        },
+        apiKey: key.key,
+        fieldMask: "rating,userRatingCount",
+        timeoutMs: REVIEW_VERIFY_TIMEOUT_MS,
       },
     );
   } catch (e) {

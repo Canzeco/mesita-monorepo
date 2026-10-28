@@ -69,12 +69,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       setQueued(true);
       setEnrichState((prev) => ({
         content_state: "generating",
-        stage: "first",
-        stage_state: "queued",
-        error: null,
         last_enriched_at: prev?.last_enriched_at ?? null,
-        updated_at: new Date().toISOString(),
-        serp_summary: prev?.serp_summary ?? null,
       }));
     });
   }, [alreadyEnriched, place.id]);
@@ -101,7 +96,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Result: {enrichState?.error ? "Error" : status}. Enrich runs links,
+              . Enrich runs links,
               reviews, photos, and presentation synthesis, and replaces what it finds.
             </p>
           )}
@@ -135,8 +130,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
             {runError ? (
               <span className="text-destructive">{runError}</span>
-            ) : enrichState?.error ? (
-              <span className="text-destructive">{enrichState.error}</span>
             ) : queued ? (
               <span className="text-muted-foreground">Started.</span>
             ) : running ? (

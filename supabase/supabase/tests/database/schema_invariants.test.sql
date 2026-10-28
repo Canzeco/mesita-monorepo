@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(180);
+select plan(175);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -124,12 +124,16 @@ select ok(
   'profiles_update_trg is still bound (writes through the view are no-ops without it)'
 );
 
--- ━━━ place_profiles.name — GENERATED, not a convention ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ━━━ place_profiles.name — the one stored Mesita name (MESITA-2828) ━━━━━━━━━━━━━━━━
 
 select ok(
-  (select attgenerated from pg_attribute
-    where attrelid = 'public.place_profiles'::regclass and attname = 'name') = 's',
-  'place_profiles.name is a STORED GENERATED column (a plain column lets writers diverge again)'
+  exists (
+    select 1 from pg_trigger
+     where tgrelid = 'public.place_profiles'::regclass
+       and not tgisinternal
+       and tgname = 'place_profiles_name_fallback_trg'
+  ),
+  'place_profiles_name_fallback_trg is bound (a blank name follows google_name)'
 );
 
 select col_not_null(
@@ -141,57 +145,67 @@ select ok(
   exists (
     select 1 from pg_constraint
      where conrelid = 'public.place_profiles'::regclass
-       and conname = 'place_profiles_name_source_present'
+       and conname = 'place_profiles_name_present'
   ),
-  'place_profiles_name_source_present survives (names the failure as a data problem)'
+  'place_profiles_name_present survives (a place always has a name, MESITA-2828)'
 );
 
 -- Behaviour, not just catalog shape: the resolution order is the product law.
 savepoint before_name_probe;
 
+-- MESITA-2828: `name` is the one Mesita name, stored. Blank ⇒ the fallback
+-- trigger copies google_name; mesita_name is gone.
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-0000000f0f0f', '  Tacos Martin  ');
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Tacos Martin'::text,
-  'no override ⇒ place_profiles.name follows google_name, trimmed'
+  'no Mesita name ⇒ place_profiles.name follows google_name, trimmed'
 );
 
-update public.place_profiles set mesita_name = 'Los Tacos Martin'
+update public.place_profiles set name = 'Los Tacos Martin'
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
   'Los Tacos Martin'::text,
-  'mesita_name overrides google_name'
+  'the Mesita name is stored as written'
 );
 
-update public.place_profiles set mesita_name = '   '
+update public.place_profiles set google_name = 'Tacos Martín Centro'
  where id = '00000000-0000-4000-8000-0000000f0f0f';
 
 select is(
   (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
-  'Tacos Martin'::text,
-  'a whitespace-only override is not an override'
+  'Los Tacos Martin'::text,
+  'a Google rename never moves the Mesita name'
 );
 
--- 428C9 = ERRCODE_GENERATED_ALWAYS. Pinned, because "it threw something" would
--- also pass if the column had merely gone away.
-select throws_ok(
-  $$update public.place_profiles set name = 'direct write'
-     where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
-  '428C9'::char(5), null::text,
-  'place_profiles.name rejects a direct write'
+update public.place_profiles set name = '   '
+ where id = '00000000-0000-4000-8000-0000000f0f0f';
+
+select is(
+  (select name from public.place_profiles where id = '00000000-0000-4000-8000-0000000f0f0f'),
+  'Tacos Martín Centro'::text,
+  'a blank Mesita name falls back to google_name'
 );
 
--- Deliberately unpinned: the row violates the NOT NULL and the named CHECK at
--- once and Postgres does not promise which it reports.
+select hasnt_column('public', 'place_profiles', 'mesita_name', 'mesita_name retired (MESITA-2828)');
+select is(
+  (select is_generated from information_schema.columns
+    where table_schema = 'public' and table_name = 'place_profiles' and column_name = 'name'),
+  'NEVER'::information_schema.character_data,
+  'place_profiles.name is stored, not generated'
+);
+
+-- Both blank: the fallback has nothing to copy and the row is refused. The
+-- NOT NULL and the check both fire; Postgres does not promise which it reports.
 select throws_ok(
-  $$update public.place_profiles set google_name = null, mesita_name = null
+  $$update public.place_profiles set google_name = null, name = null
      where id = '00000000-0000-4000-8000-0000000f0f0f'$$,
   null::char(5), null::text,
-  'a place with neither mesita_name nor google_name is rejected'
+  'a place with neither a Mesita name nor a Google label is rejected'
 );
 
 rollback to savepoint before_name_probe;
@@ -503,7 +517,7 @@ select is_empty(
 -- Attics) cannot see a function body. ALTER RENAME does not rewrite
 -- PL/pgSQL or LANGUAGE sql, which is how 20260906000000 shipped
 -- jsonb_build_object('project_id', v_row.place_id) inside
--- run_place_enrichment_stages — live until a later migration fixed it by
+-- run_place_enrichment_stages (retired, MESITA-2424) — live until a later migration fixed it by
 -- hand. Scan prosrc (the body), never pg_get_functiondef: the definer text
 -- includes the signature, and two functions deliberately keep the argument
 -- name p_project_id (42P13 refuses to rename it without DROP, which would
@@ -693,10 +707,43 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE'),
+  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE'),
   'only the service role can set a guest''s Class and Plan (MESITA-2553)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_reservation_cap_override_check'
+      and conrelid = 'public.consumers'::regclass)) like '%1000%',
+  'a guest''s reservation cap override is null or 0..1000 (MESITA-2555)'
+);
+
+select ok(
+  has_function_privilege('service_role', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE'),
+  'only the service role can set a guest''s reservation cap (MESITA-2555)'
+);
+
+-- MESITA-2556: VIP partners are EF-only; a Regular guest holds no partner or end date.
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.vip_partners'::regclass)
+    and not exists (select 1 from pg_policies
+                     where schemaname = 'public' and tablename = 'vip_partners')
+    and not has_table_privilege('anon', 'public.vip_partners', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'UPDATE'),
+  'vip_partners is EF-only (RLS on, no policy, no client grant) (MESITA-2556)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_vip_fields_check'
+      and conrelid = 'public.consumers'::regclass)) like '%vip_partner_id IS NULL%vip_until IS NULL%',
+  'only a VIP holds a partner or an end date (MESITA-2556)'
 );
 
 -- MESITA-2590: a member can appear as "A member"; the one visibility rule reads it.
@@ -787,8 +834,8 @@ select has_table(
 
 select is(
   (select count(*)::bigint from public.place_families),
-  51::bigint,
-  'place family catalog is fifty guest families plus Undefined (MESITA-2834)'
+  38::bigint,
+  'place family catalog is thirty-seven guest families plus Undefined (MESITA-2930)'
 );
 
 select is(
@@ -799,105 +846,38 @@ select is(
 
 select is(
   (select array_agg(slug order by sort_order) from public.place_families),
-  array['coffee','breakfast','brunch','bakery','sweet','gelato','healthy','vegan','quick_bite','tacos','burgers','pizza','sandwiches','chicken','wings','kebab','dinner','mexican','steak','bbq','seafood','italian','sushi','japanese','ramen','noodles','chinese','dumplings','korean','thai','indian','asian','arabic','mediterranean','spanish','french','european','american','latin','fancy','drinks','beer','cocktails','wine','sports','hookah','night_out','nightclub','music','karaoke',
+  array['coffee','breakfast','bakery','sweet','healthy','quick_bite','tacos','burgers','pizza','chicken','sushi','mexican','steak','seafood','italian','japanese','chinese','asian','indian','arabic','european','american','dinner','fancy','family','drinks','sports','hookah','night_out','nightclub','music','karaoke','fun','cinema','casino','spa','tourist',
         'undefined']::text[],
-  'family catalog order is the fifty guest rails, Undefined last (MESITA-2834)'
+  'family catalog order is the thirty-seven guest rails, Undefined last (MESITA-2930)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['breakfast','brunch']::text[],
-  'breakfast is Breakfast and Brunch (MESITA-2834)'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['night_out','karaoke']::text[],
-  'karaoke is Nightlife and its own rail (MESITA-2486, MESITA-2834)'
-);
-
-select is(
-  (select array_agg(slug order by slug) from public.place_categories
-    where 'night_out' = any(family_keys) and slug <> 'night_club'),
-  array['billiards','board_game_cafe','cocktail_bar','escape_room','karaoke']::text[],
-  'Nightlife took Go out whole, a cocktail bar is a night out, and no attraction is (MESITA-2438, MESITA-2486, MESITA-2834)'
-);
-
+-- MESITA-2891: no category ↔ family dictionary. A place's Mesita Families
+-- are the Description step's model pick, stored on the place; every Google
+-- category is enabled on Mesita or not.
+select hasnt_column('public', 'place_categories', 'family_keys',
+  'place_categories carries no families: the dictionary is gone (MESITA-2891)');
+select hasnt_column('public', 'catalog_membership', 'family_keys',
+  'catalog_membership carries no families: the dictionary is gone (MESITA-2891)');
+select hasnt_function('public', 'families_for_categories', array['jsonb', 'text'],
+  'families_for_categories() is gone (MESITA-2891)');
+select hasnt_function('public', 'families_for_category', array['text'],
+  'families_for_category() is gone (MESITA-2891)');
+select col_not_null('public', 'catalog_membership', 'enabled',
+  'every Google category is enabled on Mesita or not (MESITA-2891)');
 select ok(
-  (select family_keys from public.place_categories where slug = 'bakery')
-    @> array['breakfast','bakery','sweet']::text[]
-  and (select family_keys from public.place_categories where slug = 'bakery')
-    <@ array['breakfast','bakery','sweet']::text[],
-  'a bakery is Breakfast, Bakery and Dessert: a list, no family first (MESITA-2808, MESITA-2834)'
+  (select count(*) from public.catalog_membership where enabled) > 0
+  and (select count(*) from public.catalog_membership where not enabled) > 0,
+  'Atlas has two non-empty lists: enabled and not enabled (MESITA-2891)'
 );
-
-select ok(
-  (select family_keys from public.place_categories where slug = 'mexican')
-    @> array['tacos','dinner','mexican']::text[]
-  and (select family_keys from public.place_categories where slug = 'mexican')
-    <@ array['tacos','dinner','mexican']::text[],
-  'mexican is Tacos, Dinner and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
-);
-
-select ok(
-  (select family_keys from public.place_categories where slug = 'taco')
-    @> array['quick_bite','tacos','mexican']::text[]
-  and (select family_keys from public.place_categories where slug = 'taco')
-    <@ array['quick_bite','tacos','mexican']::text[],
-  'a taqueria is Quick, Tacos and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
-);
-
 select is(
-  (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) = 2),
-  24::bigint,
-  'twenty-four categories sit on two families (MESITA-2834)'
+  (select enabled from public.catalog_membership where slug = 'tourist_attraction'),
+  true,
+  'a tourist attraction is enabled: it sat in a family when the flag was seeded (MESITA-2888)'
 );
-
 select is(
-  (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) > 4),
-  0::bigint,
-  'no category sits on more than four families (MESITA-2834)'
-);
-
-select is(
-  (select count(*)::bigint from public.place_categories
-    where family_keys && array['move','feel_better']::text[]),
-  0::bigint,
-  'no category sits on Move or Feel better: both families are gone (MESITA-2468)'
-);
-
-select is(
-  (select array_agg(distinct k) from public.place_categories,
-     unnest(family_keys) as k
-    where slug in ('gym','padel_club','spa','barbershop','hair_salon','yoga_studio')),
-  array['undefined']::text[],
-  'a gym, a padel club, a spa, a barbershop, a salon and a yoga studio are in no family (MESITA-2468)'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'undefined'),
-  array['undefined']::text[],
-  'undefined category belongs to family undefined'
-);
-
-select is(
-  (select min(cardinality(family_keys))::bigint from public.place_categories),
-  1::bigint,
-  'every Atlas category maps to at least one family'
-);
-
-select ok(
-  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 15,
-  'a category sits on at least one family and not more than the catalog'
-);
-
-select ok(
-  position(
-    'cardinality(slugs) <= 15' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
-  ) > 0,
-  'a category is not capped at two families'
+  (select enabled from public.catalog_membership where slug = 'gas_station'),
+  false,
+  'a gas station is not enabled: it sat in no family'
 );
 
 select is_empty(
@@ -940,9 +920,9 @@ select hasnt_table(
 
 select ok(
   (select count(*) from pg_constraint
-    where conname in ('place_categories_family_keys_valid', 'place_profiles_family_keys_valid')
-      and pg_get_constraintdef(oid) like '%atlas_family_slugs_valid%') = 2,
-  'both family CHECK constraints call atlas_family_slugs_valid (a CHECK stores the function OID, so it does not follow a create-or-replace under a new name)'
+    where conname = 'place_profiles_family_keys_valid'
+      and pg_get_constraintdef(oid) like '%atlas_family_slugs_valid%') = 1,
+  'the place family CHECK calls atlas_family_slugs_valid (a CHECK stores the function OID, so it does not follow a create-or-replace under a new name); the category one left with its column (MESITA-2891)'
 );
 
 -- The other half of the same class: a PL/pgSQL body that still spells the old
@@ -960,16 +940,16 @@ select is_empty(
 savepoint before_family_write_probe;
 
 select lives_ok(
-  $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['dinner'])$$,
-  'INSERT into place_categories calls the validator and survives'
+  $$insert into public.place_categories (slug, label, section, sort_order)
+    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998)$$,
+  'INSERT into place_categories survives without a family list (MESITA-2891)'
 );
 
 select throws_ok(
   $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe_bad', 'probe', 'Food & Nightlife', 997, array['not_a_family'])$$,
-  '23514'::char(5), null::text,
-  'the validator still REFUSES a slug absent from place_families (so the lives_ok above is not vacuous)'
+    values ('mesita_1857_probe_bad', 'probe', 'Food & Nightlife', 997, array['dinner'])$$,
+  '42703'::char(5), null::text,
+  'a category can no longer carry families: the column is gone (MESITA-2891)'
 );
 
 insert into public.place_profiles (id, google_name)
@@ -1023,8 +1003,8 @@ select throws_ok(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['undefined']::text[],
-  'the view ignores the stored list and maps the Google categories; none here, so Undefined (MESITA-2834)'
+  array['dinner', 'coffee']::text[],
+  'the view reads the stored Mesita Families (MESITA-2891)'
 );
 
 update public.place_profiles set family_keys = null
@@ -1061,50 +1041,15 @@ select has_column(
   'profiles exposes google_tags'
 );
 
-select lives_ok(
-  $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'drinks', 'night_out']
-     where slug = 'mesita_1857_probe'$$,
-  'a category can belong to more than two families'
-);
-
 update public.place_profiles
    set category = 'mesita_1857_probe'
  where id = '00000000-0000-4000-8000-0000000fa111';
 
 select is(
-  (select family_keys from public.place_profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'pointing a place at that category does not store the families on the place'
-);
-
-select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'drinks', 'night_out']::text[],
-  'the catalog view reads the four-family mapping'
-);
-
-select lives_ok(
-  $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'night_out']
-     where slug = 'mesita_1857_probe'$$,
-  'the mapping can change again'
-);
-
-select is(
-  (select family_keys from public.place_profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'changing the mapping does not write families onto the place'
-);
-
-select is(
-  (select family_keys from public.profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'night_out']::text[],
-  'the catalog view follows the new mapping'
+  array['undefined']::text[],
+  'a category no longer decides families: none stored reads as Undefined (MESITA-2891)'
 );
 
 select lives_ok(
@@ -1382,38 +1327,17 @@ select is_empty(
   'public.profiles projects no Second Stage column'
 );
 
--- ━━━ MESITA-2707 — Selected is the operator's own mark, stored ━━━━━━━━━━━━━
--- Until MESITA-2707 Mesita Selected was derived (enriched_at set, a ready
--- profile, state active) and nothing stored it. Now `places.selected` is the
--- fact every reader asks — the Area pool's `source`, Chat's Selected-only
--- read, the Search pins, the admin State box — and the column must stay a
--- boolean that defaults to "not Selected" (a new place is never Selected by
--- itself), on `places` (the lifecycle table) and projected by the view that
--- every consumer EF reads.
-select has_column(
-  'public', 'places', 'selected',
-  'places.selected exists: Mesita Selected is stored, never derived (MESITA-2707)'
-);
+-- ━━━ MESITA-2926 — Selected is gone ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- MESITA-2707 stored Mesita Selected on `places`; MESITA-2925 replaced it with
+-- Official and MESITA-2926 dropped the column and its slot in the view.
+select hasnt_column('public', 'places', 'selected', 'places.selected retired (MESITA-2926)');
+select hasnt_column('public', 'profiles', 'selected', 'profiles.selected retired (MESITA-2926)');
 
-select col_type_is(
-  'public', 'places', 'selected', 'boolean',
-  'places.selected is a boolean: a tag, not a timestamp'
-);
-
-select col_not_null(
-  'public', 'places', 'selected',
-  'places.selected is NOT NULL (a three-valued mark would read "unknown" on every screen)'
-);
-
-select col_default_is(
-  'public', 'places', 'selected', 'false',
-  'a new place is not Selected by itself: the mark is the operator''s'
-);
-
-select has_column(
-  'public', 'profiles', 'selected',
-  'public.profiles projects places.selected (every consumer and admin read goes through the view)'
-);
+-- ━━━ MESITA-2959 — mesita_categories is gone ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- Nothing read or wrote it since 20261027060000 (families are stored on
+-- family_keys); MESITA-2959 dropped the column and its slot in the view.
+select hasnt_column('public', 'place_profiles', 'mesita_categories', 'place_profiles.mesita_categories retired (MESITA-2959)');
+select hasnt_column('public', 'profiles', 'mesita_categories', 'profiles.mesita_categories retired (MESITA-2959)');
 
 -- Function bodies are strings, so every one of these would have survived its
 -- tables and 42P01'd on its next call.
@@ -1448,12 +1372,13 @@ select is_empty(
   'the Credits expiry sweep is unscheduled'
 );
 
--- MESITA-2206. The job stays so a resume is alter_job(..., active := true).
--- A replay that schedules it active again fails here.
-select is(
-  (select active from cron.job where jobname = 'run-place-enrichment-stages'),
-  false,
-  'the Enricher stage poller ships paused'
+-- MESITA-2424. The stage path is retired: no poller job, no poller, no queue.
+-- A job pointed at a dropped function errors every tick, forever.
+select ok(
+  not exists (select 1 from cron.job where jobname = 'run-place-enrichment-stages')
+    and to_regprocedure('public.run_place_enrichment_stages()') is null
+    and to_regclass('public.place_research') is null,
+  'the enrichment stage poller, its cron job and place_research are gone'
 );
 
 -- web-admin uploads gallery photos and menus to these buckets straight from
@@ -1488,13 +1413,12 @@ select is_empty(
   'the ticket-proofs bucket is gone (MESITA-2131)'
 );
 
--- The enrichment poller posts to the enricher-* stage functions (MESITA-2132);
--- the supabase-cron-enrich-place-* slugs it used to call are retired.
+-- MESITA-2424. The janitor closes runs on a grace window alone; a body that
+-- still names the dropped queue would fail every five minutes.
 select ok(
-  (select prosrc like '%/functions/v1/enricher-cron-enrich-place-%'
-          and prosrc not like '%supabase-cron-enrich-place-%'
-     from pg_proc where oid = 'public.run_place_enrichment_stages()'::regprocedure),
-  'run_place_enrichment_stages calls enricher-cron-enrich-place-<stage>'
+  (select prosrc not like '%place_research%'
+     from pg_proc where oid = 'public.close_stale_place_enrichment_runs()'::regprocedure),
+  'close_stale_place_enrichment_runs no longer reads place_research'
 );
 
 -- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.
@@ -1620,7 +1544,8 @@ select ok(
       and not (models_config ?| array['supabase', 'ojo'])
       and models_config #> '{memo,perplexity}' is null
       and not (memo_config ?| array['provider', 'openaiModel', 'webGrounding', 'perplexityModel'])
-      and not (discovery_config ?| array['social', 'slotting'])
+      -- MESITA-2923: the rails engine's whole `catalog` section.
+      and not (discovery_config ?| array['social', 'slotting', 'catalog'])
       -- MESITA-2337: the deck's keys (MESITA-2328), `catalog.ranking`
       -- (MESITA-2327) and the operator `filters` have no reader.
       and not (discovery_config ?| array['filters', 'swipe', 'engines', 'weights', 'weightsByMode'])
@@ -1630,8 +1555,10 @@ select ok(
       -- MESITA-2439 added `selected` (Selected's value for other places).
       -- MESITA-2687: the weights table and the dead map keys are gone.
       -- MESITA-2703: Area's four sources replaced the stops, googleFill,
-      -- Proximity's stored reach and Selected; `params` holds Popularity only.
-      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity') = '{}'::jsonb
+      -- Proximity's stored reach and Selected; MESITA-2909 brought
+      -- `params.proximity` back with `halfKm` alone (MESITA-2972), so
+      -- `params` holds Proximity and Popularity only.
+      and (coalesce(discovery_config -> 'params', '{}'::jsonb) - 'popularity' - 'proximity') = '{}'::jsonb
       and not (coalesce(discovery_config -> 'map', '{}'::jsonb)
              ?| array['supers', 'reloadMinKm', 'reloadMinSec', 'pinCount',
                       'googleFill', 'googlePlaces', 'mapGooglePlaces', 'mesitaPlaces',
@@ -1642,7 +1569,11 @@ select ok(
                       'googlePopular', 'googleClosest'])
       -- MESITA-2702: no Name reviews floor (`general.minReviews`).
       and discovery_config #> '{general,minReviews}' is null
+      -- MESITA-2767: the Search bar's always-on family switches.
+      and discovery_config #> '{name,fast,supers}' is null
+      and discovery_config #> '{name,deep,supers}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfKm') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.
       and not exists (select 1 from jsonb_object_keys(enrichment_config) k where k like 'atlas%')
@@ -1732,39 +1663,15 @@ select is(
   'an ended period pays nothing, whatever the status says'
 );
 
--- ━━━ MESITA-2790: families come from the Mesita categories ━━━━━━━━━━━━━━━━
-
-select is(
-  public.families_for_categories('[]'::jsonb, 'cafe'),
-  public.families_for_category('cafe'),
-  'a place with no Mesita categories keeps its category''s families'
-);
-
-select ok(
-  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x')
-    @> (public.families_for_category('bakery') || public.families_for_category('cafe')),
-  'two Mesita categories put the place in every family of both'
-);
-
-select is(
-  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'),
-  public.families_for_categories('["cafe","bakery"]'::jsonb, 'x'),
-  'families are a list: the order of the categories changes nothing (MESITA-2808)'
-);
-
-select is(
-  public.families_for_categories('["undefined"]'::jsonb, 'x'),
-  array['undefined']::text[],
-  'undefined stays only when it is all there is'
-);
+-- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━
 
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000002790', 'Families Probe');
 insert into public.places (id, slug, state, content_state, currency)
 values ('00000000-0000-4000-8000-000000002790', 'mesita-2790-probe', 'active', 'ready', 'MXN');
 
--- MESITA-2827: Google categories are 1–3 catalog_membership slugs; the
--- first is the shown category, and with no stored families the view maps them.
+-- The first Google category is the shown category; with no stored families
+-- the view reads Undefined, whatever the categories (MESITA-2891).
 update public.place_profiles
    set google_types = (select jsonb_agg(slug) from (
          select slug from public.catalog_membership order by slug limit 2) s)
@@ -1774,10 +1681,9 @@ select is(
   (select array[p.category, f.family_keys::text]
      from public.place_profiles p join public.profiles f on f.id = p.id
     where p.id = '00000000-0000-4000-8000-000000002790'),
-  (select array[p.google_types ->> 0,
-                public.families_for_categories(p.google_types, p.google_types ->> 0)::text]
+  (select array[p.google_types ->> 0, '{undefined}']
      from public.place_profiles p where p.id = '00000000-0000-4000-8000-000000002790'),
-  'the first Google category is the shown category, and the view maps the categories to families'
+  'the first Google category is the shown category, and no stored families read as Undefined'
 );
 
 select throws_ok(
@@ -1803,6 +1709,47 @@ select hasnt_column('public', 'place_profiles', 'google_primary_type',
   'place_profiles has no google_primary_type: google_types[0] is the primary');
 select hasnt_column('public', 'profiles', 'google_primary_type',
   'profiles has no google_primary_type');
+
+-- ━━━ MESITA-2804: a place left enriching by a dead run is put back ━━━━━━━━━
+-- Last in the file on purpose: the forced sweep below resets EVERY probe
+-- still 'generating', including the ones above.
+
+select ok(
+  (select active from cron.job where jobname = 'unstick-enriching-places'
+      and command like '%public.unstick_enriching_places()%'),
+  'the enriching sweep is scheduled and active'
+);
+
+insert into public.place_profiles (id, google_name, enriched_at) values
+  ('00000000-0000-4000-8000-000000002804', 'Unstick Enriched Probe', now() - interval '3 days'),
+  ('00000000-0000-4000-8000-000000002805', 'Unstick Never Probe', null);
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000002804', 'mesita-2804-enriched', 'active', 'generating', 'USD'),
+  ('00000000-0000-4000-8000-000000002805', 'mesita-2804-never', 'active', 'generating', 'USD');
+
+do $$ begin perform public.unstick_enriching_places(); end $$;
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002804'),
+  'generating',
+  'a place enriching for less than the bound is left alone (a live run is never swept)'
+);
+
+-- Every row here was written this transaction, so a negative bound stands in
+-- for "older than the bound".
+select cmp_ok(
+  public.unstick_enriching_places(interval '-1 second'), '>=', 2,
+  'the forced sweep resets the stuck places'
+);
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002804'),
+  'ready',
+  'a stuck place enriched before goes back to ready'
+);
+select is(
+  (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002805'),
+  'failed',
+  'a stuck place never enriched goes to failed'
+);
 
 select * from finish();
 

@@ -15,7 +15,7 @@ vi.mock("./actions", () => ({
   updateDiscoveryConfig: vi.fn(),
 }));
 
-import { AreaBox, DeepBox, NameAdminBox, NameBox } from "./PipelineBoxes";
+import { CatalogBox, DeepBox, MapBox, NameAdminBox, NameBox } from "./PipelineBoxes";
 
 const seed = { initialConfig: DEFAULT_CONFIG, initialUpdatedAt: null, loadError: null };
 const render = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -24,27 +24,28 @@ const page = () =>
     <>
       <NameAdminBox {...seed} />
       <NameBox {...seed} />
-      <AreaBox {...seed} />
+      <MapBox {...seed} />
+      <CatalogBox {...seed} />
       <DeepBox />
     </>,
   );
 const boxes = () => page().split("<section ").slice(1);
 
-describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
-  it("is Admin Name, Consumer Name, Consumer Area, Consumer Deep, in that order (MESITA-2779)", () => {
+describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
+  it("is Admin Name, Consumer Name, Consumer Map, Consumer Catalog, Consumer Deep, in that order (MESITA-2779, MESITA-2909)", () => {
     const html = page();
     let last = -1;
     // Deep's title carries its Soon chip inside the heading.
-    for (const title of [">Admin Name Pipeline</h2>", ">Consumer Name Pipeline</h2>", ">Consumer Area Pipeline</h2>", ">Consumer Deep Pipeline "]) {
+    for (const title of [">Admin Name Pipeline</h2>", ">Consumer Name Pipeline</h2>", ">Consumer Map Pipeline</h2>", ">Consumer Catalog Pipeline</h2>", ">Consumer Deep Pipeline "]) {
       const at = html.indexOf(title);
       expect(at, title).toBeGreaterThan(last);
       last = at;
     }
-    expect(boxes()).toHaveLength(4);
+    expect(boxes()).toHaveLength(5);
   });
 
   it("every live box is the same card: Explanation, Sources, Signals, Scoring, Parameters", () => {
-    for (const box of boxes().slice(0, 3)) {
+    for (const box of boxes().slice(0, 4)) {
       const parts = ["Explanation", "Sources", "Signals", "Scoring", "Parameters"].map((p) =>
         box.indexOf(`>${p}<`),
       );
@@ -53,15 +54,17 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
     }
   });
 
-  it("only the Area box shows Gates, and both of them", () => {
-    const [nameAdmin, name, area] = boxes();
+  it("the Map box shows both Gates, the Catalog box only Family (MESITA-2909)", () => {
+    const [nameAdmin, name, map, catalog] = boxes();
     for (const box of [nameAdmin, name]) expect(box).not.toContain(">Gates<");
-    expect(area).toContain(">Gates<");
-    for (const gate of DISCOVERY_GATES) expect(area).toContain(gate.rule);
+    for (const gate of DISCOVERY_GATES) expect(map).toContain(gate.rule);
+    const rule = (key: string) => DISCOVERY_GATES.find((g) => g.key === key)!.rule;
+    expect(catalog).toContain(rule("family"));
+    expect(catalog).not.toContain(rule("radius"));
   });
 
   it("names each pipeline's signals with their formula and missing-data policy", () => {
-    const [, name, area] = boxes();
+    const [nameAdmin, name, map, catalog] = boxes();
     const has = (box: string, key: string) => {
       const s = DISCOVERY_SIGNALS.find((x) => x.key === key)!;
       // renderToStaticMarkup escapes text; compare on a fragment with no
@@ -69,18 +72,22 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
       expect(box).toContain(`>${s.label}<`);
       expect(box).toContain(s.missing.split(":")[0]);
     };
-    has(name, "name_similarity");
-    has(area, "proximity");
-    has(area, "popularity");
+    // The Map ranks by Popularity alone (MESITA-2909).
+    has(map, "popularity");
+    expect(map).not.toContain(">Proximity<");
+    has(catalog, "proximity");
+    has(catalog, "popularity");
+    // Name is Google's alone (MESITA-2896): its Signals part says None.
+    for (const box of [nameAdmin, name]) expect(box).toContain("None: no signal scores these rows");
     expect(name).not.toContain(">Proximity<");
   });
 
   it("'Fed by' is derived from the sources' fields, never typed", () => {
     // Autocomplete gives no coordinates, so it can never feed Proximity.
-    expect(sourcesFeedingSignal("area", "proximity")).toEqual(["mesita_places"]);
+    expect(sourcesFeedingSignal("catalog", "proximity")).toEqual(["mesita_places"]);
     expect(sourcesFeedingSignal("deep", "description_similarity")).toEqual(["mesita_places"]);
-    const area = boxes()[2];
-    expect(area).toContain(`Fed by ${sourceByKey("mesita_places").label}.`);
+    const catalog = boxes()[3];
+    expect(catalog).toContain(`Fed by ${sourceByKey("mesita_places").label}.`);
   });
 
   it("nothing on the page shows Not wired: the only unwired source sits in the Soon Deep box", () => {
@@ -88,32 +95,20 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
   });
 
   it("carries no weights table and no subpage tabs", () => {
-    // 3 Name by Admin + 4 Name + 2 Area (current-location radius, the
-    // radius divisor; the reviews minimum left in MESITA-2721, a and b in
-    // MESITA-2722; Popularity has no
-    // parameter since MESITA-2710) + the Map's reload seconds and min
-    // screen move (MESITA-2732). The weights table left the page
-    // (MESITA-2603). Deep is Soon.
+    // 2 Name by Admin + 3 Name + Map: the current-location radius, Most
+    // pins shown, Minimum Popularity, the reload seconds and min screen
+    // move + Catalog: the half distance and the page size (MESITA-2909; the
+    // Selected boost retired, MESITA-2925). Typed numbers, no spinner
+    // (MESITA-2733).
     const html = page();
-    // + Places shown (MESITA-2713) + Minimum Popularity (MESITA-2714)
-    // + Selected boost (MESITA-2717) + the Catalog's own Places shown
-    // (MESITA-2727) + min screen move (MESITA-2732); one Distance penalty
-    // (MESITA-2776). Typed numbers, no spinner (MESITA-2733): 7 decimal
-    // knobs, 8 integer knobs.
-    expect(html.match(/type="text"/g)?.length).toBe(15);
-    expect(html.match(/inputMode="decimal"/g)?.length).toBe(7);
-    expect(html.match(/inputMode="numeric"/g)?.length).toBe(8);
+    expect(html.match(/type="text"/g)?.length).toBe(12);
+    expect(html.match(/inputMode="decimal"/g)?.length).toBe(6);
+    expect(html.match(/inputMode="numeric"/g)?.length).toBe(6);
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain("step=");
-    expect(html).toContain("0.1–10");
-    expect(html).toContain("Min map move to reload");
-    expect(html).toContain("0–50");
-    expect(html).toContain(">Distance penalty<");
-    expect(html).not.toContain("Catalog distance penalty");
-    expect(html).toContain("Catalog places shown");
+    expect(html).not.toContain("Distance penalty");
+    expect(html).not.toContain("Catalog places shown");
     expect(html).not.toContain("Proximity weight (a)");
-    expect(html).toContain("Selected boost");
-    expect(html).toContain("Distance penalty");
     expect(html).not.toContain("data-area-weights");
     expect(html).not.toContain("Modes");
     expect(html).not.toContain('role="tablist"');
@@ -121,12 +116,11 @@ describe("Discovery: one page, four pipeline boxes (MESITA-2327)", () => {
 });
 
 describe("the boxes' controls", () => {
-  it("Name by Admin: three caps and the empty-query switch", () => {
+  it("Name by Admin: two caps and the empty-query switch", () => {
     const html = render(<NameAdminBox {...seed} />);
     for (const label of [
       "Max Autocomplete rows",
       "Max Text Search rows",
-      "Max Mesita rows",
       "Show results on an empty query",
     ]) {
       expect(html).toContain(label);
@@ -141,20 +135,18 @@ describe("the boxes' controls", () => {
     expect(html).not.toContain("Only active places");
   });
 
-  it("Area: the Always-on rules state no Google call and the fixed numbers (MESITA-2603, MESITA-2872)", () => {
-    const html = render(<AreaBox {...seed} />);
-    for (const text of [
-      "Area calls no Google",
-      "clamped to 0.05–50 km",
-      "at most 1000 ready rows",
-    ]) {
-      expect(html, text).toContain(text);
+  it("Map and Catalog: the Always-on rules state no Google call and the fixed numbers (MESITA-2603, MESITA-2872, MESITA-2909)", () => {
+    const map = render(<MapBox {...seed} />);
+    for (const text of ["the Map calls no Google", "has no ceiling"]) {
+      expect(map, text).toContain(text);
     }
-    expect(html).not.toContain("Nearby call");
-    expect(html).not.toContain("Google Popularity");
-    expect(html).not.toContain("It only gates");
-    expect(html).not.toContain("one call of 20");
-    expect(html).not.toContain("the prominent 20 within 3 km");
+    const catalog = render(<CatalogBox {...seed} />);
+    expect(catalog).toContain("no Google call");
+    expect(catalog).not.toContain("Mesita Proximity");
+    for (const html of [map, catalog]) {
+      expect(html).not.toContain("Nearby call");
+      expect(html).not.toContain("Google Popularity");
+    }
   });
 
   it("Deep is Soon: title, one line and the chip, its controls deleted from the markup (MESITA-2345)", () => {
@@ -170,28 +162,29 @@ describe("the boxes' controls", () => {
 
 describe("the boxes tell the runtime's truth (MESITA-2338)", () => {
   it("every box lists its always-on rules; Name's include Mesita's place types", () => {
-    const [nameAdmin, name, area] = boxes();
-    for (const box of [nameAdmin, name, area]) expect(box).toContain(">Always-on rules<");
-    expect(name).toContain("A Google row must have a Google type of one of the fifty families");
-    expect(area).toContain("It decides who is a candidate and never scores.");
+    const [nameAdmin, name, map, catalog] = boxes();
+    for (const box of [nameAdmin, name, map, catalog]) expect(box).toContain(">Always-on rules<");
+    expect(name).toContain("A Google row must have a Google type of one of the thirty-seven families");
+    expect(map).toContain("It decides who is a candidate and never scores.");
   });
 
-  it("Name says Google rows keep Google's order and derives Name as fed by Mesita only", () => {
+  it("Name says Google rows keep Google's order and has no Mesita source (MESITA-2896)", () => {
     const name = boxes()[1];
     expect(name).toContain("No signal scores its rows; they carry Google Autocomplete&#x27;s own rank.");
-    expect(name).toContain("Fed by Mesita Places Search.");
+    expect(name).not.toContain("Mesita Places Search");
+    expect(name).not.toContain("Fed by");
   });
 
   it("each signal shows its computation, normalization and the pipelines using it", () => {
-    const area = boxes()[2];
-    expect(area).toContain("Normalization:");
-    expect(area).toContain("Computed at request time");
-    expect(area).toContain("Used by Area.");
+    const catalog = boxes()[3];
+    expect(catalog).toContain("Normalization:");
+    expect(catalog).toContain("Computed at request time");
+    expect(catalog).toContain("Used by Catalog.");
   });
 
   it("Name by Admin shows Find's own ordering and rules, not the guest bar's", () => {
     const nameAdmin = boxes()[0];
-    expect(nameAdmin).toContain("Rows found by more sources come first");
+    expect(nameAdmin).toContain("Rows found by both sources come first");
     expect(nameAdmin).toContain("Text Search rows are Find&#x27;s own call");
     expect(nameAdmin).not.toContain("Closed places never show (Discovery");
   });

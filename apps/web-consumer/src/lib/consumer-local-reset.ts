@@ -3,7 +3,7 @@
 // Saved places (`mesita:saved-places` + `mesita:saved-place-previews`) and
 // saved locations (`mesita:saved-locations`, MESITA-2380) are stored in the
 // browser. Saved places are a CACHE of the server's `saved` activity since
-// MESITA-2442; saved locations have no EF behind them. Because that state
+// MESITA-2442, saved locations of the server's since MESITA-2400. Because that state
 // lives in localStorage, it survives BOTH a consumer sign-out AND a
 // server-side admin database reset wipe. So a
 // second consumer signing in on the same browser — or the same operator

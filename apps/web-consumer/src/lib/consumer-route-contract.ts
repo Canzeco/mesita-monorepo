@@ -56,7 +56,7 @@ export const CONSUMER_ROUTES = {
     // Instagram is an identity fact (a handle + the 1,000 bar), independent
     // of anything priced — it stays (Pato, MESITA-2080).
     instagram: "/me/instagram",
-    // Plan is back as a read-only page: Free and Premium, Premium's new perks Soon
+    // Plan is back as a read-only page: Free and Pro, Pro's new perks Soon
     // (MESITA-2134, MESITA-2553). It left the legacy list the same day.
     plan: "/me/plan",
     // Class, Regular or VIP, as a page behind Me's Class tile (MESITA-2562);
@@ -133,7 +133,7 @@ export const CONSUMER_ROUTES = {
     ticketPrefix: "/ticket/",
     qr: "/qr",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
-    // Diamond pair, Plan's Premium checkout, Visits, Metrics, Passport.
+    // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.
     meClassInvite: "/me/class/invite",
     meDiamond: "/me/diamond",

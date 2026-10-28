@@ -1,22 +1,18 @@
 // Families display for the Single Place profile read (MESITA-2790).
 //
-// Families are stored (1–5, model-inferred on Create and every Enrich), else
-// mapped from the Google categories in the profiles view (MESITA-2827); this
-// only names the family_keys on the way out of
+// Families are stored (1–5, model-inferred on Create and every Enrich,
+// MESITA-2891; an operator may set them on Basics, MESITA-2893); this only
+// names the family_keys on the way out of
 // admin-web-get-overview (and admin-web-update-place after a save), so the
 // admin client paints a string instead of joining slugs to emoji and labels.
 
-import type { PlaceCategory, PlaceFamily } from "./categories.ts";
+import type { PlaceFamily } from "./categories.ts";
 
 export type ResolvedFamily = {
   /** "🍸 Bars & Nightlife" or "🍸 Bars & Nightlife · 🎟️ Experiences". */
   text: string;
 };
 
-export type CategoryOption = PlaceCategory & {
-  /** Membership already joined. Blank category and `undefined` do not use it. */
-  family_display: string;
-};
 
 const UNDEFINED_FALLBACK = "❓ Undefined";
 
@@ -55,14 +51,3 @@ export function resolveStoredFamily(
   return { text: text ?? undefinedFamily(families) };
 }
 
-/** One display string per category, so a draft change is a lookup. */
-export function categoriesWithFamilyDisplay(
-  categories: readonly PlaceCategory[],
-  families: readonly PlaceFamily[],
-): CategoryOption[] {
-  return categories.map((c) => ({
-    ...c,
-    family_display: joinFamilies(c.family_keys ?? [], families) ??
-      undefinedFamily(families),
-  }));
-}

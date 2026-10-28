@@ -97,6 +97,13 @@ Deno.test("nearbyBbox: 50 km around Monterrey stays inside the clamp", () => {
   assertEquals(box.north > 25.67, true);
 });
 
+Deno.test("nearbyBbox: a globe-sized radius covers every longitude (MESITA-2918)", () => {
+  const box = nearbyBbox(25.67, -100.3, 15000);
+  assertEquals([box.south, box.north, box.west, box.east], [-90, 90, -180, 180]);
+  const polar = nearbyBbox(80, 10, 1500);
+  assertEquals([polar.north, polar.west, polar.east], [90, -180, 180]);
+});
+
 Deno.test("applyBboxPredicate: dateline is two lng ranges, not 400", () => {
   const q = applyBboxPredicate(new FakeBboxQuery(), {
     south: 0,

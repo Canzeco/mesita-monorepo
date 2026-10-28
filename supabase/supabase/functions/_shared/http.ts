@@ -24,7 +24,39 @@ export function jsonError(error: string, status = 400): Response {
   return json({ ok: false, error }, status);
 }
 
-// Use as the first line of every Deno.serve handler:
+export type EFHandler = (req: Request) => Response | Promise<Response>;
+
+/** The handler, except a throw becomes a logged `{ ok: false }` 500 with CORS
+ *  (MESITA-2856). Without it a throw is the runtime's bare 500 with no CORS
+ *  headers, which the browser reports as a network failure it cannot read.
+ *  Not covered: `runInBackground` work, and an error after a streamed body
+ *  has started — both happen after this returns. */
+export function withJsonErrors(fnName: string, handler: EFHandler): EFHandler {
+  return async (req) => {
+    try {
+      return await handler(req);
+    } catch (err) {
+      return unhandledError(fnName, err);
+    }
+  };
+}
+
+function unhandledError(fnName: string, err: unknown): Response {
+  console.error(`[${fnName}] unhandled`, err instanceof Error ? err.message : String(err));
+  return jsonError("Internal error", 500);
+}
+
+/** Every Edge Function serves through this; it is the only `Deno.serve(`
+ *  in functions/ (serve-json-guard.test.ts). The try/catch in
+ *  withJsonErrors does the work; `onError` is the runtime's own backstop. */
+export function serveJson(fnName: string, handler: EFHandler): void {
+  Deno.serve(
+    { onError: (err) => unhandledError(fnName, err) },
+    withJsonErrors(fnName, handler),
+  );
+}
+
+// Use as the first line of every serveJson handler:
 //   if (req.method === "OPTIONS") return corsPreflight();
 export function corsPreflight(): Response {
   return new Response(null, { headers: CORS });

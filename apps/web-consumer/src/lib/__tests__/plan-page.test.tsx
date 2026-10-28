@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { PlanModal } from "@/components/consumer/me/PlanModal";
-import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
+import { FREE_RESERVATIONS_PER_MONTH, PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 
 // MeScreen calls useRouter(); the plan page itself needs no router.
 vi.mock("next/navigation", () => ({
@@ -21,9 +21,9 @@ const soonCount = (section: string) =>
 
 const render = (plan: "free" | "premium" | null) => {
   const html = renderToStaticMarkup(<PlanModal plan={plan} />);
-  // Free ends where Premium's row begins.
-  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Premium"'));
-  const premium = html.slice(html.indexOf('data-plan-row="Premium"'));
+  // Free ends where Pro's row begins.
+  const free = html.slice(html.indexOf('data-plan-row="Free"'), html.indexOf('data-plan-row="Pro"'));
+  const premium = html.slice(html.indexOf('data-plan-row="Pro"'));
   return { html, free, premium };
 };
 
@@ -39,36 +39,36 @@ describe("Me › Plan (MESITA-2167, MESITA-2553)", () => {
     expect(soonCount(free)).toBe(0);
   });
 
-  it("gives Premium everything in Free today, then its unbuilt perks, each tagged Soon", () => {
+  it("gives Pro everything in Free, its own monthly cap, then its unbuilt perk tagged Soon", () => {
     expect(perks(premium)).toEqual([
-      `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
-      "More reservations every month",
+      "Everything in Free",
+      `${PRO_RESERVATIONS_PER_MONTH} reservations a month`,
       "Ask your AI assistant, like ChatGPT, to find and book places for you",
     ]);
-    expect(soonCount(premium)).toBe(2);
-    expect(free).not.toMatch(/ChatGPT|AI assistant|More reservations/);
+    expect(soonCount(premium)).toBe(1);
+    expect(free).not.toMatch(/ChatGPT|AI assistant/);
   });
 
   it("marks only what is true today with a check", () => {
     // Positive control first: if lucide ever renames the class, this fails
     // loudly instead of a count passing for the wrong reason.
     expect(free.match(/lucide-check/g)).toHaveLength(3);
-    expect(premium.match(/lucide-check/g)).toHaveLength(1);
+    expect(premium.match(/lucide-check/g)).toHaveLength(2);
   });
 
-  it("states no price and no hypothesis for Premium — neither is decided", () => {
-    const words = text(premium).replace(`${FREE_RESERVATIONS_PER_MONTH}`, "");
+  it("states no price for Pro, and no number but its cap", () => {
+    const words = text(premium).replace(`${PRO_RESERVATIONS_PER_MONTH}`, "");
     expect(words).not.toMatch(/\d/);
     expect(words).not.toMatch(/\$|MX|price|per month|\/mo|\/yr|year/i);
   });
 
-  it("never names Class, VIP, Pro or Diamond", () => {
-    expect(text(html)).not.toMatch(/\b(Class|VIP|Regular|Pro|Diamond|Select)\b/);
+  it("never names Class, VIP, Premier, Premium or Diamond", () => {
+    expect(text(html)).not.toMatch(/\b(Class|VIP|Regular|Premier|Premium|Diamond|Select)\b/);
   });
 
   it("exposes each list as a named list", () => {
     expect(html).toContain('aria-label="Included in Free"');
-    expect(html).toContain('aria-label="Included in Premium"');
+    expect(html).toContain('aria-label="Included in Pro"');
     expect(html.match(/<ul[^>]*role="list"/g)).toHaveLength(2);
   });
 

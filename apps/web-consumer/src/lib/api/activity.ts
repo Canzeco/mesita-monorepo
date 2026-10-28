@@ -42,11 +42,9 @@ export type ActivityFeedItem = {
   kind: ActivityKind;
   at: string;
   person: ActivityPerson;
+  /** Km from the guest's point to the PLACE, the only distance a row shows
+   *  (MESITA-2946). Null without a guest point. */
   distanceKm: number | null;
-  /** Km from the guest's point to where this event happened: the member's
-   *  device fix when they liked or viewed (MESITA-2853), measured on the
-   *  server, which never sends the point. Null without either point. */
-  eventKm: number | null;
   place: Place;
 };
 
@@ -78,9 +76,10 @@ export async function apiTrackActivity(
      *  the event happened. Omitted without a fix. */
     at?: { lat: number; lng: number } | null;
   },
-): Promise<void> {
-  if (!isMesitaPlaceId(input.placeId)) return;
-  await invokeEF<{ kind: ActivityKind; on: boolean }>(
+): Promise<{ enriching: boolean }> {
+  if (!isMesitaPlaceId(input.placeId)) return { enriching: false };
+  // A `viewed` says whether the place is mid-Enrich after it (MESITA-2952).
+  const res = await invokeEF<{ kind: ActivityKind; on: boolean; enriching?: boolean }>(
     client,
     "consumer-web-track-activity",
     {
@@ -92,6 +91,7 @@ export async function apiTrackActivity(
       ...(input.at ? { lat: input.at.lat, lng: input.at.lng } : {}),
     },
   );
+  return { enriching: res.enriching === true };
 }
 
 export async function apiListActivityFeed(

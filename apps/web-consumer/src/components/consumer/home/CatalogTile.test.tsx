@@ -18,20 +18,6 @@ function tile(over: Partial<Place>) {
   );
 }
 
-describe("the Enriched mark on a catalog card", () => {
-  it("follows an enriched place's name (MESITA-2628)", () => {
-    const html = tile({ enriched: true });
-    expect(html).toContain('aria-label="Enriched"');
-    expect(html.indexOf(">Casa<")).toBeLessThan(
-      html.indexOf('aria-label="Enriched"'),
-    );
-  });
-
-  it("never shows on a Created place", () => {
-    expect(tile({ enriched: false })).not.toContain('aria-label="Enriched"');
-  });
-});
-
 describe("a Google-only card opens its profile, never Google Maps (MESITA-2298)", () => {
   it("is a button that hands the explicit open to the parent", () => {
     const html = tile({

@@ -65,7 +65,9 @@ export const REVIEW_DEFS = [
     key: "google_maps_url",
     label: "Google Maps",
     Icon: MapPin,
-    logo: "/channels/googlemaps.svg",
+    // The Google G, not the Maps pin (Pato, MESITA-2927: "use the fucking
+    // google logo").
+    logo: "/channels/google.svg",
   },
 ] as const;
 

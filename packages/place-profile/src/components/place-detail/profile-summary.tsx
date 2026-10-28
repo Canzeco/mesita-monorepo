@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, Navigation, Tag, Zap } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
@@ -128,10 +128,8 @@ export function ProfileSummary({
         ) : place.is_enriching ? (
           <RunningFact label="Enriching" tone="green" />
         ) : null}
-        {/* SPONSORED (MESITA-2789): a paid Boost is disclosed, plain and
-            grey like every fact. Never red (red is Selected, Mesita's own
-            pick) and never "Verified": paying buys visibility only. */}
-        {(place.boost_tier ?? 0) > 0 && <ProfileFact icon={Zap}>Partner</ProfileFact>}
+        {/* No Premier fact here (MESITA-2925): the place's one mark,
+            "Premier 2X", stands after its name in the top bar. */}
         {place.category && (
           // The category's own emoji, Tag only when it has none (MESITA-2813).
           <ProfileFact icon={Tag} emoji={place.category_emoji}>

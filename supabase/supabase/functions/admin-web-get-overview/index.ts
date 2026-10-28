@@ -32,6 +32,7 @@ import {
   readJsonOr,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -40,6 +41,7 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { readOperatorFields } from "../_shared/operator-fields.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,
@@ -53,18 +55,18 @@ import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
 import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
-  categoriesWithFamilyDisplay,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
 import { reviewFoundFromRow } from "../_shared/review-found.ts";
 import { photoAnalysisMap } from "../_shared/photo-analysis.ts";
 import { fetchPlaceProfileStats } from "../_shared/place-activity-stats.ts";
+import { familyChips } from "../_shared/catalog-families.ts";
 
 // The Embeddings card (MESITA-720) reads these. Never part of the public
 // column set: a heavy field only this screen and admin-web-search-places need.
 const PLACE_ADMIN_EMBEDDING_COLUMNS =
-  ", embedding, embedding_source_text, name_embedding";
+  ", embedding, embedding_source_text";
 
 // State (MESITA-1186). The State box answers `seeded` off the identity spine,
 // so the read needs Google's id. It must never widen PLACE_PUBLIC_COLUMNS.
@@ -74,7 +76,7 @@ type Body = {
   placeId?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-overview", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -110,7 +112,7 @@ Deno.serve(async (req) => {
       .maybeSingle(),
     admin
       .from("place_profiles")
-      .select("enrichment, google_found, instagram_found, facebook_found")
+      .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources")
       .eq("id", placeId)
       .maybeSingle(),
     fetchPlaceCategories(admin),
@@ -152,10 +154,12 @@ Deno.serve(async (req) => {
 
   // The pipeline facts of State ride along computed, never stored — the same
   // helpers admin-web-search-places uses for the Single Place table, so the
-  // box and the table can never disagree. `name` arrives already resolved: it
-  // is a generated column (mesita_name → google_name).
+  // box and the table can never disagree. `name` is the Mesita name
+  // (MESITA-2828); google_name rides along as Google's own label.
   const place = {
     ...placeFields,
+    // The Preview's Mesita Families box (MESITA-2924), as the guest sees it.
+    families: familyChips(placeFields.family_keys),
     seeded: isPlaceSeeded(placeFields.google_place_id),
     listed: isPlaceListed(placeFields.state),
     requested: isPlaceRequested({
@@ -166,10 +170,11 @@ Deno.serve(async (req) => {
     // THE Enriched fact (MESITA-2154) — `enriched_at` set; same helper as
     // admin-web-search-places, so Status and the catalog table agree.
     enriched: isPlaceEnriched(placeFields.enriched_at),
-    // Mesita Selected (MESITA-2707): the operator's own mark, read off the
-    // row (`places.selected`) — never derived from Enriched, ready and
-    // Disabled. The same read admin-web-search-places makes.
-    selected: placeFields.selected === true,
+    // Premier (MESITA-2925): `boost_tier` (0..3) rides in from the
+    // profile columns; Selected is no longer read.
+    // The Basics fields the operator owns (MESITA-2829): Enrich skips them
+    // until the row's Reset clears the mark.
+    operator_fields: readOperatorFields(enrichmentRow.data?.enrichment_sources),
     enrich_crenup: enrichmentMap.highWater,
     enrich_crenup_total: CRENUP_TOTAL,
     enrich_crenup_labels: CRENUP_LABELS_IN_ORDER,
@@ -187,10 +192,15 @@ Deno.serve(async (req) => {
   };
 
   const profile = {
-    // Families are the Google categories' dictionary, derived in the profiles
-    // view (MESITA-2834); this only names the keys the view handed back.
+    // The stored families (MESITA-2891), named for the row; `place.family_keys`
+    // carries the slugs the Basics editor toggles (MESITA-2893).
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
-    categories: categoriesWithFamilyDisplay(categories, families),
+    // The thirty-seven the editor offers, in catalog (day-arc) order; Undefined is
+    // never a pick.
+    families: families
+      .filter((f) => f.slug !== "undefined")
+      .map((f) => ({ slug: f.slug, label: f.label, emoji: f.emoji, sortOrder: f.sort_order })),
+    categories,
     tags,
     facets: TAG_FACETS,
     fieldLimits: ENRICH_FIELD_LIMITS,

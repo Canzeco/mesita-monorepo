@@ -113,30 +113,30 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    // The Area box's Save (MESITA-2347, MESITA-2703, MESITA-2706): the two
-    // half points and a source switch.
+    // The Catalog box's Save (MESITA-2909): the half distance, the reviews
+    // half point and the page size.
     valid: {
       config: {
-        params: { proximity: { radiusDivisor: 3 }, popularity: { halfReviews: 250 } },
-        map: { mesitaClosest: 0 },
+        params: { proximity: { halfKm: 3 }, popularity: { halfReviews: 250 } },
+        map: { catalogPageSize: 30 },
       },
     },
     assertSaved: (saved) => {
       const c = saved.config as Row;
-      assertEquals(((c.params as Row).proximity as Row).radiusDivisor, 3);
+      assertEquals(((c.params as Row).proximity as Row).halfKm, 3);
       assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
-      assertEquals((c.map as Row).mesitaClosest, 0);
+      assertEquals((c.map as Row).catalogPageSize, 30);
       assert(c.map && typeof c.map === "object", "map missing");
     },
     // Coerced, not stored as sent: a half credit of 0 lands clamped at 1, a
-    // radius divisor of 999 at 10, and a retired key (the reach,
+    // half distance of 999 at 50, and a retired key (the reach,
     // MESITA-2703; the weights table `params.modes`, MESITA-2687; the linear
     // `balance`) is dropped.
     invalid: {
       config: {
         params: {
           popularity: { halfReviews: 0 },
-          proximity: { reachKm: 99, radiusDivisor: 999 },
+          proximity: { reachKm: 99, halfKm: 999 },
           modes: { nearby: { proximity: 2 } },
         },
         balance: { proximity: 2 },
@@ -146,7 +146,7 @@ const CASES: Record<string, SectionCase> = {
       clamped: (saved) => {
         const c = saved.config as Row;
         assertEquals(((c.params as Row).popularity as Row).halfReviews, 1);
-        assertEquals((c.params as Row).proximity, { radiusDivisor: 10 });
+        assertEquals((c.params as Row).proximity, { halfKm: 50 });
         assertEquals("modes" in (c.params as Row), false);
         assertEquals("balance" in c, false);
       },
@@ -189,22 +189,23 @@ const CASES: Record<string, SectionCase> = {
   },
 
   reservations: {
-    // The deployed console still posts the retired priority / disabled /
-    // attempts keys (MESITA-2144): the save lands, and they are not written back.
+    // A deployed console may still post the retired priority / disabled /
+    // attempts (MESITA-2144) and respectAdminOverride (MESITA-2424) keys: the
+    // save lands, and they are not written back.
     valid: {
       config: { priority: ["phone"], disabled: [], respectAdminOverride: true, attempts: 2 },
     },
     assertSaved: (saved, row) => {
-      assertEquals((saved.config as Row).respectAdminOverride, true);
+      assertEquals((saved.config as Row).reminder, { enabled: false });
       const stored = row.reservations_config as Row;
-      for (const key of ["priority", "disabled", "attempts"]) {
+      for (const key of ["priority", "disabled", "attempts", "respectAdminOverride"]) {
         assertEquals(key in stored, false, `${key} was written back`);
       }
     },
     invalid: {
-      config: { respectAdminOverride: "yes" },
+      config: { testCall: "yes" },
     },
-    refuse: { status: 400, contains: "respectAdminOverride must be a boolean" },
+    refuse: { status: 400, contains: "testCall must be an object" },
   },
 
 };

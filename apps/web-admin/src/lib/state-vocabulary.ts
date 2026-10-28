@@ -1,15 +1,14 @@
 // State — two boxes (Pato, 2026-08-25 · Profile States + Enrichment Steps, 2026-10-13).
 //
-//   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176; Requested
-//                 dropped MESITA-2735 / discovery overhaul uc1b):
+//   PROFILE STATES (5)  One box (Pato, 2026-10-13, MESITA-2176; Requested
+//                 dropped MESITA-2735 / discovery overhaul uc1b; Selected
+//                 died MESITA-2925):
 //                 Created · Pulsing (Google active) · Enriching · Enriched ·
-//                 Selected · Disabled.
+//                 Disabled.
 //   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
 //                 members from place_activity. No request count.
-//                 Selected (MESITA-2707, MESITA-2730) is Mesita Selected —
-//                 the operator's own mark, `places.selected`. Independent of
-//                 Enriched: a Created place can be Selected, and an Enriched
-//                 place need not be. Stored, never derived from the rail.
+//                 Premier (MESITA-2925, was Boost) is a tier, not a bool —
+//                 the paid `places.boost_tier`; see `boostTierChip`.
 //                 All are bools (`true` / `false`). Disabled is the
 //                 operator's off switch (places.state is not active), the
 //                 old Listed turned over: `true` is the warning.
@@ -87,7 +86,7 @@ export function profileStatCountChip(value: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The six profile states, in the order the Profile States box prints them.
+/** The five profile states, in the order the Profile States box prints them.
  *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
  *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
  *  proves, pays or redeems yet. Wire key `seeded` stays; the label is Created. */
@@ -96,7 +95,6 @@ export const GENERAL_STATE_FACTS = [
   { key: "pulsing", label: "Pulsing" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
-  { key: "selected", label: "Selected" },
   { key: "disabled", label: "Disabled" },
 ] as const;
 
@@ -108,9 +106,10 @@ export const PROFILE_STATS_FACTS = [
 
 export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
 
-/** Boost tier chip (MESITA-2809): Boosted is not a yes/no but a tier —
- *  `places.boost_tier` 0 · 1 · 2 · 3 reads Off · 2x · 5x · 10x. */
-export const BOOST_TIER_LABELS = ["Off", "2x", "5x", "10x"] as const;
+/** Premier tier chip (MESITA-2925, was Boost — MESITA-2809): Premier is a
+ *  tier, not a yes/no — `places.boost_tier` 0 · 1 · 2 · 3 reads
+ *  Off · 2X · 5X · 10X. */
+export const BOOST_TIER_LABELS = ["Off", "2X", "5X", "10X"] as const;
 
 export function boostTierChip(tier: number | null | undefined): string {
   if (tier == null) return "?";

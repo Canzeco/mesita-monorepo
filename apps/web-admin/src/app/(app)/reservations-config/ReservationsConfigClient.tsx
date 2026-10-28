@@ -7,10 +7,9 @@
 // stuff"). ONE box: Testing, plus a Needs Attention card only when something
 // needs attention. No Calls card, no fleet strip, no workflow diagram.
 //
-// STOP RENDERING, NEVER STOP CARRYING: `limits` (kill switch + daily caps),
-// `reminder` and `respectAdminOverride` have no controls — the
-// Edge Functions still read them at their seeds — and save spreads the whole
-// object so they survive a write.
+// STOP RENDERING, NEVER STOP CARRYING: `limits` (kill switch + daily caps)
+// and `reminder` have no controls — the Edge Functions still read them at
+// their seeds — and save spreads the whole object so they survive a write.
 //
 // WHOLE-BLOB save; `dirty` gates on loadError so a failed read can never
 // overwrite the live singleton (MESITA-737).

@@ -1,11 +1,11 @@
 // Supabase Edge Function — admin-web-get-families
 //
 // Read-only taxonomy for Configurations › Atlas. One caller: that page.
-// Families, categories and tags are the live tables. Google types are the
-// code map, returned here so the console does not keep a second copy.
+// The Mesita Families, every Google category split into enabled and not
+// enabled on Mesita, and the tag catalog — all live tables (MESITA-2891).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -13,13 +13,13 @@ import {
   requireSuperAdmin,
 } from "../_shared/auth.ts";
 import {
-  fetchPlaceCategories,
+  fetchGoogleCategories,
   fetchPlaceFamilies,
 } from "../_shared/categories.ts";
 import { buildFamiliesMap } from "../_shared/families-map.ts";
 import { fetchPlaceTags } from "../_shared/tags.ts";
 
-Deno.serve(async (req) => {
+serveJson("admin-web-get-families", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -33,10 +33,13 @@ Deno.serve(async (req) => {
   const saRes = await requireSuperAdmin(admin, authRes.user);
   if (!saRes.ok) return saRes.response;
 
-  const [categories, families, tags] = await Promise.all([
-    fetchPlaceCategories(admin),
+  const [googleCategories, families, tags] = await Promise.all([
+    fetchGoogleCategories(admin),
     fetchPlaceFamilies(admin),
     fetchPlaceTags(admin),
   ]);
-  return json({ ok: true, ...buildFamiliesMap(families, categories, tags) });
+  if (googleCategories.length === 0 || families.length === 0) {
+    return json({ ok: false, error: "Atlas vocabulary unavailable" }, 500);
+  }
+  return json({ ok: true, ...buildFamiliesMap(families, googleCategories, tags) });
 });

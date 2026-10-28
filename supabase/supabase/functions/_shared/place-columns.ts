@@ -13,16 +13,13 @@
 const COLUMNS: readonly string[] = [
   "id",
   "slug",
-  // Generated display column: coalesce(mesita_name, google_name). Read-only —
-  // Postgres rejects any write. Every audience reads this one.
+  // The one Mesita name (MESITA-2828): stored, seeded from Google at Create,
+  // refined by the name door, operator-editable. Every audience reads this one.
   "name",
-  // Cached Google Places displayName. NOT an identity spine (google_place_id
-  // is) — it changes whenever the Google listing does. Enricher-only write.
-  // Guest profile chrome reads mesita_name, not this column.
+  // Google's own label. NOT an identity spine (google_place_id is) — it
+  // changes whenever the Google listing does. Google-only write; never
+  // shown, Search matches it as an alias of the Mesita name.
   "google_name",
-  // Mesita display label. Seeded at create from the first Google label;
-  // operator-editable. NULL/empty ⇒ generated name follows google_name.
-  "mesita_name",
   "category",
   // Human-friendly category copy (emoji + natural-language label),
   // derived from category via place_categories.
@@ -98,15 +95,11 @@ const COLUMNS: readonly string[] = [
   // THE Enriched fact (MESITA-2154): set by the contents stage when an
   // Enrich run completes, never by Create. `isPlaceEnriched` reads it.
   "enriched_at",
-  // Mesita Selected (MESITA-2707): the operator's own mark on `places`,
-  // independent of `enriched_at` and never derived from a score. The Map
-  // pins it red, Chat reads Selected places only, the Search carousel tags
-  // it, and the Area score multiplies it by the Selected boost (MESITA-2717).
-  "selected",
-  // Boost (MESITA-2789, was Spotlight): the paid tier its backers' live
-  // subscriptions buy together, 0 · 1 · 2 · 3 (none · 2x · 5x · 10x),
-  // derived by trigger. Paid, never verified, never Selected; the Area score
-  // multiplies it by 2 · 5 · 10, and cards and pins say Sponsored.
+  // Premier (MESITA-2925, was Boost MESITA-2789): the paid tier its
+  // backers' live subscriptions buy together, 0 · 1 · 2 · 3 (none · 2X · 5X
+  // · 10X), derived by trigger. A place is Premier at 1 or more; the Area
+  // score multiplies it by 2 · 5 · 10, and cards and pins say Premier 2X ·
+  // 5X · 10X. `places.selected` is read by no one since MESITA-2925.
   "boost_tier",
   // Profile lifecycle (places.content_state: generating | ready | failed).
   // Create saves 'ready' (the profile can be shown — NOT enriched); an

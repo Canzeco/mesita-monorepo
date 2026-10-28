@@ -16,24 +16,27 @@
 //   lat, lng      where the guest's device was (MESITA-2853): the feed
 //                 measures the viewer to this point ("1.2 km away"). Without
 //                 a fix, or out of range, the event stores no point.
-// Response: { ok: true, kind, on }
+// Response: { ok: true, kind, on, enriching? }
+//   enriching     viewed only: the place is mid-Enrich after this view
+//                 (MESITA-2952), so the open profile can show the Enriching
+//                 tag the page loaded without.
 //
 // A Google-only card (`g:<id>`) is refused: it is not a place row yet, and its
 // save stays in the browser (lib/saved-places.ts). Recording never checks
 // visibility: a member without Instagram still saves; nobody sees it
 // (place_activity_visible decides that at read time).
 //
-// A VISIT COUNTS TOWARD ENRICH (Pato, MESITA-2642: "a profile views counter
+// A VIEW COUNTS TOWARD ENRICH (Pato, MESITA-2642: "a profile views counter
 // in the background, and when it surpasses a certain amount we automatically
 // enrich the place"). A `viewed` also goes through applyPlaceRequest: each
 // signed-in guest counts once per place (apply_place_request), and reaching
-// the enrichment config's threshold ("Enrich after N visits",
+// the enrichment config's threshold ("Enrich after N views",
 // enrichRequestThreshold) starts the same Render run admin Enrich starts. It
 // replaced the guest vote (consumer-web-request-place, retired). An Enriched
 // place is untouched; a failure here never fails the view.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
@@ -47,7 +50,7 @@ type Body = {
   lng?: number;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-track-activity", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -102,18 +105,21 @@ Deno.serve(async (req) => {
     }
   }
 
+  let enriching = false;
   if (kind === "viewed") {
     const counted = await applyPlaceRequest(admin, {
       consumerId,
       placeId,
       callerName: "consumer-web-track-activity",
     });
-    if (!counted.ok) {
+    if (counted.ok) {
+      enriching = counted.enriching;
+    } else {
       console.error(
-        `[consumer-web-track-activity] the visit did not count toward Enrich: ${counted.error}`,
+        `[consumer-web-track-activity] the view did not count toward Enrich: ${counted.error}`,
       );
     }
   }
 
-  return json({ ok: true, kind, on });
+  return json(kind === "viewed" ? { ok: true, kind, on, enriching } : { ok: true, kind, on });
 });

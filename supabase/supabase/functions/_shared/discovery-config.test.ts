@@ -77,8 +77,9 @@ const LIVE_BLOB_2026_10_18 = {
   chat: { prompt: "Be Memo." },
 };
 
-const LIVE_KEYS = ["catalog", "chat", "deep", "general", "map", "name", "params"];
-const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters"];
+// The rails engine's `catalog` section retired with it (MESITA-2923).
+const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params"];
+const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters", "catalog"];
 
 Deno.test("the live blob loads: the retired keys drop, every live value stands", () => {
   const cfg = normalizeDiscoveryConfig(LIVE_BLOB_2026_10_18);
@@ -89,9 +90,9 @@ Deno.test("the live blob loads: the retired keys drop, every live value stands",
   // `general.minReviews` is retired (MESITA-2702): the one floor is map's.
   assertEquals(cfg.general, { requireActive: true });
   // `pinCount`, `supers`, the reload km/sec pair and `googleFill` are
-  // dropped and seed nothing (MESITA-2687, MESITA-2703): the two Area
-  // sources read their defaults, both on; the Google two are gone (MESITA-2872).
-  assertEquals([cfg.map.mesitaPopular, cfg.map.mesitaClosest], [20, 20]);
+  // dropped and seed nothing (MESITA-2687, MESITA-2703); the four source
+  // switches are gone (MESITA-2872, MESITA-2909).
+  assertEquals("mesitaPopular" in cfg.map || "mesitaClosest" in cfg.map, false);
   for (
     const dead of ["pinCount", "supers", "reloadMinKm", "reloadMinSec", "googleFill", "googlePull", "googlePopular", "googleClosest"]
   ) {
@@ -181,14 +182,14 @@ Deno.test("the admin twin rebuilds none of the retired keys", () => {
   }
 });
 
-Deno.test("the admin twin mirrors the Area params' bounds", () => {
+Deno.test("the admin twin mirrors the signal params' bounds", () => {
   const constant = (name: string) => {
     const m = CATALOG_SRC.match(new RegExp(`export const ${name} = ([0-9_.]+);`));
     assert(m, `catalog.ts has no ${name}`);
     return Number(m[1].replaceAll("_", ""));
   };
-  assertEquals(constant("RADIUS_DIVISOR_MIN"), SIGNAL_PARAM_BOUNDS.radiusDivisor.min);
-  assertEquals(constant("RADIUS_DIVISOR_MAX"), SIGNAL_PARAM_BOUNDS.radiusDivisor.max);
+  assertEquals(constant("HALF_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfKm.min);
+  assertEquals(constant("HALF_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfKm.max);
   assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
   assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
 });
@@ -207,7 +208,6 @@ Deno.test("an early-migration blob reads back with every live section defaulted"
   assertEquals("slotting" in keys, false);
   // ...and the live sections arrive at their defaults rather than undefined.
   assertEquals(cfg.params, DISCOVERY_DEFAULTS.params);
-  assertEquals(cfg.catalog, DISCOVERY_DEFAULTS.catalog);
   assertEquals(cfg.map, DISCOVERY_DEFAULTS.map);
   assertEquals(cfg.name, DISCOVERY_DEFAULTS.name);
   assertEquals(cfg.chat, DISCOVERY_DEFAULTS.chat);
@@ -255,9 +255,9 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
   // MESITA-2347) goes with the deck's bags; the linear `balance`
   // (MESITA-2428), the weights table (MESITA-2687), the reach and Selected
-  // (MESITA-2703) too. Popularity's half credit stays; Proximity's radius
-  // divisor (`radiusDivisor`, MESITA-2720) arrives at its default.
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 2 }, popularity: { halfReviews: 250 } });
+  // (MESITA-2703) too. Popularity's half credit stays; Proximity's half
+  // distance (`halfKm`, MESITA-2909) arrives at its default.
+  assertEquals(cfg.params, { proximity: { halfKm: 5 }, popularity: { halfReviews: 250 } });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that
@@ -297,19 +297,9 @@ Deno.test("map knobs default on an old blob and clamp", () => {
   assertEquals("proximityWeight" in clamped.map, false);
 });
 
-Deno.test("the two Area sources are switches: 0 or 20, snapped, default on (MESITA-2703)", () => {
-  const src = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { mesitaClosest: raw } }).map.mesitaClosest;
-  assertEquals(src(0), 0);
-  assertEquals(src(20), 20);
-  assertEquals(src(7), 0);
-  assertEquals(src(13), 20);
-  assertEquals(src(60), 20);
-  assertEquals(src("plenty"), 20);
-  const off = normalizeDiscoveryConfig({
-    map: { mesitaPopular: 0, mesitaClosest: 20 },
-  }).map;
-  assertEquals([off.mesitaPopular, off.mesitaClosest], [0, 20]);
+Deno.test("the two Mesita source switches are dropped on normalize (MESITA-2909)", () => {
+  const map = normalizeDiscoveryConfig({ map: { mesitaPopular: 0, mesitaClosest: 20 } }).map;
+  assertEquals("mesitaPopular" in map || "mesitaClosest" in map, false);
 });
 
 Deno.test("the retired Google sources are dropped on normalize (MESITA-2872)", () => {
@@ -354,17 +344,12 @@ Deno.test("map.radiusKm is the one Nearby radius: default 15 (the reach, MESITA-
   assertEquals(radius("far"), 15);
 });
 
-Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", () => {
+Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () => {
   const missing = normalizeDiscoveryConfig({ weights: {}, slotting: {} });
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
   assertEquals(missing.name.fast.googleCount, 5);
-  assertEquals(missing.name.deep, {
-    mesitaCount: 3,
-    autoCount: 3,
-    googleCount: 3,
-    supers: DISCOVERY_DEFAULTS.name.deep.supers,
-  });
+  assertEquals(missing.name.deep, { autoCount: 3, googleCount: 3 });
   const clamped = normalizeDiscoveryConfig({
     name: {
       fast: { count: 99, supers: { restaurants: false } },
@@ -372,12 +357,11 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
     },
   });
   assertEquals(clamped.name.fast.count, 20);
-  assertEquals(clamped.name.fast.supers.coffee, true);
-  assertEquals(clamped.name.fast.supers.dinner, true);
-  assertEquals("restaurants" in clamped.name.fast.supers, false);
-  // The retired Deep partners cap does not survive a read.
+  // The retired family switches (MESITA-2767) do not survive a read.
+  assertEquals("supers" in clamped.name.fast, false);
+  // The retired Deep partners and Mesita caps do not survive a read.
   assertEquals("partnerCount" in clamped.name.deep, false);
-  assertEquals(clamped.name.deep.mesitaCount, 7);
+  assertEquals("mesitaCount" in clamped.name.deep, false);
   assertEquals(clamped.name.deep.googleCount, 20);
   assertEquals(clamped.name.deep.autoCount, 0);
   assertEquals(clamped.name.fast.googleCount, 20);
@@ -388,11 +372,11 @@ Deno.test("name knobs default Fast 5 and Deep 3+3+3 on an old blob and clamp", (
   assertEquals(missingAuto.name.deep.googleCount, 20);
 });
 
-Deno.test("map.selectedFactor: default 3, clamped 1–10, one decimal (MESITA-2717)", () => {
-  assertEquals(normalizeDiscoveryConfig({}).map.selectedFactor, 3);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 2.46 } }).map.selectedFactor, 2.5);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 0 } }).map.selectedFactor, 1);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: 99 } }).map.selectedFactor, 10);
-  assertEquals(normalizeDiscoveryConfig({ map: { selectedFactor: "x" } }).map.selectedFactor, 3);
+Deno.test("map.selectedFactor retired with Selected (MESITA-2925): a stored key is dropped, the rest kept", () => {
+  const map = normalizeDiscoveryConfig({ map: { selectedFactor: 5, placesShown: 33, popularityFloor: 4 } }).map;
+  assertEquals("selectedFactor" in map, false);
+  assertEquals(map.placesShown, 33);
+  assertEquals(map.popularityFloor, 4);
+  assertEquals("selectedFactor" in normalizeDiscoveryConfig({}).map, false);
 });
 

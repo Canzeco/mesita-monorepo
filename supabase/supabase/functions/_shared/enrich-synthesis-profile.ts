@@ -1,6 +1,7 @@
 import { capPresentation } from "./presentation-cap.ts";
 
 export type ProfileResult = {
+  /** Mesita Zone (MESITA-2937): filtered by the caller through pickZone. */
   zone?: string | null;
   city?: string | null;
   /**
@@ -14,11 +15,13 @@ export type ProfileResult = {
   /**
    * Clean Mesita display name (§8.4 v3): the Google label stripped of chain
    * suffixes, slogans, and city tags; proper case. NOT applied by
-   * applyProfileToUpdate — only the mesita-name-door may land it (gate D2).
+   * applyProfileToUpdate — only the place-name-door may land it (gate D2).
    */
   mesita_name?: string | null;
   /** Mesita tags (MESITA-2790): vocabulary slugs; filtered by the caller. */
   tags?: unknown;
+  /** Mesita Families (MESITA-2891): 1–5 family slugs; filtered by the caller. */
+  families?: unknown;
   /** Retired (MESITA-2420). A stale reply may still carry it; it is never applied. */
   popular_times?: unknown[] | null;
 };
@@ -93,7 +96,8 @@ export function applyProfileToUpdate(
   parsed: ProfileResult,
 ): void {
   // Location is Google's structured response. Synthesis may read those facts
-  // as input for Presentation. It does not write zone, city, or address.
+  // as input for Presentation. It does not write city or address; the Mesita
+  // Zone is landed by the caller through pickZone (MESITA-2937).
   // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {

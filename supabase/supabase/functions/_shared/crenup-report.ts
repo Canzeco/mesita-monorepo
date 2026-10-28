@@ -45,7 +45,6 @@
 //      State accumulates across create and every later run under one rule.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { reportEnrichmentStep } from "./enrich-pipeline.ts";
 import {
   CRENUP_STEP_META,
   type CrenupStep,
@@ -58,6 +57,34 @@ import {
   type FunctionStateMap,
 } from "./schema-catalog.ts";
 import { writePlace } from "./place-doc.ts";
+
+// Direct INSERT into place_enrichment_events (the admin feed). Best-effort: a
+// beacon failure never breaks the caller. Moved here from the retired
+// enrich-pipeline.ts (MESITA-2424).
+export async function reportEnrichmentStep(
+  admin: SupabaseClient,
+  placeId: string,
+  // `SX` is kept in the union for historical rows. New stamps are `S<n>`.
+  step: `S${number}` | "SX",
+  stepName: string,
+  state: "started" | "completed" | "failed" | "skipped",
+  detail: string,
+  meta: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    const { error } = await admin.from("place_enrichment_events").insert({
+      place_id: placeId,
+      step,
+      step_name: stepName.slice(0, 80),
+      state,
+      detail: detail.slice(0, 500),
+      meta,
+    });
+    if (error) console.error(`[crenup-report] beacon ${step}:`, error.message);
+  } catch (err) {
+    console.error(`[crenup-report] beacon ${step}:`, err instanceof Error ? err.message : err);
+  }
+}
 
 /**
  * What a caller may stamp: any ladder step. `seed` is not among them by

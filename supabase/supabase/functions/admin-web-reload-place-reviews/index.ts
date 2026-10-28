@@ -1,8 +1,7 @@
 // Supabase Edge Function — admin-web-reload-place-reviews (MESITA-2189)
 //
 // One source, one click. Calls the shared verifier and writes that
-// source's found flag and numbers. Does not touch place_research,
-// enriched_at, photos, or google_reviews. Keeps no fetch of its own.
+// source's found flag and numbers. Does not touch enriched_at, photos, or google_reviews. Keeps no fetch of its own.
 //
 //   instagram       saved instagram_url → follower count
 //   facebook        saved facebook_url  → follower count
@@ -17,7 +16,7 @@
 // and writes nothing. A failed list scrape writes nothing.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, readPlaceIdAlias, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv, requireSuperAdmin } from "../_shared/auth.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { gatherGoogleMaps } from "../_shared/enrich-google.ts";
@@ -54,7 +53,7 @@ type PlaceRow = {
   facebook_found: boolean;
 };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-reload-place-reviews", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

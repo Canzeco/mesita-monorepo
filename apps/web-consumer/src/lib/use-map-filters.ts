@@ -1,6 +1,7 @@
 "use client";
 
-// Search-map filter store: the family chips, All or one family. A persisted
+// Search-map filter store: the families, none (Top) or any number of them
+// (MESITA-2903; one at a time from MESITA-2412). A persisted
 // v6 blob's `placesScope` (MESITA-2298) and `minReviews` (MESITA-2417, the
 // operator's now) are ignored.
 
@@ -34,7 +35,7 @@ function readPersisted(): MapFilters {
         ? (parsed.familyKeys as unknown[]).filter(
             (k): k is FamilyKey =>
               typeof k === "string" && KNOWN_FAMILY_KEYS.has(k),
-          ).slice(0, 1)
+          )
         : [],
     };
   } catch {
@@ -71,11 +72,20 @@ function patchMapFilters(partial: Partial<MapFilters>) {
   emit();
 }
 
-/** ONE family at a time, or All (Pato, MESITA-2412: "only enable to select
- *  one family at any time (or All)"). Picking the chosen one again is All. */
+/** The chip row's one-tap pick: that family ALONE (MESITA-2412). Picking
+ *  it again when it is the only one goes back to Top. Several families come
+ *  from the Filters sheet (`setMapFamilies`, MESITA-2903). */
 export function selectMapFamily(key: FamilyKey) {
   patchMapFilters({
     familyKeys: state.familyKeys.length === 1 && state.familyKeys[0] === key ? [] : [key],
+  });
+}
+
+/** The Filters sheet's Show places (Pato, MESITA-2903: "select multiple
+ *  families"): any number of families, deduped, unknown keys dropped. */
+export function setMapFamilies(keys: readonly FamilyKey[]) {
+  patchMapFilters({
+    familyKeys: [...new Set(keys)].filter((k) => KNOWN_FAMILY_KEYS.has(k)),
   });
 }
 

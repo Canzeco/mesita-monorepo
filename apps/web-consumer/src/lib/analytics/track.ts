@@ -16,7 +16,7 @@ export type AnalyticsEvent =
   // as the Places tile tap (MESITA-2384).
   | "home_mode_view"
   // Places tile taps and saves carry source, rank and final score
-  // (MESITA-2384), so the Selected boost's effect can be measured.
+  // (MESITA-2384), so Premier's effect can be measured (MESITA-2925).
   | "home_card_open"
   | "home_card_save"
   // MESITA-2590 — Social's person card "Open Instagram", to measure leakage.

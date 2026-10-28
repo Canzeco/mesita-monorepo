@@ -74,10 +74,10 @@ export function googleStub(
     city: null,
     // Not a Mesita place, so never enriched: no `enriched_at`, and
     // `googleOnly` excludes it from the Enriched signal by name. Never
-    // Selected either: the mark is the operator's, on a Mesita row.
+    // Premier either: Premier is a paid tier on a Mesita row (MESITA-2925).
     content_state: "ready",
     enriched_at: null,
-    selected: false,
+    boost_tier: 0,
     googleOnly: true,
     from_google: true,
     distance_km: distanceKm,

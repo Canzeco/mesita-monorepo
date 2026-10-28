@@ -157,13 +157,14 @@ Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside th
 
 const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/agent-tools.ts",
-  "_shared/mesita-name-door.ts",
+  "_shared/place-name-door.ts",
   "_shared/crenup-report.ts",
   "_shared/field-correction-writer.ts", // read enrichment_sources before pin merge (MESITA-2029)
-  "_shared/enrich-fill.ts", // enrichment jsonb only, to see which ladder steps already completed (MESITA-2178)
+  "_shared/operator-fields.ts", // read enrichment_sources before the operator-mark merge (MESITA-2829)
   "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
+  "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
@@ -174,8 +175,6 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-third/index.ts",
-  "enricher-cron-enrich-place-first/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];
 
@@ -189,7 +188,7 @@ const PROFILES_READ_ALLOWLIST = [
   // The Deep pipeline's Mesita Places Search: id, name, About and the summary
   // vector of active, ready places (MESITA-2327).
   "_shared/deep-pipeline.ts",
-  // Area's Mesita Selected scope for the Chat Agent: the same pool query the
+  // Area's Mesita scope for the Chat Agent: the same pool query the
   // Map and the Feed run (MESITA-2339).
   "_shared/area-pipeline.ts",
   "_shared/place-embeddings.ts",
@@ -203,9 +202,8 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-set-place-listed/index.ts",
-  // The Selected mark's one door re-reads the place after the write (MESITA-2707).
-  "admin-web-set-place-selected/index.ts",
   "admin-web-get-overview/index.ts",
+  "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
   "admin-web-list-place-opens/index.ts",
   "admin-web-get-activity-summary/index.ts",
@@ -218,10 +216,12 @@ const PROFILES_READ_ALLOWLIST = [
   "enricher-edgefunc-write-place/index.ts",
   // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
   "_shared/enrich-start.ts",
-  // The Enrichment card's state: content_state and enriched_at, since Render never writes place_research (MESITA-2811).
+  // The Enrichment card's state: content_state and enriched_at (MESITA-2811, MESITA-2424).
   "admin-web-get-place-enrichment/index.ts",
-  // Boost (MESITA-1998): name, state and tier of the place a guest backs.
+  // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
+  // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
+  "_shared/vip-partners.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -229,12 +229,12 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
+  "_shared/smoke-enrich.ts", // the smoke fixture's updated_at, its one-hour cooldown (MESITA-2803)
   "_shared/google-refetch.ts", // content_state only: no refetch while an Enrich is in flight (MESITA-2420)
   "_shared/admin-google-place-update.ts", // content_state gate before Google refresh (MESITA-2737)
   "_shared/reservation-places.ts",
   "admin-web-delete-place/index.ts",
   "admin-web-set-place-listed/index.ts",
-  "admin-web-set-place-selected/index.ts", // `selected` only: a no-op when already there (MESITA-2707)
   "consumer-web-create-reservation/index.ts",
 ];
 
@@ -244,7 +244,7 @@ Deno.test("PLACE ROW READ: no new raw reader of places outside the allowlist", a
 
 const CONSUMER_READ_ALLOWLIST = [
   "_shared/consumer-doc.ts", // THE consumer door
-  // Boost (MESITA-1998): first names of backers who chose to be shown.
+  // Boost (MESITA-1998): payer first names for the admin console only (MESITA-2928).
   "_shared/boost.ts",
   // Instagram verify (MESITA-2578) reads avatar_url alone, error checked, to
   // keep an uploaded photo; the write goes through writeConsumer.
@@ -253,6 +253,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // account check after a Class or Plan change (MESITA-2553). Writes go through the admin_set_guest_standing RPC.
   "admin-web-list-guests/index.ts",
   "admin-web-set-guest-standing/index.ts",
+  // Single Place › Admin › Reports (MESITA-2686): first name and member
+  // number of each reporting guest, error checked. Read-only.
+  "admin-web-list-place-reports/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
@@ -353,8 +356,6 @@ const SWALLOWED_TODAY = [
   "eleven-a4-find-reservation/index.ts",
   "eleven-a4-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "enricher-cron-enrich-place-third/index.ts",
-  "enricher-cron-enrich-place-first/index.ts",
   "supabase-cron-reservation-retries/index.ts",
   "supabase-edgefunc-reservation-call/index.ts",
 ];

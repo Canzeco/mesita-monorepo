@@ -6,12 +6,15 @@
 
 import {
   ENRICH_DESCRIPTION_MAX,
+  ENRICH_DESCRIPTION_TARGET_CHARS,
   ENRICH_DESCRIPTION_TARGET_WORDS,
   OPENAI_URL,
   QUALITY_MODEL,
 } from "./enrich-config.ts";
 import { safeParseJson } from "./parse-utils.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
+import { FAMILIES_RULE } from "./families-infer.ts";
+import { ZONE_RULE } from "./zone-infer.ts";
 import {
   type ProfileResult,
 } from "./enrich-synthesis-profile.ts";
@@ -33,6 +36,10 @@ const PROFILE_SCHEMA = {
     mesita_name: { type: ["string", "null"] },
     // Mesita tags (MESITA-2790): slugs copied from the TAG VOCABULARY block.
     tags: { type: "array", items: { type: "string" } },
+    // Mesita Families (MESITA-2891): 1–5 slugs from the FAMILY LIST block.
+    families: { type: "array", items: { type: "string" } },
+    // Mesita Zone (MESITA-2937): the neighborhood the place header draws.
+    zone: { type: ["string", "null"] },
     // No popular_times (MESITA-2420): a guess from review text is not
     // Google's busy hours, and the guest card says "From Google".
   },
@@ -56,9 +63,11 @@ export async function synthesizeProfile(input: {
   googleTags?: string[];
   /** place_tags slugs the model may pick Mesita tags from. */
   tagVocabulary?: string[];
-  // The branch anchor for the FRANCHISE RULE below: zone is the colonia /
-  // neighborhood, city the fallback. Both come from the Google spine the
-  // research stage persisted — synthesis never has to guess where it is.
+  /** `slug — Label` lines the model may pick Mesita Families from (MESITA-2891). */
+  familyVocabulary?: string[];
+  // The branch anchor for the FRANCHISE RULE below, and the hint the Mesita
+  // Zone is read from (MESITA-2937): zone is Google's colonia / neighborhood
+  // when it names one, city the fallback.
   zone?: string | null;
   city?: string | null;
   igBio: string;
@@ -71,6 +80,7 @@ export async function synthesizeProfile(input: {
   const {
     openaiKey, model, name, locationLine, category, zone, city, igBio,
     googleReviewsText, serpSummary, googleTypes, googleTags, tagVocabulary,
+    familyVocabulary,
   } = input;
 
   // Where this branch actually is — the qualifier the franchise rule spends.
@@ -98,6 +108,7 @@ export async function synthesizeProfile(input: {
     branchAnchor,
     grounding,
     tagVocabulary: tagVocabulary ?? [],
+    familyVocabulary: familyVocabulary ?? [],
   });
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
@@ -157,9 +168,11 @@ export function buildPresentationInput(place: {
   branchAnchor: string;
   grounding: string;
   tagVocabulary?: string[];
+  familyVocabulary?: string[];
 }): string {
   const { name, locationLine, category, branchAnchor, grounding } = place;
   const vocabulary = place.tagVocabulary ?? [];
+  const familyLines = place.familyVocabulary ?? [];
   return (
     `Compile the public profile of the place "${name}"` +
     (locationLine ? ` located at ${locationLine}` : "") +
@@ -171,15 +184,17 @@ export function buildPresentationInput(place: {
     `English, even when the source material is Spanish. Translate facts ` +
     `into English; do not leave Spanish prose in any field. ` +
     `Write "description" as the public Presentation for the Place page: ` +
-    `a short, inviting, factual narrative of roughly ` +
-    `${ENRICH_DESCRIPTION_TARGET_WORDS} words (max ` +
-    `${ENRICH_DESCRIPTION_MAX} characters). ` +
-    `CRITICAL — paragraphs: "description" MUST be several short paragraphs ` +
+    `an inviting, factual narrative of about ` +
+    `${ENRICH_DESCRIPTION_TARGET_CHARS} characters (roughly ` +
+    `${ENRICH_DESCRIPTION_TARGET_WORDS} words), never more than ` +
+    `${ENRICH_DESCRIPTION_MAX} characters. ` +
+    `CRITICAL — paragraphs: "description" MUST be several paragraphs ` +
     `separated by a blank line (the two-character sequence \\n\\n). Never ` +
-    `return one unbroken wall of text. Aim for 2–3 paragraphs; each ` +
-    `paragraph is 2–3 sentences on one idea (atmosphere, cuisine, signature ` +
+    `return one unbroken wall of text. Aim for 3–4 paragraphs; each ` +
+    `paragraph is 2–4 sentences on one idea (atmosphere, cuisine, signature ` +
     `dishes or experiences, history or neighborhood, why visit) — only when ` +
-    `the sources support it. No filler or invented detail. ` +
+    `the sources support it. Write shorter only when the sources cannot ` +
+    `fill that length; never pad with filler or invented detail. ` +
     `"mesita_name" is the clean public display name, in proper case: strip ` +
     `slogans, legal forms (S.A. de C.V., LLC, Inc.), store numbers and ` +
     `internal branch codes. ` +
@@ -198,13 +213,16 @@ export function buildPresentationInput(place: {
     `"tags" are Mesita tags: up to ${MAX_PLACE_TAGS} slugs copied VERBATIM ` +
     `from the TAG VOCABULARY below that the sources clearly support (service, ` +
     `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
+    (familyLines.length ? `${FAMILIES_RULE} ` : "") +
+    `${ZONE_RULE} ` +
     `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
     (vocabulary.length ? `\n\nTAG VOCABULARY: ${vocabulary.join(", ")}` : "") +
+    (familyLines.length ? `\n\nFAMILY LIST:\n${familyLines.join("\n")}` : "") +
     (branchAnchor
-      ? `\n\nLOCATION ANCHOR (the franchise rule spends this): ${branchAnchor}`
+      ? `\n\nLOCATION ANCHOR (the franchise rule spends this; the zone is read from it): ${branchAnchor}`
       : "") +
     (grounding
       ? `\n\n--- SOURCE MATERIAL ---\n${grounding}`

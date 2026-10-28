@@ -3,16 +3,16 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states (Boosted is a tier: Off · 2x · 5x · 10x), then Views · Likes,
-// then, on a word, Name Search and Google. 50 rows a page
+// states (Premier is a tier: Off · 2X · 5X · 10X, MESITA-2925), then Views · Likes,
+// then, on a word, Google's rank. 50 rows a page
 // (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
 // Drawn once both have settled, so no row ever moves under the cursor.
 //
 // From 640px, On and Place stay pinned while the state columns scroll.
 // Under that, On hides and the same pill sits in the Place cell: a second
-// 9rem pin plus Place at 60vw would fill the phone. The two ranks fold
-// into one line beneath the address.
+// 9rem pin plus Place at 60vw would fill the phone. The rank folds into
+// one line beneath the address.
 
 import { Fragment, useState } from "react";
 import Link from "next/link";
@@ -161,7 +161,7 @@ export function FindResults({
           <table className="w-max min-w-full border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
               {ranks
-                ? `Places matching “${query}”, with their states, and where Name Search and Google ranked them`
+                ? `Places matching “${query}”, with their states, and where Google ranked them`
                 : "Every place on Mesita, with its states"}
             </caption>
             <thead>
@@ -183,9 +183,9 @@ export function FindResults({
                     <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
                       {f.label}
                     </th>
-                    {f.key === "selected" ? (
+                    {f.key === "enriched" ? (
                       <th scope="col" className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap">
-                        Boosted
+                        Premier
                       </th>
                     ) : null}
                   </Fragment>
@@ -515,14 +515,14 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
               <Miss label={f.label} />
             )}
           </td>
-          {f.key === "selected" ? (
+          {f.key === "enriched" ? (
             <td className={CELL}>
               {hit ? (
-                <BoostPill tier={hit.boost_tier} />
+                <PremierPill tier={hit.boost_tier} />
               ) : row.held ? (
                 <StatePill on="unknown" />
               ) : (
-                <Miss label="Partner" />
+                <Miss label="Premier" />
               )}
             </td>
           ) : null}
@@ -550,9 +550,10 @@ const QUICK_STATS = [
   { key: "saved", label: "Likes" },
 ] as const;
 
-/** Boosted is a tier, not a yes/no (MESITA-2809): Off · 2x · 5x · 10x. Off
- *  is the normal case, so it is muted rather than rose; a paid tier is green. */
-function BoostPill({ tier }: { tier: number | null | undefined }) {
+/** Premier is a tier, not a yes/no (MESITA-2925, was Boost — MESITA-2809):
+ *  Off · 2X · 5X · 10X. Off is the normal case, so it is muted rather than
+ *  rose; a paid tier is green. */
+function PremierPill({ tier }: { tier: number | null | undefined }) {
   const chip = boostTierChip(tier);
   if (chip === "?") return <StatePill on="unknown" />;
   return (
@@ -587,7 +588,7 @@ function Miss({ label }: { label: string }) {
   );
 }
 
-/** Name Search and Google, folded into one line for a phone. Misses are omitted. */
+/** Google's rank, folded into one line for a phone. A miss is omitted. */
 function PhoneSources({ row }: { row: FindRow }) {
   const parts = WORD_RANK_COLUMNS.flatMap((s) =>
     row.ranks[s.key] != null ? [`${s.short} #${row.ranks[s.key]}`] : [],

@@ -171,20 +171,12 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
   // No timezone, no "today": the device's day can be the wrong one.
   //
   // THE BOX IS "HOURS" (Pato, MESITA-2685: "call that box hours or something
-  // like that … time feels too weird"). With no weekly hours and no open
-  // state it draws nothing (Pato, MESITA-2700: "Hide a box entirely when it
-  // has nothing"; MESITA-2685 drew "…"). A known open state still prints
-  // with no week: the facts row shows no bare "Open" to fall back on.
-  if (place.open_now === null && place.hours_table.length === 0) return null;
+  // like that … time feels too weird"). It is the week table only: the
+  // "Open · until X" line lives in the facts row up top (Pato, MESITA-2911:
+  // "don't show that … open until x"). With no weekly hours it draws nothing
+  // (Pato, MESITA-2700: "Hide a box entirely when it has nothing").
+  if (place.hours_table.length === 0) return null;
   const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
-  const stateDetail = place.open_now === true
-    ? place.closes_at
-      ? `until ${place.closes_at}`
-      : null
-    : place.open_now === false && place.opens_at
-      ? `opens ${place.opens_at}`
-      : null;
-  const tz = place.timezone || undefined;
 
   return (
     <Box
@@ -192,38 +184,16 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
-      {/* Unknown open state says nothing: no hours is not "Closed"
-          (MESITA-2331). */}
-      {place.open_now !== null && (
-        <p className="text-sm leading-snug">
-          <span
-            className={cn(
-              "font-semibold",
-              place.open_now ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {place.open_now ? "Open" : "Closed"}
-          </span>
-          {stateDetail && (
-            <>
-              <span className="text-muted-foreground"> · </span>
-              <span className="text-foreground">{stateDetail}</span>
-            </>
-          )}
-        </p>
-      )}
-      {place.hours_table.length > 0 && (
-        <ul className="border-border overflow-hidden rounded-lg border">
-          {place.hours_table.map((row) => (
-            <HoursDayRow key={row.day} row={row} today={today} />
-          ))}
-        </ul>
-      )}
+      <ul className="border-border overflow-hidden rounded-lg border">
+        {place.hours_table.map((row) => (
+          <HoursDayRow key={row.day} row={row} today={today} />
+        ))}
+      </ul>
     </Box>
   );
 }
 
-function OutboundLink({
+export function OutboundLink({
   url,
   onOpenLink,
   className,

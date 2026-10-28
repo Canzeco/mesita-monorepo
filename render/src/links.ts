@@ -1,10 +1,13 @@
 // Official links the Google spine did not already have.
-// Firecrawl Search is the only source. The Resolver (the Perplexity Agent the
+// Firecrawl Search is the only source. A chain branch ("Starbucks Biblioteca
+// ITESM MTY II") rarely has an account of its own, so the brand is searched too:
+// the website's host label, when the place name carries it. The Resolver (the Perplexity Agent the
 // Enrichment page shows) picks one URL per field, and a URL outside that
 // Firecrawl pool is dropped. A count of 0 does not search that source.
 // Google's own link is left alone. The Scout's read, when the job carried a Scout message, is
 // the Resolver's background on the place: never the source of a URL.
 
+import { charge, firecrawlCredits, FIRECRAWL_USD_PER_CREDIT } from "./cost.ts";
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
 import { callAgent } from "./perplexity.ts";
 import { completed, failed, type StepReport } from "./steps.ts";
@@ -105,6 +108,8 @@ export function confirmedLink(field: LinkField, pool: string[], answer: unknown)
 type DiscoverOptions = {
   name: string;
   city: string | null;
+  /** Google's website for the place; its host names the brand of a chain branch. */
+  website?: string | null;
   have: Partial<Record<LinkField, string | null>>;
   counts?: LinkCounts;
   preset?: string;
@@ -137,7 +142,8 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
   }
   const fetchImpl = opts.fetchImpl ?? fetch;
   try {
-    const gathered = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, missing, counts);
+    const brand = brandFromWebsite(opts.name, opts.website ?? null);
+    const gathered = await gatherPools(fetchImpl, firecrawlKey, opts.name, opts.city, brand, missing, counts);
     const pools = gathered.pools;
     const judgedFields = missing.filter((field) => (pools[field] ?? []).length > 0);
     if (!judgedFields.length) {
@@ -150,11 +156,12 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
       perplexityKey,
       opts.name,
       opts.city,
+      brand,
       pools,
       judgedFields,
       opts.preset?.trim() || "pro-search",
       opts.instructions?.trim() ||
-        "You are a meticulous reviewer that resolves a place's OWN official online channels. Never fabricate a URL.",
+        "You resolve a place's official online channels; a chain branch with no account of its own takes the brand's. Never fabricate a URL.",
       opts.context?.trim() ?? "",
     );
     if (!judged) return { links: {}, report: failed("The Resolver did not answer.") };
@@ -187,18 +194,52 @@ function citedLink(field: LinkField, pool: string[], hitUrls: string[]): string 
   return null;
 }
 
+// The brand a chain branch belongs to: the website's first host label
+// (starbucks.com.mx → "starbucks") when the place's name carries it. A host the
+// name does not carry (a group site, a link page) names no brand.
+export function brandFromWebsite(name: string, website: string | null): string | null {
+  if (!website) return null;
+  let label: string;
+  try {
+    label = new URL(website).hostname.toLowerCase().replace(/^www\./, "").split(".")[0] ?? "";
+  } catch {
+    return null;
+  }
+  const fold = (value: string) =>
+    value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/[^a-z0-9]/g, "");
+  const key = fold(label);
+  const whole = fold(name);
+  if (key.length < 4 || !whole.includes(key) || whole === key) return null;
+  return label;
+}
+
+// The searches behind one field's pool. Instagram also gets a
+// `site:instagram.com` query (MESITA-192), and a chain branch gets its brand's.
+export function searchQueries(field: LinkField, name: string, city: string | null, brand: string | null): string[] {
+  const scope = [name, city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ");
+  const queries = [`${scope} ${SEARCH_TERM[field]}`];
+  if (field === "instagram_url") queries.push(`"${name}" site:instagram.com`);
+  if (brand && (field === "instagram_url" || field === "facebook_url")) {
+    queries.push(`${brand} ${city ?? ""} ${SEARCH_TERM[field]}`.replace(/\s+/g, " ").trim());
+  }
+  return queries;
+}
+
 async function gatherPools(
   fetchImpl: FetchImpl,
   apiKey: string,
   name: string,
   city: string | null,
+  brand: string | null,
   fields: LinkField[],
   counts: Record<LinkField, number>,
 ): Promise<{ pools: Partial<Record<LinkField, string[]>>; failed: number }> {
-  const scope = [name, city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ");
-  const runs = await Promise.all(fields.map((field) =>
-    firecrawlSearch(fetchImpl, apiKey, `${scope} ${SEARCH_TERM[field]}`, counts[field])
-  ));
+  const runs = await Promise.all(fields.map(async (field) => {
+    const searches = await Promise.all(searchQueries(field, name, city, brand).map((query) =>
+      firecrawlSearch(fetchImpl, apiKey, query, counts[field])
+    ));
+    return { urls: searches.flatMap((run) => run.urls), ok: searches.some((run) => run.ok) };
+  }));
   const pools: Partial<Record<LinkField, string[]>> = {};
   fields.forEach((field, index) => {
     pools[field] = poolFromUrls(field, runs[index].urls);
@@ -231,7 +272,10 @@ async function firecrawlSearch(
         console.error(`[links] firecrawl ${res.status} ${body}`);
         return { urls: [], ok: false };
       }
-      return { urls: urlsFromFirecrawl(await res.json()), ok: true };
+      const payload = await res.json();
+      const credits = firecrawlCredits(payload, limit);
+      charge("firecrawl", credits * FIRECRAWL_USD_PER_CREDIT, `search ${credits} credits`);
+      return { urls: urlsFromFirecrawl(payload), ok: true };
     } catch (err) {
       const why = ctrl.signal.aborted
         ? "timeout after 20000ms"
@@ -277,6 +321,7 @@ async function judgePools(
   apiKey: string,
   name: string,
   city: string | null,
+  brand: string | null,
   pools: Partial<Record<LinkField, string[]>>,
   fields: LinkField[],
   preset: string,
@@ -293,6 +338,10 @@ async function judgePools(
   const input =
     `Review and select the official channels for the place "${name}"${where}.\n\n` +
     resolverBackground(context) +
+    (brand
+      ? `This place is a location of the "${brand}" brand. If it has no account of its own, ` +
+        `the brand's account is the answer, preferring this country's.\n\n`
+      : "") +
     `Candidate URLs found by search — review each and pick the correct one when present:\n${lists}\n\n` +
     "Return strict JSON. Each value is one URL from that field's list, or null. Never invent a URL.";
   return await callAgent({

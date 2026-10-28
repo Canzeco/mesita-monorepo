@@ -10,6 +10,8 @@
 // Word answers with TWO entities (MESITA-1403): this caller alone opts
 // into Location rows (`kind: "location"`), and `anchorPlaceId` resolves a
 // picked Location's coordinates + viewport — one Details call per pick.
+// `previewPlaceId` answers the Generate dialog's Google preview (photo,
+// category, stars) — one Details call per dialog open (MESITA-2941).
 //
 // JWT-protected: clients send the Supabase anon JWT in Authorization.
 // Anonymous (anon key only, no user session) still get predictions.
@@ -18,11 +20,12 @@
 // Deploy: supabase functions deploy consumer-web-suggest-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { readEFEnv } from "../_shared/auth.ts";
 import {
   runConsumerSearchLane,
   runLocationAnchor,
+  runPlacePreview,
 } from "../_shared/consumer-search-lane.ts";
 
 type Body = {
@@ -33,9 +36,11 @@ type Body = {
   mode?: string;
   /** A picked Location's Google place id — anchor resolve, not a search. */
   anchorPlaceId?: string;
+  /** A Google-only place's id — the Generate dialog's preview (MESITA-2941). */
+  previewPlaceId?: string;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-suggest-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -50,6 +55,9 @@ Deno.serve(async (req) => {
 
   if (typeof body.anchorPlaceId === "string" && body.anchorPlaceId.trim()) {
     return await runLocationAnchor(body.anchorPlaceId);
+  }
+  if (typeof body.previewPlaceId === "string" && body.previewPlaceId.trim()) {
+    return await runPlacePreview(body.previewPlaceId);
   }
 
   const lat = typeof body.lat === "number" && Number.isFinite(body.lat)

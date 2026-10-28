@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
+import { SizedImage } from "./SizedPhoto";
 import { cn } from "../lib/format";
 import {
   CarouselPillDots,
@@ -11,9 +11,11 @@ import {
 
 type MediaItem = { src: string };
 
-// Eager-load a small window around the active slide so paging reveals the
-// next photo instantly instead of waiting on a lazy fetch. Forward-biased
-// because users page forward far more than back.
+// Until the first photo lands, eager-load only a small window around the
+// active slide so the first paint gets the bandwidth. Forward-biased because
+// users page forward far more than back. Once it lands the carousel goes
+// warm and every photo loads in the background at low priority, so a fast
+// swipe never meets a blank slide (MESITA-2910).
 const PRELOAD_BEHIND = 1;
 const PRELOAD_AHEAD = 2;
 
@@ -65,6 +67,7 @@ export function ImageCarousel({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
+  const [warm, setWarm] = useState(false);
 
   const items: MediaItem[] = photos.map((src) => ({ src }));
 
@@ -108,10 +111,12 @@ export function ImageCarousel({
     goTo(target);
   };
 
-  // Only a window around the active slide is eager so neighbours are warm
-  // before you reach them.
+  // A window around the active slide is eager so neighbours are warm before
+  // you reach them; once the first photo has landed, every slide is.
   const isInPreloadWindow = (i: number) =>
-    i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD;
+    warm || (i >= idx - PRELOAD_BEHIND && i <= idx + PRELOAD_AHEAD);
+  // A failed first photo must not hold the rest of the gallery back.
+  const markWarm = () => setWarm(true);
 
   return (
     <div
@@ -158,12 +163,16 @@ export function ImageCarousel({
             {renderSlide ? (
               renderSlide(i, m, { inPreloadWindow: isInPreloadWindow(i) })
             ) : (
-              <Image
+              <SizedImage
                 src={m.src}
+                size="full"
                 alt={`${alt} photo ${i + 1}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 420px"
                 loading={isInPreloadWindow(i) ? "eager" : "lazy"}
+                fetchPriority={i === 0 ? "high" : "low"}
+                onLoad={i === 0 ? markWarm : undefined}
+                onError={i === 0 ? markWarm : undefined}
                 draggable={false}
                 className="object-cover select-none [-webkit-user-drag:none]"
               />

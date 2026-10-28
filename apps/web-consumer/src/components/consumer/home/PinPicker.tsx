@@ -6,22 +6,23 @@
 // searched there silently.
 //
 //   ┌ ‹  Set the spot ─────────────┐
+//   │ [🔍 Search an address     ]  │  floats on the map (MESITA-2947)
 //   │        [ map, greedy ]       │  ≥45vh, outside any scroll body
 //   │             📍 fixed     (◎) │  the map moves under the pin
 //   ├──────────────────────────────┤
 //   │ Near Av. Garza Sada 2501     │  follows the pin, always
 //   │ Name [ Tecnológico        ]  │  the live suggestion until typed
-//   │ (1)(3)(5)(10)(15) km         │  the radius Home searches (MESITA-2703)
 //   │ [           Save           ] │
 //   └──────────────────────────────┘
 //
 // The rules (what the name shows, when Google is asked, what Save stores)
 // live in `lib/pin-picker-state.ts`; this file is the map and the controls.
 // The picker sits inside Home's location sheet (`LocationPicker.tsx`), whose
-// Back, backdrop and Escape return to where the guest came from.
+// Back, backdrop and Escape return to where the guest came from. A pin has
+// no radius since MESITA-2914: the Catalog ranks every place from it.
 
 import { useEffect, useReducer, useRef, useState } from "react";
-import { ChevronLeft, Loader2, MapPin, Navigation } from "lucide-react";
+import { ChevronLeft, Loader2, MapPin, Navigation, Search, X } from "lucide-react";
 import {
   APIProvider,
   APILoadingStatus,
@@ -29,18 +30,22 @@ import {
   Marker,
   useApiLoadingStatus,
   useMap,
-  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
-import { apiReverseGeocodePin } from "@/lib/api/place-search";
+import {
+  apiReverseGeocodePin,
+  apiSuggestPlaces,
+  type PlacePrediction,
+} from "@/lib/api/place-search";
+import { newSessionToken } from "@/components/consumer/search/search-utils";
 import { setActiveLocation, savedLocationKey } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
 import {
   MAP_MINIMAL_STYLES,
+  MONTERREY_CENTER,
   MAP_USER_LOCATION_PIN_COLOR,
   MAP_USER_LOCATION_STROKE_COLOR,
   mapPinIcon,
 } from "@/lib/map-defaults";
-import type { PickerCamera } from "@/lib/location-pick";
+import { pickCamera, type PickerCamera } from "@/lib/location-pick";
 import {
   classifyThrown,
   initialPinPickerState,
@@ -48,7 +53,6 @@ import {
   PIN_LOOKUP_DEBOUNCE_MS,
   pinDraft,
   pinPickerReducer,
-  pinRadiusChips,
   streetLine,
   type PinPickerAction,
 } from "@/lib/pin-picker-state";
@@ -86,6 +90,9 @@ export function pinPickerLabels(mode: PinPickerMode, entry?: SavedLocation | nul
 export const PIN_SAVE_FAILED = "Couldn't keep this spot on this device";
 export const PIN_LIST_FULL = "8 saved · remove one first";
 
+/** The picker's one-tap names (MESITA-2945). */
+const QUICK_NAMES = ["Home", "Work", "Gym", "Family"] as const;
+
 /** A map that failed this many times reloads the page instead. */
 const MAP_RETRIES = 1;
 
@@ -111,7 +118,6 @@ export function PinPicker({
 }) {
   const supabase = useBrowserSupabase();
   const apiKey = process.env.NEXT_PUBLIC_GMP_KEY ?? "";
-  const operatorKm = useOperatorRadiusKm();
   const [state, dispatch] = useReducer(
     pinPickerReducer,
     initialPinPickerState({
@@ -120,17 +126,8 @@ export function PinPicker({
       formattedAddress: entry?.unconfirmed ? null : entry?.formattedAddress,
       customName: entry?.customName,
       nameEdited: entry?.nameEdited,
-      radiusKm: entry?.radiusKm ?? operatorKm,
     }),
   );
-  // A chip tap re-fits the map to the circle; the first fit waits for the
-  // camera the sheet asked for.
-  const [fitTick, setFitTick] = useState(0);
-  const chips = pinRadiusChips(operatorKm);
-  const pickRadius = (km: number) => {
-    dispatch({ type: "radius", km });
-    setFitTick((n) => n + 1);
-  };
   const [mapAttempt, setMapAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -241,8 +238,6 @@ export function PinPicker({
               dispatch={dispatch}
               attempt={mapAttempt}
               onRetry={() => setMapAttempt((n) => n + 1)}
-              radiusKm={state.radiusKm}
-              fitTick={fitTick}
             />
           </APIProvider>
         ) : (
@@ -251,21 +246,35 @@ export function PinPicker({
       </div>
 
       <div className="flex shrink-0 flex-col gap-3 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div aria-live="polite" className="flex flex-col gap-3">
-          <p
-            className={cn(
-              "text-muted-foreground min-h-5 truncate text-sm transition-opacity",
-              street?.dim && "opacity-60",
+        {/* Where the pin sits, as a card row (MESITA-2945): the address
+            follows the map, so the guest sees what Save will keep. */}
+        <div
+          aria-live="polite"
+          className="border-border bg-muted/50 flex items-center gap-3 rounded-2xl border px-3 py-2.5"
+        >
+          <span className="bg-foreground text-paper flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-hidden>
+            <MapPin className="h-4 w-4" strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span
+              className={cn(
+                "block min-h-5 truncate text-sm font-semibold transition-opacity",
+                street?.dim && "opacity-60",
+              )}
+              data-pin-picker-street
+            >
+              {street?.text ?? "Finding the address…"}
+            </span>
+            {mode === "confirm" && entry?.legacyName ? (
+              <span className="text-muted-foreground block truncate text-xs" data-pin-picker-was>
+                Was: {entry.legacyName}
+              </span>
+            ) : (
+              <span className="text-muted-foreground block truncate text-xs">
+                Move the map to adjust the pin
+              </span>
             )}
-            data-pin-picker-street
-          >
-            {street?.text ?? ""}
-          </p>
-          {mode === "confirm" && entry?.legacyName ? (
-            <p className="text-muted-foreground -mt-2 truncate text-xs" data-pin-picker-was>
-              Was: {entry.legacyName}
-            </p>
-          ) : null}
+          </span>
         </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold">Name</span>
@@ -285,44 +294,27 @@ export function PinPicker({
             data-pin-picker-name
           />
         </label>
-        <div className="flex flex-col gap-1.5">
-          <span id="pin-radius-label" className="text-sm font-semibold">
-            Search within
-          </span>
-          <div
-            role="radiogroup"
-            aria-labelledby="pin-radius-label"
-            className="flex w-full gap-1.5"
-            data-pin-picker-radius
-            onKeyDown={(e) => {
-              if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
-              e.preventDefault();
-              const at = chips.indexOf(state.radiusKm);
-              const next = chips[Math.max(0, Math.min(chips.length - 1, at + (e.key === "ArrowRight" ? 1 : -1)))];
-              if (next !== undefined && next !== state.radiusKm) pickRadius(next);
-            }}
-          >
-            {chips.map((km) => {
-              const on = km === state.radiusKm;
-              return (
-                <button
-                  key={km}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  tabIndex={on ? 0 : -1}
-                  onClick={() => pickRadius(km)}
-                  className={cn(
-                    "h-11 min-w-0 flex-1 rounded-full border text-sm font-semibold transition",
-                    on ? "bg-foreground text-background border-foreground" : "border-border hover:bg-muted",
-                  )}
-                  data-pin-picker-radius-km={km}
-                >
-                  {km} km
-                </button>
-              );
-            })}
-          </div>
+        {/* One-tap names (MESITA-2945); typing still wins. */}
+        <div className="-mt-1 flex flex-wrap gap-2" data-pin-picker-quick-names>
+          {QUICK_NAMES.map((n) => {
+            const on = state.nameEdited && state.nameValue.trim() === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => dispatch({ type: "name_input", value: n })}
+                aria-pressed={on}
+                className={cn(
+                  "h-8 rounded-full border px-3 text-xs font-semibold transition",
+                  on
+                    ? "bg-foreground text-paper border-foreground"
+                    : "border-border bg-card hover:bg-muted",
+                )}
+              >
+                {n}
+              </button>
+            );
+          })}
         </div>
         {saveError ? (
           <p className="text-muted-foreground text-xs" role="status" data-pin-picker-error>
@@ -361,8 +353,6 @@ function PinMapLayer({
   dispatch,
   attempt,
   onRetry,
-  radiusKm,
-  fitTick,
 }: {
   camera: PickerCamera;
   moving: boolean;
@@ -370,8 +360,6 @@ function PinMapLayer({
   dispatch: (a: PinPickerAction) => void;
   attempt: number;
   onRetry: () => void;
-  radiusKm: number;
-  fitTick: number;
 }) {
   const status = useApiLoadingStatus();
   const failed = status === APILoadingStatus.FAILED || status === APILoadingStatus.AUTH_FAILURE;
@@ -403,12 +391,12 @@ function PinMapLayer({
         className="absolute inset-0 h-full w-full"
       >
         <PinCamera camera={camera} dispatch={dispatch} />
-        <RadiusCircle radiusKm={radiusKm} fitTick={fitTick} />
         <UserDot />
       </Map>
       <CenterPin lifted={moving} />
+      <PinSearch />
       {!moved ? (
-        <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center" data-pin-picker-hint>
+        <div className="pointer-events-none absolute inset-x-0 top-[4.25rem] flex justify-center" data-pin-picker-hint>
           <span className="bg-card/95 shadow-elev rounded-full px-3 py-1.5 text-xs font-semibold">
             Move the map to place the pin
           </span>
@@ -451,65 +439,163 @@ function PinCamera({ camera, dispatch }: { camera: PickerCamera; dispatch: (a: P
   return null;
 }
 
-/**
- * The search circle around the pin (MESITA-2703): it follows the map's
- * centre and keeps its km when the guest pans or zooms. A chip tap
- * (`fitTick`) animates the map to fit the circle with equal padding on
- * every side, the pin staying at the centre.
- */
-type MapsLibrary = NonNullable<ReturnType<typeof useMapsLibrary<"maps">>>;
-
-function RadiusCircle({ radiusKm, fitTick }: { radiusKm: number; fitTick: number }) {
-  const map = useMap();
-  const maps = useMapsLibrary("maps");
-  const circle = useRef<InstanceType<MapsLibrary["Circle"]> | null>(null);
-
-  useEffect(() => {
-    if (!map || !maps) return;
-    const c = new maps.Circle({
-      map,
-      center: map.getCenter() ?? undefined,
-      radius: radiusKm * 1000,
-      clickable: false,
-      strokeColor: MAP_USER_LOCATION_STROKE_COLOR,
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: MAP_USER_LOCATION_PIN_COLOR,
-      fillOpacity: 0.08,
-    });
-    circle.current = c;
-    const follow = map.addListener("center_changed", () => {
-      const at = map.getCenter();
-      if (at) c.setCenter(at);
-    });
-    return () => {
-      follow.remove();
-      c.setMap(null);
-      circle.current = null;
-    };
-    // The circle is made once per map; radius changes go through setRadius.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, maps]);
-
-  useEffect(() => {
-    circle.current?.setRadius(radiusKm * 1000);
-  }, [radiusKm]);
-
-  useEffect(() => {
-    if (!map || fitTick === 0) return;
-    const bounds = circle.current?.getBounds();
-    if (bounds) map.fitBounds(bounds, 24);
-  }, [map, fitTick]);
-
-  return null;
-}
-
 /** The guest's blue dot, when there is a fix. */
 function UserDot() {
   const coords = useUserLocation();
   if (!coords) return null;
   const icon = mapPinIcon(MAP_USER_LOCATION_PIN_COLOR, MAP_USER_LOCATION_STROKE_COLOR);
   return <Marker position={coords} clickable={false} icon={icon.url} title="You're here" />;
+}
+
+/** The search bar on the map (MESITA-2947, Pato: "save location must also
+ *  have a searchbar"): a match moves the map there and the pin follows, as a
+ *  drag would; nothing is saved until Save. Same Autocomplete EF and billing
+ *  rule as the sheet's search: one session token until a pick. */
+function PinSearch() {
+  const map = useMap();
+  const supabase = useBrowserSupabase();
+  const coords = useUserLocation();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<PlacePrediction[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [resolving, setResolving] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState(newSessionToken);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const typing = query.trim().length >= 2;
+
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) return;
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const rows = await apiSuggestPlaces(supabase, q, token, coords ?? MONTERREY_CENTER);
+        if (!cancelled) {
+          setResults(rows.slice(0, 6));
+          setError(null);
+        }
+      } catch {
+        if (!cancelled) setError("Couldn't search right now");
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+    // `coords` only biases the ranking; a new fix should not re-run a search.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase, query]);
+
+  const clear = () => {
+    setQuery("");
+    setResults([]);
+    setError(null);
+  };
+
+  const go = async (r: PlacePrediction) => {
+    if (!map) return;
+    setResolving(r.placeId);
+    try {
+      const cam = await pickCamera(supabase, r);
+      if (cam.fit) {
+        map.fitBounds({
+          south: cam.fit.low.lat,
+          west: cam.fit.low.lng,
+          north: cam.fit.high.lat,
+          east: cam.fit.high.lng,
+        });
+      } else {
+        map.setCenter(cam.center);
+        map.setZoom(cam.zoom);
+      }
+      clear();
+      inputRef.current?.blur();
+    } catch {
+      setError("Couldn't open that place");
+    } finally {
+      setResolving(null);
+      // Google bills a session per pick; the next search starts a new one.
+      setToken(newSessionToken());
+    }
+  };
+
+  return (
+    <div className="absolute inset-x-3 top-3" data-pin-picker-search>
+      <label className="relative block">
+        <Search
+          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2"
+          aria-hidden
+        />
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (e.target.value.trim().length < 2) setResults([]);
+          }}
+          placeholder="Search an address or place"
+          aria-label="Search the map"
+          enterKeyHint="search"
+          autoComplete="off"
+          className={cn(INPUT_CLASS, "shadow-elev border-transparent pr-10 pl-9")}
+        />
+        {query ? (
+          <button
+            type="button"
+            onClick={clear}
+            aria-label="Clear search"
+            className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-10 items-center justify-center"
+          >
+            <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </button>
+        ) : null}
+      </label>
+      {typing || error ? (
+        <ul
+          role="list"
+          aria-label="Matches"
+          className="bg-card shadow-elev divide-border mt-2 max-h-[30vh] divide-y overflow-y-auto rounded-2xl"
+          data-pin-picker-results
+        >
+          {results.map((r) => (
+            <li key={r.placeId}>
+              <button
+                type="button"
+                disabled={resolving !== null}
+                onClick={() => void go(r)}
+                className="hover:bg-muted/60 flex w-full items-center gap-3 px-3 py-2.5 text-left transition disabled:opacity-60"
+              >
+                {resolving === r.placeId ? (
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">{r.mainText}</span>
+                  {r.secondaryText ? (
+                    <span className="text-muted-foreground block truncate text-xs">
+                      {r.secondaryText}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            </li>
+          ))}
+          {results.length === 0 ? (
+            <li className="text-muted-foreground px-3 py-3 text-xs" role="status">
+              {error ?? (searching ? "Searching…" : "No matches yet")}
+            </li>
+          ) : error ? (
+            <li className="text-muted-foreground px-3 py-3 text-xs" role="status">{error}</li>
+          ) : null}
+        </ul>
+      ) : null}
+    </div>
+  );
 }
 
 /** "Use my location": pans to the fix; asks for one only if the browser has

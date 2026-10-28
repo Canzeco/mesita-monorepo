@@ -8,6 +8,7 @@
 // `supabase-edgefunc-discover-places`, and related product EFs that import here.
 
 import { json } from "./http.ts";
+import { googleFetch } from "./google-fetch.ts";
 
 export {
   classifyGoogleError,
@@ -86,14 +87,9 @@ export async function fetchLocationAnchor(
   apiKey: string,
 ): Promise<LocationAnchorResult> {
   try {
-    const r = await fetch(
+    const r = await googleFetch(
       `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
-      {
-        headers: {
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask": "location,viewport",
-        },
-      },
+      { apiKey, fieldMask: "location,viewport" },
     );
     if (!r.ok) {
       return { ok: false, reason: r.status === 400 || r.status === 404 ? "not_found" : "upstream" };
@@ -124,6 +120,105 @@ export async function fetchLocationAnchor(
   } catch (err) {
     console.error(
       "[google-places] location anchor unreachable:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return { ok: false, reason: "upstream" };
+  }
+}
+
+// The Generate dialog's preview (MESITA-2941, Pato: "pull google details and
+// display hero image … i don't want false positives, people adding the wrong
+// place"). ONE Details call when the dialog opens, plus one photo media call
+// for the first photo, never per keystroke. Nothing is stored: the photo URI
+// is Google's own short-lived link and its author rides along for the credit
+// line Google requires.
+export type PlacePreview = {
+  name: string;
+  address: string | null;
+  category: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  photoUrl: string | null;
+  photoAuthor: string | null;
+  mapsUrl: string | null;
+};
+
+export type PlacePreviewResult =
+  | { ok: true; preview: PlacePreview }
+  | { ok: false; reason: "not_found" | "upstream" };
+
+const PREVIEW_FIELD_MASK = [
+  "displayName",
+  "formattedAddress",
+  "shortFormattedAddress",
+  "primaryTypeDisplayName",
+  "rating",
+  "userRatingCount",
+  "photos",
+  "googleMapsUri",
+].join(",");
+
+export async function fetchPlacePreview(
+  placeId: string,
+  apiKey: string,
+): Promise<PlacePreviewResult> {
+  try {
+    const r = await googleFetch(
+      `${GOOGLE_PLACES_DETAILS_BASE}/${encodeURIComponent(placeId)}`,
+      { apiKey, fieldMask: PREVIEW_FIELD_MASK },
+    );
+    if (!r.ok) {
+      return { ok: false, reason: r.status === 400 || r.status === 404 ? "not_found" : "upstream" };
+    }
+    const d = (await r.json()) as {
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      shortFormattedAddress?: string;
+      primaryTypeDisplayName?: { text?: string };
+      rating?: number;
+      userRatingCount?: number;
+      googleMapsUri?: string;
+      photos?: {
+        name?: string;
+        authorAttributions?: { displayName?: string }[];
+      }[];
+    };
+    const name = d.displayName?.text?.trim();
+    if (!name) return { ok: false, reason: "not_found" };
+    const first = d.photos?.[0];
+    let photoUrl: string | null = null;
+    if (first?.name) {
+      // A failed photo still answers the preview: the facts are the point.
+      try {
+        const pr = await googleFetch(
+          `https://places.googleapis.com/v1/${first.name}/media?maxWidthPx=1200&skipHttpRedirect=true`,
+          { apiKey },
+        );
+        if (pr.ok) {
+          photoUrl = ((await pr.json()) as { photoUri?: string }).photoUri ?? null;
+        }
+      } catch {
+        photoUrl = null;
+      }
+    }
+    return {
+      ok: true,
+      preview: {
+        name,
+        address: d.formattedAddress || d.shortFormattedAddress || null,
+        category: d.primaryTypeDisplayName?.text ?? null,
+        rating: typeof d.rating === "number" ? d.rating : null,
+        reviewCount: typeof d.userRatingCount === "number" ? d.userRatingCount : null,
+        photoUrl,
+        photoAuthor: photoUrl
+          ? first?.authorAttributions?.[0]?.displayName ?? null
+          : null,
+        mapsUrl: d.googleMapsUri ?? null,
+      },
+    };
+  } catch (err) {
+    console.error(
+      "[google-places] place preview unreachable:",
       err instanceof Error ? err.message : String(err),
     );
     return { ok: false, reason: "upstream" };

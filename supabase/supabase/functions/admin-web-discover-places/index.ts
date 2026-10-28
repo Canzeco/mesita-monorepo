@@ -15,7 +15,7 @@
 // session failing. invokeInternalCaller carries no `code` (MESITA-2855).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -33,7 +33,7 @@ type RequestBody = {
 
 const FORWARDED_STATUSES = new Set([400, 404, 422]);
 
-Deno.serve(async (req) => {
+serveJson("admin-web-discover-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

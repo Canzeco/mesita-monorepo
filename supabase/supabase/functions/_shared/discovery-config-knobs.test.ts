@@ -2,17 +2,11 @@
 // must not leak into the new one.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  normalizeCatalogConfig,
   normalizeMapConfig,
   normalizeDeepConfig,
   normalizeDiscoveryConfig,
   normalizeNameConfig,
 } from "./discovery-config.ts";
-
-Deno.test("catalog placesPerRail normalizes within bounds", () => {
-  assertEquals(normalizeCatalogConfig({ placesPerRail: 8 }).placesPerRail, 8);
-  assertEquals(normalizeCatalogConfig({}).placesPerRail, 8);
-});
 
 Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client's 0.5..10 (MESITA-2444)", () => {
   assertEquals(normalizeMapConfig({}).reloadIdleSec, 1.5);
@@ -42,17 +36,16 @@ Deno.test("Word's idle seconds default to 1, bounded 0.3..5, one decimal (MESITA
   assertEquals(normalizeNameConfig({ idleSec: 1.26 }).idleSec, 1.3);
 });
 
-Deno.test("Word by Admin defaults are Find's old behaviour; Mesita rows stop at 10", () => {
+Deno.test("Word by Admin defaults are Find's old behaviour; a stored mesitaCount is dropped", () => {
   assertEquals(normalizeNameConfig({}).admin, {
     autoCount: 0,
     textCount: 20,
-    mesitaCount: 10,
     emptyQuery: true,
   });
   const a = normalizeNameConfig({
     admin: { autoCount: 5, textCount: 99, mesitaCount: 40, emptyQuery: false },
   }).admin;
-  assertEquals(a, { autoCount: 5, textCount: 20, mesitaCount: 10, emptyQuery: false });
+  assertEquals(a, { autoCount: 5, textCount: 20, emptyQuery: false });
 });
 
 Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec", async () => {
@@ -66,7 +59,7 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   assertEquals(adminEf.includes("admin: true"), true);
   assertEquals(consumerEf.includes("admin: true"), false);
   assertEquals(lane.includes("idleSec: cfg.name.idleSec"), true);
-  assertEquals(lane.includes("cfg.name.admin.mesitaCount"), true);
+  assertEquals(lane.includes("cfg.name.admin.autoCount"), true);
 });
 
 Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESITA-2347)", () => {
@@ -74,35 +67,33 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 2 }, popularity: { halfReviews: 100 } });
-  assertEquals("ranking" in cfg.catalog, false);
+  assertEquals(cfg.params, { proximity: { halfKm: 5 }, popularity: { halfReviews: 100 } });
+  assertEquals("catalog" in cfg, false);
 });
 
-Deno.test("Area params clamp; the reach, the fixed half distance, Selected and the weights table drop, the divisor arrives (MESITA-2687, MESITA-2703, MESITA-2720)", () => {
+Deno.test("params clamp; the reach, the divisor, Selected and the weights table drop, the half distance arrives (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
   const cfg = normalizeDiscoveryConfig({
     params: {
-      proximity: { reachKm: 7, halfKm: 4, radiusDivisor: 0.01 },
+      proximity: { reachKm: 7, halfKm: 0.01, radiusDivisor: 3 },
       selected: { otherFactor: 0.3 },
       popularity: { halfReviews: 0 },
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { radiusDivisor: 0.1 }, popularity: { halfReviews: 1 } });
-  // One decimal, clamped to 10; a stored row with only the old fixed
-  // half distance reads the default 2 (never its 10 as a divisor).
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 2.34 } } }).params.proximity, { radiusDivisor: 2.3 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity, { radiusDivisor: 10 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 10 } } }).params.proximity, { radiusDivisor: 2 });
-  // One penalty for the Map, Home and Chat: a stored Catalog one drops (MESITA-2776).
-  assertEquals(
-    normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 3, catalogRadiusDivisor: 0.1 } } }).params.proximity,
-    { radiusDivisor: 3 },
-  );
-  const m = normalizeDiscoveryConfig({ map: { placesShown: 33 } }).map;
-  assertEquals([m.placesShown, m.catalogPlacesShown], [33, 33]);
-  const n = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 500 } }).map;
-  assertEquals([n.placesShown, n.catalogPlacesShown], [33, 40]);
+  assertEquals(cfg.params, { proximity: { halfKm: 0.5 }, popularity: { halfReviews: 1 } });
+  // One decimal, clamped to 50; a stored row with only the retired divisor
+  // reads the default 5 km.
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 2.34 } } }).params.proximity, { halfKm: 2.3 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity, { halfKm: 50 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 1 } } }).params.proximity, { halfKm: 5 });
+  // Most pins 1..200 default 50; the Catalog page size 5..100 default 20,
+  // and the retired cut `catalogPlacesShown` drops (MESITA-2909).
+  const m = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 40 } }).map;
+  assertEquals([m.placesShown, m.catalogPageSize, "catalogPlacesShown" in m], [33, 20, false]);
+  const n = normalizeDiscoveryConfig({ map: { placesShown: 900, catalogPageSize: 500 } }).map;
+  assertEquals([n.placesShown, n.catalogPageSize], [200, 100]);
+  assertEquals(normalizeDiscoveryConfig({}).map.placesShown, 50);
 });
 
 Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {

@@ -14,31 +14,35 @@
 // silently falls back is not enforced, which is the house definition of a bug.
 //
 // ONE REQUEST SHAPE — POST { google: true, lat, lng, bounds, familyKeys }:
-// web Search, the Map view of the AREA PIPELINE (MESITA-2302, MESITA-2327,
-// one pool since MESITA-2379, `_shared/area-pipeline.ts`). THE MAP IS WHAT
-// THE GUEST SEES (MESITA-2499): `bounds` is the visible map, so the zoom
-// decides how wide the set is — a street close, a city wide. THE SCREEN
-// RADIUS (MESITA-2504): the location is a POINT at the cross (`lat`, `lng`,
-// the sight) inside R = the cross's distance to the nearest edge of the
-// visible map (`screenRadiusKm`, MESITA-2511: the circle always fits on
-// screen). R is a GATE — Mesita's read is boxed to it and the Radius gate
-// drops what lies past it (Pato: "I son't want to see stuff beyond my
-// screen"). The score is
-// Proximity × Popularity × the Selected boost, Proximity ½ at R ÷ the
-// operator's radius divisor (MESITA-2720), the boost `map.selectedFactor`
-// on a Selected place (MESITA-2717); no exponents since MESITA-2722. The family chip gates;
-// the guest picks no mode, so `prefer` is ignored. No bounds, or a box wider
-// than AREA_BOUNDS_MAX_KM, falls back to the centre inside `map.radiusKm`,
-// scored the same way. The answer carries R and each place's
-// breakdown for the debug readout (MESITA-2504). It runs the same sources as
-// the Feed — Mesita Popularity and Mesita Proximity (Google Nearby's two
-// retired in MESITA-2872: nothing here calls Google) — merged with
-// duplicates removed and ranked, with the guest's family pills pushed down
-// to the Mesita read and the operator's Popularity floor on every place.
-// The guest never picks a source: a stale `placesScope` is ignored.
+// web Search, THE MAP PIPELINE (Area, MESITA-2302; split from the Catalog by
+// MESITA-2909; `_shared/area-pipeline.ts`). THE MAP IS WHAT THE GUEST SEES
+// (MESITA-2499): `bounds` is the visible map, so the zoom decides how wide
+// the set is — a street close, a city wide. THE SCREEN RADIUS (MESITA-2504):
+// the location is a POINT at the cross (`lat`, `lng`, the sight) inside R =
+// the cross's distance to the nearest edge of the visible map
+// (`screenRadiusKm`, MESITA-2511: the circle always fits on screen). R is a
+// GATE and only a gate (Pato, MESITA-2909: distance "como screening dentro
+// del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
+// to it, the Radius gate drops what lies past it, and the places inside are
+// ranked by Popularity × the Premier factor (a Premier place's paid tier,
+// ×2 · ×5 · ×10, MESITA-2925), no Proximity. EVERY ready place in the box is
+// ranked (MESITA-2950): the read walks the scoring columns by id, page after
+// page (`selectMapPool`, the Catalog's two passes from MESITA-2921), then
+// reads only the kept places' cards, so a wide ring never ranks an
+// id-ordered 1000-row slice.
+// The Map shows the top `map.placesShown`. The family chip gates; the guest
+// picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
+// however far out the guest zooms, the search is the ring they see. No
+// bounds falls back to the centre inside `map.radiusKm`. The
+// answer carries R and each place's breakdown for the debug readout
+// (MESITA-2504). Mesita's places only (Google Nearby retired in
+// MESITA-2872), the operator's Popularity floor on every place. A stale
+// `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
-// without a lat/lng pair is 400. The listed `{ lat, lng }` lane and the
+// without a lat/lng pair is 400. A failed read is a 502 with
+// `code: "places_read_failed"`, the pass, page or chunk and a requestId; the
+// PostgREST message is logged, never sent. The listed `{ lat, lng }` lane and the
 // GET / `{ limit }` newest-first lane retired with their last callers, and
 // `discovery_config.filters` with them (MESITA-2337).
 //
@@ -52,6 +56,7 @@ import {
   json,
   readJsonOr,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -64,17 +69,13 @@ import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
+import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
 import {
-  decideNearby,
-  NEARBY_SCAN_LIMIT,
-  wantsGoogleFill,
-} from "../_shared/geo.ts";
-import {
-  type PoolRow,
+  CatalogReadError,
   type PoolBuilder,
+  type PoolRow,
   screenRadiusKm,
-  selectAreaPool,
-  selectedPoolQuery,
+  selectMapPool,
 } from "../_shared/area-pipeline.ts";
 import {
   stripInternal,
@@ -119,14 +120,11 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Selected boost for a Mesita Selected
-   *  place, else 1 (MESITA-2717). */
+  /** The factor `final` carries: the Premier factor, ×2 · ×5 · ×10, else 1
+   *  (MESITA-2925; the key predates Premier). */
   selectedFactor: number;
-  /** The sources that found the place (MESITA-2703); diagnostics only. */
-  foundBy: string[];
-  /** Km from the anchor and the Distance penalty k (MESITA-2830). */
+  /** Km from the cross (MESITA-2830); it screens, never scores. */
   distanceKm: number | null;
-  distancePenalty: number;
 };
 
 type CardRow = {
@@ -144,7 +142,7 @@ type CardRow = {
   google_review_count?: number | null;
 };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -190,38 +188,56 @@ Deno.serve(async (req) => {
   // The screen radius, or the operator's when there is no screen to read.
   const screenKm = screenRadiusKm(body.bounds, center);
   const radiusKm = screenKm ?? cfg.map.radiusKm;
-  const location = { kind: "point" as const, anchor: center, radiusKm };
-  // Proximity × Popularity × the Selected boost; the radius gates, the
-  // half-distance scores.
-  const pool = await selectedPoolQuery(
-    supabase.from("profiles").select(PLACE_CARD_COLUMNS) as unknown as PoolBuilder,
-    cfg,
-    { center, radiusKm, families: guestSupers, selectedOnly: false },
-  ).limit(NEARBY_SCAN_LIMIT);
-  if (pool.error) {
-    return json({ ok: false, error: pool.error.message }, 500);
+  const requestId = crypto.randomUUID();
+  // Popularity × the Premier factor; the radius only gates (MESITA-2909).
+  // Every ready place in the box is ranked, then the kept cards are read
+  // (MESITA-2950).
+  let area: Awaited<ReturnType<typeof selectMapPool<PoolRow>>>;
+  try {
+    area = await selectMapPool<PoolRow>({
+      read: (columns) => supabase.from("profiles").select(columns) as unknown as PoolBuilder,
+      cfg,
+      center,
+      radiusKm,
+      families: guestSupers,
+      cardColumns: PLACE_CARD_COLUMNS,
+      wire: (rows) => rows as PoolRow[],
+    });
+  } catch (err) {
+    if (!(err instanceof CatalogReadError)) throw err;
+    const at = err.pass === 1 ? { page: err.at } : { chunk: err.at };
+    console.error(JSON.stringify({
+      fn: "consumer-web-list-places",
+      event: "read_failed",
+      requestId,
+      pass: err.pass,
+      ...at,
+      pgCode: err.pgCode,
+      message: err.message,
+    }));
+    return json({
+      ok: false,
+      code: "places_read_failed",
+      error: "Places read failed",
+      pass: err.pass,
+      ...at,
+      requestId,
+    }, 502);
   }
-  const area = await selectAreaPool<PoolRow>({
-    surface: "map",
-    location,
-    families: guestSupers,
-    mesitaRows: (pool.data ?? []) as PoolRow[],
-    cfg,
-  });
   // A caller that names its own cap keeps it.
   const places = typeof body.limit === "number"
     ? area.places.slice(0, clampIntRange(body.limit, 1, MAX_LIMIT))
     : area.places;
   // One line, because every failure mode is a WRONG SET rather than an
-  // error: a capped read or a switched-off source looks like a thin map.
+  // error: `scanCapped` means the box held more than the walk reads, and
+  // past it the cut is by id again.
   console.log(JSON.stringify({
     fn: "consumer-web-list-places",
-    mode: "nearby",
+    requestId,
     radius: screenKm === null ? "operator" : "screen",
     radiusKm,
     ...area.summary,
-    mesitaRead: pool.data?.length ?? 0,
-    mesitaCapped: (pool.data?.length ?? 0) >= NEARBY_SCAN_LIMIT,
+    lastId: area.summary.scanCapped ? area.lastId : undefined,
     returned: places.length,
   }));
   return json({
@@ -236,14 +252,11 @@ Deno.serve(async (req) => {
             popularity: a.signals.popularity,
             final: a.final,
             selectedFactor: a.selectedFactor,
-            foundBy: a.foundBy,
             distanceKm: a.distanceKm,
-            distancePenalty: a.distancePenalty,
           } satisfies WireScore,
         };
       }) as CardRow[],
     ),
-    mode: "nearby",
     radiusKm,
     // The Map's reload throttle (MESITA-2444) plus min screen move (MESITA-2732);
     // the dead km/sec pair is not sent.

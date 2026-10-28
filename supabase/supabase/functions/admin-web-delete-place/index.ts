@@ -23,6 +23,7 @@ import {
   readJson,
   readPlaceIdAlias,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import {
   adminClient,
@@ -40,7 +41,7 @@ const ARCHIVED_STATE = "archived";
 
 type Body = { placeId?: unknown; projectId?: unknown };
 
-Deno.serve(async (req) => {
+serveJson("admin-web-delete-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

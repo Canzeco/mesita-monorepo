@@ -12,18 +12,20 @@
 //
 // Around the commit (MESITA-2420): a field a person pinned is withheld, so
 // an Enrich writes around a correction instead of over it; the Mesita Name
-// the synthesis inferred lands through _shared/mesita-name-door.ts; and each
-// step the run bought is stamped from what landed (./steps.ts).
+// the synthesis inferred lands through _shared/place-name-door.ts; and each
+// step the run bought is stamped from what landed (./steps.ts). What the run
+// spent, per step, is stored as one place_enrichment_runs row (./run-cost.ts).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-images.ts";
 import { pairedAnalyses } from "../_shared/photo-analysis.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns } from "../_shared/enrich-corrections.ts";
-import { applyInferredMesitaName } from "../_shared/mesita-name-door.ts";
+import { readOperatorFields, stripOperatorFields } from "../_shared/operator-fields.ts";
+import { applyInferredPlaceName } from "../_shared/place-name-door.ts";
 import { reportCrenupSteps, stepFailed } from "../_shared/crenup-report.ts";
 import { enrichmentCommit, enrichmentConflicts } from "./commit.ts";
 import { fillAtlasProfile } from "./synthesize-profile.ts";
@@ -31,8 +33,9 @@ import { withoutFoundFlags } from "../_shared/profile-patch-found.ts";
 import { galleryFromPatch, patchWithoutGallery } from "./photos.ts";
 import { closedListingPatch, contentStateAfterStop, enrichmentStop } from "./stop.ts";
 import { enrichStepOutcomes } from "./steps.ts";
+import { readRunCost, recordRunCost } from "./run-cost.ts";
 
-Deno.serve(async (req) => {
+serveJson("enricher-edgefunc-write-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -51,9 +54,18 @@ Deno.serve(async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
 
   const admin = adminClient(envRes.env);
+  const runCost = readRunCost(bodyRes.body);
   const stop = enrichmentStop(bodyRes.body);
   if (stop.kind === "invalid") return json({ ok: false, error: stop.error }, 400);
   if (stop.kind === "stop") {
+    // A failed run still paid; a closed listing stopped before the paid steps.
+    await recordRunCost(
+      admin,
+      stop.placeId,
+      runCost,
+      stop.closed ? "abandoned" : "failed",
+      stop.closed ? "Google reports the place permanently closed" : "The Render task failed",
+    );
     if (stop.closed) {
       // Recorded first, so the fact stays queryable whatever the clear does.
       const recorded = await writePlace(admin, {
@@ -151,7 +163,14 @@ Deno.serve(async (req) => {
   if (unpinned.skipped.length > 0) {
     console.log(`[enrich] ${commit.placeId}: kept pinned ${unpinned.skipped.join(", ")}`);
   }
-  let patch = unpinned.update;
+  // An operator's name, Presentation or tags stick through every Enrich
+  // (MESITA-2829): the run writes around them until the operator's Reset.
+  const owned = readOperatorFields(versionRow?.enrichment_sources);
+  const unowned = stripOperatorFields(unpinned.update, owned);
+  if (unowned.skipped.length > 0) {
+    console.log(`[enrich] ${commit.placeId}: kept operator ${unowned.skipped.join(", ")}`);
+  }
+  let patch = unowned.update;
   const gallery = galleryFromPatch(patch);
   let stored: { sourceUrl: string; publicUrl: string }[] = [];
   if (gallery.length === 0) {
@@ -193,10 +212,31 @@ Deno.serve(async (req) => {
     commit.placeId,
     pairedAnalyses(stored, commit.photoAnalyses),
   );
+  // Mesita Families (MESITA-2891) live on place_profiles; the profiles view
+  // derives its column, so a write through the view would drop them. A list
+  // the operator set by hand is theirs until its Reset (MESITA-2893).
+  if (filled.families !== undefined) {
+    const familiesOwned = owned.includes("family_keys");
+    const fam = familiesOwned ? { ok: true as const } : await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: commit.placeId,
+      patch: { family_keys: filled.families },
+    });
+    if (!fam.ok) console.error(`[enrich] ${commit.placeId}: families not stored: ${fam.error}`);
+    console.log(JSON.stringify({
+      fn: "families",
+      caller: "enricher-edgefunc-write-place",
+      placeId: commit.placeId,
+      source: familiesOwned ? "operator" : "model",
+      picked: filled.families ?? [],
+      outcome: familiesOwned ? "kept" : fam.ok ? (filled.families ? "written" : "cleared") : "failed",
+    }));
+  }
   // After the profile, so the door sees this run's google_name. It writes
   // only over a name the machine owns; an operator's name stays.
-  if (filled.mesitaName) {
-    await applyInferredMesitaName(admin, commit.placeId, filled.mesitaName);
+  if (filled.mesitaName && !owned.includes("name")) {
+    await applyInferredPlaceName(admin, commit.placeId, filled.mesitaName);
   }
   await reportCrenupSteps(
     admin,
@@ -207,5 +247,6 @@ Deno.serve(async (req) => {
       gallery: { sent: gallery.length, stored: stored.length },
     }),
   );
+  await recordRunCost(admin, commit.placeId, runCost, "succeeded");
   return json({ ok: true, placeId: commit.placeId, content_state: "ready" });
 });

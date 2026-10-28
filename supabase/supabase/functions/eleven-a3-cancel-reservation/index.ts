@@ -12,7 +12,7 @@
 // Deploy: supabase functions deploy eleven-a3-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
   cancelTicket,
@@ -23,7 +23,7 @@ import {
   fireCancelNotice,
 } from "../_shared/agent-tools.ts";
 
-Deno.serve(async (req) => {
+serveJson("eleven-a3-cancel-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

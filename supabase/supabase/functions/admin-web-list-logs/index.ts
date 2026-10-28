@@ -4,7 +4,7 @@
 // Render key stays here; the console never calls Render itself.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import {
   adminClient,
   getAuthedUser,
@@ -78,7 +78,7 @@ async function findWorkflow(key: string): Promise<
   return { ok: false, error: "Enrichment workflow not found", status: 404 };
 }
 
-Deno.serve(async (req) => {
+serveJson("admin-web-list-logs", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

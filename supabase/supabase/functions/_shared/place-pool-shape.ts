@@ -43,8 +43,8 @@ export type PlaceProfileRow = {
 //   2. Attaches `family_keys` via place-taxonomy (stored / Atlas / Google).
 //      consumer "What" discovery filter reads that field straight off the
 //      wire; drop it and the filter silently matches nothing.
-// `name` is already the resolved display label (generated column, MESITA-925),
-// so cleared Mesita overrides fall back to google_name with no work here.
+// `name` is the Mesita name (MESITA-2828); a cleared name already fell back
+// to google_name in the trigger, so there is no work here.
 export function stripInternal(
   v: PlaceProfileRow,
 ): Omit<PlaceProfileRow, "embedding"> & { family_keys: string[] } {

@@ -39,7 +39,7 @@
 // Deploy: supabase functions deploy supabase-edgefunc-sync-reservationist
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
 import {
@@ -202,7 +202,7 @@ async function upsertTool(
   return { ok: true, id, action: "created" };
 }
 
-Deno.serve(async (req) => {
+serveJson("supabase-edgefunc-sync-reservationist", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

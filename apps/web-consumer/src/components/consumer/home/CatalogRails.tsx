@@ -25,7 +25,7 @@
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity ×
-// Popularity × the Selected boost, and so is every family chip. All is the
+// Popularity × Premier's tier (MESITA-2925), and so is every family chip. All is the
 // server's ONE ranked Area pool (MESITA-2379/2384):
 // Google and Mesita places merged, scored and ranked there; this screen
 // pages it (20 tiles at a time, more on scroll). A family chip ASKS ITS OWN
@@ -56,6 +56,7 @@ import {
   type AreaPool,
   type Place,
 } from "@/lib/api/places";
+import { EFError } from "@/lib/api/_invoke";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
@@ -77,9 +78,6 @@ import { RailScoreTag } from "@/components/consumer/search/search-catalog-overla
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
-import { nextRadiusChip } from "@/lib/pin-picker-state";
-import { formatKm } from "@/lib/saved-locations";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 import { SocialFeed } from "./SocialFeed";
@@ -123,7 +121,7 @@ export function homeTabOf(pathname: string): HomeTab {
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
  *  then every guest family. The guest's hearted places are not a row: they
- *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Selected are not guest choices
+ *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Places are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string }[] {
@@ -139,7 +137,9 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
+/** Tiles drawn per page when the server sends no `pageSize` (the
+ *  operator's Catalog page size, MESITA-2909); the next page appends on
+ *  scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
 
 /** The families a row asks the server for (MESITA-2438): its own key, or
@@ -180,6 +180,9 @@ export function CatalogRails() {
   const openGooglePlace = useOpenGooglePlace();
   const [pool, setPool] = useState<AreaPool | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  // Try again re-runs the fetch for the same request key (MESITA-2921): the
+  // old link pointed at the page already open, so nothing refetched.
+  const [retry, setRetry] = useState(0);
   // null = the guest's current location; a saved location = search from it.
   const origin = useActiveLocation();
   const locationSettled = useUserLocationSettled();
@@ -187,18 +190,9 @@ export function CatalogRails() {
   // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
   const onCityFallback = origin === null && coords === null && locationSettled;
   const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
-  // THE RADIUS (MESITA-2703): a saved pin's own (`origin.radiusKm`), else
-  // the operator's current-location radius, which the server applies when
-  // none is sent. "Search N km" on an empty pool widens THIS visit only: it
-  // is keyed to the location, never written to the pin.
-  const operatorKm = useOperatorRadiusKm();
-  const baseKey = areaPoolKey(base);
-  const [widen, setWiden] = useState<{ key: string; km: number } | null>(null);
-  const widenKm = widen && widen.key === baseKey ? widen.km : null;
-  const baseRadiusKm = origin?.radiusKm ?? null;
-  const from = base && widenKm !== null ? { ...base, radiusKm: widenKm } : base;
-  const searchedKm = widenKm ?? baseRadiusKm ?? operatorKm;
-  const widerKm = nextRadiusChip(searchedKm, operatorKm);
+  // NO RADIUS (MESITA-2909): the Catalog ranks every Mesita place from
+  // this point; a saved pin's radius no longer cuts anything.
+  const from = base;
   const waitingForFix = origin === null && coords === null && !locationSettled;
   // One ranking for every chip, the Map's (MESITA-2516): the question is
   // the place and the family. Saved and the Social tab read no pool, so they
@@ -234,6 +228,13 @@ export function CatalogRails() {
         setFetchError(null);
       } catch (err) {
         if (cancelled) return;
+        // The EF's code and requestId join this failure to its
+        // `catalog_page_error` log line (MESITA-2921).
+        const ef = err instanceof EFError ? err : null;
+        console.warn("[catalog] load failed", {
+          code: ef?.code ?? null,
+          requestId: ef?.body?.requestId ?? null,
+        });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
         setPool({ kind: "none", places: [] });
       }
@@ -244,7 +245,7 @@ export function CatalogRails() {
       cancelAnimationFrame(raf);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, requestKey]);
+  }, [supabase, requestKey, retry]);
 
   // A GOOGLE CARD THE GUEST OPENED, SAVED OR SHARED IS A MESITA CARD once
   // the create lands (Pato, MESITA-2683: "the profile has been created but i
@@ -265,7 +266,8 @@ export function CatalogRails() {
     () => (pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : []),
     [pool, chip, createdPlaces],
   );
-  const hasMore = shown.length > pageCount * PLACES_PAGE;
+  const pageSize = pool?.pageSize ?? PLACES_PAGE;
+  const hasMore = shown.length > pageCount * pageSize;
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
@@ -438,7 +440,7 @@ export function CatalogRails() {
   );
 
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
-    const page = paged ? list.slice(0, pageCount * PLACES_PAGE) : list;
+    const page = paged ? list.slice(0, pageCount * pageSize) : list;
     return (
       <div className="pb-6">
         <ul role="list" aria-label={label} className={PLACES_LIST}>
@@ -449,7 +451,7 @@ export function CatalogRails() {
                 {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
                     score and sub scores in the home feed"): the Search
                     map's tag above each tile, from the server's breakdown;
-                    Selected is its `selected` number, no pill (MESITA-2719).
+                    Premier's factor is its `premier` number (MESITA-2925).
                     Remove with the Search tag once the ranking is verified. */}
                 {place.area ? (
                   <li className="-mb-1.5" data-home-score-tag>
@@ -511,8 +513,8 @@ export function CatalogRails() {
       <EmptyState
         icon={Compass}
         title="Couldn't load the catalog"
-        description="Tonight's places didn't come back. Pull the tab again in a moment."
-        action={{ label: "Try again", href: CONSUMER_ROUTES.home }}
+        description="Tonight's places didn't come back. Try again in a moment."
+        action={{ label: "Try again", onClick: () => setRetry((n) => n + 1) }}
       />,
     );
   }
@@ -520,29 +522,14 @@ export function CatalogRails() {
   if (pool === null) return shell(<DiscoverFallback />);
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
-  // An empty pool around a point says how far it looked and offers the next
-  // chip (MESITA-2703); any other empty (no point, every source off, Google
-  // down) keeps the plain copy, and the server log tells those apart.
-  const pointEmpty = pool.kind === "point";
+  // The Catalog has no radius (MESITA-2909): an empty pool is an empty
+  // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (
-    pointEmpty ? (
-      <EmptyState
-        icon={Compass}
-        title={`Nothing within ${formatKm(searchedKm)} km`}
-        description="Try a wider search, or another location."
-        action={
-          widerKm !== null && base
-            ? { label: `Search ${formatKm(widerKm)} km`, onClick: () => setWiden({ key: baseKey, km: widerKm }) }
-            : undefined
-        }
-      />
-    ) : (
-      <EmptyState
-        icon={Compass}
-        title="No places here yet"
-        description="Try another location, or check back soon."
-      />
-    )
+    <EmptyState
+      icon={Compass}
+      title="No places yet"
+      description="Check back soon."
+    />
   ) : (
     <EmptyState
       icon={Compass}

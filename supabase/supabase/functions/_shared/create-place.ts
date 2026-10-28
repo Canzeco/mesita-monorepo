@@ -11,8 +11,9 @@
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
 //                   Google's own types in google_source_types, from which
-//                   the taxonomy trigger derives the Google categories and
-//                   the view the families — no model, MESITA-2836/2834)
+//                   the taxonomy trigger derives the Google categories —
+//                   no model, MESITA-2836; the families are step 7's,
+//                   MESITA-2891)
 //                   PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb. The
 //                   LIVENESS GATE is a subprocess of this step, not a rung of
@@ -23,7 +24,7 @@
 //                   Reservations, Mesita Name (through
 //                   the mesita-name-door, gate D2) and the Semantic Summary.
 //                   A later Enrich run's step 7 redoes it with rich grounding.
-//   8 embedding   → embed-only: Name vector + Summary vector of what the
+//   8 embedding   → embed-only: the Summary vector of what the
 //                   door wrote, awaited in this same function.
 //
 // Details, Description and Embedding are SHARED with the ENRICH queue — create
@@ -52,7 +53,7 @@ import { storeFirstPlaceImage } from "./store-place-images.ts";
 import { savePlaceData } from "./save-place.ts";
 import { runPlaceEmbeddingsOnUpdate } from "./place-embeddings.ts";
 import { synthesizeDoorProfile } from "./create-door-profile.ts";
-import { applyInferredMesitaName } from "./mesita-name-door.ts";
+import { applyInferredPlaceName } from "./place-name-door.ts";
 import { writePlace } from "./place-doc.ts";
 import { reportCrenupSteps, stepDone, stepFailed } from "./crenup-report.ts";
 import { loadDiscoveryConfig } from "./discovery-config.ts";
@@ -60,6 +61,7 @@ import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
+import { mainGoogleCategoryOnMesita } from "./categories.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
  *  writes (`google_found` + stars + count), built from the Details response
@@ -267,6 +269,25 @@ export async function createMinimalPlace(opts: {
   // trigger derives the Google categories (google_types, all of them kept to
   // the catalog) and the shown category from them (MESITA-2836).
   const googleTypes = googleTypesPrimaryFirst(basicsRes.primaryType, basicsRes.googleTypes);
+
+  // ── Atlas gate (MESITA-2962): the main Google category must be enabled on
+  // Mesita (catalog_membership.enabled). The Map gate reads the code map;
+  // this reads the switch Atlas lists, so a category switched off there can
+  // never be minted. Before persist, like the Map gate.
+  const main = await mainGoogleCategoryOnMesita(admin, googleTypes);
+  if (!main.enabled) {
+    return {
+      ok: false,
+      status: 422,
+      body: {
+        ok: false,
+        code: "category_not_on_mesita",
+        error: "This kind of place isn't on Mesita.",
+        category: main.slug,
+      },
+    };
+  }
+
   const place: Record<string, unknown> = {
     ...omitReviewsTileColumns({ ...basicsRes.basics }),
     ...(googleTypes[0]
@@ -366,6 +387,12 @@ export async function createMinimalPlace(opts: {
         // Categories and families are the trigger's and the view's (MESITA-2836).
         if (door.description) patch.description = door.description;
         if (door.tags) patch.tags = door.tags;
+        // Mesita Families (MESITA-2891): the door's 1–5, or none for a
+        // not-enabled main Google category; a useless reply writes nothing.
+        if (door.families !== undefined) patch.family_keys = door.families;
+        // Mesita Zone (MESITA-2937): the door's inference replaces the
+        // Google neighborhood the spine seeded; none keeps the seed.
+        if (door.zone) patch.zone = door.zone;
         // The seed for a place nobody has answered for yet; an operator's
         // channel pick supersedes it from then on (MESITA-1737).
         patch.reservations_enabled = door.reservationsLikely;
@@ -379,7 +406,7 @@ export async function createMinimalPlace(opts: {
           patch,
         });
         if (door.mesitaNameCandidate) {
-          await applyInferredMesitaName(
+          await applyInferredPlaceName(
             admin,
             saved.place_id,
             door.mesitaNameCandidate,
@@ -400,7 +427,7 @@ export async function createMinimalPlace(opts: {
         });
       }
     }
-    // 8 EMBEDDING — embed-only vectors of what the door just wrote; the
+    // 8 EMBEDDING — embed-only summary vector of what the door just wrote; the
     // embedding stamp lands where the vector write is observed
     // (place-embeddings).
     await runPlaceEmbeddingsOnUpdate(

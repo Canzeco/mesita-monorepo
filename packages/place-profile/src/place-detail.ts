@@ -54,13 +54,10 @@ export type PlaceDetail = {
   is_profile_ready: boolean;
   /** Enricher finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
-  /** Boost (MESITA-2789): the paid tier, 0 none · 1 2x · 2 5x · 3 10x
-   *  (`places.boost_tier`). Above 0 the summary shows Partner. Absent on
-   *  callers that never read it. */
+  /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
+   *  wears "Premier 2X". Absent on callers that never read it. */
   boost_tier?: number;
-  /** Mesita Selected (MESITA-2707): the operator's own pick, `places.selected`,
-   *  never bought. The Partner tab shows it on the same ladder (MESITA-2869). */
-  selected?: boolean;
   /** Consumer vote count. Progress toward the Crenup threshold. */
   request_count: number;
   request_threshold: number;
@@ -72,12 +69,17 @@ export type PlaceDetail = {
   // 2. Media
   photos: string[];
 
-  // Google atmosphere chips (Takeout, Dine-in, Live music). Empty hides the box.
+  // Mesita tags, else Google atmosphere chips (MESITA-2792). Empty hides the box.
   tags: Array<{
     slug: string;
     label: string;
     facet: string;
   }>;
+
+  /** Overview's Families box (Pato, MESITA-2924), above Tags: the
+   *  place's families as the EF names them, in family order. Empty hides the
+   *  box (an older EF sends none). */
+  families: Array<{ key: string; label: string; emoji: string }>;
 
   /** Overview's Stats box (MESITA-2866): unique members who opened this
    *  profile and who liked (saved) it, from place_activity. Absent when the
@@ -90,19 +92,13 @@ export type PlaceDetail = {
   facebook: { followers: number | null };
   instagram: { followers: number | null };
 
-  // 4. Google reviews
+  // 4. Google reviews — ANONYMOUS (Pato, MESITA-2916: "don't mention the
+  // names, just mention the stars and the comments"). No author, no
+  // avatar, no reviewer photo: the shape has no field that could draw one.
   google_reviews: Array<{
-    author: string;
     rating: number;
     quote: string;
     date: string;
-    // Optional dish / dining-room photo attached by the reviewer (Google
-    // Maps surfaces these on the review card). Shown as a thumbnail under
-    // the truncated quote. photo_aspect drives the container ratio so
-    // landscape food shots, square IG-style posts, and portrait/story
-    // images all render at their native shape.
-    photo_url?: string;
-    photo_aspect?: "square" | "portrait" | "landscape";
   }>;
 
   // 5. Menus (stored under `products`) — for restaurants the menu lives
@@ -156,6 +152,10 @@ export type PlaceDetail = {
   };
   reviews_maps: {
     google_maps_url?: string;
+    /** Google's write-review form for this place, from google_place_id
+     *  (MESITA-2916). The stored maps URL is a `?cid=` link and cannot open
+     *  the form. Absent when the payload carries no Google id. */
+    google_review_url?: string;
   };
 
   phone?: string;

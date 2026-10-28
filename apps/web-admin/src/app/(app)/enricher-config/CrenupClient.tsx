@@ -248,7 +248,7 @@ export function CrenupClient({
             <div className="mt-4">
               <p className="text-muted-foreground text-sm leading-relaxed">
                 Create mints the ugly profile without queuing the Enricher.
-                Enrichment&apos;s &ldquo;Enrich after N visits&rdquo; decides
+                Enrichment&apos;s &ldquo;Enrich after N views&rdquo; decides
                 when it runs by itself.
               </p>
               <div className="mt-4 flex flex-col gap-3">
@@ -350,7 +350,7 @@ export function CrenupClient({
               <Fields>
                 <NumberField
                   icon={<Users className="text-muted-foreground h-4 w-4" />}
-                  label="Enrich after N visits"
+                  label="Enrich after N views"
                   value={settings.requestThreshold}
                   min={1}
                   max={100}
@@ -396,8 +396,9 @@ export function CrenupClient({
                 knobs="no knobs"
               >
                 <NoKnobs>
-                  No knobs. Facts Google states. <b>mesita_name</b> is the Place
-                  editor override.
+                  No knobs. Facts Google states. The Mesita <b>name</b> is the
+                  Description step&apos;s and the Place editor&apos;s, never this
+                  step&apos;s.
                 </NoKnobs>
               </FunctionModule>
               <FunctionModule
@@ -584,14 +585,13 @@ export function CrenupClient({
                 index="8 · $"
                 flows={flowTagFor("embedding")}
                 name="Vectors"
-                blurb="Mesita Name Embedding · Semantic Summary Embedding. Two vectors, one function. Closes Enrich at 8."
+                blurb="Semantic Summary Embedding. One vector. Closes Enrich at 8."
                 knobs="locked"
               >
                 <NoKnobs>
                   Locked to <b>text-embedding-3-small</b>. It only embeds what
-                  Description wrote — never synthesizes text. One function
-                  writes both vectors. Swapping the model re-embeds the
-                  catalog.
+                  Description wrote — never synthesizes text. Swapping the
+                  model re-embeds the catalog.
                 </NoKnobs>
               </FunctionModule>
             </div>

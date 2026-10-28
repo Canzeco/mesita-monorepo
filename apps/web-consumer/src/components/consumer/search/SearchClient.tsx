@@ -19,52 +19,56 @@
 // keeps loading, the camera keeps its own rules, and typing only adds a pin
 // layer and swaps the bottom rail out. A viewport load is always just a load.
 //
-// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a Location or a
-// Place moves the camera to its coordinates and reloads the catalog there;
-// a Place becomes card ONE of the carousel — prepended after the operator's
-// cap, which governs the map query only — and its modal is
-// one more tap away, on the card or its pin. A Location (kind: "location")
-// is a camera destination: coordinates + viewport resolve on pick, never
-// per keystroke, and the viewport picks the zoom.
+// EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). Picking a place moves the
+// camera to its coordinates and reloads the catalog there; it becomes card
+// ONE of the carousel — prepended after the operator's cap, which governs
+// the map query only — and its modal is one more tap away, on the card or
+// its pin.
 //
-// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849, Pato: "only if
-// it can be a mesita place … inside the allowed google categories and above
-// the allowed popularity"). The bar already turns a Google place outside
-// Mesita's types into a Location (MESITA-2778); a Google place under the
-// Area box's Minimum Popularity arrives `underFloor` (MESITA-2724 lists it
-// last) and its pick is a destination too — the camera lands there and the
-// Area reloads there, but no card is drawn for it, because that reload hides
-// every place under the same floor. A Mesita row is a Mesita place already.
+// THE BAR SEARCHES GOOGLE'S NAMES (Pato, MESITA-2896: "Kill Mesita Name from
+// everywhere. Now we are only using Google Name which is canonic"; MESITA-2883
+// had made it Mesita names only). `deep` mode: Autocomplete + Text Search; a
+// Google row Mesita holds comes back as the Mesita place. A place neither
+// returns is not found. A Location (kind: "location") is a camera
+// destination: coordinates + viewport resolve on pick, never per keystroke,
+// and the viewport picks the zoom. Area itself makes no Google call
+// (MESITA-2872).
 //
-// A Google-only result has no preview sheet and no Add button (MESITA-2298):
-// its SECOND tap (pin or rail card) is the explicit open — get-or-create on
-// the Google Place ID, then the profile. The catalog itself carries
-// Google-only places (the grey pins), so a pin or rail-card tap reaches
-// that through handleOpenPlace, and `heldOverlay` still stashes a
-// prediction between the select tap and the open. No photo is fetched for
-// a Google-only card, here or anywhere.
+// ONLY MESITA PLACES ARE ON THE MAP (Pato, MESITA-2941). A Google-only bar
+// pick opens the Generate dialog at once — Google's preview, then
+// get-or-create, then the profile — and never lands as a pin or card ONE.
+// The Area pool's Google-only rows are dropped here, so the pins and the
+// rail hold Mesita places alone.
 //
 // Composition:
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
 //     user). Catalog pins by default; `searchPins` overlays
 //     the predictions while a query is live.
-//   • Top overlay: SearchHeader — one row; the family hides behind Filters
-//     (MESITA-2875). How many
+//   • Top overlay: SearchHeader — the bar, then the family chips
+//     (MESITA-2879). How many
 //     is the operator's (the four Area sources, MESITA-2703).
 //   • Bottom overlay: the catalog rail for the visible map, hidden while
 //     querying. Best first, in the server's order: the zoom decides how
-//     wide the set is (MESITA-2499). A guest move never reloads on its own
-//     (Pato, MESITA-2874: "a button to load instead of automatic loading"):
-//     once the camera has left reloadMinViewportPct of the last-load screen
-//     (MESITA-2732), a "Search this area" pill appears and the tap loads.
-//     The disc, a bar pick and a family chip still load where they land.
-//     The rail's centre card is always the selected pin.
+//     wide the set is (MESITA-2499). A guest move reloads when the map comes to
+//     rest, at most once every reloadIdleSec counted from the last reload
+//     (MESITA-2451), and only if the camera has moved at least
+//     reloadMinViewportPct of that last-reload screen (MESITA-2732).
+//     Only the guest's own moves reload — a tap's reveal pan, the disc
+//     and a bar pick do not. The rail's centre card is always the selected pin.
 //
 // THE CAMERA NEVER TELEPORTS (MESITA-2440): it moves only on an explicit
 // ask, as a CameraIntent — the rules live in camera-intent.ts. A rail
 // scroll rings the pin and leaves the map where the guest put it.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { usePathname } from "next/navigation";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import type { Place } from "@/lib/api/places";
 import { apiFetchNearbyCatalog } from "@/lib/api/places";
@@ -83,7 +87,7 @@ import {
 } from "@/lib/use-user-location";
 import { MAP_USER_ZOOM, MONTERREY_CENTER } from "@/lib/map-defaults";
 import { placeHref } from "@/lib/place-route";
-import { useOpenGooglePlace } from "@/lib/use-open-google-place";
+import type { OpenedGooglePlace } from "@/lib/use-open-google-place";
 import { useOpenPlaceHref } from "@/lib/use-open-place-href";
 import {
   createdPlaceId,
@@ -103,16 +107,20 @@ import {
   predictionOnMesita,
 } from "./search-pins";
 import {
+  mapFingerIsDown,
   SearchMap,
   type SearchMapPin,
   type ViewportBox,
   type ViewportMeta,
 } from "./SearchMap";
 import {
+  clampReloadIdleSec,
   clampReloadMinViewportPct,
   gpsFixMovesCamera,
   isUnderSight,
   reloadMoveMeetsMin,
+  reloadWaitMs,
+  RELOAD_IDLE_SEC_DEFAULT,
   RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
   selectionMovesCamera,
   type CameraIntent,
@@ -121,14 +129,15 @@ import {
 import { SearchBar } from "./SearchBar";
 import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
-import type { AddState } from "./add-state";
 import {
+  RAIL_LEAD_PAGES,
   RAIL_PAGE_SHARE,
   RAIL_PAGE_SIZE,
-  SearchHereButton,
   SearchRailOverlay,
   type LoadCoords,
 } from "./search-catalog-overlays";
+import { AddPlaceSheet } from "./AddPlaceSheet";
+import { GeneratePlaceDialog, type GenerateTarget } from "./GeneratePlaceDialog";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -147,12 +156,14 @@ import {
   withDistances,
 } from "./search-utils";
 
-// Word is ONE search (MESITA-2322): Deep (Autocomplete · Text Search ·
-// Mesita names) once the guest has stopped typing for Discovery › Word's
+// Word is ONE search (MESITA-2322): Google's Autocomplete + Text Search
+// (MESITA-2896) once the guest has stopped typing for Discovery › Word's
 // idle seconds. The EF returns that number with every answer; until the
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
+/** A due reload under a resting finger checks again this often. */
+const FINGER_RECHECK_MS = 250;
 
 /**
  * A live searchbar pick (MESITA-1405). `place` is the chosen place for card
@@ -204,7 +215,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // session spans the keystrokes up to ONE selection — so the token is
   // regenerated after every selection (Info / Add tap) and whenever the
   // results panel is dismissed, scoping each autocomplete run properly.
-  const openGooglePlace = useOpenGooglePlace();
   // Every place open on this screen: the surface URL, and a full load when
   // a push never moves the screen (MESITA-2816).
   const openPlaceHref = useOpenPlaceHref();
@@ -213,13 +223,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const idleMsRef = useRef(DEFAULT_IDLE_MS);
   const railRefs = useRef(new Map<string, HTMLElement | null>());
   const railScrollRef = useRef<HTMLDivElement | null>(null);
-  // The header's Add disc focuses the bar: a new place is added by searching
-  // Google and tapping the result (MESITA-2876).
-  const barInputRef = useRef<HTMLInputElement | null>(null);
 
   // The opening screen owns get-or-create now (MESITA-2311), so these stay
   // empty: no Search row is mid-add, and a re-tap goes back through it.
-  const [addStates] = useState<Record<string, AddState>>({});
   const [addedProfiles] = useState<Record<string, string>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Overlay pin first-tap stash so a later tap can still open (the profile,
@@ -230,7 +236,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // 1-based) — powers the "3 / 12 places" pager so the horizontal rail
   // reads as browsable.
   const [railIndex, setRailIndex] = useState(0);
-  // The family pick (none, or one family; the Filters sheet) rides this store and the
+  // The family chips (none, or one family) ride this store and the
   // catalog call. How many and the Minimum Popularity are the
   // operator's (Admin › Discovery); how wide is the visible map
   // (MESITA-2499). The server is the one selector and ranks best first —
@@ -271,10 +277,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // card swaps in place, photo and profile link, and the next real load
   // brings the server's own card. The bar pick's card swaps too.
   const createdPlaces = useCreatedPlaces();
+  // ONLY MESITA PLACES ON THE MAP AND THE RAIL (Pato, MESITA-2941: "in the
+  // carousel only show places that already exist"). The Area pool still
+  // carries Google-only rows (Home reads it too); this screen drops them
+  // after the created-places swap, so a place generated here stays.
   const nearby = useMemo(
     () =>
       withDistances(
-        withCreatedPlaces(places, createdPlaces).map(enrichPlaceOverview),
+        withCreatedPlaces(places, createdPlaces)
+          .filter(catalogPlaceOnMesita)
+          .map(enrichPlaceOverview),
         distanceCenter,
       ),
     [places, createdPlaces, distanceCenter],
@@ -326,6 +338,28 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // a flicker — so this stays true until the query is really gone.
   const [barFocused, setBarFocused] = useState(false);
   const searchMode = barFocused || querying;
+  // ADD A PLACE IS ITS OWN SHEET (Pato, MESITA-2902: "open a new modal and
+  // write a searchbar of the place to add … and click the create new
+  // profile"): the rail's Add card opens AddPlaceSheet; MESITA-2885's Add
+  // mode on this bar is gone.
+  const [addOpen, setAddOpen] = useState(false);
+  // Generate's confirm (MESITA-2935). The target outlives `open` so the
+  // dialog's exit fade keeps its text.
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateTarget, setGenerateTarget] = useState<GenerateTarget | null>(
+    null,
+  );
+  // The hand-off (MESITA-2957: "transition from second image to fourth image
+  // directly, even if we await in the second image"). A landed create keeps
+  // the dialog up and pushes the profile; the dialog closes only once the
+  // address has moved, so the profile is what replaces it — never bare
+  // Search, never the blank frame of the push's hard-load fallback.
+  const pathname = usePathname();
+  const [handoffFrom, setHandoffFrom] = useState<string | null>(null);
+  if (handoffFrom !== null && pathname !== handoffFrom) {
+    setHandoffFrom(null);
+    setGenerateOpen(false);
+  }
 
   // Search biases to the CAMERA, not the device: on a map you have panned to
   // another neighbourhood, results near your house are the wrong answer.
@@ -401,19 +435,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Where the catalog was last ASKED for — set when the request leaves, so
   // a fix landing mid-flight compares against the load already coming.
   const lastFetchedCenter = useRef<{ lat: number; lng: number } | null>(null);
+  const reloadIdleMsRef = useRef(RELOAD_IDLE_SEC_DEFAULT * 1000);
   const reloadMinViewportPctRef = useRef(RELOAD_MIN_VIEWPORT_PCT_DEFAULT);
   // The view the last catalog load asked for: millimetre pans are measured
   // against this screen, not the last idle (MESITA-2732).
   const lastReloadBoxRef = useRef<ViewportBox | null>(null);
-  // The guest has moved far enough off the last load to offer a reload
-  // (MESITA-2874): the "Search this area" pill shows; its tap loads.
-  const [areaMoved, setAreaMoved] = useState(false);
+  // When the last catalog load left (Date.now()): the reload throttle
+  // counts from here, not from the last move (MESITA-2451).
+  const lastLoadAtRef = useRef<number | null>(null);
+  const pendingReload = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A guest move whose reload has not left yet (MESITA-2510): a resize's
+  // bounds_changed cancels the timer, and the resize idle re-arms it.
+  const moveUnservedRef = useRef(false);
   // A tap picked the card, so centre it even when the pager still names
   // it. A flick never sets this — scrollIntoView would fight the finger.
   const centerOnSelect = useRef(false);
   // The pin the camera last FLEW to on a second tap (MESITA-2488): its next
   // tap opens. Cleared the moment the selection moves to anything else.
   const arrivedRef = useRef<string | null>(null);
+
+  const clearPendingReload = useCallback(() => {
+    if (pendingReload.current == null) return;
+    clearTimeout(pendingReload.current);
+    pendingReload.current = null;
+  }, []);
 
   // The view as it is now, for the live readout (MESITA-2512): every camera
   // change, once a frame. It never loads.
@@ -440,8 +485,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const loadAt = useCallback(
     async (nextCenter: Coords, box: ViewportBox | null) => {
       lastFetchedCenter.current = nextCenter;
+      lastLoadAtRef.current = Date.now();
       lastReloadBoxRef.current = box;
-      setAreaMoved(false);
+      moveUnservedRef.current = false;
       const gen = ++viewportGen.current;
       setCatalogLoading(true);
       setFetchError(null);
@@ -453,6 +499,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
+        reloadIdleMsRef.current =
+          clampReloadIdleSec(result.reloadIdleSec) * 1000;
         reloadMinViewportPctRef.current = clampReloadMinViewportPct(
           result.reloadMinViewportPct,
         );
@@ -483,6 +531,43 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [filters.familyKeys, supabase],
   );
 
+  // RELOAD WHEN THE MAP COMES TO REST, AT MOST ONCE EVERY reloadIdleSec
+  // FROM THE LAST RELOAD (Pato, MESITA-2451: "if more than n seconds have
+  // happened since last reload"), and only if the camera has left at least
+  // reloadMinViewportPct of that last-reload screen (Pato, MESITA-2732).
+  // A guest move's idle arms one timer for the rest of the gap (none
+  // left: at once); any camera move cancels it (SearchMap's
+  // onCameraMoveStart) and the idle that ends that move arms it again. A
+  // finger resting on the map defers it until the finger lifts. A rest
+  // under the min move does not load and does not rebase the origin, so
+  // successive tiny pans still accumulate.
+  const armIdleReload = useCallback(() => {
+    clearPendingReload();
+    const fire = () => {
+      if (mapFingerIsDown()) {
+        pendingReload.current = setTimeout(fire, FINGER_RECHECK_MS);
+        return;
+      }
+      pendingReload.current = null;
+      const box = lastBoxRef.current;
+      if (!box) return;
+      if (
+        !reloadMoveMeetsMin(
+          lastReloadBoxRef.current,
+          box,
+          reloadMinViewportPctRef.current,
+        )
+      ) {
+        return;
+      }
+      void loadAt(viewportSight(box), box);
+    };
+    pendingReload.current = setTimeout(
+      fire,
+      reloadWaitMs(lastLoadAtRef.current, Date.now(), reloadIdleMsRef.current),
+    );
+  }, [clearPendingReload, loadAt]);
+
   const onFirstViewport = useCallback(
     (box: ViewportBox) => {
       lastBoxRef.current = box;
@@ -491,49 +576,41 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     [loadAt],
   );
 
-  // A GUEST MOVE NEVER RELOADS ON ITS OWN (Pato, MESITA-2874: "a button to
-  // load instead of automatic loading"; was MESITA-2440/2451's reload at
-  // rest). Once the camera has left reloadMinViewportPct of the last-load
-  // screen (MESITA-2732), the "Search this area" pill shows; a rest under
-  // that leaves it hidden, so successive tiny pans still accumulate.
   const onUserViewport = useCallback(
     (box: ViewportBox, meta: ViewportMeta) => {
       markViewport(box);
-      // A resize keeps the camera (MESITA-2510): nothing to offer.
-      if (meta.resized) return;
+      if (meta.resized) {
+        // Nothing moved the camera — the map was resized (MESITA-2510). Not
+        // the guest's move, so it never reloads; but a resize's own
+        // bounds_changed cancelled any pending reload, so a guest move that
+        // has not loaded yet is re-armed.
+        if (moveUnservedRef.current) armIdleReload();
+        return;
+      }
       if (meta.programmatic) {
-        // A move the page made (a tap's reveal, the disc, a bar pick) loaded
-        // at its target if it needed to. Rebase the origin the GPS
-        // staleness check reads.
+        // A move the page made (a tap's reveal, the disc, a bar pick) does
+        // not reload; an ask that needed a new catalog already loaded it at
+        // its target. Rebase the origin the GPS staleness check reads.
         lastFetchedCenter.current = viewportSight(box);
+        clearPendingReload();
         return;
       }
       userMovedRef.current = true;
-      if (
-        reloadMoveMeetsMin(
-          lastReloadBoxRef.current,
-          box,
-          reloadMinViewportPctRef.current,
-        )
-      ) {
-        setAreaMoved(true);
-      }
+      moveUnservedRef.current = true;
+      armIdleReload();
     },
-    [markViewport],
+    [armIdleReload, clearPendingReload, markViewport],
   );
 
-  const searchThisArea = useCallback(() => {
-    const box = lastBoxRef.current;
-    if (!box) return;
-    void loadAt(viewportSight(box), box);
-  }, [loadAt]);
+  useEffect(() => () => clearPendingReload(), [clearPendingReload]);
 
   // A family chip changes the Area pool (`loadAt` changes with it). How
   // many stays the operator's. The query bar never reads these filters.
   useEffect(() => {
     if (!lastFetchedCenter.current || !lastBoxRef.current) return;
+    clearPendingReload();
     void loadAt(viewportSight(lastBoxRef.current), lastBoxRef.current);
-  }, [loadAt]);
+  }, [clearPendingReload, loadAt]);
 
   // A GPS FIX MOVES THE BLUE DOT, NOT THE MAP (MESITA-2440). Only the fix
   // the location disc asked for, or the first one when nothing else has
@@ -569,10 +646,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               },
         );
         if (catalogIsStale(lastFetchedCenter.current, fix)) {
+          clearPendingReload();
           void loadAt(fix, boxAtSight(lastBoxRef.current, fix));
         }
       },
-      [askCamera, loadAt],
+      [askCamera, clearPendingReload, loadAt],
     ),
   );
 
@@ -587,9 +665,10 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     }
     askCamera({ kind: "center", lat: location.lat, lng: location.lng });
     if (catalogIsStale(lastFetchedCenter.current, location)) {
+      clearPendingReload();
       void loadAt(location, boxAtSight(lastBoxRef.current, location));
     }
-  }, [askCamera, loadAt, location, locate]);
+  }, [askCamera, clearPendingReload, loadAt, location, locate]);
 
   // End the current Places autocomplete session and mint the next one.
   const resetSearchSession = useCallback(() => {
@@ -622,34 +701,40 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   );
 
   // Get-or-create (MESITA-2298): the explicit open is the ONLY call that
-  // creates a Mesita Place. A held Google Place ID comes back `created:
-  // false` and opens as is; a new one is live immediately, ugly, and waits
-  // for votes on the Enrich tab. Nothing creates on render or on a pin tap.
-  // Reached only from `openGoogleOnly`. The tap goes to the opening screen at
-  // once (MESITA-2311), which draws the card the guest tapped as the profile
-  // with Google's photo and a Creating fact before its category while
-  // get-or-create runs there, then becomes the profile (MESITA-2307). The
-  // catalog row rides along when the open came from a pin or a rail card;
-  // a bare prediction carries its name and address.
+  // creates a Mesita Place. Nothing creates on render or on a pin tap.
+  // Reached only from `openGoogleOnly`. The tap asks first (Pato,
+  // MESITA-2935): the Generate dialog names the place, its Generate runs
+  // get-or-create and waits, and only the REAL profile opens — no draft
+  // profile with a Creating fact. The catalog row's name and address ride
+  // along when the open came from a rail card or a pin.
   const openGoogleProfile = useCallback(
     (prediction: PlacePrediction, card?: Place) => {
-      resetSearchSession();
-      openGooglePlace(
-        card ?? {
-          name: prediction.mainText,
-          google_place_id: prediction.placeId,
-          address: prediction.secondaryText || null,
-        },
-      );
+      setGenerateTarget({
+        gid: prediction.placeId,
+        name: card?.name || prediction.mainText,
+        address: card?.address || prediction.secondaryText || null,
+      });
+      setGenerateOpen(true);
     },
-    [openGooglePlace, resetSearchSession],
+    [],
+  );
+
+  // No toast on success: the profile opening is the payoff, and its Enrich
+  // tab asks for votes (design review D7).
+  const onGenerated = useCallback(
+    (opened: OpenedGooglePlace) => {
+      setHandoffFrom(pathname);
+      resetSearchSession();
+      openPlaceHref(opened.href);
+    },
+    [openPlaceHref, pathname, resetSearchSession],
   );
 
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
   // (MESITA-2298): a row this session already opened goes straight to its
   // profile; a Mesita row opens as Mesita; a Google-only row runs
-  // get-or-create and opens. No preview, no photo, no Add button. The bar
-  // pick never lands here — it anchors.
+  // get-or-create and opens. A Google-only bar pick lands here too
+  // (MESITA-2941); a Mesita bar pick anchors.
   const openGoogleOnly = (prediction: PlacePrediction, card?: Place) => {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
@@ -688,6 +773,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         ? { kind: "fit", bounds: camera.bounds }
         : { kind: "center", lat: camera.lat, lng: camera.lng },
     );
+    clearPendingReload();
     const target = { lat: camera.lat, lng: camera.lng };
     // A Location loads the area it fits; a Place, the view it pans to.
     void loadAt(
@@ -707,19 +793,15 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     updateQuery("");
   };
 
-  // EVERY BAR PICK ANCHORS THE MAP — both entities (MESITA-1405). A Place
-  // stops opening its modal from the bar: the camera lands on the place,
-  // the catalog reloads there, and the modal is one more tap away on the
-  // card or its pin. A Google-only pick anchors too — the sheet moves to
-  // the second tap, the gesture the grey pin already speaks, so the rule
-  // has no exception to learn. The operator's cap never vetoes any of it;
-  // the Area floor does veto the CARD (MESITA-2849), never the anchor.
+  // EVERY BAR PICK ANCHORS THE MAP (MESITA-1405). A Place stops opening
+  // its modal from the bar: the camera lands on the place, the catalog
+  // reloads there, and the modal is one more tap away on the card or its
+  // pin. The operator's cap never vetoes it.
   const handleBarPick = (prediction: PlacePrediction) => {
     if (prediction.kind === "location") {
       // A Location is a camera destination, never a card. Coordinates are
       // resolved ON PICK — one Details call per selection, never per
-      // keystroke — and the viewport decides the zoom: a city opens wide,
-      // a neighbourhood close.
+      // keystroke — and the viewport decides the zoom.
       void (async () => {
         try {
           const resolved = await apiResolveLocationAnchor(
@@ -740,35 +822,18 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       })();
       return;
     }
-    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
-    // the camera lands on it and the Area reloads there, with no card ONE —
-    // that reload hides every place under the floor, so a card for it would
-    // be a place Mesita does not list. Only a row with its own point can be
-    // a destination; without one it falls through to the no-coordinates
-    // path below, which says so.
-    if (
-      prediction.underFloor &&
-      !predictionOnMesita(prediction) &&
-      typeof prediction.lat === "number" &&
-      typeof prediction.lng === "number"
-    ) {
-      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
+    // A GOOGLE-ONLY PLACE OPENS GENERATE AT ONCE (Pato, MESITA-2941: "if
+    // the place is not in mesita, directly open the modal, don't show it in
+    // the map as if it existed"). No camera move, no pin, no card ONE; the
+    // dialog previews Google's listing before anything is created.
+    if (!predictionOnMesita(prediction)) {
+      openGoogleOnly(prediction);
       return;
     }
     // The catalog's own row wins the card — it carries photos and the
     // real distance. The synthesized stub covers picks outside the
     // snapshot; either way the EF already shipped coordinates on the row.
-    const own =
-      (prediction.mesitaId
-        ? nearby.find((p) => p.id === prediction.mesitaId)
-        : null) ??
-      nearby.find(
-        (p) =>
-          (p.google_place_id ??
-            (p.googleOnly || p.from_google ? p.slug : null)) ===
-          prediction.placeId,
-      ) ??
-      matchPredictionToPlace(prediction, nearby);
+    const own = matchPredictionToPlace(prediction, nearby);
     const anchorRow =
       own && typeof own.lat === "number" && typeof own.lng === "number"
         ? own
@@ -795,8 +860,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   };
 
   // A rail card's tap is THE explicit open (Pato, MESITA-2824: a tap that
-  // only selected read as "nothing opens"). A Google-only card goes to its
-  // opening screen, which is where get-or-create runs — the tap itself
+  // only selected read as "nothing opens"). A Google-only card opens the
+  // Generate dialog, whose confirm runs get-or-create — the tap itself
   // creates nothing (MESITA-2305 holds: no create on a select, a pin's
   // first tap, a prefetch or a render).
   const handleOpenPlace = (place: Place) => {
@@ -923,15 +988,22 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     if (!el || catalog.length === 0) return;
     const page = el.clientWidth * RAIL_PAGE_SHARE;
     if (page <= 0) return;
-    // railIndex counts pages; each page stacks RAIL_PAGE_SIZE cards
-    // (MESITA-2878).
-    const pageCount = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
-    const next = railCenterIndex(el.scrollLeft, page, pageCount);
-    setRailIndex(next);
-    const onPage = catalog.slice(
-      next * RAIL_PAGE_SIZE,
-      (next + 1) * RAIL_PAGE_SIZE,
+    // railIndex counts PLACE pages, RAIL_PAGE_SIZE cards each. The Add card
+    // is scroll page 0 (MESITA-2886), so place page n is scroll page n + 1.
+    // Resting on the Add card changes nothing: the ring stays where it was,
+    // and railIndex is left alone so the centring effect does not pull the
+    // rail back off it.
+    const placePages = Math.ceil(catalog.length / RAIL_PAGE_SIZE);
+    const scrolled = railCenterIndex(
+      el.scrollLeft,
+      page,
+      placePages + RAIL_LEAD_PAGES,
     );
+    if (scrolled < RAIL_LEAD_PAGES) return;
+    const next = scrolled - RAIL_LEAD_PAGES;
+    setRailIndex(next);
+    const first = next * RAIL_PAGE_SIZE;
+    const onPage = catalog.slice(first, first + RAIL_PAGE_SIZE);
     // A card already selected on the centred page keeps the ring — a tap
     // on the lower card scrolls here too, and must not hand it to the top.
     if (onPage.some((p) => p.id === railSelectedId)) return;
@@ -978,11 +1050,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     });
   }, [railSelectedId, catalog, railIndex]);
 
+  // THE RAIL RESTS ON THE SELECTED CARD'S PAGE: a new set of places, or the
+  // rail coming back after the bar, puts it (place #1 on a fresh set) in
+  // the centre at once. Before paint, so nothing slides. The scroll this
+  // sets fires onScroll, which writes railIndex and the ring.
+  const catalogKey = catalog.map((p) => p.id).join("|");
+  const railShown = !searchMode && catalog.length > 0;
+  useLayoutEffect(() => {
+    const el = railScrollRef.current;
+    if (!el || !railShown) return;
+    const idx = catalog.findIndex((p) => p.id === railSelectedId);
+    const page = idx < 0 ? 0 : Math.floor(idx / RAIL_PAGE_SIZE);
+    // Past the Add card (scroll page 0, MESITA-2886): it waits to the left.
+    el.scrollLeft = (page + RAIL_LEAD_PAGES) * el.clientWidth * RAIL_PAGE_SHARE;
+    // Only a new set or the rail's return re-rests it; a selection change
+    // scrolls through the centring effect above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogKey, railShown]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
-        location disc · query bar · Add · Filters · Ask AI (MESITA-2875: no
-        chip row; MESITA-2876: Add); the bar's results and the load error hang over the map's top edge. The pair that keeps the disc
+        location disc · query bar · Ask AI, then the family chips (MESITA-2879
+        undid MESITA-2875/2876's one row); the bar's results and the load
+        error cover the chips and hang over the map's top edge. The pair that keeps the disc
         visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
       <SearchHeader
         locate={
@@ -993,10 +1084,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             onClick={recentreOnGuest}
           />
         }
-        onAdd={() => barInputRef.current?.focus()}
+        chipsHidden={querying}
         bar={
           <SearchBar
-            inputRef={barInputRef}
             query={query}
             showClear={query.length > 0}
             onQueryChange={updateQuery}
@@ -1006,9 +1096,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           />
         }
       >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does: they
-          hang just under the band (MESITA-2875 removed the chip row they
-          used to cover, MESITA-2417/2487).
+        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
+          chip row is not drawn while querying (Pato, MESITA-2487, was
+          MESITA-2417's "cover the chips"), so they hang just under the bar.
 
           THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
           claimed 70% of the viewport whether it held two rows or ten is what
@@ -1022,8 +1112,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
               searching={searching}
               searchError={searchError}
               predictions={predictions}
-              addStates={addStates}
               onPick={handleBarPick}
+              onAction={openGoogleOnly}
               onClearSearch={() => updateQuery("")}
               onRetry={() => {
                 setSearchError(null);
@@ -1056,6 +1146,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onSelectPin={handleSelectPin}
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
+          onCameraMoveStart={clearPendingReload}
           onLiveViewport={setLiveBox}
         />
         {/* THE CAROUSEL FLOATS OVER THE MAP (Pato, MESITA-2670: "remove the
@@ -1063,11 +1154,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             over the map, and the metadata must not be shown"). The band under
             the map (MESITA-2506/2613) and its readout are gone. Search mode
             still hides it: its cards are the nearby catalog, not the results. */}
-        {/* The pill hangs at the map's top, Google Maps' place for it; the tap
-            loads and hides it (loadAt clears `areaMoved`). */}
-        {areaMoved && !searchMode && (
-          <SearchHereButton onClick={searchThisArea} />
-        )}
         {!searchMode && (
           <SearchRailOverlay
             places={catalog}
@@ -1076,11 +1162,30 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
             railScrollRef={railScrollRef}
             onRailScroll={handleRailScroll}
             onOpenPlace={handleOpenPlace}
+            onAdd={() => setAddOpen(true)}
             setRailCardRef={(placeId, el) => {
               railRefs.current.set(placeId, el);
             }}
           />
         )}
+        {/* The Add card's sheet: a Google search whose row button generates
+            the profile (through the Generate dialog, MESITA-2935) or opens
+            the Mesita place (MESITA-2902). */}
+        <AddPlaceSheet
+          open={addOpen}
+          onClose={() => setAddOpen(false)}
+          origin={searchOrigin}
+          onPick={openGoogleOnly}
+        />
+        <GeneratePlaceDialog
+          open={generateOpen}
+          target={generateTarget}
+          onClose={() => {
+            setHandoffFrom(null);
+            setGenerateOpen(false);
+          }}
+          onGenerated={onGenerated}
+        />
       </div>
     </div>
   );

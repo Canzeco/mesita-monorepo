@@ -8,7 +8,7 @@ import type { PlaceDetail } from "./place-detail";
 function detail(over: Record<string, unknown> = {}): PlaceDetail {
   return placeRowToDetail({
     id: "p-1",
-    mesita_name: "Lupita",
+    name: "Lupita",
     enriched_at: "2026-01-01T00:00:00Z",
     category_label: "Restaurant",
     reservations_enabled: true,
@@ -20,7 +20,7 @@ describe("member preview edges", () => {
   it("keeps a long name and drops an unknown distance", () => {
     const name = "Casa de la Abuela Lupita y los Compadres del Centro Histórico";
     const html = renderToStaticMarkup(
-      <PlaceProfile place={detail({ mesita_name: name })} scrollLabel="Member profile preview" />,
+      <PlaceProfile place={detail({ name: name })} scrollLabel="Member profile preview" />,
     );
     expect(html).toContain(name);
     expect(html).not.toContain("- km");
@@ -33,11 +33,11 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Reviews", "Products", "Partner"]) {
+    for (const label of ["Overview", "Reviews", "Products", "Premier"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
-    // Visits enrich a place now; the guest never votes (MESITA-2642).
+    // Views enrich a place now; the guest never votes (MESITA-2642).
     expect(html).not.toContain("Vote to enrich");
     expect(html).not.toContain("Community votes");
   });
@@ -126,7 +126,7 @@ describe("member preview edges", () => {
     expect(facebookAt).toBeGreaterThan(instagramAt);
     expect(html).toContain("from-purple-600");
     expect(html).toContain("bg-[#1877F2]");
-    expect(html).toContain("bg-[#EA4335]");
+    expect(html).toContain('fill="#4285F4"');
     expect(html).toContain(">-<");
     expect(html).not.toContain(">Not connected<");
     expect(html).toContain(">Instagram<");
@@ -159,7 +159,7 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Products");
     expect(html).not.toContain(">Menu<");
-    expect(html).toContain("Partner");
+    expect(html).toContain("Premier");
     // No Soon pill in the strip (MESITA-2631); the screen says it.
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
@@ -194,7 +194,7 @@ describe("member preview edges", () => {
   it("does not treat a listed-false row as hidden", () => {
     const place = placeRowToDetail({
       id: "p-1",
-      mesita_name: "Hidden",
+      name: "Hidden",
       listed: false,
       enriched_at: "2026-01-01",
     });

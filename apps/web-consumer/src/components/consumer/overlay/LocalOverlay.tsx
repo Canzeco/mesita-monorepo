@@ -1,7 +1,7 @@
 "use client";
 
 import { Z_LOCAL_OVERLAY } from "@/lib/z-index";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import {
@@ -72,6 +72,81 @@ function useEscape(active: boolean, onClose: () => void) {
   }, [active, onClose]);
 }
 
+// Focus in, focus back (MESITA-2939). Opening an overlay used to leave
+// keyboard and screen-reader focus on the control behind the scrim; closing
+// one dropped it on <body>. On open: remember what had focus, and once the
+// panel mounts move focus to its first actionable control, or to the panel
+// itself. A text field is never the first stop: focusing it pops the phone
+// keyboard over a sheet the guest has not read yet, so the panel takes focus
+// instead. A child that already placed focus inside (GeneratePlaceDialog's
+// per-phase focus) is left alone. On close: return focus to the opener if it
+// is still in the document and focus has not moved elsewhere meanwhile.
+const ACTIONABLE =
+  'button:not([disabled]):not([tabindex="-1"]), a[href]:not([tabindex="-1"]), input:not([disabled]):not([type="hidden"]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])';
+
+function isTextField(el: Element) {
+  if (el instanceof HTMLTextAreaElement) return true;
+  if (!(el instanceof HTMLInputElement)) return false;
+  return ![
+    "button",
+    "checkbox",
+    "radio",
+    "submit",
+    "reset",
+    "range",
+    "color",
+    "file",
+    "image",
+  ].includes(el.type);
+}
+
+function useOverlayFocus(open: boolean) {
+  const opener = useRef<HTMLElement | null>(null);
+  const panel = useRef<HTMLDivElement | null>(null);
+
+  const remember = useCallback((within: HTMLElement | null) => {
+    if (opener.current) return;
+    const active = document.activeElement;
+    if (
+      active instanceof HTMLElement &&
+      active !== document.body &&
+      !within?.contains(active)
+    )
+      opener.current = active;
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    remember(panel.current);
+    return () => {
+      const back = opener.current;
+      opener.current = null;
+      const active = document.activeElement;
+      const stray =
+        !active ||
+        active === document.body ||
+        (panel.current?.contains(active) ?? false);
+      if (back?.isConnected && stray) back.focus({ preventScroll: true });
+    };
+  }, [open, remember]);
+
+  // Callback ref: the panel mounts a frame or two after `open` flips
+  // (presence + portal resolve), so an effect on `open` would find nothing.
+  return useCallback(
+    (node: HTMLDivElement | null) => {
+      panel.current = node;
+      if (!node || node.contains(document.activeElement)) return;
+      remember(node);
+      const first = node.querySelector<HTMLElement>(ACTIONABLE);
+      const target = first && !isTextField(first) ? first : node;
+      // preventScroll: the panel is still translated off-screen / scaled
+      // down for its enter transition.
+      target.focus({ preventScroll: true });
+    },
+    [remember],
+  );
+}
+
 // Resolves the card portal target after mount (SSR-safe). Falls back to
 // in-place rendering if the card isn't in the DOM (tests, storybook).
 function useCardContainer() {
@@ -132,6 +207,7 @@ export function LocalSheet({
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
+  const panelRef = useOverlayFocus(open);
 
   if (!mounted) return null;
 
@@ -159,8 +235,11 @@ export function LocalSheet({
           )}
         />
         <div
+          ref={panelRef}
+          tabIndex={-1}
           className={cn(
             SEMI_MODAL_PANEL_CLASS,
+            "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
             shown ? "translate-y-0" : "translate-y-full",
@@ -189,15 +268,17 @@ export function LocalDialog({
   /** Appear and disappear at once: no fade, no scale, no exit delay
    *  (Social's person card, MESITA-2546). Off for every other dialog. */
   instant?: boolean;
-  /** A tall dialog: the panel stops at the overlay's height and its child
-   *  is the scroller (Social's person card, MESITA-2845). Still sized by its
-   *  content below that. Off for every other dialog. */
+  /** A tall dialog: the panel is always the overlay's full height and its
+   *  child is the scroller (Social's person card, MESITA-2845). Never sized
+   *  by its content, so its top never moves with it (MESITA-2965). Off for
+   *  every other dialog. */
   scroll?: boolean;
 }) {
   const presence = useLocalPresence(open);
   const mounted = instant ? open : presence.mounted;
   const shown = instant ? open : presence.shown;
   useEscape(open, onClose);
+  const panelRef = useOverlayFocus(open);
 
   if (!mounted) return null;
 
@@ -228,9 +309,11 @@ export function LocalDialog({
           )}
         />
         <div
+          ref={panelRef}
+          tabIndex={-1}
           className={cn(
-            "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border",
-            scroll && "flex max-h-full min-h-0 flex-col",
+            "border-border bg-popover shadow-elev relative w-full max-w-sm overflow-hidden rounded-3xl border outline-none",
+            scroll && "flex h-full min-h-0 flex-col",
             !instant &&
               "transition-[opacity,transform] duration-300 motion-reduce:transition-none",
             !instant && OVERLAY_EASE,

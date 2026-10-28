@@ -1,10 +1,11 @@
-// The four Discovery signals (MESITA-2327): continuous scores in [0, 1],
-// defined once and reused by the pipelines that name them.
+// The Discovery signals (MESITA-2327): continuous scores in [0, 1],
+// defined once and reused by the pipelines that name them. name_similarity
+// left with the Mesita name vector (MESITA-2896/2900): Google's name is
+// canonical.
 //
-//   name_similarity         Name     · the Name pipeline
 //   description_similarity  Description · the Deep pipeline
-//   proximity               Proximity · the Area pipeline
-//   popularity              Popularity · the Area pipeline
+//   proximity               Proximity · the Catalog pipeline (and Chat)
+//   popularity              Popularity · the Map and Catalog pipelines
 //
 // A signal scores; it never excludes (that is a gate's job, area-score.ts).
 // Each one states its own missing-data policy here, beside the formula, so a
@@ -19,40 +20,29 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
-/** The radius divisor k (MESITA-2720): Proximity is ½ at radius ÷ k, so
- *  an edge place scores 1 ÷ (1 + k) whatever the radius. The operator's
- *  number (`params.proximity.radiusDivisor`); 2 puts half credit halfway to
- *  the edge and the edge at ⅓, about the ×3 spread Popularity has between a
- *  weak and a strong place, so neither signal drowns the other. */
-export const PROXIMITY_RADIUS_DIVISOR_DEFAULT = 2;
-export const PROXIMITY_RADIUS_DIVISOR_MIN = 0.1;
-export const PROXIMITY_RADIUS_DIVISOR_MAX = 10;
-
-/** Distance for half credit (km): the request's radius ÷ the divisor
- *  (Pato, MESITA-2720: "the half distance parameter must be somehow
- *  proportional to the search radius … so it's a division"). A divisor
- *  that is not positive reads the default. */
-export function halfDistanceKm(radiusKm: number, divisor: number): number {
-  const k = Number.isFinite(divisor) && divisor > 0 ? divisor : PROXIMITY_RADIUS_DIVISOR_DEFAULT;
-  return radiusKm / k;
-}
+/** THE HALF DISTANCE h (km, MESITA-2909): the Catalog pipeline's Proximity
+ *  is ½ at h. The operator's number (`params.proximity.halfKm`). 5 km is
+ *  Pato's starting point (2026-10-27), to tune on real results. */
+export const PROXIMITY_HALF_KM_DEFAULT = 5;
+export const PROXIMITY_HALF_KM_MIN = 0.5;
+export const PROXIMITY_HALF_KM_MAX = 50;
 
 /**
- * proximity(d) = 1 ÷ (1 + d ÷ D), D = the distance for half credit
- * (MESITA-2706, Pato: the reciprocal; "la lineal no me gusta nada"): 1 at
- * the point, ½ at D, ⅓ at 2D, never 0. It replaced 1 − d ÷ radius
- * (MESITA-2347, MESITA-2703), which zeroed the edge of every circle, a 2 km
- * Map screen included. D follows the radius (MESITA-2720: D = radius ÷ k,
- * `halfDistanceKm`); it was a fixed 10 km (MESITA-2706), which left a tight
- * Map screen flat. The Radius gate alone decides who is a candidate. A
- * distance that is not a number cannot be placed, so it scores 0; so does
- * any distance past the point when D is not positive.
+ * proximity(d) = 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h = the half distance
+ * (Pato, MESITA-2909: "que al principio su valor sea muy alto y decaiga muy
+ * rápido y cada vez decaiga más lento"): 1 at the point, ½ at h, a steep
+ * fall near the guest that flattens with distance, never 0. Only the Catalog
+ * pipeline (Home) and Chat read it; the Map ranks by Popularity alone and
+ * uses distance only as its screen (MESITA-2909). It replaced the
+ * reciprocal 1 ÷ (1 + d ÷ (radius ÷ k)) (MESITA-2706/2720): the Catalog has
+ * no radius. A distance that is not a number cannot be placed, so it scores
+ * 0; so does any distance past the point when h is not positive.
  */
 export function proximityFromDistance(distanceKm: number, halfKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
   if (!(Number.isFinite(halfKm) && halfKm > 0)) return 0;
-  return clamp01(1 / (1 + distanceKm / halfKm));
+  return clamp01(1 / (1 + Math.log1p((Math.E - 1) * distanceKm / halfKm)));
 }
 
 /**
@@ -74,7 +64,7 @@ export function proximity(
 // ── Popularity ────────────────────────────────────────────────────────────
 
 /**
- * THE AREA SCORE'S POPULARITY (Pato, MESITA-2710: "ln(num of google
+ * THE MAP AND CATALOG SCORES' POPULARITY (Pato, MESITA-2710: "ln(num of google
  * [reviews] × average of stars) … popularity can be above 1, it must not be
  * normalized"): ln(1 + reviews × stars). Unbounded: 4.6★ × 1,000 reviews ≈
  * 8.43, 4.0★ × 30 ≈ 4.80. The 1 + keeps a place with no reviews at 0, not
@@ -93,7 +83,7 @@ export function logPopularity(
 
 /** True when the place's Popularity is at or over the operator's floor
  *  (`map.popularityFloor`, MESITA-2714); a floor of 0 or less is off. One
- *  reading for the Area gate and the guest bar's order (MESITA-2724). */
+ *  reading for the Map and Catalog gate and the guest bar's order (MESITA-2724). */
 export function clearsPopularityFloor(
   candidate: { rating?: number | null; reviewCount?: number | null },
   floor: number,
@@ -103,7 +93,7 @@ export function clearsPopularityFloor(
 }
 
 /** The 0..1 Popularity below now feeds only the stored `map.minPopularity`
- *  floor (live 0, no box edits it); the Area score reads `logPopularity`. */
+ *  floor (live 0, no box edits it); the Map and Catalog read `logPopularity`. */
 
 /** Reviews for half credit: Popularity's volume term is ½ at this many
  *  Google reviews. The operator's number (`params.popularity.halfReviews`). */
@@ -135,83 +125,12 @@ export function popularity(
   return clamp01(rating * (count / (count + k)));
 }
 
-// ── Name ──────────────────────────────────────────────────────────────────
-
-/** Latin diacritics off (Café = Cafe), lowercase, punctuation to spaces,
- *  single spaces. Letters, marks and digits of every other script survive
- *  (寿司, Кафе, カフェ ≠ ガフェ), so a name outside Latin still matches itself
- *  and only itself. Spanish ordinals fold (1ª = 1a). */
-export function normalizeName(s: string): string {
-  return s
-    .replace(/ª/g, "a")
-    .replace(/º/g, "o")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^\p{L}\p{M}\p{N}]+/gu, " ")
-    .trim();
-}
-
-function trigrams(s: string): Map<string, number> {
-  const padded = `  ${s} `;
-  const out = new Map<string, number>();
-  for (let i = 0; i + 3 <= padded.length; i++) {
-    const g = padded.slice(i, i + 3);
-    out.set(g, (out.get(g) ?? 0) + 1);
-  }
-  return out;
-}
-
-/**
- * The lexical fallback: Dice similarity over character trigrams of the
- * normalized names; an exact normalized match is 1, a name that starts with
- * the query scores at least 0.8 (a typed prefix is a strong hit).
- */
-export function lexicalNameSimilarity(query: string, name: string): number {
-  const a = normalizeName(query);
-  const b = normalizeName(name);
-  if (!a || !b) return 0;
-  if (a === b) return 1;
-  const ta = trigrams(a);
-  const tb = trigrams(b);
-  let shared = 0;
-  let total = 0;
-  for (const [, n] of ta) total += n;
-  for (const [, n] of tb) total += n;
-  for (const [g, n] of ta) shared += Math.min(n, tb.get(g) ?? 0);
-  const dice = total > 0 ? (2 * shared) / total : 0;
-  return b.startsWith(a) ? Math.max(0.8, dice) : clamp01(dice);
-}
-
-export type NameSimilarity = { score: number; method: "embedding" | "lexical" };
-
-/**
- * name_similarity. Candidate name embeddings are precomputed; the query is
- * embedded once per request and the cosine runs here, locally. Missing data:
- * no query vector or no candidate vector → the lexical fallback, never a
- * silent 0 (a missing embedding is an enrichment gap, not a mismatch).
- */
-export function nameSimilarity(
-  query: { text: string; vector: number[] | null },
-  candidate: { name?: string | null; nameEmbedding?: unknown },
-): NameSimilarity {
-  const v = query.vector ? parseVector(candidate.nameEmbedding) : null;
-  if (query.vector && v && v.length === query.vector.length) {
-    const cos = cosineSim(query.vector, v);
-    if (Number.isFinite(cos)) return { score: clamp01(cos), method: "embedding" };
-  }
-  return {
-    score: lexicalNameSimilarity(query.text, String(candidate.name ?? "")),
-    method: "lexical",
-  };
-}
-
 // ── Description ───────────────────────────────────────────────────────────
 
 /**
  * description_similarity: the query's meaning against the place's
  * precomputed summary embedding. Lazy by construction: it takes a vector a
- * pipeline has already chosen to compute, so Area (which does not use it)
+ * pipeline has already chosen to compute, so the Map and Catalog (which do not use it)
  * never triggers an embedding call. Missing data: no candidate vector →
  * null, "cannot judge"; the Deep pipeline leaves such a place out rather
  * than ranking it as a mismatch.

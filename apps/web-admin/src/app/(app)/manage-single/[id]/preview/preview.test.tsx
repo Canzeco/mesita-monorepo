@@ -80,7 +80,7 @@ describe("admin member preview", () => {
     expect(detail.requested).toBe(false);
     expect(detail.distance_km).toBe(0);
     expect(detail.request_threshold).toBe(9);
-    expect(detail.tags.map((tag) => tag.label)).toEqual(["Dine-in", "Live music"]);
+    expect(detail.tags.map((tag) => tag.label)).toEqual(["Tacos"]);
   });
 
   it("renders the consumer place module, and a package change deploys both apps", () => {

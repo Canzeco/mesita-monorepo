@@ -1,30 +1,33 @@
-// consumer-web-list-catalog on the Area pipeline's one pool (MESITA-2379,
-// Mesita's two sources only since MESITA-2872): the sources merged and ranked
-// by `selectAreaPool`; the client pages the pool.
+// consumer-web-list-catalog, the Catalog pipeline (MESITA-2379, MESITA-2909,
+// MESITA-2921): every Mesita place ranked by `selectCatalogPool`, no radius,
+// the best 1000 kept; the client pages the list.
 import { assert, assertEquals } from "jsr:@std/assert@1";
 
 const src = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
 
-Deno.test("list-catalog: one ranking, the Map's — Proximity × Popularity, no exponents; the half-distance is the operator's (MESITA-2703, MESITA-2722)", () => {
+Deno.test("list-catalog: the Catalog's ranking — Proximity × Popularity, no exponents; the half distance is the operator's (MESITA-2722, MESITA-2909)", () => {
   assertEquals(src.includes("areaWeights"), false);
-  // The engine reads the radius divisor from the blob and the radius from
-  // the location; no caller override.
+  // The engine reads the half distance from the blob; no caller override.
   assertEquals(src.includes("signals:"), false);
   assertEquals(src.includes("reachKm"), false);
-  assertEquals(src.includes("halfKm"), false);
   // Home's Nearby / Popular are gone: the guest's mode is never read.
   assertEquals(src.includes("readAreaMode("), false);
   assertEquals(src.includes("body.prefer"), false);
 });
 
 Deno.test("list-catalog: one pool from the shared engine", () => {
-  assert(src.includes("selectAreaPool<PoolRow>("));
-  assert(src.includes("selectedPoolQuery("));
-  assert(src.includes("selectedOnly: false"));
+  assert(src.includes("selectCatalogPool<PoolRow>("));
+  // No capped id-ordered read of its own: the pool walks every row.
+  assertEquals(src.includes(".limit("), false);
+  assertEquals(src.includes("POOL_CAP"), false);
+  // Selected is read by no one (MESITA-2925).
+  assertEquals(src.includes("selected"), false);
   assertEquals(src.includes("buildCatalogRails"), false);
   assert(src.includes('wire: "unified"'));
-  // The answer says which radius ranked it, and the operator's (MESITA-2703).
-  assert(src.includes("location: { kind: location.kind, radiusKm, operatorRadiusKm: cfg.map.radiusKm }"));
+  // The answer names the page size and no radius (MESITA-2909, MESITA-2914).
+  assert(src.includes("location: { kind: location.kind },"));
+  assertEquals(src.includes("operatorRadiusKm"), false);
+  assert(src.includes("pageSize: pool.summary.pageSize"));
   assertEquals(src.includes("googleCalls"), false);
   assertEquals(src.includes("mesitaLimit"), false);
   for (const gone of ["selectGooglePlaces", "selectMesitaSelected"]) {
@@ -50,10 +53,11 @@ Deno.test("list-catalog: Right Now, Universal and predicates are gone", () => {
   }
 });
 
-Deno.test("list-catalog: one circle, the saved pin's radius else the operator's; no guest review stop", () => {
-  // MESITA-2703: validated before the Mesita box and Google's circle read it.
-  assert(src.includes("const radius = requestRadiusKm(body.radiusKm, cfg.map.radiusKm);"));
-  assert(src.includes("const radiusKm = radius.km;"));
+Deno.test("list-catalog: no radius at all, the whole catalog; no guest review stop (MESITA-2909)", () => {
+  assertEquals(src.includes("requestRadiusKm"), false);
+  // The pool reads with no centre and no box (catalog-pool.test.ts pins it).
+  assertEquals(src.includes("radiusKm:"), false);
+  assertEquals(src.includes("center: {"), false);
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
   assertEquals(src.includes("guestReviewFloor"), false);
@@ -61,8 +65,8 @@ Deno.test("list-catalog: one circle, the saved pin's radius else the operator's;
 });
 
 Deno.test("list-catalog: Home never reads bounds into the location (MESITA-2500)", () => {
-  // resolveAreaLocation takes no bounds at all since MESITA-2603.
-  assert(src.includes("resolveAreaLocation(center, radiusKm)"));
+  // resolveAreaLocation takes no bounds (MESITA-2603) and, here, no radius.
+  assert(src.includes("resolveAreaLocation(center, null)"));
   assertEquals(src.includes("body.bounds,"), false);
   assertEquals(src.includes("location.kind === \"area\" ? location.bounds"), false);
   // A bounds from an old build is only logged.

@@ -11,7 +11,7 @@
 //      exactly the insert/update/delete shape each caller needs.
 //   3. Structural guards: PLACE_PROFILE_PATCH_KEYS / PLACE_PATCH_KEYS never
 //      collide, and `name` / `google_place_id` are refused the way repo
-//      law requires (place_profiles.name generated column, google_place_id
+//      law requires (place_profiles.name writers, google_place_id
 //      immutable spine).
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
@@ -35,16 +35,19 @@ Deno.test("PLACE_PROFILE_PATCH_KEYS and PLACE_PATCH_KEYS never collide", () => {
   assertEquals(overlap, [], "a key claimed by both tables would be ambiguous for validateProfilePatch");
 });
 
-Deno.test("validatePlaceProfilePatch: rejects `name` — it is a GENERATED column, never a patch key", () => {
-  const res = validatePlaceProfilePatch({ name: "Café Central" });
-  assert(!res.ok);
-  assertEquals(res.error, "unknown place field: name");
+Deno.test("validatePlaceProfilePatch: accepts `name` — the stored Mesita name (MESITA-2828)", () => {
+  assert(validatePlaceProfilePatch({ name: "Café Central" }).ok);
+  assert(!validatePlaceProfilePatch({ name: 12 }).ok);
 });
 
-Deno.test("validateProfilePatch: rejects `name` too", () => {
-  const res = validateProfilePatch({ name: "Café Central" });
+Deno.test("validateProfilePatch: accepts `name` too", () => {
+  assert(validateProfilePatch({ name: "Café Central" }).ok);
+});
+
+Deno.test("validatePlaceProfilePatch: mesita_name is gone (MESITA-2828)", () => {
+  const res = validatePlaceProfilePatch({ mesita_name: "Café Central" });
   assert(!res.ok);
-  assertEquals(res.error, "unknown profile field: name");
+  assertEquals(res.error, "unknown place field: mesita_name");
 });
 
 // #1395 added reservations_enabled to PLACE_PROFILE_PATCH_KEYS without a
@@ -218,13 +221,13 @@ Deno.test("validatePlaceProfilePatch: rejects an enrichment patch smuggling the 
   assert(!res.ok);
 });
 
-Deno.test("validatePlaceProfilePatch: accepts a mesita_name override alone (google_name untouched)", () => {
-  assert(validatePlaceProfilePatch({ mesita_name: "El Nuevo Nombre" }).ok);
+Deno.test("validatePlaceProfilePatch: accepts the Mesita name alone (google_name untouched) — MESITA-2828", () => {
+  assert(validatePlaceProfilePatch({ name: "El Nuevo Nombre" }).ok);
 });
 
-Deno.test("validatePlaceProfilePatch: accepts mesita_name and google_name together when one is non-empty", () => {
-  assert(validatePlaceProfilePatch({ mesita_name: null, google_name: "Google's Label" }).ok);
-  assert(validatePlaceProfilePatch({ mesita_name: "Override", google_name: "" }).ok);
+Deno.test("validatePlaceProfilePatch: accepts name and google_name together when one is non-empty", () => {
+  assert(validatePlaceProfilePatch({ name: null, google_name: "Google's Label" }).ok);
+  assert(validatePlaceProfilePatch({ name: "Override", google_name: "" }).ok);
 });
 
 // ── validatePlaceProfilePatch: reject ──────────────────────────────────────────────
@@ -273,13 +276,13 @@ Deno.test("validatePlaceProfilePatch: rejects a scalar where jsonb is required",
   assert(!validatePlaceProfilePatch({ hours: "always open" }).ok);
 });
 
-Deno.test("validatePlaceProfilePatch: rejects mesita_name and google_name both empty in the same patch (place_profiles_name_source_present)", () => {
-  const res = validatePlaceProfilePatch({ mesita_name: null, google_name: "" });
+Deno.test("validatePlaceProfilePatch: rejects name and google_name both empty in the same patch (place_profiles_name_present)", () => {
+  const res = validatePlaceProfilePatch({ name: null, google_name: "" });
   assert(!res.ok);
   assertEquals(
     res.error,
-    "mesita_name and google_name cannot both be empty in the same patch " +
-      "(place_profiles_name_source_present — place_profiles.name would have nothing to generate from)",
+    "name and google_name cannot both be empty in the same patch " +
+      "(place_profiles_name_present — the place would have no name)",
   );
 });
 
@@ -341,7 +344,7 @@ Deno.test("validatePlacePatch: rejects null or empty on a NOT NULL string/enum",
 
 Deno.test("validateProfilePatch: accepts a patch mixing place_profiles and places fields, like the view's real callers send", () => {
   const res = validateProfilePatch({
-    mesita_name: "El Nuevo Nombre",
+    name: "El Nuevo Nombre",
     category: "cafe",
     state: "active",
     currency: "MXN",
@@ -531,13 +534,13 @@ Deno.test("writePlace: profiles update accepts a patch mixing both tables' field
     table: "profiles",
     mode: "update",
     id: "place-1",
-    patch: { mesita_name: "Nuevo Nombre", state: "active" },
+    patch: { name: "Nuevo Nombre", state: "active" },
   });
   assert(res.ok);
   assertEquals(calls, [{
     table: "profiles",
     op: "update",
-    value: { mesita_name: "Nuevo Nombre", state: "active" },
+    value: { name: "Nuevo Nombre", state: "active" },
   }]);
 });
 

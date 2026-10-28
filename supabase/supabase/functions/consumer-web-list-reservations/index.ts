@@ -13,7 +13,7 @@
 // Deploy: supabase functions deploy consumer-web-list-reservations
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr } from "../_shared/http.ts";
+import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
@@ -33,7 +33,7 @@ const TERMINAL_STATES = [
 type Scope = "upcoming" | "past" | "all";
 type Body = { limit?: number; scope?: Scope };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-list-reservations", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "GET", "POST");
   if (methodReject) return methodReject;

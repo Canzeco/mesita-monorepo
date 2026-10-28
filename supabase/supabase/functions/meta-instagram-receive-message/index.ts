@@ -36,6 +36,7 @@ import {
 } from "../_shared/instagram-dm.ts";
 import { adoptInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { serveJson } from "../_shared/http.ts";
 
 const GRAPH = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
@@ -119,7 +120,7 @@ async function handle(
   await reply(cfg, senderId, DM_REPLY.verified(profile.handle));
 }
 
-Deno.serve(async (req) => {
+serveJson("meta-instagram-receive-message", async (req) => {
   const cfg = readInstagramDmConfig();
   if (!cfg) return text("Instagram messaging is not set up", 503);
 

@@ -1,6 +1,6 @@
 import type { Perk } from "@/components/consumer/me/perk-list";
 import type { GuestPlan } from "@/lib/guest-standing";
-import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
+import { FREE_RESERVATIONS_PER_MONTH, PRO_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 
 // Me › Plan's words, row by row. PlanModal draws them, and so does /me/plan's
 // loading.tsx, which draws the perks as themselves so its lines wrap where
@@ -11,8 +11,9 @@ import { FREE_RESERVATIONS_PER_MONTH } from "@/lib/plan-perks";
 // value it imports from a "use client" file arrives as a client reference,
 // not the words.
 //
-// NO PRICE, NO HYPOTHESIS (see PlanModal). Free states today's enforced cap;
-// Premium opens with "Everything in Free", then its unbuilt perks, each Soon.
+// NO PRICE (see PlanModal). Each plan states its enforced monthly cap
+// (MESITA-2555); Pro opens with "Everything in Free", then its cap, then its
+// unbuilt perks, each Soon.
 
 export type PlanRowWords = {
   title: string;
@@ -35,14 +36,12 @@ export const PLAN_ROWS: Record<GuestPlan, PlanRowWords> = {
     ],
   },
   premium: {
-    title: "Premium",
+    title: "Pro",
     subtitle: "The paid plan.",
-    label: "Included in Premium",
+    label: "Included in Pro",
     items: [
-      {
-        text: `Everything in Free, including ${FREE_RESERVATIONS_PER_MONTH} reservations a month`,
-      },
-      { text: "More reservations every month", soon: true },
+      { text: "Everything in Free" },
+      { text: `${PRO_RESERVATIONS_PER_MONTH} reservations a month` },
       {
         text: "Ask your AI assistant, like ChatGPT, to find and book places for you",
         soon: true,

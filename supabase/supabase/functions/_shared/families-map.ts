@@ -1,10 +1,12 @@
-// The Atlas page payload. Families, categories and tags come from the live
-// tables. Google membership is the same join Search uses: one Table A type,
-// zero or more guest families. The coarse exclusive bucket stays on
-// googleTypes for older readers. Facet chrome lives with the tag vocabulary.
-import type { PlaceCategory, PlaceFamily } from "./categories.ts";
-import { GOOGLE_TYPE_SUPER, type GuestSuper } from "./google-type-super.ts";
-import { familiesForGoogleType } from "./sourcing.ts";
+// The Atlas page payload (MESITA-2891). Pato, 2026-10-27: "Make a list of the
+// Google Categories that are enabled on Mesita. And also make a list of all
+// the Google Categories that are NOT enabled on Mesita." · "Kill the Google
+// Categories vs Mesita Families matrix … Remove it. Delete it."
+//
+// So: the Mesita Families (the thirty-seven the Description step picks from), every
+// Google category split by `catalog_membership.enabled`, and the tag catalog.
+// No category ↔ family join is returned or stored any more.
+import type { GoogleCategory, PlaceFamily } from "./categories.ts";
 import { type PlaceTag, TAG_FACETS } from "./tags.ts";
 
 export type FamiliesMapFamily = {
@@ -14,22 +16,7 @@ export type FamiliesMapFamily = {
   sortOrder: number;
 };
 
-export type FamiliesMapCategory = {
-  slug: string;
-  label: string;
-  familyKeys: string[];
-};
-
-export type FamiliesMapGoogleType = {
-  slug: string;
-  family: GuestSuper;
-};
-
-/** One Places API (New) type and the guest families it sits in. */
-export type FamiliesMapGoogleMembership = {
-  slug: string;
-  familyKeys: string[];
-};
+export type FamiliesMapGoogleCategory = { slug: string; label: string };
 
 export type FamiliesMapTag = {
   slug: string;
@@ -42,9 +29,10 @@ export type FamiliesMapTag = {
 
 export type FamiliesMap = {
   families: FamiliesMapFamily[];
-  categories: FamiliesMapCategory[];
-  googleTypes: FamiliesMapGoogleType[];
-  googleMembership: FamiliesMapGoogleMembership[];
+  /** Google categories enabled on Mesita, by label. */
+  enabledCategories: FamiliesMapGoogleCategory[];
+  /** Google categories not enabled on Mesita, by label. */
+  disabledCategories: FamiliesMapGoogleCategory[];
   tags: FamiliesMapTag[];
 };
 
@@ -53,32 +41,27 @@ const FACET_ORDER = new Map(
 );
 const FACET_BY_SLUG = new Map(TAG_FACETS.map((facet) => [facet.slug, facet]));
 
+function byLabel(a: FamiliesMapGoogleCategory, b: FamiliesMapGoogleCategory): number {
+  return a.label.localeCompare(b.label) || a.slug.localeCompare(b.slug);
+}
+
 export function buildFamiliesMap(
   families: PlaceFamily[],
-  categories: PlaceCategory[],
+  googleCategories: GoogleCategory[],
   tags: PlaceTag[] = [],
 ): FamiliesMap {
+  const row = (c: GoogleCategory) => ({ slug: c.slug, label: c.label });
   return {
-    families: families.map((f) => ({
-      slug: f.slug,
-      label: f.label,
-      emoji: f.emoji,
-      sortOrder: f.sort_order,
-    })),
-    categories: categories.map((c) => ({
-      slug: c.slug,
-      label: c.label,
-      familyKeys: c.family_keys ?? [],
-    })),
-    googleTypes: Object.entries(GOOGLE_TYPE_SUPER)
-      .map(([slug, family]) => ({ slug, family }))
-      .sort((a, b) => a.slug.localeCompare(b.slug)),
-    googleMembership: Object.keys(GOOGLE_TYPE_SUPER)
-      .map((slug) => ({
-        slug,
-        familyKeys: familiesForGoogleType(slug),
-      }))
-      .sort((a, b) => a.slug.localeCompare(b.slug)),
+    families: families
+      .filter((f) => f.slug !== "undefined")
+      .map((f) => ({
+        slug: f.slug,
+        label: f.label,
+        emoji: f.emoji,
+        sortOrder: f.sort_order,
+      })),
+    enabledCategories: googleCategories.filter((c) => c.enabled).map(row).sort(byLabel),
+    disabledCategories: googleCategories.filter((c) => !c.enabled).map(row).sort(byLabel),
     tags: tags
       .map((tag) => {
         const facet = FACET_BY_SLUG.get(tag.facet);

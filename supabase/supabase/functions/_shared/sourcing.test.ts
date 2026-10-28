@@ -8,7 +8,7 @@ import {
 } from "./sourcing.ts";
 
 Deno.test("familiesForGoogleType: a gastropub is dinner and drinks", () => {
-  assertEquals(familiesForGoogleType("gastropub"), ["dinner", "drinks", "beer"]);
+  assertEquals(familiesForGoogleType("gastropub"), ["dinner", "drinks"]);
   assertEquals(familiesForGoogleType("gas_station"), []);
 });
 
@@ -18,14 +18,24 @@ Deno.test("familiesForGoogleType: a place that is not a trip sits in no family (
   );
   const slugs = [...sql.matchAll(/^\s+'([a-z_]+)',?$/gm)].map((m) => m[1]);
   assertEquals(slugs.length, 23);
-  for (const slug of [...slugs, "car_repair", "church", "hotel"]) {
+  // MESITA-2888 made rails of seven; MESITA-2962 sent the picnic ground,
+  // plaza, fountain, sculpture and marina back out. A cafeteria is Quick and
+  // a race course Fun; the other twenty-one stay out.
+  const rails: Record<string, string[]> = {
+    cafeteria: ["quick_bite"],
+    race_course: ["fun"],
+  };
+  for (const slug of [...slugs.filter((s) => !(s in rails)), "car_repair", "church", "hotel"]) {
     assertEquals(familiesForGoogleType(slug), [], slug);
+  }
+  for (const [slug, families] of Object.entries(rails)) {
+    assertEquals(familiesForGoogleType(slug), families, slug);
   }
 });
 
 Deno.test("familiesForGoogleType accepts the _restaurant alias", () => {
-  assertEquals(familiesForGoogleType("fine_dining"), ["dinner"]);
-  assertEquals(familiesForGoogleType("FINE_DINING"), ["dinner"]);
+  assertEquals(familiesForGoogleType("fine_dining"), ["dinner", "fancy"]);
+  assertEquals(familiesForGoogleType("FINE_DINING"), ["dinner", "fancy"]);
 });
 
 Deno.test("Text Search without a pin sends no country or bias", () => {

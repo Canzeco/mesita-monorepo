@@ -13,7 +13,7 @@
 // verify_jwt = true gates non-bearer callers at the gateway.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods } from "../_shared/http.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
@@ -55,7 +55,7 @@ type Body = {
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
 
-Deno.serve(async (req) => {
+serveJson("admin-web-search-places", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
   // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, selected, boost_tier, request_count, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, boost_tier, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
@@ -154,10 +154,9 @@ Deno.serve(async (req) => {
   // crenupHighWater) is the completeness meter, NOT Enriched. Enriched is
   // `enriched_at` set (isPlaceEnriched, below; MESITA-2154).
   // There used to be a SECOND completeness number here — a 0-3
-  // stage level off place_research — and the two disagreed on every row: the
-  // chip read one, the detail prose read the other (MESITA-1218). One fact,
-  // one table, one number. The place_research read went with it: computing
-  // that level was its only purpose here.
+  // stage level off the retired stage queue — and the two disagreed on every
+  // row: the chip read one, the detail prose read the other (MESITA-1218). One
+  // fact, one table, one number.
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
   // MESITA-1249: enrichment is READ, not folded — crenupHighWater/
@@ -195,8 +194,8 @@ Deno.serve(async (req) => {
   const EMPTY_ENRICHMENT: EnrichmentMap = { functions: {}, highWater: 0, blockedAt: null };
 
   // Trim photos to the first thumbnail to keep the payload small.
-  // `name` is the generated display column (mesita_name → google_name); the
-  // table now shows google_name specifically, so both ride along.
+  // `name` is the Mesita name (MESITA-2828); the table also shows Google's
+  // own label, so both ride along.
   const places = rows.map((v) => {
     const id = String(v.id);
     const contentState = (v.content_state as string | null) ?? null;
@@ -236,11 +235,8 @@ Deno.serve(async (req) => {
       // `enriched: false` here whatever its content_state or high-water.
       enriched: isPlaceEnriched(v.enriched_at),
       enriched_at: (v.enriched_at as string | null) ?? null,
-      // Mesita Selected (MESITA-2707): the operator's own mark, read off the
-      // row (`places.selected`); never derived from Enriched, ready and
-      // Listed. The State box reads the same column.
-      selected: v.selected === true,
-      // Boost (MESITA-2809): the paid tier, 0 · 1 · 2 · 3 = Off · 2x · 5x · 10x.
+      // Premier (MESITA-2925, was Boost MESITA-2809): the paid tier,
+      // 0 · 1 · 2 · 3 = Off · 2X · 5X · 10X. Selected is no longer read.
       boost_tier: typeof v.boost_tier === "number" ? v.boost_tier : null,
       // Missing when the read failed — the table says "?", never a false 0.
       viewed: stats.get(id)?.viewed ?? null,

@@ -8,7 +8,6 @@ import {
 } from "./place-embeddings.ts";
 import {
   placeEmbeddingFacts,
-  placeNameEmbedText,
   type EmbeddablePlace,
 } from "./embeddings-vector.ts";
 
@@ -62,15 +61,4 @@ Deno.test("clampToWordLimit never truncates mid-word", () => {
   // Char-slice regression: the old 420-char cut landed mid-"night".
   const charSliced = long.replace(/\s+/g, " ").trim().slice(0, 420);
   assertEquals(charSliced.endsWith(" ni"), true);
-});
-
-Deno.test("placeNameEmbedText is the resolved name, not the summary", () => {
-  assertEquals(placeNameEmbedText(sample()), "Contramar");
-  assertEquals(
-    placeNameEmbedText(sample({ name: "  El  Nuevo   Nombre  " })),
-    "El Nuevo Nombre",
-  );
-  const facts = placeEmbeddingFacts(sample());
-  assertEquals(facts.includes("Famous tuna"), true);
-  assertEquals(placeNameEmbedText(sample()).includes("Famous"), false);
 });

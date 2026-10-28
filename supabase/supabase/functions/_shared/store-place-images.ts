@@ -2,13 +2,14 @@
 // mirrors source URLs into the place-images bucket.
 //
 // CREATE Details awaits storeFirstPlaceImage (one Google photo, now) so a
-// Created place has a thumb before Enrich Images. Enrich Images still uses
-// storePlaceImages + runInBackground for the ranked gallery, via
-// enricher-edgefunc-store-place-images (own wall clock).
+// Created place has a thumb before Enrich Images. Render's Enrich commit
+// (enricher-edgefunc-write-place) mirrors the ranked gallery through
+// mirrorPlacePhotos.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { dedup } from "./parse-utils.ts";
 import { runInBackground } from "./background.ts";
+import { savePhotoSizes } from "./photo-sizes.ts";
 import { writePlace } from "./place-doc.ts";
 import type { SavedAnalysis, StoredPhoto } from "./photo-analysis.ts";
 import {
@@ -329,6 +330,8 @@ async function mirrorOne(
       };
     }
     const publicUrl = `${publicPrefix}${path}`;
+    // The three sizes screens load (MESITA-2966); the original is already safe.
+    runInBackground(savePhotoSizes(admin, supabaseUrl, IMAGE_BUCKET, path));
     return {
       ok: true,
       url: publicUrl,

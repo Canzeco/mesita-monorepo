@@ -21,8 +21,8 @@ test("an empty or failed step never blanks a filled field; a fresh value replace
 });
 
 test("Render never sends the Mesita-owned columns (MESITA-2790)", () => {
-  const patch = commitPatch({ category: "cafe", category_label: "Cafe", mesita_categories: ["cafe"], tags: ["x"], google_name: "Strana" });
-  for (const key of ["category", "category_label", "mesita_categories", "tags"]) assert.equal(key in patch, false, key);
+  const patch = commitPatch({ category: "cafe", category_label: "Cafe", tags: ["x"], google_name: "Strana" });
+  for (const key of ["category", "category_label", "tags"]) assert.equal(key in patch, false, key);
   assert.equal(patch.google_name, "Strana");
 });
 
@@ -46,7 +46,7 @@ test("the halt comes right after Place Details, before any paid step", () => {
   const full = src.slice(src.indexOf("export async function buildEnrichment"));
   const halt = full.indexOf("if (isPermanentlyClosed(details)) return { closed: true };");
   assert.ok(halt > full.indexOf("await fetchGooglePlace("));
-  for (const paid of ["fetchTimezone(", "scoutPlace(", "discoverLinks(", "fetchDraftSync(", "fetchInstagramPosts(", "rankGallery(", "embedPair("]) {
+  for (const paid of ["fetchTimezone(", "scoutPlace(", "discoverLinks(", "fetchDraftSync(", "fetchInstagramPosts(", "rankGallery(", "embedSummary("]) {
     assert.ok(full.indexOf(paid) > halt, `${paid} runs after the halt`);
   }
 });

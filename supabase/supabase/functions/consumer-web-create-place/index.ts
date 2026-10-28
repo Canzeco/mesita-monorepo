@@ -27,6 +27,7 @@ import {
   json,
   readJson,
   rejectUnlessMethods,
+  serveJson,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
@@ -45,7 +46,7 @@ import { readAppConfig } from "../_shared/write-config.ts";
 
 type Body = { googlePlaceId?: string };
 
-Deno.serve(async (req) => {
+serveJson("consumer-web-create-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
