@@ -12,6 +12,7 @@ import {
 } from "./enrich-config.ts";
 import { safeParseJson } from "./parse-utils.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
+import { FAMILIES_RULE } from "./families-infer.ts";
 import {
   type ProfileResult,
 } from "./enrich-synthesis-profile.ts";
@@ -33,6 +34,8 @@ const PROFILE_SCHEMA = {
     mesita_name: { type: ["string", "null"] },
     // Mesita tags (MESITA-2790): slugs copied from the TAG VOCABULARY block.
     tags: { type: "array", items: { type: "string" } },
+    // Mesita Families (MESITA-2891): 1–5 slugs from the FAMILY LIST block.
+    families: { type: "array", items: { type: "string" } },
     // No popular_times (MESITA-2420): a guess from review text is not
     // Google's busy hours, and the guest card says "From Google".
   },
@@ -56,6 +59,8 @@ export async function synthesizeProfile(input: {
   googleTags?: string[];
   /** place_tags slugs the model may pick Mesita tags from. */
   tagVocabulary?: string[];
+  /** `slug — Label` lines the model may pick Mesita Families from (MESITA-2891). */
+  familyVocabulary?: string[];
   // The branch anchor for the FRANCHISE RULE below: zone is the colonia /
   // neighborhood, city the fallback. Both come from the Google spine the
   // research stage persisted — synthesis never has to guess where it is.
@@ -71,6 +76,7 @@ export async function synthesizeProfile(input: {
   const {
     openaiKey, model, name, locationLine, category, zone, city, igBio,
     googleReviewsText, serpSummary, googleTypes, googleTags, tagVocabulary,
+    familyVocabulary,
   } = input;
 
   // Where this branch actually is — the qualifier the franchise rule spends.
@@ -98,6 +104,7 @@ export async function synthesizeProfile(input: {
     branchAnchor,
     grounding,
     tagVocabulary: tagVocabulary ?? [],
+    familyVocabulary: familyVocabulary ?? [],
   });
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
@@ -157,9 +164,11 @@ export function buildPresentationInput(place: {
   branchAnchor: string;
   grounding: string;
   tagVocabulary?: string[];
+  familyVocabulary?: string[];
 }): string {
   const { name, locationLine, category, branchAnchor, grounding } = place;
   const vocabulary = place.tagVocabulary ?? [];
+  const familyLines = place.familyVocabulary ?? [];
   return (
     `Compile the public profile of the place "${name}"` +
     (locationLine ? ` located at ${locationLine}` : "") +
@@ -198,11 +207,13 @@ export function buildPresentationInput(place: {
     `"tags" are Mesita tags: up to ${MAX_PLACE_TAGS} slugs copied VERBATIM ` +
     `from the TAG VOCABULARY below that the sources clearly support (service, ` +
     `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
+    (familyLines.length ? `${FAMILIES_RULE} ` : "") +
     `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
     `Never invent ratings, reviewer quotes, prices, or a chef's name.` +
     (vocabulary.length ? `\n\nTAG VOCABULARY: ${vocabulary.join(", ")}` : "") +
+    (familyLines.length ? `\n\nFAMILY LIST:\n${familyLines.join("\n")}` : "") +
     (branchAnchor
       ? `\n\nLOCATION ANCHOR (the franchise rule spends this): ${branchAnchor}`
       : "") +

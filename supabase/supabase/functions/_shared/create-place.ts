@@ -366,6 +366,9 @@ export async function createMinimalPlace(opts: {
         // Categories and families are the trigger's and the view's (MESITA-2836).
         if (door.description) patch.description = door.description;
         if (door.tags) patch.tags = door.tags;
+        // Mesita Families (MESITA-2891): the door's 1–5, or none for a
+        // not-enabled main Google category; a useless reply writes nothing.
+        if (door.families !== undefined) patch.family_keys = door.families;
         // The seed for a place nobody has answered for yet; an operator's
         // channel pick supersedes it from then on (MESITA-1737).
         patch.reservations_enabled = door.reservationsLikely;

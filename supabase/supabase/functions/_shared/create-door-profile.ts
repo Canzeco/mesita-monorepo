@@ -6,8 +6,9 @@
 // redoes this properly minutes later with rich grounding).
 //
 // Mesita tags are validated against the live catalog and stored (MESITA-2790).
-// Google categories are Google's own types and families their dictionary
-// (MESITA-2836, MESITA-2834): nothing here infers them.
+// Mesita Families (1–5) come from the same call (MESITA-2891), unless the
+// main Google category is not enabled on Mesita. Google categories are
+// Google's own types (MESITA-2836): nothing here infers them.
 // Mesita Name is returned as a CANDIDATE — only the mesita-name-door may
 // land it (gate D2).
 
@@ -21,10 +22,21 @@ import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
 import { reservationsLikelyFromInference } from "./infer-place-reservations.ts";
+import { fetchPlaceFamilies } from "./categories.ts";
+import {
+  FAMILIES_RULE,
+  familiesToStore,
+  familyVocabularyLines,
+  isGoogleCategoryEnabled,
+  mainGoogleCategory,
+  pickFamilies,
+} from "./families-infer.ts";
 
 export type DoorProfile = {
   /** Null when the reply carried no tags array: Create then writes none. */
   tags: string[] | null;
+  /** Mesita Families to store (MESITA-2891): see familiesToStore. */
+  families: string[] | null | undefined;
   description: string | null;
   reservationsLikely: boolean;
   mesitaNameCandidate: string | null;
@@ -55,10 +67,13 @@ export async function synthesizeDoorProfile(
   openaiKey: string,
   signals: DoorSignals,
 ): Promise<DoorProfile | null> {
-  const [tagVocab, models] = await Promise.all([
+  const [tagVocab, models, familyVocab, enabled] = await Promise.all([
     fetchPlaceTags(admin),
     loadModelsConfig(admin),
+    fetchPlaceFamilies(admin),
+    isGoogleCategoryEnabled(admin, mainGoogleCategory(signals.googleTypes, null)),
   ]);
+  const familyLines = enabled ? familyVocabularyLines(familyVocab) : [];
   const tagSlugs = new Set(tagVocab.map((t) => t.slug));
 
   const placeLines = [
@@ -84,7 +99,9 @@ export async function synthesizeDoorProfile(
     '"mesita_name":"<clean display name, proper case; null when the given ' +
     'name already follows the MESITA NAME rule below>",' +
     '"semantic_summary":"<one dense English paragraph (~60-90 words) of what ' +
-    'this place IS, for semantic search — no marketing voice>"}. ' +
+    'this place IS, for semantic search — no marketing voice>",' +
+    '"families":["<1-5 slugs from the family list>"]}. ' +
+    FAMILIES_RULE + " " +
     "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
     "store numbers and internal branch codes. FRANCHISE RULE — a chain " +
     "branch is named BRAND + WHERE IT IS. When the place is one location of " +
@@ -101,6 +118,7 @@ export async function synthesizeDoorProfile(
     "facts, ratings, or prices — thin sources mean shorter honest text.";
   const userPrompt =
     `Tags:\n${tagVocab.map((t) => t.slug).join(", ")}\n\n` +
+    (familyLines.length ? `Families (FAMILY LIST):\n${familyLines.join("\n")}\n\n` : "") +
     `Place:\n${placeLines}`;
 
   try {
@@ -144,6 +162,7 @@ export async function synthesizeDoorProfile(
     const nameMax = ENRICH_FIELD_LIMITS.placeName?.max ?? 80;
     return {
       tags,
+      families: familiesToStore(pickFamilies(parsed.families, familyVocab), enabled),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),
       mesitaNameCandidate: str(parsed.mesita_name)?.slice(0, nameMax) ?? null,

@@ -350,10 +350,6 @@ verify_jwt = true
 [functions.admin-web-get-families]
 verify_jwt = true
 
-# Atlas category ↔ family dictionary. Does not rewrite places.
-[functions.admin-web-set-category-families]
-verify_jwt = true
-
 # Bulk Google Places Text Search proxy. Many queries in, deduped
 # Place IDs out.
 [functions.admin-web-discover-places]

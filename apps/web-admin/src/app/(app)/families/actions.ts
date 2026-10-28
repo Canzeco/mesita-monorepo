@@ -13,21 +13,8 @@ export async function getFamiliesMap(): Promise<ActionResult<FamiliesMap>> {
   return {
     ok: true,
     families: r.data.families,
-    categories: r.data.categories ?? [],
-    googleTypes: r.data.googleTypes ?? [],
-    googleMembership: r.data.googleMembership ?? [],
+    enabledCategories: r.data.enabledCategories ?? [],
+    disabledCategories: r.data.disabledCategories ?? [],
     tags: r.data.tags ?? [],
   };
-}
-
-export async function setCategoryFamilies(
-  slug: string,
-  familyKeys: string[],
-): Promise<ActionResult<{ slug: string; familyKeys: string[] }>> {
-  const r = await efInvoke<{ slug: string; familyKeys: string[] }>(
-    "admin-web-set-category-families",
-    { slug, familyKeys },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, slug: r.data.slug, familyKeys: r.data.familyKeys ?? familyKeys };
 }

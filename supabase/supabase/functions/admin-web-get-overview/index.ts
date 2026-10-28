@@ -54,7 +54,6 @@ import { operatorFunctionStates } from "../_shared/schema-catalog.ts";
 import { fetchPlaceCategories, fetchPlaceFamilies } from "../_shared/categories.ts";
 import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
 import {
-  categoriesWithFamilyDisplay,
   resolveStoredFamily,
 } from "../_shared/profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "../_shared/tags.ts";
@@ -194,7 +193,7 @@ Deno.serve(async (req) => {
     // Families are the Google categories' dictionary, derived in the profiles
     // view (MESITA-2834); this only names the keys the view handed back.
     familyStored: resolveStoredFamily(placeFields.family_keys, families),
-    categories: categoriesWithFamilyDisplay(categories, families),
+    categories,
     tags,
     facets: TAG_FACETS,
     fieldLimits: ENRICH_FIELD_LIMITS,

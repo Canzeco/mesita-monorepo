@@ -252,6 +252,7 @@ export const STEP_WRITE_KEYS: Record<FillStep, readonly string[]> = {
     "tags",
     "reservations_enabled",
     "name",
+    "family_keys",
     "embedding_source_text",
   ],
   embedding: [],

@@ -201,6 +201,17 @@ Deno.serve(async (req) => {
     commit.placeId,
     pairedAnalyses(stored, commit.photoAnalyses),
   );
+  // Mesita Families (MESITA-2891) live on place_profiles; the profiles view
+  // derives its column, so a write through the view would drop them.
+  if (filled.families !== undefined) {
+    const fam = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: commit.placeId,
+      patch: { family_keys: filled.families },
+    });
+    if (!fam.ok) console.error(`[enrich] ${commit.placeId}: families not stored: ${fam.error}`);
+  }
   // After the profile, so the door sees this run's google_name. It writes
   // only over a name the machine owns; an operator's name stays.
   if (filled.mesitaName && !owned.includes("name")) {
