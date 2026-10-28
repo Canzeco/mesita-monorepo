@@ -2,7 +2,9 @@
 // admin-web-list-guests and admin-web-set-guest-standing. An operator finds a
 // guest and sets their Class (regular or VIP, through a partner) and their Plan
 // (free or premium). The two are independent. The admin_set_guest_standing RPC is
-// the only writer; no consumer EF accepts either field.
+// the only writer; no consumer EF accepts either field. An operator can also
+// set one guest's monthly reservation cap (MESITA-2555,
+// consumers.reservation_cap_override; null = the plan's cap).
 
 import {
   toClass,
@@ -10,10 +12,15 @@ import {
   type ConsumerClass,
   type ConsumerPlan,
 } from "./place-activity.ts";
+import {
+  planReservationCap,
+  RESERVATION_CAP_OVERRIDE_MAX,
+  readCapOverride,
+} from "./reservation-cap.ts";
 
 /** Columns both admin EFs read back. */
 export const GUEST_ROW_SELECT =
-  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, created_at";
+  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, reservation_cap_override, created_at";
 
 export const GUEST_LIST_LIMIT = 50;
 
@@ -34,6 +41,10 @@ export type GuestRow = {
   guestClassSetByEmail: string | null;
   /** Operator-only: where this VIP came from. */
   guestClassNote: string | null;
+  /** Operator-set reservations a month; null = the plan's cap. */
+  reservationCapOverride: number | null;
+  /** The plan's cap, what applies while there is no override. */
+  planReservationCap: number;
   createdAt: string;
 };
 
@@ -50,6 +61,7 @@ export type RawGuest = {
   guest_class_set_at?: unknown;
   guest_class_set_by?: unknown;
   guest_class_note?: unknown;
+  reservation_cap_override?: unknown;
   created_at?: unknown;
 };
 
@@ -75,6 +87,8 @@ export function toGuestRow(
     guestClassSetAt: str(raw.guest_class_set_at),
     guestClassSetByEmail: setBy ? setByEmail(setBy) : null,
     guestClassNote: str(raw.guest_class_note),
+    reservationCapOverride: readCapOverride(raw.reservation_cap_override),
+    planReservationCap: planReservationCap(raw.plan),
     createdAt: String(raw.created_at ?? ""),
   };
 }
@@ -108,12 +122,14 @@ export type StandingPatch = {
   plan?: ConsumerPlan;
   /** Present when the note is being set; null clears it. */
   guestClassNote?: string | null;
+  /** Present when the cap is being set; null goes back to the plan's cap. */
+  reservationCapOverride?: number | null;
 };
 
 /** A refusal with a stable code and a message that says the fix. */
 export type StandingError = { code: string; error: string; status: number };
 
-/** The body of a set call, checked: at least one of the three fields. */
+/** The body of a set call, checked: at least one of the four fields. */
 export function readStandingBody(
   body: unknown,
 ): { ok: true; consumerId: string; patch: StandingPatch } | ({ ok: false } & StandingError) {
@@ -170,12 +186,25 @@ export function readStandingBody(
     }
     patch.guestClassNote = note === "" ? null : note;
   }
-  if (!("guestClass" in patch) && !("plan" in patch) && !("guestClassNote" in patch)) {
+  if ("reservationCapOverride" in b) {
+    const v = b.reservationCapOverride;
+    if (v !== null && readCapOverride(v) === null) {
+      return {
+        ok: false,
+        status: 400,
+        code: "invalid_reservation_cap",
+        error:
+          `reservationCapOverride must be a whole number 0..${RESERVATION_CAP_OVERRIDE_MAX}, or null for the plan's cap (got '${String(v)}')`,
+      };
+    }
+    patch.reservationCapOverride = v as number | null;
+  }
+  if (Object.keys(patch).length === 0) {
     return {
       ok: false,
       status: 400,
       code: "nothing_to_set",
-      error: "Send guestClass, plan, guestClassNote, or any of them together",
+      error: "Send guestClass, plan, guestClassNote, reservationCapOverride, or any of them together",
     };
   }
   return { ok: true, consumerId, patch };

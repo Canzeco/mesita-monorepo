@@ -29,8 +29,12 @@ import {
 // A tap saves at once. A refusal rolls the row back; a lost connection
 // re-reads the list, because the save may have landed. The note on where a
 // VIP came from is for operators only and saves when the field loses focus.
+// So does a guest's own monthly reservation cap (MESITA-2555): blank means the
+// plan's cap, a number replaces it for this guest only, 0 blocks reservations.
 
 const NOTE_MAX = 280;
+/** The database CHECK and the EF hold the same limit. */
+const CAP_MAX = 1000;
 const NOTE_COUNT_FROM = 240;
 
 const CLASS_OPTIONS: { value: GuestClass; label: string }[] = [
@@ -250,6 +254,11 @@ function GuestItem({
           />
         </div>
       </div>
+      <CapField
+        guest={g}
+        disabled={locked && !busy}
+        onSave={(cap) => onSave({ reservationCapOverride: cap })}
+      />
       {(g.guestClass === "vip" || g.guestClassNote) && (
         <NoteField
           guest={g}
@@ -304,6 +313,73 @@ function Segmented<T extends string>({
         ))}
       </span>
     </span>
+  );
+}
+
+/** One guest's reservations a month. Blank = the plan's. Saves on blur; a failure keeps the draft. */
+function CapField({
+  guest,
+  disabled,
+  onSave,
+}: {
+  guest: GuestRow;
+  disabled: boolean;
+  onSave: (cap: number | null) => Promise<boolean>;
+}) {
+  const saved = guest.reservationCapOverride == null ? "" : String(guest.reservationCapOverride);
+  const [draft, setDraft] = useState(saved);
+  const [failed, setFailed] = useState(false);
+  const [invalid, setInvalid] = useState(false);
+
+  const commit = async () => {
+    const next = draft.trim();
+    if (next === saved) {
+      setFailed(false);
+      setInvalid(false);
+      return;
+    }
+    const n = next === "" ? null : Number(next);
+    if (n !== null && (!Number.isInteger(n) || n < 0 || n > CAP_MAX)) {
+      setInvalid(true);
+      return;
+    }
+    setInvalid(false);
+    const ok = await onSave(n);
+    setFailed(!ok);
+    if (ok) setDraft(next);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="flex flex-wrap items-center gap-2">
+        <span className="text-muted-foreground text-xs font-medium">Reservations a month</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={draft}
+          disabled={disabled}
+          placeholder={guest.planReservationCap != null ? `${guest.planReservationCap} (plan)` : "Plan"}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          className="border-border bg-background h-9 w-28 rounded-lg border px-3 text-sm tabular-nums outline-none focus:border-foreground disabled:opacity-50"
+          data-reservation-cap
+        />
+      </label>
+      {invalid && (
+        <span className="text-destructive text-xs" data-reservation-cap-invalid>
+          A whole number from 0 to {CAP_MAX}, or blank for the plan&apos;s.
+        </span>
+      )}
+      {failed && (
+        <span className="text-destructive text-xs" data-reservation-cap-failed>
+          Not saved ·{" "}
+          <button type="button" className="underline" onClick={commit}>
+            Retry
+          </button>
+        </span>
+      )}
+    </div>
   );
 }
 

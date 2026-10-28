@@ -5,11 +5,14 @@
 // and the operator-only note on where a VIP came from. One call to the
 // admin_set_guest_standing RPC does the write: it stamps who set the class
 // and when only when the class actually changes, so two operators can never
-// record the wrong one. Super-admin only.
+// record the wrong one. Super-admin only. It also sets one guest's monthly
+// reservation cap (MESITA-2555; null = the plan's cap, _shared/reservation-cap.ts)
+// through admin_set_guest_reservation_cap, written first so the standing RPC's
+// row comes back with it.
 //
 // Errors are { ok: false, code, error } with a stable code and the fix:
 //   400 stale_client · invalid_consumer · invalid_guest_class · invalid_plan ·
-//       invalid_note · note_too_long · nothing_to_set
+//       invalid_note · note_too_long · invalid_reservation_cap · nothing_to_set
 //   404 guest_not_found · 409 account_closed · 500 update_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -45,6 +48,22 @@ Deno.serve(async (req) => {
   }
   const { consumerId, patch } = parsed;
 
+  if ("reservationCapOverride" in patch) {
+    // A closed account is skipped here as in the RPC; the read below reports it.
+    const capWrite = await admin.rpc("admin_set_guest_reservation_cap", {
+      p_consumer: consumerId,
+      p_cap: patch.reservationCapOverride ?? null,
+    });
+    if (capWrite.error) {
+      return json(
+        { ok: false, code: "update_failed", error: `update_failed: ${capWrite.error.message}` },
+        500,
+      );
+    }
+  }
+
+  // With only the cap in the patch every argument is null: the RPC changes
+  // nothing and returns the row.
   const written = await admin.rpc("admin_set_guest_standing", {
     p_consumer: consumerId,
     p_guest_class: patch.guestClass ?? null,
@@ -86,6 +105,9 @@ Deno.serve(async (req) => {
     guestClass: patch.guestClass ?? null,
     plan: patch.plan ?? null,
     noteChanged: "guestClassNote" in patch,
+    reservationCapOverride: "reservationCapOverride" in patch
+      ? patch.reservationCapOverride ?? null
+      : undefined,
   }));
 
   const me = authRes.user.emailLower;

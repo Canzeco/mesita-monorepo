@@ -27,7 +27,7 @@ import {
   takesReservations,
 } from "../_shared/place-reservable.ts";
 import {
-  MONTHLY_RESERVATION_CAP,
+  monthlyReservationCap,
   RESERVATION_LIMIT_CODE,
   RESERVATION_LIMIT_MESSAGE,
 } from "../_shared/reservation-cap.ts";
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("deleted_at, last_name")
+    .select("deleted_at, last_name, plan, reservation_cap_override")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
@@ -162,8 +162,8 @@ Deno.serve(async (req) => {
   }
 
   // ── Monthly reservation cap (_shared/reservation-cap.ts) ────────────────
-  // One flat cap for every guest: each reservation is a metered call. The
-  // admin testing switch (app_config.reservations_config.unlimitedReservations)
+  // Each reservation is a metered call. The cap is the guest's plan's, or the
+  // one an operator set for them (MESITA-2555). The admin testing switch (app_config.reservations_config.unlimitedReservations)
   // lifts it for EVERY consumer so a tester isn't blocked mid-run. Defaults
   // off; the admin Reservations Config page owns it.
   const { data: settingsRow } = await admin
@@ -176,6 +176,9 @@ Deno.serve(async (req) => {
       ?.unlimitedReservations === true;
 
   if (!capLifted) {
+    const cap = monthlyReservationCap(
+      consumerRow as { plan?: unknown; reservation_cap_override?: unknown } | null,
+    );
     const monthStart = new Date();
     monthStart.setUTCDate(1);
     monthStart.setUTCHours(0, 0, 0, 0);
@@ -187,13 +190,13 @@ Deno.serve(async (req) => {
       .gte("created_at", monthStart.toISOString())
       .neq("state", "cancelled");
     if (countErr) return json({ ok: false, error: countErr.message }, 500);
-    if ((count ?? 0) >= MONTHLY_RESERVATION_CAP) {
+    if ((count ?? 0) >= cap) {
       return json(
         {
           ok: false,
           code: RESERVATION_LIMIT_CODE,
           error: RESERVATION_LIMIT_MESSAGE,
-          limit: MONTHLY_RESERVATION_CAP,
+          limit: cap,
         },
         409,
       );
