@@ -17,6 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
+  guestName,
   phoneTail,
   placeNames,
   requireAgentSecret,
@@ -62,13 +63,11 @@ serveJson("eleven-a3-verify-caller", async (req) => {
   const tickets = await ticketsOfConsumers(admin, matches.map((m) => m.id), 5);
   const names = await placeNames(admin, [...new Set(tickets.map((t) => t.project_id))]);
   const first = matches[0];
-  const guest = first.full_name?.trim() ||
-    [first.first_name, first.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
 
   return json({
     ok: true,
     verified: true,
-    consumer: { name: guest || "(sin nombre)", first_name: first.first_name ?? "" },
+    consumer: { name: guestName(first, "(sin nombre)"), first_name: first.first_name ?? "" },
     tickets: tickets.map((t) => speakable(t, names.get(t.project_id) ?? "")),
   });
 });

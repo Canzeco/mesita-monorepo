@@ -26,8 +26,12 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { phoneDigits } from "../_shared/phone.ts";
-import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
-import { esDate, esTime } from "../_shared/es-speak.ts";
+import {
+  placeNames,
+  requireAgentSecret,
+  speakable,
+  type SpeakableTicket,
+} from "../_shared/agent-tools.ts";
 
 type Body = {
   reference_code?: unknown;
@@ -35,19 +39,8 @@ type Body = {
   last_name?: unknown;
 };
 
-type AgentTicket = {
-  reference_code: string | null;
-  guest_name: string;
-  place_name: string;
-  /** Place-local es-MX date + time the agent can speak back. */
-  date_es: string;
-  time_es: string;
-  reserved_at: string;
-  party_size: number;
-  state: string;
-  notes: string | null;
-  is_test: boolean;
-};
+/** speakable's shape: place-local es-MX date + time the agent can speak back. */
+type AgentTicket = ReturnType<typeof speakable>;
 
 // PostgREST .or() expressions are comma/paren-delimited — strip those (and
 // wildcards) from user-spoken terms so a weird transcription can't break the
@@ -66,20 +59,7 @@ async function searchReservations(
   code: string | null,
   terms: string[],
 ): Promise<AgentTicket[]> {
-  type Row = {
-    reference_code: string | null;
-    reserved_at: string;
-    party_size: number;
-    state: string;
-    notes: string | null;
-    is_test: boolean;
-    place_id: string;
-    consumer: {
-      full_name: string | null;
-      first_name: string | null;
-      last_name: string | null;
-    } | null;
-  };
+  type Row = SpeakableTicket & { place_id: string };
   const SELECT =
     "reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer:consumers(full_name, first_name, last_name)";
   let rows: Row[] = [];
@@ -132,34 +112,10 @@ async function searchReservations(
 
   // reservation_tickets.place_id has no PostgREST FK hint to places — batch the
   // place names separately (same workaround as the engine).
-  const placeIds = [...new Set(rows.map((r) => r.place_id))];
-  const { data: places } = await admin
-    .from("place_profiles")
-    .select("id, name")
-    .in("id", placeIds);
-  const placeName = new Map<string, string>(
-    ((places ?? []) as { id: string; name: string | null }[]).map(
-      (p) => [p.id, p.name ?? ""],
-    ),
-  );
+  // A nameless place speaks as "" here (the a3 tools say "(sin nombre)").
+  const placeName = await placeNames(admin, [...new Set(rows.map((r) => r.place_id))], "");
 
-  return rows.map((r) => {
-    const c = r.consumer;
-    const guest = c?.full_name?.trim() ||
-      [c?.first_name, c?.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ");
-    return {
-      reference_code: r.reference_code ?? null,
-      guest_name: guest || "(sin nombre)",
-      place_name: placeName.get(r.place_id) ?? "",
-      date_es: esDate(r.reserved_at),
-      time_es: esTime(r.reserved_at),
-      reserved_at: r.reserved_at,
-      party_size: r.party_size,
-      state: r.state,
-      notes: r.notes ?? null,
-      is_test: !!r.is_test,
-    };
-  });
+  return rows.map((r) => speakable(r, placeName.get(r.place_id) ?? ""));
 }
 
 serveJson("eleven-agent-get-reservation", async (req) => {
@@ -172,19 +128,8 @@ serveJson("eleven-agent-get-reservation", async (req) => {
   const admin = adminClient(envRes.env);
 
   // Lock 2: the shared tool secret, read live from app_config.
-  const sent = (req.headers.get("x-agent-secret") ?? "").trim();
-  const { data: settings } = await admin
-    .from("app_config")
-    .select("agents_config")
-    .eq("id", 1)
-    .maybeSingle();
-  const expected =
-    ((settings?.agents_config as Record<string, unknown> | null)?.toolSecret as
-      | string
-      | undefined)?.trim() ?? "";
-  if (!expected || !sent || !timingSafeEqual(sent, expected)) {
-    return json({ ok: false, error: "agent tool secret rejected" }, 401);
-  }
+  const denied = await requireAgentSecret(req, admin);
+  if (denied) return denied;
 
   const body = await readJsonOr<Body>(req, {});
   const codeDigits = typeof body.reference_code === "string"

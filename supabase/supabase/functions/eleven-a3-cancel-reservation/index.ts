@@ -15,12 +15,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
-  cancelTicket,
+  cancelAsGuest,
   cleanNote,
   requireAgentSecret,
   sameLine,
   ticketByCode,
-  fireCancelNotice,
 } from "../_shared/agent-tools.ts";
 
 serveJson("eleven-a3-cancel-reservation", async (req) => {
@@ -53,20 +52,19 @@ serveJson("eleven-a3-cancel-reservation", async (req) => {
   }
 
   // Leg 5: a confirmed table means the place is holding it — it must hear.
-  const notice = ticket.state === "confirmed" ? "place_cancel" as const : null;
-  const err = await cancelTicket(admin, ticket.id, "consumer", cleanNote(body.reason), notice);
-  if (err) return json({ ok: false, error: err }, 500);
-
-  // Fire-and-forget: the engine acks early; a lost invoke is caught by the
-  // retry cron, which sweeps notice_state='pending'.
-  if (notice) {
-    await fireCancelNotice(envRes.env, "eleven-a3-cancel-reservation", ticket.id);
-  }
+  const res = await cancelAsGuest(
+    admin,
+    envRes.env,
+    "eleven-a3-cancel-reservation",
+    ticket,
+    cleanNote(body.reason),
+  );
+  if (!res.ok) return json({ ok: false, error: res.error }, 500);
 
   return json({
     ok: true,
     cancelled: true,
     reference_code: ticket.reference_code,
-    place_notified: notice !== null,
+    place_notified: res.placeNotified,
   });
 });

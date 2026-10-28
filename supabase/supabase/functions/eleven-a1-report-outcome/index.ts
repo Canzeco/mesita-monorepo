@@ -36,7 +36,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { cleanNote, requireAgentSecret, ticketByCode } from "../_shared/agent-tools.ts";
+import { cleanNote, requireAgentSecret, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
@@ -79,20 +79,9 @@ serveJson("eleven-a1-report-outcome", async (req) => {
   }
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
-  // Stale-run guard (eng-review 2026-08-04): run_id rides every outbound call
-  // as a bound dynamic variable. A mismatch means this CALL belongs to an
-  // orphaned run (the guest rescheduled/cancelled mid-call) — ignore the
-  // write, tell the agent to wrap up gracefully.
-  const callRunId = typeof body.run_id === "string" ? body.run_id.trim() : "";
-  if (callRunId && ticket.run_id && callRunId !== ticket.run_id) {
-    return json({
-      ok: true,
-      stale_run: true,
-      ignored: true,
-      say: "Esa reservación acaba de cambiar desde la app; Mesita le confirma los nuevos datos por ahí.",
-    });
-  }
-
+  // Stale-run guard: a call from an orphaned run writes nothing.
+  const stale = staleRunReply(body, ticket);
+  if (stale) return stale;
 
   // Structured {time,date?,note?} entries — see _shared/reservation-alternatives.ts.
   // Storing prose made every guest pick look like a brand-new proposal and cost
