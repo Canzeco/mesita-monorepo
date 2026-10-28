@@ -12,6 +12,7 @@
 // the same status codes the old seed used (409/422/502/503).
 
 import { classifyLinks } from "./channels.ts";
+import { googleFetch } from "./google-fetch.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { mapGoogleReviews } from "./enrich-google-review-snippets.ts";
@@ -386,12 +387,7 @@ export async function fetchGoogleDetails(
     encodeURIComponent(placeId)
   }?languageCode=es-MX&regionCode=MX`;
   const doFetch = () =>
-    fetch(url, {
-      headers: {
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": GOOGLE_FIELD_MASK,
-      },
-    });
+    googleFetch(url, { apiKey, fieldMask: GOOGLE_FIELD_MASK });
 
   try {
     let r = await doFetch();
@@ -434,9 +430,9 @@ async function fetchGooglePhotos(
   const settled = await Promise.allSettled(
     photos.slice(0, max).map(async (p) => {
       if (!p.name) throw new Error("photo missing name");
-      const r = await fetch(
+      const r = await googleFetch(
         `https://places.googleapis.com/v1/${p.name}/media?maxHeightPx=1600&skipHttpRedirect=true`,
-        { headers: { "X-Goog-Api-Key": apiKey } },
+        { apiKey },
       );
       if (!r.ok) throw new Error(`photo HTTP ${r.status}`);
       const d = (await r.json()) as { photoUri?: string };
@@ -459,7 +455,7 @@ async function fetchTimezone(
   if (typeof lat !== "number" || typeof lng !== "number") return null;
   try {
     const ts = Math.floor(Date.now() / 1000);
-    const r = await fetch(
+    const r = await googleFetch(
       `https://maps.googleapis.com/maps/api/timezone/json?location=${lat},${lng}&timestamp=${ts}&key=${apiKey}`,
     );
     if (!r.ok) return null;
