@@ -27,19 +27,12 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
-  corsPreflight,
   json,
   readJsonOr,
   readPlaceIdAlias,
-  rejectUnlessMethods,
   serveJson,
 } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { readOperatorFields } from "../_shared/operator-fields.ts";
 import {
@@ -77,18 +70,9 @@ type Body = {
 };
 
 serveJson("admin-web-get-overview", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<Body>(req, {});
   const placeId = readPlaceIdAlias(body) || null;

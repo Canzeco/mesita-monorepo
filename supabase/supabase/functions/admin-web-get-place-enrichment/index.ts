@@ -13,29 +13,21 @@
 // Deploy: supabase functions deploy admin-web-get-place-enrichment
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
 import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+  json,
+  jsonError,
+  readJson,
+  readPlaceIdAlias,
+  serveJson,
+} from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 
 type Body = { projectId?: string; placeId?: string };
 
 serveJson("admin-web-get-place-enrichment", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;

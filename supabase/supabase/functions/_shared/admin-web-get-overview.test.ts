@@ -21,10 +21,10 @@ const CODE = SRC.split("\n")
   .join("\n");
 
 Deno.test("admin-web-get-overview is super-admin only", () => {
-  assertEquals(CODE.includes("requireSuperAdmin(admin, authRes.user)"), true);
+  assertEquals(CODE.includes('requireAdminRequest(req, "POST")'), true);
   // The guard runs before the body is even read.
   assertEquals(
-    CODE.indexOf("requireSuperAdmin(") < CODE.indexOf("readJsonOr<"),
+    CODE.indexOf("requireAdminRequest(") < CODE.indexOf("readJsonOr<"),
     true,
   );
   for (const memberGate of ["requireMembership(", "requireEditor(", "requireOwner("]) {

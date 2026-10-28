@@ -5,13 +5,8 @@
 // enabled on Mesita, and the tag catalog — all live tables (MESITA-2891).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   fetchGoogleCategories,
   fetchPlaceFamilies,
@@ -20,18 +15,9 @@ import { buildFamiliesMap } from "../_shared/families-map.ts";
 import { fetchPlaceTags } from "../_shared/tags.ts";
 
 serveJson("admin-web-get-families", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const [googleCategories, families, tags] = await Promise.all([
     fetchGoogleCategories(admin),

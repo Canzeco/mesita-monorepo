@@ -20,29 +20,14 @@
 //   404 guest_not_found · 409 account_closed · not_vip · 500 update_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { readStandingBody, type RawGuest, toGuestRow } from "../_shared/guest-standing.ts";
 
 serveJson("admin-web-set-guest-standing", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<unknown>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -78,7 +63,7 @@ serveJson("admin-web-set-guest-standing", async (req) => {
     p_partner_set: "vipPartnerId" in patch,
     p_vip_until: patch.vipUntil ?? null,
     p_vip_until_set: "vipUntil" in patch,
-    p_actor: authRes.user.id,
+    p_actor: user.id,
   });
   if (written.error?.code === "23503") {
     return json({ ok: false, code: "unknown_partner", error: "No such partner. Reload the page." }, 400);
@@ -130,9 +115,9 @@ serveJson("admin-web-set-guest-standing", async (req) => {
     vipUntilChanged: "vipUntil" in patch,
   }));
 
-  const me = authRes.user.emailLower;
+  const me = user.emailLower;
   return json({
     ok: true,
-    guest: toGuestRow(row, (id) => (id === authRes.user.id ? me : null)),
+    guest: toGuestRow(row, (id) => (id === user.id ? me : null)),
   });
 });

@@ -8,13 +8,8 @@
 // _shared/auth.ts checkSuperAdmin).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 
 type Body = { email?: string; note?: string };
 
@@ -22,19 +17,9 @@ type Body = { email?: string; note?: string };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 serveJson("admin-web-grant-admin", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req, "POST");
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -48,7 +33,7 @@ serveJson("admin-web-grant-admin", async (req) => {
   const { data, error } = await admin
     .from("super_admins")
     .upsert(
-      { email, note, added_by: authRes.user.id },
+      { email, note, added_by: user.id },
       { onConflict: "email" },
     )
     .select("email, note, created_at, added_by")

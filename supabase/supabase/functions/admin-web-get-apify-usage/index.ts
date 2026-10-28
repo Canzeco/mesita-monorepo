@@ -5,13 +5,8 @@
 // starts one. The APIFY_KEY stays here; the console never calls Apify itself.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { aggregate, readMonth, readRunPage, type RunRow, SCRAPERS } from "./usage.ts";
 
 const APIFY = "https://api.apify.com/v2";
@@ -58,18 +53,8 @@ async function listRuns(key: string, sinceMs: number) {
 }
 
 serveJson("admin-web-get-apify-usage", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can read Apify usage.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can read Apify usage.");
+  if (ctx instanceof Response) return ctx;
 
   const key = Deno.env.get("APIFY_KEY")?.trim();
   if (!key) return json({ ok: false, error: "APIFY_KEY is not set on the Edge Functions" }, 500);

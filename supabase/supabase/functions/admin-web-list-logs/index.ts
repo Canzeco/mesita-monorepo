@@ -4,13 +4,8 @@
 // Render key stays here; the console never calls Render itself.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/auth.ts";
 import { renderApiKey } from "../_shared/enrich-start.ts";
 import {
   pickEnrichmentWorkflow,
@@ -79,18 +74,8 @@ async function findWorkflow(key: string): Promise<
 }
 
 serveJson("admin-web-list-logs", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const guard = await requireSuperAdmin(admin, authRes.user, "Only admins can read logs.");
-  if (!guard.ok) return guard.response;
+  const ctx = await requireAdminRequest(req, "POST", "Only admins can read logs.");
+  if (ctx instanceof Response) return ctx;
 
   const key = renderApiKey(Deno.env);
   if (!key) return json({ ok: false, error: "Server misconfigured" }, 500);

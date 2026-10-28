@@ -10,7 +10,7 @@ function codeOnly(src: string): string {
 
 Deno.test("the families door is super-admin only and reads the map", async () => {
   const admin = codeOnly(await Deno.readTextFile(DOOR));
-  assertStringIncludes(admin, "requireSuperAdmin(");
+  assertStringIncludes(admin, "requireAdminRequest(");
   assertStringIncludes(admin, "buildFamiliesMap(");
   assertStringIncludes(admin, "fetchPlaceTags(");
   assertStringIncludes(admin, "fetchGoogleCategories(");
