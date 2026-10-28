@@ -517,7 +517,7 @@ select is_empty(
 -- Attics) cannot see a function body. ALTER RENAME does not rewrite
 -- PL/pgSQL or LANGUAGE sql, which is how 20260906000000 shipped
 -- jsonb_build_object('project_id', v_row.place_id) inside
--- run_place_enrichment_stages — live until a later migration fixed it by
+-- run_place_enrichment_stages (retired, MESITA-2424) — live until a later migration fixed it by
 -- hand. Scan prosrc (the body), never pg_get_functiondef: the definer text
 -- includes the signature, and two functions deliberately keep the argument
 -- name p_project_id (42P13 refuses to rename it without DROP, which would
@@ -1372,12 +1372,13 @@ select is_empty(
   'the Credits expiry sweep is unscheduled'
 );
 
--- MESITA-2206. The job stays so a resume is alter_job(..., active := true).
--- A replay that schedules it active again fails here.
-select is(
-  (select active from cron.job where jobname = 'run-place-enrichment-stages'),
-  false,
-  'the Enricher stage poller ships paused'
+-- MESITA-2424. The stage path is retired: no poller job, no poller, no queue.
+-- A job pointed at a dropped function errors every tick, forever.
+select ok(
+  not exists (select 1 from cron.job where jobname = 'run-place-enrichment-stages')
+    and to_regprocedure('public.run_place_enrichment_stages()') is null
+    and to_regclass('public.place_research') is null,
+  'the enrichment stage poller, its cron job and place_research are gone'
 );
 
 -- web-admin uploads gallery photos and menus to these buckets straight from
@@ -1412,13 +1413,12 @@ select is_empty(
   'the ticket-proofs bucket is gone (MESITA-2131)'
 );
 
--- The enrichment poller posts to the enricher-* stage functions (MESITA-2132);
--- the supabase-cron-enrich-place-* slugs it used to call are retired.
+-- MESITA-2424. The janitor closes runs on a grace window alone; a body that
+-- still names the dropped queue would fail every five minutes.
 select ok(
-  (select prosrc like '%/functions/v1/enricher-cron-enrich-place-%'
-          and prosrc not like '%supabase-cron-enrich-place-%'
-     from pg_proc where oid = 'public.run_place_enrichment_stages()'::regprocedure),
-  'run_place_enrichment_stages calls enricher-cron-enrich-place-<stage>'
+  (select prosrc not like '%place_research%'
+     from pg_proc where oid = 'public.close_stale_place_enrichment_runs()'::regprocedure),
+  'close_stale_place_enrichment_runs no longer reads place_research'
 );
 
 -- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.

@@ -21,8 +21,6 @@
 // orchestration; it persists through the same whole-blob save.
 
 export type ReservationsConfig = {
-  /** True: a channel an operator picked by hand is never re-seeded by an enrich. No control since MESITA-2122. */
-  respectAdminOverride: boolean;
   /**
    * Testing override. While enabled, EVERY reservation call dials `number`
    * instead of the place's real line — no matter which place the guest booked —
@@ -87,7 +85,6 @@ const LIMITS_SEED = {
 const TEST_CALL_SEED = { enabled: true, number: "+524445499597" };
 
 export const DEFAULT_CONFIG: ReservationsConfig = {
-  respectAdminOverride: true,
   testCall: { ...TEST_CALL_SEED },
   unlimitedReservations: false,
   limits: { ...LIMITS_SEED },
@@ -119,8 +116,6 @@ export function coerceConfig(raw: unknown): ReservationsConfig {
       : {};
 
   return {
-    respectAdminOverride:
-      typeof c.respectAdminOverride === "boolean" ? c.respectAdminOverride : true,
     testCall: {
       enabled: typeof testRaw.enabled === "boolean" ? testRaw.enabled : TEST_CALL_SEED.enabled,
       number: typeof testRaw.number === "string" ? testRaw.number.trim() : TEST_CALL_SEED.number,

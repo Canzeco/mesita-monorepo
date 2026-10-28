@@ -1,7 +1,7 @@
 // crenup-report.test.ts
 //
 // reportCrenupSteps's event-log half is exercised end-to-end by every
-// caller's own tests (enrich-pipeline.ts's reportEnrichmentStep is a thin,
+// caller's own tests (reportEnrichmentStep is a thin,
 // already-covered insert). These tests cover the NEW half (MESITA-1249):
 // reportCrenupSteps also merges the same outcomes into place_profiles.enrichment,
 // read-merge-write, so admin-web-search-places/admin-web-get-overview

@@ -154,10 +154,9 @@ Deno.serve(async (req) => {
   // crenupHighWater) is the completeness meter, NOT Enriched. Enriched is
   // `enriched_at` set (isPlaceEnriched, below; MESITA-2154).
   // There used to be a SECOND completeness number here — a 0-3
-  // stage level off place_research — and the two disagreed on every row: the
-  // chip read one, the detail prose read the other (MESITA-1218). One fact,
-  // one table, one number. The place_research read went with it: computing
-  // that level was its only purpose here.
+  // stage level off the retired stage queue — and the two disagreed on every
+  // row: the chip read one, the detail prose read the other (MESITA-1218). One
+  // fact, one table, one number.
   const ids = rows.map((v) => String(v.id)).filter(Boolean);
 
   // MESITA-1249: enrichment is READ, not folded — crenupHighWater/

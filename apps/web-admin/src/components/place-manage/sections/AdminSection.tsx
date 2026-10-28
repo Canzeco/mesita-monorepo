@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Braces, ChevronDown, Fingerprint, Telescope } from "lucide-react";
-import { getPlaceEnrichment, type AdminPlace } from "../actions";
+import { Braces, ChevronDown, Fingerprint } from "lucide-react";
+import { type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/admin-ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { StateCard } from "./StateCard";
@@ -27,7 +26,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         (MESITA-2686). Read-only.
 // Then the rest:
 //   Enrichment  queues the full Enricher process
-//   SERP / Vectors / Metadata (UID & audit)
+//   Vectors / Metadata (UID & audit). The SERP Summary box went with the
+//   enrichment stage path (MESITA-2424): Render never stored the summary.
 // The Verification box (ownership proof + queue decide) went with
 // MESITA-2106: the MVP has no business app, so nobody proves ownership.
 
@@ -47,7 +47,6 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       <ReportsCard key={`reports-${place.id}`} place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
-      <SerpSummaryCard place={place} />
       <EmbeddingCard place={place} />
       <MetaCard place={place} />
     </div>
@@ -222,86 +221,6 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           <span className="text-muted-foreground type-label tabular-nums">
             text-embedding-3-small{dims ? ` \u00b7 ${dims}d` : " \u00b7 1536d"} \u00b7 locked, not a knob
           </span>
-        </ReadField>
-      </div>
-    </details>
-  );
-}
-
-// SERP Summary — the Scout's web-grounded editorial read of the place, written at
-// function 3 of the queue. It is one of the three enrichment texts, and the only
-// one that never reaches a guest:
-//
-//   SERP Summary        soft context the PIPELINE reads (this box)
-//   Presentation        places.description — the prose a GUEST reads
-//   Semantic Summary    embedding_source_text — what the INDEX reads
-//
-// It gets its own box precisely because it is none of the other two. It grounds
-// the Resolver's link selection at function 4 and the Presentation at function 9, and it is
-// NEVER a source of facts, ratings or prices — which is worth seeing plainly
-// when a wrong fact shows up in a profile and you are hunting for its origin.
-//
-// It lives on the run (place_research.gathered), not on the place, so it comes
-// from the enrichment EF rather than the place row.
-function SerpSummaryCard({ place }: { place: AdminPlace }) {
-  // The fetched summary carries the id it belongs to, so "have we loaded THIS
-  // place" is DERIVED rather than a second state reset inside the effect —
-  // React 19 flags a synchronous setState in an effect as a cascading render,
-  // and switching places is exactly when that would fire.
-  const [fetched, setFetched] = useState<
-    { id: string; summary: string | null } | null
-  >(null);
-
-  useEffect(() => {
-    let alive = true;
-    getPlaceEnrichment(place.id).then((r) => {
-      if (!alive) return;
-      setFetched({
-        id: place.id,
-        summary: r.ok ? (r.data.state?.serp_summary ?? null) : null,
-      });
-    });
-    return () => {
-      alive = false;
-    };
-  }, [place.id]);
-
-  const loaded = fetched?.id === place.id;
-  const text = (loaded ? (fetched?.summary ?? "") : "").trim();
-  return (
-    <details
-      className="border-border bg-card shadow-card group rounded-2xl border"
-      open
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
-        <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-          <Telescope className="h-4 w-4" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-base font-semibold tracking-tight">
-            SERP Summary
-          </h2>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            Soft context for the pipeline — never a source of facts.
-          </p>
-        </div>
-        <ChevronDown
-          className="text-muted-foreground h-4 w-4 shrink-0 transition-transform group-open:rotate-180"
-          aria-hidden
-        />
-      </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
-        <ReadField label="Scout · last run" boxed>
-          {!loaded ? (
-            <span className="text-muted-foreground text-xs italic">Loading…</span>
-          ) : text ? (
-            <span className="text-sm leading-relaxed whitespace-pre-wrap">{text}</span>
-          ) : (
-            <span className="text-muted-foreground text-xs italic">
-              No SERP Summary on the last run — either the run did not buy it, or
-              the web had nothing to say about this place.
-            </span>
-          )}
         </ReadField>
       </div>
     </details>

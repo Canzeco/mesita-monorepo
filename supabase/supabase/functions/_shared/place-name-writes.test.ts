@@ -23,7 +23,7 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 
 /**
  * A file's path relative to the functions dir, e.g.
- * `enricher-cron-enrich-place-research/index.ts`. Every path guard in this file
+ * `admin-web-update-place/index.ts`. Every path guard in this file
  * matches on this, never on an absolute path — see the note in walk().
  */
 function relativeToFunctions(file: URL): string {
@@ -233,24 +233,5 @@ Deno.test("the Enricher reaches the Mesita name only through the door", async ()
     callers.every((s) => s.text.includes("place-name-door.ts")),
     true,
     "an enrich path calls the door without importing it",
-  );
-});
-
-Deno.test("contents persist drops google_place_id before the writePlace update", async () => {
-  const src = await Deno.readTextFile(
-    new URL("../enricher-cron-enrich-place-third/index.ts", import.meta.url),
-  );
-  assertEquals(
-    /google_place_id:\s*_dropGooglePlaceId/.test(src),
-    true,
-    "gathered.place carries google_place_id; writePlace refuses that key on " +
-      "UPDATE. Drop it in the persist destructure or Contents S7 dies on every place.",
-  );
-  assertEquals(
-    /yelp_url:\s*_dropYelp/.test(src) &&
-      /tiktok_url:\s*_dropTiktok/.test(src) &&
-      /tripadvisor_url:\s*_dropTripadvisor/.test(src),
-    true,
-    "Wave 040 dropped those URL columns. A gathered leftover must not ride the UPDATE.",
   );
 });

@@ -7,14 +7,14 @@
 // drift is caught here by CI instead of by an operator clicking Save.
 //
 // The retired keys (MESITA-2144): `priority`, `disabled`, `attempts` and
-// `testCall.consumerNumber`. The deployed console still posts all four with
-// every save, so the gate must keep ACCEPTING them, malformed or not, and must
-// never write them back.
+// `testCall.consumerNumber`; `respectAdminOverride` since MESITA-2424. A
+// deployed console may still post them with every save, so the gate must keep
+// ACCEPTING them, malformed or not, and must never write them back.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { normalizeConfig } from "./reservations-config-normalize.ts";
 
-const RETIRED = ["priority", "disabled", "attempts"] as const;
+const RETIRED = ["priority", "disabled", "attempts", "respectAdminOverride"] as const;
 
 // The blob the deployed admin console posts, retired keys included.
 function consoleBlob() {
@@ -50,13 +50,9 @@ Deno.test("normalizeConfig: output round-trips — its own clean value is accept
   assertEquals(second.value, first.value);
 });
 
-Deno.test("normalizeConfig: respectAdminOverride is the one required key", () => {
-  const missing = consoleBlob() as Record<string, unknown>;
-  delete missing.respectAdminOverride;
-  assert(!normalizeConfig(missing).ok, "dropping respectAdminOverride was accepted — gate went lenient?");
-
+Deno.test("normalizeConfig: a malformed retired respectAdminOverride still saves", () => {
   const wrongType = { ...consoleBlob(), respectAdminOverride: "yes" };
-  assert(!normalizeConfig(wrongType).ok);
+  assert(normalizeConfig(wrongType).ok);
 });
 
 Deno.test("normalizeConfig: optional keys may be omitted (older and newer admin builds)", () => {
