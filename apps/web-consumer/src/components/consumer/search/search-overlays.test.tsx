@@ -263,15 +263,24 @@ describe("a Google-only result opens through get-or-create, never a preview or a
 
 describe("every searchbar pick anchors the map (MESITA-1405)", () => {
   it("a searchbar pick never creates a place", () => {
-    // Data guard: openGoogleOnly/openGoogleProfile end in get-or-create, so a
-    // pick routed through them would create a place on a mere selection.
+    // Data guard: a Google-only pick opens the Generate dialog (MESITA-2941),
+    // and only the dialog's Generate tap runs get-or-create. Neither the
+    // pick nor the dialog opener may create on a mere selection.
     const client = read("SearchClient.tsx");
     const barPick = client.slice(
       client.indexOf("const handleBarPick"),
       client.indexOf("const handleOpenPlace"),
     );
-    expect(barPick).not.toContain("openGoogleOnly");
-    expect(barPick).not.toContain("openGoogleProfile");
+    const opener = client.slice(
+      client.indexOf("const openGoogleProfile"),
+      client.indexOf("const onGenerated"),
+    );
+    for (const body of [barPick, opener]) {
+      expect(body).not.toContain("getOrCreateGooglePlace");
+      expect(body).not.toContain("apiCreateProject");
+      expect(body).not.toContain("openGooglePlace(");
+    }
+    expect(opener).toContain("setGenerateOpen(true)");
   });
 
   it("resolves a Location on pick, once (MESITA-1405, back in MESITA-2896)", () => {

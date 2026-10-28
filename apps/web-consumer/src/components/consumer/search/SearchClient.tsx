@@ -34,19 +34,11 @@
 // and the viewport picks the zoom. Area itself makes no Google call
 // (MESITA-2872).
 //
-// CARD ONE ONLY WHEN IT CAN BE A MESITA PLACE (MESITA-2849): a Google place
-// under the Area box's Minimum Popularity arrives `underFloor` and its pick
-// is a destination too — the camera lands there and the Area reloads there,
-// but no card is drawn for it, because that reload hides every place under
-// the same floor. A Mesita row is a Mesita place already.
-//
-// A Google-only result has no preview sheet and no Add button (MESITA-2298):
-// its SECOND tap (pin or rail card) is the explicit open — get-or-create on
-// the Google Place ID, then the profile. The catalog itself carries
-// Google-only places (the grey pins), so a pin or rail-card tap reaches
-// that through handleOpenPlace, and `heldOverlay` still stashes a
-// prediction between the select tap and the open. No photo is fetched for
-// a Google-only card, here or anywhere.
+// ONLY MESITA PLACES ARE ON THE MAP (Pato, MESITA-2941). A Google-only bar
+// pick opens the Generate dialog at once — Google's preview, then
+// get-or-create, then the profile — and never lands as a pin or card ONE.
+// The Area pool's Google-only rows are dropped here, so the pins and the
+// rail hold Mesita places alone.
 //
 // Composition:
 //   • Base: SearchMap fills the body (red Mesita Places, gray Google, blue
@@ -284,10 +276,16 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // card swaps in place, photo and profile link, and the next real load
   // brings the server's own card. The bar pick's card swaps too.
   const createdPlaces = useCreatedPlaces();
+  // ONLY MESITA PLACES ON THE MAP AND THE RAIL (Pato, MESITA-2941: "in the
+  // carousel only show places that already exist"). The Area pool still
+  // carries Google-only rows (Home reads it too); this screen drops them
+  // after the created-places swap, so a place generated here stays.
   const nearby = useMemo(
     () =>
       withDistances(
-        withCreatedPlaces(places, createdPlaces).map(enrichPlaceOverview),
+        withCreatedPlaces(places, createdPlaces)
+          .filter(catalogPlaceOnMesita)
+          .map(enrichPlaceOverview),
         distanceCenter,
       ),
     [places, createdPlaces, distanceCenter],
@@ -723,8 +721,8 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   // Pin / rail-card SECOND tap on a from-Google row = THE EXPLICIT OPEN
   // (MESITA-2298): a row this session already opened goes straight to its
   // profile; a Mesita row opens as Mesita; a Google-only row runs
-  // get-or-create and opens. No preview, no photo, no Add button. The bar
-  // pick never lands here — it anchors.
+  // get-or-create and opens. A Google-only bar pick lands here too
+  // (MESITA-2941); a Mesita bar pick anchors.
   const openGoogleOnly = (prediction: PlacePrediction, card?: Place) => {
     const fromAdd = addedProfiles[prediction.placeId];
     if (fromAdd) {
@@ -812,15 +810,12 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       })();
       return;
     }
-    // A GOOGLE PLACE UNDER THE AREA FLOOR IS A DESTINATION (MESITA-2849):
-    // the camera lands on it and the Area reloads there, with no card ONE.
-    if (
-      prediction.underFloor &&
-      !predictionOnMesita(prediction) &&
-      typeof prediction.lat === "number" &&
-      typeof prediction.lng === "number"
-    ) {
-      anchorMapTo({ lat: prediction.lat, lng: prediction.lng }, null);
+    // A GOOGLE-ONLY PLACE OPENS GENERATE AT ONCE (Pato, MESITA-2941: "if
+    // the place is not in mesita, directly open the modal, don't show it in
+    // the map as if it existed"). No camera move, no pin, no card ONE; the
+    // dialog previews Google's listing before anything is created.
+    if (!predictionOnMesita(prediction)) {
+      openGoogleOnly(prediction);
       return;
     }
     // The catalog's own row wins the card — it carries photos and the

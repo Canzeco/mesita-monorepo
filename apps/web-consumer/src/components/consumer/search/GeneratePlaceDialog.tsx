@@ -17,9 +17,16 @@
 // two full-size buttons (D10). Focus moves with the state: Generate on
 // open, the card while it runs (the status is announced), Try again on an
 // error (D11). While the create runs a backdrop tap or Esc does nothing.
+//
+// GOOGLE'S PREVIEW FIRST (Pato, MESITA-2941: "i don't want false positives,
+// people adding the wrong place"). The dialog opens with one Details read:
+// Google's first photo as the hero, then the category, stars and full
+// address in the place box, so two places with one name read apart before
+// anything is created. A failed or photo-less read keeps the sparkles tile
+// in the hero; Generate never waits for the preview.
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin, Sparkles } from "lucide-react";
+import { MapPin, Sparkles, Star } from "lucide-react";
 
 import {
   GenerateSteps,
@@ -27,6 +34,10 @@ import {
 } from "@/components/consumer/GeneratingPlace";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import {
+  apiPreviewGooglePlace,
+  type GooglePlacePreview,
+} from "@/lib/api/place-search";
 import {
   getOrCreateGooglePlace,
   type OpenedGooglePlace,
@@ -98,6 +109,22 @@ function GenerateBody({
   const run = useRef(0);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const primaryRef = useRef<HTMLButtonElement | null>(null);
+  // undefined while the read runs, null when it failed.
+  const [preview, setPreview] = useState<GooglePlacePreview | null | undefined>(
+    undefined,
+  );
+
+  // One Details read per open; the body is keyed per place.
+  useEffect(() => {
+    let live = true;
+    apiPreviewGooglePlace(supabase, target.gid).then(
+      (p) => live && setPreview(p),
+      () => live && setPreview(null),
+    );
+    return () => {
+      live = false;
+    };
+  }, [supabase, target.gid]);
 
   // Focus follows the state (D11). The dialog fades in over a frame, so the
   // first focus waits one.
@@ -138,17 +165,22 @@ function GenerateBody({
 
   const running = phase === "generating";
   const failed = phase === "error";
+  const address = preview?.address || target.address;
+  const rating = preview?.rating
+    ? preview.rating.toFixed(1)
+    : null;
 
   return (
     <div
       ref={cardRef}
       tabIndex={-1}
-      className="flex flex-col items-center px-6 pt-7 pb-6 text-center outline-none"
+      className="flex flex-col items-center text-center outline-none"
       data-generate-place={phase}
     >
-      <GenerateTile muted={failed} />
+      <PreviewHero preview={preview} muted={failed} />
+      <div className="flex w-full flex-col items-center px-6 pt-5 pb-6">
       <div role="status" aria-live="polite" aria-busy={running}>
-        <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
+        <h2 className={SHEET_TITLE_CLASS}>
           {running
             ? "Generating profile…"
             : failed
@@ -167,11 +199,31 @@ function GenerateBody({
         />
         <span className="min-w-0 flex-1">
           <span className="text-foreground block truncate text-sm font-semibold">
-            {target.name}
+            {preview?.name || target.name}
           </span>
-          {target.address ? (
-            <span className="text-muted-foreground block truncate text-xs">
-              {target.address}
+          {preview?.category || rating ? (
+            <span className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
+              {preview?.category ? (
+                <span className="truncate">{preview.category}</span>
+              ) : null}
+              {preview?.category && rating ? <span aria-hidden>·</span> : null}
+              {rating ? (
+                <span className="inline-flex shrink-0 items-center gap-1">
+                  <Star
+                    className="fill-fact-star text-fact-star h-3 w-3"
+                    aria-hidden
+                  />
+                  {rating}
+                  {preview?.reviewCount ? (
+                    <span>({preview.reviewCount})</span>
+                  ) : null}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {address ? (
+            <span className="text-muted-foreground line-clamp-2 block text-xs">
+              {address}
             </span>
           ) : null}
         </span>
@@ -215,6 +267,47 @@ function GenerateBody({
           {running ? <GenerateSteps key={attempt} /> : null}
         </div>
       </div>
+      </div>
+    </div>
+  );
+}
+
+/** Google's first photo, a fixed 16:10 slot so nothing jumps when it lands:
+ *  a pulse while the read runs, the sparkles tile when there is no photo. */
+function PreviewHero({
+  preview,
+  muted,
+}: {
+  preview: GooglePlacePreview | null | undefined;
+  muted: boolean;
+}) {
+  const photo = preview?.photoUrl;
+  return (
+    <div
+      className={cn(
+        "bg-muted relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden",
+        preview === undefined && "animate-pulse motion-reduce:animate-none",
+      )}
+    >
+      {photo ? (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          {/* Google requires the photo's author next to it. */}
+          {preview?.photoAuthor ? (
+            <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded-full bg-black/55 px-2 py-0.5 type-label text-white">
+              Photo: {preview.photoAuthor} · Google
+            </span>
+          ) : null}
+        </>
+      ) : preview !== undefined ? (
+        <GenerateTile muted={muted} />
+      ) : null}
     </div>
   );
 }

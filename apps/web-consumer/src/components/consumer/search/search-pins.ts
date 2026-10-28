@@ -236,6 +236,9 @@ export function buildSearchMapPins(
     // A Location is a camera destination, never a pin (MESITA-1404) — a
     // marker would claim a point for an entity that IS an area.
     if (prediction.kind === "location") continue;
+    // A Google-only result is never a pin (MESITA-2941, Pato: "don't show it
+    // in the map as if it existed"): its row opens Generate instead.
+    if (!predictionOnMesita(prediction)) continue;
     const hit = prediction.mesitaId ? byId.get(prediction.mesitaId) : undefined;
     const lat = prediction.lat ?? hit?.lat ?? null;
     const lng = prediction.lng ?? hit?.lng ?? null;
