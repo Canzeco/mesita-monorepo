@@ -42,8 +42,9 @@ describe("connecting Instagram by message", () => {
 
   it("is a Soon preview while the channel is off: no code is asked for", () => {
     const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function CurrentConnectionCard"));
-    expect(dm).toContain("disabled={busy || !handleOk || !live}");
-    expect(dm).toContain("if (busy || !handleOk || !live) return;");
+    // MESITA-2992: the code is fetched on open, so the off switch guards it.
+    expect(dm).toContain("if (!live) return;");
+    expect(dm.indexOf("if (!live) return;")).toBeLessThan(dm.indexOf("apiStartInstagramDm(supabase)"));
     expect(dm).toContain("Connecting by Instagram message opens soon.");
   });
 });

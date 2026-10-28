@@ -47,14 +47,12 @@ import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 //
 // BY MESSAGE, ALWAYS SHOWN (MESITA-2575, MESITA-2602; Pato: "not yet the
 // actual backend functionality but keep that UI already designed"). The page
-// always draws the message flow: type your @handle, get a code, send it to
-// Mesita's Instagram, and the page waits while Meta tells the server who sent
-// it. The server says whether that channel is live; until it is (the Meta
-// secrets, MESITA-2579) the flow is a preview — "Get my code" is tagged Soon
-// and nothing is called. The bio-code screen is gone from the page; the
+// always draws the message flow: one tap sends your code to Mesita's
+// Instagram, and the page waits while Meta tells the server who sent it. The
+// server says whether that channel is live; until it is (the Meta secrets,
+// MESITA-2579) the flow is a preview — the button is tagged Soon and nothing
+// is called. The bio-code screen is gone from the page; the
 // server still answers its actions.
-
-const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 
 /** How often the page asks whether the message landed, and for how long. */
 const DM_POLL_MS = 3_000;
@@ -158,23 +156,40 @@ export function ConnectedAccount() {
   );
 }
 
-// BY DM, HANDLE FIRST (Pato, MESITA-2599: "just input your instagram name,
-// send that message to the instagram bot, then that's it … technically you
-// don't need to input instagram name because when the bot receives the
-// message it can see who sent it, but still ask … it's a clearer UX"). The
-// typed handle only shapes the flow ("Send it from @handle"); the server
-// still verifies whoever actually sent the code.
+// ONE TAP, NO HANDLE (Pato, MESITA-2992: "i don't even think you need to
+// type your instagram … have an already built button in the app to just send
+// a message directly … in one click and avoid the step 1"; it reverses
+// MESITA-2599's handle-first field). The code is one-time, expires and is
+// bound to this account on the server, and the bot reads who sent it from
+// Meta, so nothing is typed. It is fetched when the card opens, so the button
+// is a plain link: the tap copies the code and opens the DM in one gesture
+// (an await before opening would get the new tab blocked on iOS).
 function ConnectByMessage({ live }: { live: boolean }) {
   const supabase = useBrowserSupabase();
-  const [handle, setHandle] = useState("");
-  const typed = handle.trim().replace(/^@/, "").toLowerCase();
-  const handleOk = HANDLE_RE.test(handle.trim());
   const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
-  const [busy, setBusy] = useState(false);
-  // Polling stops after DM_POLL_FOR_MS; "Check again" restarts it.
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  // Polling starts on the tap, stops after DM_POLL_FOR_MS; "Check again"
+  // restarts it.
   const [waitingSince, setWaitingSince] = useState<number | null>(null);
   const [gaveUp, setGaveUp] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // The channel off (MESITA-2579): a preview, nothing is called.
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    apiStartInstagramDm(supabase)
+      .then((c) => {
+        if (!cancelled) setClaim(c);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [live, supabase, attempt]);
 
   useEffect(() => {
     if (!claim || waitingSince === null) return;
@@ -204,20 +219,6 @@ function ConnectByMessage({ live }: { live: boolean }) {
     };
   }, [claim, waitingSince, supabase]);
 
-  async function start() {
-    if (busy || !handleOk || !live) return;
-    setBusy(true);
-    try {
-      setClaim(await apiStartInstagramDm(supabase));
-      setGaveUp(false);
-      setWaitingSince(Date.now());
-    } catch (e) {
-      toast(errMsg(e, "Couldn’t get a code — try again."));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function copyCode() {
     if (!claim) return;
     try {
@@ -228,110 +229,104 @@ function ConnectByMessage({ live }: { live: boolean }) {
     }
   }
 
+  function retry() {
+    setLoadFailed(false);
+    setClaim(null);
+    setAttempt((n) => n + 1);
+  }
+
   return (
     <ConnectCard account={claim?.account}>
-      <input
-        value={handle}
-        onChange={(e) => {
-          setHandle(e.target.value);
-          // A different handle starts over with a new code.
-          if (claim) {
-            setClaim(null);
-            setWaitingSince(null);
-            setGaveUp(false);
-          }
-        }}
-        placeholder="yourhandle"
-        aria-label="Your Instagram @handle"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
-        maxLength={31}
-        className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-11 w-full rounded-xl border px-5 text-center text-sm outline-none"
-        data-instagram-dm-handle
-      />
+      {claim && (
+        <button
+          type="button"
+          onClick={copyCode}
+          aria-label={`Your code ${claim.code}, tap to copy`}
+          className="border-border bg-muted/30 flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
+          data-instagram-dm-code
+        >
+          {claim.code}
+          <Copy className="text-muted-foreground h-4 w-4" />
+        </button>
+      )}
       {claim ? (
-        <>
-          <p className="text-muted-foreground type-label mt-3 text-center">
-            Send this code from <b className="text-foreground">@{typed}</b>
-          </p>
-          <button
-            type="button"
-            onClick={copyCode}
-            className="border-border bg-muted/30 mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-5 font-mono text-sm font-semibold tracking-wide"
-          >
-            {claim.code}
-            <Copy className="text-muted-foreground h-4 w-4" />
-          </button>
-          <a
-            href={claim.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() =>
-              void navigator.clipboard?.writeText(claim.code).catch(() => {})
-            }
-            className={cn(
-              ME_BUTTON_CLASS,
-              "bg-foreground text-paper mt-2 flex w-full items-center justify-center gap-2",
-            )}
-          >
-            <Send className="h-4 w-4" />
-            Send it on Instagram
-          </a>
-          {gaveUp ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => {
-                setGaveUp(false);
-                setWaitingSince(Date.now());
-              }}
-              className={cn(ME_BUTTON_CLASS, "mt-2 w-full")}
-            >
-              <BadgeCheck className="h-4 w-4" />
-              Check again
-            </Button>
-          ) : (
-            <p
-              className="text-muted-foreground type-label mt-2 flex items-center justify-center gap-2"
-              aria-live="polite"
-            >
-              <Spinner size="sm" />
-              Waiting for your message…
-            </p>
+        <a
+          href={claim.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => {
+            void navigator.clipboard?.writeText(claim.code).catch(() => {});
+            setGaveUp(false);
+            setWaitingSince(Date.now());
+          }}
+          className={cn(
+            ME_BUTTON_CLASS,
+            "bg-foreground text-paper mt-2 flex w-full items-center justify-center gap-2",
           )}
-        </>
+          data-instagram-dm-start
+        >
+          <Send className="h-4 w-4" />
+          Send my code on Instagram
+        </a>
+      ) : loadFailed ? (
+        <Button
+          type="button"
+          size="sm"
+          onClick={retry}
+          className={cn(ME_BUTTON_CLASS, "w-full")}
+        >
+          Couldn’t get a code — try again
+        </Button>
       ) : (
-        <>
+        <Button
+          type="button"
+          size="sm"
+          disabled
+          className={cn(ME_BUTTON_CLASS, "w-full")}
+          data-instagram-dm-start
+        >
+          {live && (
+            <Spinner size="sm" className="border-white/40 border-t-white" />
+          )}
+          Send my code on Instagram
+          {!live && (
+            <span className="bg-background/20 type-meta rounded-full px-1.5 py-0.5 font-semibold">
+              Soon
+            </span>
+          )}
+        </Button>
+      )}
+      {!live && <ConnectSoonLine />}
+      {claim && waitingSince !== null && (
+        gaveUp ? (
           <Button
             type="button"
             size="sm"
-            onClick={start}
-            disabled={busy || !handleOk || !live}
+            onClick={() => {
+              setGaveUp(false);
+              setWaitingSince(Date.now());
+            }}
             className={cn(ME_BUTTON_CLASS, "mt-2 w-full")}
-            data-instagram-dm-start
           >
-            {busy && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            Get my code
-            {/* The Meta channel is not on yet (MESITA-2579): a preview. */}
-            {!live && (
-              <span className="bg-background/20 type-meta rounded-full px-1.5 py-0.5 font-semibold">
-                Soon
-              </span>
-            )}
+            <BadgeCheck className="h-4 w-4" />
+            Check again
           </Button>
-          {!live && <ConnectSoonLine />}
-        </>
+        ) : (
+          <p
+            className="text-muted-foreground type-label mt-2 flex items-center justify-center gap-2"
+            aria-live="polite"
+          >
+            <Spinner size="sm" />
+            Waiting for your message…
+          </p>
+        )
       )}
     </ConnectCard>
   );
 }
 
 /** The Connect card's frame and fixed words — the title, the three steps,
- *  the password line — around `children`, the handle field and what follows
- *  it. ConnectByMessage and its silhouette both draw it, so the silhouette is
+ *  the password line — around `children`, the code and the send button. ConnectByMessage and its silhouette both draw it, so the silhouette is
  *  the card's own box (MESITA-2701). `account` is the Instagram the code goes
  *  to, Mesita's until the server names one. */
 function ConnectCard({
@@ -351,9 +346,9 @@ function ConnectCard({
       <SettingsGroup title="Connect">
         <ol className="divide-border/60 divide-y">
           {[
-            <>Type your Instagram @handle</>,
+            <>Tap the button: it copies your code and opens Instagram</>,
             <>
-              Send your code to <b>@{account}</b> on Instagram
+              Send the code to <b>@{account}</b>
             </>,
             <>That&apos;s it: you&apos;re verified in a few seconds</>,
           ].map((line, i) => (
@@ -403,16 +398,15 @@ function ConnectSoonLine({ held = false }: { held?: boolean }) {
 /** The Connect card while the page asks which way connecting works today
  *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are
  *  loading, like the sizes"). The frame and fixed words are the card's own;
- *  the handle field and Get my code (44px each) are inert blocks at their
- *  size. The one line the read decides — "opens soon" — is HELD: the channel
- *  is off until the Meta secrets land, so today's card lands with nothing
+ *  the send button (44px) is an inert block at its size. The one line the
+ *  read decides — "opens soon" — is HELD: the channel is off until the Meta
+ *  secrets land, so today's card lands with nothing
  *  moving; a live channel lands it without that line. Shared with the
  *  route's fallback (InstagramSkeleton). */
 export function ConnectCardSkeleton() {
   return (
     <ConnectCard pending>
       <Skeleton className="h-11 w-full rounded-xl" />
-      <Skeleton className="mt-2 h-11 w-full rounded-xl" />
       <ConnectSoonLine held />
     </ConnectCard>
   );
