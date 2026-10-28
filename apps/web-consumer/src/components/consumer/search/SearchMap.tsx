@@ -255,15 +255,15 @@ const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
 }cqh)`;
 
 /** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
- *  MESITA-2514) — the catalog fetch point: the plus and its dot, and ONE
+ *  MESITA-2514) — the catalog fetch point, marked by ONE
  *  DISCREET WHITE RING for the search radius (Pato, MESITA-2908: "draw the
  *  circle of the radious, but only one circle, not two, make the radious
  *  kinda white, like really discreet and pretty"). MESITA-2906 had removed
  *  both dashed rings; the inner density ring (MESITA-2773) stays gone. A
  *  solid 3px white line with a thin dark outline and a soft glow, so it
  *  reads on the light basemap (MESITA-2912: "a bit more visible"; MESITA-2908
- *  drew 2px at 85% with a hair halo), and a whisper of white fill. It never pulses; the cross does
- *  during a load. Screen CSS, never map geometry (MESITA-2847: it rides the
+ *  drew 2px at 85% with a hair halo), and a whisper of white fill. It pulses during a load; the cross
+ *  that sat at its centre is gone (MESITA-2917). Screen CSS, never map geometry (MESITA-2847: it rides the
  *  cross in real time). */
 const RING_CLASS =
   "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-white/[0.06] shadow-[0_0_0_1px_rgba(0,0,0,0.18),inset_0_0_0_0.5px_rgba(0,0,0,0.10),0_1px_6px_rgba(0,0,0,0.12)]";
@@ -276,16 +276,14 @@ function SearchMapReticle({ searching }: { searching: boolean }) {
       style={{ top: `${SIGHT_Y * 100}%` }}
       data-search-sight
     >
+      {/* No cross (Pato, MESITA-2917: "remove the cruz as the center, the
+          circle is enough"): the ring alone marks the sight, and it is
+          what pulses while a load is in flight. */}
       <div
-        className={RING_CLASS}
+        className={cn(RING_CLASS, searching && "animate-pulse")}
         style={{ width: SEARCH_RING_SIZE }}
         data-search-ring
       />
-      <div className={cn("relative h-3.5 w-3.5", searching && "animate-pulse")}>
-        <div className="bg-foreground absolute top-1/2 left-1/2 h-3.5 w-0.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        <div className="bg-foreground absolute top-1/2 left-1/2 h-0.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        <div className="bg-primary absolute top-1/2 left-1/2 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full" />
-      </div>
     </div>
   );
 }
