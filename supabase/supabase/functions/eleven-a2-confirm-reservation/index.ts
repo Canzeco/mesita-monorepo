@@ -30,14 +30,17 @@ import {
   cleanNote,
   esDate,
   esTime,
-  parsePlaceLocal,
   placeLocalDate,
-  placeLocalTime,
   requireAgentSecret,
+  staleRunReply,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
 import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
-import { reminderParkPatch } from "../_shared/reservation-reminder.ts";
+import {
+  onTheSpotConfirmPatch,
+  placeLng,
+  resolveRequestedSlot,
+} from "../_shared/reservation-confirm.ts";
 
 const MAX_NEGOTIATION_ROUNDS = 2;
 
@@ -62,19 +65,9 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
 
   const ticket = await ticketByCode(admin, body.reference_code);
   if (!ticket) return json({ ok: false, error: "reservation not found for that reference_code" }, 404);
-  // Stale-run guard (eng-review 2026-08-04): run_id rides every outbound call
-  // as a bound dynamic variable. A mismatch means this CALL belongs to an
-  // orphaned run (the guest rescheduled/cancelled mid-call) — ignore the
-  // write, tell the agent to wrap up gracefully.
-  const callRunId = typeof body.run_id === "string" ? body.run_id.trim() : "";
-  if (callRunId && ticket.run_id && callRunId !== ticket.run_id) {
-    return json({
-      ok: true,
-      stale_run: true,
-      ignored: true,
-      say: "Esa reservación acaba de cambiar desde la app; Mesita le confirma los nuevos datos por ahí.",
-    });
-  }
+  // Stale-run guard: a call from an orphaned run writes nothing.
+  const stale = staleRunReply(body, ticket);
+  if (stale) return stale;
 
   if (ticket.state === "cancelled") {
     return json({ ok: false, error: "this reservation is cancelled" }, 409);
@@ -105,13 +98,12 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   // ── Change: alternative picked or a new proposal → new place call ──────────
   // Partial input defaults from the current reservation (place-local CDMX), so
   // "solo cambia la hora" works without the agent re-stating the date.
-  const date = typeof body.new_date === "string" && body.new_date.trim()
-    ? body.new_date
-    : placeLocalDate(ticket.reserved_at);
-  const time = typeof body.new_time === "string" && body.new_time.trim()
-    ? body.new_time
-    : placeLocalTime(ticket.reserved_at);
-  const next = parsePlaceLocal(date, time);
+  const { date, time, next } = resolveRequestedSlot(
+    ticket.reserved_at,
+    body.new_date,
+    body.new_time,
+    { trim: false },
+  );
   if (!next) {
     return json({
       ok: false,
@@ -128,28 +120,14 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   // it here is a promise the place already made, not an assumption.
   const offered = normalizeAlternatives(ticket.alternatives);
   if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
-    const { data: placeRow } = await admin
-      .from("place_profiles")
-      .select("lng")
-      .eq("id", ticket.project_id)
-      .maybeSingle();
-    const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
-    const nowIso = new Date().toISOString();
-    const patch: ReservationPatch = {
-      reserved_at: next.toISOString(),
-      state: "confirmed",
-      reported_verdict: "confirmed",
-      confirmed_at: nowIso,
-      consumer_confirmed_at: nowIso,
-      next_attempt_at: null,
-      attempts_state: "answered",
-      // a2 is ON the phone with the guest right now — there is nothing left
-      // to call them back about.
-      callback_state: "skipped",
-      callback_next_attempt_at: null,
-      ...reminderParkPatch(lng, next, "call"),
-      last_call_state: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
-    };
+    // a2 is ON the phone with the guest right now — there is nothing left
+    // to call them back about.
+    const patch = onTheSpotConfirmPatch({
+      next,
+      lng: await placeLng(admin, ticket.project_id),
+      notify: "call",
+      lastCallState: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
+    });
     if (note) patch.outcome_note = note;
     const confirm = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
     if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);

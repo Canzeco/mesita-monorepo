@@ -3,6 +3,8 @@
 // apps/web-admin/src/app/(app)/reservations-config/catalog.ts so the admin page and
 // the calling EF agree on the shape.
 
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+
 // `number` is the BUSINESS-side test line (what the agent dials instead of a
 // place while test mode is on). The retired Playground's guest-side
 // `consumerNumber` is no longer read (MESITA-2144); a stored one is ignored.
@@ -71,6 +73,18 @@ export function coerceReservationsCallConfig(raw: unknown): ReservationsCallConf
     limits: coerceLimits(c.limits),
     reminder: coerceReminder(c.reminder),
   };
+}
+
+/** Read app_config.reservations_config and coerce it (a failed read = the safe default). */
+export async function loadReservationsConfig(
+  admin: SupabaseClient,
+): Promise<ReservationsCallConfig> {
+  const { data } = await admin
+    .from("app_config")
+    .select("reservations_config")
+    .eq("id", 1)
+    .maybeSingle();
+  return coerceReservationsCallConfig(data?.reservations_config);
 }
 
 function coerceReminder(raw: unknown): ReminderConfig {

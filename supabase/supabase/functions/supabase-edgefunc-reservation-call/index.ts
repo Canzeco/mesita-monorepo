@@ -111,6 +111,7 @@ import {
   type ReservationOutcome,
 } from "../_shared/reservation-notification.ts";
 import { esDate, esTime } from "../_shared/es-speak.ts";
+import { guestName, type GuestNameParts } from "../_shared/reservation-guest-name.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
 // re-ring the guest on a still-live verdict (leg 3) · "cancel_notice" = tell
@@ -125,23 +126,7 @@ const CALLBACK_BUDGET_MS = 60_000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-type ConsumerName = {
-  full_name?: string | null;
-  first_name?: string | null;
-  last_name?: string | null;
-  phone?: string | null;
-};
-
-function guestName(c: ConsumerName | null): string {
-  if (!c) return "el cliente";
-  const full = c.full_name?.trim();
-  if (full) return full;
-  const joined = [c.first_name, c.last_name]
-    .map((s) => (s ?? "").trim())
-    .filter(Boolean)
-    .join(" ");
-  return joined || "el cliente";
-}
+type ConsumerName = GuestNameParts & { phone?: string | null };
 
 // Watch one placed call until we can tell whether it was answered. On failed,
 // errorCode (metadata.error.code) lets the caller separate a platform kill
@@ -1452,7 +1437,7 @@ serveJson("supabase-edgefunc-reservation-call", async (req) => {
   const modificationOfIso = typeof r.modification_of === "string" ? r.modification_of : null;
   const legVars: ReservationLegVars = {
     placeName: place?.name?.trim() || "el lugar",
-    guestName: guestName(consumer),
+    guestName: guestName(consumer, "el cliente"),
     guestPhone: consumerNumber,
     referenceCode: (r.reference_code ?? "").trim(),
     partySize: r.party_size,

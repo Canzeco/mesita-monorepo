@@ -20,7 +20,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { cancelTicket, fireCancelNotice } from "../_shared/agent-tools.ts";
+import { cancelAsGuest } from "../_shared/agent-tools.ts";
+import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 
 type Body = { reservation_id?: string; reason?: string };
@@ -46,14 +47,16 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     : "";
 
   const admin = adminClient(envRes.env);
-  const { data: row, error: readErr } = await admin
-    .from("reservation_tickets")
-    .select("id, state, reserved_at, consumer_id, reference_code")
-    .eq("id", id)
-    .maybeSingle();
-  if (readErr) return json({ ok: false, error: readErr.message }, 500);
+  const { row, error: readErr } = await readOwnedTicket<{
+    id: string;
+    state: string;
+    reserved_at: string;
+    consumer_id: string;
+    reference_code: string | null;
+  }>(admin, id, authRes.user.id, "id, state, reserved_at, consumer_id, reference_code");
+  if (readErr) return json({ ok: false, error: readErr }, 500);
   // Same answer for "doesn't exist" and "not yours" — never leak existence.
-  if (!row || row.consumer_id !== authRes.user.id) {
+  if (!row) {
     return json({ ok: false, error: "Reservation not found" }, 404);
   }
 
@@ -68,19 +71,18 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
   // cancel or this becomes a Mesita-made no-show (Docs › Reservations §B
   // leg 5). Pending tickets owe nothing: never ring a place to cancel what it
   // never agreed to.
-  const notice = row.state === "confirmed" ? "place_cancel" as const : null;
   // ONE cancel write-shape for all four doors (app + a2/a3/a4 voice) —
   // cancelTicket owns it, including the run_id rotation that orphans any
-  // mid-flight engine run.
-  const err = await cancelTicket(admin, id, "consumer", reason, notice);
-  if (err) return json({ ok: false, error: err }, 500);
-
-  // The cancel itself is done and instant; the courtesy call is a background
-  // consequence. The engine acks early, and the retry cron sweeps any notice
-  // left 'pending' if this invoke is lost.
-  if (notice) {
-    await fireCancelNotice(envRes.env, "consumer-web-cancel-reservation", id);
-  }
+  // mid-flight engine run. The cancel itself is done and instant; the
+  // courtesy call is a background consequence.
+  const res = await cancelAsGuest(
+    admin,
+    envRes.env,
+    "consumer-web-cancel-reservation",
+    { id, state: row.state },
+    reason,
+  );
+  if (!res.ok) return json({ ok: false, error: res.error }, 500);
 
   return json({
     ok: true,
@@ -88,6 +90,6 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     reservation_id: id,
     state: "cancelled",
     reference_code: row.reference_code ?? null,
-    place_notified: notice !== null,
+    place_notified: res.placeNotified,
   });
 });
