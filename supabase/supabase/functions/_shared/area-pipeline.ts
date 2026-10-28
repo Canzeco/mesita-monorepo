@@ -1,33 +1,27 @@
-// THE AREA PIPELINE (MESITA-2302, one pool since MESITA-2379, Mesita's two
-// sources only since MESITA-2872). Places around a POINT and a RADIUS — the Map's cross
-// and its screen radius, or Home's device / saved pin and its radius — or,
-// with no point, Mesita's own places by Popularity alone. Home (the Feed)
-// and the Map are VIEWS of Area; they share this one retrieval, the same
-// switches and the same ranking (Pato, MESITA-2703: "get (geolocation,
-// radius), pull from four sources, merge duplicates, sort"; Pato,
-// MESITA-2872: "We are only going to have Mesita Nearby Search").
+// THE MAP AND CATALOG PIPELINES (Area, MESITA-2302; one pool since
+// MESITA-2379; Mesita's places only since MESITA-2872; split in two by
+// MESITA-2909). Neither calls Google: Mesita's places are the one source.
 //
-//   (point, radius)
-//     ├─ Mesita Popularity   top 20 by Popularity × s in the circle     ─┐
-//     └─ Mesita Proximity   20 nearest in the circle                   ─┘
-//   merge (one card per place; `foundBy` keeps every source that found it)
-//   → gates → Proximity × Popularity × s (s = the Selected boost for a
-//   Mesita Selected place, else 1)
+//   Map (the Search tab)   (point, screen radius)
+//     every ready Mesita row in the circle → gates → Popularity × s
+//     → the top `map.placesShown`
+//   Catalog (Home)         (point or nothing, NO radius)
+//     every ready Mesita row → gates → Proximity × Popularity × s
+//     → the whole ranked list; the client pages it (`map.catalogPageSize`)
 //
-// Each source is `map.<key>` 0 or 20 (`AREA_SOURCE_KEYS`). Gates: Family ·
-// Radius, plus the operational ones the sources apply (active, ready) and
-// the Popularity floor; no reviews floor (MESITA-2721). Score:
-// area-score.ts; Proximity is ½ at the radius ÷ the operator's
-// Distance penalty (MESITA-2720): `params.proximity.radiusDivisor`, one
-// number for the Map, Home and Chat (MESITA-2776 retired MESITA-2727's
-// separate Catalog penalty).
+// (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
+// Catalog "literal podemos sacar la lista final de todos los lugares en una
+// corrida", paged, with Proximity's half distance as its knob.) s is the
+// Selected boost / paid Boost factor (area-score.ts). Gates: Family, Radius
+// (the Map), the operational ones the read applies (active, ready) and the
+// Popularity floor; no reviews floor (MESITA-2721). The two source switches
+// (Mesita Popularity / Mesita Proximity, 20 + 20, MESITA-2703) and the
+// Distance penalty (MESITA-2720/2776) retired with the split.
 //
-// No Google call: Google Nearby Search (two billed Enterprise calls per Map
-// pan or Home load) was removed in MESITA-2872, after MESITA-2870's bill.
 // Nothing here writes a row.
 //
 // Chat (MESITA-2339) does not use the pool: `areaSelectedPlaces` reads Mesita
-// Selected places only, with the same score inside `map.radiusKm`.
+// Selected places only inside `map.radiusKm`, ranked with the Catalog score.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isSelectedRow } from "./selected-row.ts";
@@ -43,42 +37,35 @@ import {
   type AreaSource,
   insideBounds,
   type LatLng,
-  popularPart,
   rankArea,
 } from "./area-score.ts";
-import { logPopularity, PROXIMITY_RADIUS_DIVISOR_DEFAULT } from "./pipeline-signals.ts";
-import {
-  AREA_SOURCE_KEYS,
-  type AreaSourceKey,
-  type DiscoveryConfig,
-  MAP_RADIUS_KM_MAX,
-  MAP_RADIUS_KM_MIN,
-  type SignalParams,
-} from "./discovery-config.ts";
+import { PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
+import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
 
-/** Which surface asks: the Map (Search tab) or Home's catalog. The one
- *  number that differs is Places shown (MESITA-2727); the Distance penalty
- *  is shared since MESITA-2776. */
+/** Which pipeline runs: the Map (the Search tab) or the Catalog (Home),
+ *  MESITA-2909. Chat ranks like the Catalog. */
 export type AreaSurface = "map" | "catalog";
 
-/** Proximity's radius divisor (the Distance penalty), the
- *  Popularity floor and the Selected boost, from the blob: the one score every Area caller ranks by,
- *  Proximity × Popularity × the boost (no exponents since MESITA-2722). The radius is the request's: it
- *  gates, and ÷ the divisor it is the half distance (MESITA-2720).
- *  Popularity takes no parameter (MESITA-2710: ln(1 + reviews × stars)). */
+/** The numbers a pipeline reads from the blob: Proximity's half distance
+ *  (the Catalog only; the Map has none, MESITA-2909), the Popularity floor
+ *  and the Selected boost (both pipelines and Chat). Popularity takes no
+ *  parameter (MESITA-2710: ln(1 + reviews × stars)). */
 export function areaSignalParams(
   params: SignalParams,
   map: {
     popularityFloor?: number;
     selectedFactor?: number;
   },
-): Pick<AreaContext, "radiusDivisor" | "popularityFloor" | "selectedFactor"> {
-  const k = params.proximity?.radiusDivisor;
+  surface: AreaSurface,
+): Pick<AreaContext, "halfKm" | "popularityFloor" | "selectedFactor"> {
+  const h = params.proximity?.halfKm;
   return {
-    radiusDivisor: typeof k === "number" && Number.isFinite(k) && k > 0 ? k : PROXIMITY_RADIUS_DIVISOR_DEFAULT,
-    // The Popularity floor (MESITA-2714), a gate on every Area caller.
+    halfKm: surface === "map"
+      ? null
+      : typeof h === "number" && Number.isFinite(h) && h > 0 ? h : PROXIMITY_HALF_KM_DEFAULT,
+    // The Popularity floor (MESITA-2714), a gate on every caller.
     popularityFloor: map.popularityFloor,
-    // The Selected boost (MESITA-2717), a multiplier on every Area caller.
+    // The Selected boost (MESITA-2717), a multiplier on every caller.
     selectedFactor: map.selectedFactor,
   };
 }
@@ -144,25 +131,11 @@ export function parseAreaBounds(raw: unknown): AreaBounds | null {
   return { low, high };
 }
 
-/**
- * Home's radius (MESITA-2703): the saved pin's own `radiusKm` when the
- * client sends a finite one, clamped to `MAP_RADIUS_KM_MIN`..`MAX`; anything
- * else (missing, a string, NaN) is the operator's `map.radiusKm`, the
- * current-location radius. `from` goes in the log line.
- */
-export function requestRadiusKm(
-  raw: unknown,
-  operatorKm: number,
-): { km: number; from: "request" | "operator" } {
-  if (typeof raw !== "number" || !Number.isFinite(raw)) return { km: operatorKm, from: "operator" };
-  const km = Math.round(Math.min(MAP_RADIUS_KM_MAX, Math.max(MAP_RADIUS_KM_MIN, raw)) * 10) / 10;
-  return { km, from: "request" };
-}
-
-/** A centre makes a point inside the radius; no centre, no location. */
+/** A centre makes a point; no centre, no location. `radiusKm` gates (the
+ *  Map); null does not (the Catalog, MESITA-2909). */
 export function resolveAreaLocation(
   center: LatLng | null,
-  radiusKm: number,
+  radiusKm: number | null,
 ): AreaLocation {
   if (center) return { kind: "point", anchor: center, radiusKm };
   return { kind: "none" };
@@ -209,13 +182,6 @@ function mid(a: LatLng, b: LatLng): LatLng {
   return { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 };
 }
 
-/** The switches that are on, in `AREA_SOURCE_KEYS` order. */
-export function areaSourcesOn(
-  map: Pick<DiscoveryConfig["map"], AreaSourceKey>,
-): AreaSourceKey[] {
-  return AREA_SOURCE_KEYS.filter((k) => (map[k] ?? 0) > 0);
-}
-
 // ── The pool ────────────────────────────────────────────────────────────
 
 export type AreaPoolDeps<T extends PoolRow> = {
@@ -225,40 +191,32 @@ export type AreaPoolDeps<T extends PoolRow> = {
   /** The caller's Mesita read (gates pushed down, `selectedPoolQuery`). */
   mesitaRows: readonly T[];
   cfg: Pick<DiscoveryConfig, "general" | "map" | "params">;
-  /** Which surface asks: picks Places shown (MESITA-2727). Required, so a
-   *  new caller has to choose. */
+  /** Which pipeline runs (MESITA-2909). Required, so a new caller has to
+   *  choose. */
   surface: AreaSurface;
 };
 
-/** The breakdown a pool place carries: the score's and every source that
- *  found it (MESITA-2703; diagnostics only, no card draws it). */
+/** The breakdown a pool place carries (diagnostics only, no card draws it). */
 export type AreaPoolDiagnostics = AreaDiagnostics & {
-  foundBy: AreaSourceKey[];
   /** Km from the anchor, 2 decimals; null with no point (MESITA-2830). */
   distanceKm: number | null;
-  /** The Distance penalty k Proximity read (MESITA-2830). */
-  distancePenalty: number;
+  /** The half distance Proximity read (km); null on the Map (MESITA-2909). */
+  halfKm: number | null;
 };
 
 export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics };
 
 export type AreaPoolSummary = {
-  /** The switches that ran ("none" when no source could run: every switch
-   *  off, or no point and Mesita Popularity off). */
-  sources: AreaSourceKey[] | "none";
-  /** Places each source returned after its own gates, before the merge. */
-  sourceCounts: Record<AreaSourceKey, number>;
+  /** Mesita rows the pipeline read, before its gates. */
+  read: number;
   returned: number;
-  /** Which surface ran, and the two numbers it read (MESITA-2727). */
-  surface?: AreaSurface;
-  distancePenalty?: number;
-  placesShown?: number;
-};
-
-type PoolItem = {
-  candidate: AreaCandidate;
-  place: Record<string, unknown>;
-  foundBy: Set<AreaSourceKey>;
+  /** Which pipeline ran and the numbers it read (MESITA-2909). */
+  surface: AreaSurface;
+  halfKm: number | null;
+  /** The Map's cut; null on the Catalog, which returns the whole list. */
+  placesShown: number | null;
+  /** The Catalog's page size; null on the Map. */
+  pageSize: number | null;
 };
 
 function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number | null {
@@ -268,119 +226,58 @@ function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number |
 }
 
 /** `map.placesShown` when a caller's cfg predates it. */
-const AREA_PLACES_SHOWN_FALLBACK = 20;
-
-/** One Mesita source's pick: at most 20 rows that clear the gates. */
-const MESITA_SOURCE_MAX = 20;
-
-/**
- * Mesita Popularity and Mesita Proximity (MESITA-2703), picked in memory from the
- * caller's radius-boxed read (capped at `NEARBY_SCAN_LIMIT`, ordered by id;
- * the EF logs `mesitaCapped`). Popular ranks by the score's own Popularity
- * part, Popularity × the Selected boost, so a Selected row competes for a
- * slot with the boost it scores with and the pick agrees with the ranking
- * (MESITA-2717); equal parts fall back to raw Popularity. Proximity ranks by
- * distance; both then by id. Proximity needs a point.
- */
-function mesitaItems<T extends PoolRow>(
-  deps: AreaPoolDeps<T>,
-  sources: readonly AreaSourceKey[],
-  ctx: AreaContext,
-  summary: AreaPoolSummary,
-): PoolItem[] {
-  const wantPopular = sources.includes("mesitaPopular");
-  const wantClosest = sources.includes("mesitaClosest") && deps.location.kind === "point";
-  if (!wantPopular && !wantClosest) return [];
-  const open = rankArea(
-    deps.mesitaRows.map((row) => ({
-      candidate: mesitaCandidate(row),
-      place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
-      foundBy: new Set<AreaSourceKey>(),
-    })),
-    (item) => item.candidate,
-    ctx,
-  );
-  const byId = (a: { item: PoolItem }, b: { item: PoolItem }) =>
-    a.item.candidate.id.localeCompare(b.item.candidate.id);
-  const picks: PoolItem[] = [];
-  if (wantPopular) {
-    const top = [...open]
-      .sort((a, b) =>
-        popularPart(b.item.candidate, ctx) - popularPart(a.item.candidate, ctx) ||
-        logPopularity(b.item.candidate) - logPopularity(a.item.candidate) ||
-        byId(a, b)
-      )
-      .slice(0, MESITA_SOURCE_MAX);
-    for (const { item } of top) item.foundBy.add("mesitaPopular");
-    summary.sourceCounts.mesitaPopular = top.length;
-    picks.push(...top.map(({ item }) => item));
-  }
-  if (wantClosest) {
-    const near = [...open]
-      .sort((a, b) =>
-        (a.area.distanceKm ?? Infinity) - (b.area.distanceKm ?? Infinity) || byId(a, b)
-      )
-      .slice(0, MESITA_SOURCE_MAX);
-    for (const { item } of near) item.foundBy.add("mesitaClosest");
-    summary.sourceCounts.mesitaClosest = near.length;
-    picks.push(...near.map(({ item }) => item));
-  }
-  return picks;
-}
+const AREA_PLACES_SHOWN_FALLBACK = 50;
+/** `map.catalogPageSize` when a caller's cfg predates it. */
+const CATALOG_PAGE_SIZE_FALLBACK = 20;
 
 /**
- * The Area pool: the two sources pulled, merged (one card per place), gated,
- * scored and ranked globally, every place carrying its `area` breakdown.
+ * The Map or Catalog pool: the caller's Mesita read gated, scored and ranked,
+ * every place carrying its `area` breakdown. The Map keeps its top
+ * `map.placesShown`; the Catalog keeps every place, best first.
  */
 export function selectAreaPool<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
 ): Promise<{ places: AreaPoolPlace[]; summary: AreaPoolSummary }> {
-  const sources = areaSourcesOn(deps.cfg.map).filter((k) =>
-    deps.location.kind === "point" || k === "mesitaPopular"
-  );
-  const summary: AreaPoolSummary = {
-    sources: sources.length > 0 ? sources : "none",
-    sourceCounts: { mesitaPopular: 0, mesitaClosest: 0 },
-    returned: 0,
-  };
+  const catalog = deps.surface === "catalog";
   const ctx: AreaContext = {
     location: deps.location,
     families: deps.families,
-    ...areaSignalParams(deps.cfg.params, deps.cfg.map),
+    ...areaSignalParams(deps.cfg.params, deps.cfg.map, deps.surface),
   };
-  // The operator's cut (MESITA-2713), per surface (MESITA-2727).
-  const shown = (deps.surface === "catalog" ? deps.cfg.map.catalogPlacesShown : undefined) ??
-    deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
-  summary.surface = deps.surface;
-  summary.distancePenalty = ctx.radiusDivisor;
-  summary.placesShown = shown;
-  const fromMesita = mesitaItems(deps, sources, ctx, summary);
-
-  // One card per place; `foundBy` keeps every source that found it.
-  const byId = new Map<string, PoolItem>();
-  for (const item of fromMesita) {
-    const seen = byId.get(item.candidate.id);
-    if (!seen) byId.set(item.candidate.id, item);
-    else for (const k of item.foundBy) seen.foundBy.add(k);
-  }
-
-  // The top `shown` of the merged, sorted pool (up to 40 = 2 sources × 20).
-  // A family row ranks by score alone: a place's families are a list, none
-  // of them primary (MESITA-2808).
-  const ranked = rankArea([...byId.values()], (item) => item.candidate, ctx)
-    .slice(0, Math.max(0, shown));
-  const places = ranked.map(({ item, area }) => {
+  const ranked = rankArea(
+    deps.mesitaRows.map((row) => ({
+      candidate: mesitaCandidate(row),
+      place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
+    })),
+    (item) => item.candidate,
+    ctx,
+  );
+  const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
+  const kept = catalog ? ranked : ranked.slice(0, Math.max(0, shown));
+  const places = kept.map(({ item, area }) => {
     const { distanceKm: km, ...diagnostics } = area;
-    const foundBy = AREA_SOURCE_KEYS.filter((k) => item.foundBy.has(k));
-    // The score tag prints both beside Proximity (MESITA-2830).
+    // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
     return {
       ...item.place,
-      area: { ...diagnostics, foundBy, distanceKm, distancePenalty: ctx.radiusDivisor },
+      area: { ...diagnostics, distanceKm, halfKm: ctx.halfKm },
     } as AreaPoolPlace;
   });
-  summary.returned = places.length;
+  const summary: AreaPoolSummary = {
+    read: deps.mesitaRows.length,
+    returned: places.length,
+    surface: deps.surface,
+    halfKm: ctx.halfKm,
+    placesShown: catalog ? null : shown,
+    pageSize: catalog ? catalogPageSize(deps.cfg.map) : null,
+  };
   return Promise.resolve({ places, summary });
+}
+
+/** The Catalog's page size: the operator's `map.catalogPageSize`. */
+export function catalogPageSize(map: { catalogPageSize?: number }): number {
+  const n = map.catalogPageSize;
+  return typeof n === "number" && Number.isFinite(n) && n > 0 ? n : CATALOG_PAGE_SIZE_FALLBACK;
 }
 
 /** The log line's view of a pool: per-family counts. */
@@ -418,10 +315,10 @@ export interface PoolBuilder extends SelectedPoolQuery<PoolBuilder> {
 /**
  * The Mesita pool in SQL, with the gates PUSHED DOWN so a dense area does
  * not fill the row cap with rows the ranking would drop: ready, active, the
- * requested families, and the radius box around the point (no point, no
- * box). `selectedOnly` (Chat, the default) also keeps only Mesita Selected
+ * requested families, and the radius box around the point (no centre, no
+ * box: the Catalog reads the whole catalog, MESITA-2909). `selectedOnly` (Chat, the default) also keeps only Mesita Selected
  * rows — the operator's mark, `places.selected` (MESITA-2707), never
- * `enriched_at`; the Feed and the Map pass false, because Selected is a tag
+ * `enriched_at`; the Catalog and the Map pass false, because Selected is a tag
  * on their cards, not their gate.
  */
 export function selectedPoolQuery<Q extends SelectedPoolQuery<Q>>(
@@ -468,7 +365,7 @@ export type SelectedOpts = {
   limit?: number;
 };
 
-/** Mesita Selected rows ranked by the Area score (inside the radius). */
+/** Mesita Selected rows ranked by the Catalog score, inside the radius. */
 export function selectMesitaSelected<T extends Record<string, unknown>>(
   rows: readonly T[],
   opts: SelectedOpts,
@@ -482,8 +379,8 @@ export function selectMesitaSelected<T extends Record<string, unknown>>(
     {
       location,
       families: opts.families ?? [],
-      // The Distance penalty (MESITA-2720/2776): half credit at the current-location radius ÷ k.
-      ...areaSignalParams(opts.params, opts),
+      // The Catalog score (MESITA-2909): Proximity with the half distance.
+      ...areaSignalParams(opts.params, opts, "catalog"),
     },
   );
   const out = ranked.map(({ item }) => ({
@@ -501,8 +398,9 @@ const AREA_SELECTED_POOL = 300;
 
 /**
  * Mesita Selected places for a caller that is not a view — the Chat Agent
- * (MESITA-2339). The same pool query (gates pushed down, Selected only) and
- * the same score, around the guest's location when there is one. No Google
+ * (MESITA-2339). The same pool query (gates pushed down, Selected only),
+ * boxed to `map.radiusKm` around the guest's location when there is one,
+ * and the Catalog's score (MESITA-2909). No Google
  * call. Null on error.
  */
 export async function areaSelectedPlaces(

@@ -1,7 +1,6 @@
-// The Area score and its gates (MESITA-2327; one pool since MESITA-2379;
-// points only since Territory was retired, MESITA-2603; Proximity^a ×
-// Popularity^b since MESITA-2703; Proximity ½ at the operator's
-// half-distance, whatever the radius, since MESITA-2706).
+// The Map and Catalog scores and their gates (MESITA-2327; one pool since
+// MESITA-2379; points only since Territory was retired, MESITA-2603; split
+// into the Map and the Catalog, MESITA-2909).
 import { assertAlmostEquals, assertEquals } from "jsr:@std/assert@1";
 import {
   type AreaCandidate,
@@ -19,7 +18,7 @@ const POP = Math.log1p(400);
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
-  radiusDivisor: 2,
+  halfKm: 4,
 };
 const BOUNDS = { low: { lat: 19.4, lng: -99.2 }, high: { lat: 19.5, lng: -99.1 } };
 const NONE: AreaContext = { ...CTX, location: { kind: "none" } };
@@ -164,26 +163,30 @@ Deno.test("non-finite numbers never reach the sort", () => {
   assertEquals(ranked[0].item.id, "ok");
 });
 
-Deno.test("Proximity's half distance is the radius ÷ the operator's divisor (MESITA-2720)", () => {
-  // k = 2 on a 3 km circle: H = 1.5 km, so 1.5 km out scores ½.
-  const ctx: AreaContext = {
-    ...CTX,
-    location: { kind: "point", anchor: ANCHOR, radiusKm: 3 },
-    radiusDivisor: 2,
-  };
-  const mid = cand({ lat: ANCHOR.lat + 1.5 / 111.195 });
-  assertAlmostEquals(areaScore(mid, ctx).signals.proximity!, 0.5, 1e-3);
-  // H follows the radius: on a 30 km circle H = 15 km, so 1.5 km out is
-  // 1 ÷ (1 + 0.1); and the divisor moves it (k = 1: H = 3 km, ⅔).
-  const wide: AreaContext = { ...ctx, location: { kind: "point", anchor: ANCHOR, radiusKm: 30 } };
-  assertAlmostEquals(areaScore(mid, wide).signals.proximity!, 1 / 1.1, 1e-3);
-  assertAlmostEquals(areaScore(mid, { ...ctx, radiusDivisor: 1 }).signals.proximity!, 2 / 3, 1e-3);
-  // The edge is not 0 any more: 2.999 km of a 3 km circle keeps ⅓, and the
-  // Radius gate, not the curve, drops what lies past the circle.
-  const edge = cand({ lat: ANCHOR.lat + 2.999 / 111.195, rating: 4.0, reviewCount: 100 });
-  assertAlmostEquals(areaScore(edge, ctx).signals.proximity!, 1 / 3, 1e-3);
-  assertAlmostEquals(areaScore(edge, ctx).final, POP / 3, 1e-3);
-  assertEquals(areaScore(cand({ lat: ANCHOR.lat + 3.1 / 111.195 }), ctx).gates.radius, 0);
+Deno.test("the Map: the radius gates, Proximity is not read, Popularity orders (MESITA-2909)", () => {
+  const map: AreaContext = { ...CTX, location: { kind: "point", anchor: ANCHOR, radiusKm: 3 }, halfKm: null };
+  const near = cand({ id: "near", rating: 4.0, reviewCount: 30 });
+  const far = cand({ id: "far", lat: ANCHOR.lat + 2.9 / 111.195, rating: 4.6, reviewCount: 1000 });
+  const s = areaScore(far, map);
+  assertEquals(s.signals.proximity, null);
+  assertAlmostEquals(s.final, Math.log1p(4600), 1e-9);
+  // The far, popular place outranks the near, quiet one inside the circle.
+  assertEquals(rankArea([near, far], (c) => c, map).map((r) => r.item.id), ["far", "near"]);
+  // Past the circle it is gated out.
+  assertEquals(areaScore(cand({ lat: ANCHOR.lat + 3.1 / 111.195 }), map).gates.radius, 0);
+});
+
+Deno.test("the Catalog: no radius gate, Proximity ½ at the half distance (MESITA-2909)", () => {
+  const catalog: AreaContext = { ...CTX, location: { kind: "point", anchor: ANCHOR, radiusKm: null }, halfKm: 4 };
+  const mid = cand({ lat: ANCHOR.lat + 4 / 111.195, rating: 4.0, reviewCount: 100 });
+  const s = areaScore(mid, catalog);
+  assertAlmostEquals(s.signals.proximity!, 0.5, 1e-3);
+  assertAlmostEquals(s.final, POP / 2, 1e-3);
+  assertEquals(s.gates.radius, null);
+  // 400 km out is lowered, never cut.
+  const far = areaScore(cand({ lat: ANCHOR.lat + 400 / 111.195 }), catalog);
+  assertEquals(far.gates.radius, null);
+  assertEquals(far.final > 0, true);
 });
 
 Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the product is never clamped (MESITA-2710)", () => {

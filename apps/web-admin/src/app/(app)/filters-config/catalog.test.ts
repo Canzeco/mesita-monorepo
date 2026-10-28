@@ -40,13 +40,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps the divisor and the reviews half point; the reach, the fixed half distance, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2720)", () => {
+  it("params keeps the half distance and the reviews half point; the reach, the divisor, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
         params: {
-          // `halfDistanceKm` and `halfKm` are retired keys, not the divisor.
-          proximity: { maxKm: 30, halfDistanceKm: 6, halfKm: 10 },
+          // `halfDistanceKm` and `radiusDivisor` are retired keys.
+          proximity: { maxKm: 30, halfDistanceKm: 6, radiusDivisor: 3 },
           popularity: { priorRating: 4.2, referenceRating: 4, referenceReviews: 500, halfReviews: 250 },
           balance: { proximity: 8 },
           modes: { popular: { proximity: 0.5 } },
@@ -54,38 +54,42 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { radiusDivisor: 2 },
+      proximity: { halfKm: 5 },
       popularity: { halfReviews: 250 },
     });
   });
 
-  it("the Area params: the radius divisor clamps to 0.1–10 at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2720, MESITA-2725)", () => {
+  it("the half distance clamps to 0.5–50 km at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2909)", () => {
     expect(
       coerceConfig({
         params: {
-          proximity: { reachKm: 12.34, radiusDivisor: 2.34 },
+          proximity: { reachKm: 12.34, halfKm: 2.34 },
           popularity: { halfReviews: 0 },
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { radiusDivisor: 2.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0 } } }).params.proximity).toEqual({ radiusDivisor: 0.1 });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 0.3 } } }).params.proximity).toEqual({ radiusDivisor: 0.3 });
-    expect(coerceConfig({ params: { proximity: { radiusDivisor: 999 } } }).params.proximity).toEqual({ radiusDivisor: 10 });
+    ).toEqual({ proximity: { halfKm: 2.3 }, popularity: { halfReviews: 1 } });
+    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.5 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 50 });
   });
 
-  it("the two Area sources are 0 or 20; the retired Google two are dropped (MESITA-2703/2872)", () => {
+  it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {
     const m = coerceConfig({
-      map: { googlePopular: 20, googleClosest: 0, mesitaPopular: 3, mesitaClosest: "x" },
+      map: { googlePopular: 20, googleClosest: 0, mesitaPopular: 3, mesitaClosest: 20, catalogPlacesShown: 40 },
     }).map;
-    expect([m.mesitaPopular, m.mesitaClosest]).toEqual([0, 20]);
-    expect("googlePopular" in m || "googleClosest" in m).toBe(false);
+    for (const gone of ["googlePopular", "googleClosest", "mesitaPopular", "mesitaClosest", "catalogPlacesShown"]) {
+      expect(gone in m).toBe(false);
+    }
+    // Catalog page size (MESITA-2909): whole, 5..100, default 20.
+    expect(DEFAULT_MAP.catalogPageSize).toBe(20);
+    expect(coerceConfig({ map: { catalogPageSize: 1 } }).map.catalogPageSize).toBe(5);
+    expect(coerceConfig({ map: { catalogPageSize: 500 } }).map.catalogPageSize).toBe(100);
     // The exponents are retired (MESITA-2722): a stored one is dropped.
     expect("popularityWeight" in coerceConfig({ map: { popularityWeight: 9 } }).map).toBe(false);
-    // Places shown (MESITA-2713): whole, 1..40, default 20.
-    expect(DEFAULT_MAP.placesShown).toBe(20);
+    // Most pins shown (MESITA-2713, MESITA-2909): whole, 1..200, default 50.
+    expect(DEFAULT_MAP.placesShown).toBe(50);
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
-    expect(coerceConfig({ map: { placesShown: 200 } }).map.placesShown).toBe(40);
+    expect(coerceConfig({ map: { placesShown: 900 } }).map.placesShown).toBe(200);
     expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
     // Minimum Popularity (MESITA-2714): 0..20, one decimal, default 3.
     expect(DEFAULT_MAP.popularityFloor).toBe(3);
@@ -224,14 +228,14 @@ describe("coerceConfig", () => {
 });
 
 describe("Discovery page box order", () => {
-  it("is ONE page of four pipeline boxes, no subpages (MESITA-2327)", () => {
+  it("is ONE page of five pipeline boxes, no subpages (MESITA-2327, MESITA-2909)", () => {
     const page = readFileSync(join(__dirname, "page.tsx"), "utf8");
     const nav = readFileSync(join(__dirname, "nav.ts"), "utf8");
     const nextConfig = readFileSync(
       join(__dirname, "../../../../next.config.ts"),
       "utf8",
     );
-    const order = ["<NameAdminBox", "<NameBox", "<AreaBox", "<DeepBox"].map((tag) =>
+    const order = ["<NameAdminBox", "<NameBox", "<MapBox", "<CatalogBox", "<DeepBox"].map((tag) =>
       page.indexOf(tag),
     );
     expect(order.every((at) => at > -1)).toBe(true);

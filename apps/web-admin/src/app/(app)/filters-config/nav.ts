@@ -1,6 +1,6 @@
 import { Compass } from "lucide-react";
 
-// Discovery — ONE sidebar entry, ONE page (MESITA-2327): four pipeline boxes,
+// Discovery — ONE sidebar entry, ONE page (MESITA-2327): five pipeline boxes,
 // no subpages. The prefix is frozen: /filters-config. Every retired subpage
 // (Modes, Signals, Sources, Matrix, Catalog, Chat, modules) redirects here
 // in one hop (next.config.ts).

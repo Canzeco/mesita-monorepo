@@ -77,9 +77,6 @@ import { RailScoreTag } from "@/components/consumer/search/search-catalog-overla
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
-import { useOperatorRadiusKm } from "@/lib/use-operator-radius";
-import { nextRadiusChip } from "@/lib/pin-picker-state";
-import { formatKm } from "@/lib/saved-locations";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
 import { SocialFeed } from "./SocialFeed";
@@ -139,7 +136,9 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** Tiles drawn per page; the next page appends on scroll (MESITA-2384). */
+/** Tiles drawn per page when the server sends no `pageSize` (the
+ *  operator's Catalog page size, MESITA-2909); the next page appends on
+ *  scroll (MESITA-2384). */
 export const PLACES_PAGE = 20;
 
 /** The families a row asks the server for (MESITA-2438): its own key, or
@@ -187,18 +186,9 @@ export function CatalogRails() {
   // centre (MESITA-2472). Before it answers: nothing yet (a skeleton).
   const onCityFallback = origin === null && coords === null && locationSettled;
   const base = origin ?? coords ?? (onCityFallback ? MONTERREY_CENTER : null);
-  // THE RADIUS (MESITA-2703): a saved pin's own (`origin.radiusKm`), else
-  // the operator's current-location radius, which the server applies when
-  // none is sent. "Search N km" on an empty pool widens THIS visit only: it
-  // is keyed to the location, never written to the pin.
-  const operatorKm = useOperatorRadiusKm();
-  const baseKey = areaPoolKey(base);
-  const [widen, setWiden] = useState<{ key: string; km: number } | null>(null);
-  const widenKm = widen && widen.key === baseKey ? widen.km : null;
-  const baseRadiusKm = origin?.radiusKm ?? null;
-  const from = base && widenKm !== null ? { ...base, radiusKm: widenKm } : base;
-  const searchedKm = widenKm ?? baseRadiusKm ?? operatorKm;
-  const widerKm = nextRadiusChip(searchedKm, operatorKm);
+  // NO RADIUS (MESITA-2909): the Catalog ranks every Mesita place from
+  // this point; a saved pin's radius no longer cuts anything.
+  const from = base;
   const waitingForFix = origin === null && coords === null && !locationSettled;
   // One ranking for every chip, the Map's (MESITA-2516): the question is
   // the place and the family. Saved and the Social tab read no pool, so they
@@ -265,7 +255,8 @@ export function CatalogRails() {
     () => (pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : []),
     [pool, chip, createdPlaces],
   );
-  const hasMore = shown.length > pageCount * PLACES_PAGE;
+  const pageSize = pool?.pageSize ?? PLACES_PAGE;
+  const hasMore = shown.length > pageCount * pageSize;
   useEffect(() => {
     const el = sentinel.current;
     if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
@@ -438,7 +429,7 @@ export function CatalogRails() {
   );
 
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
-    const page = paged ? list.slice(0, pageCount * PLACES_PAGE) : list;
+    const page = paged ? list.slice(0, pageCount * pageSize) : list;
     return (
       <div className="pb-6">
         <ul role="list" aria-label={label} className={PLACES_LIST}>
@@ -520,29 +511,14 @@ export function CatalogRails() {
   if (pool === null) return shell(<DiscoverFallback />);
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
-  // An empty pool around a point says how far it looked and offers the next
-  // chip (MESITA-2703); any other empty (no point, every source off, Google
-  // down) keeps the plain copy, and the server log tells those apart.
-  const pointEmpty = pool.kind === "point";
+  // The Catalog has no radius (MESITA-2909): an empty pool is an empty
+  // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (
-    pointEmpty ? (
-      <EmptyState
-        icon={Compass}
-        title={`Nothing within ${formatKm(searchedKm)} km`}
-        description="Try a wider search, or another location."
-        action={
-          widerKm !== null && base
-            ? { label: `Search ${formatKm(widerKm)} km`, onClick: () => setWiden({ key: baseKey, km: widerKm }) }
-            : undefined
-        }
-      />
-    ) : (
-      <EmptyState
-        icon={Compass}
-        title="No places here yet"
-        description="Try another location, or check back soon."
-      />
-    )
+    <EmptyState
+      icon={Compass}
+      title="No places yet"
+      description="Check back soon."
+    />
   ) : (
     <EmptyState
       icon={Compass}

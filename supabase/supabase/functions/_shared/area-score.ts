@@ -1,32 +1,32 @@
-// The Area pipeline's gates and its two signals (MESITA-2327; one pool
-// since MESITA-2379; points only since Territory was retired, MESITA-2500,
-// MESITA-2603; two signals since MESITA-2703; the Selected boost since
-// MESITA-2717).
+// The gates and the two signals of the Map and Catalog pipelines (Area,
+// MESITA-2327, split in two by MESITA-2909; one pool since MESITA-2379;
+// points only since Territory was retired, MESITA-2500, MESITA-2603; the
+// Selected boost since MESITA-2717).
 //
-//   point location   final = Proximity × Popularity × s
-//   no location      final = Popularity × s
+//   Map      final = Popularity × s           inside the screen radius
+//   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
+//   no location (either)  final = Popularity × s
 //
-// No exponents since MESITA-2722 (Pato: "kinda redundant factors"): the
-// product's order only ever read a : b, and the radius divisor already
-// says how much distance costs; `map.proximityWeight` and
-// `map.popularityWeight` (MESITA-2703, both 1) are retired.
-// Proximity is 1 ÷ (1 + distance ÷ H), H = radius ÷ k,
-// k the operator's radius divisor (MESITA-2720; a fixed H, MESITA-2706,
-// before): 1 at the point, ½ at H, 1 ÷ (1 + k) at the edge whatever the
-// radius, never 0; the Radius gate alone decides who is in. Popularity is ln(1 + reviews × stars), unbounded, and the product is
-// never clamped or normalized (MESITA-2710). s is the operator's Selected
-// boost (`map.selectedFactor`, default 3; "Selected factor" until MESITA-2722) for a Mesita Selected place and
-// 1 for every other place (Pato, MESITA-2717: "not select is 1, select is
-// 3"). Selected was a third signal (MESITA-2439) until MESITA-2703; it is
-// back as a plain multiplier, never an exponent.
+// THE SPLIT (Pato, MESITA-2909): on the Map distance is a SCREEN, never a
+// sort ("como screening dentro del radio, pero no la metería ya para el
+// sorting"): the Radius gate decides who is in and Popularity alone orders
+// them. The Catalog has no radius: every Mesita place is ranked, and
+// Proximity, 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the operator's half
+// distance, pulls nearer places up without ever cutting a far one.
+// Popularity is ln(1 + reviews × stars), unbounded, and the product is never
+// clamped or normalized (MESITA-2710). s is the operator's Selected boost
+// (`map.selectedFactor`, default 3) for a Mesita Selected place, the paid
+// Boost's factor for a Boosted one (the larger of the two), and 1 for every
+// other place (MESITA-2717, MESITA-2789). No exponents (MESITA-2722).
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
 // apart from why it is low (a signal). A place a gate closes is dropped, not
-// ranked at 0. Gates: Family (every location) and Radius (a point: inside
-// the circle). Ties break on distance (a point only), then id.
+// ranked at 0. Gates: Family (every location), Radius (a point with a
+// radius: the Map, and Chat's read) and the Popularity floor. Ties break on
+// distance (a point only), then id.
 
-import { clearsPopularityFloor, halfDistanceKm, logPopularity, proximity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor, logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 import { BOOST_FACTOR } from "./boost.ts";
 
@@ -42,20 +42,23 @@ export type LatLng = { lat: number; lng: number };
  *  radius (MESITA-2511). Never a location: no view searches a rectangle. */
 export type AreaBounds = { low: LatLng; high: LatLng };
 
-/** Where the guest asked from: a point (Proximity, inside the Radius), or
- *  nowhere (Popularity alone). Saved areas died with Territory (MESITA-2500). */
+/** Where the guest asked from: a point, or nowhere (Popularity alone). A
+ *  point's `radiusKm` is the Radius gate (the Map's screen radius, Chat's
+ *  read); null is no gate (the Catalog, MESITA-2909). Saved areas died with
+ *  Territory (MESITA-2500). */
 export type AreaLocation =
-  | { kind: "point"; anchor: LatLng; radiusKm: number }
+  | { kind: "point"; anchor: LatLng; radiusKm: number | null }
   | { kind: "none" };
 
-/** What the guest asked of the Area pipeline. */
+/** What the guest asked of the Map or Catalog pipeline. */
 export type AreaContext = {
   location: AreaLocation;
   /** Requested families; empty = no Family gate (every family passes). */
   families: readonly string[];
-  /** Proximity is ½ at the location's radius ÷ this (MESITA-2720): the
-   *  operator's `params.proximity.radiusDivisor`. */
-  radiusDivisor: number;
+  /** Proximity's half distance h (km, MESITA-2909): the operator's
+   *  `params.proximity.halfKm`. null = no Proximity: the Map ranks by
+   *  Popularity alone. */
+  halfKm: number | null;
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
@@ -169,7 +172,7 @@ export function popularPart(
   return factor(popularityOrNull(c) ?? 0) * selectedFactor(c, ctx);
 }
 
-/** One candidate's Area breakdown — the wire's `area` object (MESITA-2379).
+/** One candidate's breakdown — the wire's `area` object (MESITA-2379).
  *  `null` is "n/a", never 0. */
 export type AreaDiagnostics = {
   /** The families the Family gate read. */
@@ -189,7 +192,7 @@ export type AreaDiagnostics = {
   /** The factor `final` carries (MESITA-2717): the Selected boost for a
    *  Mesita Selected place, else 1. */
   selectedFactor: number;
-  /** Proximity × Popularity × selectedFactor. */
+  /** Popularity × selectedFactor, × Proximity on the Catalog. */
   final: number;
   formula: "point" | "none";
 };
@@ -205,15 +208,17 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
     km = Number.isFinite(d) ? d : null;
   }
   const family = familyGate(c.familyKeys, ctx.families);
-  const radius = loc.kind === "point"
+  const radius = loc.kind === "point" && loc.radiusKm !== null
     ? (km !== null && km <= loc.radiusKm ? 1 : 0)
     : null;
-  const prox = loc.kind === "point"
-    ? proximity(c, loc.anchor, halfDistanceKm(loc.radiusKm, ctx.radiusDivisor))
+  // The Map passes no half distance: distance screens, never sorts
+  // (MESITA-2909).
+  const prox = loc.kind === "point" && ctx.halfKm !== null
+    ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
   const sel = selectedFactor(c, ctx);
   const popPart = popularPart(c, ctx);
-  const final = loc.kind === "point" ? factor(prox ?? 0) * popPart : popPart;
+  const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
   // Mesita, Selected or not; no Google numbers reads 0, so it is out too.
@@ -241,7 +246,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   };
 }
 
-/** Every gate open: Family, Radius when there is a point, and the
+/** Every gate open: Family, Radius when the point has one, and the
  *  Popularity floor when it is on. */
 export function areaGatesOpen(a: AreaDiagnostics): boolean {
   return a.gates.family === 1 && a.gates.radius !== 0 && a.gates.popularity !== 0;
