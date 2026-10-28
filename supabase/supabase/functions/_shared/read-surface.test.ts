@@ -195,13 +195,14 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/place-requests.ts",
   "_shared/place-slug.ts",
   "_shared/save-place.ts",
-  "admin-web-delete-place/index.ts",
+  // The AdminPlace read-back of set-place-active, set-place-listed and
+  // delete-place (MESITA-2982).
+  "_shared/admin-place.ts",
   // Social v1 (MESITA-2442): the place cards behind the feed and Saved,
   // through the browse view so RLS keeps unlisted places out.
   "consumer-web-list-activity/index.ts",
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
-  "admin-web-set-place-listed/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).

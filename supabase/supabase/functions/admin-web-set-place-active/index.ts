@@ -21,6 +21,7 @@ import {
 } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { readAdminPlace } from "../_shared/admin-place.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { isPlaceListed } from "../_shared/place-state.ts";
 import { activeWritePatch } from "../_shared/place-active.ts";
@@ -58,14 +59,9 @@ serveJson("admin-web-set-place-active", async (req) => {
   const bizSame = row.business_state === patch.business_state;
   const stateSame = !patch.state || patch.state === row.state;
   if (bizSame && stateSame) {
-    const { data: place, error: readError } = await admin
-      .from("profiles")
-      .select(PLACE_PROFILE_COLUMNS)
-      .eq("id", projectId)
-      .single();
-    if (readError) {
-      return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
-    }
+    const readBack = await readAdminPlace(admin, projectId);
+    if (!readBack.ok) return readBack.response;
+    const place = readBack.place;
     return json({
       ok: true,
       active,

@@ -24,7 +24,7 @@ import {
   serveJson,
 } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
-import { PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
+import { readAdminPlace } from "../_shared/admin-place.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
@@ -61,14 +61,9 @@ serveJson("admin-web-delete-place", async (req) => {
   // Already archived — report success without a write, so a double-click
   // cannot log a second archive event for the same place.
   if (currentState === ARCHIVED_STATE) {
-    const { data: place, error: readError } = await admin
-      .from("profiles")
-      .select(PLACE_PROFILE_COLUMNS)
-      .eq("id", placeId)
-      .single();
-    if (readError) {
-      return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
-    }
+    const readBack = await readAdminPlace(admin, placeId);
+    if (!readBack.ok) return readBack.response;
+    const place = readBack.place;
     return json({ ok: true, state: ARCHIVED_STATE, place });
   }
 
@@ -104,14 +99,9 @@ serveJson("admin-web-delete-place", async (req) => {
     detail: { action: "archive", from: currentState },
   });
 
-  const { data: place, error: readError } = await admin
-    .from("profiles")
-    .select(PLACE_PROFILE_COLUMNS)
-    .eq("id", placeId)
-    .single();
-  if (readError) {
-    return json({ ok: false, error: `place_read: ${readError.message}` }, 500);
-  }
+  const readBack = await readAdminPlace(admin, placeId);
+  if (!readBack.ok) return readBack.response;
+  const place = readBack.place;
 
   return json({ ok: true, state: ARCHIVED_STATE, place });
 });
