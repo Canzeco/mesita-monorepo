@@ -12,9 +12,10 @@
 // (MESITA-2452..2454), a borderless line (MESITA-2456), an oval
 // (MESITA-2459), beside the logo (MESITA-2470).
 //
-// A tap opens the location sheet (MESITA-2464), lean since MESITA-2919
-// (Pato: "far leaner"): a search field, Current location and the guest's
-// saved locations, one line each, no title, no dividers. "Around you"
+// A tap opens the location sheet (MESITA-2464): a search field over ONE card
+// of rows (MESITA-2945, Pato: "all in one box") — Current location with its
+// neighbourhood, each saved pin with its address, and "Add a location", the
+// visible way to save one. MESITA-2919's bare lines read as nothing. "Around you"
 // (MESITA-2471) is gone: it repeated Current location's own neighbourhood.
 // EVERY SAVED LOCATION IS A CONFIRMED PIN (Pato, 2026-10-20, MESITA-2501): a
 // match, a saved row's pencil and an old unconfirmed entry all open the pin picker
@@ -25,12 +26,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Bookmark,
+  Check,
   ChevronDown,
   Loader2,
   MapPin,
   MapPinOff,
   Navigation,
   Pencil,
+  Plus,
   Search,
 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
@@ -66,7 +69,11 @@ import {
   useActiveLocation,
   useActiveLocationKey,
 } from "@/lib/active-location";
-import { PinPicker, type PinPickerMode } from "@/components/consumer/home/PinPicker";
+import {
+  PIN_LIST_FULL,
+  PinPicker,
+  type PinPickerMode,
+} from "@/components/consumer/home/PinPicker";
 import { cn, errMsg } from "@/lib/utils";
 
 /** Home's location control (MESITA-2480): a 36px rounded box on the white
@@ -115,6 +122,11 @@ export function headerLocation(
 }
 
 const ICON = "h-4 w-4 shrink-0";
+
+/** The sheet's one card (MESITA-2945, Pato: "all in one box"): every way to
+ *  choose a location is a row in it, divided by hairlines. */
+const CARD_CLASS =
+  "border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border";
 
 /** A saved pin reopened in the picker. */
 const SAVED_PIN_ZOOM = 16;
@@ -228,40 +240,61 @@ export function LocationPicker() {
   const openSaved = (l: SavedLocation, mode: PinPickerMode) =>
     setPicker({ mode, camera: { center: { lat: l.lat, lng: l.lng }, zoom: SAVED_PIN_ZOOM }, entry: l });
 
+  /** One row of the sheet's card (MESITA-2945): an icon disc, a title, a
+   *  muted second line, a check when chosen and an optional trailing control. */
   const row = (r: {
     key: string;
-    label: string;
+    title: string;
+    sub?: string | null;
     icon: ReactNode;
-    selected: boolean;
+    selected?: boolean;
     onClick: () => void;
+    disabled?: boolean;
     muted?: boolean;
     trailing?: ReactNode;
     alert?: string | null;
   }) => (
-    <li key={r.key} className="relative">
+    <li key={r.key} className="flex items-center">
       <button
         type="button"
         onClick={r.onClick}
+        disabled={r.disabled}
         aria-pressed={r.selected}
-        className={cn(
-          "flex w-full items-center gap-3 py-3 pr-12 text-left text-sm transition",
-          r.selected ? "font-semibold" : "hover:bg-muted",
-          r.muted && !r.selected && "text-muted-foreground",
-        )}
+        className="hover:bg-muted/60 flex min-h-16 min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition disabled:opacity-60 disabled:hover:bg-transparent"
       >
-        {r.icon}
-        <span className="min-w-0">
-          <span className="block truncate">{r.label}</span>
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+            r.selected ? "bg-foreground text-paper" : "bg-muted text-foreground",
+          )}
+          aria-hidden
+        >
+          {r.icon}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "block truncate text-sm font-semibold",
+              r.muted && "text-muted-foreground",
+            )}
+          >
+            {r.title}
+          </span>
           {r.alert ? (
             <span
-              className="text-destructive mt-0.5 block text-xs font-normal"
+              className="text-destructive mt-0.5 block text-xs"
               role="status"
               data-places-location-help
             >
               {r.alert}
             </span>
+          ) : r.sub ? (
+            <span className="text-muted-foreground mt-0.5 block truncate text-xs">{r.sub}</span>
           ) : null}
         </span>
+        {r.selected ? (
+          <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-label="Chosen" />
+        ) : null}
       </button>
       {r.trailing}
     </li>
@@ -334,37 +367,26 @@ export function LocationPicker() {
             <ul
               role="list"
               aria-label="Matches"
-              className="mt-2"
+              className={cn(CARD_CLASS, "mt-4")}
               data-places-location-results
             >
-              {results.map((r) => (
-                <li key={r.placeId}>
-                  <button
-                    type="button"
-                    disabled={resolving !== null}
-                    onClick={() => void pick(r)}
-                    className="hover:bg-muted flex w-full items-center gap-3 py-3 text-left transition"
-                  >
-                    {resolving === r.placeId ? (
-                      <Loader2 className={cn(ICON, "animate-spin")} aria-hidden />
+              {results.map((r) =>
+                row({
+                  key: r.placeId,
+                  title: r.mainText,
+                  sub: r.secondaryText,
+                  icon:
+                    resolving === r.placeId ? (
+                      <Loader2 className={cn(ICON, "animate-spin")} />
                     ) : (
-                      <MapPin className={ICON} strokeWidth={2.25} aria-hidden />
-                    )}
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold">
-                        {r.mainText}
-                      </span>
-                      {r.secondaryText ? (
-                        <span className="text-muted-foreground block truncate text-xs">
-                          {r.secondaryText}
-                        </span>
-                      ) : null}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <MapPin className={ICON} strokeWidth={2.25} />
+                    ),
+                  disabled: resolving !== null,
+                  onClick: () => void pick(r),
+                }),
+              )}
               {results.length === 0 ? (
-                <li className="text-muted-foreground py-3 text-xs">
+                <li className="text-muted-foreground px-4 py-5 text-center text-sm">
                   {searching ? "Searching…" : "No matches yet"}
                 </li>
               ) : null}
@@ -373,16 +395,17 @@ export function LocationPicker() {
           <ul
             role="list"
             aria-label="Location"
-            className="mt-2"
+            className={cn(CARD_CLASS, "mt-4")}
             data-places-location
           >
             {row({
               key: "here",
-              label: locationLabel(null, coords !== null, locating, hereName),
+              title: locationLabel(null, coords !== null, locating),
+              sub: coords !== null ? hereName : "Tap to share where you are",
               icon: locatingHere ? (
-                <Loader2 className={cn(ICON, "animate-spin")} aria-hidden />
+                <Loader2 className={cn(ICON, "animate-spin")} />
               ) : (
-                <Navigation className={ICON} strokeWidth={2.25} aria-hidden />
+                <Navigation className={ICON} strokeWidth={2.25} />
               ),
               selected: active === null && coords !== null,
               muted: coords === null && !help,
@@ -402,10 +425,9 @@ export function LocationPicker() {
             {savedLocations.map((l) =>
               row({
                 key: savedLocationKey(l.id),
-                label: displayName(l),
-                icon: (
-                  <Bookmark className={ICON} strokeWidth={2.25} aria-hidden />
-                ),
+                title: displayName(l),
+                sub: l.unconfirmed ? "Confirm this spot on the map" : l.formattedAddress,
+                icon: <Bookmark className={ICON} strokeWidth={2.25} />,
                 selected: activeKey === savedLocationKey(l.id) && !l.unconfirmed,
                 muted: l.unconfirmed,
                 // An old entry no one confirmed on a map opens the picker
@@ -420,7 +442,7 @@ export function LocationPicker() {
                 },
                 trailing: l.unconfirmed ? (
                   <span
-                    className="bg-muted text-foreground pointer-events-none absolute inset-y-0 right-0 my-auto flex h-7 items-center rounded-full px-3 text-xs font-semibold"
+                    className="bg-muted text-foreground pointer-events-none mr-4 flex h-7 shrink-0 items-center rounded-full px-3 text-xs font-semibold"
                     data-places-confirm-location
                   >
                     Confirm
@@ -430,7 +452,7 @@ export function LocationPicker() {
                     type="button"
                     onClick={() => openSaved(l, "edit")}
                     aria-label={`Edit ${displayName(l)}`}
-                    className="text-muted-foreground hover:text-foreground absolute inset-y-0 right-0 flex w-11 items-center justify-center"
+                    className="text-muted-foreground hover:text-foreground mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
                     data-places-edit-location
                   >
                     <Pencil className="h-4 w-4" strokeWidth={2.25} aria-hidden />
@@ -438,6 +460,21 @@ export function LocationPicker() {
                 ),
               }),
             )}
+            {/* The visible way to save a spot (MESITA-2945): the picker
+                opens on the device fix, else on Monterrey. */}
+            {row({
+              key: "add",
+              title: "Add a location",
+              sub: listFull ? PIN_LIST_FULL : "Home, work — any spot on the map",
+              icon: <Plus className={ICON} strokeWidth={2.25} />,
+              disabled: listFull,
+              onClick: () =>
+                setPicker({
+                  mode: "new",
+                  camera: { center: coords ?? MONTERREY_CENTER, zoom: SAVED_PIN_ZOOM },
+                  entry: null,
+                }),
+            })}
           </ul>
           )}
         </div>

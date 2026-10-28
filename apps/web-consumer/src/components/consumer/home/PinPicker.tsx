@@ -83,6 +83,9 @@ export function pinPickerLabels(mode: PinPickerMode, entry?: SavedLocation | nul
 export const PIN_SAVE_FAILED = "Couldn't keep this spot on this device";
 export const PIN_LIST_FULL = "8 saved · remove one first";
 
+/** The picker's one-tap names (MESITA-2945). */
+const QUICK_NAMES = ["Home", "Work", "Gym", "Family"] as const;
+
 /** A map that failed this many times reloads the page instead. */
 const MAP_RETRIES = 1;
 
@@ -236,21 +239,35 @@ export function PinPicker({
       </div>
 
       <div className="flex shrink-0 flex-col gap-3 px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div aria-live="polite" className="flex flex-col gap-3">
-          <p
-            className={cn(
-              "text-muted-foreground min-h-5 truncate text-sm transition-opacity",
-              street?.dim && "opacity-60",
+        {/* Where the pin sits, as a card row (MESITA-2945): the address
+            follows the map, so the guest sees what Save will keep. */}
+        <div
+          aria-live="polite"
+          className="border-border bg-muted/50 flex items-center gap-3 rounded-2xl border px-3 py-2.5"
+        >
+          <span className="bg-foreground text-paper flex h-9 w-9 shrink-0 items-center justify-center rounded-full" aria-hidden>
+            <MapPin className="h-4 w-4" strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span
+              className={cn(
+                "block min-h-5 truncate text-sm font-semibold transition-opacity",
+                street?.dim && "opacity-60",
+              )}
+              data-pin-picker-street
+            >
+              {street?.text ?? "Finding the address…"}
+            </span>
+            {mode === "confirm" && entry?.legacyName ? (
+              <span className="text-muted-foreground block truncate text-xs" data-pin-picker-was>
+                Was: {entry.legacyName}
+              </span>
+            ) : (
+              <span className="text-muted-foreground block truncate text-xs">
+                Move the map to adjust the pin
+              </span>
             )}
-            data-pin-picker-street
-          >
-            {street?.text ?? ""}
-          </p>
-          {mode === "confirm" && entry?.legacyName ? (
-            <p className="text-muted-foreground -mt-2 truncate text-xs" data-pin-picker-was>
-              Was: {entry.legacyName}
-            </p>
-          ) : null}
+          </span>
         </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-semibold">Name</span>
@@ -270,6 +287,28 @@ export function PinPicker({
             data-pin-picker-name
           />
         </label>
+        {/* One-tap names (MESITA-2945); typing still wins. */}
+        <div className="-mt-1 flex flex-wrap gap-2" data-pin-picker-quick-names>
+          {QUICK_NAMES.map((n) => {
+            const on = state.nameEdited && state.nameValue.trim() === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => dispatch({ type: "name_input", value: n })}
+                aria-pressed={on}
+                className={cn(
+                  "h-8 rounded-full border px-3 text-xs font-semibold transition",
+                  on
+                    ? "bg-foreground text-paper border-foreground"
+                    : "border-border bg-card hover:bg-muted",
+                )}
+              >
+                {n}
+              </button>
+            );
+          })}
+        </div>
         {saveError ? (
           <p className="text-muted-foreground text-xs" role="status" data-pin-picker-error>
             {saveError}
