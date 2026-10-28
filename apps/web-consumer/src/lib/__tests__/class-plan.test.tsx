@@ -66,7 +66,7 @@ describe("the Class sheet", () => {
 
   it("never names a plan, a price or a buy button", () => {
     const words = text(sheet("regular"));
-    expect(words).not.toMatch(/\b(Free|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
+    expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
     expect(sheet("regular")).not.toContain("<button");
   });
@@ -128,6 +128,6 @@ describe("the Connector page", () => {
     expect(soon).toHaveLength(items.length);
     // The header's Back is the only button.
     expect(html.match(/<button\b/g)).toHaveLength(1);
-    expect(text(html)).not.toMatch(/Premium|Free|Pro\b/);
+    expect(text(html)).not.toMatch(/Premier|Premium|Free|Pro\b/);
   });
 });
