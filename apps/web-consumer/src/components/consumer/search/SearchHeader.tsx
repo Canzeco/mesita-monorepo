@@ -4,9 +4,9 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…                         ]   one white band …
+//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ Ask AI )   one white band …
 //   ─────────────────── hairline ──────────────────────
-//   ( ⌖ ) ( ≡ ) (▦ Top) (○ Coffee) (○ Breakfast) … ( ✦ )   … one hairline under
+//   ( ≡ ) (▦ Top) (○ Coffee) (○ Breakfast) (○ Quick) …   … one hairline under
 //   ─────────────────── map ───────────────────────────
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
@@ -56,6 +56,7 @@ import {
   CHIP_OFF,
   CHIP_ON,
   HEADER_DISC,
+  HEADER_PILL,
 } from "./header-classes";
 
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
@@ -78,10 +79,9 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, at the left of the chip row (trial: the bar runs
-   *  full width above it). */
+  /** The locate disc, at the left of the bar's row. */
   locate: ReactNode;
-  /** The query bar, alone on its row, full width. */
+  /** The query bar; it takes what the disc and the pill leave. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -98,14 +98,28 @@ export function SearchHeader({
       data-search-header
       data-search-band
     >
-      <div className="px-3 py-2.5">{bar}</div>
+      <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
+        {locate}
+        <div className="min-w-0 flex-1">{bar}</div>
+        <Link
+          href={CONSUMER_ROUTES.searchChat}
+          className={HEADER_PILL}
+          data-search-ask-ai
+        >
+          <BotMessageSquare
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <span>Ask AI</span>
+        </Link>
+      </div>
       <div
         className={cn("relative", !chipsHidden && "border-border border-t")}
         data-search-chip-band
       >
         {chipsHidden ? null : (
-          <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
-            {locate}
+          <div className="flex min-w-0 items-center gap-2 py-2.5 pl-3">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
@@ -136,7 +150,7 @@ export function SearchHeader({
             </button>
             <nav
               aria-label="Families"
-              className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain"
+              className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain pr-3"
               data-search-chips
             >
               <button
@@ -174,18 +188,6 @@ export function SearchHeader({
                 );
               })}
             </nav>
-            <Link
-              href={CONSUMER_ROUTES.searchChat}
-              aria-label="Ask AI"
-              className={HEADER_DISC}
-              data-search-ask-ai
-            >
-              <BotMessageSquare
-                className="h-4 w-4 shrink-0"
-                strokeWidth={2}
-                aria-hidden
-              />
-            </Link>
           </div>
         )}
         {children ? (
