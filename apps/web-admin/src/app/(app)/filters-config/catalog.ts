@@ -105,7 +105,7 @@ export type CatalogConfig = {
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
 // the family, not Google's slug (MESITA-1695). Order is the guest's —
-// FAMILIES sort_order. Forty switches since MESITA-2888 (fifty from
+// FAMILIES sort_order. Thirty-seven switches since MESITA-2930 (forty from MESITA-2888, fifty from
 // MESITA-2834, twenty from MESITA-2749 to 2760).
 export const SUPER_PARAM_KEYS = [
   "coffee",
@@ -134,9 +134,6 @@ export const SUPER_PARAM_KEYS = [
   "fancy",
   "family",
   "drinks",
-  "beer",
-  "cocktails",
-  "wine",
   "sports",
   "hookah",
   "night_out",
@@ -203,7 +200,7 @@ export type MapConfig = {
 };
 
 /**
- * The forty params the operator actually sees. `label` and `emoji` are
+ * The thirty-seven params the operator actually sees. `label` and `emoji` are
  * verbatim from FAMILIES in _shared/place-taxonomy.ts; `battery` is
  * the Google slugs that family sends — its full list since MESITA-2438,
  * copied from `GOOGLE_SEARCH_TYPES` and pinned equal by
@@ -638,53 +635,22 @@ export const SUPER_FIELDS: {
     battery: [
       "bar",
       "bar_and_grill",
+      "bavarian_restaurant",
       "beer_garden",
       "brewery",
       "brewpub",
       "cocktail_bar",
+      "czech_restaurant",
       "gastropub",
+      "german_restaurant",
       "hookah_bar",
       "irish_pub",
       "japanese_izakaya_restaurant",
       "lounge_bar",
       "pub",
       "sports_bar",
-      "wine_bar",
-    ],
-  },
-  {
-    key: "beer",
-    label: "Beer",
-    emoji: "🍺",
-    battery: [
-      "brewery",
-      "bavarian_restaurant",
-      "beer_garden",
-      "brewpub",
-      "czech_restaurant",
-      "gastropub",
-      "german_restaurant",
-      "irish_pub",
-      "pub",
-      "sports_bar",
-    ],
-  },
-  {
-    key: "cocktails",
-    label: "Cocktails",
-    emoji: "🍸",
-    battery: [
-      "cocktail_bar",
-      "lounge_bar",
-    ],
-  },
-  {
-    key: "wine",
-    label: "Wine",
-    emoji: "🍷",
-    battery: [
-      "wine_bar",
       "vineyard",
+      "wine_bar",
       "winery",
     ],
   },
@@ -908,9 +874,6 @@ const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   fancy: false,
   family: false,
   drinks: true,
-  beer: false,
-  cocktails: false,
-  wine: false,
   sports: false,
   hookah: false,
   night_out: true,

@@ -1,8 +1,11 @@
-// The guest catalog is these forty families. Undefined is the leftover
+// The guest catalog is these thirty-seven families. Undefined is the leftover
 // and is not a rail. A type may sit in several families: a list, never a
 // primary and a secondary (MESITA-2808).
 //
-// FORTY (MESITA-2888, Pato 2026-10-27: "do the list 40 items long. try as
+// THIRTY-SEVEN (MESITA-2930, Pato 2026-10-27: "Fold Beer, Cocktails and
+// Wine into Bar. Keep Sports and Hookah."): `drinks` (Bar) absorbs the three.
+//
+// FORTY before that (MESITA-2888, Pato 2026-10-27: "do the list 40 items long. try as
 // cover as much area as possible. i don't care if there are a bit overlaps",
 // "we can add more type of businesses, not only restaurants", "for example
 // top golf??? … Maybe add the experience family", "rethink all the 40
@@ -89,9 +92,6 @@ export const CATALOG_FAMILY_SLUGS = [
   "fancy",
   "family",
   "drinks",
-  "beer",
-  "cocktails",
-  "wine",
   "sports",
   "hookah",
   "night_out",
@@ -140,20 +140,17 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "fancy", label: "Fancy", emoji: "🥂", sort_order: 24 },
   { slug: "family", label: "Family", emoji: "👨‍👩‍👧", sort_order: 25 },
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 26 },
-  { slug: "beer", label: "Beer", emoji: "🍺", sort_order: 27 },
-  { slug: "cocktails", label: "Cocktails", emoji: "🍸", sort_order: 28 },
-  { slug: "wine", label: "Wine", emoji: "🍷", sort_order: 29 },
-  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 30 },
-  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 31 },
-  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 32 },
-  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 33 },
-  { slug: "music", label: "Music", emoji: "🎶", sort_order: 34 },
-  { slug: "karaoke", label: "Karaoke", emoji: "🎤", sort_order: 35 },
-  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 36 },
-  { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 37 },
-  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 38 },
-  { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 39 },
-  { slug: "tourist", label: "Tourist", emoji: "🏛️", sort_order: 40 },
+  { slug: "sports", label: "Sports", emoji: "📺", sort_order: 27 },
+  { slug: "hookah", label: "Hookah", emoji: "💨", sort_order: 28 },
+  { slug: "night_out", label: "Night", emoji: "🌙", sort_order: 29 },
+  { slug: "nightclub", label: "Club", emoji: "🪩", sort_order: 30 },
+  { slug: "music", label: "Music", emoji: "🎶", sort_order: 31 },
+  { slug: "karaoke", label: "Karaoke", emoji: "🎤", sort_order: 32 },
+  { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 33 },
+  { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 34 },
+  { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 35 },
+  { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 36 },
+  { slug: "tourist", label: "Tourist", emoji: "🏛️", sort_order: 37 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -164,8 +161,8 @@ export function isCatalogFamily(value: string): value is FamilyKey {
 }
 
 /** Each rail's lead Google type: first in its Nearby battery, so the
- *  every-family battery (round-robin, capped at 50) always carries it. Forty
- *  families, forty distinct leads, ten slots to spare inside Google's cap.
+ *  every-family battery (round-robin, capped at 50) always carries it. Thirty-seven
+ *  families, thirty-seven distinct leads, thirteen slots to spare inside Google's cap.
  *  The full battery is derived from the Table A map (`GOOGLE_SEARCH_TYPES`,
  *  google-type-super.ts). */
 export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
@@ -195,9 +192,6 @@ export const CATALOG_LEAD_TYPES: Record<CatalogFamilySlug, string> = {
   fancy: "fine_dining_restaurant",
   family: "family_restaurant",
   drinks: "bar",
-  beer: "brewery",
-  cocktails: "cocktail_bar",
-  wine: "wine_bar",
   sports: "sports_bar",
   hookah: "hookah_bar",
   night_out: "dance_hall",
@@ -418,9 +412,9 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   tapas_restaurant: ["european", "dinner"],
   basque_restaurant: ["european", "dinner"],
   european_restaurant: ["european", "dinner"],
-  german_restaurant: ["european", "beer", "dinner"],
-  bavarian_restaurant: ["european", "beer", "dinner"],
-  czech_restaurant: ["european", "beer", "dinner"],
+  german_restaurant: ["european", "drinks", "dinner"],
+  bavarian_restaurant: ["european", "drinks", "dinner"],
+  czech_restaurant: ["european", "drinks", "dinner"],
   austrian_restaurant: ["european", "dinner"],
   swiss_restaurant: ["european", "dinner"],
   belgian_restaurant: ["european", "dinner"],
@@ -466,23 +460,23 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   chilean_restaurant: ["dinner"],
   cuban_restaurant: ["dinner"],
   caribbean_restaurant: ["dinner"],
-  // Bar · Beer · Cocktails · Wine · Sports · Hookah
+  // Bar · Sports · Hookah (Beer, Cocktails and Wine folded into Bar, MESITA-2930)
   bar: ["drinks"],
-  pub: ["drinks", "beer"],
-  irish_pub: ["drinks", "beer"],
-  gastropub: ["drinks", "beer", "dinner"],
-  brewpub: ["beer", "drinks", "dinner"],
-  brewery: ["beer", "drinks"],
-  beer_garden: ["beer", "drinks"],
-  sports_bar: ["sports", "drinks", "beer"],
+  pub: ["drinks"],
+  irish_pub: ["drinks"],
+  gastropub: ["drinks", "dinner"],
+  brewpub: ["drinks", "dinner"],
+  brewery: ["drinks"],
+  beer_garden: ["drinks"],
+  sports_bar: ["sports", "drinks"],
   stadium: ["sports"],
   arena: ["sports"],
-  cocktail_bar: ["cocktails", "drinks", "night_out"],
-  lounge_bar: ["cocktails", "drinks", "night_out"],
+  cocktail_bar: ["drinks", "night_out"],
+  lounge_bar: ["drinks", "night_out"],
   hookah_bar: ["hookah", "drinks", "night_out"],
-  wine_bar: ["wine", "drinks"],
-  winery: ["wine"],
-  vineyard: ["wine"],
+  wine_bar: ["drinks"],
+  winery: ["drinks"],
+  vineyard: ["drinks"],
   billiards: ["drinks", "fun"],
   // Night · Club · Music · Karaoke
   night_club: ["nightclub", "night_out"],

@@ -5,7 +5,7 @@ import { Check, Pencil, Plus, Search, X } from "lucide-react";
 import { usePlaceContext } from "./PlaceContext";
 import type { PlaceFamilyOption } from "./actions";
 
-// The forty Mesita Families as a multi-select (MESITA-2893), the Tags picker's
+// The thirty-seven Mesita Families as a multi-select (MESITA-2893), the Tags picker's
 // shape: chips for the picked ones, a modal with search to change them, the
 // "n / max" counter, and no more picks once the cap is reached. The vocabulary
 // arrives on the profile read in catalog (day-arc) order; opening the picker
@@ -170,7 +170,7 @@ function FamiliesModal({
           <div className="min-w-0">
             <h3 className="text-sm font-semibold">Select families</h3>
             <p className="text-muted-foreground text-xs tabular-nums" aria-live="polite">
-              The forty Mesita Families · {valueCount}/{max} selected
+              The thirty-seven Mesita Families · {valueCount}/{max} selected
             </p>
           </div>
           <button

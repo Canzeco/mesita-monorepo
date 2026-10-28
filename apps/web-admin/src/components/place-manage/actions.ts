@@ -396,7 +396,7 @@ export type PlaceFieldLimits = {
   photosMax: number;
 };
 
-/** One of the forty Mesita Families the Basics editor offers (MESITA-2893). */
+/** One of the thirty-seven Mesita Families the Basics editor offers (MESITA-2893). */
 export type PlaceFamilyOption = {
   slug: string;
   label: string;
@@ -419,7 +419,7 @@ export type PlaceCategoryOption = {
 export type ProfileRead = {
   /** Mesita Families: the stored 1–5, inferred by the Description step (MESITA-2891). */
   familyStored: ResolvedFamily;
-  /** The forty the operator may pick from, in catalog (day-arc) order (MESITA-2893). */
+  /** The thirty-seven the operator may pick from, in catalog (day-arc) order (MESITA-2893). */
   families: PlaceFamilyOption[];
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];

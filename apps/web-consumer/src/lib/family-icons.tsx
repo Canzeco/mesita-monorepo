@@ -33,10 +33,8 @@ import {
   Grape,
   Hamburger,
   Heart,
-  Hop,
   Landmark,
   LeafyGreen,
-  Martini,
   Mic,
   Moon,
   Music,
@@ -51,7 +49,6 @@ import {
   UtensilsCrossed,
   Wheat,
   Wind,
-  Wine,
   Zap,
 } from "lucide-react";
 
@@ -126,9 +123,6 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   fancy: Gem,
   family: Baby,
   drinks: Beer,
-  beer: Hop,
-  cocktails: Martini,
-  wine: Wine,
   sports: Tv,
   hookah: Wind,
   night_out: Moon,

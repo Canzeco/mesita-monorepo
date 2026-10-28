@@ -10,8 +10,8 @@ import {
   sanitizeFamilyKeys,
 } from "./place-taxonomy.ts";
 
-Deno.test("place family catalog is forty guest families, Undefined last", () => {
-  assertEquals(FAMILIES.length, 41);
+Deno.test("place family catalog is thirty-seven guest families, Undefined last", () => {
+  assertEquals(FAMILIES.length, 38);
   assertEquals(FAMILIES.map((s) => s.slug), [
     "coffee",
     "breakfast",
@@ -39,9 +39,6 @@ Deno.test("place family catalog is forty guest families, Undefined last", () => 
     "fancy",
     "family",
     "drinks",
-    "beer",
-    "cocktails",
-    "wine",
     "sports",
     "hookah",
     "night_out",
@@ -61,7 +58,7 @@ Deno.test("place family catalog is forty guest families, Undefined last", () => 
   assertEquals(last.sort_order, 999);
 });
 
-Deno.test("every Atlas category maps onto the forty; thirty-seven sit on two", () => {
+Deno.test("every Atlas category maps onto the thirty-seven; thirty-five sit on two", () => {
   const slugs = Object.keys(ATLAS_CATEGORY_FAMILIES);
   assertEquals(slugs.length, 101);
   assertEquals(slugs.includes("undefined"), true);
@@ -85,9 +82,9 @@ Deno.test("every Atlas category maps onto the forty; thirty-seven sit on two", (
     "billiards",
     "board_game_cafe",
     "brazilian",
-    "brewery",
     "cafe",
     "chinese",
+    "cocktail_bar",
     "coffee_shop",
     "fine_dining",
     "french",
@@ -102,7 +99,6 @@ Deno.test("every Atlas category maps onto the forty; thirty-seven sit on two", (
     "night_club",
     "peruvian",
     "pizza",
-    "pub",
     "salad",
     "seafood",
     "spanish",
@@ -111,7 +107,6 @@ Deno.test("every Atlas category maps onto the forty; thirty-seven sit on two", (
     "thai",
     "vietnamese",
     "water_park",
-    "wine_bar",
     "zoo",
   ]);
   assertEquals(covered.has("undefined"), true);
@@ -125,7 +120,7 @@ Deno.test("a cafe is coffee and breakfast; a pizzeria is pizza and italian", () 
   assertEquals(familiesForAtlasCategory("brunch"), ["breakfast"]);
   assertEquals(familiesForAtlasCategory("cafe"), ["coffee", "breakfast"]);
   assertEquals(familiesForAtlasCategory("karaoke"), ["night_out", "karaoke"]);
-  assertEquals(familiesForAtlasCategory("winery"), ["wine"]);
+  assertEquals(familiesForAtlasCategory("winery"), ["drinks"]);
   // Catalog order, not primary-first: quick_bite and tacos sort before mexican,
   // and Dinner closes the cuisines, so it sorts after every one (MESITA-2888).
   assertEquals(familiesForAtlasCategory("pizza"), ["pizza", "italian"]);

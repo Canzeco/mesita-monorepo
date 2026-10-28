@@ -164,10 +164,10 @@ describe("coerceConfig", () => {
     expect(cfg).not.toHaveProperty("social");
   });
 
-  it("the category param is forty families", () => {
+  it("the category param is thirty-seven families", () => {
     expect(coerceConfig({ weights: {}, slotting: {} }).general).toEqual(DEFAULT_GENERAL);
-    expect(SUPER_FIELDS.length).toBe(40);
-    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(40);
+    expect(SUPER_FIELDS.length).toBe(37);
+    expect(new Set(SUPER_FIELDS.map((f) => f.key)).size).toBe(37);
     for (const f of SUPER_FIELDS) expect(f.battery.length, f.key).toBeGreaterThan(0);
     const on = SUPER_FIELDS.filter((f) => DEFAULT_NAME.deep.supers[f.key]).map((f) => f.key);
     expect(new Set(on)).toEqual(

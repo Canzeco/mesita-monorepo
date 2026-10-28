@@ -261,7 +261,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: ["google_autocomplete", "google_text"],
     rules: [
       "Closed places never show (Discovery › General's active check).",
-      "A Google row must have a Google type of one of the forty families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
+      "A Google row must have a Google type of one of the thirty-seven families, the only places Mesita can hold (hotels, shops and schools never show), and clear the old stored Google floors on rating, reviews and popularity (0 is off; no box edits them).",
       "Guest bar: Google places under the Map box's Minimum Popularity sort after the rest; none are removed; 0 is off. Mesita places and Locations never move; admin is unaffected (MESITA-2724).",
     ],
     callers: ["The guest's Search bar", "Admin Single Place › Find", "Chat (Don Memo)"],
@@ -413,9 +413,6 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "fancy", label: "Fancy", emoji: "🥂" },
   { key: "family", label: "Family", emoji: "👨‍👩‍👧" },
   { key: "drinks", label: "Bar", emoji: "🍻" },
-  { key: "beer", label: "Beer", emoji: "🍺" },
-  { key: "cocktails", label: "Cocktails", emoji: "🍸" },
-  { key: "wine", label: "Wine", emoji: "🍷" },
   { key: "sports", label: "Sports", emoji: "📺" },
   { key: "hookah", label: "Hookah", emoji: "💨" },
   { key: "night_out", label: "Night", emoji: "🌙" },

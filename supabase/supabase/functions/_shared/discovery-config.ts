@@ -101,8 +101,8 @@ export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
 /**
- * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the forty
- * guest families, in `FAMILIES` sort order — the same forty, in the same
+ * THE OPERATOR'S CATEGORY PARAM (Pato, 2026-09-08, MESITA-1695): the thirty-seven
+ * guest families, in `FAMILIES` sort order — the same thirty-seven, in the same
  * order, the guest sees as pills on the Filters sheet (MESITA-2834, 2888).
  *
  * Google's own type slugs are not a param. Twenty-two switches asked the
@@ -142,9 +142,6 @@ export const SUPER_PARAM_KEYS = [
   "fancy",
   "family",
   "drinks",
-  "beer",
-  "cocktails",
-  "wine",
   "sports",
   "hookah",
   "night_out",
@@ -367,9 +364,6 @@ export const DEFAULT_MAP_SUPERS: Record<SuperParamKey, boolean> = {
   fancy: false,
   family: false,
   drinks: true,
-  beer: false,
-  cocktails: false,
-  wine: false,
   sports: false,
   hookah: false,
   night_out: true,
