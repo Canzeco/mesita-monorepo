@@ -17,6 +17,10 @@ export const ENRICH_FIELD_LIMITS = {
   embeddingSourceText: { max: 60 },
   // The Enricher always writes exactly 20 tags; the editor allows up to 20.
   tagsPerPlace: { max: 20 },
+  // Mesita Families per place: the Description step picks 1–5 (MESITA-2891)
+  // and the Basics editor allows up to 5 (MESITA-2893). The taxonomy trigger
+  // refuses a sixth, so this number and the trigger's literal are one.
+  familiesPerPlace: { max: 5 },
   tagSlugLength: { max: 40 },
   // Mirrors app_config.enrichment_config.enrichSaveTotalImages (1–10; DB CHECK 0–10). Set
   // through the `enricher` config section, which is the only writer left now

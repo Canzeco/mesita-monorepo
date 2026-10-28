@@ -11,7 +11,7 @@ export default async function FamiliesPage() {
       <PageHeader
         eyebrow="Operations · Atlas"
         title="Atlas"
-        description="The forty Mesita Families, Google's categories split into enabled and not enabled on Mesita, and the Mesita Tags. A place's families are inferred by the Description step, one to five. Places are not listed."
+        description="The forty Mesita Families, Google's categories split into enabled and not enabled on Mesita, and the Mesita Tags. A place's families are inferred by the Description step, one to five, or set by hand on Single Place › Basics. Places are not listed."
       />
       {map.ok ? (
         <FamiliesExplorer map={map} />

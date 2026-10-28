@@ -202,15 +202,25 @@ Deno.serve(async (req) => {
     pairedAnalyses(stored, commit.photoAnalyses),
   );
   // Mesita Families (MESITA-2891) live on place_profiles; the profiles view
-  // derives its column, so a write through the view would drop them.
+  // derives its column, so a write through the view would drop them. A list
+  // the operator set by hand is theirs until its Reset (MESITA-2893).
   if (filled.families !== undefined) {
-    const fam = await writePlace(admin, {
+    const familiesOwned = owned.includes("family_keys");
+    const fam = familiesOwned ? { ok: true as const } : await writePlace(admin, {
       table: "place_profiles",
       mode: "update",
       id: commit.placeId,
       patch: { family_keys: filled.families },
     });
     if (!fam.ok) console.error(`[enrich] ${commit.placeId}: families not stored: ${fam.error}`);
+    console.log(JSON.stringify({
+      fn: "families",
+      caller: "enricher-edgefunc-write-place",
+      placeId: commit.placeId,
+      source: familiesOwned ? "operator" : "model",
+      picked: filled.families ?? [],
+      outcome: familiesOwned ? "kept" : fam.ok ? (filled.families ? "written" : "cleared") : "failed",
+    }));
   }
   // After the profile, so the door sees this run's google_name. It writes
   // only over a name the machine owns; an operator's name stays.

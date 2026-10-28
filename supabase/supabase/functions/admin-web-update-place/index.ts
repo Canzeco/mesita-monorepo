@@ -57,10 +57,11 @@ import {
   operatorFieldsInPatch,
 } from "../_shared/operator-fields.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
+import { readFamilyKeysBody } from "./place-families-body.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
-const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "google_types", "google_source_types", "family_keys"] as const;
+const READ_ONLY_FIELDS = ["category", "category_label", "mesita_categories", "google_types", "google_source_types"] as const;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
 const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
@@ -88,6 +89,8 @@ type UpdateBody = {
   description?: string | null;
   /** Mesita tags: place_tags slugs, editable since MESITA-2836. Null clears. */
   tags?: string[] | null;
+  /** Mesita families: 1–5 place_families slugs, editable since MESITA-2893. Null clears. */
+  family_keys?: string[] | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.
   menu_pdf_name?: string | null;
@@ -134,8 +137,8 @@ Deno.serve(async (req) => {
   const placeId = (body.id ?? "").toString().trim();
   if (!placeId) return json({ ok: false, error: "id is required" }, 400);
   // The Google fields are Google's own (MESITA-2836): the categories derive
-  // from google_source_types in the trigger, the families from the categories
-  // in the view. Name, Presentation and Tags are the operator's to edit.
+  // from google_source_types in the trigger. Name, Presentation, Tags and,
+  // since MESITA-2893, Families are the operator's to edit.
   const readOnly = READ_ONLY_FIELDS.find((field) => field in body);
   if (readOnly) {
     return json(
@@ -225,6 +228,20 @@ Deno.serve(async (req) => {
     // An unknown slug is refused by the taxonomy trigger.
     update.tags = tags;
   }
+  // Mesita Families (MESITA-2893): the operator's 1–5 of the forty. Validated
+  // against the live vocabulary here, so the 400 names the slug instead of the
+  // trigger's bare "unknown family"; written on place_profiles directly below,
+  // because the profiles view's INSTEAD OF trigger drops family_keys.
+  const families = await fetchPlaceFamilies(admin);
+  let familyKeys: string[] | null | undefined;
+  if ("family_keys" in body) {
+    if (families.length === 0) {
+      return json({ ok: false, error: "Family vocabulary unavailable" }, 500);
+    }
+    const read = readFamilyKeysBody(body.family_keys, families);
+    if (!read.ok) return json(read.body, read.status);
+    familyKeys = read.keys;
+  }
   // Profile's Actions toggle (MESITA-2787). The answer is stored as the
   // operator's reservation channel, the one column a later Enrich cannot
   // overwrite (place_reservations_follow_channel, MESITA-1737). The console
@@ -247,12 +264,45 @@ Deno.serve(async (req) => {
   const resetFields: OperatorField[] = [];
   if ("reset_fields" in body) {
     if (!Array.isArray(body.reset_fields) || !body.reset_fields.every(isOperatorField)) {
-      return json({ ok: false, error: "reset_fields must list name, description or tags" }, 400);
+      return json({ ok: false, error: "reset_fields must list name, description, tags or family_keys" }, 400);
     }
     resetFields.push(...body.reset_fields);
   }
-  if (Object.keys(update).length === 0 && resetFields.length === 0) {
+  if (Object.keys(update).length === 0 && resetFields.length === 0 && familyKeys === undefined) {
     return json({ ok: false, error: "No editable fields provided" }, 400);
+  }
+
+  // Families first, so the profile row read back below already carries them
+  // (profiles.family_keys is the stored list, MESITA-2891).
+  if (familyKeys !== undefined) {
+    const famRes = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: { family_keys: familyKeys },
+    });
+    if (!famRes.ok) {
+      await recordAdminOperatorEvent(admin, {
+        verb: "edit",
+        outcome: "failed",
+        placeId,
+        actorUserId: authRes.user.id,
+        source: "admin-web-update-place",
+        detail: { error: famRes.error, code: famRes.code ?? null, field: "family_keys" },
+      });
+      return json(
+        { ok: false, error: `family_keys: ${famRes.error}`, code: famRes.code ?? null },
+        400,
+      );
+    }
+    console.log(JSON.stringify({
+      fn: "families",
+      caller: "admin-web-update-place",
+      placeId,
+      source: "operator",
+      picked: familyKeys ?? [],
+      outcome: familyKeys ? "written" : "cleared",
+    }));
   }
 
   let place: Record<string, unknown>;
@@ -302,10 +352,13 @@ Deno.serve(async (req) => {
     place = row as unknown as Record<string, unknown>;
   }
 
-  // An operator's name, Presentation or tags stick through every Enrich
-  // (MESITA-2829): a typed value marks the field, a Reset clears the mark.
+  // An operator's name, Presentation, tags or families stick through every
+  // Enrich (MESITA-2829, MESITA-2893): a typed value marks the field, a Reset
+  // clears the mark.
   const marks = await markOperatorFields(admin, placeId, {
-    mark: operatorFieldsInPatch(update),
+    mark: operatorFieldsInPatch(
+      familyKeys === undefined ? update : { ...update, family_keys: familyKeys },
+    ),
     clear: resetFields,
   });
   if (!marks.ok) {
@@ -332,10 +385,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Families are the categories' dictionary, derived in the profiles view
-  // (MESITA-2834); the row just read back carries them. A vocabulary miss
-  // leaves the string off.
-  const families = await fetchPlaceFamilies(admin);
+  // The row just read back carries the stored families (MESITA-2891); this
+  // names them. A vocabulary miss leaves the string off.
   const familyStored = families.length > 0
     ? resolveStoredFamily((place as { family_keys?: unknown }).family_keys, families)
     : undefined;
@@ -346,7 +397,10 @@ Deno.serve(async (req) => {
     placeId,
     actorUserId: authRes.user.id,
     source: "admin-web-update-place",
-    detail: { fields: Object.keys(update), reset: resetFields },
+    detail: {
+      fields: familyKeys === undefined ? Object.keys(update) : [...Object.keys(update), "family_keys"],
+      reset: resetFields,
+    },
   });
 
   return json({ ok: true, place, familyStored });

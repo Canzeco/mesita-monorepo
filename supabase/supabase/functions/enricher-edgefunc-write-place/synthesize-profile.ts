@@ -54,9 +54,10 @@ function slugs(value: unknown): string[] {
  * Presentation with the one it wrote (MESITA-2799: one Enrich, no Overwrite
  * switch); an empty synthesis leaves the saved text alone. Tags are
  * re-inferred every run: written when the call succeeded, left as stored when
- * it failed (null). Google categories and families are never written here:
- * the trigger derives the categories from Google's own types (MESITA-2836)
- * and the profiles view the families (MESITA-2834).
+ * it failed (null). Google categories are never written here: the trigger
+ * derives them from Google's own types (MESITA-2836). Families ride out as
+ * `families` and index.ts writes them on place_profiles (MESITA-2891), unless
+ * the operator owns them (MESITA-2893).
  */
 export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;

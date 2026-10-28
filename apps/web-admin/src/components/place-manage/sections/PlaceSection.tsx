@@ -49,6 +49,9 @@ type Day = (typeof DAYS)[number];
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+/** The Basics fields an operator may own (MESITA-2829, families MESITA-2893). */
+type OperatorField = "name" | "description" | "tags" | "family_keys";
+
 // Brand marks live in /public/channels (Simple Icons SVGs, same set as
 // consumer). Generic contact fields keep lucide fallbacks.
 const CHANNELS: {
@@ -175,6 +178,8 @@ type Form = {
   description: string;
   /** Mesita tags, place_tags slugs (editable, MESITA-2836). */
   tags: string[];
+  /** Mesita families, place_families slugs (editable, MESITA-2893). */
+  family_keys: string[];
   phone: string;
   channels: Record<string, string>;
   hours: Record<Day, DayHours>;
@@ -186,6 +191,7 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 500,
   tagsPerPlaceMax: 20,
+  familiesPerPlaceMax: 5,
   photosMax: 10,
 };
 
@@ -209,6 +215,10 @@ function placeToForm(
     tags: (Array.isArray(v.tags) ? v.tags : [])
       .filter((t): t is string => typeof t === "string")
       .slice(0, limits.tagsPerPlaceMax),
+    // Undefined is the view's word for "none stored", never a pick.
+    family_keys: (Array.isArray(v.family_keys) ? v.family_keys : [])
+      .filter((f): f is string => typeof f === "string" && f !== "undefined")
+      .slice(0, limits.familiesPerPlaceMax),
     phone: v.phone ?? "",
     channels,
     hours,
@@ -224,6 +234,7 @@ function boxToPatch(
   f: Form,
   id: string,
   limits: PlaceFieldLimits,
+  opts: { familiesChanged?: boolean } = {},
 ): Record<string, unknown> & { id: string } {
   const nz = (s: string) => (s.trim() ? s.trim() : null);
   if (box === "basics") {
@@ -234,6 +245,11 @@ function boxToPatch(
       name: name.length > 0 ? name : null,
       description: nz(f.description.slice(0, limits.descriptionMax)),
       tags: f.tags.slice(0, limits.tagsPerPlaceMax),
+      // Families ride only when touched (MESITA-2893): the door marks a sent
+      // list as operator-owned, and an untouched list must stay the model's.
+      ...(opts.familiesChanged
+        ? { family_keys: f.family_keys.slice(0, limits.familiesPerPlaceMax) }
+        : {}),
     };
   }
   if (box === "time") {
@@ -273,13 +289,13 @@ export function PlaceSection({
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
   const owned = new Set(place.operator_fields ?? []);
-  const resetField = async (field: "name" | "description" | "tags") => {
+  const resetField = async (field: OperatorField) => {
     setResetting(field);
     const r = await updatePlace({ id: place.id, reset_fields: [field] });
     setResetting(null);
     if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
   };
-  const resetControl = (field: "name" | "description" | "tags") =>
+  const resetControl = (field: OperatorField) =>
     owned.has(field) ? (
       <span className="inline-flex items-center gap-2">
         <span className="text-muted-foreground type-meta">Enrich keeps it</span>
@@ -304,15 +320,27 @@ export function PlaceSection({
           name: form.name,
           description: form.description,
           tags: form.tags.join(","),
+          family_keys: form.family_keys.join(","),
         },
         {
           name: saved.name,
           description: saved.description,
           tags: saved.tags.join(","),
+          family_keys: saved.family_keys.join(","),
         },
       ),
-    [form.name, form.description, form.tags, saved.name, saved.description, saved.tags],
+    [
+      form.name,
+      form.description,
+      form.tags,
+      form.family_keys,
+      saved.name,
+      saved.description,
+      saved.tags,
+      saved.family_keys,
+    ],
   );
+  const familiesChanged = form.family_keys.join(",") !== saved.family_keys.join(",");
   const dirtyTime = useMemo(
     () => !sliceEqual(form.hours, saved.hours),
     [form.hours, saved.hours],
@@ -336,7 +364,7 @@ export function PlaceSection({
     placeDirty,
     () => {
       const parts: Record<string, unknown>[] = [];
-      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits));
+      if (dirtyBasics) parts.push(boxToPatch("basics", form, place.id, limits, { familiesChanged }));
       if (dirtyTime) parts.push(boxToPatch("time", form, place.id, limits));
       if (dirtyChannels)
         parts.push(boxToPatch("channels", form, place.id, limits));
@@ -410,8 +438,9 @@ export function PlaceSection({
             save": Google Name · Google Price · Google Category · Mesita Name ·
             Mesita Families · Mesita Presentation · Mesita Tags). One list, so
             a reorder or a restored row is one edit. One field per row.
-            Mesita name, presentation and tags are the operator's to edit; an
-            edit sticks through Enrich until its Reset (MESITA-2829). */}
+            Mesita name, families, presentation and tags are the operator's to
+            edit; an edit sticks through Enrich until its Reset (MESITA-2829,
+            families since MESITA-2893). */}
         <div className="mt-5 grid gap-4">
           {[
             <ReadField key="google-name" label="Google name" auto boxed>
@@ -431,7 +460,15 @@ export function PlaceSection({
               disabled={anyPending}
               placeholder={(place.google_name ?? "").trim() || undefined}
             />,
-            <PlaceFamilyField key="families" />,
+            <PlaceFamilyField
+              key="families"
+              labelRight={resetControl("family_keys")}
+              value={form.family_keys}
+              onChange={(families) =>
+                set("family_keys", families.slice(0, limits.familiesPerPlaceMax))
+              }
+              disabled={anyPending}
+            />,
             <TextArea
               key="presentation"
               label="Mesita presentation"

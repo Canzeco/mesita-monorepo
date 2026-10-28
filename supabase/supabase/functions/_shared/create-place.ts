@@ -11,8 +11,9 @@
 //                   NEVER STAMPED: the row existing IS the seed.
 //   1 details     → the Google spine persisted (fetchGoogleBasics fields,
 //                   Google's own types in google_source_types, from which
-//                   the taxonomy trigger derives the Google categories and
-//                   the view the families — no model, MESITA-2836/2834)
+//                   the taxonomy trigger derives the Google categories —
+//                   no model, MESITA-2836; the families are step 7's,
+//                   MESITA-2891)
 //                   PLUS the first Google photo mirrored into
 //                   place-images so a Created place can show a thumb. The
 //                   LIVENESS GATE is a subprocess of this step, not a rung of
