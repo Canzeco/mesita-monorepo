@@ -23,7 +23,7 @@ import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/State
 import { placeTabHref } from "@/lib/place-tabs";
 import {
   BAD_WHEN_TRUE,
-  boostTierChip,
+  premierTierChip,
   GENERAL_STATE_FACTS,
   STATE_FACT_FALSE_TONE,
 } from "@/lib/state-vocabulary";
@@ -554,7 +554,7 @@ const QUICK_STATS = [
  *  Off · 2X · 5X · 10X. Off is the normal case, so it is muted rather than
  *  rose; a paid tier is green. */
 function PremierPill({ tier }: { tier: number | null | undefined }) {
-  const chip = boostTierChip(tier);
+  const chip = premierTierChip(tier);
   if (chip === "?") return <StatePill on="unknown" />;
   return (
     <span

@@ -89,7 +89,7 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
     source: "mesita",
     ready: 1,
     reviews: null,
-    boostTier: numOrNull(row.boost_tier) ?? 0,
+    premierTier: numOrNull(row.boost_tier) ?? 0,
   };
 }
 

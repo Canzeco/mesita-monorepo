@@ -20,7 +20,7 @@
 // MESITA-2925. No exponents (MESITA-2722).
 //
 // THE REACH (MESITA-2920): the Catalog has no radius, so s counts only
-// within BOOST_REACH_HALVES × h of the anchor; past it s is 1 and an
+// within PREMIER_REACH_HALVES × h of the anchor; past it s is 1 and an
 // Premier place ranks like any other. A Premier 10X in another city never
 // tops a guest's Home. The Map's circle already bounds it; Chat keeps its
 // radius box, so neither reads the reach.
@@ -84,7 +84,7 @@ export type AreaCandidate = {
   reviews?: 1 | null;
   /** Premier (MESITA-2925, was Boost MESITA-2789): the paid tier,
    *  `places.boost_tier` (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); absent = 0. */
-  boostTier?: number;
+  premierTier?: number;
 };
 
 /**
@@ -137,18 +137,18 @@ function factor(x: number): number {
 /** The Premier factor a candidate's score is multiplied by (MESITA-2925,
  *  was Boost MESITA-2789): a Premier place's tier, ×2 · ×5 · ×10
  *  (BOOST_FACTOR); 1 for every other place and for a Google stub. */
-export function premierFactor(c: Pick<AreaCandidate, "source" | "boostTier">): number {
-  const tier = c.source === "google" ? 0 : c.boostTier ?? 0;
+export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">): number {
+  const tier = c.source === "google" ? 0 : c.premierTier ?? 0;
   return tier >= 3 ? BOOST_FACTOR[3] : tier >= 2 ? BOOST_FACTOR[2] : tier >= 1 ? BOOST_FACTOR[1] : 1;
 }
 
 /** The Premier reach on the Catalog, in half distances (MESITA-2920):
  *  s counts within 2 × h of the anchor, 1 beyond. */
-export const BOOST_REACH_HALVES = 2;
+export const PREMIER_REACH_HALVES = 2;
 
 /** The Catalog's reach (km) for a half distance h. */
-export function boostReachKm(halfKm: number): number {
-  return BOOST_REACH_HALVES * halfKm;
+export function premierReachKm(halfKm: number): number {
+  return PREMIER_REACH_HALVES * halfKm;
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
@@ -213,7 +213,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   // The reach (MESITA-2920): only the Catalog, a point with Proximity and
   // no Radius gate; a place with no distance is out of reach.
   const capped = loc.kind === "point" && loc.radiusKm === null && ctx.halfKm !== null &&
-    (km === null || km > boostReachKm(ctx.halfKm));
+    (km === null || km > premierReachKm(ctx.halfKm));
   const sel = capped ? 1 : premierFactor(c);
   const popPart = capped ? factor(pop ?? 0) : popularPart(c);
   const final = prox === null ? popPart : factor(prox) * popPart;
