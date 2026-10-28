@@ -28,6 +28,9 @@ export const GOOGLE_UPDATE_FORBIDDEN_COLUMNS = [
   "category",
   "category_label",
   "family_keys",
+  // The Mesita Zone is the Description step's inference (MESITA-2937), not
+  // Google's neighborhood: a Google refetch leaves it alone.
+  "zone",
 ] as const;
 
 export function assertGoogleUpdatePatchSafe(patch: Record<string, unknown>): void {
@@ -65,7 +68,6 @@ export function googleBasicsToUpdatePatch(input: {
     lat: input.basics.lat,
     lng: input.basics.lng,
     address: input.basics.address,
-    zone: input.basics.zone,
     city: input.basics.city,
     timezone: input.basics.timezone,
     closes_at: input.basics.closes_at,

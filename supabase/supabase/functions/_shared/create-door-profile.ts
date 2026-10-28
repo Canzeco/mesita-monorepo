@@ -31,12 +31,15 @@ import {
   mainGoogleCategory,
   pickFamilies,
 } from "./families-infer.ts";
+import { pickZone, ZONE_RULE } from "./zone-infer.ts";
 
 export type DoorProfile = {
   /** Null when the reply carried no tags array: Create then writes none. */
   tags: string[] | null;
   /** Mesita Families to store (MESITA-2891): see familiesToStore. */
   families: string[] | null | undefined;
+  /** Mesita Zone (MESITA-2937); null when the reply gave none usable. */
+  zone: string | null;
   description: string | null;
   reservationsLikely: boolean;
   mesitaNameCandidate: string | null;
@@ -46,9 +49,9 @@ export type DoorProfile = {
 export type DoorSignals = {
   name: string;
   address?: string | null;
-  // The branch anchor for the FRANCHISE RULE: zone is the colonia /
-  // neighborhood, city the fallback. Both ride in from the Google spine
-  // `fetchGoogleBasics` just resolved, so the door never has to guess.
+  // The branch anchor for the FRANCHISE RULE and the Mesita Zone's hint:
+  // zone is Google's colonia / neighborhood, city the fallback. Both ride in
+  // from the Google spine `fetchGoogleBasics` just resolved.
   zone?: string | null;
   city?: string | null;
   googleTypes?: string[] | null;
@@ -100,8 +103,10 @@ export async function synthesizeDoorProfile(
     'name already follows the MESITA NAME rule below>",' +
     '"semantic_summary":"<one dense English paragraph (~60-90 words) of what ' +
     'this place IS, for semantic search — no marketing voice>",' +
-    '"families":["<1-5 slugs from the family list>"]}. ' +
+    '"families":["<1-5 slugs from the family list>"],' +
+    '"zone":"<the Mesita Zone, or null>"}. ' +
     FAMILIES_RULE + " " +
+    ZONE_RULE + " " +
     "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
     "store numbers and internal branch codes. FRANCHISE RULE — a chain " +
     "branch is named BRAND + WHERE IT IS. When the place is one location of " +
@@ -163,6 +168,7 @@ export async function synthesizeDoorProfile(
     return {
       tags,
       families: familiesToStore(pickFamilies(parsed.families, familyVocab), enabled),
+      zone: pickZone(parsed.zone, signals.city),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),
       mesitaNameCandidate: str(parsed.mesita_name)?.slice(0, nameMax) ?? null,

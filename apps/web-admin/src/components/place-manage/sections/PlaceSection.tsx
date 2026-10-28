@@ -512,6 +512,13 @@ export function PlaceSection({
           <ReadField label="Google Address" auto boxed>
             {locationAddress(place)}
           </ReadField>
+          {/* Google Place ID and Google Address are Google's canonical
+              location; the Mesita Zone is Mesita's, inferred by the
+              Description step's LLM on every Create and Enrich, and the
+              fact the place header draws after the category (MESITA-2937). */}
+          <ReadField label="Mesita Zone" auto boxed>
+            {place.zone?.trim() ? place.zone : "—"}
+          </ReadField>
         </div>
         {place.lat != null && place.lng != null ? (
           <div className="border-border/60 mt-4 overflow-hidden rounded-xl border">

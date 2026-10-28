@@ -28,6 +28,7 @@ import {
   mainGoogleCategory,
   pickFamilies,
 } from "../_shared/families-infer.ts";
+import { pickZone } from "../_shared/zone-infer.ts";
 
 export function reviewQuotes(value: unknown): string {
   if (!Array.isArray(value)) return "";
@@ -63,6 +64,8 @@ export function mergeSynthesizedProfile(opts: {
   patch: Record<string, unknown>;
   presentation: string | null;
   tags: string[] | null;
+  /** Mesita Zone (MESITA-2937): written when inferred, else the stored one stays. */
+  zone?: string | null;
 }): Record<string, unknown> {
   const next = { ...opts.patch };
   const presentation = opts.presentation ? capPresentation(opts.presentation) : "";
@@ -70,6 +73,7 @@ export function mergeSynthesizedProfile(opts: {
     next.description = presentation;
   }
   if (opts.tags) next.tags = opts.tags;
+  if (opts.zone) next.zone = opts.zone;
   return next;
 }
 
@@ -86,8 +90,9 @@ function textField(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-/** Zone and city for the franchise rule: the saved value, else Google's
- *  structured address on the same patch, the way Create derives them. */
+/** Zone and city for the franchise rule and the Mesita Zone's hint: Google's
+ *  structured address on the same patch, else the saved value. Google's
+ *  neighborhood leads so the stored (inferred) zone never feeds itself. */
 export function branchAnchor(patch: Record<string, unknown>): { zone: string | null; city: string | null } {
   const address = patch.google_address;
   const components = address && typeof address === "object" && !Array.isArray(address)
@@ -95,7 +100,7 @@ export function branchAnchor(patch: Record<string, unknown>): { zone: string | n
     : undefined;
   const list = Array.isArray(components) ? components as { types?: string[]; longText?: string }[] : undefined;
   return {
-    zone: textField(patch.zone) || findAddressComponent(list, ["neighborhood", "sublocality_level_1", "sublocality"]),
+    zone: findAddressComponent(list, ["neighborhood", "sublocality_level_1", "sublocality"]) || textField(patch.zone) || null,
     city: textField(patch.city) || findAddressComponent(list, ["locality", "administrative_area_level_2"]),
   };
 }
@@ -166,6 +171,7 @@ async function fillAtlasProfileInner(
   let mesitaName: string | null = null;
   let tags: string[] | null = null;
   let pickedFamilies: string[] | null = null;
+  let zone: string | null = null;
   const anchor = branchAnchor(patch);
   if (name) {
     const { parsed } = await synthesizeProfile({
@@ -192,6 +198,7 @@ async function fillAtlasProfileInner(
       mesitaName = textField(parsed.mesita_name) || null;
       tags = pickVocabularyTags(parsed.tags, tagSlugs);
       pickedFamilies = pickFamilies(parsed.families, familyVocabulary);
+      zone = pickZone(parsed.zone, anchor.city);
     }
   }
   const families = familiesToStore(pickedFamilies, enabled);
@@ -200,6 +207,7 @@ async function fillAtlasProfileInner(
   }
   if (!presentation && googleSummary) presentation = capPresentation(googleSummary);
   if (!tags) console.warn(`[enrich] ${placeId}: Mesita tags not inferred; stored tags kept`);
+  if (!zone) console.warn(`[enrich] ${placeId}: Mesita Zone not inferred; stored zone kept`);
 
 
   return {
@@ -207,6 +215,7 @@ async function fillAtlasProfileInner(
       patch,
       presentation,
       tags,
+      zone,
     }),
     mesitaName,
     families,

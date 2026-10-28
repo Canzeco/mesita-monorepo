@@ -1,6 +1,7 @@
 import { capPresentation } from "./presentation-cap.ts";
 
 export type ProfileResult = {
+  /** Mesita Zone (MESITA-2937): filtered by the caller through pickZone. */
   zone?: string | null;
   city?: string | null;
   /**
@@ -95,7 +96,8 @@ export function applyProfileToUpdate(
   parsed: ProfileResult,
 ): void {
   // Location is Google's structured response. Synthesis may read those facts
-  // as input for Presentation. It does not write zone, city, or address.
+  // as input for Presentation. It does not write city or address; the Mesita
+  // Zone is landed by the caller through pickZone (MESITA-2937).
   // Canonical Presentation — English only (MESITA-939). Spanish TMS later.
   const description = asProfileText(parsed.description);
   if (description) {

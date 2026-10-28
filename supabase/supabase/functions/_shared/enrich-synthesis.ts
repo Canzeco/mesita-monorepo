@@ -13,6 +13,7 @@ import {
 import { safeParseJson } from "./parse-utils.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
 import { FAMILIES_RULE } from "./families-infer.ts";
+import { ZONE_RULE } from "./zone-infer.ts";
 import {
   type ProfileResult,
 } from "./enrich-synthesis-profile.ts";
@@ -36,6 +37,8 @@ const PROFILE_SCHEMA = {
     tags: { type: "array", items: { type: "string" } },
     // Mesita Families (MESITA-2891): 1–5 slugs from the FAMILY LIST block.
     families: { type: "array", items: { type: "string" } },
+    // Mesita Zone (MESITA-2937): the neighborhood the place header draws.
+    zone: { type: ["string", "null"] },
     // No popular_times (MESITA-2420): a guess from review text is not
     // Google's busy hours, and the guest card says "From Google".
   },
@@ -61,9 +64,9 @@ export async function synthesizeProfile(input: {
   tagVocabulary?: string[];
   /** `slug — Label` lines the model may pick Mesita Families from (MESITA-2891). */
   familyVocabulary?: string[];
-  // The branch anchor for the FRANCHISE RULE below: zone is the colonia /
-  // neighborhood, city the fallback. Both come from the Google spine the
-  // research stage persisted — synthesis never has to guess where it is.
+  // The branch anchor for the FRANCHISE RULE below, and the hint the Mesita
+  // Zone is read from (MESITA-2937): zone is Google's colonia / neighborhood
+  // when it names one, city the fallback.
   zone?: string | null;
   city?: string | null;
   igBio: string;
@@ -208,6 +211,7 @@ export function buildPresentationInput(place: {
     `from the TAG VOCABULARY below that the sources clearly support (service, ` +
     `vibe, drinks, occasion, amenities…); [] when none is supported. ` +
     (familyLines.length ? `${FAMILIES_RULE} ` : "") +
+    `${ZONE_RULE} ` +
     `"description" and ` +
     `every other text field MUST be a single JSON string — never an array or ` +
     `nested object. Use null or [] for anything the sources don't support. ` +
@@ -215,7 +219,7 @@ export function buildPresentationInput(place: {
     (vocabulary.length ? `\n\nTAG VOCABULARY: ${vocabulary.join(", ")}` : "") +
     (familyLines.length ? `\n\nFAMILY LIST:\n${familyLines.join("\n")}` : "") +
     (branchAnchor
-      ? `\n\nLOCATION ANCHOR (the franchise rule spends this): ${branchAnchor}`
+      ? `\n\nLOCATION ANCHOR (the franchise rule spends this; the zone is read from it): ${branchAnchor}`
       : "") +
     (grounding
       ? `\n\n--- SOURCE MATERIAL ---\n${grounding}`
