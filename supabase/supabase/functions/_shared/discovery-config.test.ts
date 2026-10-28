@@ -349,11 +349,7 @@ Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () 
   assertEquals(missing.name, DISCOVERY_DEFAULTS.name);
   assertEquals(missing.name.fast.count, 5);
   assertEquals(missing.name.fast.googleCount, 5);
-  assertEquals(missing.name.deep, {
-    autoCount: 3,
-    googleCount: 3,
-    supers: DISCOVERY_DEFAULTS.name.deep.supers,
-  });
+  assertEquals(missing.name.deep, { autoCount: 3, googleCount: 3 });
   const clamped = normalizeDiscoveryConfig({
     name: {
       fast: { count: 99, supers: { restaurants: false } },
@@ -361,9 +357,8 @@ Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () 
     },
   });
   assertEquals(clamped.name.fast.count, 20);
-  assertEquals(clamped.name.fast.supers.coffee, true);
-  assertEquals(clamped.name.fast.supers.dinner, true);
-  assertEquals("restaurants" in clamped.name.fast.supers, false);
+  // The retired family switches (MESITA-2767) do not survive a read.
+  assertEquals("supers" in clamped.name.fast, false);
   // The retired Deep partners and Mesita caps do not survive a read.
   assertEquals("partnerCount" in clamped.name.deep, false);
   assertEquals("mesitaCount" in clamped.name.deep, false);

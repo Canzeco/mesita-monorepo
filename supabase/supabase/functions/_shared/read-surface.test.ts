@@ -165,6 +165,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/enrich-start.ts", // the saved profile an Enrich run reads back, and its updated_at (MESITA-2420)
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
+  "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
   "admin-web-search-places/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-reload-place-reviews/index.ts",
@@ -222,6 +223,8 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-get-place-enrichment/index.ts",
   // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
+  // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
+  "_shared/vip-partners.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -229,6 +232,7 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 });
 
 const PLACES_READ_ALLOWLIST = [
+  "_shared/smoke-enrich.ts", // the smoke fixture's updated_at, its one-hour cooldown (MESITA-2803)
   "_shared/google-refetch.ts", // content_state only: no refetch while an Enrich is in flight (MESITA-2420)
   "_shared/admin-google-place-update.ts", // content_state gate before Google refresh (MESITA-2737)
   "_shared/reservation-places.ts",

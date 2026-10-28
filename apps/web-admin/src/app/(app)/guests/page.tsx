@@ -8,6 +8,7 @@ export default async function GuestsPage() {
   return (
     <GuestsClient
       initialGuests={res.ok ? res.guests : []}
+      initialPartners={res.ok ? res.partners : []}
       loadError={res.ok ? null : res.error}
     />
   );

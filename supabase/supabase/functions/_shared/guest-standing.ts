@@ -2,8 +2,10 @@
 // admin-web-list-guests and admin-web-set-guest-standing. An operator finds a
 // guest and sets their Class (regular or VIP, through a partner) and their Plan
 // (free or premium). The two are independent. The admin_set_guest_standing RPC is
-// the only writer; no consumer EF accepts either field. An operator can also
-// set one guest's monthly reservation cap (MESITA-2555,
+// the only writer; no consumer EF accepts either field. A VIP also carries the
+// partner it came through and an optional last day (MESITA-2556); neither
+// drives a rule, and no rate is stored anywhere.
+// An operator can also set one guest's monthly reservation cap (MESITA-2555,
 // consumers.reservation_cap_override; null = the plan's cap).
 
 import {
@@ -20,7 +22,7 @@ import {
 
 /** Columns both admin EFs read back. */
 export const GUEST_ROW_SELECT =
-  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, reservation_cap_override, created_at";
+  "id, code, full_name, first_name, last_name, instagram_handle, instagram_verified_at, guest_class, plan, guest_class_set_at, guest_class_set_by, guest_class_note, vip_partner_id, vip_until, reservation_cap_override, created_at";
 
 export const GUEST_LIST_LIMIT = 50;
 
@@ -41,6 +43,10 @@ export type GuestRow = {
   guestClassSetByEmail: string | null;
   /** Operator-only: where this VIP came from. */
   guestClassNote: string | null;
+  /** MESITA-2556: the partner this VIP came through; null when none is recorded. */
+  vipPartnerId: string | null;
+  /** MESITA-2556: the VIP's last day (YYYY-MM-DD), or null for no end date. */
+  vipUntil: string | null;
   /** Operator-set reservations a month; null = the plan's cap. */
   reservationCapOverride: number | null;
   /** The plan's cap, what applies while there is no override. */
@@ -61,6 +67,8 @@ export type RawGuest = {
   guest_class_set_at?: unknown;
   guest_class_set_by?: unknown;
   guest_class_note?: unknown;
+  vip_partner_id?: unknown;
+  vip_until?: unknown;
   reservation_cap_override?: unknown;
   created_at?: unknown;
 };
@@ -87,6 +95,8 @@ export function toGuestRow(
     guestClassSetAt: str(raw.guest_class_set_at),
     guestClassSetByEmail: setBy ? setByEmail(setBy) : null,
     guestClassNote: str(raw.guest_class_note),
+    vipPartnerId: str(raw.vip_partner_id),
+    vipUntil: str(raw.vip_until),
     reservationCapOverride: readCapOverride(raw.reservation_cap_override),
     planReservationCap: planReservationCap(raw.plan),
     createdAt: String(raw.created_at ?? ""),
@@ -122,6 +132,10 @@ export type StandingPatch = {
   plan?: ConsumerPlan;
   /** Present when the note is being set; null clears it. */
   guestClassNote?: string | null;
+  /** Present when the partner is being set; null clears it. */
+  vipPartnerId?: string | null;
+  /** Present when the last day is being set (YYYY-MM-DD); null = no end date. */
+  vipUntil?: string | null;
   /** Present when the cap is being set; null goes back to the plan's cap. */
   reservationCapOverride?: number | null;
 };
@@ -129,9 +143,20 @@ export type StandingPatch = {
 /** A refusal with a stable code and a message that says the fix. */
 export type StandingError = { code: string; error: string; status: number };
 
-/** The body of a set call, checked: at least one of the four fields. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A real calendar day as YYYY-MM-DD, or null. */
+function calendarDay(v: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v ? v : null;
+}
+
+/** The body of a set call, checked: at least one field. `today` is the UTC
+ *  day a new last day may not fall before. */
 export function readStandingBody(
   body: unknown,
+  today: string = new Date().toISOString().slice(0, 10),
 ): { ok: true; consumerId: string; patch: StandingPatch } | ({ ok: false } & StandingError) {
   const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
   // An Admin built before MESITA-2553 still sends `diamond`.
@@ -199,12 +224,58 @@ export function readStandingBody(
     }
     patch.reservationCapOverride = v as number | null;
   }
+  if ("vipPartnerId" in b) {
+    const v = b.vipPartnerId;
+    if (v !== null && (typeof v !== "string" || !UUID_RE.test(v.trim()))) {
+      return {
+        ok: false,
+        status: 400,
+        code: "invalid_partner",
+        error: "vipPartnerId must be a partner's id or null",
+      };
+    }
+    patch.vipPartnerId = v === null ? null : (v as string).trim().toLowerCase();
+  }
+  if ("vipUntil" in b) {
+    const v = b.vipUntil;
+    const day = typeof v === "string" ? calendarDay(v.trim()) : null;
+    if (v !== null && !day) {
+      return {
+        ok: false,
+        status: 400,
+        code: "invalid_vip_until",
+        error: `vipUntil must be a day as YYYY-MM-DD, or null for no end date (got '${String(v)}')`,
+      };
+    }
+    if (day && day < today) {
+      return {
+        ok: false,
+        status: 400,
+        code: "vip_until_past",
+        error: `vipUntil ${day} is in the past; pick today (${today}) or later`,
+      };
+    }
+    patch.vipUntil = day;
+  }
+  // A guest made Regular in this call cannot get a partner or a last day in it.
+  if (
+    patch.guestClass === "regular" &&
+    (patch.vipPartnerId != null || patch.vipUntil != null)
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      code: "not_vip",
+      error: "Only a VIP has a partner or a last day. Set the class to VIP first.",
+    };
+  }
   if (Object.keys(patch).length === 0) {
     return {
       ok: false,
       status: 400,
       code: "nothing_to_set",
-      error: "Send guestClass, plan, guestClassNote, reservationCapOverride, or any of them together",
+      error:
+        "Send guestClass, plan, guestClassNote, vipPartnerId, vipUntil, reservationCapOverride, or several together",
     };
   }
   return { ok: true, consumerId, patch };

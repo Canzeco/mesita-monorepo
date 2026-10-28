@@ -534,7 +534,10 @@ function PersonCard({
       {/* ONE SCROLLER, THE WHOLE CARD (Pato, MESITA-2845: "make this UI
           easier to scroll"): the identity boxes scroll away with the
           history, Instagram's profile, instead of a 45vh box under a header
-          that never moved. The card stops at the screen's height; the X is
+          that never moved. The card is always the screen's full height, a
+          short history or a tab switch never moves its top (Pato,
+          MESITA-2965: "the header must be always at the same vertical
+          coords"); the X is
           positioned on the panel, not this scroller, so it stays put. No bar,
           and a fling at either end stays in the card. */}
       <div

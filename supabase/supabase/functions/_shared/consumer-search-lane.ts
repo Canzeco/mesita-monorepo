@@ -59,7 +59,6 @@ import {
   loadDiscoveryConfig,
   type MapConfig,
   type NameConfig,
-  type SuperParamKey,
 } from "./discovery-config.ts";
 import {
   applyGeneralGateQuery,
@@ -100,11 +99,6 @@ type PredictionState =
   | "web_listed"
   | "verified_partner_other"
   | "verified_partner_self";
-
-/** Guest families stay on. A stored off switch does not skip Google. */
-function anySuperOn(_supers: Record<SuperParamKey, boolean>): boolean {
-  return true;
-}
 
 export type LaneItem = {
   placeId: string;
@@ -600,7 +594,7 @@ async function runFastSearch(
   locations: boolean,
 ): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const cap = Math.min(name.fast.count, name.fast.googleCount);
-  if (cap <= 0 || !anySuperOn(name.fast.supers)) {
+  if (cap <= 0) {
     return [];
   }
   const gate = map;
@@ -676,15 +670,15 @@ function takeLane(items: LaneItem[], cap: number): LaneItem[] {
   return items.slice(0, cap);
 }
 
-/** Which Deep modules fire. Types off skip both Google modules. */
+/** Which Deep modules fire: a cap of 0 skips that Google module. The family
+ *  switches that once gated both (`supers`) retired in MESITA-2767. */
 export function deepModuleFlags(args: {
   autoCount: number;
   googleCount: number;
-  typesOn: boolean;
 }): { wantAuto: boolean; wantText: boolean } {
   return {
-    wantAuto: args.autoCount > 0 && args.typesOn,
-    wantText: args.googleCount > 0 && args.typesOn,
+    wantAuto: args.autoCount > 0,
+    wantText: args.googleCount > 0,
   };
 }
 
@@ -701,11 +695,9 @@ async function runDeepSearch(
 ): Promise<LaneItem[]> {
   const deep = name.deep;
   const gate = map;
-  const typesOn = anySuperOn(deep.supers);
   const { wantAuto, wantText } = deepModuleFlags({
     autoCount: deep.autoCount,
     googleCount: deep.googleCount,
-    typesOn,
   });
 
   const [googleAuto, googleText] = await Promise.all([

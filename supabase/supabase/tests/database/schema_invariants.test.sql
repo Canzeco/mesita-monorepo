@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(173);
+select plan(175);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -707,9 +707,9 @@ select ok(
 );
 
 select ok(
-  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid)', 'EXECUTE'),
+  has_function_privilege('service_role', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.admin_set_guest_standing(uuid, text, text, text, boolean, uuid, boolean, date, boolean, uuid)', 'EXECUTE'),
   'only the service role can set a guest''s Class and Plan (MESITA-2553)'
 );
 
@@ -725,6 +725,25 @@ select ok(
     and not has_function_privilege('authenticated', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.admin_set_guest_reservation_cap(uuid, integer)', 'EXECUTE'),
   'only the service role can set a guest''s reservation cap (MESITA-2555)'
+);
+
+-- MESITA-2556: VIP partners are EF-only; a Regular guest holds no partner or end date.
+select ok(
+  (select relrowsecurity from pg_class where oid = 'public.vip_partners'::regclass)
+    and not exists (select 1 from pg_policies
+                     where schemaname = 'public' and tablename = 'vip_partners')
+    and not has_table_privilege('anon', 'public.vip_partners', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'INSERT')
+    and not has_table_privilege('authenticated', 'public.vip_partners', 'UPDATE'),
+  'vip_partners is EF-only (RLS on, no policy, no client grant) (MESITA-2556)'
+);
+
+select ok(
+  pg_get_constraintdef((select oid from pg_constraint
+    where conname = 'consumers_vip_fields_check'
+      and conrelid = 'public.consumers'::regclass)) like '%vip_partner_id IS NULL%vip_until IS NULL%',
+  'only a VIP holds a partner or an end date (MESITA-2556)'
 );
 
 -- MESITA-2590: a member can appear as "A member"; the one visibility rule reads it.
@@ -1548,6 +1567,9 @@ select ok(
                       'googlePopular', 'googleClosest'])
       -- MESITA-2702: no Name reviews floor (`general.minReviews`).
       and discovery_config #> '{general,minReviews}' is null
+      -- MESITA-2767: the Search bar's always-on family switches.
+      and discovery_config #> '{name,fast,supers}' is null
+      and discovery_config #> '{name,deep,supers}' is null
       and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.
