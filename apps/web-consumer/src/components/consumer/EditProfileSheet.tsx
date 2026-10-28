@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Camera, Copy } from "lucide-react";
 import {
@@ -12,7 +11,7 @@ import {
   Spinner,
 } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { DefaultAvatar } from "@mesita/place-profile";
+import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import {
   apiFetchConsumerProfile,
@@ -406,8 +405,9 @@ function EditProfileForm({
           >
             <span className="bg-card relative flex-1 overflow-hidden rounded-full">
               {displayAvatarUrl ? (
-                <Image
+                <SizedImage
                   src={displayAvatarUrl}
+                  size="thumb"
                   alt="Profile photo"
                   fill
                   sizes="80px"

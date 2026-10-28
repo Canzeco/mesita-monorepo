@@ -104,7 +104,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { DefaultAvatar } from "@mesita/place-profile";
+import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
@@ -230,9 +230,9 @@ function Face({ person }: { person: ActivityPerson }) {
   return (
     <span className="relative block h-11 w-11 shrink-0">
       {person.avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SizedImg
           src={person.avatarUrl}
+          size="thumb"
           alt=""
           className="h-11 w-11 rounded-full object-cover"
         />
@@ -286,8 +286,7 @@ function Thumb({ place }: { place: Place }) {
   if (photo) {
     return (
       <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photo} alt="" className="h-full w-full object-cover" />
+        <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
       </span>
     );
   }
@@ -762,9 +761,9 @@ function HistoryTileLink({
       data-social-history-event={tab}
     >
       {photo ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SizedImg
           src={photo}
+          size="card"
           alt=""
           loading="lazy"
           className="h-full w-full object-cover"

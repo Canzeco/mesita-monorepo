@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SizedImage } from "@mesita/place-profile";
 import { Calendar, Hash, Users } from "lucide-react";
 import { useState, type ComponentProps } from "react";
 
@@ -125,8 +125,9 @@ export function ReservationDetailBody({
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
         <div className="bg-muted relative aspect-[16/9] w-full">
           {r.placePhoto ? (
-            <Image
+            <SizedImage
               src={r.placePhoto}
+              size="full"
               alt={r.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"

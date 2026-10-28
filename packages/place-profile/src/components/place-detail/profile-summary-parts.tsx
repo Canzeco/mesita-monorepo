@@ -7,6 +7,7 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn, firstInitial } from "../../lib/format";
 import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { Spinner } from "../Spinner";
+import { SizedImg } from "../SizedPhoto";
 
 // THE SUMMARY'S PARTS ARE MEASURED ONCE (Pato, MESITA-2701: "the
 // placeholders must be similar to the page you are loading, like the
@@ -33,9 +34,9 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
       )}
     >
       {place.photos.length > 0 ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <SizedImg
           src={place.photos[0]}
+          size="thumb"
           alt={place.name}
           className="h-full w-full object-cover"
         />

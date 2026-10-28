@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Image from "next/image";
+import { SizedImage } from "./SizedPhoto";
 import { cn } from "../lib/format";
 import {
   CarouselPillDots,
@@ -163,8 +163,9 @@ export function ImageCarousel({
             {renderSlide ? (
               renderSlide(i, m, { inPreloadWindow: isInPreloadWindow(i) })
             ) : (
-              <Image
+              <SizedImage
                 src={m.src}
+                size="full"
                 alt={`${alt} photo ${i + 1}`}
                 fill
                 sizes="(max-width: 768px) 100vw, 420px"

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
-import { PremierBadge } from "@mesita/place-profile";
+import { PremierBadge, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import {
   cardPhoto,
@@ -147,8 +146,9 @@ export function RailCard({
             height; width matches so the box is always 1:1. */}
         <div className="bg-muted relative aspect-square h-full w-auto shrink-0 overflow-hidden">
           {photo ? (
-            <Image
+            <SizedImage
               src={photo}
+              size="card"
               alt={place.name}
               fill
               sizes="140px"
