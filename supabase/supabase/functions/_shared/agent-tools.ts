@@ -27,6 +27,11 @@ import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
+import { guestName } from "./reservation-guest-name.ts";
+
+// The guest display name lives in a leaf (the engine needs it without this
+// module); re-exported for the a1..a4 tools.
+export { guestName };
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +56,29 @@ export async function requireAgentSecret(
   return null;
 }
 
+/**
+ * Stale-run guard (eng-review 2026-08-04): run_id rides every outbound call
+ * as a bound dynamic variable. A mismatch means this CALL belongs to an
+ * orphaned run (the guest rescheduled/cancelled mid-call) — ignore the
+ * write, tell the agent to wrap up gracefully. Returns the reply to send, or
+ * null when the call is current.
+ */
+export function staleRunReply(
+  body: { run_id?: unknown },
+  ticket: { run_id: string | null },
+): Response | null {
+  const callRunId = typeof body.run_id === "string" ? body.run_id.trim() : "";
+  if (callRunId && ticket.run_id && callRunId !== ticket.run_id) {
+    return json({
+      ok: true,
+      stale_run: true,
+      ignored: true,
+      say: "Esa reservación acaba de cambiar desde la app; Mesita le confirma los nuevos datos por ahí.",
+    });
+  }
+  return null;
+}
+
 // ── Phone matching (inbound identity) ────────────────────────────────────────
 
 /** Last 10 digits — MX numbers compare equal across +52 / +521 / bare forms. */
@@ -63,6 +91,33 @@ export function sameLine(a: unknown, b: unknown): boolean {
   const ta = phoneTail(a);
   const tb = phoneTail(b);
   return ta.length === 10 && ta === tb;
+}
+
+export type CallerPlace = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  reservation_target: string | null;
+};
+
+/**
+ * The place whose line is calling (places.phone or the reservation_target
+ * endpoint), matched on the last 10 digits. `tail` is the caller's
+ * phoneTail; null when no place owns that line.
+ */
+export async function placeByCallerLine(
+  admin: SupabaseClient,
+  tail: string,
+): Promise<CallerPlace | null> {
+  const { data: candidates } = await admin
+    .from("place_profiles")
+    .select("id, name, phone, reservation_target")
+    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
+    .limit(10);
+  const matches = ((candidates ?? []) as CallerPlace[]).filter((p) =>
+    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
+  );
+  return matches[0] ?? null;
 }
 
 // ── Speakable formatting ─────────────────────────────────────────────────────
@@ -114,7 +169,7 @@ function nameKey(s: string): string {
  * — "ana lopez" matches "Ana María López", "lopez" alone matches too.
  */
 export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
-  const guest = nameKey(guestNameOf(row));
+  const guest = nameKey(guestName(row.consumer, "(sin nombre)"));
   const words = nameKey(query).split(/\s+/).filter(Boolean);
   return words.length > 0 && words.every((w) => guest.includes(w));
 }
@@ -158,31 +213,40 @@ function asTickets(rows: unknown): TicketRow[] {
   );
 }
 
-function guestNameOf(r: TicketRow): string {
-  const c = r.consumer;
-  return c?.full_name?.trim() ||
-    [c?.first_name, c?.last_name].map((s) => (s ?? "").trim()).filter(Boolean).join(" ") ||
-    "(sin nombre)";
-}
-
+/**
+ * Place id → name. `fallback` stands in for a place with no name: the a3
+ * tools say "(sin nombre)", eleven-agent-get-reservation sends "".
+ */
 export async function placeNames(
   admin: SupabaseClient,
   ids: string[],
+  fallback = "(sin nombre)",
 ): Promise<Map<string, string>> {
   if (ids.length === 0) return new Map();
   const { data } = await admin.from("place_profiles").select("id, name").in("id", ids);
   return new Map<string, string>(
     ((data ?? []) as { id: string; name: string | null }[]).map(
-      (p) => [p.id, p.name ?? "(sin nombre)"],
+      (p) => [p.id, p.name ?? fallback],
     ),
   );
 }
 
+/** The ticket fields `speakable` reads — a TicketRow, or a narrower row. */
+export type SpeakableTicket =
+  & Pick<TicketRow, "reference_code" | "reserved_at" | "party_size" | "state" | "notes" | "is_test">
+  & {
+    consumer: {
+      full_name: string | null;
+      first_name: string | null;
+      last_name: string | null;
+    } | null;
+  };
+
 /** The shape every agent tool speaks — es-MX ready. */
-export function speakable(r: TicketRow, placeName: string) {
+export function speakable(r: SpeakableTicket, placeName: string) {
   return {
     reference_code: r.reference_code ?? null,
-    guest_name: guestNameOf(r),
+    guest_name: guestName(r.consumer, "(sin nombre)"),
     place_name: placeName,
     date_es: esDate(r.reserved_at),
     time_es: esTime(r.reserved_at),
@@ -289,6 +353,30 @@ export async function cancelTicket(
     },
   });
   return res.ok ? null : res.error;
+}
+
+/**
+ * The guest walks away from their own ticket — the tail the three guest-side
+ * cancel doors share (app, a2 Confirmer, a3 inbound). A CONFIRMED table means
+ * the place is holding it and must hear (Docs › Reservations §B leg 5);
+ * pending tickets owe nothing. Fires the notice hop when one is owed. Each
+ * caller shapes its own response from the result.
+ */
+export async function cancelAsGuest(
+  admin: SupabaseClient,
+  env: EFEnv,
+  callerName: string,
+  ticket: { id: string; state: string },
+  reason: string,
+): Promise<{ ok: true; placeNotified: boolean } | { ok: false; error: string }> {
+  const notice = ticket.state === "confirmed" ? "place_cancel" as const : null;
+  const err = await cancelTicket(admin, ticket.id, "consumer", reason, notice);
+  if (err) return { ok: false, error: err };
+
+  // Fire-and-forget: the engine acks early; a lost invoke is caught by the
+  // retry cron, which sweeps notice_state='pending'.
+  if (notice) await fireCancelNotice(env, callerName, ticket.id);
+  return { ok: true, placeNotified: notice !== null };
 }
 
 export function cleanNote(v: unknown, max = 300): string {

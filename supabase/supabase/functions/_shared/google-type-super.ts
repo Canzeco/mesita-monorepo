@@ -1,9 +1,9 @@
 // Exclusive Google Table A type → one of the eight Mesita families.
 // The GOOGLE side is exclusive: every Table A slug maps to exactly one
 // family. Types outside the seven guest families land on `undefined`.
-// Undefined is a family and not a guest pill: it has no Nearby battery,
-// and familiesForGoogleType drops it, so hotels, shops, and schools stay
-// ineligible for Search and Add.
+// Undefined is a family and not a guest pill: familiesForGoogleType drops
+// it, so hotels, shops, salons and schools stay ineligible for Search and
+// Add (the one gate, map-engine.ts, MESITA-2974).
 // Google families are NOT the join: Food and Drink splits across
 // restaurants, bars_nightlife, and cafes_bakeries. The CATEGORY side is
 // multi-parent (≤2) and lives in place-taxonomy.ts — a Google type never
@@ -11,24 +11,13 @@
 // (movie_theater the category is culture+experiences; the Google type
 // picks experiences). Verified against the live Table A reference
 // (478 types) on 2026-08-29; leftovers moved onto Undefined 2026-10-13.
-// Search batteries (`GOOGLE_SEARCH_TYPES`) are the includedPrimaryTypes slugs
-// sent to Nearby: since MESITA-2438 each family's FULL list of Table A
-// types — its lead type, then every type in that family, alphabetical —
-// capped at Google's 50. Autocomplete
-// and Text Search send no types.
+// The Nearby batteries built from this map died with Nearby (MESITA-2872,
+// deleted by MESITA-2974): Autocomplete and Text Search send no types.
 //
 // The `*_venue` keys below (event_venue, go_karting_venue, live_music_venue,
 // wedding_venue) are Google's own Table A type slugs, not ours — `venue` is
 // banned in OUR vocabulary (MESITA-1591) but these must match Google's API
 // literally, so they stay as Google spells them.
-
-import {
-  CATALOG_FAMILY_SLUGS,
-  CATALOG_LEAD_TYPES,
-  type FamilyKey,
-  familiesForCatalogSlug,
-  isCatalogFamily,
-} from "./catalog-families.ts";
 
 /** Coarse exclusive bucket. The guest catalog is the twenty families. */
 export type GuestSuper =
@@ -539,58 +528,4 @@ export function superForGoogleType(
     return GOOGLE_TYPE_SUPER[`${slug}_restaurant`] ?? null;
   }
   return null;
-}
-
-/** Google's cap on `includedPrimaryTypes` in one Nearby request. */
-const NEARBY_TYPE_CAP = 50;
-
-/**
- * Each family's Nearby battery (MESITA-2438): the lead type, then every
- * Table A type in that family, alphabetical, capped at 50. A type's
- * families are a list with no primary (MESITA-2808). A family row asks
- * Google for exactly this list, so Coffee asks for every kind of coffee
- * place, not one `cafe`.
- */
-export const GOOGLE_SEARCH_TYPES: Readonly<Record<FamilyKey, readonly string[]>> = (() => {
-  const out: Partial<Record<FamilyKey, string[]>> = { undefined: [] };
-  const slugs = Object.keys(GOOGLE_TYPE_SUPER).sort();
-  for (const family of CATALOG_FAMILY_SLUGS) {
-    const lead = CATALOG_LEAD_TYPES[family];
-    const members: string[] = [];
-    for (const slug of slugs) {
-      if (slug === lead) continue;
-      if (familiesForCatalogSlug(slug, GOOGLE_TYPE_SUPER[slug] ?? null).includes(family)) {
-        members.push(slug);
-      }
-    }
-    out[family] = [lead, ...members].slice(0, NEARBY_TYPE_CAP);
-  }
-  return out as Record<FamilyKey, string[]>;
-})();
-
-/**
- * Nearby `includedPrimaryTypes` for the requested families: their
- * batteries taken ROUND-ROBIN (every family's first type, then every
- * family's second, …), deduped, capped at 50. One family gets its whole
- * battery; every family together still carries each one's lead type.
- */
-export function nearbyTypesForSupers(
-  supers: readonly string[],
-): string[] {
-  const batteries = supers
-    .filter((raw): raw is FamilyKey => isCatalogFamily(raw))
-    .map((f) => GOOGLE_SEARCH_TYPES[f]);
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const longest = Math.max(0, ...batteries.map((b) => b.length));
-  for (let i = 0; i < longest; i++) {
-    for (const battery of batteries) {
-      const t = battery[i];
-      if (t === undefined || seen.has(t)) continue;
-      seen.add(t);
-      out.push(t);
-      if (out.length >= NEARBY_TYPE_CAP) return out;
-    }
-  }
-  return out;
 }

@@ -19,8 +19,8 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from 
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
   phoneTail,
+  placeByCallerLine,
   requireAgentSecret,
-  sameLine,
   speakable,
   ticketMatchesGuestName,
   ticketsOfPlace,
@@ -45,25 +45,11 @@ serveJson("eleven-a4-find-reservation", async (req) => {
   const query = typeof body.guest_name === "string" ? body.guest_name.trim() : "";
   if (!query) return json({ ok: false, error: "guest_name required" }, 400);
 
-  const { data: candidates } = await admin
-    .from("place_profiles")
-    .select("id, name, phone, reservation_target")
-    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
-    .limit(10);
-  type P = {
-    id: string;
-    name: string | null;
-    phone: string | null;
-    reservation_target: string | null;
-  };
-  const matches = ((candidates ?? []) as P[]).filter((p) =>
-    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
-  );
-  if (matches.length === 0) {
+  const place = await placeByCallerLine(admin, tail);
+  if (!place) {
     return json({ ok: true, verified: false, reason: "no Mesita place with this number" });
   }
 
-  const place = matches[0];
   // Wide window, then name-filter in JS — a place's near-term book is small.
   const book = await ticketsOfPlace(admin, place.id, 30);
   const found = book.filter((t) => ticketMatchesGuestName(t, query)).slice(0, 8);

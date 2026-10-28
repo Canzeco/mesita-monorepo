@@ -19,13 +19,14 @@ import {
   matchesOffer,
   normalizeAlternatives,
 } from "../_shared/reservation-alternatives.ts";
-import {
-  parsePlaceLocal,
-  placeLocalDate,
-  placeLocalTime,
-} from "../_shared/agent-tools.ts";
+import { placeLocalDate } from "../_shared/agent-tools.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
-import { reminderParkPatch } from "../_shared/reservation-reminder.ts";
+import {
+  onTheSpotConfirmPatch,
+  placeLng,
+  resolveRequestedSlot,
+} from "../_shared/reservation-confirm.ts";
+import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 
 type Body = {
   reservation_id?: string;
@@ -53,15 +54,25 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
   }
 
   const admin = adminClient(envRes.env);
-  const { data: ticket, error: loadErr } = await admin
-    .from("reservation_tickets")
-    .select(
-      "id, state, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
-    )
-    .eq("id", body.reservation_id)
-    .maybeSingle();
-  if (loadErr) return json({ ok: false, error: loadErr.message }, 500);
-  if (!ticket || ticket.consumer_id !== consumerId || ticket.is_test) {
+  const { row: ticket, error: loadErr } = await readOwnedTicket<{
+    id: string;
+    state: string;
+    reserved_at: string;
+    alternatives: unknown;
+    consumer_confirmed_at: string | null;
+    consumer_id: string;
+    is_test: boolean;
+    place_id: string;
+    consumer_notify: string | null;
+  }>(
+    admin,
+    body.reservation_id,
+    consumerId,
+    "id, state, reserved_at, alternatives, consumer_confirmed_at, consumer_id, is_test, place_id, consumer_notify",
+    { excludeTest: true },
+  );
+  if (loadErr) return json({ ok: false, error: loadErr }, 500);
+  if (!ticket) {
     return json({ ok: false, error: "reservation not found" }, 404);
   }
   if (ticket.state === "cancelled") {
@@ -104,13 +115,12 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
     }, 409);
   }
 
-  const date = typeof body.new_date === "string" && body.new_date.trim()
-    ? body.new_date.trim()
-    : placeLocalDate(ticket.reserved_at);
-  const time = typeof body.new_time === "string" && body.new_time.trim()
-    ? body.new_time.trim()
-    : placeLocalTime(ticket.reserved_at);
-  const next = parsePlaceLocal(date, time);
+  const { date, time, next } = resolveRequestedSlot(
+    ticket.reserved_at,
+    body.new_date,
+    body.new_time,
+    { trim: true },
+  );
   if (!next) {
     return json({
       ok: false,
@@ -126,33 +136,20 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
     }, 400);
   }
 
-  const { data: placeRow } = await admin
-    .from("place_profiles")
-    .select("lng")
-    .eq("id", ticket.place_id)
-    .maybeSingle();
-  const lng = typeof placeRow?.lng === "number" ? placeRow.lng : null;
+  const lng = await placeLng(admin, ticket.place_id);
   const guestNotify: "call" | "app" = ticket.consumer_notify === "app" ? "app" : "call";
 
-  const nowIso = new Date().toISOString();
   const confirm = await writeReservation(admin, {
     mode: "update",
     id: ticket.id,
     match: { consumer_id: consumerId, state: "pending" },
-    patch: {
-      reserved_at: next.toISOString(),
-      state: "confirmed",
-      reported_verdict: "confirmed",
-      confirmed_at: nowIso,
-      consumer_confirmed_at: nowIso,
-      next_attempt_at: null,
-      attempts_state: "answered",
-      callback_state: "skipped",
-      callback_next_attempt_at: null,
-      ...reminderParkPatch(lng, next, guestNotify),
-      last_call_state:
+    patch: onTheSpotConfirmPatch({
+      next,
+      lng,
+      notify: guestNotify,
+      lastCallState:
         `guest took the place's own ${date} ${time} offer in the app — confirmed on the spot`,
-    },
+    }),
   });
   if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);
 

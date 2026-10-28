@@ -13,7 +13,8 @@
 //   workflows         red on main, or red on half of the last 20 human PR runs
 //   edge functions    cloud slugs vs folders on main; the last functions merge redeployed
 //   bot PRs           Dependabot PRs open over 7 days (re-land the month's set under one issue)
-//   membership        cloud catalog_membership: not empty, some enabled, one row per Google type (MESITA-2933)
+//   membership        cloud catalog_membership: not empty, some enabled, one row per Google type (MESITA-2933),
+//                     each type's switch equal to the category gate's answer (MESITA-2974)
 //
 // Exit 0: no finding outside scripts/pipeline-audit.accepted.json. Exit 1: an unaccepted
 // finding, or a check that could not run. Exit 2: bad usage. A check whose call fails reports
@@ -27,6 +28,7 @@
 
 import { dirname, fromFileUrl, join } from "@std/path";
 import { GOOGLE_TYPE_SUPER } from "../supabase/supabase/functions/_shared/google-type-super.ts";
+import { familiesForGoogleType } from "../supabase/supabase/functions/_shared/sourcing.ts";
 
 const repoRoot = dirname(dirname(fromFileUrl(import.meta.url)));
 
@@ -460,7 +462,9 @@ export function parseMembership(data: unknown): Map<string, boolean> {
 // admin Reset once emptied the table and the cloud refused most restaurant Creates while CI,
 // rebuilt from migrations, stayed green (MESITA-2759). So the check flags an empty table, a
 // table with nothing enabled, and a row set that is not the checked-out GOOGLE_TYPE_SUPER map
-// (main in the workflow). Which types are enabled is an Atlas choice, never judged here.
+// (main in the workflow). Which types are enabled is an Atlas choice, never judged here — but
+// since MESITA-2962 Create reads the switch while Search reads the category gate
+// (map-engine.ts), so the two must give every type the same answer (MESITA-2974).
 async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
   const got = await io.sql(MEMBERSHIP_SQL);
   if (!got.ok) {
@@ -487,6 +491,18 @@ async function checkMembership(io: Io): Promise<Omit<CheckResult, "check">> {
     if (missing.length > 0) parts.push(`missing ${missing.slice(0, 5).join(", ")}${missing.length > 5 ? ` and ${missing.length - 5} more` : ""}`);
     if (extra.length > 0) parts.push(`not in the map ${extra.slice(0, 5).join(", ")}${extra.length > 5 ? ` and ${extra.length - 5} more` : ""}`);
     findings.push({ code: "PA-MEMBERSHIP-DRIFT:count", detail: `${parts.join("; ")}: a Table A change merged without its seed, or the seed never reached the cloud` });
+  }
+  if (enabled > 0) {
+    const admits = (t: string) => familiesForGoogleType(t).length > 0;
+    const offAdmitted = types.filter((t) => cloud.get(t) === false && admits(t));
+    const onRefused = types.filter((t) => cloud.get(t) === true && !admits(t));
+    if (offAdmitted.length > 0 || onRefused.length > 0) {
+      const few = (xs: string[]) => `${xs.slice(0, 5).join(", ")}${xs.length > 5 ? ` and ${xs.length - 5} more` : ""}`;
+      const parts: string[] = [];
+      if (offAdmitted.length > 0) parts.push(`off on Atlas but the gate admits ${few(offAdmitted)}`);
+      if (onRefused.length > 0) parts.push(`on on Atlas but the gate refuses ${few(onRefused)}`);
+      findings.push({ code: "PA-MEMBERSHIP-DRIFT:gate", detail: `${parts.join("; ")}: Search shows a place Create refuses, or Create mints one Search hides — move the type in _shared/catalog-families.ts and flip catalog_membership.enabled in the same migration PR` });
+    }
   }
   return { findings, notes: [] };
 }

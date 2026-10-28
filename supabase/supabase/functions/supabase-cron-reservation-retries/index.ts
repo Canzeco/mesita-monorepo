@@ -37,7 +37,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
-import { coerceReservationsCallConfig } from "../_shared/reservations-config.ts";
+import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { validateReservationPatch } from "../_shared/reservation-doc.ts";
 
 /** Throws if the patch fails validateReservationPatch — every bulk sweep
@@ -212,12 +212,7 @@ serveJson("supabase-cron-reservation-retries", async (req) => {
   const notices = { due: (ntRows ?? []).length, woken: 0 };
   notices.woken = await wake((ntRows ?? []).map((r) => r.id), "cancel_notice");
 
-  const { data: cfgRow } = await admin
-    .from("app_config")
-    .select("reservations_config")
-    .eq("id", 1)
-    .maybeSingle();
-  const reminderOn = coerceReservationsCallConfig(cfgRow?.reservations_config).reminder.enabled;
+  const reminderOn = (await loadReservationsConfig(admin)).reminder.enabled;
   const reminders = { due: 0, woken: 0, skipped_knob: !reminderOn };
   if (reminderOn) {
     const { data: rmRows } = await admin

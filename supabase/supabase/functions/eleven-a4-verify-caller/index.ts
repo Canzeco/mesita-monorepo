@@ -18,8 +18,8 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from 
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import {
   phoneTail,
+  placeByCallerLine,
   requireAgentSecret,
-  sameLine,
   speakable,
   ticketsOfPlace,
 } from "../_shared/agent-tools.ts";
@@ -41,25 +41,11 @@ serveJson("eleven-a4-verify-caller", async (req) => {
     return json({ ok: true, verified: false, reason: "caller number unavailable" });
   }
 
-  const { data: candidates } = await admin
-    .from("place_profiles")
-    .select("id, name, phone, reservation_target")
-    .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
-    .limit(10);
-  type P = {
-    id: string;
-    name: string | null;
-    phone: string | null;
-    reservation_target: string | null;
-  };
-  const matches = ((candidates ?? []) as P[]).filter((p) =>
-    sameLine(p.phone, tail) || sameLine(p.reservation_target, tail)
-  );
-  if (matches.length === 0) {
+  const place = await placeByCallerLine(admin, tail);
+  if (!place) {
     return json({ ok: true, verified: false, reason: "no Mesita place with this number" });
   }
 
-  const place = matches[0];
   const tickets = await ticketsOfPlace(admin, place.id, 8);
 
   return json({
