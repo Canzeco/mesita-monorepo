@@ -256,6 +256,14 @@ verify_jwt = true
 [functions.consumer-web-track-activity]
 verify_jwt = true
 
+# Saved locations follow the guest across devices (MESITA-2400): the guest's
+# own pins, read and written back, keyed by the session's user id.
+[functions.consumer-web-list-saved-locations]
+verify_jwt = true
+
+[functions.consumer-web-save-location]
+verify_jwt = true
+
 [functions.consumer-web-report-place]
 verify_jwt = true
 

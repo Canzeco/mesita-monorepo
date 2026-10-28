@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { reconcileConsumerLocalOwner } from "@/lib/consumer-local-reset";
 import { apiSavedActivity, apiTrackActivity } from "@/lib/api/activity";
 import type { Place } from "@/lib/api/places";
+import {
+  apiListSavedLocations,
+  apiRemoveSavedLocation,
+  apiUpsertSavedLocation,
+} from "@/lib/api/saved-locations";
+import { setSavedLocationsRemote, syncSavedLocations } from "@/lib/saved-locations";
 import { setSavedPlacesRemote, syncSavedPlaces } from "@/lib/saved-places";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
@@ -26,6 +32,9 @@ import { locationSnapshot } from "@/lib/use-user-location";
 // SAVED IS SERVER-SIDE (MESITA-2442): after the reconcile, the effect wires
 // the write-through for every heart and adopts the server's saved set once
 // per shell mount. The browser's set stays as the cache that paints first.
+// Saved locations do the same since MESITA-2400: their writes go out one at
+// a time, in order, so an eviction's remove lands before the save that
+// needed the room (the server refuses a ninth pin).
 export function ConsumerLocalDataGuard({ consumerId }: { consumerId: string }) {
   useState(() => {
     reconcileConsumerLocalOwner(consumerId);
@@ -58,7 +67,25 @@ export function ConsumerLocalDataGuard({ consumerId }: { consumerId: string }) {
           quiet: true,
         }),
     );
-    return () => setSavedPlacesRemote(null);
+    let queue: Promise<unknown> = Promise.resolve();
+    const enqueue = (run: () => Promise<unknown>) => {
+      queue = queue.then(run).catch(() => {
+        /* the cache keeps the change; the next sync settles it */
+      });
+    };
+    setSavedLocationsRemote({
+      upsert: (location, front) =>
+        enqueue(() => apiUpsertSavedLocation(getSupabase(), location, front)),
+      remove: (id) => enqueue(() => apiRemoveSavedLocation(getSupabase(), id)),
+    });
+    void syncSavedLocations(
+      () => apiListSavedLocations(getSupabase()),
+      (location) => apiUpsertSavedLocation(getSupabase(), location, true),
+    );
+    return () => {
+      setSavedPlacesRemote(null);
+      setSavedLocationsRemote(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [consumerId]);
   return null;
