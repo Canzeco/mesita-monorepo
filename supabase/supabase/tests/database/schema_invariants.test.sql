@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(185);
+select plan(167);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -818,120 +818,33 @@ select is(
   'family catalog order is the forty guest rails, Undefined last (MESITA-2888)'
 );
 
-select is(
-  (select family_keys from public.place_categories where slug = 'breakfast'),
-  array['breakfast']::text[],
-  'breakfast is Breakfast alone: Brunch folded into it (MESITA-2888)'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'karaoke'),
-  array['night_out','karaoke']::text[],
-  'karaoke is Nightlife and its own rail (MESITA-2486, MESITA-2834)'
-);
-
-select is(
-  (select array_agg(slug order by slug) from public.place_categories
-    where 'night_out' = any(family_keys) and slug <> 'night_club'),
-  array['cocktail_bar','karaoke']::text[],
-  'Night keeps karaoke and the cocktail bar; billiards, escape rooms and board-game cafes moved to Fun (MESITA-2486, MESITA-2888)'
-);
-
+-- MESITA-2891: no category ↔ family dictionary. A place's Mesita Families
+-- are the Description step's model pick, stored on the place; every Google
+-- category is enabled on Mesita or not.
+select hasnt_column('public', 'place_categories', 'family_keys',
+  'place_categories carries no families: the dictionary is gone (MESITA-2891)');
+select hasnt_column('public', 'catalog_membership', 'family_keys',
+  'catalog_membership carries no families: the dictionary is gone (MESITA-2891)');
+select hasnt_function('public', 'families_for_categories', array['jsonb', 'text'],
+  'families_for_categories() is gone (MESITA-2891)');
+select hasnt_function('public', 'families_for_category', array['text'],
+  'families_for_category() is gone (MESITA-2891)');
+select col_not_null('public', 'catalog_membership', 'enabled',
+  'every Google category is enabled on Mesita or not (MESITA-2891)');
 select ok(
-  (select family_keys from public.place_categories where slug = 'bakery')
-    @> array['breakfast','bakery','sweet']::text[]
-  and (select family_keys from public.place_categories where slug = 'bakery')
-    <@ array['breakfast','bakery','sweet']::text[],
-  'a bakery is Breakfast, Bakery and Dessert: a list, no family first (MESITA-2808, MESITA-2834)'
+  (select count(*) from public.catalog_membership where enabled) > 0
+  and (select count(*) from public.catalog_membership where not enabled) > 0,
+  'Atlas has two non-empty lists: enabled and not enabled (MESITA-2891)'
 );
-
-select ok(
-  (select family_keys from public.place_categories where slug = 'mexican')
-    @> array['tacos','dinner','mexican']::text[]
-  and (select family_keys from public.place_categories where slug = 'mexican')
-    <@ array['tacos','dinner','mexican']::text[],
-  'mexican is Tacos, Dinner and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
-);
-
-select ok(
-  (select family_keys from public.place_categories where slug = 'taco')
-    @> array['quick_bite','tacos','mexican']::text[]
-  and (select family_keys from public.place_categories where slug = 'taco')
-    <@ array['quick_bite','tacos','mexican']::text[],
-  'a taqueria is Quick, Tacos and Mexican: a list, no family first (MESITA-2808, MESITA-2834)'
-);
-
 select is(
-  (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) = 2),
-  37::bigint,
-  'thirty-seven categories sit on two families (MESITA-2888)'
+  (select enabled from public.catalog_membership where slug = 'tourist_attraction'),
+  true,
+  'a tourist attraction is enabled: it sat in a family when the flag was seeded (MESITA-2888)'
 );
-
 select is(
-  (select count(*)::bigint from public.place_categories
-    where cardinality(family_keys) > 4),
-  0::bigint,
-  'no category sits on more than four families (MESITA-2834)'
-);
-
-select is(
-  (select count(*)::bigint from public.place_categories
-    where family_keys && array['move','feel_better']::text[]),
-  0::bigint,
-  'no category sits on Move or Feel better: both families are gone (MESITA-2468)'
-);
-
-select is(
-  (select array_agg(distinct k) from public.place_categories,
-     unnest(family_keys) as k
-    where slug in ('gym','padel_club','barbershop','hair_salon','crossfit_box')),
-  array['undefined']::text[],
-  'a gym, a padel club, a barbershop, a salon and a crossfit box are still in no family (MESITA-2468, kept by MESITA-2888)'
-);
-
-select is(
-  (select array_agg(slug order by slug) from public.place_categories
-    where family_keys = array['spa']::text[]),
-  array['hot_springs','massage','sauna','spa','temazcal','wellness_center','yoga_studio']::text[],
-  'Spa is a rail: spas, massage, saunas, temazcales and hot springs (MESITA-2888)'
-);
-
-select is(
-  (select array_agg(slug order by slug) from public.place_categories
-    where 'fun' = any(family_keys)),
-  array['amusement_park','arcade','axe_throwing','billiards','board_game_cafe','bowling_alley','escape_room','go_kart','golf_course','laser_tag','mini_golf','swimming_pool','trampoline_park','water_park']::text[],
-  'Fun is what a group does with its hands: bowling, arcades, karts, Topgolf (MESITA-2888)'
-);
-
-select is(
-  (select family_keys from public.catalog_membership where slug = 'tourist_attraction'),
-  array['tourist']::text[],
-  'a tourist attraction is Tourist: attractions are rails again (MESITA-2438 reversed by MESITA-2888)'
-);
-
-select is(
-  (select family_keys from public.place_categories where slug = 'undefined'),
-  array['undefined']::text[],
-  'undefined category belongs to family undefined'
-);
-
-select is(
-  (select min(cardinality(family_keys))::bigint from public.place_categories),
-  1::bigint,
-  'every Atlas category maps to at least one family'
-);
-
-select ok(
-  (select max(cardinality(family_keys)) from public.place_categories) between 1 and 15,
-  'a category sits on at least one family and not more than the catalog'
-);
-
-select ok(
-  position(
-    'cardinality(slugs) <= 15' in pg_get_functiondef('public.atlas_family_slugs_valid(text[])'::regprocedure)
-  ) > 0,
-  'a category is not capped at two families'
+  (select enabled from public.catalog_membership where slug = 'gas_station'),
+  false,
+  'a gas station is not enabled: it sat in no family'
 );
 
 select is_empty(
@@ -974,9 +887,9 @@ select hasnt_table(
 
 select ok(
   (select count(*) from pg_constraint
-    where conname in ('place_categories_family_keys_valid', 'place_profiles_family_keys_valid')
-      and pg_get_constraintdef(oid) like '%atlas_family_slugs_valid%') = 2,
-  'both family CHECK constraints call atlas_family_slugs_valid (a CHECK stores the function OID, so it does not follow a create-or-replace under a new name)'
+    where conname = 'place_profiles_family_keys_valid'
+      and pg_get_constraintdef(oid) like '%atlas_family_slugs_valid%') = 1,
+  'the place family CHECK calls atlas_family_slugs_valid (a CHECK stores the function OID, so it does not follow a create-or-replace under a new name); the category one left with its column (MESITA-2891)'
 );
 
 -- The other half of the same class: a PL/pgSQL body that still spells the old
@@ -994,16 +907,16 @@ select is_empty(
 savepoint before_family_write_probe;
 
 select lives_ok(
-  $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998, array['dinner'])$$,
-  'INSERT into place_categories calls the validator and survives'
+  $$insert into public.place_categories (slug, label, section, sort_order)
+    values ('mesita_1857_probe', 'probe', 'Food & Nightlife', 998)$$,
+  'INSERT into place_categories survives without a family list (MESITA-2891)'
 );
 
 select throws_ok(
   $$insert into public.place_categories (slug, label, section, sort_order, family_keys)
-    values ('mesita_1857_probe_bad', 'probe', 'Food & Nightlife', 997, array['not_a_family'])$$,
-  '23514'::char(5), null::text,
-  'the validator still REFUSES a slug absent from place_families (so the lives_ok above is not vacuous)'
+    values ('mesita_1857_probe_bad', 'probe', 'Food & Nightlife', 997, array['dinner'])$$,
+  '42703'::char(5), null::text,
+  'a category can no longer carry families: the column is gone (MESITA-2891)'
 );
 
 insert into public.place_profiles (id, google_name)
@@ -1057,8 +970,8 @@ select throws_ok(
 select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['undefined']::text[],
-  'the view ignores the stored list and maps the Google categories; none here, so Undefined (MESITA-2834)'
+  array['dinner', 'coffee']::text[],
+  'the view reads the stored Mesita Families (MESITA-2891)'
 );
 
 update public.place_profiles set family_keys = null
@@ -1095,50 +1008,15 @@ select has_column(
   'profiles exposes google_tags'
 );
 
-select lives_ok(
-  $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'drinks', 'night_out']
-     where slug = 'mesita_1857_probe'$$,
-  'a category can belong to more than two families'
-);
-
 update public.place_profiles
    set category = 'mesita_1857_probe'
  where id = '00000000-0000-4000-8000-0000000fa111';
 
 select is(
-  (select family_keys from public.place_profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'pointing a place at that category does not store the families on the place'
-);
-
-select is(
   (select family_keys from public.profiles
     where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'drinks', 'night_out']::text[],
-  'the catalog view reads the four-family mapping'
-);
-
-select lives_ok(
-  $$update public.place_categories
-       set family_keys = array['dinner', 'coffee', 'night_out']
-     where slug = 'mesita_1857_probe'$$,
-  'the mapping can change again'
-);
-
-select is(
-  (select family_keys from public.place_profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  null::text[],
-  'changing the mapping does not write families onto the place'
-);
-
-select is(
-  (select family_keys from public.profiles
-    where id = '00000000-0000-4000-8000-0000000fa111'),
-  array['dinner', 'coffee', 'night_out']::text[],
-  'the catalog view follows the new mapping'
+  array['undefined']::text[],
+  'a category no longer decides families: none stored reads as Undefined (MESITA-2891)'
 );
 
 select lives_ok(
@@ -1766,39 +1644,15 @@ select is(
   'an ended period pays nothing, whatever the status says'
 );
 
--- ━━━ MESITA-2790: families come from the Mesita categories ━━━━━━━━━━━━━━━━
-
-select is(
-  public.families_for_categories('[]'::jsonb, 'cafe'),
-  public.families_for_category('cafe'),
-  'a place with no Mesita categories keeps its category''s families'
-);
-
-select ok(
-  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x')
-    @> (public.families_for_category('bakery') || public.families_for_category('cafe')),
-  'two Mesita categories put the place in every family of both'
-);
-
-select is(
-  public.families_for_categories('["bakery","cafe"]'::jsonb, 'x'),
-  public.families_for_categories('["cafe","bakery"]'::jsonb, 'x'),
-  'families are a list: the order of the categories changes nothing (MESITA-2808)'
-);
-
-select is(
-  public.families_for_categories('["undefined"]'::jsonb, 'x'),
-  array['undefined']::text[],
-  'undefined stays only when it is all there is'
-);
+-- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━
 
 insert into public.place_profiles (id, google_name)
 values ('00000000-0000-4000-8000-000000002790', 'Families Probe');
 insert into public.places (id, slug, state, content_state, currency)
 values ('00000000-0000-4000-8000-000000002790', 'mesita-2790-probe', 'active', 'ready', 'MXN');
 
--- MESITA-2827: Google categories are 1–3 catalog_membership slugs; the
--- first is the shown category, and with no stored families the view maps them.
+-- The first Google category is the shown category; with no stored families
+-- the view reads Undefined, whatever the categories (MESITA-2891).
 update public.place_profiles
    set google_types = (select jsonb_agg(slug) from (
          select slug from public.catalog_membership order by slug limit 2) s)
@@ -1808,10 +1662,9 @@ select is(
   (select array[p.category, f.family_keys::text]
      from public.place_profiles p join public.profiles f on f.id = p.id
     where p.id = '00000000-0000-4000-8000-000000002790'),
-  (select array[p.google_types ->> 0,
-                public.families_for_categories(p.google_types, p.google_types ->> 0)::text]
+  (select array[p.google_types ->> 0, '{undefined}']
      from public.place_profiles p where p.id = '00000000-0000-4000-8000-000000002790'),
-  'the first Google category is the shown category, and the view maps the categories to families'
+  'the first Google category is the shown category, and no stored families read as Undefined'
 );
 
 select throws_ok(

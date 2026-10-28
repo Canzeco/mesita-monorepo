@@ -1,15 +1,7 @@
 // MVP test rule (MESITA-2600): only the data guard stays; UI pins were removed (MESITA-2601).
 import { describe, expect, it } from "vitest";
-import { googleTypeHaystack, groupTags } from "./FamiliesExplorer";
+import { groupTags } from "./FamiliesExplorer";
 import type { TagRow } from "./highlight";
-
-describe("googleTypeHaystack", () => {
-  it("matches the spaced label the column shows and the stored slug", () => {
-    const haystack = googleTypeHaystack("ice_cream_shop");
-    expect(haystack.toLowerCase()).toContain("ice cream shop");
-    expect(haystack).toContain("ice_cream_shop");
-  });
-});
 
 const tags: TagRow[] = [
   {

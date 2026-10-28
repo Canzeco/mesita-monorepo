@@ -63,9 +63,9 @@ export type AdminPlace = {
   google_name?: string | null;
   category: string | null;
   category_label: string | null;
-  /** Google categories: 1–3 model-picked slugs from Google's list (MESITA-2827). */
+  /** Google categories: Google's own types, primary first (MESITA-2836); Basics shows the first. */
   google_types?: unknown;
-  /** Families: the Google categories' dictionary, mapped in the profiles view (MESITA-2834). */
+  /** Mesita Families: 1–5 inferred by the Description step's model (MESITA-2891); Undefined when none. */
   family_keys?: string[] | null;
   state: string | null;
   currency: string | null;
@@ -432,15 +432,11 @@ export type PlaceCategoryOption = {
   label: string;
   section: string;
   sort_order: number;
-  /** 1–2 place family parents (multi-parent law). */
-  family_keys?: string[];
-  /** Membership already joined by the profile read. */
-  family_display: string;
 };
 
 /** Everything the profile editor needs besides the place row. One read. */
 export type ProfileRead = {
-  /** Families: the stored family_keys, derived from the Mesita categories. */
+  /** Mesita Families: the stored 1–5, inferred by the Description step (MESITA-2891). */
   familyStored: ResolvedFamily;
   categories: PlaceCategoryOption[];
   tags: PlaceTagOption[];
@@ -495,8 +491,7 @@ function readProfile(value: unknown): ProfileRead | null {
     if (
       typeof c.slug !== "string" ||
       typeof c.label !== "string" ||
-      typeof c.section !== "string" ||
-      typeof c.family_display !== "string"
+      typeof c.section !== "string"
     ) {
       return null;
     }

@@ -74,9 +74,9 @@ export const MANAGE_NAV: NavItem[] = [
   SINGLE_PLACE_PARENT,
 ];
 
-// Configurations — six rows. Models, then Atlas (the Google-search
-// switches, then FamiliesIA DNA, Google categories, Mesita categories,
-// and every tag), then Creation, Enrichment, Discovery, Reservations.
+// Configurations — six rows. Models, then Atlas (the Mesita Families,
+// Google's categories enabled and not enabled on Mesita, and every tag),
+// then Creation, Enrichment, Discovery, Reservations.
 // The row left Manage for this rail (Pato, 2026-10-13) and took the name
 // Atlas (Pato, 2026-10-14). The rest stays the MESITA-2083 order: which
 // model each subsystem thinks with, then a place's life (Creation, then
