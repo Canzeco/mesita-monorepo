@@ -66,20 +66,12 @@ export function PlaceFamilyPicker({
 
   return (
     <div className="-mx-1.5 flex-1 py-2">
+      {/* Read-only chips: removing is unchecking in the Edit modal (MESITA-2934). */}
       <ul className="flex flex-wrap items-center gap-1.5">
         {ordered.map((slug) => (
           <li key={slug}>
             <span className="border-border bg-foreground/[0.06] text-foreground/90 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium">
               {chipFor(slug)}
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => toggle(slug)}
-                aria-label={`Remove ${chipFor(slug)}`}
-                className="text-muted-foreground hover:text-foreground transition disabled:opacity-50"
-              >
-                <X className="h-3 w-3" />
-              </button>
             </span>
           </li>
         ))}
