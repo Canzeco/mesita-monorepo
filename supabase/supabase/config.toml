@@ -282,6 +282,9 @@ verify_jwt = true
 [functions.supabase-cron-sync-boosts]
 verify_jwt = true
 
+[functions.supabase-edgefunc-start-smoke-enrich]
+verify_jwt = true
+
 [functions.admin-web-get-place-boost]
 verify_jwt = true
 

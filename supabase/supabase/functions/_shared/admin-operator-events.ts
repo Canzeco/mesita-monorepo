@@ -17,7 +17,7 @@ export type AdminOperatorEventInsert = {
   verb: AdminOperatorVerb;
   outcome: AdminOperatorOutcome;
   placeId?: string | null;
-  actorUserId: string;
+  actorUserId: string | null;
   source: string;
   detail?: Record<string, unknown>;
 };
