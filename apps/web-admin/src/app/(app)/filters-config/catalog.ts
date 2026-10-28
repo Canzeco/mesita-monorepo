@@ -75,7 +75,6 @@ export type GeneralConfig = {
 export type DiscoveryConfig = {
   params: SignalParams;
   general: GeneralConfig;
-  catalog: CatalogConfig;
   map: MapConfig;
   name: NameConfig;
   deep: DeepConfig;
@@ -94,13 +93,6 @@ export const HALF_KM_MAX = 50;
 /** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
-
-export type CatalogConfig = {
-  seedCount: number;
-  generatedCount: number;
-  placesPerRail: number;
-  minSeedPlaces: number;
-};
 
 // Mirrors SUPER_PARAM_KEYS in _shared/discovery-config.ts, itself pinned to
 // the taxonomy by google-type-super.test.ts. The operator's category param is
@@ -822,10 +814,6 @@ export const SUPER_FIELDS: {
 
 /** Google stars top out at 5: the ceiling of `map.minRating`. */
 export const MIN_RATING_MAX = 5;
-const CATALOG_COUNT_MAX = 20;
-const CATALOG_PLACES_PER_RAIL_MIN = 4;
-const CATALOG_PLACES_PER_RAIL_MAX = 20;
-const CATALOG_MIN_SEED_PLACES_MAX = 20;
 const MAP_MIN_POPULARITY_MAX = 1;
 /** Name lane caps. */
 export const NAME_LANE_COUNT_MAX = 20;
@@ -834,13 +822,6 @@ const NAME_GOOGLE_COUNT_DEFAULT = 3;
 
 /** Mirrors CHAT_PROMPT_MAX in _shared/discovery-config.ts. */
 const CHAT_PROMPT_MAX = 12_000;
-
-export const DEFAULT_CATALOG: CatalogConfig = {
-  seedCount: 8,
-  generatedCount: 8,
-  placesPerRail: 8,
-  minSeedPlaces: 2,
-};
 
 // Coffee, Dinner, Dessert, Bar and Night default on, every other
 // family off (MESITA-2749; the thirty of MESITA-2834 joined off). The
@@ -943,7 +924,6 @@ const DEFAULT_SIGNAL_PARAMS: SignalParams = {
 export const DEFAULT_CONFIG: DiscoveryConfig = {
   params: DEFAULT_SIGNAL_PARAMS,
   general: DEFAULT_GENERAL,
-  catalog: DEFAULT_CATALOG,
   map: DEFAULT_MAP,
   name: DEFAULT_NAME,
   deep: DEFAULT_DEEP,
@@ -994,7 +974,6 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
   return {
     params: coerceParams(r.params),
     general: coerceGeneral(r.general),
-    catalog: coerceCatalog(r.catalog),
     map: coerceMap(r.map),
     name: coerceName(r.name),
     deep: coerceDeep(r.deep),
@@ -1003,27 +982,6 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
         : DEFAULT_CONFIG.chat.prompt,
     },
-  };
-}
-
-function coerceCatalog(raw: unknown): CatalogConfig {
-  const c = (raw ?? {}) as Record<string, unknown>;
-  return {
-    seedCount: Math.round(num(c.seedCount, DEFAULT_CATALOG.seedCount, 0, CATALOG_COUNT_MAX)),
-    generatedCount: Math.round(
-      num(c.generatedCount, DEFAULT_CATALOG.generatedCount, 0, CATALOG_COUNT_MAX),
-    ),
-    placesPerRail: Math.round(
-      num(
-        c.placesPerRail,
-        DEFAULT_CATALOG.placesPerRail,
-        CATALOG_PLACES_PER_RAIL_MIN,
-        CATALOG_PLACES_PER_RAIL_MAX,
-      ),
-    ),
-    minSeedPlaces: Math.round(
-      num(c.minSeedPlaces, DEFAULT_CATALOG.minSeedPlaces, 1, CATALOG_MIN_SEED_PLACES_MAX),
-    ),
   };
 }
 

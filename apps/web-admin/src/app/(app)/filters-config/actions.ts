@@ -85,7 +85,6 @@ export async function updateDiscoveryConfig(
     params: keys.has("catalogPipeline") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
-    catalog: live.config.catalog,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

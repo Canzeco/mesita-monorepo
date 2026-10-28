@@ -2,17 +2,11 @@
 // must not leak into the new one.
 import { assertEquals } from "jsr:@std/assert@1";
 import {
-  normalizeCatalogConfig,
   normalizeMapConfig,
   normalizeDeepConfig,
   normalizeDiscoveryConfig,
   normalizeNameConfig,
 } from "./discovery-config.ts";
-
-Deno.test("catalog placesPerRail normalizes within bounds", () => {
-  assertEquals(normalizeCatalogConfig({ placesPerRail: 8 }).placesPerRail, 8);
-  assertEquals(normalizeCatalogConfig({}).placesPerRail, 8);
-});
 
 Deno.test("the Map's reload throttle defaults to 1.5 s, bounded like the client's 0.5..10 (MESITA-2444)", () => {
   assertEquals(normalizeMapConfig({}).reloadIdleSec, 1.5);
@@ -74,7 +68,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
   assertEquals(cfg.params, { proximity: { halfKm: 5 }, popularity: { halfReviews: 100 } });
-  assertEquals("ranking" in cfg.catalog, false);
+  assertEquals("catalog" in cfg, false);
 });
 
 Deno.test("params clamp; the reach, the divisor, Selected and the weights table drop, the half distance arrives (MESITA-2687, MESITA-2703, MESITA-2909)", () => {

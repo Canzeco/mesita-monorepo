@@ -4,7 +4,6 @@ import { join } from "node:path";
 
 import {
   coerceConfig,
-  DEFAULT_CATALOG,
   DEFAULT_CONFIG,
   DEFAULT_GENERAL,
   DEFAULT_MAP,
@@ -118,9 +117,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
 });
 
 describe("coerceConfig", () => {
-  it("coerceConfig defaults catalog on an old blob", () => {
-    expect(coerceConfig({ weights: {}, slotting: {} }).catalog).toEqual(DEFAULT_CATALOG);
-    expect(coerceConfig({ catalog: { seedCount: 99 } }).catalog.seedCount).toBe(20);
+  it("coerceConfig drops the rails engine's catalog section (MESITA-2923)", () => {
+    expect(coerceConfig({ catalog: { seedCount: 99 } })).not.toHaveProperty("catalog");
   });
 
   it("coerceConfig defaults map on an old blob and clamps knobs", () => {
