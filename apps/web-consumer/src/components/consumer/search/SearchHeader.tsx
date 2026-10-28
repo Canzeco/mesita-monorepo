@@ -17,14 +17,16 @@
 // icon at the super left"), pinned outside the scroll, then Top, then every
 // family, each with its line icon (MESITA-2478: line icons, not emoji).
 // Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
-// MESITA-2879 had All, MESITA-2534 Top). There is no Filters sheet any more
-// (MESITA-2879 deleted MESITA-2758's): while a family is picked the disc
-// turns red and wears a red bubble with the count (Pato, MESITA-2884: "mark
-// it red or something with a bubble"; MESITA-2882 lit it black), and a tap
-// on it clears the pick back to Top.
+// MESITA-2879 had All, MESITA-2534 Top). THE DISC OPENS THE FILTERS SHEET
+// (Pato, MESITA-2903: "when i click filters, open the modal to see select
+// multiple families"; MESITA-2879 had deleted MESITA-2758's sheet and made
+// the disc a clear): any number of families, applied at once. While any is
+// picked the disc turns red and wears a red bubble with the count (Pato,
+// MESITA-2884: "mark it red or something with a bubble").
 // NO NEARBY, NO POPULAR (MESITA-2499/2502): the map is the where, a chip
-// is only the what. ONE pick at a time: Top is lit when no family is;
-// tapping the lit family again also goes back to Top. Sent as the
+// is only the what. A chip picks its family ALONE; it is lit while its
+// family is in the set (the sheet may hold several); Top is lit when none
+// is; tapping the only lit family goes back to Top. Sent as the
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
 //
@@ -36,7 +38,7 @@
 // on over the map (MESITA-2417); while the bar queries the chip row is not
 // drawn at all (MESITA-2487).
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BotMessageSquare, SlidersHorizontal } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
@@ -47,6 +49,7 @@ import {
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
 import {
   CHIP,
@@ -88,6 +91,7 @@ export function SearchHeader({
 }) {
   const filters = useMapFilters();
   const everyFamily = filters.familyKeys.length === 0;
+  const [sheetOpen, setSheetOpen] = useState(false);
   return (
     <div
       className="border-border bg-card relative z-30 shrink-0 border-b"
@@ -118,13 +122,13 @@ export function SearchHeader({
           <div className="flex min-w-0 items-center gap-2 py-2.5 pl-3">
             <button
               type="button"
-              onClick={clearMapFamilies}
+              onClick={() => setSheetOpen(true)}
               aria-label={
                 everyFamily
                   ? "Filters"
-                  : `Clear the family filter (${filters.familyKeys.length} selected)`
+                  : `Filters (${filters.familyKeys.length} selected)`
               }
-              aria-pressed={!everyFamily}
+              aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
               className={cn(HEADER_DISC, !everyFamily && DISC_LIT)}
               data-search-filters
@@ -164,9 +168,7 @@ export function SearchHeader({
                 <span>Top</span>
               </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
-                const on =
-                  filters.familyKeys.length === 1 &&
-                  filters.familyKeys[0] === family.key;
+                const on = filters.familyKeys.includes(family.key);
                 return (
                   <button
                     key={family.key}
@@ -200,6 +202,7 @@ export function SearchHeader({
           </div>
         ) : null}
       </div>
+      <FamilyFilterSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   );
 }
