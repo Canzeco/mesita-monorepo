@@ -30,7 +30,7 @@ describe("Manage › Guests: Class and Plan (MESITA-2553)", () => {
     const src = readFileSync(join(__dirname, "GuestsClient.tsx"), "utf8");
     const html = page([{ ...base, guestClass: "vip" }]);
     for (const s of [src, html]) {
-      expect(s).not.toMatch(/Diamond|\bPro\b|Mesita Select/);
+      expect(s).not.toMatch(/Diamond|\bPremium\b|\bPremier\b|Mesita Select/);
       expect(s).not.toMatch(/\$\s?\d|\d+\s?% off/);
     }
     expect(html).toContain("never sold");
