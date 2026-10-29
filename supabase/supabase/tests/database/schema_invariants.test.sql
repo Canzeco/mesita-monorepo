@@ -1566,7 +1566,14 @@ select ok(
                       -- two Area exponents are retired.
                       'googleMinReviews', 'proximityWeight', 'popularityWeight',
                       -- MESITA-2872: Google Nearby is gone from Area.
-                      'googlePopular', 'googleClosest'])
+                      'googlePopular', 'googleClosest',
+                      -- MESITA-3086: the radius is the screen's; the floor
+                      -- moved to name.popularityFloor.
+                      'radiusKm', 'popularityFloor'])
+      -- MESITA-3086: the Map's own Popularity root and the Name floor are
+      -- numbers when present.
+      and coalesce(jsonb_typeof(discovery_config #> '{map,popularityRoot}'), 'number') = 'number'
+      and coalesce(jsonb_typeof(discovery_config #> '{name,popularityFloor}'), 'number') = 'number'
       -- MESITA-2702: no Name reviews floor (`general.minReviews`).
       and discovery_config #> '{general,minReviews}' is null
       -- MESITA-2767: the Search bar's always-on family switches.

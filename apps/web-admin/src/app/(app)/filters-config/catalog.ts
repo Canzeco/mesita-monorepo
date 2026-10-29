@@ -55,6 +55,10 @@ export type NameConfig = {
   idleSec: number;
   /** Word by Admin: Single Place › Find's caps (MESITA-2322). */
   admin: NameAdminConfig;
+  /** Minimum Popularity (MESITA-2714; Name-only since MESITA-3086): the
+   *  guest bar sorts Google places under it last, read at the Catalog root.
+   *  0..20, one decimal, default 2.7; 0 = off. */
+  popularityFloor: number;
 };
 
 export type NameAdminConfig = {
@@ -97,10 +101,6 @@ export const EXPONENT_MAX = 4;
 export const POPULARITY_ROOT_MIN = 0.1;
 export const POPULARITY_ROOT_MAX = 1;
 
-/** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. */
-export const MAP_RADIUS_KM_MIN = 1;
-export const MAP_RADIUS_KM_MAX = 50;
-const MAP_RADIUS_KM_DEFAULT = 15;
 /** Mirrors MAP_PLACES_SHOWN_* in _shared/discovery-config.ts (MESITA-2713, MESITA-2909). */
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 200;
@@ -109,11 +109,11 @@ const MAP_PLACES_SHOWN_DEFAULT = 50;
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
 const CATALOG_PAGE_SIZE_DEFAULT = 20;
-/** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714;
- *  in the Popularity root's units since MESITA-3083: 2.7 ≈ reviews × stars of 19). */
-export const MAP_POPULARITY_FLOOR_MIN = 0;
-export const MAP_POPULARITY_FLOOR_MAX = 20;
-const MAP_POPULARITY_FLOOR_DEFAULT = 2.7;
+/** Mirrors NAME_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714;
+ *  root units since MESITA-3083; on Name since MESITA-3086). */
+export const NAME_POPULARITY_FLOOR_MIN = 0;
+export const NAME_POPULARITY_FLOOR_MAX = 20;
+const NAME_POPULARITY_FLOOR_DEFAULT = 2.7;
 /** Mirrors MAP_RELOAD_IDLE_SEC_* in _shared/discovery-config.ts. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -134,18 +134,17 @@ export type MapConfig = {
    *  rest-reload (MESITA-2732). 0 = any move. */
   reloadMinViewportPct: number;
   // The source switches `mesitaPopular` / `mesitaClosest` retired (MESITA-2909).
-  /** The current-location radius (km): the Map's with no screen, Chat's
-   *  (MESITA-2703). The Catalog has no radius (MESITA-2909). */
-  radiusKm: number;
+  // `radiusKm` retired (MESITA-3086): the Map's radius is the screen's.
+  /** The Map's Popularity root (MESITA-3086): on the Map it only sets how
+   *  much a Premier plan outweighs reviews. 0.1..1, two decimals, default 0.33. */
+  popularityRoot: number;
   // `proximityWeight` / `popularityWeight` retired (MESITA-2722).
   /** The Map's most pins, 1..200, default 50 (MESITA-2713, MESITA-2909). */
   placesShown: number;
   /** Home's Catalog page size, 5..100, default 20 (MESITA-2909; it
    *  replaced `catalogPlacesShown`). */
   catalogPageSize: number;
-  /** The Popularity floor in the root's units, 0..20, default 2.7; 0 = off
-   *  (MESITA-2714, MESITA-3083). */
-  popularityFloor: number;
+  // `popularityFloor` moved to `name.popularityFloor` (MESITA-3086).
   // `selectedFactor` (the Selected boost) retired with Selected (MESITA-2925):
   // Premier's factor is the paid tier, no knob; the next Save drops it.
 };
@@ -167,10 +166,9 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
-  radiusKm: MAP_RADIUS_KM_DEFAULT,
+  popularityRoot: 0.33,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
-  popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
 };
 
 const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -200,6 +198,7 @@ export const DEFAULT_NAME: NameConfig = {
   locations: true,
   idleSec: 1,
   admin: DEFAULT_NAME_ADMIN,
+  popularityFloor: NAME_POPULARITY_FLOOR_DEFAULT,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -324,6 +323,10 @@ function coerceName(raw: unknown): NameConfig {
       Math.round(num(n.idleSec, DEFAULT_NAME.idleSec, NAME_IDLE_SEC_MIN, NAME_IDLE_SEC_MAX) * 10) /
       10,
     admin: coerceNameAdmin(n.admin),
+    popularityFloor:
+      Math.round(
+        num(n.popularityFloor, DEFAULT_NAME.popularityFloor, NAME_POPULARITY_FLOOR_MIN, NAME_POPULARITY_FLOOR_MAX) * 10,
+      ) / 10,
   };
 }
 
@@ -361,20 +364,17 @@ function coerceMap(raw: unknown): MapConfig {
       ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
     // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the four
-    // source switches, `catalogPlacesShown`) is dropped on the next save.
-    radiusKm:
+    // source switches, `catalogPlacesShown`, and since MESITA-3086 `radiusKm`
+    // and `popularityFloor`) is dropped on the next save.
+    popularityRoot:
       Math.round(
-        num(m.radiusKm, DEFAULT_MAP.radiusKm, MAP_RADIUS_KM_MIN, MAP_RADIUS_KM_MAX) * 10,
-      ) / 10,
+        num(m.popularityRoot, DEFAULT_MAP.popularityRoot, POPULARITY_ROOT_MIN, POPULARITY_ROOT_MAX) * 100,
+      ) / 100,
     placesShown: Math.round(
       num(m.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
     catalogPageSize: Math.round(
       num(m.catalogPageSize, DEFAULT_MAP.catalogPageSize, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX),
     ),
-    popularityFloor:
-      Math.round(
-        num(m.popularityFloor, DEFAULT_MAP.popularityFloor, MAP_POPULARITY_FLOOR_MIN, MAP_POPULARITY_FLOOR_MAX) * 10,
-      ) / 10,
   };
 }

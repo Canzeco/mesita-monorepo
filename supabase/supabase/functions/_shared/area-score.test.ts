@@ -43,7 +43,7 @@ Deno.test("point: final = Proximity × Popularity (no exponents, MESITA-2722)", 
   assertEquals(s.gates.family, 1);
   assertEquals(s.gates.radius, 1);
   // Territory is gone from the breakdown (MESITA-2603).
-  assertEquals(Object.keys(s.gates).sort(), ["active", "family", "popularity", "radius", "ready", "reviews"]);
+  assertEquals(Object.keys(s.gates).sort(), ["active", "family", "radius", "ready", "reviews"]);
 });
 
 Deno.test("the source never scores: equal signals score equal, Mesita or Google (MESITA-2703, MESITA-2925)", () => {
@@ -204,19 +204,19 @@ Deno.test("Popularity is (1 + reviews × stars)^root, never normalized, and the 
   assertEquals(order.map((r) => r.item.id), ["many", "few"]);
 });
 
-Deno.test("the Popularity floor drops any place under it, Google or Mesita, Premier or not (MESITA-2714)", () => {
-  const ctx: AreaContext = { ...CTX, popularityFloor: 2.7 };
-  // (1 + 4 × 4)^0.33 ≈ 2.55 < 2.7: out. (1 + 5 × 4)^0.33 ≈ 2.73: in.
+Deno.test("no Popularity floor on the Area: a low or unrated place is ranked, never dropped (MESITA-3086)", () => {
+  // Pato: "Minimum popularity must go to the Name Search, not to the
+  // catalog nor map". The gate and its wire key are gone.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
-  const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
-  const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
-  assertEquals(areaScore(thin, ctx).gates.popularity, 0);
-  assertEquals(areaScore(thin, ctx).final, 0);
-  assertEquals(areaScore(ok, ctx).gates.popularity, 1);
-  assertEquals(rankArea([thin, ok, unrated], (c) => c, ctx).map((r) => r.item.id), ["ok"]);
-  // Off (0 or absent): nothing is screened, the gate reads null.
-  assertEquals(areaScore(thin, CTX).gates.popularity, null);
-  assertEquals(rankArea([thin, ok], (c) => c, { ...CTX, popularityFloor: 0 }).length, 2);
+  const ok = cand({ id: "ok", rating: 4, reviewCount: 500, source: "google" });
+  const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita", premierTier: 2 });
+  assertEquals("popularity" in areaScore(thin, CTX).gates, false);
+  assertEquals(areaScore(thin, CTX).final > 0, true);
+  // A place with no Google numbers scores 0 and ranks after every scored
+  // place, a Premier 5X tier included (0 × 5 is still 0, never NaN).
+  const ranked = rankArea([unrated, thin, ok], (c) => c, CTX);
+  assertEquals(ranked.map((r) => r.item.id), ["thin", "ok", "unrated"]);
+  assertEquals(ranked[2].area.final, 0);
 });
 
 Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
@@ -233,9 +233,6 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["loved", "paid", "plain"]);
   // No location: Popularity × s.
   assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.pow(201, 0.33), 1e-9);
-  // It never saves a place from the Popularity floor.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
-  assertEquals(areaScore(thin, { ...CTX, popularityFloor: 2.7 }).final, 0);
 });
 
 // NO REACH (MESITA-3015, money: Premier is sold). The reach (MESITA-2920)

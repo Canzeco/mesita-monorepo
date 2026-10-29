@@ -26,11 +26,7 @@ import {
   HALF_KM_MAX,
   HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
-  MAP_POPULARITY_FLOOR_MAX,
-  MAP_POPULARITY_FLOOR_MIN,
   MAP_PLACES_SHOWN_MIN,
-  MAP_RADIUS_KM_MAX,
-  MAP_RADIUS_KM_MIN,
   MAP_RELOAD_IDLE_SEC_MAX,
   MAP_RELOAD_IDLE_SEC_MIN,
   MAP_RELOAD_MIN_VIEWPORT_PCT_MAX,
@@ -39,6 +35,8 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
+  NAME_POPULARITY_FLOOR_MAX,
+  NAME_POPULARITY_FLOOR_MIN,
   POPULARITY_ROOT_MAX,
   POPULARITY_ROOT_MIN,
   type DiscoveryConfig,
@@ -52,10 +50,25 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
  *  actions.test.ts proves exactly these sets cannot reach each other. */
 export const BOX_SLICES = {
   nameAdmin: ["nameAdmin"],
-  name: ["nameDeep", "nameLocations", "nameIdle"],
+  name: ["nameDeep", "nameLocations", "nameIdle", "nameFloor"],
   map: ["mapPipeline"],
   catalog: ["catalogPipeline"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
+
+/** "12×", "1,250×", "≈9.8M×": a plan's worth in reviews, readable at any
+ *  root (MESITA-3086). One formatter for the Map and Catalog readouts. */
+function timesFmt(x: number): string {
+  if (!Number.isFinite(x) || x < 0) return "—";
+  if (x >= 1_000_000) {
+    return `≈${new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(x)}×`;
+  }
+  return `${Math.round(x).toLocaleString("en-US")}×`;
+}
+
+/** What a Premier tier is worth in reviews at a Popularity root: m^(1 ÷ root). */
+function planInReviews(m: number, root: number): number {
+  return root > 0 ? Math.pow(m, 1 / root) : NaN;
+}
 
 function useDiscoveryEditor(seed: ConfigSeed<DiscoveryConfig>) {
   return useConfigEditor({ ...seed, load: getDiscoveryConfig });
@@ -194,7 +207,13 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
   const dirty =
     !same(cfg.name.deep, saved.name.deep) ||
     cfg.name.locations !== saved.name.locations ||
-    cfg.name.idleSec !== saved.name.idleSec;
+    cfg.name.idleSec !== saved.name.idleSec ||
+    cfg.name.popularityFloor !== saved.name.popularityFloor;
+  // The floor is read at the Catalog's SAVED root (MESITA-3086): an unsaved
+  // edit in the Catalog box does not change this readout.
+  const floor = cfg.name.popularityFloor;
+  const catalogRoot = saved.params.popularity.root;
+  const floorReviews = Math.max(0, (Math.pow(floor, 1 / catalogRoot) - 1) / 4);
   return (
     <PipelineBox
       id="s-name"
@@ -215,9 +234,8 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           them, Mesita&apos;s name only labels them. The always-on rules below
           still hold:
           closed places never show and a row must be one of Mesita&apos;s
-          place types. Places under the Minimum Popularity (now{" "}
-          {cfg.map.popularityFloor}, set in the Area box; 0 is off) sort after
-          the rest; none are removed. Locations never move.
+          place types. Google places under the Minimum Popularity below sort
+          after the rest; none are removed. Locations never move.
         </p>
       }
       save={
@@ -256,9 +274,33 @@ export function NameBox(seed: ConfigSeed<DiscoveryConfig>) {
           disabled={off}
           onClick={() => name({ locations: !cfg.name.locations })}
         />
+        <NumberField
+          label="Minimum Popularity"
+          value={cfg.name.popularityFloor}
+          min={NAME_POPULARITY_FLOOR_MIN}
+          max={NAME_POPULARITY_FLOOR_MAX}
+          decimals
+          disabled={off}
+          onChange={(popularityFloor) => name({ popularityFloor })}
+        />
       </div>
       <p className="text-muted-foreground type-meta">
         0 rows turns a source off.
+      </p>
+      <p className="text-muted-foreground type-meta">
+        {floor > 0 ? (
+          <>
+            Minimum Popularity: Google places whose Popularity, at the
+            Catalog&apos;s root (now {catalogRoot}), is under {floor} sort after the
+            rest on the guest Search bar; none are removed. {floor} ≈ 4★ ×{" "}
+            {timesFmt(floorReviews).replace("×", "")} reviews at that root.
+          </>
+        ) : (
+          <>Minimum Popularity: Off. The bar keeps Google&apos;s order.</>
+        )}{" "}
+        Home, the Map and Chat never hide a place for its Popularity. Effect
+        shows only in guest Search results. {NAME_POPULARITY_FLOOR_MIN}–
+        {NAME_POPULARITY_FLOOR_MAX}.
       </p>
     </PipelineBox>
   );
@@ -276,6 +318,7 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
   // The Catalog box owns the page size.
   const mine = (m: DiscoveryConfig["map"]) => ({ ...m, catalogPageSize: 0 });
   const dirty = !same(mine(cfg.map), mine(saved.map));
+  const mapRoot = cfg.map.popularityRoot;
   return (
     <PipelineBox
       id="s-map"
@@ -299,16 +342,16 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.map} />}
     >
-      <Group title="Input">
+      <Group title="Signals">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
-            label="Current-location radius (km)"
-            value={cfg.map.radiusKm}
-            min={MAP_RADIUS_KM_MIN}
-            max={MAP_RADIUS_KM_MAX}
+            label="Popularity root"
+            value={cfg.map.popularityRoot}
+            min={POPULARITY_ROOT_MIN}
+            max={POPULARITY_ROOT_MAX}
             decimals
             disabled={off}
-            onChange={(radiusKm) => map({ radiusKm })}
+            onChange={(popularityRoot) => map({ popularityRoot })}
           />
           <NumberField
             label="Most pins shown"
@@ -320,44 +363,20 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          The Map uses the screen radius, and the current-location radius only
-          when it has no screen to measure (no view yet, or one wider than
-          100 km). It is also Chat&apos;s search radius.{" "}
-          {MAP_RADIUS_KM_MIN}–{MAP_RADIUS_KM_MAX} km. The Map shows at most
-          Most pins shown, best first. {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
+          Popularity root: sets how much a Premier plan outweighs reviews on
+          the Map. The Map ranks by (1 + reviews × stars)^root × the Premier
+          factor (2X · 5X, 1 for every other place), so two places without a
+          plan keep their order at any root. At root {mapRoot} a ×2 plan is
+          worth {timesFmt(planInReviews(2, mapRoot))} the reviews and a ×5 plan{" "}
+          {timesFmt(planInReviews(5, mapRoot))}. A place with no Google numbers
+          scores 0 and ranks last; nothing is hidden for its Popularity.{" "}
+          {POPULARITY_ROOT_MIN}–{POPULARITY_ROOT_MAX}.
         </p>
-      </Group>
-      <Group title="Signals">
-        <div className="flex flex-col gap-2">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <NumberField
-              label="Minimum Popularity"
-              value={cfg.map.popularityFloor}
-              min={MAP_POPULARITY_FLOOR_MIN}
-              max={MAP_POPULARITY_FLOOR_MAX}
-              decimals
-              disabled={off}
-              onChange={(popularityFloor) => map({ popularityFloor })}
-            />
-          </div>
-          <p className="text-muted-foreground type-meta">
-            Minimum Popularity applies to the Map, the Catalog and Chat.
-          </p>
-        </div>
         <p className="text-muted-foreground type-meta">
-          A place whose Popularity is under the Minimum Popularity (now{" "}
-          {cfg.map.popularityFloor}; 0 is off) never shows on the Map, the
-          Catalog or Chat, whatever its score: 2.7 is about 4★ × 5 reviews at
-          the cube root. On the guest Search bar it only reorders: Google
-          places under it sort last, none are removed. Popularity is
-          (1 + reviews × stars) to the Popularity root set in the Catalog box
-          (now {cfg.params.popularity.root}; 0.33 is the cube root), never
-          normalized: at the cube root 4.6★ × 1,000 reviews ≈ 16.2, 4.0★ × 30
-          ≈ 4.9; a place with no Google numbers scores 0 and sinks, never
-          disappears. A Premier
-          place&apos;s score is multiplied by its paid tier (Premier 2X · 5X),
-          every other place&apos;s by 1; being Premier never saves a place
-          from the Minimum Popularity.
+          The Map searches the screen radius (the distance from the cross to
+          the nearest edge of the visible map); with no screen yet it uses
+          15 km. It shows at most Most pins shown, best first.{" "}
+          {MAP_PLACES_SHOWN_MIN}–{MAP_PLACES_SHOWN_MAX}.
         </p>
       </Group>
       <Group title="Reload">
@@ -426,8 +445,7 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
   const e = params.proximity.exponent;
   const root = params.popularity.root;
   const at = (k: number) => catalogProximity(k * h, h, e).toFixed(2);
-  // What a plan is worth in reviews at this root: m^(1 ÷ root).
-  const revFor = (m: number) => Math.round(Math.pow(m, 1 / root)).toLocaleString("en-US");
+  const revFor = (m: number) => timesFmt(planInReviews(m, root));
   const km = (d: number) => String(Math.round(d * 10) / 10);
   return (
     <PipelineBox
@@ -461,6 +479,15 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
       <Group title="Signals">
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField
+            label="Popularity root"
+            value={params.popularity.root}
+            min={POPULARITY_ROOT_MIN}
+            max={POPULARITY_ROOT_MAX}
+            decimals
+            disabled={off}
+            onChange={(root) => popularityParam({ root })}
+          />
+          <NumberField
             label="Half distance (km)"
             value={params.proximity.halfKm}
             min={HALF_KM_MIN}
@@ -478,16 +505,11 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(exponent) => proximity({ exponent })}
           />
-          <NumberField
-            label="Popularity root"
-            value={params.popularity.root}
-            min={POPULARITY_ROOT_MIN}
-            max={POPULARITY_ROOT_MAX}
-            decimals
-            disabled={off}
-            onChange={(root) => popularityParam({ root })}
-          />
         </div>
+        <p className="text-muted-foreground type-meta">
+          Popularity root: ranks Home and Chat, and sets the scale of Name ›
+          Minimum Popularity.
+        </p>
         <p className="text-muted-foreground type-meta">
           Proximity is 1 ÷ (1 + (distance ÷ half distance)^exponent): 1 at
           the guest, ½ at the half distance whatever the exponent, never 0.
@@ -502,8 +524,8 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p className="text-muted-foreground type-meta">
           Popularity is (1 + reviews × stars)^root, never normalized; 0.33 is
           the cube root, 0.5 the square root. Read the three together: at root{" "}
-          {root} a ×2 plan is worth {revFor(2)}× the reviews and a ×5 plan{" "}
-          {revFor(5)}×, and a ×2 plan or {revFor(2)}× the reviews buys {km(h)} km
+          {root} a ×2 plan is worth {revFor(2)} the reviews and a ×5 plan{" "}
+          {revFor(5)}, and a ×2 plan or {revFor(2)} the reviews buys {km(h)} km
           from the guest&apos;s feet, a ×5 plan {km(h * Math.pow(4, 1 / e))} km.
           {" "}{POPULARITY_ROOT_MIN}–{POPULARITY_ROOT_MAX}.
         </p>

@@ -64,10 +64,9 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     },
     map: {
       ...live.map,
-      radiusKm: 3,
+      popularityRoot: 0.5,
       placesShown: 77,
       catalogPageSize: 33,
-      popularityFloor: 5,
     },
     name: {
       ...live.name,
@@ -75,6 +74,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
       idleSec: 2.5,
       deep: { ...live.name.deep, autoCount: 9 },
       admin: { ...live.name.admin, textCount: 3 },
+      popularityFloor: 6,
     },
     general: { ...live.general, requireActive: !live.general.requireActive },
     deep: { limit: 9, minSimilarity: 0.3 },
@@ -108,9 +108,10 @@ describe("the Map box (MESITA-2909)", () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.map]);
-    expect(sent.config?.map.radiusKm).toBe(3);
+    expect(sent.config?.map.popularityRoot).toBe(0.5);
     expect(sent.config?.map.placesShown).toBe(77);
-    expect(sent.config?.map.popularityFloor).toBe(5);
+    expect(sent.config?.map).not.toHaveProperty("radiusKm");
+    expect(sent.config?.map).not.toHaveProperty("popularityFloor");
     expect(sent.config?.map.catalogPageSize).toBe(live.map.catalogPageSize);
     expect(sent.config?.params).toEqual(live.params);
     expect(sent.config?.name).toEqual(live.name);
@@ -192,5 +193,17 @@ describe("the boxes' slices", () => {
     expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "map", "catalog"]);
     const all = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
+  });
+});
+
+describe("Minimum Popularity lives on Name and only the Name box writes it (MESITA-3086)", () => {
+  it.each(Object.entries(BOX_SLICES))("the %s box", async (box, slices) => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), [...slices]);
+    const want = box === "name" ? 6 : live.name.popularityFloor;
+    expect(sent.config?.name.popularityFloor).toBe(want);
+    const root = (slices as readonly string[]).includes("mapPipeline") ? 0.5 : live.map.popularityRoot;
+    expect(sent.config?.map.popularityRoot).toBe(root);
   });
 });

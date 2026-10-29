@@ -7,7 +7,9 @@ import {
   DEEP_LIMIT_MAX,
   DEEP_LIMIT_MIN,
   DEFAULT_DEEP,
-  MAP_POPULARITY_FLOOR_DEFAULT,
+  NAME_POPULARITY_FLOOR_DEFAULT,
+  NAME_POPULARITY_FLOOR_MAX,
+  NAME_POPULARITY_FLOOR_MIN,
   SIGNAL_PARAM_BOUNDS,
 } from "./discovery-config.ts";
 import {
@@ -50,6 +52,11 @@ Deno.test("Catalog box bounds and defaults match the server (the half distance s
 });
 
 Deno.test("the Minimum Popularity default matches the server, in the root's units (MESITA-3083)", () => {
-  const m = admin.match(/const MAP_POPULARITY_FLOOR_DEFAULT = ([0-9.]+);/);
-  assertEquals(m ? Number(m[1]) : null, MAP_POPULARITY_FLOOR_DEFAULT);
+  // On name since MESITA-3086.
+  const m = admin.match(/const NAME_POPULARITY_FLOOR_DEFAULT = ([0-9.]+);/);
+  assertEquals(m ? Number(m[1]) : null, NAME_POPULARITY_FLOOR_DEFAULT);
+  assertEquals(constant("NAME_POPULARITY_FLOOR_MIN"), NAME_POPULARITY_FLOOR_MIN);
+  assertEquals(constant("NAME_POPULARITY_FLOOR_MAX"), NAME_POPULARITY_FLOOR_MAX);
+  // The Map's own root default twins the server's.
+  assertEquals(/popularityRoot: 0\.33,/.test(admin), true);
 });

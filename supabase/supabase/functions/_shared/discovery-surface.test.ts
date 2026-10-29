@@ -168,7 +168,7 @@ Deno.test("Catalog: Family only, Proximity × Popularity × the Premier factor, 
   assertEquals(catalog.gates, ["family"]);
   assertEquals(catalog.signals, ["proximity", "popularity"]);
   assert(catalog.scoring.startsWith("Proximity × Popularity × s"));
-  assert(catalog.rules.includes("Chat reads every ready Mesita place inside the current-location radius (Selected only until MESITA-2925)."));
+  assert(catalog.rules.includes("Chat reads every ready Mesita place inside a fixed 15 km (Selected only until MESITA-2925; the current-location radius knob retired in MESITA-3086)."));
   assert(catalog.callers.includes("Chat (Don Memo)"));
   for (const p of [catalog, DISCOVERY_PIPELINES.find((x) => x.key === "map")!]) {
     for (const stale of ["scope", "subset", "rail", "Mesita Proximity", "Distance penalty"]) {

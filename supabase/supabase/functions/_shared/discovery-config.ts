@@ -132,12 +132,17 @@ export type MapConfig = {
   // `googlePopular` / `googleClosest` (the two Google Nearby sources)
   // retired in MESITA-2872; `mesitaPopular` / `mesitaClosest` (the two
   // Mesita ones) in MESITA-2909: each pipeline reads every Mesita place.
+  // `radiusKm` (the current-location radius) retired in MESITA-3086 (Pato:
+  // "the radius depends on the screen size"): the no-screen fallback, Chat
+  // and the Social feed read `NO_SCREEN_RADIUS_KM`. Dropped on the next Save.
   /**
-   * THE CURRENT-LOCATION RADIUS (km): the Map's when it has no screen to
-   * measure, and Chat's read (MESITA-2703). The Catalog has no radius
-   * (MESITA-2909). `MAP_RADIUS_KM_MIN`..`MAP_RADIUS_KM_MAX`. One decimal.
+   * THE MAP'S POPULARITY ROOT (MESITA-3086): the Map ranks by
+   * (1 + reviews × stars)^popularityRoot × the Premier factor, so the root
+   * only sets how much a Premier plan outweighs reviews there (two plain
+   * places keep their order at any root). `POPULARITY_ROOT_MIN`..`MAX`, two
+   * decimals, default 0.33. The Catalog's root is `params.popularity.root`.
    */
-  radiusKm: number;
+  popularityRoot: number;
   // `proximityWeight` and `popularityWeight` (the exponents a and b,
   // MESITA-2504/2703) retired in MESITA-2722: dropped on the next Save.
   /**
@@ -153,15 +158,10 @@ export type MapConfig = {
    * default 20. It replaced `catalogPlacesShown` (MESITA-2727), a cut.
    */
   catalogPageSize: number;
-  /**
-   * THE POPULARITY FLOOR (Pato, MESITA-2714: "if popularity score is below
-   * 3 you cannot be shown … it doesn't matter what"): a place whose
-   * Popularity, (1 + reviews × stars)^root, is under it never shows on
-   * Home, the Map or Chat, Google or Mesita. `MAP_POPULARITY_FLOOR_MIN`..
-   * `MAX`, one decimal, default 2.7 (the old 3 in ln units, re-expressed
-   * at the cube root, MESITA-3083); 0 is off.
-   */
-  popularityFloor: number;
+  // `popularityFloor` moved to `name.popularityFloor` (MESITA-3086, Pato:
+  // "Minimum popularity must go to the Name Search, not to the catalog nor
+  // map"): Home, the Map and Chat no longer hide a place for its
+  // Popularity. Dropped on the next Save.
   // `selectedFactor` (the Selected boost, MESITA-2717) retired with
   // Selected in MESITA-2925: dropped on the next Save.
 };
@@ -196,6 +196,14 @@ export type NameConfig = {
   idleSec: number;
   /** Word by Admin: Single Place › Find's own caps (MESITA-2322). */
   admin: NameAdminConfig;
+  /**
+   * MINIMUM POPULARITY (MESITA-2714; Name-only since MESITA-3086): on the
+   * guest Search bar, Google-only places whose Popularity, read at the
+   * Catalog's root (`params.popularity.root`), is under it sort after the
+   * rest; none are removed. `NAME_POPULARITY_FLOOR_MIN`..`MAX`, one
+   * decimal, default 2.7 (≈ 4★ × 5 reviews at the cube root); 0 is off.
+   */
+  popularityFloor: number;
 };
 
 export type NameAdminConfig = {
@@ -241,10 +249,10 @@ export const MAP_MIN_POPULARITY_MAX = 1;
 export const NAME_LANE_COUNT_MAX = 20;
 export const NAME_FAST_COUNT_DEFAULT = 5;
 export const NAME_GOOGLE_COUNT_DEFAULT = 3;
-/** `map.radiusKm` bounds. */
-export const MAP_RADIUS_KM_MIN = 1;
-export const MAP_RADIUS_KM_MAX = 50;
-export const MAP_RADIUS_KM_DEFAULT = 15;
+/** The radius (km) when there is no screen to measure: the Map's fallback,
+ *  Chat's read and the Social feed's "near you" circle. A constant since
+ *  MESITA-3086 retired `map.radiusKm` (live was 15). */
+export const NO_SCREEN_RADIUS_KM = 15;
 /** `map.placesShown` bounds (MESITA-2909). */
 export const MAP_PLACES_SHOWN_MIN = 1;
 export const MAP_PLACES_SHOWN_MAX = 200;
@@ -253,12 +261,12 @@ export const MAP_PLACES_SHOWN_DEFAULT = 50;
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
 export const CATALOG_PAGE_SIZE_DEFAULT = 20;
-/** `map.popularityFloor` bounds, in Popularity's own units (the root's,
- *  MESITA-3083: at the cube root 2.7 ≈ reviews × stars of 19, what the old
- *  ln floor of 3 meant). */
-export const MAP_POPULARITY_FLOOR_MIN = 0;
-export const MAP_POPULARITY_FLOOR_MAX = 20;
-export const MAP_POPULARITY_FLOOR_DEFAULT = 2.7;
+/** `name.popularityFloor` bounds, in Popularity's own units (the Catalog
+ *  root's, MESITA-3083: at the cube root 2.7 ≈ reviews × stars of 19).
+ *  It was `map.popularityFloor` until MESITA-3086. */
+export const NAME_POPULARITY_FLOOR_MIN = 0;
+export const NAME_POPULARITY_FLOOR_MAX = 20;
+export const NAME_POPULARITY_FLOOR_DEFAULT = 2.7;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -276,10 +284,9 @@ export const DEFAULT_MAP: MapConfig = {
   minPopularity: 0,
   reloadIdleSec: MAP_RELOAD_IDLE_SEC_DEFAULT,
   reloadMinViewportPct: MAP_RELOAD_MIN_VIEWPORT_PCT_DEFAULT,
-  radiusKm: MAP_RADIUS_KM_DEFAULT,
+  popularityRoot: POPULARITY_ROOT_DEFAULT,
   placesShown: MAP_PLACES_SHOWN_DEFAULT,
   catalogPageSize: CATALOG_PAGE_SIZE_DEFAULT,
-  popularityFloor: MAP_POPULARITY_FLOOR_DEFAULT,
 };
 
 export const DEFAULT_NAME_FAST: NameFastConfig = {
@@ -312,6 +319,7 @@ export const DEFAULT_NAME: NameConfig = {
   locations: true,
   idleSec: 1,
   admin: DEFAULT_NAME_ADMIN,
+  popularityFloor: NAME_POPULARITY_FLOOR_DEFAULT,
 };
 
 export const DEFAULT_GENERAL: GeneralConfig = {
@@ -417,6 +425,14 @@ export function normalizeNameConfig(raw: unknown): NameConfig {
       num(r.idleSec, DEFAULT_NAME.idleSec, NAME_IDLE_SEC_MIN, NAME_IDLE_SEC_MAX) * 10,
     ) / 10,
     admin: normalizeNameAdmin(r.admin),
+    popularityFloor: Math.round(
+      num(
+        r.popularityFloor,
+        DEFAULT_NAME.popularityFloor,
+        NAME_POPULARITY_FLOOR_MIN,
+        NAME_POPULARITY_FLOOR_MAX,
+      ) * 10,
+    ) / 10,
   };
 }
 
@@ -468,30 +484,18 @@ export function normalizeMapConfig(raw: unknown): MapConfig {
     ) / 10,
     // Rebuilt key by key: a retired key (`googlePull`, `pinCount`, `supers`,
     // the reload km/sec pair, the 20/40/60 stops, `googleFill`, the four
-    // source switches, `catalogPlacesShown`, `selectedFactor`) is dropped on
+    // source switches, `catalogPlacesShown`, `selectedFactor`, and since
+    // MESITA-3086 `radiusKm` and `popularityFloor`) is dropped on
     // the next save.
-    radiusKm: Math.round(
-      num(
-        r.radiusKm,
-        DEFAULT_MAP.radiusKm,
-        MAP_RADIUS_KM_MIN,
-        MAP_RADIUS_KM_MAX,
-      ) * 10,
-    ) / 10,
+    popularityRoot: Math.round(
+      num(r.popularityRoot, DEFAULT_MAP.popularityRoot, POPULARITY_ROOT_MIN, POPULARITY_ROOT_MAX) * 100,
+    ) / 100,
     placesShown: Math.round(
       num(r.placesShown, DEFAULT_MAP.placesShown, MAP_PLACES_SHOWN_MIN, MAP_PLACES_SHOWN_MAX),
     ),
     catalogPageSize: Math.round(
       num(r.catalogPageSize, DEFAULT_MAP.catalogPageSize, CATALOG_PAGE_SIZE_MIN, CATALOG_PAGE_SIZE_MAX),
     ),
-    popularityFloor: Math.round(
-      num(
-        r.popularityFloor,
-        DEFAULT_MAP.popularityFloor,
-        MAP_POPULARITY_FLOOR_MIN,
-        MAP_POPULARITY_FLOOR_MAX,
-      ) * 10,
-    ) / 10,
   };
 }
 

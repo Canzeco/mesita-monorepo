@@ -33,10 +33,12 @@
 // The Map shows the top `map.placesShown`. The family chip gates; the guest
 // picks no mode, so `prefer` is ignored. R has no ceiling (MESITA-2918):
 // however far out the guest zooms, the search is the ring they see. No
-// bounds falls back to the centre inside `map.radiusKm`. The
+// bounds falls back to the centre inside `NO_SCREEN_RADIUS_KM` (15 km; the
+// operator's `map.radiusKm` retired in MESITA-3086). The
 // answer carries R and each place's breakdown for the debug readout
 // (MESITA-2504). Mesita's places only (Google Nearby retired in
-// MESITA-2872), the operator's Popularity floor on every place. A stale
+// MESITA-2872); no Popularity floor since MESITA-3086 (it orders the Search
+// bar only), so a place with no Google numbers ranks last. A stale
 // `placesScope` is ignored.
 //
 // Anything else is refused: a GET is 405, a POST without `google: true` or
@@ -68,7 +70,7 @@ import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
-import { DISCOVERY_DEFAULTS } from "../_shared/discovery-config.ts";
+import { DISCOVERY_DEFAULTS, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
 import {
   CatalogReadError,
@@ -185,9 +187,9 @@ serveJson("consumer-web-list-places", async (req) => {
     ? await loadDiscoveryConfig(adminClient(efEnv.env))
     : DISCOVERY_DEFAULTS;
   const center = { lat: nearbyDecision.lat, lng: nearbyDecision.lng };
-  // The screen radius, or the operator's when there is no screen to read.
+  // The screen radius, or the fixed fallback when there is no screen to read.
   const screenKm = screenRadiusKm(body.bounds, center);
-  const radiusKm = screenKm ?? cfg.map.radiusKm;
+  const radiusKm = screenKm ?? NO_SCREEN_RADIUS_KM;
   const requestId = crypto.randomUUID();
   // Popularity × the Premier factor; the radius only gates (MESITA-2909).
   // Every ready place in the box is ranked, then the kept cards are read

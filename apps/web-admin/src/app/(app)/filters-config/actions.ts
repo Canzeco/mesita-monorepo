@@ -52,7 +52,9 @@ export type DiscoverySlice =
   | "nameLocations"
   // Name's idle seconds and Name by Admin's caps (MESITA-2322).
   | "nameIdle"
-  | "nameAdmin";
+  | "nameAdmin"
+  // Name's Minimum Popularity (MESITA-3086): only the Name box writes it.
+  | "nameFloor";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -81,6 +83,9 @@ export async function updateDiscoveryConfig(
         : live.config.name.locations,
       idleSec: keys.has("nameIdle") ? config.name.idleSec : live.config.name.idleSec,
       admin: keys.has("nameAdmin") ? config.name.admin : live.config.name.admin,
+      popularityFloor: keys.has("nameFloor")
+        ? config.name.popularityFloor
+        : live.config.name.popularityFloor,
     },
     params: keys.has("catalogPipeline") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,

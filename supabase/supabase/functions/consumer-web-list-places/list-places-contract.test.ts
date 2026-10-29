@@ -43,11 +43,11 @@ Deno.test("list-places: no guest review stop (MESITA-2417), no reviews minimum a
   assertEquals(src.includes("body.minReviews"), false);
 });
 
-Deno.test("list-places: the circle is the screen's, else map.radiusKm; no client radius, no constant", () => {
+Deno.test("list-places: the circle is the screen's, else the fixed NO_SCREEN_RADIUS_KM; no client radius (MESITA-3086)", () => {
   assertEquals(src.includes("nearbyDecision.radiusKm"), false);
   assertEquals(src.includes("body.radiusKm"), false);
   assertEquals(src.includes("NEARBY_RADIUS_KM"), false);
-  assert(webBranch.includes("const radiusKm = screenKm ?? cfg.map.radiusKm;"));
+  assert(webBranch.includes("const radiusKm = screenKm ?? NO_SCREEN_RADIUS_KM;"));
 });
 
 Deno.test("list-places: Proximity × Popularity, no exponents; the radius gates, the half-distance scores (MESITA-2722)", () => {
