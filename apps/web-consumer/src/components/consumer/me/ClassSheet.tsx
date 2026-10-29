@@ -12,13 +12,16 @@
 // promises either: the one VIP perk is tagged Soon, and a Regular guest gets
 // one plain line, no button. The rows' words live in class-words.ts, which
 // /me/class' fallback reads too (MESITA-2701).
+//
+// CLASS IS SOON (Pato, MESITA-3027): everyone is Regular for now, VIP is
+// tagged Soon, and the partner-code join (MESITA-2984) is off both frames.
 
-import { useState } from "react";
 import { Crown, UsersRound } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   CLASS_ROWS,
+  CLASS_SOON_NOTE,
   type ClassRowWords,
 } from "@/components/consumer/me/class-words";
 import { PerkList } from "@/components/consumer/me/perk-list";
@@ -27,17 +30,10 @@ import {
   type GuestClass,
   type VipDetails,
 } from "@/lib/guest-standing";
-import { Spinner } from "@/components/shared";
-import { Button } from "@/components/ui/button";
-import { apiJoinClass } from "@/lib/api/profile";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { toast } from "@/lib/toast";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
 import {
   CurrentPill,
   IconChip,
-  ME_BUTTON_CLASS,
   RowDivider,
   SettingsGroup,
 } from "./settings-rows";
@@ -47,6 +43,7 @@ function ClassRow({
   icon,
   mine,
   subtitle,
+  soon,
   perks,
   vip,
 }: ClassRowWords & {
@@ -62,6 +59,7 @@ function ClassRow({
         <span className="block text-sm font-semibold">
           {title}
           {mine && <CurrentPill data-class-mine="" />}
+          {soon && <SoonPill />}
         </span>
         <span className="text-muted-foreground type-label block">
           {subtitle}
@@ -88,84 +86,26 @@ function ClassRow({
   );
 }
 
-/** Joining VIP with a partner's 12-digit code (MESITA-2984), on /me/class
- *  only: the header's Class sheet stays read-only. EMULATED on the server —
- *  any 12 digits are accepted until partners issue real codes. A full
- *  reload lands the new class everywhere (the header's chip included). */
-function JoinVip() {
-  const getSupabase = useLazyBrowserSupabase();
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const digits = code.replace(/\D/g, "");
-  const ready = digits.length === 12;
-
-  async function join() {
-    if (!ready || busy) return;
-    setBusy(true);
-    try {
-      await apiJoinClass(getSupabase(), digits);
-      toast.success("Welcome to VIP");
-      window.location.reload();
-    } catch (e) {
-      toast(errMsg(e, "Couldn't join VIP — try again."));
-      setBusy(false);
-    }
-  }
-
+/** Beside a class nobody can be in yet (MESITA-3027): PerkList's Soon. */
+function SoonPill() {
   return (
-    <div className="mt-6" data-class-regular-note="">
-      <SettingsGroup title="Join VIP">
-        <form
-          className="px-4 py-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void join();
-          }}
-        >
-          <p className="text-muted-foreground type-label">
-            Enter the 12-digit code from your partner.
-          </p>
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/[^\d\s-]/g, ""))}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="0000 0000 0000"
-            aria-label="12-digit VIP code"
-            maxLength={16}
-            className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-3 h-11 w-full rounded-xl border px-5 text-center font-mono text-sm tracking-widest outline-none"
-            data-class-join-code
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!ready || busy}
-            className={cn(ME_BUTTON_CLASS, "mt-2 w-full")}
-            data-class-join
-          >
-            {busy && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            Join
-          </Button>
-        </form>
-      </SettingsGroup>
-    </div>
+    <span
+      className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold"
+      data-class-soon=""
+    >
+      Soon
+    </span>
   );
 }
 
 /** Both classes, the guest's marked. Null (the read failed) marks neither and
- *  offers no join: never a guessed Regular. `joinable` is the page's: a
- *  Regular guest gets the code form under the card (MESITA-2984); the sheet
- *  keeps the plain line. */
+ *  adds no note: never a guessed Regular. */
 export function ClassList({
   guestClass,
   vip = null,
-  joinable = false,
 }: {
   guestClass: GuestClass | null;
   vip?: VipDetails | null;
-  joinable?: boolean;
 }) {
   return (
     <>
@@ -183,13 +123,12 @@ export function ClassList({
           vip={vip}
         />
       </SettingsGroup>
-      {guestClass === "regular" && joinable && <JoinVip />}
-      {guestClass === "regular" && !joinable && (
+      {guestClass === "regular" && (
         <p
           className="text-muted-foreground type-label mt-3"
           data-class-regular-note=""
         >
-          VIP is added by Mesita when you come through a partner.
+          {CLASS_SOON_NOTE}
         </p>
       )}
     </>

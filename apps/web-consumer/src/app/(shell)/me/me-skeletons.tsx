@@ -85,16 +85,26 @@ export function IdentityBarSkeleton() {
  *  title, then `children`: the fixed lines as themselves. */
 export function StandingRowSkeleton({
   title,
+  soon,
   children,
 }: {
   title: string;
+  /** The Class card's Soon tag (MESITA-3027), drawn as itself. */
+  soon?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-start gap-3 px-4 py-3">
       <Skeleton className={ICON_CHIP_CLASS} />
       <div className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold">{title}</span>
+        <span className="block text-sm font-semibold">
+          {title}
+          {soon && (
+            <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
+              Soon
+            </span>
+          )}
+        </span>
         {children}
       </div>
     </div>

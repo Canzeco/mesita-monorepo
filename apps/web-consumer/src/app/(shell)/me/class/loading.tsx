@@ -26,7 +26,7 @@ export default function ClassLoading() {
           </span>
         </StandingRowSkeleton>
         <RowDivider />
-        <StandingRowSkeleton title={vip.title}>
+        <StandingRowSkeleton title={vip.title} soon={vip.soon}>
           <span className="text-muted-foreground type-label block">
             {vip.subtitle}
           </span>
