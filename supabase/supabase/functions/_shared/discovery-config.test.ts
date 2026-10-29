@@ -12,6 +12,7 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
+  NO_SCREEN_RADIUS_KM,
   DISCOVERY_DEFAULTS,
   normalizeDiscoveryConfig,
   SIGNAL_PARAM_BOUNDS,
@@ -332,19 +333,32 @@ Deno.test("map.googlePull is retired: an old blob's key is dropped on normalize 
   assertEquals("googlePull" in DISCOVERY_DEFAULTS.map, false);
 });
 
-Deno.test("map.radiusKm is the one Nearby radius: default 15 (the reach, MESITA-2687), clamped 1..50, one decimal", () => {
-  // Shared by the Map and the Feed's Google Places and Mesita Selected rails
-  // (MESITA-2298). The operator's number; a guest never sends it. 50 km is
-  // Google's Nearby circle cap, so the knob cannot ask for more.
-  const radius = (raw: unknown) =>
-    normalizeDiscoveryConfig({ map: { radiusKm: raw } }).map.radiusKm;
-  assertEquals(normalizeDiscoveryConfig({}).map.radiusKm, 15);
-  assertEquals(DISCOVERY_DEFAULTS.map.radiusKm, 15);
-  assertEquals(radius(0.2), 1);
-  assertEquals(radius(999), 50);
-  assertEquals(radius(12.34), 12.3);
-  assertEquals(radius(7), 7);
-  assertEquals(radius("far"), 15);
+Deno.test("map.radiusKm retired (MESITA-3086): a stored one is dropped; the no-screen radius is the constant 15 km", () => {
+  const map = normalizeDiscoveryConfig({ map: { radiusKm: 30, placesShown: 33 } }).map;
+  assertEquals("radiusKm" in map, false);
+  assertEquals(map.placesShown, 33);
+  assertEquals(NO_SCREEN_RADIUS_KM, 15);
+});
+
+Deno.test("map.popularityRoot is the Map's own root: default 0.33, 0.1..1, two decimals (MESITA-3086)", () => {
+  const root = (raw: unknown) => normalizeDiscoveryConfig({ map: { popularityRoot: raw } }).map.popularityRoot;
+  assertEquals(DISCOVERY_DEFAULTS.map.popularityRoot, 0.33);
+  assertEquals(root(undefined), 0.33);
+  assertEquals(root(0.5), 0.5);
+  assertEquals(root(0.3333), 0.33);
+  assertEquals(root(0), 0.1);
+  assertEquals(root(9), 1);
+});
+
+Deno.test("Minimum Popularity lives on name (MESITA-3086): default 2.7, 0..20, one decimal; a stored map.popularityFloor drops", () => {
+  const floor = (raw: unknown) => normalizeDiscoveryConfig({ name: { popularityFloor: raw } }).name.popularityFloor;
+  assertEquals(DISCOVERY_DEFAULTS.name.popularityFloor, 2.7);
+  assertEquals(floor(undefined), 2.7);
+  assertEquals(floor(0), 0);
+  assertEquals(floor(-1), 0);
+  assertEquals(floor(99), 20);
+  assertEquals(floor(3.44), 3.4);
+  assertEquals("popularityFloor" in normalizeDiscoveryConfig({ map: { popularityFloor: 4 } }).map, false);
 });
 
 Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () => {
@@ -376,10 +390,10 @@ Deno.test("name knobs default Fast 5 and Deep 3+3 on an old blob and clamp", () 
 });
 
 Deno.test("map.selectedFactor retired with Selected (MESITA-2925): a stored key is dropped, the rest kept", () => {
-  const map = normalizeDiscoveryConfig({ map: { selectedFactor: 5, placesShown: 33, popularityFloor: 4 } }).map;
+  const map = normalizeDiscoveryConfig({ map: { selectedFactor: 5, placesShown: 33, reloadIdleSec: 4 } }).map;
   assertEquals("selectedFactor" in map, false);
   assertEquals(map.placesShown, 33);
-  assertEquals(map.popularityFloor, 4);
+  assertEquals(map.reloadIdleSec, 4);
   assertEquals("selectedFactor" in normalizeDiscoveryConfig({}).map, false);
 });
 

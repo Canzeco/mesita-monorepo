@@ -91,12 +91,13 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
     expect(coerceConfig({ map: { placesShown: 900 } }).map.placesShown).toBe(200);
     expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
-    // Minimum Popularity (MESITA-2714): 0..20, one decimal, default 2.7 in
-    // the Popularity root's units (MESITA-3083).
-    expect(DEFAULT_MAP.popularityFloor).toBe(2.7);
-    expect(coerceConfig({ map: { popularityFloor: -1 } }).map.popularityFloor).toBe(0);
-    expect(coerceConfig({ map: { popularityFloor: 99 } }).map.popularityFloor).toBe(20);
-    expect(coerceConfig({ map: { popularityFloor: 3.44 } }).map.popularityFloor).toBe(3.4);
+    // Minimum Popularity moved to Name (MESITA-3086): 0..20, one decimal,
+    // default 2.7 in the Popularity root's units; a stored map copy is dropped.
+    expect("popularityFloor" in coerceConfig({ map: { popularityFloor: 5 } }).map).toBe(false);
+    expect(coerceConfig({}).name.popularityFloor).toBe(2.7);
+    expect(coerceConfig({ name: { popularityFloor: -1 } }).name.popularityFloor).toBe(0);
+    expect(coerceConfig({ name: { popularityFloor: 99 } }).name.popularityFloor).toBe(20);
+    expect(coerceConfig({ name: { popularityFloor: 3.44 } }).name.popularityFloor).toBe(3.4);
     // The Selected boost retired with Selected (MESITA-2925): a stored key
     // is dropped, the rest of the map kept.
     const stored = coerceConfig({ map: { selectedFactor: 5, placesShown: 33 } }).map;
@@ -174,20 +175,20 @@ describe("coerceConfig", () => {
   });
 
 
-  it("map.googlePull is retired and map.radiusKm is the one Nearby radius (MESITA-2298)", () => {
+  it("map.googlePull and map.radiusKm are retired; the Map has its own root (MESITA-2298, MESITA-3086)", () => {
     // One Nearby Search (New) call per request, 20 places, never widened: the
     // Legacy 40/60 pull is gone and an old blob's key is dropped on coerce.
     expect("googlePull" in DEFAULT_MAP).toBe(false);
     expect("googlePull" in coerceConfig({ map: { googlePull: 60 } }).map).toBe(false);
-    // The radius: default 15 = the reach (MESITA-2687), clamped 1..50
-    // (Google's circle cap), one decimal.
-    expect(DEFAULT_MAP.radiusKm).toBe(15);
-    const radius = (raw: unknown) => coerceConfig({ map: { radiusKm: raw } }).map.radiusKm;
-    expect(radius(0.2)).toBe(1);
-    expect(radius(999)).toBe(50);
-    expect(radius(12.34)).toBe(12.3);
-    expect(radius(7)).toBe(7);
-    expect(radius("far")).toBe(15);
+    // The radius is the screen's (MESITA-3086): a stored key is dropped.
+    expect("radiusKm" in coerceConfig({ map: { radiusKm: 7 } }).map).toBe(false);
+    // The Map's root: 0.1..1, two decimals, default 0.33.
+    expect(DEFAULT_MAP.popularityRoot).toBe(0.33);
+    const root = (raw: unknown) => coerceConfig({ map: { popularityRoot: raw } }).map.popularityRoot;
+    expect(root(0.01)).toBe(0.1);
+    expect(root(9)).toBe(1);
+    expect(root(0.456)).toBe(0.46);
+    expect(root("x")).toBe(0.33);
   });
 
   it("coerceConfig defaults name Fast 5 and Deep 3+3; a stored mesitaCount is dropped (MESITA-2896)", () => {

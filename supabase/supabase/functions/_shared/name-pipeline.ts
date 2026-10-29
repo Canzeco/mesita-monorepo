@@ -119,12 +119,9 @@ export type LaneItem = {
   /** Mesita rows: the place's own catalog card (MESITA-2678), the one the
    *  wire sends for a Mesita row instead of any Google card. */
   mesitaCard?: Record<string, unknown>;
-  /** A Google-only place under the Area box's Minimum Popularity
-   *  (MESITA-2849): the bar still lists it, after every other row
-   *  (MESITA-2724), and a pick of it is a destination — the camera lands
-   *  there, the Area reloads there — but it never becomes card ONE, because
-   *  the Area pipeline would never admit it. Sent on the wire as is. */
-  underFloor?: boolean;
+  // `underFloor` (MESITA-2849) retired in MESITA-3086: the Area no longer
+  // hides a place under the floor, so a pick of one is card ONE like any
+  // other.
 };
 
 export function laneDedupeKeys(item: {
@@ -343,14 +340,10 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
  * (MESITA-3083), is under the floor moves after every other row; Mesita rows, Locations and Google
  * rows that clear the floor keep their order in front. Nothing is removed. A
  * floor of 0 or less returns the list unchanged. `unknown` counts demoted rows
- * with no rating or no review count (they read Popularity 0).
- *
- * A demoted row is also MARKED `underFloor` (MESITA-2849, Pato: a pick is
- * the first card "only if it can be a mesita place … above the allowed
- * popularity"): the client anchors the camera on such a pick and reloads
- * the Area there, but draws no card for it — the Area pipeline hides every
- * place under this same floor, so a card for one would be a place Mesita
- * does not list. Mesita rows are Mesita places already and are never marked.
+ * with no rating or no review count (they read Popularity 0). The floor is
+ * the Name box's `name.popularityFloor` (MESITA-3086), read at the Catalog
+ * root. Demoted rows carry no mark: the `underFloor` card rule (MESITA-2849)
+ * retired with the Area floor.
  */
 export function demoteGoogleUnderFloor(
   items: readonly LaneItem[],
@@ -364,7 +357,7 @@ export function demoteGoogleUnderFloor(
   for (const item of items) {
     const isGooglePlace = item.kind !== "location" && item.state === "not_in_mesita";
     if (isGooglePlace && !clearsPopularityFloor(item, floor, root)) {
-      back.push({ ...item, underFloor: true });
+      back.push(item);
       if (typeof item.rating !== "number" || typeof item.reviewCount !== "number") unknown++;
     } else {
       front.push(item);
@@ -428,19 +421,19 @@ async function runNamePipeline(
   }
 
   // THE GUEST BAR'S POPULARITY ORDER (MESITA-2724): after the caps and the
-  // Deep merge, Google-only places under the Area box's Minimum Popularity
-  // sort after the rest. Nothing is removed (a guest typing an exact name
-  // must still find it), unlike Home, the Map and Chat, where the same floor
-  // hides a place. Admin Find and Word keep Google's own order.
+  // Deep merge, Google-only places under the Name box's Minimum Popularity
+  // (MESITA-3086) sort after the rest. Nothing is removed (a guest typing an
+  // exact name must still find it); Home, the Map and Chat never read this
+  // floor. Admin Find and Word keep Google's own order.
   const ordered = shape.demoteUnderFloor
-    ? demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor, cfg.params.popularity.root)
+    ? demoteGoogleUnderFloor(predictions, cfg.name.popularityFloor, cfg.params.popularity.root)
     : { items: predictions, demoted: 0, unknown: 0 };
   console.info(JSON.stringify({
     fn: "search-lane",
     caller: callerName,
     mode,
     admin: shape.admin,
-    popularityFloor: cfg.map.popularityFloor,
+    popularityFloor: cfg.name.popularityFloor,
     popularityDemoted: ordered.demoted,
     popularityUnknown: ordered.unknown,
   }));
@@ -652,8 +645,6 @@ export function toWire(item: LaneItem) {
     ...(item.mesitaSlug ? { mesitaSlug: item.mesitaSlug } : {}),
     ...(item.lat != null ? { lat: item.lat } : {}),
     ...(item.lng != null ? { lng: item.lng } : {}),
-    // Under the Area floor (MESITA-2849): a destination, never card ONE.
-    ...(item.underFloor ? { underFloor: true as const } : {}),
     // A Mesita row sends its own catalog card, never the Google card a
     // resolved hit still holds; a Google-only row sends Google's.
     ...(item.mesitaId

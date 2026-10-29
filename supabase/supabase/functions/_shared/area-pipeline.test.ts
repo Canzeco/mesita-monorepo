@@ -429,3 +429,27 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals([top5.summary.surface, top5.summary.halfKm, top5.summary.pageSize, top5.summary.placesShown], ["map", null, null, 5]);
   assertEquals(catalogPageSize({}), 20);
 });
+
+// ── MESITA-3086: a Popularity root per surface ───────────────────────────
+
+Deno.test("the Map reads map.popularityRoot, the Catalog params.popularity.root; on the Map the root only moves Premier against plain", async () => {
+  // A Premier ×2 place with 100 reviews against a plain one with 600.
+  // Map score = (1 + reviews × stars)^root × the factor: at root 0.33 the
+  // plan wins (2 × 7.2 = 14.5 > 13.0), at 0.6 the reviews win
+  // (2 × 36.5 = 73 < 107).
+  const paid = mrow("paid", { google_stars_overall: 4.0, google_review_count: 100, boost_tier: 1 });
+  const loved = mrow("loved", { google_stars_overall: 4.0, google_review_count: 600 });
+  const run = (surface: "map" | "catalog", mapRoot: number) =>
+    selectAreaPool(
+      deps({
+        surface,
+        radiusKm: surface === "map" ? 50 : null,
+        mesitaRows: [paid, loved],
+        cfg: { ...DISCOVERY_DEFAULTS, map: { ...DISCOVERY_DEFAULTS.map, popularityRoot: mapRoot } },
+      }).d,
+    );
+  assertEquals(ids((await run("map", 0.33)).places), ["paid", "loved"]);
+  assertEquals(ids((await run("map", 0.6)).places), ["loved", "paid"]);
+  // The Catalog ignores the Map's root: same order at both.
+  assertEquals(ids((await run("catalog", 0.33)).places), ids((await run("catalog", 0.6)).places));
+});
