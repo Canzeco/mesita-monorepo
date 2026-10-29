@@ -60,7 +60,7 @@ export function ProfileClient() {
         igHandle: profile?.instagram_handle ?? null,
         igConnected: identity.igConnected || Boolean(profile?.instagram_handle),
       };
-  // ONE STRING FOR THE CHIP AND THE TILE (MESITA-2606): "Insta: @pato · 25K
+  // ONE STRING FOR THE CHIP AND THE TILE (MESITA-2606): "Insta: @pato (~25K
   // followers". The fresh profile count wins; the seeded one covers a fetch
   // that has not landed.
   const igLabel = instagramWithFollowers(
