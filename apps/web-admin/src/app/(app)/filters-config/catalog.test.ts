@@ -52,7 +52,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { halfKm: 5 },
+      proximity: { halfKm: 1 },
       popularity: { halfReviews: 250 },
     });
   });
@@ -67,8 +67,8 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({ proximity: { halfKm: 2.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.5 });
-    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 50 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 100 });
   });
 
   it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {

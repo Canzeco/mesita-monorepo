@@ -5,6 +5,7 @@
 //
 //   description_similarity  Description · the Deep pipeline
 //   proximity               Proximity · the Catalog pipeline (and Chat)
+//                           1 ÷ (1 + d ÷ D), MESITA-3015
 //   popularity              Popularity · the Map and Catalog pipelines
 //
 // A signal scores; it never excludes (that is a gate's job, area-score.ts).
@@ -20,29 +21,33 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 // ── Proximity ─────────────────────────────────────────────────────────────
 
-/** THE HALF DISTANCE h (km, MESITA-2909): the Catalog pipeline's Proximity
- *  is ½ at h. The operator's number (`params.proximity.halfKm`). 5 km is
- *  Pato's starting point (2026-10-27), to tune on real results. */
-export const PROXIMITY_HALF_KM_DEFAULT = 5;
-export const PROXIMITY_HALF_KM_MIN = 0.5;
-export const PROXIMITY_HALF_KM_MAX = 50;
+/** THE HALF DISTANCE D (km, MESITA-3015): the Catalog pipeline's Proximity
+ *  is ½ at D. The one hyperparameter (`params.proximity.halfKm`), 0.1–100
+ *  km. 1 km is Pato's pick (2026-10-28, "LETS USE THE 1KM FUNCTION"): a
+ *  walking bubble where Popularity decides; past it distance ratios do. */
+export const PROXIMITY_HALF_KM_DEFAULT = 1;
+export const PROXIMITY_HALF_KM_MIN = 0.1;
+export const PROXIMITY_HALF_KM_MAX = 100;
 
 /**
- * proximity(d) = 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h = the half distance
- * (Pato, MESITA-2909: "que al principio su valor sea muy alto y decaiga muy
- * rápido y cada vez decaiga más lento"): 1 at the point, ½ at h, a steep
- * fall near the guest that flattens with distance, never 0. Only the Catalog
+ * proximity(d) = 1 ÷ (1 + d ÷ D), D = the half distance (MESITA-3015): 1
+ * at the point, ½ at D, ⅓ at 2D, never 0. Past D the curve is D ÷ d, so
+ * only distance RATIOS order places: twice as far is half the credit at
+ * any scale, and with Popularity's ln spread (≈ 1.8× at most) a better
+ * place wins only up to ~1.8× farther. Another city never wins; a walking
+ * city and a car city rank alike. It replaced the log curve
+ * 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)) (MESITA-2909), which kept a famous
+ * place 36 km away above an average one 5 km away. Only the Catalog
  * pipeline (Home) and Chat read it; the Map ranks by Popularity alone and
- * uses distance only as its screen (MESITA-2909). It replaced the
- * reciprocal 1 ÷ (1 + d ÷ (radius ÷ k)) (MESITA-2706/2720): the Catalog has
- * no radius. A distance that is not a number cannot be placed, so it scores
- * 0; so does any distance past the point when h is not positive.
+ * uses distance only as its screen (MESITA-2909). A distance that is not a
+ * number cannot be placed, so it scores 0; so does any distance past the
+ * point when D is not positive.
  */
 export function proximityFromDistance(distanceKm: number, halfKm: number): number {
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
   if (!(Number.isFinite(halfKm) && halfKm > 0)) return 0;
-  return clamp01(1 / (1 + Math.log1p((Math.E - 1) * distanceKm / halfKm)));
+  return clamp01(1 / (1 + distanceKm / halfKm));
 }
 
 /**
