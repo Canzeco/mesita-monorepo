@@ -368,10 +368,6 @@ verify_jwt = true
 [functions.enricher-edgefunc-sync-sources]
 verify_jwt = false
 
-# Single Place's tag and category vocabularies.
-[functions.admin-web-get-atlas-fields]
-verify_jwt = true
-
 # Configurations › Atlas. Read-only taxonomy lists.
 [functions.admin-web-get-families]
 verify_jwt = true
@@ -403,9 +399,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.admin-web-set-place-listed]
-verify_jwt = true
-
-[functions.admin-web-set-place-active]
 verify_jwt = true
 
 # DESTRUCTIVE full reset. Gated on super_admins + a typed "RESET"

@@ -36,7 +36,6 @@ Deno.test("families resolve inside the one read, from the stored keys", () => {
   assertEquals(CODE.includes("resolveStoredFamily("), true);
   // The category↔family dictionary is gone (MESITA-2891): no per-category families.
   assertEquals(CODE.includes("categoriesWithFamilyDisplay("), false);
-  assertEquals(CODE.includes("admin-web-get-atlas-fields"), false);
 });
 
 Deno.test("overview returns the vote threshold", () => {

@@ -206,7 +206,6 @@ const PROFILES_READ_ALLOWLIST = [
   // (one module since MESITA-3042).
   "_shared/place-activity-read.ts",
   "admin-web-search-places/index.ts",
-  "admin-web-set-place-active/index.ts",
   "admin-web-get-overview/index.ts",
   "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
