@@ -8,7 +8,7 @@
 // ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long. so put the
 // ask ai inside the searchbar … same for location"; then "search · ask
 // bubble · loc bubble"): a 48px pill across the screen holding the query
-// field, then Ask AI as a small grey bubble inside it; the locate disc sits
+// field, then Ask AI as a black pill inside it (MESITA-3007); the locate disc sits
 // right of the bar on the same row (MESITA-3006). Under it the
 // 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
 //
@@ -26,23 +26,21 @@
 export const FLOAT = "bg-card text-foreground shadow-float";
 
 /** The one long bar: the floating pill that holds the query field and the
- *  Ask AI bubble; typing darkens its border. */
+ *  Ask AI pill; typing darkens its border. */
 export const BAR = `${FLOAT} border-transparent focus-within:border-foreground flex h-12 min-w-0 items-center gap-1 rounded-full border pr-1.5 pl-4 transition-colors`;
-
-/** A bubble inside the bar: a plain grey fill, ink icon and text (Pato,
- *  MESITA-3004: "definitely remove the purple for ask ai and the [blue] for
- *  location"; MESITA-3000's gradient and MESITA-3003's tints are gone). */
-const BUBBLE =
-  "bg-muted text-foreground hover:bg-border flex h-9 shrink-0 items-center justify-center rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-foreground active:scale-[0.97]";
 
 /** The locate disc: a 48px floating white disc right of the bar, the bar's
  *  height (Pato, MESITA-3006: "the location at top right at the same
  *  level"; MESITA-3005 had it under the chips). */
 export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** Ask AI at the bar's right end: a bubble widened to say what it does
- *  (Pato, MESITA-2455). */
-export const HEADER_PILL = `${BUBBLE} gap-1.5 px-3 text-sm font-semibold whitespace-nowrap`;
+/** Ask AI at the bar's right end: the bar's one strong control, a black pill
+ *  with white text (Pato, MESITA-3007: "ask ai must be stronger … more
+ *  notable"; it was the grey bubble, after MESITA-3000's gradient
+ *  "screaming" and MESITA-3003's tint). The selected chip's ink, so no new
+ *  colour enters the app. */
+export const HEADER_PILL =
+  "bg-primary text-primary-foreground flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 text-sm font-semibold whitespace-nowrap outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[0.97]";
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
  *  only (MESITA-3006). */
