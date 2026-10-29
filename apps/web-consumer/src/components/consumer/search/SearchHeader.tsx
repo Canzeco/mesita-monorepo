@@ -101,7 +101,7 @@ export function SearchHeader({
     >
       {/* Row one, three separate controls (Pato, MESITA-3009: "location at
           the left, searchbar, ask ai at the right, all separated"). */}
-      <div className="flex min-w-0 items-center gap-2 px-3 pt-3 [&>*]:pointer-events-auto">
+      <div className="flex min-w-0 items-center gap-3 px-3 pt-3 [&>*]:pointer-events-auto">
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
         <Link
@@ -116,9 +116,12 @@ export function SearchHeader({
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
           // py-2 inside the scroller, not around it: its overflow would clip
-          // the chips' shadows. That py-2 is the whole bar-to-chips gap: 8px,
-          // the header's one gap, across and down (MESITA-3008).
-          <div className="flex min-w-0 items-center gap-2 pl-3 [&>*]:pointer-events-auto">
+          // the chips' shadows. ONE 12px SPACING (Pato, MESITA-3012: "the
+          // distance across searchbar and filters and top screen is the
+          // same"): the screen top, between row one's controls, and bar to
+          // chips (this row's pt-1 + the scroller's py-2) are all 12px, the
+          // side gutter; chip to chip stays 8px.
+          <div className="flex min-w-0 items-center gap-3 pt-1 pl-3 [&>*]:pointer-events-auto">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
@@ -192,7 +195,7 @@ export function SearchHeader({
         {children ? (
           <div
             className={cn(
-              "pointer-events-auto absolute inset-x-3 top-0 z-10 flex flex-col gap-2 pt-2",
+              "pointer-events-auto absolute inset-x-3 top-0 z-10 flex flex-col gap-2 pt-3",
             )}
             data-search-over-chips
           >
