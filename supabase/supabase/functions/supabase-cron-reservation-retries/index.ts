@@ -34,7 +34,7 @@
 // Deploy: supabase functions deploy supabase-cron-reservation-retries
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
+import { corsPreflight, json, readJsonOr, readLimit, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
@@ -65,9 +65,7 @@ serveJson("supabase-cron-reservation-retries", async (req) => {
   if (!authRes.ok) return authRes.response;
 
   const body = await readJsonOr<{ limit?: number }>(req, {});
-  const limit = typeof body.limit === "number"
-    ? Math.max(1, Math.min(MAX_LIMIT, Math.trunc(body.limit)))
-    : DEFAULT_LIMIT;
+  const limit = readLimit(body.limit, DEFAULT_LIMIT, MAX_LIMIT);
 
   const admin = adminClient(envRes.env);
   const nowIso = new Date().toISOString();

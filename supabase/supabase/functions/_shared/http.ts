@@ -160,3 +160,8 @@ export function readPlaceIdAlias(body: {
 export function clampIntRange(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.trunc(n)));
 }
+
+/** A body `limit`: a number is truncated into 1..max; anything else is the default. */
+export function readLimit(raw: unknown, fallback: number, max: number): number {
+  return typeof raw === "number" ? clampIntRange(raw, 1, max) : fallback;
+}
