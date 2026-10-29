@@ -1,41 +1,25 @@
-// Mesita Premier (MESITA-2925; Boost from MESITA-2789, Spotlight from
-// MESITA-1998): anyone makes a place Premier from its Premier tab, with
-// their own Stripe subscription. Many guests may back one place; the place
-// holds the highest tier their live backings pay for together, shown as
-// Premier 2X · 5X · 10X. The wire keeps its Boost names (the EFs, the
-// `boost_*` tiers); only the words a guest reads changed.
+// Mesita Premier (MESITA-2995; Premier MESITA-2925, Boost MESITA-2789,
+// Spotlight MESITA-1998): anyone pledges for a place's Premier from its
+// Premier tab. Many guests may pledge; only the top pledge is charged each
+// period and the rest are backups, charged only if the pledges above them
+// stop paying. Upgrading takes the unused days of the running period off
+// the new price. Every amount and position here comes from the server
+// (consumer-web-get-boost's `quotes`): this file never computes money. The
+// wire keeps its Boost names (the EFs, the `boost_*` tiers).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
+export type TierRank = 1 | 2 | 3;
 
-/** Prices in US dollars a month. The server charges its own copy
- *  (supabase/.../_shared/boost.ts); these are only the labels. A year is
- *  billed as ten months. */
+/** The three levels, labels only: prices come from the server's quotes. */
 export const BOOST_TIERS = [
-  {
-    key: "boost_2x",
-    label: "Premier 2X",
-    monthly: 10,
-    blurb: "Twice as likely to show on the Map and Home",
-  },
-  {
-    key: "boost_5x",
-    label: "Premier 5X",
-    monthly: 50,
-    blurb: "Five times as likely to show",
-  },
-  {
-    key: "boost_10x",
-    label: "Premier 10X",
-    monthly: 200,
-    blurb: "Ten times as likely to show, the most there is",
-  },
-] as const satisfies ReadonlyArray<{ key: BoostTier; label: string; monthly: number; blurb: string }>;
-
-export const BOOST_YEAR_MONTHS = 10;
+  { key: "boost_2x", rank: 1, mark: "2X", label: "Premier 2X", blurb: "Twice as likely to show on the Map and Home" },
+  { key: "boost_5x", rank: 2, mark: "5X", label: "Premier 5X", blurb: "Five times as likely to show" },
+  { key: "boost_10x", rank: 3, mark: "10X", label: "Premier 10X", blurb: "Ten times as likely to show, the most there is" },
+] as const satisfies ReadonlyArray<{ key: BoostTier; rank: TierRank; mark: string; label: string; blurb: string }>;
 
 export const BOOST_TIER_LABEL: Record<0 | 1 | 2 | 3, string | null> = {
   0: null,
@@ -44,35 +28,49 @@ export const BOOST_TIER_LABEL: Record<0 | 1 | 2 | 3, string | null> = {
   3: "Premier 10X",
 };
 
-const USD = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
+export const TIER_MARK: Record<number, string> = { 1: "2X", 2: "5X", 3: "10X" };
 
-/** "$10/mo" or "$100/yr" (ten months). */
-export function boostPrice(monthly: number, interval: BoostInterval): string {
-  return interval === "year"
-    ? `${USD.format(monthly * BOOST_YEAR_MONTHS)}/yr`
-    : `${USD.format(monthly)}/mo`;
-}
-
-export type MyBacking = {
-  id: string;
-  tier: BoostTier;
-  interval: BoostInterval;
-  amount_cents: number;
-  status: string;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
-  live: boolean;
+export type BoostQuote = {
+  price_cents: number;
+  charge_cents: number;
+  credit_cents: number;
+  extra_days: number;
+  new_ends_at: string | null;
+  role: "payer" | "backup";
+  position: number;
+  checkout: "payment" | "setup" | "none";
 };
+
+export type LineRow = {
+  tier: number;
+  interval: BoostInterval;
+  role: "payer" | "backup";
+  position: number;
+  mine: boolean;
+};
+
+export type MyPledge = {
+  id: string;
+  tier: number;
+  interval: BoostInterval;
+  status: "open" | "ready" | "failed" | "ended";
+  role: "payer" | "backup";
+  position: number;
+  pending: number | null;
+  has_card: boolean;
+};
+
+export type BoostOutcome = "confirmed" | "saved_as_backup" | "released_stale" | "pending" | "expired" | "none";
 
 export type PlaceBoost = {
   tier: 0 | 1 | 2 | 3;
-  backers: number;
-  mine: MyBacking[];
-  confirmed?: boolean;
+  period: { tier: number; ends_at: string; granted: boolean; renews: boolean } | null;
+  renewing: boolean;
+  line: LineRow[];
+  more: number;
+  mine: MyPledge | null;
+  quotes: Record<BoostTier, Record<BoostInterval, BoostQuote>> | null;
+  outcome?: BoostOutcome;
 };
 
 export async function apiGetBoost(
@@ -86,7 +84,8 @@ export async function apiGetBoost(
   });
 }
 
-/** Opens Stripe Checkout; resolves to the page to send the guest to. */
+/** Pledges (or changes the guest's pledge). Resolves to the Checkout page
+ *  to send the guest to, or null when nothing needed Checkout. */
 export async function apiStartBoost(
   client: SupabaseClient,
   input: {
@@ -95,18 +94,16 @@ export async function apiStartBoost(
     interval: BoostInterval;
     returnUrl: string;
   },
-): Promise<string> {
-  const res = await invokeEF<{ url: string }>(client, "consumer-web-start-boost", {
+): Promise<{ url: string | null; outcome?: "updated" | "confirmed" }> {
+  return await invokeEF<{ url: string | null; outcome?: "updated" | "confirmed" }>(client, "consumer-web-start-boost", {
     place_id: input.placeId,
     tier: input.tier,
     interval: input.interval,
     return_url: input.returnUrl,
   });
-  return res.url;
 }
 
-/** Stops renewing one of the guest's own backings; it stays live to the
- *  end of the period already paid. */
+/** Leaves the line. A payer keeps the period already paid. */
 export async function apiCancelBoost(
   client: SupabaseClient,
   backingId: string,
@@ -114,4 +111,17 @@ export async function apiCancelBoost(
   await invokeEF<Record<string, never>>(client, "consumer-web-cancel-boost", {
     backing_id: backingId,
   });
+}
+
+const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+/** "$45.00". */
+export function money(cents: number): string {
+  return USD.format(cents / 100);
+}
+
+/** "Nov 14". */
+export function shortDate(iso: string | null): string {
+  if (!iso) return "soon";
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

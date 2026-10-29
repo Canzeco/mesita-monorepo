@@ -19,7 +19,7 @@ import {
   isMesitaPlaceId,
   type PlaceActivity,
 } from "@/lib/api/activity";
-import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
+import { apiGetBoost, BOOST_TIER_LABEL, shortDate, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
@@ -158,10 +158,31 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   };
 }
 
-// Premier (MESITA-2925, was Boost MESITA-2789): the place's tier and
-// backers, and the guest's own backings. Checkout returns with
-// `?boost=<session>`: confirm it, say so only when Stripe confirmed it, and
-// drop the parameter so a reload does not confirm twice.
+// Premier (MESITA-2995): the place's period, its line, and the guest's own
+// pledge. Checkout returns with `?boost=<session>`: settle it, say what
+// happened only from the server's outcome, and drop the parameter so a
+// reload does not settle twice.
+function sayCheckoutOutcome(data: PlaceBoost) {
+  const p = data.period;
+  const label = p ? BOOST_TIER_LABEL[p.tier as 1 | 2 | 3] : "Premier";
+  switch (data.outcome) {
+    case "confirmed":
+      toast.success(p ? `You're paying for ${label}. Renews ${shortDate(p.ends_at)}.` : "You're paying for Premier.");
+      return;
+    case "saved_as_backup":
+      toast.success(`You're Backup ${data.mine?.position || 1}.`);
+      return;
+    case "released_stale":
+      toast(`Someone changed the line while you were paying. We released the hold on your card. You're Backup ${data.mine?.position || 1}.`);
+      return;
+    case "expired":
+      toast("Checkout cancelled. Nothing was charged.");
+      return;
+    default:
+      toast("Confirming your payment…");
+  }
+}
+
 function usePlaceBoost(placeId: string): {
   data: PlaceBoost | null;
   loading: boolean;
@@ -200,8 +221,7 @@ function usePlaceBoost(placeId: string): {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
         if (session) setReturned({ placeId, at: Date.now() });
-        if (session && data.confirmed) toast.success("It's Premier. Thanks for backing this place");
-        else if (session) toast("We're confirming your payment with Stripe. Premier shows once it clears.");
+        if (session) sayCheckoutOutcome(data);
       })
       .catch(() => {
         if (!cancelled) setState((s) => ({ placeId, nonce, data: s.placeId === placeId ? s.data : null, failed: true }));

@@ -229,6 +229,8 @@ export function lineView(
 }
 
 export type Quote = {
+  /** The level's full price per interval (what renewals charge). */
+  price_cents: number;
   /** Charged today, after credit; 0 when nothing is charged. */
   charge_cents: number;
   credit_cents: number;
@@ -263,7 +265,7 @@ export function quote(args: {
   // The payer changing their own terms below or at the running level: the
   // period they paid runs on; the new terms apply at the next renewal.
   if (isPayer && running && rank <= running.tier) {
-    return { charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none" };
+    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none" };
   }
 
   if (!charging && (!running || rank > running.tier)) {
@@ -273,6 +275,7 @@ export function quote(args: {
     if (charge > 0 && charge < MIN_CHARGE_CENTS) charge = 0;
     const days = extraDays(leftover, price, interval, now);
     return {
+      price_cents: price,
       charge_cents: charge,
       credit_cents: Math.min(credit, price),
       extra_days: days,
@@ -290,6 +293,7 @@ export function quote(args: {
     (TIER_RANK[p.tier] > rank || (TIER_RANK[p.tier] === rank && ms(p.queued_at) < myQueued))
   ).length;
   return {
+    price_cents: price,
     charge_cents: 0,
     credit_cents: 0,
     extra_days: 0,

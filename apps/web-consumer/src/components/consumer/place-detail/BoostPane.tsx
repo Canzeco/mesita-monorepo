@@ -9,42 +9,36 @@ import {
   apiStartBoost,
   BOOST_TIER_LABEL,
   BOOST_TIERS,
-  boostPrice,
-  type MyBacking,
-  type PlaceBoost,
+  money,
+  shortDate,
+  TIER_MARK,
   type BoostInterval,
+  type BoostQuote,
   type BoostTier,
+  type MyPledge,
+  type PlaceBoost,
 } from "@/lib/api/boost";
 import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import {
-  ERROR_BOX_CLASS,
-  PRIMARY_BUTTON_CLASS,
-  SHEET_TITLE_CLASS,
-} from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE PREMIER TAB (MESITA-2925, was Boost; MESITA-2861: the place's fourth
-// tab; a sheet off ⋯ in MESITA-2815, a tab in MESITA-2789, Spotlight's
-// sheet before it, MESITA-1998: "cualquiera se suscriba ... desde la
-// Consumer App"). Anyone makes a place Premier with their own
-// subscription: Premier 2X · 5X · 10X, monthly or yearly (ten months for
-// twelve), then Stripe Checkout. Backers are anonymous (MESITA-2928): no
-// name is asked for, sent or shown, only how many guests back it. Many guests can back
-// one place, so one lapsed card never takes the tier from the rest. The
-// place wears "Premier 2X" after its name and a red pin while it holds a
-// tier; the copy says it is paid visibility.
-// Nothing here claims a charge: success is said only after
-// consumer-web-get-boost confirms the Checkout session (member-place-actions).
+// THE PREMIER TAB (MESITA-2995; Premier MESITA-2925, the place's fourth tab
+// MESITA-2861). Pato, 2026-10-28: many guests pledge for one place; only
+// the top pledge is charged, and if its card fails the next one pays — the
+// others are backups, shown as such; upgrading takes the unused days off
+// the new price; and it must be super easy to understand.
+//
+// One card, read top to bottom: where the place stands, your pledge (when
+// you have one), the line (who pays now, who backs up — levels only, never
+// names: MESITA-2928), then Monthly | Yearly, the three levels, and ONE
+// price line for the level you tapped. Every amount, date and position is
+// the server's (consumer-web-get-boost `quotes`); nothing here computes
+// money. Premier is paid visibility and never verifies the place.
 
-/** The tile's big mark: the level alone. */
-const TIER_MULTIPLIER: Record<BoostTier, string> = {
-  boost_2x: "2X",
-  boost_5x: "5X",
-  boost_10x: "10X",
-};
+const INTERVAL_WORD: Record<BoostInterval, string> = { month: "month", year: "year" };
 
 export function BoostPane({
   place,
@@ -62,80 +56,134 @@ export function BoostPane({
   onChanged: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [tier, setTier] = useState<BoostTier>("boost_2x");
   const [interval, setBillingInterval] = useState<BoostInterval>("month");
-  // The choices replace the card in the same pane (MESITA-2817), so a
-  // second sheet never stacks.
-  const [choosing, setChoosing] = useState(false);
+  const [picked, setPicked] = useState<BoostTier | null>(null);
   const [starting, setStarting] = useState(false);
-  const [cancelling, setCancelling] = useState<MyBacking | null>(null);
-  const [cancelBusy, setCancelBusy] = useState(false);
-  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [leaving, setLeaving] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
-  const current = boost ? BOOST_TIER_LABEL[boost.tier] : null;
-  const mine = (boost?.mine ?? []).filter((b) => b.live);
+  const period = boost?.period ?? null;
+  const line = boost?.line ?? [];
+  const mine = boost?.mine ?? null;
+  const live = (boost?.tier ?? 0) > 0;
+  const q = picked && boost?.quotes ? boost.quotes[picked][interval] : null;
 
-  async function start() {
-    if (starting) return;
+  async function pledge() {
+    if (!picked || starting) return;
     setStarting(true);
+    setStartError(null);
     try {
-      const url = await apiStartBoost(getSupabase(), {
+      const res = await apiStartBoost(getSupabase(), {
         placeId: place.id,
-        tier,
+        tier: picked,
         interval,
         returnUrl: `${window.location.origin}${window.location.pathname}`,
       });
-      window.location.assign(url);
+      if (res.url) {
+        window.location.assign(res.url);
+        return;
+      }
+      toast(res.outcome === "confirmed" ? "You're paying for Premier now" : "Your pledge is updated");
+      setPicked(null);
+      setStarting(false);
+      onChanged();
     } catch (err) {
-      toast.error(errMsg(err, "Couldn't open checkout. Try again."));
+      setStartError(errMsg(err, "Couldn't open checkout. Try again."));
       setStarting(false);
     }
   }
 
-  async function confirmCancel() {
-    if (!cancelling || cancelBusy) return;
-    setCancelBusy(true);
-    setCancelError(null);
+  async function confirmLeave() {
+    if (!mine || leaveBusy) return;
+    setLeaveBusy(true);
+    setLeaveError(null);
     try {
-      await apiCancelBoost(getSupabase(), cancelling.id);
-      setCancelling(null);
-      toast("Your backing ends at the close of this period");
+      await apiCancelBoost(getSupabase(), mine.id);
+      setLeaving(false);
+      toast("You left the line");
       onChanged();
     } catch (err) {
-      setCancelError(errMsg(err, "Couldn't cancel. Try again."));
+      setLeaveError(errMsg(err, "Couldn't leave. Try again."));
     } finally {
-      setCancelBusy(false);
+      setLeaveBusy(false);
     }
   }
 
-  function openSheet(pick: BoostTier) {
-    setTier(pick);
-    setChoosing(true);
-  }
-
-  const picked = BOOST_TIERS.find((t) => t.key === tier)!;
-
   return (
     <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
-      {choosing ? (
-        <div className="flex flex-col gap-4">
-          <button
-            type="button"
-            onClick={() => (starting ? undefined : setChoosing(false))}
-            className="text-muted-foreground -mb-2 self-start text-sm font-semibold"
+      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
+        {/* Where the place stands. */}
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+              live ? "text-white" : "bg-muted text-foreground",
+            )}
+            style={live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined}
           >
-            ‹ Back
-          </button>
-          <div className="flex items-center gap-3">
-            <span className="bg-muted text-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-              <BadgeCheck className="h-5 w-5" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <h2 id="boost-title" className={SHEET_TITLE_CLASS}>Make it Premier</h2>
-              <p className="text-muted-foreground truncate text-xs">{place.name}</p>
-            </div>
+            <BadgeCheck className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h2 id="boost-title" className="text-base leading-tight font-semibold" aria-live="polite">
+              {loading ? "Loading…" : statusLine(boost)}
+            </h2>
+            <p className="text-muted-foreground truncate text-xs">{place.name}</p>
           </div>
+        </div>
 
+        {mine && mine.status !== "ended" && (
+          <YourPledge mine={mine} period={period} onLeave={() => setLeaving(true)} />
+        )}
+
+        {/* The line. */}
+        {line.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <SettingsGroup>
+              {line.map((row, i) => (
+                <Fragment key={`${row.role}-${row.position}`}>
+                  {i > 0 && <RowDivider />}
+                  <div className="flex min-h-12 items-center gap-3 px-4 py-2.5 text-sm">
+                    <span className="font-display w-10 text-lg leading-none font-semibold">{TIER_MARK[row.tier]}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      {row.interval === "year" && <span className="text-muted-foreground">Yearly · </span>}
+                      {row.mine && <span className="font-semibold">You</span>}
+                    </span>
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+                        row.role === "payer" ? "bg-foreground text-white" : "border-border text-foreground border",
+                      )}
+                    >
+                      {row.role === "payer" ? "Paying now" : `Backup ${row.position}`}
+                    </span>
+                  </div>
+                </Fragment>
+              ))}
+            </SettingsGroup>
+            {(boost?.more ?? 0) > 0 && (
+              <p className="text-muted-foreground text-xs">
+                and {boost!.more} more {boost!.more === 1 ? "backup" : "backups"}
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Only the top pledge is charged. If it stops paying, the next one pays.
+            </p>
+          </div>
+        ) : (
+          !loading && (
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {period?.granted
+                ? "Nobody has pledged yet. Pledge now and you pay when the grant ends."
+                : "Be the first. Others can join as backups."}
+            </p>
+          )
+        )}
+
+        {/* Choose a level. */}
+        <div className="flex flex-col gap-3">
+          {mine && mine.status !== "ended" && <p className="text-sm font-semibold">Change your pledge</p>}
           <div className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1" role="radiogroup" aria-label="Billing">
             {(["month", "year"] as const).map((v) => (
               <button
@@ -145,7 +193,7 @@ export function BoostPane({
                 aria-checked={interval === v}
                 onClick={() => setBillingInterval(v)}
                 className={cn(
-                  "rounded-md py-2 text-sm font-semibold transition",
+                  "min-h-11 rounded-md text-sm font-semibold transition",
                   interval === v ? "bg-card text-foreground shadow-sm" : "text-muted-foreground",
                 )}
               >
@@ -153,205 +201,103 @@ export function BoostPane({
               </button>
             ))}
           </div>
-
-          <div role="radiogroup" aria-label="Premier level">
-            <SettingsGroup>
-              {BOOST_TIERS.map((t, i) => {
-                const on = tier === t.key;
-                return (
-                  <Fragment key={t.key}>
-                    {i > 0 && <RowDivider />}
-                    <button
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      onClick={() => setTier(t.key)}
-                      className="hover:bg-muted flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left text-sm transition"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="font-semibold">{t.label}</span>
-                        <span className="text-muted-foreground block text-xs">{t.blurb}</span>
-                      </span>
-                      <span className="font-semibold whitespace-nowrap">{boostPrice(t.monthly, interval)}</span>
-                      <span
-                        aria-hidden
-                        className={cn(
-                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                          on ? "border-foreground" : "border-border",
-                        )}
-                      >
-                        {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
-                      </span>
-                    </button>
-                  </Fragment>
-                );
-              })}
-            </SettingsGroup>
+          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Premier level">
+            {BOOST_TIERS.map((t) => {
+              const tq = boost?.quotes?.[t.key][interval];
+              const on = picked === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => {
+                    setPicked(t.key);
+                    setStartError(null);
+                  }}
+                  className={cn(
+                    "flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl border px-2 py-3 transition active:scale-[0.98]",
+                    on ? "border-foreground ring-foreground ring-1" : "border-border hover:bg-muted",
+                  )}
+                >
+                  <span className="font-display text-2xl leading-none font-semibold">{t.mark}</span>
+                  <span className="text-muted-foreground text-xs">
+                    {tq ? `${money(tq.price_cents)}/${interval === "year" ? "yr" : "mo"}` : t.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => void start()}
-            disabled={starting}
-            className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
-          >
-            {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {starting ? "Opening checkout…" : `Continue · ${boostPrice(picked.monthly, interval)}`}
-          </button>
-          <p className="text-muted-foreground text-center text-xs">
-            Prices in US dollars. Billed by Stripe. Premier is paid visibility:
-            it does not verify the place. Cancel any time; your backing runs to
-            the end of the period you paid for.
+          {picked && (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm leading-relaxed" aria-live="polite">
+                {priceLine(picked, interval, q, boost, mine)}
+              </p>
+              {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
+              {boost?.quotes && q && (
+                <button
+                  type="button"
+                  onClick={() => void pledge()}
+                  disabled={starting}
+                  className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
+                >
+                  {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  {starting ? "Opening…" : buttonLabel(q)}
+                </button>
+              )}
+            </div>
+          )}
+
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            If someone pays for a higher level, the unused days already paid carry over to it. Premier
+            boosts visibility. It doesn&apos;t verify the place. Prices in US dollars, billed by Stripe.
           </p>
         </div>
-      ) : (
-        <>
-      {/* A SHORT CARD, THEN THE CHOICES (Pato, MESITA-2814: "maybe create a
-          modal … if i click the modal, then open something"). The card says
-          where the place stands, what Premier is in one line, and the three
-          levels as tiles; a tile or the button swaps in billing and
-          Checkout in the same pane (MESITA-2815, MESITA-2817). */}
-      <div className="border-border bg-card flex flex-col gap-4 rounded-2xl border p-4">
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-              current ? "text-white" : "bg-muted text-foreground",
-            )}
-            style={current ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined}
-          >
-            <BadgeCheck className="h-5 w-5" aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <h2 id="boost-title" className="text-base leading-tight font-semibold">
-              {current ?? "Not Premier yet"}
-            </h2>
-            <p className="text-muted-foreground truncate text-xs" aria-live="polite">
-              {loading
-                ? "Loading…"
-                : current && boost
-                  ? `Backed by ${backedBy(boost.backers)}`
-                  : "Be the first to back it"}
-            </p>
-          </div>
-        </div>
-
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          Show {place.name} to more guests on the Map and Home. Guests see{" "}
-          <span className="text-foreground font-semibold">Premier</span> and
-          its level beside its name, and a red pin on the Map.
-        </p>
-
-        <div className="grid grid-cols-3 gap-2">
-          {BOOST_TIERS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => openSheet(t.key)}
-              className="border-border hover:bg-muted flex flex-col items-center gap-0.5 rounded-xl border px-2 py-3 transition active:scale-[0.98]"
-            >
-              <span className="font-display text-2xl leading-none font-semibold">
-                {TIER_MULTIPLIER[t.key]}
-              </span>
-              <span className="text-muted-foreground text-xs">
-                {boostPrice(t.monthly, "month")}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => openSheet(tier)}
-          className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
-        >
-          <BadgeCheck className="h-4 w-4" aria-hidden />
-          {current ? "Back it too" : "Make it Premier"}
-        </button>
       </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Premier level.{" "}
+          Couldn&apos;t load this place&apos;s Premier.{" "}
           <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
         </div>
       )}
 
-      {mine.length > 0 && (
-        <div>
-          <p className="text-sm font-semibold">Your backing</p>
-          <div className="mt-2">
-            <SettingsGroup>
-              {mine.map((b, i) => (
-                <Fragment key={b.id}>
-                  {i > 0 && <RowDivider />}
-                  <div className="flex min-h-12 items-center gap-3 px-4 py-3 text-sm">
-                    <span className="min-w-0 flex-1">
-                      <span className="font-semibold">
-                        {BOOST_TIERS.find((t) => t.key === b.tier)?.label ?? "Premier"}
-                      </span>
-                      <span className="text-muted-foreground"> · {b.interval === "year" ? "Yearly" : "Monthly"}</span>
-                      <span className="text-muted-foreground block text-xs">
-                        {b.cancel_at_period_end ? "Ends" : "Renews"} {formatDate(b.current_period_end)}
-                      </span>
-                    </span>
-                    {!b.cancel_at_period_end && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCancelError(null);
-                          setCancelling(b);
-                        }}
-                        className="text-destructive text-sm font-semibold"
-                      >
-                        Cancel
-                      </button>
-                    )}
-                  </div>
-                </Fragment>
-              ))}
-            </SettingsGroup>
-          </div>
-        </div>
-      )}
-
-
-        </>
-      )}
-
       <LocalDialog
-        open={cancelling != null}
-        onClose={() => (cancelBusy ? undefined : setCancelling(null))}
-        ariaLabel="Cancel your backing"
+        open={leaving}
+        onClose={() => (leaveBusy ? undefined : setLeaving(false))}
+        ariaLabel="Leave the line"
       >
         <div className="flex flex-col gap-3 p-5 text-center">
           <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <XCircle className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className={SHEET_TITLE_CLASS}>Cancel your backing?</h2>
+          <h2 className={SHEET_TITLE_CLASS}>Leave the line?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
-            It stops renewing and stays on until {formatDate(cancelling?.current_period_end ?? null)}.
+            {mine?.role === "payer" && period
+              ? `Your ${TIER_MARK[period.tier]} runs to ${shortDate(period.ends_at)}, then the next in line pays.`
+              : "You can pledge again any time."}
           </p>
-          {cancelError && <p className={ERROR_BOX_CLASS}>{cancelError}</p>}
+          {leaveError && <p className={ERROR_BOX_CLASS}>{leaveError}</p>}
           <div className="mt-1 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => void confirmCancel()}
-              disabled={cancelBusy}
+              onClick={() => void confirmLeave()}
+              disabled={leaveBusy}
               className="bg-foreground inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
             >
-              {cancelBusy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-              {cancelBusy ? "Cancelling…" : "Yes, cancel it"}
+              {leaveBusy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+              {leaveBusy ? "Leaving…" : "Leave"}
             </button>
             <button
               type="button"
-              onClick={() => setCancelling(null)}
-              disabled={cancelBusy}
+              onClick={() => setLeaving(false)}
+              disabled={leaveBusy}
               className="border-border bg-card hover:bg-muted inline-flex h-11 w-full items-center justify-center rounded-full border text-sm font-semibold transition disabled:opacity-60"
             >
-              Keep it
+              Stay
             </button>
           </div>
         </div>
@@ -360,8 +306,94 @@ export function BoostPane({
   );
 }
 
+/** The guest's own pledge, above the line. */
+function YourPledge({
+  mine,
+  period,
+  onLeave,
+}: {
+  mine: MyPledge;
+  period: PlaceBoost["period"];
+  onLeave: () => void;
+}) {
+  let text: string;
+  if (mine.status === "failed") text = "Card declined · pick a level below to pledge again";
+  else if (mine.status === "open") text = "Finishing payment…";
+  else if (mine.pending) text = `Upgrade to ${TIER_MARK[mine.pending]}: finishing payment…`;
+  else if (mine.role === "payer" && period && mine.tier < period.tier) {
+    text = `${TIER_MARK[period.tier]} · Paying now → ${TIER_MARK[mine.tier]} from ${shortDate(period.ends_at)}`;
+  } else if (mine.role === "payer") text = `${TIER_MARK[mine.tier]} · Paying now`;
+  else text = `${TIER_MARK[mine.tier]} · Backup ${mine.position}`;
+  return (
+    <div className="bg-muted flex min-h-12 items-center gap-3 rounded-xl px-4 py-2.5 text-sm">
+      <span className="min-w-0 flex-1">
+        <span className="text-muted-foreground block text-xs">Your pledge</span>
+        <span className="font-semibold">{text}</span>
+      </span>
+      {mine.status !== "open" && (
+        <button type="button" onClick={onLeave} className="min-h-11 px-1 text-sm font-semibold underline">
+          Leave
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** The status line (copy table, MESITA-2995). */
+function statusLine(boost: PlaceBoost | null): string {
+  if (!boost) return "Not Premier yet";
+  const p = boost.period;
+  if (boost.renewing) return p ? `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · renewing…` : "Premier · renewing…";
+  if (p?.granted) return `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · granted by Mesita until ${shortDate(p.ends_at)}`;
+  if (p) return `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`;
+  if (boost.line.length > 0) return "Not Premier · the next pledge is charged within the hour";
+  return "Not Premier yet";
+}
+
+/** ONE sentence for the level the guest tapped, from the server's quote. */
+function priceLine(
+  tier: BoostTier,
+  interval: BoostInterval,
+  q: BoostQuote | null,
+  boost: PlaceBoost | null,
+  mine: MyPledge | null,
+): string {
+  if (!boost?.quotes || !q) return "Sign in to pledge.";
+  const every = INTERVAL_WORD[interval];
+  const mark = TIER_MARK[{ boost_2x: 1, boost_5x: 2, boost_10x: 3 }[tier]];
+  const period = boost.period;
+  const prefix = mine?.status === "failed" ? "Update your card. " : "";
+  if (q.role === "payer" && q.checkout === "none" && mine?.role === "payer" && period) {
+    return `Your ${TIER_MARK[period.tier]} runs to ${shortDate(period.ends_at)}; then ${mark} at ${money(q.price_cents)} every ${every}.`;
+  }
+  if (q.role === "payer") {
+    if (q.charge_cents === 0) {
+      return `${prefix}$0 today (covered by credit). Your ${mark} runs to ${shortDate(q.new_ends_at)}${
+        q.extra_days > 0 ? `, with ${q.extra_days} extra days` : ""
+      }. ${q.checkout === "none" ? "You become the payer." : "Confirm your card to become the payer."}`;
+    }
+    if (period?.granted) {
+      return `${prefix}Pay ${money(q.charge_cents)} today. You become the payer; the granted ${TIER_MARK[period.tier]} ends now. Then ${money(q.price_cents)} every ${every}.`;
+    }
+    if (q.credit_cents > 0 && period) {
+      return `${prefix}Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on the current ${TIER_MARK[period.tier]}). You become the payer. Then ${money(q.price_cents)} every ${every}.`;
+    }
+    return `${prefix}Pay ${money(q.charge_cents)} today, then ${money(q.price_cents)} every ${every} until you leave.`;
+  }
+  if (period?.granted) {
+    return `${prefix}$0 today. You'd be Backup ${q.position} and pay when the grant ends ${shortDate(period.ends_at)}.`;
+  }
+  return `${prefix}$0 today. You'd be Backup ${q.position}. You may be charged ${money(q.price_cents)} a ${every} later, only if the pledges above you stop paying.`;
+}
+
+function buttonLabel(q: BoostQuote): string {
+  if (q.checkout === "payment") return `Pay ${money(q.charge_cents)}`;
+  if (q.checkout === "setup") return q.role === "payer" ? "Confirm card" : "Pledge as backup";
+  return "Save change";
+}
+
 /** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
- *  nothing to back yet. */
+ *  nothing to pledge for yet. */
 export function BoostUnavailable() {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
@@ -374,14 +406,4 @@ export function BoostUnavailable() {
       </p>
     </div>
   );
-}
-
-/** "1 guest" · "3 guests": a count, never a name (MESITA-2928). */
-export function backedBy(backers: number): string {
-  return backers === 1 ? "1 guest" : `${backers} guests`;
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "soon";
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
