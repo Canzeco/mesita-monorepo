@@ -468,13 +468,11 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     pendingReload.current = null;
   }, []);
 
-  // The view as it is now, for the live readout (MESITA-2512): every camera
-  // change, once a frame. It never loads.
-  const [, setLiveBox] = useState<ViewportBox | null>(null);
-
+  // The view as it is now. A ref, never state: the live readout that read
+  // it is hidden (MESITA-2670), and as state it re-rendered all of Search on
+  // every camera frame and every idle, for nothing (MESITA-3040).
   const markViewport = useCallback((box: ViewportBox) => {
     lastBoxRef.current = box;
-    setLiveBox(box);
   }, []);
 
   // MESITA-2497/2498 debug readout: the blue dot read through a ref, so a
@@ -1207,7 +1205,6 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
           onFirstViewport={onFirstViewport}
           onUserViewport={onUserViewport}
           onCameraMoveStart={clearPendingReload}
-          onLiveViewport={setLiveBox}
         />
         {/* THE CAROUSEL FLOATS OVER THE MAP (Pato, MESITA-2670: "remove the
             coordinates box and the background; the carousel must be floating

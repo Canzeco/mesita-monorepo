@@ -11,6 +11,7 @@
 //   • one place to evolve the contract (telemetry, retry, etc.).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logCall } from "@/lib/call-log";
 import { reportEFFailure } from "@/lib/report-error";
 
 // EVERY FUNCTION RUNS NEXT TO THE DATABASE (MESITA-3021). The project lives
@@ -66,16 +67,24 @@ export async function invokeEF<T>(
   // wouldn't be readable on its own.
   fallback = `${fn} failed`,
 ): Promise<T> {
+  const started = Date.now();
   const { data, error } = await client.functions.invoke<EFResult<T>>(
     `${fn}?forceFunctionRegion=${FUNCTION_REGION}`,
     { body },
   );
+  const ms = Date.now() - started;
 
   if (error) {
     const parsed = await parseInvokeErrorBody(error);
     const message = pickErrorMessage(parsed) ?? error.message;
     const code = parsed && typeof parsed.code === "string" ? parsed.code : null;
     const status = readInvokeStatus(error);
+    logCall({
+      kind: "ef",
+      label: fn,
+      status: status ? String(status) : "net",
+      ms,
+    });
     reportEFFailure(fn, message, status);
     throw new EFError(message, {
       fn,
@@ -83,6 +92,11 @@ export async function invokeEF<T>(
       status,
       body: parsed,
     });
+  }
+  if (!data || !data.ok) {
+    logCall({ kind: "ef", label: fn, status: "fail", ms });
+  } else {
+    logCall({ kind: "ef", label: fn, status: "ok", ms });
   }
   if (!data) {
     throw new EFError(fallback, { fn });
