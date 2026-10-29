@@ -84,6 +84,8 @@ export async function invokeEF<T>(
       label: fn,
       status: status ? String(status) : "net",
       ms,
+      request: body,
+      response: parsed ?? { error: error.message },
     });
     reportEFFailure(fn, message, status);
     throw new EFError(message, {
@@ -93,11 +95,14 @@ export async function invokeEF<T>(
       body: parsed,
     });
   }
-  if (!data || !data.ok) {
-    logCall({ kind: "ef", label: fn, status: "fail", ms });
-  } else {
-    logCall({ kind: "ef", label: fn, status: "ok", ms });
-  }
+  logCall({
+    kind: "ef",
+    label: fn,
+    status: data?.ok ? "ok" : "fail",
+    ms,
+    request: body,
+    response: data ?? null,
+  });
   if (!data) {
     throw new EFError(fallback, { fn });
   }
