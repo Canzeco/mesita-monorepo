@@ -54,53 +54,61 @@ serveJson("consumer-web-get-place", async (req) => {
   }
 
   const supabase = anonClient(envRes.env);
+  const admin = adminClient(envRes.env);
   const column = isUuid(idOrSlug) ? "id" : "slug";
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select(PLACE_PROFILE_COLUMNS + GOOGLE_REVIEW_FORM_COLUMN)
-    .eq(column, idOrSlug)
-    .maybeSingle();
+  // TWO ROUNDS, NOT SIX (MESITA-3029). The place screen waits on this read
+  // before it paints, and every step used to wait on the one before: the
+  // row, its tags, the caller, their request, the threshold, the stats.
+  // get-place took 1.46 s at the median (function_edge_logs, 2026-10-28).
+  // Round one asks what needs nothing: the row, the caller, the threshold.
+  // Round two asks what needs the row's id.
+  const [rowRes, { user }, threshold] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select(PLACE_PROFILE_COLUMNS + GOOGLE_REVIEW_FORM_COLUMN)
+      .eq(column, idOrSlug)
+      .maybeSingle(),
+    getOptionalAuthedUser(req, envRes.env),
+    loadRequestThreshold(admin),
+  ]);
+  const { data, error } = rowRes;
 
   if (error) return json({ ok: false, error: error.message }, 500);
   if (!data) return json({ ok: false, error: "Place not found" }, 404);
-
-  // Resolve the place's tag slugs (places.tags) into ordered, labelled catalog
-  // entries so the detail modal can render chips without a second round-trip or
-  // a client-side tag dictionary. Unknown slugs are dropped. Clients must
-  // display label_en (MESITA-963); label_es is dormant until a TMS.
-  const tags = await resolvePlaceTags(
-    supabase,
-    (data as { tags?: string[] | null }).tags,
-  );
 
   // via unknown: the nested-embed select widens `data` to supabase-js's
   // GenericStringError union, which doesn't overlap the row shape enough for a
   // direct assertion.
   const placeId = (data as unknown as { id: string }).id;
-  const admin = adminClient(envRes.env);
 
   // `name` is the Mesita name (MESITA-2828); google_name rides along as
   // Google's own label, Search's alias.
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
-  // Overview's Stats box (MESITA-2866): unique members who viewed / liked.
-  // Counts only; best-effort, a failed read is 0.
-  const profileStatsP = fetchPlaceProfileStats(admin, placeId);
-  const { user } = await getOptionalAuthedUser(req, envRes.env);
-  let requested = false;
-  if (user) {
-    const mine = await admin
-      .from("place_requests")
-      .select("consumer_id")
-      .eq("consumer_id", user.id)
-      .eq("place_id", placeId)
-      .maybeSingle();
-    requested = !mine.error && mine.data != null;
-  }
+
+  const [tags, profileStats, requested] = await Promise.all([
+    // The place's tag slugs (places.tags) as ordered, labelled catalog
+    // entries, so the detail renders chips without a second round-trip or a
+    // client-side tag dictionary. Unknown slugs are dropped. Clients display
+    // label_en (MESITA-963); label_es is dormant until a TMS.
+    resolvePlaceTags(supabase, (data as { tags?: string[] | null }).tags),
+    // Overview's Stats box (MESITA-2866): unique members who viewed / liked.
+    // Counts only; best-effort, a failed read is 0.
+    fetchPlaceProfileStats(admin, placeId),
+    user
+      ? admin
+          .from("place_requests")
+          .select("consumer_id")
+          .eq("consumer_id", user.id)
+          .eq("place_id", placeId)
+          .maybeSingle()
+          .then((mine) => !mine.error && mine.data != null)
+      : Promise.resolve(false),
+  ]);
   const request = placeRequestState({
     requestCount: Number(row.request_count) || 0,
-    threshold: await loadRequestThreshold(admin),
+    threshold,
     requested,
     contentState: row.content_state,
     enrichedAt: row.enriched_at,
@@ -109,7 +117,7 @@ serveJson("consumer-web-get-place", async (req) => {
     ...row,
     google_reviews: anonymousReviews(row.google_reviews),
     ...request,
-    profile_stats: await profileStatsP,
+    profile_stats: profileStats,
     // Overview's Mesita Families box (MESITA-2924): the keys, named.
     families: familyChips(row.family_keys),
   };

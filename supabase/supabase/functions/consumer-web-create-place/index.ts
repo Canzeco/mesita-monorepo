@@ -22,6 +22,7 @@
 // Deploy: supabase functions deploy consumer-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { runInBackground } from "../_shared/background.ts";
 import {
   corsPreflight,
   json,
@@ -83,7 +84,9 @@ serveJson("consumer-web-create-place", async (req) => {
   // Get: a place Mesita holds opens without spending quota or Google money.
   const existing = await findPlaceByGooglePlaceId(admin, googlePlaceId);
   if (existing) {
-    await log({ outcome: "existing", placeId: placeIdOf(existing) });
+    // The guest is waiting on this open; the audit line is written after
+    // the answer leaves (MESITA-3029).
+    runInBackground(log({ outcome: "existing", placeId: placeIdOf(existing) }));
     return json(openedExistingPlace(existing), 200);
   }
 
