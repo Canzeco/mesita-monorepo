@@ -28,10 +28,10 @@ Deno.test("null, [] and a list of blanks clear the families", () => {
   assertEquals(readFamilyKeysBody(["", "  "], FAMILIES), { ok: true, keys: null });
 });
 
-Deno.test("a sixth family is refused, never trimmed", () => {
-  const six = ["coffee", "breakfast", "quick_bite", "tacos", "mexican", "dinner"];
-  assertEquals(six.length, FAMILIES_MAX + 1);
-  const r = readFamilyKeysBody(six, FAMILIES);
+Deno.test("an eighth family is refused, never trimmed", () => {
+  const eight = ["coffee", "breakfast", "quick_bite", "tacos", "mexican", "dinner", "drinks", "fun"];
+  assertEquals(eight.length, FAMILIES_MAX + 1);
+  const r = readFamilyKeysBody(eight, FAMILIES);
   assertEquals(r.ok, false);
   if (!r.ok) assertEquals(r.body.code, "too_many_families");
 });
@@ -53,5 +53,5 @@ Deno.test("a non-list body is refused", () => {
 });
 
 Deno.test("the cap is the one number the trigger and the editor share", () => {
-  assertEquals(FAMILIES_MAX, 5);
+  assertEquals(FAMILIES_MAX, 7);
 });

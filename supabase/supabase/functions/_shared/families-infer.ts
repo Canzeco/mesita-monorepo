@@ -1,7 +1,7 @@
 // Mesita Families, inferred (MESITA-2891). Pato, 2026-10-27: "Now the list of
 // Mesita Families is infered when the description step is ran. Its infered
 // with an LLM, not a dictionary. The max number of families per place is 5,
-// the min number is 1."
+// the min number is 1." Raised to 7 on 2026-10-29 (MESITA-3087).
 //
 // The Description step's one model call (Create's door and every Enrich)
 // returns `families` beside the Presentation and the tags; this module is the
@@ -42,7 +42,7 @@ function normalise(v: string): string {
 }
 
 /**
- * The model's `families` → 1–5 known slugs, first-seen order. A label is
+ * The model's `families` → 1–7 known slugs, first-seen order. A label is
  * salvaged to its slug; Undefined, unknown and duplicate entries drop. Null
  * when nothing survives, so the caller keeps the stored list.
  */

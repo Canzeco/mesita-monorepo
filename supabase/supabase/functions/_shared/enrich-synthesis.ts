@@ -35,7 +35,7 @@ const PROFILE_SCHEMA = {
     mesita_name: { type: ["string", "null"] },
     // Mesita tags (MESITA-2790): slugs copied from the TAG VOCABULARY block.
     tags: { type: "array", items: { type: "string" } },
-    // Mesita Families (MESITA-2891): 1–5 slugs from the FAMILY LIST block.
+    // Mesita Families (MESITA-2891): 1–7 slugs from the FAMILY LIST block.
     families: { type: "array", items: { type: "string" } },
     // Mesita Zone (MESITA-2937): the neighborhood the place header draws.
     zone: { type: ["string", "null"] },
