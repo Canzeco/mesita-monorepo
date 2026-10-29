@@ -454,25 +454,35 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
         >
           <label className="flex flex-col gap-1">
             <span className="type-label font-semibold">Instagram username</span>
-            <input
-              type="text"
-              autoCapitalize="none"
-              autoCorrect="off"
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="@username"
-              maxLength={31}
-              value={raw}
-              disabled={pending}
-              onChange={(e) => {
-                setRaw(e.target.value);
-                setResult(null);
-              }}
-              aria-invalid={invalid || undefined}
-              aria-describedby={invalid ? "ig-lookup-invalid" : undefined}
-              className={INPUT_CLASS}
-              data-instagram-lookup-username
-            />
+            {/* The @ is drawn, never typed (Pato, MESITA-3045: "automatically
+                write the @ here"); a typed or pasted one is dropped. */}
+            <span className="relative block">
+              <span
+                aria-hidden
+                className="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm"
+              >
+                @
+              </span>
+              <input
+                type="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="username"
+                maxLength={30}
+                value={raw}
+                disabled={pending}
+                onChange={(e) => {
+                  setRaw(e.target.value.trimStart().replace(/^@+/, ""));
+                  setResult(null);
+                }}
+                aria-invalid={invalid || undefined}
+                aria-describedby={invalid ? "ig-lookup-invalid" : undefined}
+                className={cn(INPUT_CLASS, "pl-7")}
+                data-instagram-lookup-username
+              />
+            </span>
           </label>
           {invalid && (
             <p id="ig-lookup-invalid" className="text-destructive type-label">
