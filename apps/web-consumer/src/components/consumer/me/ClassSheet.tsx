@@ -146,31 +146,61 @@ const JOIN_CARD_CLASS =
 const JOIN_BODY_CLASS = "flex-1 pb-4";
 const LINK_CLASS = "text-foreground font-semibold underline underline-offset-2";
 
-/** Where the Instagram row stands, from what the page last knew. The server
- *  checks again on the tap. */
-function instagramLock(
-  ig: ClassInstagram,
-):
-  | { open: true; followers: number }
-  | { open: false; reason: string | null; link: string | null } {
-  if (!ig) return { open: false, reason: null, link: null };
-  if (!ig.handle)
-    return { open: false, reason: JOIN_WORDS.connect, link: null };
-  if (ig.followers === null) {
-    return {
-      open: false,
-      reason: JOIN_WORDS.unknownCount,
-      link: JOIN_WORDS.update,
-    };
-  }
-  if (ig.followers < INSTAGRAM_REACH_FOLLOWERS) {
-    return {
-      open: false,
-      reason: JOIN_WORDS.needs(ig.followers),
-      link: JOIN_WORDS.update,
-    };
-  }
-  return { open: true, followers: ig.followers };
+/** Where the Instagram card stands, from what the page last knew. The server
+ *  checks again on the tap (MESITA-3069's states). */
+type InstagramState =
+  | { kind: "unknown" }
+  | { kind: "not_connected" }
+  | { kind: "count_unknown" }
+  | { kind: "below"; followers: number }
+  | { kind: "ready"; followers: number };
+
+function instagramState(ig: ClassInstagram): InstagramState {
+  if (!ig) return { kind: "unknown" };
+  if (!ig.handle) return { kind: "not_connected" };
+  if (ig.followers === null) return { kind: "count_unknown" };
+  return ig.followers < INSTAGRAM_REACH_FOLLOWERS
+    ? { kind: "below", followers: ig.followers }
+    : { kind: "ready", followers: ig.followers };
+}
+
+const fmtCount = (n: number) => n.toLocaleString("en-US");
+
+/** The follower count toward the bar (Pato, MESITA-3069: lead with the
+ *  number). A thin bar on the muted track, full at the bar or above. */
+function FollowerProgress({ followers }: { followers: number }) {
+  const needed = INSTAGRAM_REACH_FOLLOWERS;
+  const share = Math.min(followers / needed, 1);
+  const ready = followers >= needed;
+  return (
+    <div className="mt-2" data-class-join-progress="">
+      <span className="block text-xl font-semibold tabular-nums">
+        {fmtCount(followers)}
+        {!ready && (
+          <span className="text-muted-foreground font-medium">
+            {" "}
+            / {fmtCount(needed)}
+          </span>
+        )}
+      </span>
+      <div
+        role="progressbar"
+        aria-label={JOIN_WORDS.progressLabel}
+        aria-valuemin={0}
+        aria-valuemax={needed}
+        aria-valuenow={Math.min(followers, needed)}
+        className="bg-muted mt-2 h-1.5 w-full overflow-hidden rounded-full"
+      >
+        <div
+          className="bg-foreground h-full rounded-full"
+          style={{ width: `${share * 100}%` }}
+        />
+      </div>
+      <span className="text-muted-foreground type-label mt-2 block">
+        {ready ? JOIN_WORDS.qualify : JOIN_WORDS.toJoin}
+      </span>
+    </div>
+  );
 }
 
 /** "1234 5678 9012" as the guest types; the server drops the spaces. */
@@ -198,7 +228,7 @@ function BecomeVip({
   const [igError, setIgError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
   const digits = code.replace(/\D/g, "");
-  const lock = instagramLock(instagram);
+  const ig = instagramState(instagram);
 
   async function join(via: "instagram" | "code") {
     if (busy) return;
@@ -229,73 +259,76 @@ function BecomeVip({
     }
   }
 
-  const igReason =
-    igError ?? (lock.open ? JOIN_WORDS.ready(lock.followers) : lock.reason);
-  const igLink = igError ? JOIN_WORDS.update : lock.open ? null : lock.link;
-
-  // SIDE BY SIDE (Pato, MESITA-3056: "since are two ways to upgrade, not top
-  // and bottom but left and right"): two equal cards in one row, each its
-  // title, its line, and its Join at the bottom, so the two buttons align.
+  // SIDE BY SIDE (Pato, MESITA-3056), stacked under 360px like the identity
+  // card's Class · Plan pair (MESITA-3069). Each card: words on top, at most
+  // one LIVE button at the bottom — never a greyed-out one (MESITA-3069:
+  // two dead buttons read as a broken page).
   return (
     <section className="mt-6 flex flex-col gap-2" data-class-join="">
       <SectionEyebrow>{JOIN_WORDS.group}</SectionEyebrow>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
         <div className={JOIN_CARD_CLASS} data-class-join-instagram="">
           <div className={JOIN_BODY_CLASS}>
             <span className="type-label block font-semibold">
               {JOIN_WORDS.instagramTitle}
             </span>
-            {igReason && (
-              <span id="class-join-instagram-reason" className={REASON_CLASS}>
-                {igReason}
+            {(ig.kind === "below" || ig.kind === "ready") && (
+              <FollowerProgress followers={ig.followers} />
+            )}
+            {ig.kind === "not_connected" && (
+              <span className={REASON_CLASS}>{JOIN_WORDS.toJoinFull}</span>
+            )}
+            {ig.kind === "count_unknown" && (
+              <span className={REASON_CLASS}>
+                {JOIN_WORDS.countUnavailable}
               </span>
             )}
-            {instagram && !instagram.handle && (
-              <Link
-                href={CONSUMER_ROUTES.mePages.instagram}
-                className={cn(REASON_CLASS, LINK_CLASS)}
-              >
-                Go to Instagram
-              </Link>
+            {igError && (
+              <span role="alert" className={REASON_CLASS}>
+                {igError}
+              </span>
             )}
-            {igLink && instagram?.handle && (
-              <Link
-                href={CONSUMER_ROUTES.mePages.instagram}
-                className={cn(REASON_CLASS, LINK_CLASS)}
-              >
-                {igLink}
-              </Link>
-            )}
+            {(ig.kind === "below" || ig.kind === "count_unknown" || igError) &&
+              ig.kind !== "not_connected" && (
+                <Link
+                  href={CONSUMER_ROUTES.mePages.instagram}
+                  className={cn(REASON_CLASS, LINK_CLASS)}
+                >
+                  {JOIN_WORDS.update}
+                </Link>
+              )}
           </div>
-          <Button
-            type="button"
-            size="sm"
-            aria-label={JOIN_WORDS.instagramButton}
-            aria-disabled={!lock.open || busy !== null || undefined}
-            aria-describedby={
-              igReason ? "class-join-instagram-reason" : undefined
-            }
-            onClick={() => {
-              if (lock.open) void join("instagram");
-            }}
-            className={cn(
-              ME_BUTTON_CLASS,
-              "w-full",
-              (!lock.open || busy !== null) && "pointer-events-none opacity-50",
-            )}
-          >
-            {busy === "instagram" && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            {JOIN_WORDS.codeButton}
-          </Button>
+          {ig.kind === "not_connected" && (
+            <Button asChild size="sm" className={cn(ME_BUTTON_CLASS, "w-full")}>
+              <Link href={CONSUMER_ROUTES.mePages.instagram}>
+                {JOIN_WORDS.connectButton}
+              </Link>
+            </Button>
+          )}
+          {ig.kind === "ready" && (
+            <Button
+              type="button"
+              size="sm"
+              aria-label={JOIN_WORDS.instagramButton}
+              disabled={busy !== null}
+              onClick={() => void join("instagram")}
+              className={cn(ME_BUTTON_CLASS, "w-full")}
+            >
+              {busy === "instagram" && (
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+              )}
+              {JOIN_WORDS.codeButton}
+            </Button>
+          )}
         </div>
         <form
           className={JOIN_CARD_CLASS}
           data-class-join-code=""
           onSubmit={(e) => {
             e.preventDefault();
+            // Live from the start (MESITA-3069): a short code is told so.
             if (digits.length === 12) void join("code");
+            else setCodeError(JOIN_WORDS.shortCode);
           }}
         >
           <div className={JOIN_BODY_CLASS}>
@@ -330,7 +363,7 @@ function BecomeVip({
           <Button
             type="submit"
             size="sm"
-            disabled={digits.length !== 12 || busy !== null}
+            disabled={busy !== null}
             className={cn(ME_BUTTON_CLASS, "w-full")}
           >
             {busy === "code" && (

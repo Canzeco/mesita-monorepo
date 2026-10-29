@@ -56,11 +56,19 @@ export const JOIN_WORDS = {
   codeButton: "Join",
   joined: "You're VIP.",
   connect: "Connect Instagram first.",
-  update: "Update on Instagram",
+  update: "Update count",
   unknownCount: "We couldn't read your follower count.",
   needs: (followers: number, needed = INSTAGRAM_REACH_FOLLOWERS) =>
     `Needs ${fmt(needed)} followers. You have ${fmt(followers)}.`,
   ready: (followers: number) => `${fmt(followers)} followers on Instagram.`,
+  // The redesigned card (MESITA-3069): the number leads, a bar under it.
+  progressLabel: "Instagram followers toward VIP",
+  toJoin: "followers to join",
+  toJoinFull: `${fmt(INSTAGRAM_REACH_FOLLOWERS)} followers to join`,
+  qualify: "followers · you qualify",
+  countUnavailable: "Count unavailable",
+  connectButton: "Connect",
+  shortCode: "Enter the 12-digit code.",
 } as const;
 
 /** Leaving VIP, in the rare case a guest wants to (MESITA-3054). */
@@ -88,9 +96,9 @@ export function joinErrorWords(
     case "not_enough_followers":
       return typeof body?.followers === "number"
         ? JOIN_WORDS.needs(
-          body.followers,
-          typeof body.needed === "number" ? body.needed : undefined,
-        )
+            body.followers,
+            typeof body.needed === "number" ? body.needed : undefined,
+          )
         : JOIN_WORDS.needs(0);
     case "consumer_not_found":
       return "Your account isn't active. Sign in again.";
