@@ -13,10 +13,10 @@
 //   (1 insert; retired in MESITA-2090), consumer-web-update-reservation (1),
 //   consumer-web-confirm-reservation (2) — 11 sites routed through
 //   writeReservation below; business-web-confirm-reservation (1; retired in
-//   MESITA-2090), supabase-cron-reservation-retries
+//   MESITA-2090), supabase-cron-retry-reservations
 //   (3, all bulk/filtered `.in()`/`.lt()` sweeps) — 4 more sites gated
 //   through validateReservationPatch directly (see below for why they don't
-//   use writeReservation); and supabase-edgefunc-reservation-call (13 — the
+//   use writeReservation); and supabase-edgefunc-place-reservation-call (13 — the
 //   live call engine: guardedRecord plus 12 direct writes, routed in a
 //   follow-up PR, MESITA-1280, once this file's write-surface research
 //   confirmed every literal value it writes was already covered by the
@@ -65,14 +65,14 @@
 //     retired because nothing could tell a place's own offer from a new
 //     guest idea).
 //   - attempts, if set, is an array of ReservationAttempt ({n, started_at,
-//     conversation_id, result}); supabase-edgefunc-reservation-call is its
+//     conversation_id, result}); supabase-edgefunc-place-reservation-call is its
 //     only writer.
 //
 // WHAT THIS VALIDATOR DELIBERATELY DOES NOT DO: couple `state` to
 // `reported_verdict`/`alternatives`/`outcome_note` in one invariant. Per this
 // issue's own landmine note, those three are written mid-call by
 // eleven-a1-report-outcome WITHOUT flipping state (state transitions are
-// owned by supabase-edgefunc-reservation-call) — but OTHER legitimate patches
+// owned by supabase-edgefunc-place-reservation-call) — but OTHER legitimate patches
 // (eleven-a2-confirm-reservation, consumer-web-update-reservation's
 // reschedule reset, and business-web-confirm-reservation until MESITA-2090
 // retired it) DO set state and
@@ -87,7 +87,7 @@
 // contact configuration (that shape lives on place_profiles.reservation_channel /
 // reservation_target, the place aggregate's concern, not this one's).
 //
-// supabase-edgefunc-reservation-call/index.ts (the live Reservationist call
+// supabase-edgefunc-place-reservation-call/index.ts (the live Reservationist call
 // engine, 12+ raw/guarded update sites) is NOT routed through this door by
 // this PR. Its writes run through `guardedRecord`, a run_id compare-and-swap
 // guard that stops an orphaned background run from racing a newer one — a
@@ -172,7 +172,7 @@ export type ReservationAlternative = {
   note?: string;
 };
 
-/** One placement attempt, written by supabase-edgefunc-reservation-call. */
+/** One placement attempt, written by supabase-edgefunc-place-reservation-call. */
 export type ReservationAttempt = {
   n: number;
   started_at: string;
@@ -603,7 +603,7 @@ export type ReservationWriteArgs =
      * {state: "pending"}. For a filter this door doesn't model (`.in(...)`,
      * `.or(...)`, a bulk sweep with no single id), call
      * validateReservationPatch directly and build the query yourself — see
-     * supabase-cron-reservation-retries. */
+     * supabase-cron-retry-reservations. */
     match?: Record<string, string>;
     select?: string;
   };

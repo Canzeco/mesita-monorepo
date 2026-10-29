@@ -130,7 +130,7 @@ verify_jwt = true
 # Reservationist "attempt 1": places the outbound reservation call via ElevenLabs
 # Convai. Internal-only; invoked by consumer-web-create-reservation right after it
 # inserts the pending reservation row.
-[functions.supabase-edgefunc-reservation-call]
+[functions.supabase-edgefunc-place-reservation-call]
 verify_jwt = true
 
 # Wakes reservations parked by the engine: a venue that doesn't answer gets
@@ -139,7 +139,7 @@ verify_jwt = true
 # long. pg_cron job run-reservation-retries fires this every minute with the
 # Vault service-role bearer; it hands each due ticket back to the engine.
 # Kill switch: select cron.unschedule('run-reservation-retries');
-[functions.supabase-cron-reservation-retries]
+[functions.supabase-cron-retry-reservations]
 verify_jwt = true
 
 # --- Memo's data surface (the agent holds NO database client) ---
@@ -309,7 +309,7 @@ verify_jwt = true
 verify_jwt = true
 
 # Reservations Agent (the consumer's half; the engine is
-# supabase-edgefunc-reservation-call above).
+# supabase-edgefunc-place-reservation-call above).
 [functions.consumer-web-create-reservation]
 verify_jwt = true
 

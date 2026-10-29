@@ -181,7 +181,7 @@ serveJson("consumer-web-update-reservation", async (req) => {
   const fired = await invokeInternalCaller(
     envRes.env,
     "consumer-web-update-reservation",
-    "supabase-edgefunc-reservation-call",
+    "supabase-edgefunc-place-reservation-call",
     { reservation_id: id },
   );
 

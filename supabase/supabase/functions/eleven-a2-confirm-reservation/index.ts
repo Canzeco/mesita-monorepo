@@ -9,7 +9,7 @@
 // place already said yes). A datetime — the guest picking one of the place's
 // alternatives OR proposing something entirely new ("mejor mañana a las 9") —
 // moves reserved_at, returns the ticket to pending and RE-FIRES the Booker
-// (supabase-edgefunc-reservation-call) so the place gets the follow-up call:
+// (supabase-edgefunc-place-reservation-call) so the place gets the follow-up call:
 // consumer ⇒ agent ⇒ business, double calls until both sides match. Partial
 // input is fine — a missing date or time defaults from the current reservation.
 // Capped at 2 negotiation rounds; past the cap the ticket parks in-app
@@ -189,7 +189,7 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   const fired = await invokeInternalCaller(
     envRes.env,
     "eleven-a2-confirm-reservation",
-    "supabase-edgefunc-reservation-call",
+    "supabase-edgefunc-place-reservation-call",
     { reservation_id: ticket.id },
   );
 

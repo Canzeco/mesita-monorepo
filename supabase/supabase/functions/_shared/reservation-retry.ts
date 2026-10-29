@@ -8,7 +8,7 @@
 //
 // A run can't sleep that long (the edge runtime dies at ~400s), so the engine
 // PARKS the ticket with `next_attempt_at` and a pg_cron poller
-// (supabase-cron-reservation-retries) wakes it. This module is the pure
+// (supabase-cron-retry-reservations) wakes it. This module is the pure
 // scheduling math so it's testable without a clock or a DB.
 //
 // Hours come from `places.hours` (the normalised WeeklyHours jsonb) and the

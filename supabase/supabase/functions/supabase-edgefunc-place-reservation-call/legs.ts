@@ -1,4 +1,4 @@
-// supabase-edgefunc-reservation-call · the leg runners.
+// supabase-edgefunc-place-reservation-call · the leg runners.
 //
 // Everything that runs AFTER the HTTP response, inside the background task:
 // the booking run (legs 1→2), the guest callback ladder (leg 3), the
@@ -963,7 +963,7 @@ export async function runIntents(input: {
         entry.result = "no_answer";
         if (n < attemptsPlanned) {
           // Park it: the place's own hours decide when we try again, and a run
-          // can't sleep 30 minutes. supabase-cron-reservation-retries wakes it.
+          // can't sleep 30 minutes. supabase-cron-retry-reservations wakes it.
           const next = nextAttemptAt(input.placeHours, input.placeLng);
           await record({
             attempts,
