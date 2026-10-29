@@ -23,6 +23,10 @@ export type ConsumerProfile = {
   // The follower count the guest claimed with the handle. Optional so an
   // older EF payload still reads; absent reads as 0.
   instagram_followers_count?: number | null;
+  // MESITA-3060: when the handle was connected and when it was last synced;
+  // the card's "Updated …" is the later one. Optional (older EF payloads).
+  instagram_verified_at?: string | null;
+  instagram_synced_at?: string | null;
   // MESITA-2585: may verifying Instagram set the picture? Absent on an older
   // EF reads as on (the column defaults true).
   use_instagram_photo?: boolean;
@@ -228,16 +232,31 @@ export async function apiInstagramDmStatus(
 
 // While the DM channel is off: the server scrapes the typed username (Apify)
 // and stores the handle, followers and photo on the account. For testing:
-// the username is trusted. `photo` says whether the photo became the avatar.
+// the username is trusted. `photo` says what happened to the picture.
+// MESITA-3060: `result` says which path ran — typing the connected handle
+// runs a Sync — and a Sync also returns the count it replaced.
 export type InstagramLookup = {
+  result: "connected" | "synced";
   source: "apify";
   profile: {
     username: string;
     profilePictureUrl: string | null;
     followerCount: number;
   };
-  photo: boolean;
+  photo: "updated" | "off" | "failed";
+  previousFollowers?: number | null;
 };
+
+/** Re-reads the connected handle's followers and photo (MESITA-3060). */
+export async function apiSyncInstagram(
+  client: SupabaseClient,
+): Promise<InstagramLookup> {
+  return await invokeEF<InstagramLookup>(
+    client,
+    "consumer-web-lookup-instagram",
+    { action: "sync" },
+  );
+}
 
 export async function apiLookupInstagram(
   client: SupabaseClient,

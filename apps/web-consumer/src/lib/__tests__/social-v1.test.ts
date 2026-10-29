@@ -3,11 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import {
-  feedFollowers,
-  feedSentence,
-  VERB,
-} from "@/components/consumer/home/SocialFeed";
+import { feedSentence, VERB } from "@/components/consumer/home/SocialFeed";
 import type { ActivityPerson } from "@/lib/api/activity";
 
 // Social v1 (MESITA-2442): Saved lives on the server, the browser is a cache;
@@ -137,7 +133,6 @@ describe("anonymous members in the feed", () => {
       anonymous: true,
     };
     expect(feedSentence({ person: anon, kind: "saved" })).toBe("Sofia liked");
-    expect(feedFollowers(anon)).toBeNull();
   });
 });
 

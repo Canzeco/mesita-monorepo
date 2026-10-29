@@ -34,7 +34,7 @@ serveJson("consumer-web-get-profile", async (req) => {
   const admin = adminClient(envRes.env);
 
   const CONSUMER_PROFILE_SELECT =
-    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, use_instagram_photo, appear_anonymous, guest_class, plan, vip_partner_id, vip_until, deleted_at";
+    "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, appear_anonymous, guest_class, plan, vip_partner_id, vip_until, deleted_at";
 
   // Read once. If absent, insert with a generated code and re-read.
   const existing = await admin

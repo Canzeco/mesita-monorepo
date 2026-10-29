@@ -170,23 +170,13 @@ export function feedWho(lead: ActivityPerson): string {
   return lead.name;
 }
 
-/** "(1.2K followers)" beside a lead @handle (MESITA-3051), or null: no
- *  handle on the line, or no count to show. */
-export function feedFollowers(lead: ActivityPerson): string | null {
-  if (!lead.handle || lead.handleLocked) return null;
-  const followers = approxFollowers(lead.followers);
-  return followers ? `(${followers} followers)` : null;
-}
-
-/** "@perdon (1.2K followers) liked" / "Sofia viewed": one person, never
- *  "and N others", never "You". */
+/** "@perdon liked" / "Sofia viewed": one person, never "and N others",
+ *  never "You". No follower count on the line (Pato, MESITA-3060: "just the
+ *  username, its cleaner"; MESITA-3051 had added it). */
 export function feedSentence(
   item: Pick<ActivityFeedItem, "person" | "kind">,
 ): string {
-  const followers = feedFollowers(item.person);
-  return [feedWho(item.person), followers, VERB[item.kind]]
-    .filter(Boolean)
-    .join(" ");
+  return `${feedWho(item.person)} ${VERB[item.kind]}`;
 }
 
 /** How often the open pane asks again (MESITA-2532: live, "just enough to
@@ -356,7 +346,6 @@ function FeedRow({
   fresh: boolean;
   onPerson: (item: ActivityFeedItem) => void;
 }) {
-  const followers = feedFollowers(item.person);
   const ago = shortAgo(item.at);
   const href = placeHref(item.place.slug || item.place.id);
   const who = feedWho(item.person);
@@ -374,9 +363,7 @@ function FeedRow({
             things a row opens, the person and the place, so they read as
             links. The verb between them stays plain. */}
         <span className="text-foreground line-clamp-2 text-sm leading-snug">
-          <span className={LINK_WORD_CLASS}>{who}</span>{" "}
-          {followers ? <>{followers} </> : null}
-          {VERB[item.kind]}{" "}
+          <span className={LINK_WORD_CLASS}>{who}</span> {VERB[item.kind]}{" "}
           <span className={LINK_WORD_CLASS}>{item.place.name}</span>
         </span>
         <span

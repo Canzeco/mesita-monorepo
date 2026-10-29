@@ -35,7 +35,7 @@ describe("connecting Instagram by message", () => {
   // is dm; off, the page asks for no code.
   it("asks for a code only when the channel is live", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
-    expect(PAGE).toContain('channel.channel === "dm" ? <ConnectByMessage /> : <ConnectLookup />');
+    expect(PAGE).toMatch(/channel\.channel === "dm" \? \(\s*<ConnectByMessage \/>\s*\) : \(\s*<ConnectLookup\b/);
     expect(PAGE).not.toContain("function ConnectModule");
     expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
     // The off card connects by username (MESITA-3039), never by DM code.
