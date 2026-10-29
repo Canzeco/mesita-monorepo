@@ -53,7 +53,7 @@ import { Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
-import { apiListAreaPool, type AreaPool, type Place } from "@/lib/api/places";
+import { apiListAreaPool, appendAreaPage, type AreaPool, type Place } from "@/lib/api/places";
 import { EFError } from "@/lib/api/_invoke";
 import {
   areaPoolKey,
@@ -144,9 +144,8 @@ export function placesChips(): { key: string; label: string }[] {
   ];
 }
 
-/** Tiles drawn per page when the server sends no `pageSize` (the
- *  operator's Catalog page size, MESITA-2909); the next page appends on
- *  scroll (MESITA-2384). */
+/** The Catalog's page size when the server names none (MESITA-2909). Pages
+ *  come from the server now (MESITA-3044): the next one appends on scroll. */
 export const PLACES_PAGE = 20;
 
 /** The families a row asks the server for (MESITA-2438): its own key, or
@@ -263,33 +262,56 @@ export function CatalogRails() {
   // screen and paid a Google call for one card.
   const createdPlaces = useCreatedPlaces();
 
-  // Paging after ranking: the pool is whole; the screen draws it a page at
-  // a time and the sentinel under the last tile asks for the next.
-  const [pages, setPages] = useState({ key: "", n: 1 });
-  const pageKey = `${requestKey}|${chip}`;
-  const pageCount = pages.key === pageKey ? pages.n : 1;
+  // PAGES FROM THE SERVER (MESITA-3044, Pato: "sort all catalog places in
+  // one run, but don't load them all … once the user scrolls you can load
+  // more and more and never stop until the catalog is gone"): the server
+  // ranks the whole catalog and sends one page; the sentinel under the last
+  // tile asks for the page at `pool.next` and appends it, until `next` is
+  // null. One request at a time; a request for an older key is dropped.
   const sentinel = useRef<HTMLLIElement | null>(null);
+  const loadingMore = useRef<string | null>(null);
+  // The question on screen now: a page that lands for an older one is dropped.
+  const liveKey = useRef(requestKey);
+  useEffect(() => {
+    liveKey.current = requestKey;
+  }, [requestKey]);
   const shown: Place[] = useMemo(
     () =>
       pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : [],
     [pool, chip, createdPlaces],
   );
-  const pageSize = pool?.pageSize ?? PLACES_PAGE;
-  const hasMore = shown.length > pageCount * pageSize;
+  const nextOffset = pool?.next ?? null;
+  const hasMore = nextOffset !== null;
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || !hasMore || typeof IntersectionObserver === "undefined") return;
+    if (!el || nextOffset === null || typeof IntersectionObserver === "undefined") return;
+    const key = requestKey;
     const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) {
-        setPages((p) => ({
-          key: pageKey,
-          n: (p.key === pageKey ? p.n : 1) + 1,
-        }));
-      }
-    });
+      if (!entries.some((e) => e.isIntersecting)) return;
+      if (loadingMore.current === `${key}@${nextOffset}`) return;
+      loadingMore.current = `${key}@${nextOffset}`;
+      void apiListAreaPool(supabase, from, families, nextOffset)
+        .then((page) => {
+          setPool((cur) => {
+            // The guest moved on (another location or family): drop it.
+            if (!cur || key !== liveKey.current || (cur.next ?? null) !== nextOffset) return cur;
+            const merged = appendAreaPage(cur, page);
+            writeAreaPool(key, merged);
+            return merged;
+          });
+        })
+        .catch((err) => {
+          // The next tap of the sentinel tries again; the loaded tiles stay.
+          console.warn("[catalog] next page failed", { offset: nextOffset, message: errMsg(err, "") });
+        })
+        .finally(() => {
+          if (loadingMore.current === `${key}@${nextOffset}`) loadingMore.current = null;
+        });
+    }, { rootMargin: "600px 0px" });
     io.observe(el);
     return () => io.disconnect();
-  }, [hasMore, pageKey, pageCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextOffset, requestKey]);
 
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
@@ -448,7 +470,7 @@ export function CatalogRails() {
   );
 
   const tiles = (list: readonly Place[], label: string, paged: boolean) => {
-    const page = paged ? list.slice(0, pageCount * pageSize) : list;
+    const page = list;
     return (
       <div className="pb-6">
         <ul role="list" aria-label={label} className={PLACES_LIST}>
@@ -498,7 +520,7 @@ export function CatalogRails() {
               </Fragment>
             );
           })}
-          {paged && page.length < list.length ? (
+          {paged && hasMore ? (
             <li ref={sentinel} aria-hidden className="h-px" data-places-more />
           ) : null}
         </ul>

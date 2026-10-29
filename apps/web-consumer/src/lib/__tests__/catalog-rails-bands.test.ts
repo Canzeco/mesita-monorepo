@@ -60,9 +60,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
 
-  it("pages after ranking: 20 at a time, a sentinel asks for more, no request", () => {
+  it("pages from the server: a sentinel asks for the next page at pool.next (MESITA-3044)", () => {
     expect(PLACES_PAGE).toBe(20);
-    expect(src).toContain("list.slice(0, pageCount * pageSize)");
+    expect(src).toContain("apiListAreaPool(supabase, from, families, nextOffset)");
     expect(src).toContain("data-places-more");
     expect(src).toContain("new IntersectionObserver(");
     // A kept pool paints without a request.
