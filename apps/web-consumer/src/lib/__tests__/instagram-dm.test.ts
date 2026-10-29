@@ -38,7 +38,7 @@ describe("connecting Instagram by message", () => {
     expect(PAGE).toContain('channel.channel === "dm" ? <ConnectByMessage /> : <ConnectLookup />');
     expect(PAGE).not.toContain("function ConnectModule");
     expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
-    // The off card is MESITA-3038's demo lookup: it reads, never claims.
+    // The off card connects by username (MESITA-3039), never by DM code.
     const off = PAGE.slice(PAGE.indexOf("function ConnectLookup"), PAGE.indexOf("export function ConnectCardSkeleton"));
     expect(off).not.toContain("apiStartInstagramDm");
   });

@@ -173,17 +173,19 @@ export async function apiInstagramDmStatus(
   );
 }
 
-// ─── Instagram lookup (MESITA-3038) ──────────────────────────────────────
+// ─── Instagram connect by username (MESITA-3039) ─────────────────────────
 
-// Who a username is, while the DM channel is off. `source: "emulator"` is a
-// sample, not Instagram: nothing is stored, connected or verified.
+// While the DM channel is off: the server scrapes the typed username (Apify)
+// and stores the handle, followers and photo on the account. For testing:
+// the username is trusted. `photo` says whether the photo became the avatar.
 export type InstagramLookup = {
-  source: "emulator";
+  source: "apify";
   profile: {
     username: string;
-    profilePictureUrl: string;
+    profilePictureUrl: string | null;
     followerCount: number;
   };
+  photo: boolean;
 };
 
 export async function apiLookupInstagram(

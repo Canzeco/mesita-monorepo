@@ -1,81 +1,84 @@
-// Instagram profile lookup (MESITA-3038): who an Instagram username is —
-// its username, profile photo and follower count — behind one small
-// interface, so Me › Instagram never changes when the source does.
+// Instagram profile lookup (MESITA-3038, MESITA-3039): who an Instagram
+// username is — its username, profile photo and follower count — behind one
+// small interface, so Me › Instagram never changes when the source does.
 //
-// EMULATED. Meta Business verification is pending, so the only provider is
-// the emulator: a predictable sample per username, computed here, marked
-// `source: "emulator"`. It never fetches Instagram, Apify or anything else,
-// and its answer is never stored, never "verified" and never reaches Social
-// (MESITA-2461: a handle is proved, never typed and trusted). When an
-// approved provider exists, it implements InstagramProfileLookup and
-// readInstagramLookup() returns it; consumer-web-lookup-instagram and the
-// page stay as they are.
+// APIFY, FOR TESTING (Pato, 2026-10-29: "user inputs their instagram. you
+// just assume is true and use apify to scrape username and followers and
+// profile picture … it's a testing bot"). The provider scrapes the public
+// profile with the Apify Instagram profile actor; a private account still
+// shows its follower count and photo. It proves nothing: the real proof is
+// the Meta DM bot (MESITA-2579), which replaces this once Meta approves.
+// MESITA-3038's emulator was the first provider and is gone.
+
+import { APIFY_ACTORS, runApifyActor } from "./apify.ts";
+import { isDeadIgStub } from "./enrich-instagram-match.ts";
+import { pickProfilePicUrl } from "./instagram-avatar.ts";
+import { normalizeHandle } from "./instagram-claim.ts";
+import { numOf } from "./parse-utils.ts";
 
 export type InstagramProfile = {
   username: string;
-  profilePictureUrl: string;
+  /** Instagram's own link: it expires, so it is copied, never stored. */
+  profilePictureUrl: string | null;
   followerCount: number;
 };
 
 export type InstagramLookupResult =
   | { ok: true; profile: InstagramProfile }
-  | { ok: false; reason: "not_found" };
+  | { ok: false; reason: "not_found" | "unavailable" };
 
 export interface InstagramProfileLookup {
-  /** Says where an answer came from; the page labels "emulator" as sample. */
-  readonly source: "emulator";
+  /** Where an answer came from. */
+  readonly source: "apify";
   /** `username` is already normalized (normalizeHandle). */
   lookup(username: string): Promise<InstagramLookupResult>;
 }
 
-/** A username starting with this finds no profile, so the empty result can
- *  be seen on demand. */
-export const EMULATOR_NOT_FOUND_PREFIX = "unavailable";
+// The profile scrape is synchronous; a cold actor takes ~10–20s.
+const SCRAPE_TIMEOUT_MS = 45_000;
 
-// FNV-1a: the same username always gets the same sample.
-function hash(s: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 0x01000193);
-  }
-  return h >>> 0;
+/** One scraped item → the profile, or null when it is not that account. */
+export function profileFromScrape(
+  item: Record<string, unknown> | undefined,
+  username: string,
+): InstagramProfile | null {
+  if (!item || isDeadIgStub(item)) return null;
+  // Instagram can answer a renamed handle with another profile.
+  if (normalizeHandle(item.username) !== username) return null;
+  const followers = numOf(item.followersCount);
+  return {
+    username,
+    profilePictureUrl: pickProfilePicUrl(item),
+    followerCount: followers != null && followers > 0
+      ? Math.trunc(followers)
+      : 0,
+  };
 }
 
-/** 100..24,999 followers: both sides of the 1,000 bar show up. */
-export function emulatedFollowerCount(username: string): number {
-  return 100 + (hash(username) % 24_900);
+export function apifyLookup(apifyKey: string): InstagramProfileLookup {
+  return {
+    source: "apify",
+    async lookup(username) {
+      const run = await runApifyActor<Record<string, unknown>>(
+        APIFY_ACTORS.instagramProfile,
+        { usernames: [username] },
+        apifyKey,
+        SCRAPE_TIMEOUT_MS,
+      );
+      if (run.error || !run.items) {
+        console.error("instagram lookup scrape failed", run.status, run.error);
+        return { ok: false, reason: "unavailable" };
+      }
+      const profile = profileFromScrape(run.items[0], username);
+      return profile
+        ? { ok: true, profile }
+        : { ok: false, reason: "not_found" };
+    },
+  };
 }
 
-/** A monogram drawn inline, so the emulator calls no image host. */
-export function emulatedPictureUrl(username: string): string {
-  const hue = hash(username) % 360;
-  const letter = (username.match(/[a-z0-9]/)?.[0] ?? "?").toUpperCase();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">` +
-    `<rect width="128" height="128" fill="hsl(${hue} 55% 55%)"/>` +
-    `<text x="64" y="64" dy=".35em" text-anchor="middle" font-family="system-ui,sans-serif" ` +
-    `font-size="60" font-weight="600" fill="#fff">${letter}</text></svg>`;
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
-}
-
-export const emulatorLookup: InstagramProfileLookup = {
-  source: "emulator",
-  lookup(username) {
-    if (username.startsWith(EMULATOR_NOT_FOUND_PREFIX)) {
-      return Promise.resolve({ ok: false, reason: "not_found" });
-    }
-    return Promise.resolve({
-      ok: true,
-      profile: {
-        username,
-        profilePictureUrl: emulatedPictureUrl(username),
-        followerCount: emulatedFollowerCount(username),
-      },
-    });
-  },
-};
-
-/** The provider in use. The swap point for an approved source. */
-export function readInstagramLookup(): InstagramProfileLookup {
-  return emulatorLookup;
+/** The provider in use, or null when it has no key. The swap point. */
+export function readInstagramLookup(): InstagramProfileLookup | null {
+  const key = Deno.env.get("APIFY_KEY")?.trim();
+  return key ? apifyLookup(key) : null;
 }
