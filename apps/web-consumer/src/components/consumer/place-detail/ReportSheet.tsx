@@ -4,8 +4,10 @@ import { Fragment, useState } from "react";
 import { Flag } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { RowDivider, SettingsGroup } from "@/components/consumer/me/settings-rows";
+import { EFError } from "@/lib/api/_invoke";
 import {
   apiReportPlace,
+  NOTE_REQUIRED,
   PLACE_REPORT_NOTE_MAX,
   PLACE_REPORT_REASONS,
   type PlaceReportReason,
@@ -21,10 +23,14 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 
 // REPORT, FROM THE THREE DOTS (Pato, MESITA-2684: "three dots is a button to
-// report"), Instagram's way: why, one reason, then Send. Something else takes
-// an optional note. Send stores it (consumer-web-report-place), one report
-// per guest per place, and thanks the guest; a failure says why and keeps the
-// sheet open with the choice intact.
+// report"), Instagram's way: why, one reason, then Send. It is the guest's
+// feedback channel (MESITA-3024): once a reason is picked a note box asks the
+// right question for it ("Which link?" for a wrong link), and Something else
+// needs words. Send stores it (consumer-web-report-place); every send is its
+// own row and lands on admin's Manage › Feedback. A refused send (4xx) says
+// why here and keeps the sheet open with the choice intact; network, session
+// and server failures are said once, by the app's error notifier
+// (MESITA-3021).
 // decision: an in-app report that is stored, not a mailto to support (a mail
 // app leaves the screen and nothing reaches the catalog).
 
@@ -58,19 +64,26 @@ function ReportForm({
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
 
+  const chosen = PLACE_REPORT_REASONS.find((r) => r.key === reason) ?? null;
+  const ready =
+    reason != null && !(NOTE_REQUIRED.has(reason) && note.trim() === "");
+
   async function send() {
-    if (!reason || sending) return;
+    if (!reason || !ready || sending) return;
     setSending(true);
     try {
-      await apiReportPlace(getSupabase(), {
-        placeId: place.id,
-        reason,
-        note: reason === "other" ? note : undefined,
-      });
+      await apiReportPlace(getSupabase(), { placeId: place.id, reason, note });
       toast.success("Thanks for letting us know");
       onDone();
     } catch (err) {
-      toast.error(errMsg(err, "Couldn't send your report. Try again."));
+      // reportEFFailure already said a network, session or server failure;
+      // a refusal (4xx) is this sheet's to explain.
+      const status = err instanceof EFError ? err.status : null;
+      if (status === 429) {
+        toast.error("You've sent a lot of reports. Try again later.");
+      } else if (status != null && status >= 400 && status < 500 && status !== 401) {
+        toast.error(errMsg(err, "Couldn't send your report. Try again."));
+      }
       setSending(false);
     }
   }
@@ -123,14 +136,14 @@ function ReportForm({
         </SettingsGroup>
       </div>
 
-      {reason === "other" && (
+      {chosen && (
         <textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={3}
           maxLength={PLACE_REPORT_NOTE_MAX}
-          placeholder="Tell us what's wrong (optional)"
-          aria-label="What's wrong"
+          placeholder={chosen.prompt}
+          aria-label={chosen.prompt}
           className="border-border bg-card focus:border-foreground/40 mt-3 w-full resize-none rounded-2xl border px-4 py-3 text-sm outline-none"
         />
       )}
@@ -138,7 +151,7 @@ function ReportForm({
       <button
         type="button"
         onClick={() => void send()}
-        disabled={!reason || sending}
+        disabled={!ready || sending}
         className={cn(PRIMARY_BUTTON_CLASS, "mt-5")}
       >
         {sending ? "Sending…" : "Send report"}

@@ -381,6 +381,9 @@ export async function changePlaceBoost(
 }
 
 export type AdminPlaceReport = {
+  id: string;
+  place_id: string;
+  place_name: string;
   consumer_id: string;
   first_name: string | null;
   member_number: string | null;
@@ -390,7 +393,8 @@ export type AdminPlaceReport = {
 };
 
 /** The place's guest reports, newest first (admin-web-list-place-reports,
- *  MESITA-2686). Read-only. */
+ *  MESITA-2686). Read-only. Every place's at once is Manage › Feedback
+ *  (app/(app)/feedback/actions.ts). */
 export async function listPlaceReports(
   placeId: string,
 ): Promise<Result<{ reports: AdminPlaceReport[]; capped: boolean }>> {

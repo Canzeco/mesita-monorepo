@@ -55,10 +55,11 @@ describe("Testing rail", () => {
 });
 
 describe("Manage rail", () => {
-  it("is exactly Admins · Guests · Database · Multiple Places · Single Place · Premier", () => {
+  it("is exactly Admins · Guests · Feedback · Database · Multiple Places · Single Place · Premier", () => {
     expect(MANAGE_NAV.map((i) => i.label)).toEqual([
       "Admins",
       "Guests",
+      "Feedback",
       "Database",
       "Multiple Places",
       "Single Place",
@@ -72,7 +73,7 @@ describe("Manage rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    for (const href of ["/guests", "/manage-multiple", "/manage-single", "/premier"])
+    for (const href of ["/guests", "/feedback", "/manage-multiple", "/manage-single", "/premier"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
