@@ -5,7 +5,6 @@ import { Loader2, Play } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
   deletePlace,
-  enrichPlace,
   enrichPlaces,
   updatePlacesGoogle,
   searchPlacesByGoogleIds,
@@ -25,14 +24,31 @@ type Row = {
   alreadyExisted?: boolean;
 };
 
-async function resolveMesitaId(googleId: string): Promise<
-  { ok: true; placeId: string; name: string } | { ok: false; error: string }
-> {
-  const r = await searchPlacesByGoogleIds([googleId]);
+type Found = { placeId: string; name: string };
+
+// The most places one Enrich start carries: ENRICH_MAX_PLACES in
+// supabase/functions/_shared/enrich-start.ts, which refuses the whole call
+// past it. The box holds 250, so a longer list starts in chunks
+// (MESITA-3084).
+const ENRICH_CHUNK = 50;
+
+// Every Google Place ID in the box resolved to its Mesita place with ONE
+// search call — the EF takes the box's whole 250. An ID missing from the
+// map is not on Mesita.
+async function resolveMesitaIds(
+  googleIds: string[],
+): Promise<{ ok: true; found: Map<string, Found> } | { ok: false; error: string }> {
+  const r = await searchPlacesByGoogleIds(googleIds);
   if (!r.ok) return { ok: false, error: r.error };
-  const hit = r.data.find((p) => p.google_place_id === googleId) ?? r.data[0];
-  if (!hit) return { ok: false, error: "Not on Mesita" };
-  return { ok: true, placeId: hit.id, name: hit.name || hit.google_name || "" };
+  const found = new Map<string, Found>();
+  for (const hit of r.data) {
+    if (!hit.google_place_id) continue;
+    found.set(hit.google_place_id, {
+      placeId: hit.id,
+      name: hit.name || hit.google_name || "",
+    });
+  }
+  return { ok: true, found };
 }
 
 // One write box: Create, Enrich or Update (MESITA-2096). Each box carries its
@@ -102,8 +118,11 @@ export function WriteBox({
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    if (action === "enrich") await runEnrich(ids, setResults);
-    else await Promise.all(ids.map((id) => runRow(id, action, setResults)));
+    if (action === "create") {
+      await Promise.all(ids.map((id) => runRow(id, () => createOne(id), setResults)));
+    } else {
+      await runOnMesita(ids, action, setResults);
+    }
     setRunning(null);
   }
 
@@ -121,7 +140,9 @@ export function WriteBox({
           ? `${written} enabled · ${failed} failed`
           : lastRun === "unlist"
             ? `${written} disabled · ${failed} failed`
-            : `${written} deleted · ${failed} failed`;
+            : lastRun === "google-update"
+              ? `${written} refreshed · ${failed} failed`
+              : `${written} deleted · ${failed} failed`;
 
   return (
     <div className="space-y-6">
@@ -245,41 +266,83 @@ function ActionButton({
   );
 }
 
-async function runEnrich(
+// Enrich, Update, Enable, Disable and Delete write a place already on
+// Mesita: one lookup for the whole box, then the write. Enrich starts the
+// found places in chunks of ENRICH_CHUNK, each row reporting its own chunk;
+// the rest fan out one call per place.
+async function runOnMesita(
   googleIds: string[],
+  action: Exclude<CrenupAction, "create">,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
-  const resolved: { googleId: string; placeId: string; name: string }[] = [];
-  await Promise.all(googleIds.map(async (googleId) => {
-    setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
-    const found = await resolveMesitaId(googleId);
-    if (!found.ok) {
-      setResults((prev) => ({ ...prev, [googleId]: { state: "error", error: found.error } }));
-      return;
-    }
-    resolved.push({ googleId, placeId: found.placeId, name: found.name });
+  setResults(
+    Object.fromEntries(googleIds.map((id) => [id, { state: "running" as const }])),
+  );
+  const lookup = await resolveMesitaIds(googleIds).catch((err: unknown) => ({
+    ok: false as const,
+    error: err instanceof Error ? err.message : "Unexpected error",
   }));
-  if (resolved.length === 0) return;
-  const started = await enrichPlaces(resolved.map((row) => row.placeId));
-  const detail = "Enrich started";
-  for (const row of resolved) {
-    setResults((prev) => ({
-      ...prev,
-      [row.googleId]: started.ok
-        ? { state: "enriching", name: row.name, detail }
-        : { state: "error", name: row.name, error: started.error },
-    }));
+  if (!lookup.ok) {
+    setResults(
+      Object.fromEntries(
+        googleIds.map((id) => [id, { state: "error" as const, error: lookup.error }]),
+      ),
+    );
+    return;
   }
+  const resolved: { googleId: string; found: Found }[] = [];
+  for (const googleId of googleIds) {
+    const found = lookup.found.get(googleId);
+    if (found) resolved.push({ googleId, found });
+    else {
+      setResults((prev) => ({
+        ...prev,
+        [googleId]: { state: "error", error: "Not on Mesita" },
+      }));
+    }
+  }
+  if (action === "enrich") {
+    for (let i = 0; i < resolved.length; i += ENRICH_CHUNK) {
+      await enrichChunk(resolved.slice(i, i + ENRICH_CHUNK), setResults);
+    }
+    return;
+  }
+  await Promise.all(
+    resolved.map(({ googleId, found }) =>
+      runRow(googleId, () => writeOne(found, action), setResults),
+    ),
+  );
+}
+
+async function enrichChunk(
+  chunk: { googleId: string; found: Found }[],
+  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
+): Promise<void> {
+  const started = await enrichPlaces(chunk.map((row) => row.found.placeId)).catch(
+    (err: unknown) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Unexpected error",
+    }),
+  );
+  setResults((prev) => {
+    const next = { ...prev };
+    for (const { googleId, found } of chunk) {
+      next[googleId] = started.ok
+        ? { state: "enriching", name: found.name, detail: "Enrich started" }
+        : { state: "error", name: found.name, error: started.error };
+    }
+    return next;
+  });
 }
 
 async function runRow(
   googleId: string,
-  action: CrenupAction,
+  write: () => Promise<Row>,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
   setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
   try {
-    const row = await runOne(googleId, action);
+    const row = await write();
     setResults((prev) => ({ ...prev, [googleId]: row }));
   } catch (err) {
     setResults((prev) => ({
@@ -312,51 +375,24 @@ async function createOne(googleId: string): Promise<Row> {
   };
 }
 
-async function enrichOne(googleId: string): Promise<Row> {
-  const found = await resolveMesitaId(googleId);
-  if (!found.ok) return { state: "error", error: found.error };
-  const en = await enrichPlace(found.placeId);
-  if (!en.ok) return { state: "error", name: found.name, error: en.error };
-  return {
-    state: "enriching",
-    name: found.name,
-    detail: "Enrichment started",
-  };
-}
-
-async function listOne(googleId: string, listed: boolean): Promise<Row> {
-  const found = await resolveMesitaId(googleId);
-  if (!found.ok) return { state: "error", error: found.error };
-  const r = await setPlaceListed(found.placeId, listed);
+async function writeOne(
+  found: Found,
+  action: "list" | "unlist" | "delete" | "google-update",
+): Promise<Row> {
+  const r =
+    action === "google-update"
+      ? await updatePlacesGoogle([found.placeId])
+      : action === "delete"
+        ? await deletePlace(found.placeId)
+        : await setPlaceListed(found.placeId, action === "list");
   if (!r.ok) return { state: "error", name: found.name, error: r.error };
-  return {
-    state: "ok",
-    name: found.name,
-    detail: listed ? "Enabled" : "Disabled",
-  };
-}
-
-async function deleteOne(googleId: string): Promise<Row> {
-  const found = await resolveMesitaId(googleId);
-  if (!found.ok) return { state: "error", error: found.error };
-  const r = await deletePlace(found.placeId);
-  if (!r.ok) return { state: "error", name: found.name, error: r.error };
-  return { state: "ok", name: found.name, detail: "Archived" };
-}
-
-async function updateGoogleOne(googleId: string): Promise<Row> {
-  const found = await resolveMesitaId(googleId);
-  if (!found.ok) return { state: "error", error: found.error };
-  const r = await updatePlacesGoogle([found.placeId]);
-  if (!r.ok) return { state: "error", name: found.name, error: r.error };
-  return { state: "ok", name: found.name, detail: "Google data refreshed" };
-}
-
-async function runOne(googleId: string, action: CrenupAction): Promise<Row> {
-  if (action === "google-update") return updateGoogleOne(googleId);
-  if (action === "enrich") return enrichOne(googleId);
-  if (action === "list") return listOne(googleId, true);
-  if (action === "unlist") return listOne(googleId, false);
-  if (action === "delete") return deleteOne(googleId);
-  return createOne(googleId);
+  const detail =
+    action === "google-update"
+      ? "Google data refreshed"
+      : action === "delete"
+        ? "Archived"
+        : action === "list"
+          ? "Enabled"
+          : "Disabled";
+  return { state: "ok", name: found.name, detail };
 }
