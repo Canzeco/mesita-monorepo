@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { LocateFixed } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { MAP_USER_LOCATION_PIN_COLOR } from "@/lib/map-defaults";
 import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
 import { HEADER_DISC } from "./header-classes";
@@ -14,7 +13,8 @@ import { HEADER_DISC } from "./header-classes";
 // ask ai at the right"; right of the bar in MESITA-3006, under the chips in
 // MESITA-3005, inside the bar in MESITA-2999). It wears the "my location" target and
 // nothing else, ink on white (MESITA-3004 took off MESITA-3000/3003's blue
-// tint), turning the map's you-are-here blue once a fix is held (MESITA-2454). No
+// tint), always ink, located or not (Pato, MESITA-3010: "location instead of
+// blue use black"; MESITA-2454 turned it the map's blue once a fix was held). No
 // hover tint while it is locating and disabled. A refusal turns the icon red and toasts the
 // same sentence Home's location sheet shows (LOCATION_HELP).
 //
@@ -67,7 +67,6 @@ export function SearchLocateButton({
           blocked && "text-destructive",
         )}
         strokeWidth={2}
-        style={located ? { color: MAP_USER_LOCATION_PIN_COLOR } : undefined}
         aria-hidden
       />
     </button>

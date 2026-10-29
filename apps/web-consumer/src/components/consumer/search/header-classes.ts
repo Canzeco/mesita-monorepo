@@ -8,8 +8,8 @@
 // THREE SEPARATE CONTROLS on row one (Pato, MESITA-3009: "return to the
 // three buttons: location at the left, searchbar, ask ai at the right, all
 // separated"; MESITA-2999 had put Ask AI and locate inside one long bar):
-// the 48px locate disc, the 48px search bar, the 48px black Ask AI pill
-// (MESITA-3007). Under them the 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
+// the 48px locate disc, the 48px search bar, the 48px white Ask AI pill
+// (MESITA-3010). Under them the 32px chip row, opening with a white icon-only Filters disc (MESITA-3006). Two heights (MESITA-2996, reverses MESITA-2445).
 //
 // The border stays as `border-transparent` so keyboard focus can darken it
 // without the control shifting a pixel.
@@ -33,13 +33,11 @@ export const BAR = `${FLOAT} border-transparent focus-within:border-foreground f
  *  MESITA-3006, under the chips in MESITA-3005). */
 export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-/** Ask AI right of the bar, its own floating 48px control (MESITA-3009): the
- *  row's one strong control, a black pill with white text (Pato, MESITA-3007: "ask ai must be stronger … more
- *  notable"; it was the grey bubble, after MESITA-3000's gradient
- *  "screaming" and MESITA-3003's tint). The selected chip's ink, so no new
- *  colour enters the app. */
-export const HEADER_PILL =
-  "bg-primary text-primary-foreground shadow-float flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card active:scale-[0.97]";
+/** Ask AI right of the bar, its own floating 48px control (MESITA-3009): a
+ *  white pill with ink text and sparkles, the locate disc's look widened
+ *  (Pato, MESITA-3010: "remove the black color from ask ai"; MESITA-3007's
+ *  black pill, MESITA-3003's tint and MESITA-3000's gradient are gone). */
+export const HEADER_PILL = `${FLOAT} border-transparent hover:bg-muted flex h-12 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-semibold whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
  *  only (MESITA-3006). */
