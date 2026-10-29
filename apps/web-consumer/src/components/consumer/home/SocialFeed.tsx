@@ -27,13 +27,11 @@
 // every member who keeps Public profile on.
 // One line, ALWAYS THIRD PERSON (Pato, MESITA-3051: "never mention first
 // person, always mention all as third person, even if the event is
-// yourself"; it retires "You"): the member's @handle and an approximate
-// follower count when they show their Instagram ("if has instagram don't
-// mention the name, mention the instgarma username instead"), else the first
-// name; then the verb, the place, no period. Views carry the handle too
-// (retires MESITA-2594's nameless view). You see others' handles only if you
-// show yours (MESITA-2594): a masked "@per***" never leads, the first name
-// does. Under it, muted, the time and the place's km.
+// yourself"; it retires "You"): the member's name, always (Pato,
+// MESITA-3070: "better do show the name instead of the instagram in the
+// feed"; it reverses MESITA-3051's @handle lead); then the verb, the place,
+// no period. The @handle lives on the person card's Instagram box, and the
+// face keeps its Instagram mark. Under it, muted, the time and the place's km.
 // The place's photo on the right; no photo → the card placeholder (family
 // icon or initial), never an empty box. Two verbs — liked (stored `saved`)
 // and viewed (stored `viewed`); the labels changed, never the keys. There is
@@ -45,7 +43,7 @@
 // around the guest, newest first, at most 50, and the pane refetches every
 // LIVE_MS while the tab is visible. NEVER "A MEMBER" (Pato, MESITA-2612:
 // "who the fuck is a member, remove that shit"; it retires MESITA-2580's and
-// MESITA-2594's "A member"): a handle, else the first name. NO MOCK DATA
+// MESITA-2594's "A member"): the member's name. NO MOCK DATA
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
 // rows): only the server's rows, and with none, the empty state.
 //
@@ -162,15 +160,13 @@ export function shortAgo(iso: string, now = Date.now()): string {
 
 /** Who leads the line, always in the third person (Pato, MESITA-3051:
  *  "never mention first person … even if the event is yourself"): the
- *  member's @handle when they show their Instagram ("if has instagram don't
- *  mention the name, mention the instgarma username instead"), else the
- *  first name. A masked "@per***" never stands in for a name. */
+ *  member's name, never the @handle (Pato, MESITA-3070: "better do show the
+ *  name instead of the instagram in the feed"). */
 export function feedWho(lead: ActivityPerson): string {
-  if (lead.handle && !lead.handleLocked) return `@${lead.handle}`;
   return lead.name;
 }
 
-/** "@perdon liked" / "Sofia viewed": one person, never "and N others",
+/** "Perdón liked" / "Sofia viewed": one person, never "and N others",
  *  never "You". No follower count on the line (Pato, MESITA-3060: "just the
  *  username, its cleaner"; MESITA-3051 had added it). */
 export function feedSentence(
@@ -608,8 +604,8 @@ function PersonCard({
       {/* A TOP BAR THAT NEVER SCROLLS (Pato, MESITA-3061: "leave the name
           or something and the x not overlapping"; the X had floated on the
           panel over the tabs and tiles scrolling under it). Instagram's
-          profile: the member's lead word, the feed's (@handle, else the
-          first name), bold on the left; the plain X on the right (Pato,
+          profile: the member's lead word, the feed's (the name, MESITA-3070),
+          bold on the left; the plain X on the right (Pato,
           MESITA-2709: "make a better X … its to bix and looks like shit"):
           the 20px ink glyph alone, its 44px target invisible until a hover
           draws the muted disc; a hairline under the bar. The card is always
