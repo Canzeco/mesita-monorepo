@@ -9,8 +9,8 @@
 //
 // THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
 // searchbar, ask ai at the right, all separated"; MESITA-2999's one long
-// bar held Ask AI and locate): the locate disc, the query bar, the black
-// Ask AI pill with sparkles (→ Search › Chat; MESITA-3007). One token set for every control lives in header-classes.ts. NO ADD
+// bar held Ask AI and locate): the locate disc, the query bar, the white
+// Ask AI pill with sparkles (→ Search › Chat; MESITA-3010). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
