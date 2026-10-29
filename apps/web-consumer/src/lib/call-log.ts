@@ -14,6 +14,10 @@ export type CallLine = {
   // "ok", an HTTP status, "net" (no response), or "fail" (a 2xx `ok:false`).
   status: string;
   ms: number | null;
+  // EF lines only (MESITA-3089): the body sent and what came back (the data,
+  // the error body, or the transport error), shown when the line is clicked.
+  request?: unknown;
+  response?: unknown;
 };
 
 const MAX_LINES = 40;
