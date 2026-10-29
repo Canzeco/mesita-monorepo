@@ -286,7 +286,12 @@ function Thumb({ place }: { place: Place }) {
   if (photo) {
     return (
       <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
-        <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
+        <SizedImg
+          src={photo}
+          size="thumb"
+          alt=""
+          className="h-full w-full object-cover"
+        />
       </span>
     );
   }
@@ -656,6 +661,14 @@ export function historyTiles(
  *  edge across the card, Instagram's profile grid. */
 const HISTORY_GRID_CLASS = "grid grid-cols-3 gap-0.5";
 
+/** Tiles mounted at a time (MESITA-3025, Pato: "you can load the full list,
+ *  but as you scroll load the images"): the whole history arrives at once,
+ *  but the grid mounts four rows, then four more each time its foot comes
+ *  within HISTORY_AHEAD of the view, so a long history never builds
+ *  hundreds of tiles and photos at open. */
+const HISTORY_BATCH = 12;
+const HISTORY_AHEAD = "600px";
+
 /** The card's history (MESITA-2854, Pato: "this ui to scroll profile events
  *  is shit"): Instagram's profile, a tab strip over a grid, not a list. The
  *  strip (MESITA-2951) splits it, Views left, Likes right, the lit tab ink
@@ -668,8 +681,27 @@ const HISTORY_GRID_CLASS = "grid grid-cols-3 gap-0.5";
  *  at either end from scrolling Home behind it. */
 function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
   const [tab, setTab] = useState<HistoryTab>("viewed");
+  const [shown, setShown] = useState(HISTORY_BATCH);
+  const footRef = useRef<HTMLDivElement>(null);
   const current = HISTORY_TABS.find((t) => t.tab === tab) ?? HISTORY_TABS[0];
   const tiles = items ? historyTiles(items, tab) : null;
+  const more = tiles != null && shown < tiles.length;
+  // The foot of the grid nearing the view mounts the next batch. Observed
+  // anew after each batch, so a foot still in view asks again at once.
+  useEffect(() => {
+    const el = footRef.current;
+    if (!more || !el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setShown((n) => n + HISTORY_BATCH);
+        }
+      },
+      { rootMargin: `${HISTORY_AHEAD} 0px` },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [more, shown, tab]);
   return (
     <>
       <div
@@ -687,7 +719,10 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
               role="tab"
               aria-selected={on}
               aria-label={label}
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t);
+                setShown(HISTORY_BATCH);
+              }}
               className={cn(
                 "focus-visible:ring-ring relative flex h-11 flex-1 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset",
                 on ? "text-foreground" : "text-muted-foreground",
@@ -729,18 +764,37 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
           {current.empty}
         </p>
       ) : (
-        <ul
-          role="list"
-          aria-label={current.label}
-          className={HISTORY_GRID_CLASS}
-          data-social-history={tab}
-        >
-          {tiles.map((tile) => (
-            <li key={tile.place.id}>
-              <HistoryTileLink tile={tile} tab={tab} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul
+            role="list"
+            aria-label={current.label}
+            className={HISTORY_GRID_CLASS}
+            data-social-history={tab}
+          >
+            {tiles.slice(0, shown).map((tile) => (
+              <li key={tile.place.id}>
+                <HistoryTileLink tile={tile} tab={tab} />
+              </li>
+            ))}
+          </ul>
+          {/* The next row, waiting: grey tiles the size of the real ones
+              under the last row, never a spinner or a page change. */}
+          {more && (
+            <div
+              ref={footRef}
+              className={cn(HISTORY_GRID_CLASS, "mt-0.5")}
+              aria-busy
+              data-social-history-more
+            >
+              {Array.from({ length: 3 }, (_, i) => (
+                <Skeleton
+                  key={i}
+                  className="aspect-square w-full rounded-none"
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </>
   );
@@ -756,6 +810,9 @@ function HistoryTileLink({
   const { place, at } = tile;
   const photo = cardPhoto(place);
   const placeholder = photo ? null : placePlaceholder(place);
+  // The photo fades in over the grey tile once it has arrived, never
+  // painting in strips (MESITA-3025).
+  const [shown, setShown] = useState(false);
   return (
     <Link
       href={placeHref(place.slug || place.id)}
@@ -769,7 +826,12 @@ function HistoryTileLink({
           size="card"
           alt=""
           loading="lazy"
-          className="h-full w-full object-cover"
+          decoding="async"
+          onLoad={() => setShown(true)}
+          className={cn(
+            "h-full w-full object-cover transition-opacity duration-300",
+            shown ? "opacity-100" : "opacity-0",
+          )}
         />
       ) : (
         <span
