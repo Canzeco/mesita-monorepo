@@ -35,13 +35,13 @@ const BUBBLE =
   "flex h-9 shrink-0 items-center justify-center rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-foreground active:scale-[0.97]";
 
 /** The locate bubble at the bar's right end: a pale tint of the map's
- *  guest blue (MESITA-3000); SearchLocateButton paints the target. */
+ *  guest blue (MESITA-3000, paler in MESITA-3003); SearchLocateButton paints the target. */
 export const HEADER_DISC = `${BUBBLE} bg-locate-tint w-9 hover:brightness-95`;
 
 /** Ask AI, before locate: a bubble widened to say what it does
- *  (Pato, MESITA-2455), in the AI gradient (MESITA-3000: "give it the AI
- *  vibes"). */
-export const HEADER_PILL = `${BUBBLE} bg-ai text-ai-foreground gap-1.5 px-3 text-sm font-semibold whitespace-nowrap hover:brightness-110`;
+ *  (Pato, MESITA-2455), in a pale violet tint (MESITA-3003: "more discreet";
+ *  MESITA-3000's gradient was "screaming"). */
+export const HEADER_PILL = `${BUBBLE} bg-ai-tint text-ai-ink gap-1.5 px-3 text-sm font-semibold whitespace-nowrap hover:brightness-95`;
 
 export const CHIP =
   "flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]";
