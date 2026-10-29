@@ -389,10 +389,10 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-/** Proximity at d km with half distance h (km): the Catalog's curve,
- *  1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)). Mirrors proximityFromDistance. */
+/** Proximity at d km with half distance D (km): the Catalog's curve,
+ *  1 ÷ (1 + d ÷ D) (MESITA-3015). Mirrors proximityFromDistance. */
 function catalogProximity(d: number, h: number): number {
-  return 1 / (1 + Math.log1p(((Math.E - 1) * d) / h));
+  return 1 / (1 + d / h);
 }
 
 // 4 ─ Consumer Catalog Pipeline ────────────────────────────────────────────
@@ -427,9 +427,10 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
-            Premier counts within {2 * h} km (twice the half distance); past
-            it a Premier place ranks like any other,
-            so one in another city never tops Home.
+            Premier counts at any distance: past the half distance the score
+            is half distance ÷ distance, so a Premier 10X beats a place up
+            to about ten times closer, and one in another city never tops
+            Home.
           </p>
           <p className="mt-2">
             No location: Popularity × the Premier factor alone. Mesita places
@@ -453,11 +454,13 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          Proximity is 1 ÷ (1 + ln(1 + (e − 1) × distance ÷ half distance)):
-          1 at the guest, ½ at the half distance, falling fast at first and
-          ever slower after, never 0. At {h} km: {at(0.5)} at half of it,
-          {" "}{at(2)} at twice it, {at(4)} at four times it. Smaller favours
-          nearer places; bigger favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
+          Proximity is 1 ÷ (1 + distance ÷ half distance): 1 at the guest,
+          ½ at the half distance, ⅓ at twice it, never 0. At {h} km:
+          {" "}{at(0.5)} at half of it, {at(2)} at twice it, {at(4)} at four
+          times it. Inside the half distance Popularity decides; past it
+          twice as far is half the credit, so a better place wins only up
+          to about 1.8× farther. Smaller favours nearer places; bigger
+          favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
         </p>
       </Group>
       <Group title="Paging">

@@ -11,19 +11,19 @@
 // sort ("como screening dentro del radio, pero no la metería ya para el
 // sorting"): the Radius gate decides who is in and Popularity alone orders
 // them. The Catalog has no radius: every Mesita place is ranked, and
-// Proximity, 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)), h the operator's half
-// distance, pulls nearer places up without ever cutting a far one.
+// Proximity, 1 ÷ (1 + d ÷ D), D the operator's half distance
+// (MESITA-3015), pulls nearer places up without ever cutting a far one.
 // Popularity is ln(1 + reviews × stars), unbounded, and the product is never
 // clamped or normalized (MESITA-2710). s is the Premier factor: a Premier
 // place's paid tier, ×2 · ×5 · ×10 (`places.boost_tier`, MESITA-2789), and 1
-// for every other place. Selected and its operator boost died with
-// MESITA-2925. No exponents (MESITA-2722).
+// for every other place, at any distance. Selected and its operator boost
+// died with MESITA-2925. No exponents (MESITA-2722).
 //
-// THE REACH (MESITA-2920): the Catalog has no radius, so s counts only
-// within PREMIER_REACH_HALVES × h of the anchor; past it s is 1 and an
-// Premier place ranks like any other. A Premier 10X in another city never
-// tops a guest's Home. The Map's circle already bounds it; Chat keeps its
-// radius box, so neither reads the reach.
+// NO REACH (MESITA-3015): the reach (s only within 2 × h, MESITA-2920)
+// existed because the log curve kept a far place alive. The reciprocal
+// bounds Premier by itself: past D the score is D ÷ d, so a Premier 10X
+// beats a place up to ~10× closer and a place in another city (100× the
+// distance) never tops a guest's Home.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
@@ -59,7 +59,7 @@ export type AreaContext = {
   location: AreaLocation;
   /** Requested families; empty = no Family gate (every family passes). */
   families: readonly string[];
-  /** Proximity's half distance h (km, MESITA-2909): the operator's
+  /** Proximity's half distance D (km, MESITA-3015): the operator's
    *  `params.proximity.halfKm`. null = no Proximity: the Map ranks by
    *  Popularity alone. */
   halfKm: number | null;
@@ -142,15 +142,6 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
   return tier >= 3 ? PREMIER_FACTOR[3] : tier >= 2 ? PREMIER_FACTOR[2] : tier >= 1 ? PREMIER_FACTOR[1] : 1;
 }
 
-/** The Premier reach on the Catalog, in half distances (MESITA-2920):
- *  s counts within 2 × h of the anchor, 1 beyond. */
-export const PREMIER_REACH_HALVES = 2;
-
-/** The Catalog's reach (km) for a half distance h. */
-export function premierReachKm(halfKm: number): number {
-  return PREMIER_REACH_HALVES * halfKm;
-}
-
 /** Popularity, or null when the place has no rating or no review count. */
 function popularityOrNull(c: AreaCandidate): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
@@ -182,8 +173,8 @@ export type AreaDiagnostics = {
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
   /** The factor `final` carries: the Premier factor (MESITA-2925), 1 for
-   *  a place that is not Premier; on the Catalog, 1 past the reach
-   *  (MESITA-2920). The wire key predates Premier and is kept so the
+   *  a place that is not Premier, at any distance (the reach went with
+   *  MESITA-3015). The wire key predates Premier and is kept so the
    *  score tags read on. */
   selectedFactor: number;
   /** Popularity × selectedFactor, × Proximity on the Catalog. */
@@ -210,12 +201,8 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point" && ctx.halfKm !== null
     ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
-  // The reach (MESITA-2920): only the Catalog, a point with Proximity and
-  // no Radius gate; a place with no distance is out of reach.
-  const capped = loc.kind === "point" && loc.radiusKm === null && ctx.halfKm !== null &&
-    (km === null || km > premierReachKm(ctx.halfKm));
-  const sel = capped ? 1 : premierFactor(c);
-  const popPart = capped ? factor(pop ?? 0) : popularPart(c);
+  const sel = premierFactor(c);
+  const popPart = popularPart(c);
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or

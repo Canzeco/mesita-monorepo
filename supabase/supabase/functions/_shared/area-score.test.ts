@@ -6,7 +6,6 @@ import {
   type AreaCandidate,
   type AreaContext,
   areaScore,
-  premierReachKm,
   familyGate,
   insideBounds,
   rankArea,
@@ -238,14 +237,15 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
 });
 
-// THE REACH (MESITA-2920, money: Premier is sold). On the Catalog the
-// Premier factor counts within 2 × h of the anchor and is 1 past it; the
-// Map and Chat (a radius) keep the full factor.
+// NO REACH (MESITA-3015, money: Premier is sold). The reach (MESITA-2920)
+// went with the log curve: under the reciprocal the Premier factor counts
+// at any distance on every surface, and distance alone keeps a paid place
+// in another city off a guest's Home.
 const KM = 1 / 111.195;
 const CATALOG: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: null },
   families: [],
-  halfKm: 5,
+  halfKm: 1,
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
   { label: "Premier 2X", over: { source: "mesita", premierTier: 1 }, s: 2 },
@@ -253,39 +253,33 @@ const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> =
   { label: "Premier 10X", over: { source: "mesita", premierTier: 3 }, s: 10 },
 ];
 
-Deno.test("the Catalog reach is 2 × the half distance (MESITA-2920)", () => {
-  assertEquals(premierReachKm(5), 10);
-});
-
-Deno.test("Catalog: Premier counts inside the reach, 1 past it (MESITA-2920)", () => {
-  for (const { label, over, s } of TIERS) {
-    const inside = areaScore(cand({ ...over, lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
-    const plainInside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 9.9 * KM }), CATALOG);
-    assertEquals(inside.selectedFactor, s, label);
-    assertAlmostEquals(inside.final, s * plainInside.final, 1e-9, label);
-    const outside = areaScore(cand({ ...over, lat: ANCHOR.lat + 10.1 * KM }), CATALOG);
-    const plainOutside = areaScore(cand({ source: "mesita", lat: ANCHOR.lat + 10.1 * KM }), CATALOG);
-    assertEquals(outside.selectedFactor, 1, label);
-    assertAlmostEquals(outside.final, plainOutside.final, 1e-9, label);
-  }
-  // A 10x place 300 km away no longer beats a plain local one.
-  const farPaid = cand({ id: "far", source: "mesita", premierTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 5000 });
-  const local = cand({ id: "local", source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.5, reviewCount: 50 });
-  assertEquals(rankArea([farPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["local", "far"]);
-  // No coordinates: no distance, so out of reach.
-  assertEquals(areaScore(cand({ premierTier: 3, lat: null, lng: null }), CATALOG).selectedFactor, 1);
-});
-
-Deno.test("the Map, Chat and no location keep the full factor at any distance (MESITA-2920)", () => {
+Deno.test("every surface keeps the full Premier factor at any distance (MESITA-3015)", () => {
   const map: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 }, halfKm: null };
   const chat: AreaContext = { ...CATALOG, location: { kind: "point", anchor: ANCHOR, radiusKm: 50 } };
   const none: AreaContext = { ...CATALOG, location: { kind: "none" } };
   for (const { label, over, s } of TIERS) {
-    const far = cand({ ...over, lat: ANCHOR.lat + 40 * KM });
-    const plain = cand({ source: "mesita", lat: ANCHOR.lat + 40 * KM });
-    for (const [name, ctx] of [["map", map], ["chat", chat], ["none", none]] as const) {
-      assertEquals(areaScore(far, ctx).selectedFactor, s, `${label} ${name}`);
-      assertAlmostEquals(areaScore(far, ctx).final, s * areaScore(plain, ctx).final, 1e-9, `${label} ${name}`);
+    for (const km of [0.5, 9.9, 40]) {
+      const far = cand({ ...over, lat: ANCHOR.lat + km * KM });
+      const plain = cand({ source: "mesita", lat: ANCHOR.lat + km * KM });
+      for (const [name, ctx] of [["catalog", CATALOG], ["map", map], ["chat", chat], ["none", none]] as const) {
+        assertEquals(areaScore(far, ctx).selectedFactor, s, `${label} ${name} ${km}`);
+        assertAlmostEquals(areaScore(far, ctx).final, s * areaScore(plain, ctx).final, 1e-9, `${label} ${name} ${km}`);
+      }
     }
   }
+  // No coordinates keeps the factor too; Proximity (0) is what zeroes it.
+  const noPoint = areaScore(cand({ premierTier: 3, lat: null, lng: null }), CATALOG);
+  assertEquals(noPoint.selectedFactor, 10);
+  assertEquals(noPoint.final, 0);
+});
+
+Deno.test("Catalog: distance alone keeps a Premier 10X in another city off Home (MESITA-3015)", () => {
+  // The worst case: the catalog's most popular place, paid 10X, 300 km
+  // away, against a modest local one 2 km away.
+  const farPaid = cand({ id: "far", source: "mesita", premierTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 10_000 });
+  const local = cand({ id: "local", source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.0, reviewCount: 100 });
+  assertEquals(rankArea([farPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["local", "far"]);
+  // The ad still works across town: the same 10X at 10 km tops it.
+  const nearPaid = cand({ ...farPaid, id: "near", lat: ANCHOR.lat + 10 * KM });
+  assertEquals(rankArea([nearPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["near", "local"]);
 });
