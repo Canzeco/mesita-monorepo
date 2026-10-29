@@ -53,6 +53,27 @@ export function approxFollowers(n: number): string | null {
   return `~${String(shown).replace(/\.0$/, "")}${unit}`;
 }
 
+/** A follower count as words (MESITA-3060): "~298 followers", and
+ *  "0 followers" where `approxFollowers` has nothing to say. */
+export function followersLabel(n: number | null | undefined): string {
+  return `${approxFollowers(n ?? 0) ?? "0"} followers`;
+}
+
+/** "just now" / "3 min ago" / "2 h ago" / "Oct 27" (MESITA-3060, the
+ *  Instagram card's "Updated …"). */
+export function updatedAgo(iso: string, now: number): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return "";
+  const min = Math.floor((now - t) / 60_000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)} h ago`;
+  return new Date(t).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 /** Me's Instagram chip and tile: the summary, plus the rounded follower count
  *  once a handle is connected ("Insta: @pato · 1.2K followers"), the same rounding Social
  *  shows (MESITA-2574: "Instagram Instagram Followers"). */

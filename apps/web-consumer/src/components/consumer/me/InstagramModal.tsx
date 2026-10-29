@@ -6,10 +6,11 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type ReactNode,
 } from "react";
-import { BadgeCheck, Copy, ImageIcon, Send } from "lucide-react";
+import { BadgeCheck, Copy, ImageIcon, RefreshCw, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -30,11 +31,14 @@ import {
   apiInstagramDmStatus,
   apiLookupInstagram,
   apiStartInstagramDm,
+  apiSyncInstagram,
   apiUpdateConsumerProfile,
   dmVerified,
   type InstagramChannel,
   type InstagramDmClaim,
+  type InstagramLookup,
 } from "@/lib/api/profile";
+import { followersLabel, updatedAgo } from "@/lib/consumer-identity";
 import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import {
@@ -45,7 +49,7 @@ import {
 } from "@/lib/ui-classes";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { useConsumerIdentity } from "@/lib/identity-context";
+import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
 import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
 import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 
@@ -89,17 +93,107 @@ function landConnected() {
   );
 }
 
+/** Where a Sync or Change account lands (MESITA-3060): back on this page,
+ *  reloaded so the header, the card and the photo show the saved values. The
+ *  query only labels the guest's own toast, then is stripped. */
+function landHere(r: InstagramLookup) {
+  const url = new URL(window.location.pathname, window.location.origin);
+  if (r.result === "synced") {
+    url.searchParams.set("instagram", "synced");
+    url.searchParams.set("to", String(r.profile.followerCount));
+    if (r.previousFollowers != null) {
+      url.searchParams.set("from", String(r.previousFollowers));
+    }
+  } else {
+    url.searchParams.set("instagram", "connected");
+    url.searchParams.set("handle", r.profile.username);
+  }
+  url.searchParams.set("photo", r.photo);
+  window.location.assign(url);
+}
+
+/** The toast a landing asked for, or null. */
+function landingToast(params: URLSearchParams): string | null {
+  const kind = params.get("instagram");
+  const photo = params.get("photo");
+  let text: string;
+  if (kind === "synced") {
+    const to = followersLabel(Number(params.get("to")));
+    const fromRaw = params.get("from");
+    const from = fromRaw == null ? null : followersLabel(Number(fromRaw));
+    text =
+      from == null || from === to
+        ? `Synced · ${to}`
+        : `Synced · ${from.replace(/ followers$/, "")} → ${to}`;
+  } else if (kind === "connected") {
+    text = `Connected @${params.get("handle") ?? ""}`;
+  } else {
+    return null;
+  }
+  if (photo === "updated") text += " · photo updated";
+  if (photo === "off") text += ". Turn on Use my Instagram photo to use it.";
+  return text;
+}
+
+/** One line per refusal, for the card and for Change account (MESITA-3060). */
+function syncErrorCopy(err: unknown, handle: string | null): string {
+  if (!(err instanceof EFError) || (err.code == null && err.status == null)) {
+    return "We couldn’t confirm the sync. Reload to see the latest.";
+  }
+  const body = (err.body ?? {}) as Record<string, unknown>;
+  switch (err.code) {
+    case "slow_down":
+      return "Give it a minute and try again.";
+    case "daily_limit": {
+      const limit = typeof body.limit === "number" ? `${body.limit} ` : "";
+      const at =
+        typeof body.resetsAt === "string"
+          ? new Date(body.resetsAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })
+          : null;
+      return `You’ve used today’s ${limit}Instagram lookups. Try again ${
+        at ? `after ${at}` : "tomorrow"
+      }.`;
+    }
+    case "profile_not_found":
+      return `We couldn’t find @${handle ?? ""} on Instagram anymore. Change account to connect the new one.`;
+    case "scrape":
+      return "Instagram isn’t answering right now. Try again later.";
+    case "unavailable":
+      return "Syncing isn’t available right now. Try again later.";
+    case "sync_write_failed":
+      return "Couldn’t save the sync. Try again later.";
+    default:
+      return errMsg(err, "Couldn’t sync — try again.");
+  }
+}
+
+/** A clock that ticks each minute, and nothing on the server: the card's
+ *  "Updated …" renders client-only (no hydration mismatch). */
+const minuteClock = {
+  subscribe(cb: () => void) {
+    const id = window.setInterval(cb, 60_000);
+    return () => window.clearInterval(id);
+  },
+  now: () => Math.floor(Date.now() / 60_000) * 60_000,
+  server: () => null,
+};
+
 export function InstagramModal() {
   const supabase = useBrowserSupabase();
   const identity = useConsumerIdentity();
   const connected = identity.igConnected;
-  // A CONNECTED GUEST IS NOT A PROSPECT (decision: Pato, 2026-08-22). The
-  // page used to render the pitch AND the whole connect form under the card
-  // that already said "connected". Connected collapses to the account card;
-  // switching accounts is a real but rare need, so it gets one quiet link
-  // that brings the form back rather than the form standing open forever.
-  const [switching, setSwitching] = useState(false);
-  const showForm = !connected || switching;
+  // ONE ACTION AT A TIME (MESITA-3060). Sync, Change account and Disconnect
+  // all derive `disabled` from this; it replaced the `switching` boolean.
+  // A connected guest sees the account card, not the connect form, until
+  // they choose Change account (decision: Pato, 2026-08-22).
+  const [action, setAction] = useState<
+    "idle" | "syncing" | "changing" | "disconnecting"
+  >("idle");
+  const [changeBusy, setChangeBusy] = useState(false);
+  const showForm = !connected || action === "changing";
   // Which way connecting works today; null while it is being read.
   const [channel, setChannel] = useState<InstagramChannel | null>(null);
   useEffect(() => {
@@ -116,12 +210,31 @@ export function InstagramModal() {
     };
   }, [supabase]);
 
+  // The landing's toast, once (a ref guards StrictMode's second run), then
+  // the query is stripped so a reload does not repeat it.
+  const toasted = useRef(false);
+  useEffect(() => {
+    if (toasted.current) return;
+    toasted.current = true;
+    const text = landingToast(new URLSearchParams(window.location.search));
+    if (!text) return;
+    toast.success(text);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   return (
     <MeScreen title="Instagram">
       <InstagramIntro />
 
       <div className="flex flex-col gap-6">
-        {connected && <ConnectedAccount />}
+        {connected && (
+          <ConnectedAccount
+            busy={action !== "idle" || changeBusy}
+            syncing={action === "syncing"}
+            onSyncing={(on) => setAction(on ? "syncing" : "idle")}
+            onChange={() => setAction("changing")}
+          />
+        )}
 
         {/* While it is read, the card's own silhouette, not a spinner:
               the card that lands is ~330px tall to the spinner's 64px, so
@@ -130,7 +243,16 @@ export function InstagramModal() {
 
         {showForm &&
           channel !== null &&
-          (channel.channel === "dm" ? <ConnectByMessage /> : <ConnectLookup />)}
+          (channel.channel === "dm" ? (
+            <ConnectByMessage />
+          ) : (
+            <ConnectLookup
+              changing={connected}
+              oldHandle={identity.igHandle}
+              onBusyChange={setChangeBusy}
+              onCancel={connected ? () => setAction("idle") : undefined}
+            />
+          ))}
 
         {/* Public or private, asked where the member connects (MESITA-2594):
               public is what lets them see other members' Instagram. */}
@@ -144,14 +266,13 @@ export function InstagramModal() {
               "keep that as default but ask the user"). */}
         <InstagramPhotoSwitch />
 
-        {connected && !switching && (
-          <button
-            type="button"
-            onClick={() => setSwitching(true)}
-            className="text-muted-foreground hover:text-foreground type-body min-h-11 font-medium underline underline-offset-4 transition"
-          >
-            Connect a different account
-          </button>
+        {connected && action !== "changing" && (
+          <DisconnectLink
+            disabled={action !== "idle" || changeBusy}
+            open={action === "disconnecting"}
+            onOpen={() => setAction("disconnecting")}
+            onClose={() => setAction("idle")}
+          />
         )}
       </div>
     </MeScreen>
@@ -170,13 +291,159 @@ export function InstagramIntro() {
   );
 }
 
-/** A connected guest's account card under its eyebrow. It reads only the
- *  identity context, seeded server-side, so the fallback draws it too. */
-export function ConnectedAccount({ pending = false }: { pending?: boolean }) {
+/** A connected guest's account card under its eyebrow (MESITA-3060): the
+ *  account row, then Sync | Change account and one live line. It reads the
+ *  identity context and the layout's row, both seeded server-side, so the
+ *  route's fallback draws it too (`pending`: inert, same heights). */
+export function ConnectedAccount({
+  pending = false,
+  busy = false,
+  syncing = false,
+  onSyncing,
+  onChange,
+}: {
+  pending?: boolean;
+  busy?: boolean;
+  syncing?: boolean;
+  onSyncing?: (on: boolean) => void;
+  onChange?: () => void;
+}) {
+  const supabase = useBrowserSupabase();
+  const { igHandle: handle } = useConsumerIdentity();
+  const [message, setMessage] = useState<{
+    text: string;
+    reload: boolean;
+  } | null>(null);
+  // After a refused or failed sync, Sync rests for the server's
+  // retryAfterSeconds (else 60 s): set in the handler, cleared by a timer.
+  const [resting, setResting] = useState(false);
+
+  async function sync() {
+    if (pending || busy || resting) return;
+    setMessage(null);
+    onSyncing?.(true);
+    try {
+      landHere(await apiSyncInstagram(supabase));
+    } catch (err) {
+      if (
+        err instanceof EFError &&
+        (err.code === "changed" || err.code === "not_connected")
+      ) {
+        window.location.reload();
+        return;
+      }
+      const unknown =
+        !(err instanceof EFError) || (err.code == null && err.status == null);
+      setMessage({ text: syncErrorCopy(err, handle), reload: unknown });
+      const body =
+        err instanceof EFError
+          ? ((err.body ?? {}) as Record<string, unknown>)
+          : {};
+      const retry =
+        typeof body.retryAfterSeconds === "number"
+          ? body.retryAfterSeconds
+          : 60;
+      setResting(true);
+      window.setTimeout(() => setResting(false), Math.min(retry, 3600) * 1000);
+      onSyncing?.(false);
+    }
+  }
+
   return (
     <SettingsGroup title="Connected">
       <CurrentConnectionRow pending={pending} />
+      <div className="border-border/60 border-t px-4 py-3">
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={sync}
+            disabled={pending || busy || resting}
+            className={cn(
+              ME_BUTTON_CLASS,
+              "border-border hover:bg-muted flex items-center justify-center gap-2 border transition disabled:opacity-60",
+            )}
+            data-instagram-sync
+          >
+            {syncing ? (
+              <Spinner size="sm" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {syncing ? "Syncing…" : "Sync"}
+          </button>
+          <button
+            type="button"
+            onClick={onChange}
+            disabled={pending || busy}
+            className={cn(
+              ME_BUTTON_CLASS,
+              "border-border hover:bg-muted border transition disabled:opacity-60",
+            )}
+            data-instagram-change
+          >
+            Change account
+          </button>
+        </div>
+        <div aria-live="polite">
+          {syncing && (
+            <p className="text-muted-foreground type-label mt-2 text-center">
+              Reading your Instagram. This can take up to a minute.
+            </p>
+          )}
+          {!syncing && message && (
+            <p
+              className="text-destructive type-label mt-2 text-center"
+              data-instagram-sync-error
+            >
+              {message.text}{" "}
+              {message.reload && (
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="underline underline-offset-2"
+                >
+                  Reload
+                </button>
+              )}
+            </p>
+          )}
+        </div>
+      </div>
     </SettingsGroup>
+  );
+}
+
+/** "Disconnect Instagram", a quiet link at the page bottom (MESITA-3060:
+ *  out of the account row), opening MESITA-3052's confirm. */
+export function DisconnectLink({
+  disabled = false,
+  open = false,
+  onOpen,
+  onClose,
+}: {
+  disabled?: boolean;
+  open?: boolean;
+  onOpen?: () => void;
+  onClose?: () => void;
+}) {
+  const { igHandle: handle } = useConsumerIdentity();
+  return (
+    <>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onOpen}
+        className="text-muted-foreground hover:text-destructive type-body min-h-11 self-center font-medium underline underline-offset-4 transition disabled:opacity-60"
+        data-instagram-disconnect
+      >
+        Disconnect Instagram
+      </button>
+      <DisconnectDialog
+        open={open}
+        handle={handle}
+        onClose={() => onClose?.()}
+      />
+    </>
   );
 }
 
@@ -399,7 +666,20 @@ function PasswordLine() {
  *  like the DM flow. Nothing proves ownership until the Meta DM bot.
  *  `pending` marks it as the silhouette drawn while the page asks which way
  *  connecting works today: the same card, nothing interactive. */
-function ConnectLookup({ pending = false }: { pending?: boolean }) {
+function ConnectLookup({
+  pending = false,
+  changing = false,
+  oldHandle = null,
+  onBusyChange,
+  onCancel,
+}: {
+  pending?: boolean;
+  /** Change account (MESITA-3060): the old handle stays until this lands. */
+  changing?: boolean;
+  oldHandle?: string | null;
+  onBusyChange?: (busy: boolean) => void;
+  onCancel?: () => void;
+}) {
   const supabase = useBrowserSupabase();
   const [raw, setRaw] = useState("");
   const [mine, setMine] = useState(false);
@@ -419,20 +699,27 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
     e.preventDefault();
     if (!canSubmit || !username) return;
     setBusy(true);
+    onBusyChange?.(true);
     setResult(null);
     try {
-      await apiLookupInstagram(supabase, username);
-      landConnected();
+      const r = await apiLookupInstagram(supabase, username);
+      // First connect lands on Me; a change or a same-handle sync lands here.
+      if (changing || r.result === "synced") landHere(r);
+      else landConnected();
     } catch (err) {
       setResult(
         err instanceof EFError && err.code === "profile_not_found"
           ? { kind: "not_found", username }
           : {
               kind: "error",
-              message: errMsg(err, "Couldn’t connect — try again."),
+              message:
+                err instanceof EFError && err.code
+                  ? syncErrorCopy(err, username)
+                  : errMsg(err, "Couldn’t connect — try again."),
             },
       );
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -447,10 +734,13 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
             <Instagram className="h-[18px] w-[18px]" />
           </IconChip>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Connect your Instagram</p>
+            <p className="text-sm font-semibold">
+              {changing ? "Change account" : "Connect your Instagram"}
+            </p>
             <p className="text-muted-foreground type-label">
-              Type your username. We add your followers and photo from your
-              Instagram.
+              {changing && oldHandle
+                ? `@${oldHandle} stays connected until the new one is found.`
+                : "Type your username. We add your followers and photo from your Instagram."}
             </p>
           </div>
         </div>
@@ -543,6 +833,16 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
               </p>
             )}
           </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="text-muted-foreground hover:text-foreground type-label min-h-11 font-medium underline underline-offset-4 transition disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          )}
           <PasswordLine />
         </form>
       </SettingsGroup>
@@ -558,14 +858,28 @@ export function ConnectCardSkeleton() {
   return <ConnectLookup pending />;
 }
 
-// DISCONNECT (Pato, MESITA-3052: "enable to disconnect account too … if
-// disconnect ask for confirmation"). The row's button opens a confirm
-// dialog; consumer-web-claim-instagram's `disconnect` clears the handle,
-// followers and an Instagram-copied picture, then the page reloads to the
-// Connect card. `pending` draws the button inert for the route's fallback.
+// THE ACCOUNT ROW (MESITA-3060). The handle links to the account on
+// Instagram (built only from the stored handle); the line under it is the
+// count, "Verified" at 1,000+, and "Updated …" from the later of connect and
+// sync, rendered client-only. Disconnect left this row for a link at the
+// page bottom.
 function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
-  const { igHandle: handle, igReach: verified } = useConsumerIdentity();
-  const [confirming, setConfirming] = useState(false);
+  const {
+    igHandle: handle,
+    igReach: verified,
+    igFollowers,
+  } = useConsumerIdentity();
+  const profile = useServerProfile();
+  const now = useSyncExternalStore(
+    minuteClock.subscribe,
+    minuteClock.now,
+    minuteClock.server,
+  );
+  const stamps = [profile?.instagram_verified_at, profile?.instagram_synced_at]
+    .filter((v): v is string => typeof v === "string")
+    .sort();
+  const updatedAt = stamps.length ? stamps[stamps.length - 1] : null;
+  const ago = now != null && updatedAt ? updatedAgo(updatedAt, now) : "";
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -573,27 +887,27 @@ function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
         <Instagram className="h-[18px] w-[18px]" />
       </IconChip>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">
-          {handle ? `@${handle}` : "Instagram connected"}
-        </p>
-        <p className="text-muted-foreground type-label">
-          {verified ? "Verified" : "Connected"}
+        {handle && !pending ? (
+          <a
+            href={`https://www.instagram.com/${handle}/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`View @${handle} on Instagram`}
+            className="block truncate text-sm font-semibold hover:underline"
+          >
+            @{handle}
+          </a>
+        ) : (
+          <p className="truncate text-sm font-semibold">
+            {handle ? `@${handle}` : "Instagram connected"}
+          </p>
+        )}
+        <p className="text-muted-foreground type-label truncate">
+          {followersLabel(igFollowers)}
+          {verified ? " · Verified" : ""}
+          {ago ? ` · Updated ${ago}` : ""}
         </p>
       </div>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => setConfirming(true)}
-        className="border-border hover:bg-muted min-h-9 shrink-0 rounded-lg border px-3 text-sm font-semibold transition disabled:opacity-60"
-        data-instagram-disconnect
-      >
-        Disconnect
-      </button>
-      <DisconnectDialog
-        open={confirming}
-        handle={handle}
-        onClose={() => setConfirming(false)}
-      />
     </div>
   );
 }
