@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
 // /search Suspense fallback: SearchClient's frame, block for block (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader on its
-// top edge: the white band (MESITA-3019) holding the 48px locate disc, the
-// 48px bar and the 48px Ask AI pill (MESITA-3009), then the floating 32px chip row (the Filters disc,
+// top edge: the white band (MESITA-3019) holding the 40px locate disc, the
+// 40px bar and the 40px Ask AI pill (MESITA-3009), then the floating 32px chip row (the Filters disc,
 // Top, then families; MESITA-2882). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
@@ -44,8 +44,8 @@ export default function SearchLoading() {
         <MapVeil />
         <div className="absolute inset-x-0 top-0 z-30">
           <div className={cn(HEADER_BAND, "flex items-center gap-3 p-3")}>
-            <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
-            <Skeleton className="h-12 min-w-0 flex-1 rounded-full" />
+            <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+            <Skeleton className="h-10 min-w-0 flex-1 rounded-full" />
             <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
           </div>
           <div className="flex items-center gap-3 overflow-hidden pt-1 pl-3">

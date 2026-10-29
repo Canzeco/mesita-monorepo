@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
 import { HEADER_DISC } from "./header-classes";
 
-// The map's location control: a 48px floating disc at the TOP LEFT, before
+// The map's location control: a 40px floating disc at the TOP LEFT, before
 // the bar on its row (Pato, MESITA-3009: "location at the left, searchbar,
 // ask ai at the right"; right of the bar in MESITA-3006, under the chips in
 // MESITA-3005, inside the bar in MESITA-2999). It wears the "my location" target and
