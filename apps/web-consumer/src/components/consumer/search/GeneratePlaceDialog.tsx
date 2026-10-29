@@ -187,9 +187,7 @@ function GenerateBody({
   const running = phase === "generating" || opening;
   const failed = phase === "error";
   const address = preview?.address || target.address;
-  const rating = preview?.rating
-    ? preview.rating.toFixed(1)
-    : null;
+  const rating = preview?.rating ? preview.rating.toFixed(1) : null;
 
   return (
     <div
@@ -200,100 +198,102 @@ function GenerateBody({
     >
       <PreviewHero preview={preview} muted={failed} />
       <div className="flex w-full flex-col items-center px-6 pt-5 pb-6">
-      <div role="status" aria-live="polite" aria-busy={running}>
-        <h2 className={SHEET_TITLE_CLASS}>
-          {running
-            ? "Generating profile…"
-            : failed
-              ? "Couldn't generate this profile"
-              : "Generate a profile?"}
-        </h2>
-        <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
-          {failed ? error : "We'll build its profile from Google."}
-        </p>
-      </div>
-      <div className="bg-muted mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left">
-        <MapPin
-          className="text-muted-foreground h-5 w-5 shrink-0"
-          strokeWidth={2.25}
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1">
-          <span className="text-foreground block truncate text-sm font-semibold">
-            {preview?.name || target.name}
+        <div role="status" aria-live="polite" aria-busy={running}>
+          <h2 className={SHEET_TITLE_CLASS}>
+            {running
+              ? "Generating profile…"
+              : failed
+                ? "Couldn't generate this profile"
+                : "Generate a profile?"}
+          </h2>
+          <p className="text-muted-foreground mt-1.5 max-w-[280px] text-sm leading-relaxed">
+            {failed ? error : "We'll build its profile from Google."}
+          </p>
+        </div>
+        <div className="bg-muted mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left">
+          <MapPin
+            className="text-muted-foreground h-5 w-5 shrink-0"
+            strokeWidth={2.25}
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1">
+            <span className="text-foreground block truncate text-sm font-semibold">
+              {preview?.name || target.name}
+            </span>
+            {preview?.category || rating ? (
+              <span className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
+                {preview?.category ? (
+                  <span className="truncate">{preview.category}</span>
+                ) : null}
+                {preview?.category && rating ? (
+                  <span aria-hidden>·</span>
+                ) : null}
+                {rating ? (
+                  <span className="inline-flex shrink-0 items-center gap-1">
+                    <Star
+                      className="fill-fact-star text-fact-star h-3 w-3"
+                      aria-hidden
+                    />
+                    {rating}
+                    {preview?.reviewCount ? (
+                      <span>({preview.reviewCount})</span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            {address ? (
+              <span className="text-muted-foreground line-clamp-2 block text-xs">
+                {address}
+              </span>
+            ) : null}
           </span>
-          {preview?.category || rating ? (
-            <span className="text-muted-foreground flex items-center gap-1.5 truncate text-xs">
-              {preview?.category ? (
-                <span className="truncate">{preview.category}</span>
-              ) : null}
-              {preview?.category && rating ? <span aria-hidden>·</span> : null}
-              {rating ? (
-                <span className="inline-flex shrink-0 items-center gap-1">
-                  <Star
-                    className="fill-fact-star text-fact-star h-3 w-3"
-                    aria-hidden
-                  />
-                  {rating}
-                  {preview?.reviewCount ? (
-                    <span>({preview.reviewCount})</span>
-                  ) : null}
-                </span>
-              ) : null}
-            </span>
-          ) : null}
-          {address ? (
-            <span className="text-muted-foreground line-clamp-2 block text-xs">
-              {address}
-            </span>
-          ) : null}
-        </span>
-      </div>
+        </div>
 
-      {/* The fixed footer slot: buttons and steps cross-fade in place. */}
-      <div className="relative mt-5 h-12 w-full">
-        <div
-          className={cn(
-            "absolute inset-0 flex gap-2 transition-opacity duration-200 motion-reduce:transition-none",
-            running ? "pointer-events-none opacity-0" : "opacity-100",
-          )}
-          aria-hidden={running}
-          inert={running}
-        >
-          <button
-            type="button"
-            onClick={cancel}
-            className={SHEET_CANCEL_BUTTON_CLASS}
+        {/* The fixed footer slot: buttons and steps cross-fade in place. */}
+        <div className="relative mt-5 h-12 w-full">
+          <div
+            className={cn(
+              "absolute inset-0 flex gap-2 transition-opacity duration-200 motion-reduce:transition-none",
+              running ? "pointer-events-none opacity-0" : "opacity-100",
+            )}
+            aria-hidden={running}
+            inert={running}
           >
-            Cancel
-          </button>
-          <button
-            ref={primaryRef}
-            type="button"
-            onClick={() => void generate()}
-            className={cn(PRIMARY_BUTTON_CLASS, "h-auto flex-1 py-3")}
-            data-generate-place-confirm
+            <button
+              type="button"
+              onClick={cancel}
+              className={SHEET_CANCEL_BUTTON_CLASS}
+            >
+              Cancel
+            </button>
+            <button
+              ref={primaryRef}
+              type="button"
+              onClick={() => void generate()}
+              className={cn(PRIMARY_BUTTON_CLASS, "h-auto flex-1 py-3")}
+              data-generate-place-confirm
+            >
+              <Sparkles className="h-4 w-4" aria-hidden />
+              {failed ? "Try again" : "Generate"}
+            </button>
+          </div>
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none",
+              running ? "opacity-100" : "pointer-events-none opacity-0",
+            )}
+            aria-hidden={!running}
           >
-            <Sparkles className="h-4 w-4" aria-hidden />
-            {failed ? "Try again" : "Generate"}
-          </button>
+            {opening ? (
+              <span className="text-foreground animate-in fade-in text-sm font-semibold duration-300 motion-reduce:animate-none">
+                Opening profile…
+              </span>
+            ) : running ? (
+              <GenerateSteps key={attempt} />
+            ) : null}
+          </div>
         </div>
-        <div
-          className={cn(
-            "absolute inset-0 flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none",
-            running ? "opacity-100" : "pointer-events-none opacity-0",
-          )}
-          aria-hidden={!running}
-        >
-          {opening ? (
-            <span className="text-foreground animate-in fade-in text-sm font-semibold duration-300 motion-reduce:animate-none">
-              Opening profile…
-            </span>
-          ) : running ? (
-            <GenerateSteps key={attempt} />
-          ) : null}
-        </div>
-      </div>
       </div>
     </div>
   );
@@ -327,7 +327,7 @@ function PreviewHero({
           />
           {/* Google requires the photo's author next to it. */}
           {preview?.photoAuthor ? (
-            <span className="absolute bottom-2 left-2 max-w-[80%] truncate rounded-full bg-black/55 px-2 py-0.5 type-label text-white">
+            <span className="type-label absolute bottom-2 left-2 max-w-[80%] truncate rounded-full bg-black/55 px-2 py-0.5 text-white">
               Photo: {preview.photoAuthor} · Google
             </span>
           ) : null}

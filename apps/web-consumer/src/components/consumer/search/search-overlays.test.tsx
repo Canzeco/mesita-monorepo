@@ -54,7 +54,9 @@ describe("Search map catalog reloads once the map is still (MESITA-2440)", () =>
     // (MESITA-2337).
     expect(read("../../../lib/api/places.ts")).toContain("google: true");
     expect(read("../../../lib/api/places.ts")).toContain("reloadIdleSec");
-    expect(read("../../../lib/api/places.ts")).toContain("reloadMinViewportPct");
+    expect(read("../../../lib/api/places.ts")).toContain(
+      "reloadMinViewportPct",
+    );
   });
 
   it("arms one timer per guest move, timed from the last reload; any camera move cancels it", () => {
@@ -494,5 +496,4 @@ describe("anchor helpers", () => {
     expect(anchorSurvivesReload(at, { lat: 25.7, lng: -100.31 })).toBe(false);
     expect(anchorSurvivesReload({ lat: null, lng: null }, at)).toBe(false);
   });
-
 });

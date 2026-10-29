@@ -4,15 +4,18 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ Ask AI )   44px, floating on the map
-//   (≡) (▦ Top) (○ Coffee) (○ Breakfast) …      32px, floating on the map
+//   [ ⚲ Search places…      (✦ Ask AI) (⌖) ]   one 48px bar, floating
+//   (≡ Filters) (▦ Top) (○ Coffee) …            32px chips, floating
 //
-// The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
-// Chat). One token set for every control lives in header-classes.ts. NO ADD
+// ONE LONG BAR (Pato, MESITA-2999: "searchbar contains location searchbar
+// and askai", then "search · ask bubble · loc bubble"): the query field,
+// then the Ask AI bubble (→ Search › Chat), then the locate bubble, all in
+// one pill across the screen (MESITA-2879 had three separate controls). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
-// THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
-// icon at the super left"), pinned outside the scroll, then Top, then every
+// THE FILTERS CHIP AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
+// icon at the super left"), pinned outside the scroll, its icon AND the word
+// (MESITA-2999: "filters, not only the icon"), then Top, then every
 // family, each with its line icon (MESITA-2478: line icons, not emoji).
 // Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
 // MESITA-2879 had All, MESITA-2534 Top). THE DISC OPENS THE FILTERS SHEET
@@ -51,24 +54,17 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
-import {
-  CHIP,
-  CHIP_DISC,
-  CHIP_OFF,
-  CHIP_ON,
-  HEADER_PILL,
-} from "./header-classes";
+import { BAR, CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
 
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
-/** The Filters disc while a family is picked: red, so a pick that scrolled
+/** The Filters chip while a family is picked: red, so a pick that scrolled
  *  out of view still shows at the row's edge (MESITA-2884). */
-const DISC_LIT =
-  "relative border-destructive/40 text-destructive";
+const DISC_LIT = "relative border-destructive/40 text-destructive";
 
-/** The count bubble on the lit disc's top-right corner, ringed in the
+/** The count bubble on the lit chip's top-right corner, ringed in the
  *  band's white so it reads off the disc. */
 const DISC_BADGE =
   "bg-destructive text-destructive-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
@@ -79,9 +75,9 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, at the left of the bar's row. */
+  /** The locate bubble, at the bar's right end. */
   locate: ReactNode;
-  /** The query bar; it takes what the disc and the pill leave. */
+  /** The query field; it takes what the two bubbles leave. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -99,21 +95,23 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      <div className="flex min-w-0 items-center gap-2 px-3 pt-3 [&>*]:pointer-events-auto">
-        {locate}
-        <div className="min-w-0 flex-1">{bar}</div>
-        <Link
-          href={CONSUMER_ROUTES.searchChat}
-          className={HEADER_PILL}
-          data-search-ask-ai
-        >
-          <BotMessageSquare
-            className="h-4 w-4 shrink-0"
-            strokeWidth={2}
-            aria-hidden
-          />
-          <span>Ask AI</span>
-        </Link>
+      <div className="px-3 pt-3">
+        <div className={cn(BAR, "pointer-events-auto")}>
+          {bar}
+          <Link
+            href={CONSUMER_ROUTES.searchChat}
+            className={HEADER_PILL}
+            data-search-ask-ai
+          >
+            <BotMessageSquare
+              className="h-4 w-4 shrink-0"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <span>Ask AI</span>
+          </Link>
+          {locate}
+        </div>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
@@ -125,12 +123,12 @@ export function SearchHeader({
               onClick={() => setSheetOpen(true)}
               aria-label={
                 everyFamily
-                  ? "Filters"
+                  ? undefined
                   : `Filters (${filters.familyKeys.length} selected)`
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={cn(CHIP_DISC, !everyFamily && DISC_LIT)}
+              className={cn(CHIP, CHIP_OFF, !everyFamily && DISC_LIT)}
               data-search-filters
             >
               <SlidersHorizontal
@@ -138,6 +136,7 @@ export function SearchHeader({
                 strokeWidth={2}
                 aria-hidden
               />
+              <span>Filters</span>
               {everyFamily ? null : (
                 <span
                   aria-hidden

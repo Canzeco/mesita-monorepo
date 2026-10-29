@@ -421,8 +421,8 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
 // ── T5b — Home's header and Search's header ────────────────────────────────
 // HOME'S HEADER IS THE LOGO AND THE LOCATION (MESITA-2405: the location is its
 // only control; MESITA-2470: the Mesita logo beside it, for brand identity).
-// Social and Favorites are rows of the catalog's column; Home has no pills. Search's header is locate · bar ·
-// Ask AI over a row of family chips (MESITA-2409, MESITA-2879).
+// Social and Favorites are rows of the catalog's column; Home has no pills. Search's header is one bar
+// (query · Ask AI · locate, MESITA-2999) over a row of family chips.
 describe("T5b — Home's header and Search's header", () => {
   it('Home\'s header is the name "Mesita", then the location picker, and nothing else', () => {
     const tabs = readFileSync(join(COMPONENTS, "ModeTabs.tsx"), "utf8");
@@ -442,19 +442,16 @@ describe("T5b — Home's header and Search's header", () => {
     expect(layout).toContain("<ModeTabs />");
   });
 
-  // Search's header (MESITA-2409): locate · bar · Ask AI, then the family
-  // chips (MESITA-2879).
+  // Search's header links Ask AI; its order is UI layout, not pinned (MVP
+  // test rule, MESITA-2999).
   // Ask AI lands on /search/chat: from Search, a sheet over the map
   // (MESITA-2475); cold-loaded, the Soon page with a way back.
-  it("Search's header is locate · bar · Ask AI, and Ask AI is a real Soon page", () => {
+  it("Search's header links Ask AI, and Ask AI is a real Soon page", () => {
     const header = readFileSync(
       join(COMPONENTS, "search", "SearchHeader.tsx"),
       "utf8",
     );
     expect(header).toContain("href={CONSUMER_ROUTES.searchChat}");
-    expect(header).toMatch(
-      /\{locate\}\s*<div className="min-w-0 flex-1">\{bar\}<\/div>\s*<Link/,
-    );
     expect(header).toContain("Ask AI");
     expect(new Set(allPages().map(pageUrl))).toContain(
       CONSUMER_ROUTES.searchChat,

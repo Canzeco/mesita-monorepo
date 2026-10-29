@@ -21,7 +21,11 @@ export type LabelRect = {
   bottom: number;
 };
 
-export function estimateLabelRect(x: number, y: number, title: string): LabelRect {
+export function estimateLabelRect(
+  x: number,
+  y: number,
+  title: string,
+): LabelRect {
   const charW = 6.2;
   const height = 16;
   const maxWidth = 168;
@@ -41,11 +45,18 @@ function inflate(rect: LabelRect, gap: number): LabelRect {
 }
 
 function intersects(a: LabelRect, b: LabelRect): boolean {
-  return !(a.right < b.left || b.right < a.left || a.bottom < b.top || b.bottom < a.top);
+  return !(
+    a.right < b.left ||
+    b.right < a.left ||
+    a.bottom < b.top ||
+    b.bottom < a.top
+  );
 }
 
 /** Focused (selected / held) pin always keeps its label; others skip on overlap. */
-export function pickVisiblePinLabels(candidates: PinLabelCandidate[]): Set<string> {
+export function pickVisiblePinLabels(
+  candidates: PinLabelCandidate[],
+): Set<string> {
   const sorted = [...candidates].sort((a, b) => {
     if (a.focused !== b.focused) return a.focused ? -1 : 1;
     return a.id.localeCompare(b.id);

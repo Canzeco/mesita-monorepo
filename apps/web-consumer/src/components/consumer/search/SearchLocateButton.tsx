@@ -9,11 +9,10 @@ import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
 import { HEADER_DISC } from "./header-classes";
 
-// The map's location control, TOP LEFT (Pato, 2026-10-17: "Location
-// Searchbar Filters … location at the left"). A 36px disc wearing the
-// "my location" target and nothing else, mirrored by the Ask AI disc on the
-// other side of the bar: both are HEADER_DISC, so the two can't drift apart
-// (MESITA-2433). The target turns the map's you-are-here blue once the
+// The map's location control: a 36px bubble at the RIGHT END of Search's
+// long bar, after Ask AI (Pato, MESITA-2999: "move the location to the
+// right … search · ask bubble · loc bubble"; it was a disc at the top left,
+// 2026-10-17). It wears the "my location" target and nothing else. The target turns the map's you-are-here blue once the
 // guest's fix is held (Pato, MESITA-2454: "a better icon for location, or
 // add blue"; it was a black corner dot, MESITA-2304). No hover tint while
 // it is locating and disabled. A refusal turns the icon red and toasts the
@@ -58,7 +57,7 @@ export function SearchLocateButton({
       className={cn(
         "relative",
         HEADER_DISC,
-        "disabled:hover:bg-card disabled:opacity-60",
+        "disabled:hover:bg-muted disabled:opacity-60",
       )}
     >
       <LocateFixed
