@@ -4,26 +4,25 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…          (✦ Ask AI) ]   one 48px bar, floating
-//   (≡ Filters) (▦ Top) (○ Coffee) …            32px chips, floating
-//                                        (⌖)   44px locate disc, top right
+//   [ ⚲ Search places…      (✦ Ask AI) ] (⌖)   48px bar + 48px locate disc
+//   (≡) (▦ Top) (○ Coffee) …                    32px chips, floating
 //
 // ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long"): the query
 // field, then the Ask AI bubble (→ Search › Chat), in one pill across the
-// screen. Locate left the bar for its own disc under the chips (MESITA-3005). One token set for every control lives in header-classes.ts. NO ADD
+// screen; the locate disc sits right of it on the same row (MESITA-3006). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
-// THE FILTERS CHIP AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
-// icon at the super left"), pinned outside the scroll, its icon AND the word
-// (MESITA-2999: "filters, not only the icon"), then Top, then every
+// THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
+// icon at the super left"), pinned outside the scroll: a white icon-only
+// disc (MESITA-3006; MESITA-2999's worded chip "looks like [bad]"), then Top, then every
 // family, each with its line icon (MESITA-2478: line icons, not emoji).
 // Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
 // MESITA-2879 had All, MESITA-2534 Top). THE DISC OPENS THE FILTERS SHEET
 // (Pato, MESITA-2903: "when i click filters, open the modal to see select
 // multiple families"; MESITA-2879 had deleted MESITA-2758's sheet and made
 // the disc a clear): any number of families, applied at once. While any is
-// picked the disc turns red and wears a red bubble with the count (Pato,
-// MESITA-2884: "mark it red or something with a bubble").
+// picked the disc wears a small black bubble with the count (MESITA-3006;
+// MESITA-2884's red disc is gone).
 // NO NEARBY, NO POPULAR (MESITA-2499/2502): the map is the where, a chip
 // is only the what. A chip picks its family ALONE; it is lit while its
 // family is in the set (the sheet may hold several); Top is lit when none
@@ -54,20 +53,24 @@ import {
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
-import { BAR, CHIP, CHIP_OFF, CHIP_ON, HEADER_PILL } from "./header-classes";
+import {
+  BAR,
+  CHIP,
+  CHIP_DISC,
+  CHIP_OFF,
+  CHIP_ON,
+  HEADER_PILL,
+} from "./header-classes";
 
 /** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
  *  on — BottomNav's pair. */
 const CHIP_ICON = "h-4 w-4 shrink-0";
 
-/** The Filters chip while a family is picked: red, so a pick that scrolled
- *  out of view still shows at the row's edge (MESITA-2884). */
-const DISC_LIT = "relative border-destructive/40 text-destructive";
-
-/** The count bubble on the lit chip's top-right corner, ringed in the
- *  band's white so it reads off the disc. */
+/** The count bubble on the Filters disc's top-right corner while families
+ *  are picked: ink, not red (Pato, MESITA-3006; MESITA-2884's red disc is
+ *  gone), ringed in white so it reads off the disc. */
 const DISC_BADGE =
-  "bg-destructive text-destructive-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
+  "bg-primary text-primary-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
 
 export function SearchHeader({
   locate,
@@ -75,7 +78,7 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, floating at the top right under the chips. */
+  /** The locate disc, right of the bar on row one. */
   locate: ReactNode;
   /** The query field; it takes what the two bubbles leave. */
   bar: ReactNode;
@@ -95,8 +98,10 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      <div className="px-3 pt-3">
-        <div className={cn(BAR, "pointer-events-auto")}>
+      {/* Row one (Pato, MESITA-3006: "searchbar with ask ai inside at the
+          right, and then the location at top right at the same level"). */}
+      <div className="flex min-w-0 items-center gap-2 px-3 pt-3 [&>*]:pointer-events-auto">
+        <div className={cn(BAR, "min-w-0 flex-1")}>
           {bar}
           <Link
             href={CONSUMER_ROUTES.searchChat}
@@ -111,6 +116,7 @@ export function SearchHeader({
             <span>Ask AI</span>
           </Link>
         </div>
+        {locate}
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
@@ -122,12 +128,12 @@ export function SearchHeader({
               onClick={() => setSheetOpen(true)}
               aria-label={
                 everyFamily
-                  ? undefined
+                  ? "Filters"
                   : `Filters (${filters.familyKeys.length} selected)`
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={cn(CHIP, CHIP_OFF, !everyFamily && DISC_LIT)}
+              className={CHIP_DISC}
               data-search-filters
             >
               <SlidersHorizontal
@@ -135,7 +141,6 @@ export function SearchHeader({
                 strokeWidth={2}
                 aria-hidden
               />
-              <span>Filters</span>
               {everyFamily ? null : (
                 <span
                   aria-hidden
@@ -186,15 +191,6 @@ export function SearchHeader({
                 );
               })}
             </nav>
-          </div>
-        )}
-        {chipsHidden ? null : (
-          // THE LOCATE DISC, top right under the chips (Pato, MESITA-3005:
-          // "the location icon at the top right below the filters"): Google
-          // Maps' map-control spot. Not drawn while querying: the results
-          // hang there.
-          <div className="flex justify-end px-3">
-            <div className="pointer-events-auto">{locate}</div>
           </div>
         )}
         {children ? (
