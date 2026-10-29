@@ -20,6 +20,7 @@ export const PUBLIC_PROFILE_SWITCH = {
 
 export const INSTAGRAM_PHOTO_SWITCH = {
   label: "Use my Instagram photo",
-  on: "Your Mesita profile picture is your Instagram one",
-  off: "Only your username and followers",
+  // True before and after connecting (MESITA-3001).
+  on: "Your Mesita picture comes from your Instagram",
+  off: "We keep only your username and followers",
 } as const;
