@@ -27,6 +27,13 @@ import {
 import { premierFactor } from "./area-score.ts";
 
 const DAY = 86_400_000;
+
+/** Reads a nested value from Stripe params without `any`. */
+function at(o: unknown, ...path: (string | number)[]): unknown {
+  let v = o;
+  for (const k of path) v = (v as Record<string | number, unknown> | undefined)?.[k];
+  return v;
+}
 const T0 = Date.parse("2026-11-01T00:00:00Z");
 
 function pledge(over: Partial<Pledge> & { id: string }): Pledge {
@@ -254,15 +261,15 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
     placeName: "Cafe",
     returnUrl: "https://mesita.ai/web/place/x?tab=premier",
     nowSec: 1000,
-  }) as Record<string, any>;
+  });
   assertEquals(pay.mode, "payment");
-  assertEquals(pay.payment_intent_data.capture_method, "manual");
-  assertEquals(pay.payment_intent_data.setup_future_usage, "off_session");
-  assertEquals(pay.line_items[0].price_data.unit_amount, 1000);
-  assertEquals("recurring" in pay.line_items[0].price_data, false);
+  assertEquals(at(pay, "payment_intent_data", "capture_method"), "manual");
+  assertEquals(at(pay, "payment_intent_data", "setup_future_usage"), "off_session");
+  assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 1000);
+  assertEquals(at(pay, "line_items", 0, "price_data", "recurring"), undefined);
   assertEquals(pay.success_url, "https://mesita.ai/web/place/x?tab=premier&boost={CHECKOUT_SESSION_ID}");
   assertEquals(pay.expires_at, 1000 + 31 * 60);
-  assertEquals(pay.metadata.backing_id, "b1");
+  assertEquals(at(pay, "metadata", "backing_id"), "b1");
   const setup = pledgeCheckoutParams({ ...{
     kind: "setup" as const,
     customer: "cus_1",
@@ -275,7 +282,7 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
     placeName: "Cafe",
     returnUrl: "https://mesita.ai/x",
     nowSec: 1000,
-  } }) as Record<string, any>;
+  } });
   assertEquals([setup.mode, setup.currency, "line_items" in setup], ["setup", "usd", false]);
 });
 
