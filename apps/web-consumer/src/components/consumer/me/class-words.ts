@@ -47,25 +47,23 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 
 export const JOIN_WORDS = {
   group: "Become VIP",
-  // Side by side (MESITA-3056): each card is titled by its way in, and both
+  // One card of rows (MESITA-3073): each row titled by its way in, and both
   // buttons say Join. The Instagram one is read aloud as instagramButton.
-  instagramTitle: "With Instagram",
+  instagramTitle: "Instagram",
   instagramButton: "Join with Instagram",
-  codeTitle: "With a code",
+  codeTitle: "Invitation code",
   codeField: "12-digit invitation code",
   codeButton: "Join",
   joined: "You're VIP.",
   connect: "Connect Instagram first.",
-  update: "Update count",
   unknownCount: "We couldn't read your follower count.",
   needs: (followers: number, needed = INSTAGRAM_REACH_FOLLOWERS) =>
     `Needs ${fmt(needed)} followers. You have ${fmt(followers)}.`,
-  ready: (followers: number) => `${fmt(followers)} followers on Instagram.`,
-  // The redesigned card (MESITA-3069): the number leads, a bar under it.
+  // The row's line over its bar (MESITA-3069, MESITA-3073).
   progressLabel: "Instagram followers toward VIP",
-  toJoin: "followers to join",
+  progress: (have: string, needed: string) => `${have} of ${needed} followers`,
   toJoinFull: `${fmt(INSTAGRAM_REACH_FOLLOWERS)} followers to join`,
-  qualify: "followers · you qualify",
+  qualify: (have: string) => `${have} followers · you qualify`,
   countUnavailable: "Count unavailable",
   connectButton: "Connect",
   shortCode: "Enter the 12-digit code.",
