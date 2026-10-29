@@ -21,6 +21,13 @@
 //
 // A leaf module with no imports, so Home's header can adopt it later.
 
+/** ONE TYPE AND ONE ICON SIZE across the header (Pato, MESITA-3023:
+ *  "standarize the fonts and sizes"): every label and the bar's text are
+ *  14px semibold; every icon is 16px at stroke 2, lit or not. */
+export const HEADER_TEXT = "text-sm font-semibold";
+export const HEADER_ICON = "h-4 w-4 shrink-0";
+export const HEADER_ICON_STROKE = 2;
+
 /** The floating surface every header control shares: white, and
  *  `shadow-float`, Google Maps' lift (MESITA-2998: the one-off soft shadow
  *  before it barely read over a pale map). */
@@ -46,14 +53,13 @@ export const HEADER_DISC = `${IN_BAND} hover:bg-border flex h-10 w-10 shrink-0 i
  *  white pill with ink text and sparkles, the locate disc's look widened
  *  (Pato, MESITA-3010: "remove the black color from ask ai"; MESITA-3007's
  *  black pill, MESITA-3003's tint and MESITA-3000's gradient are gone). */
-export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-semibold whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
+export const HEADER_PILL = `${IN_BAND} hover:bg-border flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 ${HEADER_TEXT} whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
 /** The Filters disc at the chip row's left: a chip's 32px, round, icon
  *  only (MESITA-3006). */
 export const CHIP_DISC = `${FLOAT} border-transparent hover:bg-muted relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
 
-export const CHIP =
-  "flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]";
+export const CHIP = `flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 ${HEADER_TEXT} whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]`;
 /** A dark border is invisible on the ink chip, and the nav's overflow clips
  *  an outer ring: the selected chip focuses with an inset ring. */
 export const CHIP_ON =

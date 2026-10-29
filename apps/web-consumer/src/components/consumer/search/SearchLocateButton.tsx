@@ -6,7 +6,7 @@ import { LocateFixed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
-import { HEADER_DISC } from "./header-classes";
+import { HEADER_DISC, HEADER_ICON, HEADER_ICON_STROKE } from "./header-classes";
 
 // The map's location control: a 40px floating disc at the TOP LEFT, before
 // the bar on its row (Pato, MESITA-3009: "location at the left, searchbar,
@@ -62,11 +62,11 @@ export function SearchLocateButton({
     >
       <LocateFixed
         className={cn(
-          "h-[18px] w-[18px] shrink-0",
+          HEADER_ICON,
           locating && "animate-pulse",
           blocked && "text-destructive",
         )}
-        strokeWidth={2}
+        strokeWidth={HEADER_ICON_STROKE}
         aria-hidden
       />
     </button>

@@ -3,6 +3,8 @@
 import type { RefObject } from "react";
 import { Search, X } from "lucide-react";
 
+import { HEADER_ICON, HEADER_ICON_STROKE, HEADER_TEXT } from "./header-classes";
+
 // The Search map's query field — the one search bar in the app, the left
 // part of SearchHeader's long bar, before Ask AI and locate (MESITA-2999).
 // Query field only: the Filters sheet picks the family (MESITA-2875). The
@@ -33,7 +35,10 @@ export function SearchBar({
   // Fills what Ask AI and locate leave in the bar (MESITA-2999).
   return (
     <div className="flex h-full min-w-0 flex-1 items-center">
-      <Search className="text-muted-foreground h-4 w-4 shrink-0" />
+      <Search
+        className={`text-muted-foreground ${HEADER_ICON}`}
+        strokeWidth={HEADER_ICON_STROKE}
+      />
       <input
         ref={inputRef}
         value={query}
@@ -68,7 +73,7 @@ export function SearchBar({
         autoCorrect="off"
         autoComplete="off"
         spellCheck={false}
-        className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-3 text-sm font-medium outline-none"
+        className={`placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent px-3 ${HEADER_TEXT} outline-none`}
       />
       {showClear && (
         <button
@@ -77,7 +82,7 @@ export function SearchBar({
           aria-label="Clear search"
           className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition outline-none"
         >
-          <X className="h-4 w-4" />
+          <X className={HEADER_ICON} strokeWidth={HEADER_ICON_STROKE} />
         </button>
       )}
     </div>
