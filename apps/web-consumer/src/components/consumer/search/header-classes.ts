@@ -17,9 +17,10 @@
 //
 // A leaf module with no imports, so Home's header can adopt it later.
 
-/** The floating surface every header control shares: white, a soft shadow. */
-export const FLOAT =
-  "bg-card text-foreground shadow-[0_1px_4px_rgba(0,0,0,0.18)]";
+/** The floating surface every header control shares: white, and
+ *  `shadow-float`, Google Maps' lift (MESITA-2998: the one-off soft shadow
+ *  before it barely read over a pale map). */
+export const FLOAT = "bg-card text-foreground shadow-float";
 
 /** The 44px disc at the left of the bar's row: locate. */
 export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
@@ -36,7 +37,7 @@ export const CHIP =
 /** A dark border is invisible on the ink chip, and the nav's overflow clips
  *  an outer ring: the selected chip focuses with an inset ring. */
 export const CHIP_ON =
-  "border-primary bg-primary text-primary-foreground shadow-[0_1px_4px_rgba(0,0,0,0.18)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-foreground";
+  "border-primary bg-primary text-primary-foreground shadow-float focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-foreground";
 /** An unpicked chip on the map: the floating white pill. */
 export const CHIP_OFF = `${FLOAT} border-transparent hover:bg-muted`;
 /** An unpicked chip inside a sheet (already on white): a grey fill. */

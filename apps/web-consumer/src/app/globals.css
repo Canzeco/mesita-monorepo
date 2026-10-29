@@ -163,6 +163,12 @@
   /* Legibility for white chrome sitting on a photo — the same carve-out
      Docs > Design §D already grants bg-black/NN on media. Not a lift. */
   --shadow-media: 0 1px 4px oklch(0 0 0 / 0.5);
+  /* Controls floating straight on the map (Search's bar, discs and chips,
+     MESITA-2998): Google Maps' two layers, a tight dark edge that draws the
+     pill's outline on a pale map plus a soft spread for lift. Context, not
+     height — outside the ladder, like --shadow-media. */
+  --shadow-float:
+    0 1px 2px oklch(0 0 0 / 0.3), 0 2px 6px 2px oklch(0 0 0 / 0.15);
   /* ON-MEDIA COLOURS (MESITA-2105). Chrome drawn ON a full-bleed photo —
      Scroll's action discs, its name and meta lines — needs white on black,
      and the package rule says semantic tokens only, never `text-white`. These
@@ -342,6 +348,9 @@
 }
 @utility shadow-media {
   box-shadow: var(--shadow-media);
+}
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
 }
 @utility bg-media-scrim {
   background-image: var(--media-scrim);
