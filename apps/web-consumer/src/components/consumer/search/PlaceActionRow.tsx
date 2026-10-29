@@ -42,7 +42,9 @@ export function PlaceActionRow({
 }) {
   const body = (
     <>
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center">{mark}</span>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+        {mark}
+      </span>
       <span className="min-w-0 flex-1">
         <span className="text-foreground block truncate text-sm font-semibold">
           {title}
@@ -77,7 +79,9 @@ export function PlaceActionRow({
           aria-label={`${action.onMesita ? "Open" : "Generate a profile for"} ${title}`}
           className={cn(
             "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition active:scale-[0.97]",
-            action.onMesita ? "bg-muted text-foreground" : "bg-foreground text-paper",
+            action.onMesita
+              ? "bg-muted text-foreground"
+              : "bg-foreground text-paper",
           )}
           data-place-row-action={action.onMesita ? "open" : "create"}
         >

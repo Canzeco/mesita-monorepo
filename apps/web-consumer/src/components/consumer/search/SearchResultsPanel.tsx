@@ -164,11 +164,13 @@ function SuggestionLine({
   // Three spoken answers over the three tones: a Mesita place that is not
   // Premier has a profile, so it is not "No profile".
   // The word Enriched never reaches a guest (MESITA-2298).
-  const toneLabel = tone === "premier"
-    ? (premierLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ?? "Mesita Premier")
-    : onMesita
-      ? "Basic Mesita profile"
-      : "No profile yet";
+  const toneLabel =
+    tone === "premier"
+      ? (premierLabel(prediction.boost_tier ?? prediction.card?.boost_tier) ??
+        "Mesita Premier")
+      : onMesita
+        ? "Basic Mesita profile"
+        : "No profile yet";
 
   return (
     <PlaceActionRow

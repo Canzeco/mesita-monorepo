@@ -129,7 +129,8 @@ export function AddPlaceSheet({
       <div className={SHEET_BODY_CLASS} data-search-add-sheet>
         <h2 className={SHEET_TITLE_CLASS}>Add a place</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Find it on Google. If it isn&apos;t on Mesita yet, generate its profile.
+          Find it on Google. If it isn&apos;t on Mesita yet, generate its
+          profile.
         </p>
         <label className="relative mt-4 block">
           <Search

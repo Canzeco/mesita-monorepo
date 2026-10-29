@@ -297,7 +297,9 @@ describe("a load asks for the visible map (MESITA-2499)", () => {
 
   it("sends no bounds without a view, across the dateline, or degenerate", () => {
     expect(boxBounds(null)).toBeNull();
-    expect(boxBounds({ south: 10, west: 179, north: 11, east: -179 })).toBeNull();
+    expect(
+      boxBounds({ south: 10, west: 179, north: 11, east: -179 }),
+    ).toBeNull();
     expect(boxBounds({ south: 10, west: 5, north: 10, east: 6 })).toBeNull();
   });
 
@@ -342,7 +344,12 @@ describe("the live readout's radius mirrors the server (MESITA-2512)", () => {
   it("is null with no view, across the dateline, or a cross off the view", () => {
     expect(viewRadiusKm(null, { lat: 0, lng: 0 })).toBeNull();
     expect(viewRadiusKm(VIEW, null)).toBeNull();
-    expect(viewRadiusKm({ south: -1, west: 179, north: 1, east: -179 }, { lat: 0, lng: 180 })).toBeNull();
+    expect(
+      viewRadiusKm(
+        { south: -1, west: 179, north: 1, east: -179 },
+        { lat: 0, lng: 180 },
+      ),
+    ).toBeNull();
     expect(viewRadiusKm(VIEW, { lat: 26, lng: -100.32 })).toBeNull();
   });
 });

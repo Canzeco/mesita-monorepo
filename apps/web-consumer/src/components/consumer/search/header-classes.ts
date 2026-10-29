@@ -5,15 +5,18 @@
 // Maps' search box and chips. MESITA-2413/2469's white band with grey fills
 // is gone.
 //
-// TWO HEIGHTS (MESITA-2996: "must not have the same height as the
-// searchbar"; reverses MESITA-2445): the bar's row is h-11 (44px) — the
-// locate disc, the bar, Ask AI — and the chip row is h-8 (32px).
+// ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long. so put the
+// ask ai inside the searchbar … same for location"; then "search · ask
+// bubble · loc bubble"): a 48px pill across the screen holding the query
+// field, then Ask AI and locate as small grey bubbles inside it. Under it the
+// 32px chip row, opening with a worded Filters chip (MESITA-2999: "filters,
+// not only the icon"). Two heights (MESITA-2996, reverses MESITA-2445).
 //
 // The border stays as `border-transparent` so keyboard focus can darken it
 // without the control shifting a pixel.
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ Ask AI )   ← HEADER_DISC · SearchBar · HEADER_PILL
-//   (≡) (☆ Top) (○ Coffee) …                    ← CHIP_DISC · CHIP + CHIP_ON / CHIP_OFF
+//   [ ⚲ Search places…      (✦ Ask AI) (⌖) ]   ← BAR: SearchBar · HEADER_PILL · HEADER_DISC
+//   (≡ Filters) (☆ Top) (○ Coffee) …            ← CHIP + CHIP_ON / CHIP_OFF
 //
 // A leaf module with no imports, so Home's header can adopt it later.
 
@@ -22,15 +25,20 @@
  *  before it barely read over a pale map). */
 export const FLOAT = "bg-card text-foreground shadow-float";
 
-/** The 44px disc at the left of the bar's row: locate. */
-export const HEADER_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
+/** The one long bar: the floating pill that holds the query field and the
+ *  two bubbles; typing darkens its border. */
+export const BAR = `${FLOAT} border-transparent focus-within:border-foreground flex h-12 min-w-0 items-center gap-1 rounded-full border pr-1.5 pl-4 transition-colors`;
 
-/** Ask AI at the bar's right end: the disc's height, widened into a pill
- *  that says what it does (Pato, MESITA-2455). */
-export const HEADER_PILL = `${FLOAT} border-transparent hover:bg-muted flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold whitespace-nowrap outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
+/** A bubble inside the bar: a grey fill on the white pill. */
+const BUBBLE =
+  "bg-muted text-foreground hover:bg-border flex h-9 shrink-0 items-center justify-center rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-foreground active:scale-[0.97]";
 
-/** The Filters disc at the chip row's left: a chip's 32px, round. */
-export const CHIP_DISC = `${FLOAT} border-transparent hover:bg-muted flex h-8 w-8 shrink-0 items-center justify-center rounded-full border outline-none transition focus-visible:border-foreground active:scale-[0.97]`;
+/** The locate bubble at the bar's right end. */
+export const HEADER_DISC = `${BUBBLE} w-9`;
+
+/** Ask AI, before locate: a bubble widened to say what it does
+ *  (Pato, MESITA-2455). */
+export const HEADER_PILL = `${BUBBLE} gap-1.5 px-3 text-sm font-semibold whitespace-nowrap`;
 
 export const CHIP =
   "flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]";

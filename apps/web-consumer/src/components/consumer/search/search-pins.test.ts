@@ -41,9 +41,16 @@ describe("pin tones — premier > mesita > google", () => {
       boost_tier: 0,
     };
     expect(placePinTone(enrichedUnmarked)).toBe("mesita");
-    const createdMarked: Partial<Place> = { content_state: "ready", enriched_at: null, boost_tier: 1 };
+    const createdMarked: Partial<Place> = {
+      content_state: "ready",
+      enriched_at: null,
+      boost_tier: 1,
+    };
     expect(placePinTone(createdMarked)).toBe("premier");
-    const created: Partial<Place> = { content_state: "ready", enriched_at: null };
+    const created: Partial<Place> = {
+      content_state: "ready",
+      enriched_at: null,
+    };
     expect(placePinTone(created)).toBe("mesita");
     expect(placePinTone({ ...created, boost_tier: 0 })).toBe("mesita");
     // An older payload without the mark understates, never overclaims.

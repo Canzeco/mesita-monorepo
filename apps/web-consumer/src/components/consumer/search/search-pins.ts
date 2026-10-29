@@ -101,7 +101,9 @@ export function predictionPinTone(item: {
   mesitaSlug?: string | null;
 }): PinTone {
   if (!predictionOnMesita(item)) return "google";
-  return isPremierPlace({ boost_tier: item.boost_tier ?? item.card?.boost_tier })
+  return isPremierPlace({
+    boost_tier: item.boost_tier ?? item.card?.boost_tier,
+  })
     ? "premier"
     : "mesita";
 }
@@ -252,7 +254,9 @@ export function buildSearchMapPins(
       tone: predictionPinTone({
         ...prediction,
         boost_tier:
-          prediction.boost_tier ?? prediction.card?.boost_tier ?? hit?.boost_tier,
+          prediction.boost_tier ??
+          prediction.card?.boost_tier ??
+          hit?.boost_tier,
       }),
     });
   }

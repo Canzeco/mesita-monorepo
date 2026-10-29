@@ -2,13 +2,11 @@
 
 import type { RefObject } from "react";
 import { Search, X } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { FLOAT } from "./header-classes";
 
-// The Search map's query field — the one search bar in the app, between the
-// locate disc and the Filters disc. Query field only: the Filters sheet picks
-// the family (MESITA-2875). Same outline as every header
-// control (header-classes.ts): a floating white pill, a dark border while focused.
+// The Search map's query field — the one search bar in the app, the left
+// part of SearchHeader's long bar, before Ask AI and locate (MESITA-2999).
+// Query field only: the Filters sheet picks the family (MESITA-2875). The
+// pill (BAR in header-classes.ts) is SearchHeader's; this is its content.
 type SearchBarProps = {
   query: string;
   showClear: boolean;
@@ -32,16 +30,9 @@ export function SearchBar({
   placeholder = "Search places…",
   inputRef,
 }: SearchBarProps) {
-  // h-11, like the locate disc and Ask AI beside it; the chips under it are
-  // shorter (MESITA-2996). A white pill with a shadow floating on the map,
-  // Google Maps' search box (MESITA-2996); typing darkens the border.
+  // Fills what Ask AI and locate leave in the bar (MESITA-2999).
   return (
-    <div
-      className={cn(
-        FLOAT,
-        "focus-within:border-foreground flex h-11 shrink-0 items-center rounded-full border border-transparent pl-4 transition-colors",
-      )}
-    >
+    <div className="flex h-full min-w-0 flex-1 items-center">
       <Search className="text-muted-foreground h-4 w-4 shrink-0" />
       <input
         ref={inputRef}
@@ -84,7 +75,7 @@ export function SearchBar({
           type="button"
           onClick={onClear}
           aria-label="Clear search"
-          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition outline-none"
+          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition outline-none"
         >
           <X className="h-4 w-4" />
         </button>

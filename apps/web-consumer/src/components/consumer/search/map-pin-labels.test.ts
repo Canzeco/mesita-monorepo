@@ -22,8 +22,20 @@ describe("pickVisiblePinLabels (d4a)", () => {
 
   it("drops non-focused labels that collide with an earlier one", () => {
     const candidates = [
-      { id: "a", title: "Alpha Bistro Long Name", x: 200, y: 200, focused: false },
-      { id: "b", title: "Beta Kitchen Long Name", x: 205, y: 205, focused: false },
+      {
+        id: "a",
+        title: "Alpha Bistro Long Name",
+        x: 200,
+        y: 200,
+        focused: false,
+      },
+      {
+        id: "b",
+        title: "Beta Kitchen Long Name",
+        x: 205,
+        y: 205,
+        focused: false,
+      },
     ];
     const visible = pickVisiblePinLabels(candidates);
     expect(visible.size).toBe(1);

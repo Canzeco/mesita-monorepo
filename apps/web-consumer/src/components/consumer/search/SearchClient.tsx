@@ -137,7 +137,10 @@ import {
   type LoadCoords,
 } from "./search-catalog-overlays";
 import { AddPlaceSheet } from "./AddPlaceSheet";
-import { GeneratePlaceDialog, type GenerateTarget } from "./GeneratePlaceDialog";
+import {
+  GeneratePlaceDialog,
+  type GenerateTarget,
+} from "./GeneratePlaceDialog";
 import { SearchLocateButton } from "./SearchLocateButton";
 import {
   anchorPlaceFromPrediction,
@@ -1072,10 +1075,9 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {/* Search's header, floating on the map's top edge with no band (Pato,
-          MESITA-2996, was MESITA-2409/2413's white band): location disc ·
-          query bar · Ask AI, then the family chips (MESITA-2879); the bar's
-          results and the load error cover the chips. The pair that keeps the disc
-          visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
+          MESITA-2996, was MESITA-2409/2413's white band): one long bar —
+          query · Ask AI · locate (MESITA-2999) — then the family chips; the
+          bar's results and the load error cover the chips. */}
         <SearchHeader
           locate={
             <SearchLocateButton
