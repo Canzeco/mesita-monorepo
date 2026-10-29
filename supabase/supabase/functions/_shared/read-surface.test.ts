@@ -201,9 +201,10 @@ const PROFILES_READ_ALLOWLIST = [
   // Activity › Feedback (MESITA-3024): place names only, for the admin's list of
   // guest reports. Read-only, error checked.
   "admin-web-list-place-reports/index.ts",
-  // Social v1 (MESITA-2442): the place cards behind the feed and Saved,
-  // through the browse view so RLS keeps unlisted places out.
-  "consumer-web-list-activity/index.ts",
+  // Social v1 (MESITA-2442): the place cards behind the feed, a person and
+  // Saved, through the browse view so RLS keeps unlisted places out
+  // (one module since MESITA-3042).
+  "_shared/place-activity-read.ts",
   "admin-web-search-places/index.ts",
   "admin-web-set-place-active/index.ts",
   "admin-web-get-overview/index.ts",

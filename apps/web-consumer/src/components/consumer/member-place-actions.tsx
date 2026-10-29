@@ -57,7 +57,7 @@ const MenuViewer = dynamic(() =>
 // sheets. The shared renderer stays presentational.
 //
 // Social v1 (MESITA-2442): opening the profile records `viewed`; the line
-// under the title comes from consumer-web-list-activity. There is no
+// under the title comes from consumer-web-list-place-likes. There is no
 // "I went" (MESITA-2567: Social is liked and viewed only).
 //
 // THE VIEW THAT STARTS ENRICH SHOWS IT (Pato, MESITA-2952: "return the

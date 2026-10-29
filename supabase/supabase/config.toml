@@ -297,6 +297,17 @@ verify_jwt = true
 [functions.consumer-web-list-activity]
 verify_jwt = true
 
+# Social's other reads, one name each (MESITA-3042): one person's events, a
+# place's likes line, the guest's saves.
+[functions.consumer-web-get-person]
+verify_jwt = true
+
+[functions.consumer-web-list-place-likes]
+verify_jwt = true
+
+[functions.consumer-web-list-saved-places]
+verify_jwt = true
+
 # Reservations Agent (the consumer's half; the engine is
 # supabase-edgefunc-reservation-call above).
 [functions.consumer-web-create-reservation]
