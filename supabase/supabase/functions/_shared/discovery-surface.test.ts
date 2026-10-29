@@ -167,7 +167,11 @@ Deno.test("Catalog: Family only, Proximity × Popularity × the Premier factor, 
   const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!;
   assertEquals(catalog.gates, ["family"]);
   assertEquals(catalog.signals, ["proximity", "popularity"]);
-  assert(catalog.scoring.startsWith("Proximity × Popularity × s"));
+  // Two lanes since MESITA-3016: the model says so in its factors and scoring.
+  assert(catalog.scoring.startsWith("Two lanes interleaved one and one"));
+  assert(catalog.scoring.includes("Red (Premier places only): Proximity × Popularity × s"));
+  assert(catalog.scoring.includes("Blue (every place): Proximity × Popularity, s = 1"));
+  assert(catalog.factors.some((f) => f.startsWith("Two lanes (MESITA-3016)")));
   assert(catalog.rules.includes("Chat reads every ready Mesita place inside the current-location radius (Selected only until MESITA-2925)."));
   assert(catalog.callers.includes("Chat (Don Memo)"));
   for (const p of [catalog, DISCOVERY_PIPELINES.find((x) => x.key === "map")!]) {
