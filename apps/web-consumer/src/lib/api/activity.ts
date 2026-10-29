@@ -101,7 +101,7 @@ export async function apiListActivityFeed(
   const { items } = await invokeEF<{ items: ActivityFeedItem[] }>(
     client,
     "consumer-web-list-activity",
-    from ? { scope: "feed", lat: from.lat, lng: from.lng } : { scope: "feed" },
+    from ? { lat: from.lat, lng: from.lng } : {},
   );
   return items;
 }
@@ -112,8 +112,8 @@ export async function apiPlaceActivity(
 ): Promise<PlaceActivity> {
   const { line, people, total, me } = await invokeEF<PlaceActivity>(
     client,
-    "consumer-web-list-activity",
-    { scope: "place", place_id: placeId },
+    "consumer-web-list-place-likes",
+    { place_id: placeId },
   );
   return { line, people, total, me };
 }
@@ -123,8 +123,8 @@ export async function apiSavedActivity(
 ): Promise<{ ids: string[]; places: Place[] }> {
   const { ids, places } = await invokeEF<{ ids: string[]; places: Place[] }>(
     client,
-    "consumer-web-list-activity",
-    { scope: "saved" },
+    "consumer-web-list-saved-places",
+    {},
   );
   return { ids, places };
 }
@@ -149,8 +149,7 @@ export async function apiMemberHistory(
   const { person, items } = await invokeEF<{
     person: ActivityPerson | null;
     items: MemberHistoryItem[];
-  }>(client, "consumer-web-list-activity", {
-    scope: "history",
+  }>(client, "consumer-web-get-person", {
     place_id: event.placeId,
     kind: event.kind,
     at: event.at,

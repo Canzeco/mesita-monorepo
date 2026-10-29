@@ -534,7 +534,7 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
       .catch((err) => {
         console.error(
           "social_member_history_failed",
-          errMsg(err, "consumer-web-list-activity failed"),
+          errMsg(err, "consumer-web-get-person failed"),
         );
         // A remembered history stays on screen; only a first read that
         // fails shows none.
