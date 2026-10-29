@@ -560,9 +560,8 @@ function cardInstagramLabel(person: ActivityPerson): string {
  *  a view row may open on a handle. Mesita first (MESITA-2594):
  *  Open Instagram is a small link under the list, not the card's main
  *  button. A masked handle ("per***") has no link; the card says how to see
- *  it. A plain X sits in its top-right corner, the glyph alone at the
- *  card's padding corner (MESITA-2681 drew the route sheets' 44px bordered
- *  disc there; MESITA-2709 made it the bare glyph); the backdrop and
+ *  it. A bar that never scrolls holds the member's name and a plain X
+ *  (MESITA-3061; MESITA-2709 made the X the bare glyph); the backdrop and
  *  Escape still close it too. */
 function PersonCard({
   event,
@@ -610,40 +609,50 @@ function PersonCard({
       instant
       scroll
     >
-      {/* ONE SCROLLER, THE WHOLE CARD (Pato, MESITA-2845: "make this UI
-          easier to scroll"): the identity boxes scroll away with the
-          history, Instagram's profile, instead of a 45vh box under a header
-          that never moved. The card is always the screen's full height, a
-          short history or a tab switch never moves its top (Pato,
+      {/* A TOP BAR THAT NEVER SCROLLS (Pato, MESITA-3061: "leave the name
+          or something and the x not overlapping"; the X had floated on the
+          panel over the tabs and tiles scrolling under it). Instagram's
+          profile: the member's lead word, the feed's (@handle, else the
+          first name), bold on the left; the plain X on the right (Pato,
+          MESITA-2709: "make a better X … its to bix and looks like shit"):
+          the 20px ink glyph alone, its 44px target invisible until a hover
+          draws the muted disc; a hairline under the bar. The card is always
+          the screen's full height, so the bar never moves (Pato,
           MESITA-2965: "the header must be always at the same vertical
-          coords"); the X is
-          positioned on the panel, not this scroller, so it stays put. No bar,
-          and a fling at either end stays in the card. */}
+          coords"). */}
+      <div
+        className="border-border flex h-12 shrink-0 items-center gap-2 border-b pr-2 pl-5"
+        data-social-person-bar
+      >
+        <span
+          className="text-foreground min-w-0 flex-1 truncate text-base font-semibold"
+          data-social-person-title
+        >
+          {person ? feedWho(person) : ""}
+        </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-foreground hover:bg-muted focus-visible:ring-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
+          data-social-person-close
+        >
+          <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+        </button>
+      </div>
+      {/* ONE SCROLLER UNDER THE BAR (Pato, MESITA-2845: "make this UI
+          easier to scroll"): the identity boxes scroll away with the
+          history, Instagram's profile, and the Views/Likes strip sticks
+          under the bar once it gets there (MESITA-3061). No scrollbar, and
+          a fling at either end stays in the card. */}
       <div
         ref={scrollRef}
         onScroll={(e) => {
           cardMemoryOf(key).scrollTop = e.currentTarget.scrollTop;
         }}
-        className="scrollbar-hide min-h-0 overflow-y-auto overscroll-y-contain p-5"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-5"
         data-social-person-card
       >
-        {/* A PLAIN X, NO DISC (Pato, MESITA-2709: "make a better X … its to
-            bix and looks like shit"; MESITA-2681 had drawn the route sheets'
-            44px bordered disc here, as wide as the photo beside it). Only
-            the 20px ink glyph shows, its box flush with the card's padding
-            corner (top-2 + 12px of the 44px button = the p-5 inset); the
-            44px tap target around it is invisible until a hover draws the
-            muted disc — the onboarding step bar's and the pin picker's own
-            close. */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="text-foreground hover:bg-muted focus-visible:ring-ring absolute top-2 right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full transition outline-none focus-visible:ring-2"
-          data-social-person-close
-        >
-          <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
-        </button>
         {person ? (
           <IdentityCard
             name={who}
@@ -832,7 +841,7 @@ function HistoryList({
       <div
         role="tablist"
         aria-label="Activity"
-        className="border-border mb-0.5 flex border-b"
+        className="border-border bg-card sticky top-0 z-10 mb-0.5 flex border-b"
         data-social-history-tabs
       >
         {HISTORY_TABS.map(({ tab: t, label, Icon }) => {
