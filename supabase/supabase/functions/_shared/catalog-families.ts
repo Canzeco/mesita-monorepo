@@ -153,7 +153,7 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 34 },
   { slug: "casino", label: "Casino", emoji: "🎰", sort_order: 35 },
   { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 36 },
-  { slug: "tourist", label: "Tourist", emoji: "🏛️", sort_order: 37 },
+  { slug: "tourist", label: "Tourism", emoji: "🏛️", sort_order: 37 },
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
@@ -521,7 +521,7 @@ const EXPLICIT: Record<string, readonly FamilyKey[]> = {
   ferris_wheel: ["family", "tourist"],
   roller_coaster: ["family", "fun"],
   planetarium: ["family", "tourist"],
-  // Tourist: what a visitor sees
+  // Tourism: what a visitor sees
   tourist_attraction: ["tourist"],
   cultural_center: ["tourist"],
   museum: ["tourist"],
