@@ -224,6 +224,9 @@ verify_jwt = true
 [functions.consumer-web-claim-instagram]
 verify_jwt = true
 
+[functions.consumer-web-lookup-instagram]
+verify_jwt = true
+
 [functions.consumer-web-list-pay-notifications]
 verify_jwt = true
 
