@@ -1,8 +1,9 @@
 // Places keeps each location's ranked Area pool for a few minutes
 // (MESITA-2384), so a family change, a later page or a return to a location
-// spends no request and buys no Google call. The server returns the whole
-// ranked pool once; this is the only cache of it, in this tab's memory —
-// nothing is written to storage, and it never outlives ten minutes.
+// spends no request and buys no Google call. The server sends the ranked
+// catalog a page at a time (MESITA-3044); this keeps the pages loaded so
+// far and where the next starts, in this tab's memory only — nothing is
+// written to storage, and it never outlives ten minutes.
 
 import type { AreaPool } from "@/lib/api/places";
 

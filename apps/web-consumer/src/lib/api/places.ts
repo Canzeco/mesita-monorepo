@@ -320,6 +320,9 @@ export type AreaPool = {
   places: Place[];
   /** Tiles per page, the operator's `map.catalogPageSize` (MESITA-2909). */
   pageSize?: number;
+  /** Where the next server page starts, or null when the ranked catalog has
+   *  ended (MESITA-3044). Absent from an older EF: nothing more to ask. */
+  next?: number | null;
 };
 
 function cleanPlace(place: Place): Place {
@@ -331,8 +334,10 @@ function cleanPlace(place: Place): Place {
 
 /**
  * Places' Catalog (MESITA-2384, MESITA-2909): every Mesita place the server
- * scored and ranked, Proximity × Popularity from `origin`, with no radius;
- * the client pages it in the server's order by the server's `pageSize`.
+ * scored and ranked, Proximity × Popularity × Premier from `origin`, with no
+ * radius. The server ranks the whole catalog and sends ONE page of it from
+ * `offset` (MESITA-3044); `next` is where the following page starts, null
+ * at the end.
  * `familyKeys` is a family row's question (MESITA-2438). None = every
  * family. No `prefer`.
  */
@@ -340,13 +345,16 @@ export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
   familyKeys: readonly string[] = [],
+  offset = 0,
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
     location?: { kind?: "point" | "none" };
     pageSize?: number;
+    next?: number | null;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
+    offset,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
@@ -356,6 +364,19 @@ export async function apiListAreaPool(
     kind: data.location?.kind ?? (origin ? "point" : "none"),
     places: (data.places ?? []).map(cleanPlace),
     ...(typeof size === "number" && Number.isFinite(size) && size > 0 ? { pageSize: size } : {}),
+    next: typeof data.next === "number" && Number.isInteger(data.next) && data.next > offset ? data.next : null,
+  };
+}
+
+/** A pool with the next server page appended: the server's order, each
+ *  place once (a place whose score moved between pages is kept where it
+ *  first came), and the page's own `next` (MESITA-3044). */
+export function appendAreaPage(pool: AreaPool, page: AreaPool): AreaPool {
+  const seen = new Set(pool.places.map((p) => p.id));
+  return {
+    ...pool,
+    places: [...pool.places, ...page.places.filter((p) => !seen.has(p.id))],
+    next: page.next ?? null,
   };
 }
 

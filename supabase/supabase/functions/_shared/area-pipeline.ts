@@ -344,8 +344,9 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
 // ring, the Catalog unboxed):
 //   1. the scoring columns only, walked by id (`.gt("id", last)`) page after
 //      page until an EMPTY page, at most CATALOG_SCAN_PAGES_MAX pages;
-//   2. ranked with the shared scorer, the best CATALOG_RETURN_MAX kept, and
-//      only their cards read, ID_CHUNK ids per `.in()`, in parallel.
+//   2. ranked with the shared scorer, one page of the ranked list kept (the
+//      Catalog's `offset` + page size, MESITA-3044; the Map's top N), and
+//      only those cards read, ID_CHUNK ids per `.in()`, in parallel.
 // The page stops on an EMPTY page, not a short one: a short page would end
 // the walk early if `max_rows` ever dropped below CATALOG_SCAN_PAGE. The
 // cost is one extra read. Above the cap the cut is by id again (`scanCapped`,
@@ -355,7 +356,8 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
 export const CATALOG_SCAN_PAGE = 1000;
 /** Pass-1 page cap: 10,000 rows, inside the ~2 s Edge CPU budget. */
 export const CATALOG_SCAN_PAGES_MAX = 10;
-/** How many ranked places the Catalog returns. */
+/** How many ranked places a Catalog request with no `offset` returns (a
+ *  build from before MESITA-3044, which paged the whole list itself). */
 export const CATALOG_RETURN_MAX = 1000;
 /** Everything `mesitaCandidate` reads, and nothing else. */
 export const CATALOG_SCORING_COLUMNS =
@@ -445,6 +447,10 @@ export type CatalogPoolSummary = AreaPoolSummary & {
   scanCapped: boolean;
   /** Kept ids pass 2 did not return (no backfill from below the cut). */
   missing: number;
+  /** The ranked position this answer starts at (MESITA-3044). */
+  offset: number;
+  /** The `offset` of the next page, or null when the ranked list ends. */
+  next: number | null;
 };
 
 type RankedPoolDeps<T extends PoolRow> = {
@@ -467,6 +473,7 @@ async function selectRankedPool<T extends PoolRow>(
   location: AreaLocation,
   gates: CatalogGates,
   keepMax: number,
+  offset = 0,
 ): Promise<RankedPool> {
   const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
   const ranked = await selectAreaPool({
@@ -476,7 +483,10 @@ async function selectRankedPool<T extends PoolRow>(
     mesitaRows: walk.rows,
     cfg: deps.cfg,
   });
-  const kept = ranked.places.slice(0, keepMax);
+  // One page of the ranked list (MESITA-3044): the whole list is ranked,
+  // only this slice's cards are read.
+  const end = Math.min(ranked.places.length, offset + keepMax);
+  const kept = ranked.places.slice(offset, end);
   const cards = await cardsForIds(
     deps.read,
     deps.cfg,
@@ -500,27 +510,36 @@ async function selectRankedPool<T extends PoolRow>(
       chunks: cards.chunks,
       scanCapped: walk.scanCapped,
       missing: kept.length - places.length,
+      offset,
+      next: end < ranked.places.length ? end : null,
     },
     lastId: walk.lastId,
   };
 }
 
 /**
- * The Catalog pool (MESITA-2921): rank every gated place, keep the best
- * CATALOG_RETURN_MAX, read only their cards. Ranking is `selectAreaPool`'s,
+ * The Catalog pool (MESITA-2921): rank every gated place, keep one page,
+ * read only its cards. Paged (MESITA-3044, Pato: "sort all catalog places
+ * in one run, but don't load them all … load more and more and never stop
+ * until the catalog is gone"): `page` asks for `[offset, offset + size)` of
+ * the ranked list, and `summary.next` says where the next page starts (null
+ * at the end). Edge isolates keep nothing between requests, so each page
+ * ranks again; ties break on distance then id, so the order is stable. No
+ * `page` = the best CATALOG_RETURN_MAX at once (an older build). Ranking is `selectAreaPool`'s,
  * so the order (`final` desc, then distance, then id) and every `area`
  * breakdown are the scorer's; the card comes from pass 2 and the breakdown
  * from pass 1's values, so a row edited between the two reads can disagree.
  */
 export function selectCatalogPool<T extends PoolRow>(
-  deps: RankedPoolDeps<T> & { location: AreaLocation },
+  deps: RankedPoolDeps<T> & { location: AreaLocation; page?: { offset: number; size: number } },
 ): Promise<RankedPool> {
   return selectRankedPool(
     deps,
     "catalog",
     deps.location,
     { families: deps.families },
-    CATALOG_RETURN_MAX,
+    deps.page ? deps.page.size : CATALOG_RETURN_MAX,
+    deps.page ? deps.page.offset : 0,
   );
 }
 

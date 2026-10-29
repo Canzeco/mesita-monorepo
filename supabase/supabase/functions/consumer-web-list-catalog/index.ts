@@ -3,9 +3,15 @@
 // THE CATALOG PIPELINE (Home's Places; split from Area by MESITA-2909,
 // `_shared/area-pipeline.ts`). Every ready Mesita place (the family row's
 // families pushed into the read) is gated, scored and ranked from its
-// scoring columns, the best 1000 BY RANK keep their cards (MESITA-2921:
-// a capped id-ordered read ranked a random 1000), and that ranked list
-// comes back; the client pages it by `pageSize` (`map.catalogPageSize`).
+// scoring columns, and ONE PAGE of that ranked list keeps its cards
+// (MESITA-3044, Pato: "sort all catalog places in one run, but don't load
+// them all … never stop until the catalog is gone"): `offset` names where
+// the page starts, `map.catalogPageSize` its length, and `next` where the
+// following one starts (null at the end). Each request ranks again (an
+// isolate keeps nothing); ties break on distance then id, so pages line up.
+// A request with no `offset` (a build from before MESITA-3044) gets the best
+// 1000 at once, as before (MESITA-2921: a capped id-ordered read ranked a
+// random 1000).
 // Nothing here calls Google (MESITA-2872).
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
@@ -19,17 +25,21 @@
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.
 //
-// Request: POST { unified: true, google: true, lat, lng, familyKeys? }
+// Request: POST { unified: true, google: true, lat, lng, familyKeys?, offset? }
+//   offset    a whole number ≥ 0: the ranked position the page starts at;
+//             absent = the old whole answer (≤ 1000).
 //   lat/lng   a POINT; none = no location (Popularity alone).
 //   radiusKm  ignored since MESITA-2909 (the Catalog has no radius); pins
 //             carry none since MESITA-2914.
 //   bounds    ignored (Territory retired, MESITA-2500).
 //   google    ignored since MESITA-2872 (no Google stub comes back).
-// Response: { ok, location: { kind }, pageSize,
+// Response: { ok, location: { kind }, pageSize, next, total,
 //   places: [... { area }], summary }.
+//   next      the next page's offset, or null: the catalog has ended
+//   total     every ranked place (the list the pages walk)
 //   summary.read      pass-1 rows read (scoring columns)
 //   summary.total     rows that passed the gates and were ranked
-//   summary.returned  places emitted (≤ 1000)
+//   summary.returned  places emitted (one page, or ≤ 1000 with no offset)
 //   summary.chunks    pass-2 card reads
 //   summary.scanCapped  10,000 rows read and more remain: cut by id again
 //   summary.missing   kept ids pass 2 did not return
@@ -57,6 +67,7 @@ import { decideNearby } from "../_shared/geo.ts";
 import {
   areaPoolLogFields,
   CatalogReadError,
+  catalogPageSize,
   type PoolBuilder,
   type PoolRow,
   resolveAreaLocation,
@@ -81,7 +92,15 @@ type Body = {
   prefer?: unknown;
   /** The family row's families (MESITA-2438); absent or empty = every family. */
   familyKeys?: unknown;
+  /** The page's first ranked position (MESITA-3044); absent = the whole
+   *  answer, for builds from before it. */
+  offset?: unknown;
 };
+
+/** A whole number ≥ 0, else null (absent or junk = an unpaged request). */
+function readOffset(v: unknown): number | null {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
+}
 
 function wirePlaces(rows: unknown[]): PoolRow[] {
   return (rows as PlaceProfileRow[]).map((r) => {
@@ -115,6 +134,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
   }
   const location = resolveAreaLocation(center, null);
   const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
+  const offset = readOffset(body.offset);
 
   const requestId = crypto.randomUUID();
   const started = Date.now();
@@ -130,6 +150,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // pool does not select it (MESITA-2328).
       cardColumns: PLACE_CARD_COLUMNS,
       wire: wirePlaces,
+      ...(offset === null ? {} : { page: { offset, size: catalogPageSize(cfg.map) } }),
     });
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;
@@ -181,6 +202,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
     // names none (MESITA-2914).
     location: { kind: location.kind },
     pageSize: pool.summary.pageSize,
+    // An unpaged request gets no `next`: its build pages the list itself.
+    next: offset === null ? null : pool.summary.next,
+    total: pool.summary.total,
     places: pool.places,
     summary: pool.summary,
   });
