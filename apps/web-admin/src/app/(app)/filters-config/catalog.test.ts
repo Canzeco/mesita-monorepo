@@ -54,6 +54,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     ).toEqual({
       proximity: { halfKm: 1 },
       popularity: { halfReviews: 250 },
+      lanes: { bluePerRed: 1 },
     });
   });
 
@@ -66,9 +67,21 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { halfKm: 2.3 }, popularity: { halfReviews: 1 } });
+    ).toEqual({ proximity: { halfKm: 2.3 }, popularity: { halfReviews: 1 }, lanes: { bluePerRed: 1 } });
     expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1 });
     expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 100 });
+
+  });
+
+  // THE LANE RATIO (MESITA-3033, money: Premier is sold): 0 is ads off and
+  // must survive the admin twin exactly as it survives the server's.
+  it("params.lanes.bluePerRed: absent reads 1, 0 stays 0, a decimal rounds, 99 clamps to 7 (MESITA-3033)", () => {
+    const lanes = (raw: unknown) => coerceConfig({ params: { lanes: raw } }).params.lanes;
+    expect(lanes(undefined)).toEqual({ bluePerRed: 1 });
+    expect(lanes({ bluePerRed: 0 })).toEqual({ bluePerRed: 0 });
+    expect(lanes({ bluePerRed: 1.6 })).toEqual({ bluePerRed: 2 });
+    expect(lanes({ bluePerRed: 99 })).toEqual({ bluePerRed: 7 });
+    expect(lanes({ bluePerRed: 3 })).toEqual({ bluePerRed: 3 });
   });
 
   it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {

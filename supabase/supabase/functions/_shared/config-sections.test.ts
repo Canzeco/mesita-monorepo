@@ -117,7 +117,8 @@ const CASES: Record<string, SectionCase> = {
     // half point and the page size.
     valid: {
       config: {
-        params: { proximity: { halfKm: 3 }, popularity: { halfReviews: 250 } },
+        // The lane ratio at 0 (ads off) must land as 0 (MESITA-3033).
+        params: { proximity: { halfKm: 3 }, popularity: { halfReviews: 250 }, lanes: { bluePerRed: 0 } },
         map: { catalogPageSize: 30 },
       },
     },
@@ -125,6 +126,7 @@ const CASES: Record<string, SectionCase> = {
       const c = saved.config as Row;
       assertEquals(((c.params as Row).proximity as Row).halfKm, 3);
       assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
+      assertEquals((c.params as Row).lanes, { bluePerRed: 0 });
       assertEquals((c.map as Row).catalogPageSize, 30);
       assert(c.map && typeof c.map === "object", "map missing");
     },
@@ -137,6 +139,7 @@ const CASES: Record<string, SectionCase> = {
         params: {
           popularity: { halfReviews: 0 },
           proximity: { reachKm: 99, halfKm: 999 },
+          lanes: { bluePerRed: 99 },
           modes: { nearby: { proximity: 2 } },
         },
         balance: { proximity: 2 },
@@ -147,6 +150,7 @@ const CASES: Record<string, SectionCase> = {
         const c = saved.config as Row;
         assertEquals(((c.params as Row).popularity as Row).halfReviews, 1);
         assertEquals((c.params as Row).proximity, { halfKm: 100 });
+        assertEquals((c.params as Row).lanes, { bluePerRed: 7 });
         assertEquals("modes" in (c.params as Row), false);
         assertEquals("balance" in c, false);
       },

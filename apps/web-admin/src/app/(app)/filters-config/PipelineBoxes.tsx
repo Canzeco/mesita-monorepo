@@ -9,7 +9,7 @@
 // (the Selected boost retired with Selected, MESITA-2925). The Chat Agent is
 // Deep's caller, so its prompt sits in the Deep box.
 
-import { LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
   NumberField,
   SaveRow,
@@ -19,8 +19,12 @@ import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-conf
 import { formatShortDate } from "@/lib/format";
 import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "./actions";
 import {
+  BLUE_PER_RED_DEFAULT,
+  BLUE_PER_RED_MAX,
+  BLUE_PER_RED_MIN,
   CATALOG_PAGE_SIZE_MAX,
   CATALOG_PAGE_SIZE_MIN,
+  HALF_KM_DEFAULT,
   HALF_KM_MAX,
   HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
@@ -395,6 +399,80 @@ function catalogProximity(d: number, h: number): number {
   return 1 / (1 + d / h);
 }
 
+/** The sparkline's axis: Home's own scale, 0–10 km, never autoscaled
+ *  (MESITA-3033): at D = 100 it reads flat, at D = 0.1 a cliff, by design. */
+const CURVE_KM_MAX = 10;
+const CURVE_TICKS_KM = [1, 5, 10] as const;
+const CURVE_W = 200;
+const CURVE_H = 48;
+
+/** The half distance drawn: 1 ÷ (1 + d ÷ D) over 0–10 km, the ½ dot at
+ *  (D, 0.5) when it fits the axis, the three tick labels the live values.
+ *  `aria-hidden`: the field's hint is its text. Dims with the field. */
+function CurveSparkline({ halfKm, off }: { halfKm: number; off: boolean }) {
+  const x = (km: number) => (km / CURVE_KM_MAX) * CURVE_W;
+  const y = (p: number) => 6 + (1 - p) * (CURVE_H - 20);
+  const points = Array.from({ length: 41 }, (_, i) => {
+    const km = (i / 40) * CURVE_KM_MAX;
+    return `${x(km).toFixed(1)},${y(catalogProximity(km, halfKm)).toFixed(1)}`;
+  }).join(" ");
+  return (
+    <svg
+      viewBox={`0 0 ${CURVE_W} ${CURVE_H}`}
+      className={`h-12 w-full ${off ? "opacity-50" : ""}`}
+      aria-hidden="true"
+      data-curve-sparkline
+    >
+      <line x1={0} y1={y(0)} x2={CURVE_W} y2={y(0)} className="stroke-border" strokeWidth={1} />
+      <polyline points={points} fill="none" className="stroke-foreground" strokeWidth={1.5} />
+      {CURVE_TICKS_KM.map((km) => (
+        <text
+          key={km}
+          x={x(km)}
+          y={CURVE_H - 2}
+          textAnchor={km === CURVE_KM_MAX ? "end" : "middle"}
+          className="fill-muted-foreground"
+          fontSize={9}
+        >
+          {catalogProximity(km, halfKm).toFixed(2)} · {km} km
+        </text>
+      ))}
+      {halfKm <= CURVE_KM_MAX ? (
+        <>
+          <circle cx={x(halfKm)} cy={y(0.5)} r={2.5} className="fill-foreground" />
+          <text x={x(halfKm) + 4} y={y(0.5) - 3} className="fill-muted-foreground" fontSize={9}>
+            ½
+          </text>
+        </>
+      ) : null}
+    </svg>
+  );
+}
+
+/** Eight fixed slots filled by repeating the period 1 red + N grey
+ *  (MESITA-3033). N ≤ 7, so the period always fits: every value draws its
+ *  true pattern. At 0 all eight are grey and the words "Ads off" follow.
+ *  Red is sponsored's colour everywhere in Mesita (the rosette, the pin). */
+function LaneStrip({ bluePerRed, off }: { bluePerRed: number; off: boolean }) {
+  const slots = Array.from({ length: 8 }, (_, i) => bluePerRed > 0 && i % (bluePerRed + 1) === 0);
+  const label = bluePerRed === 0 ? "Ads off" : `1 ad, then ${bluePerRed} organic`;
+  return (
+    <div
+      className={`flex items-center gap-1.5 ${off ? "opacity-50" : ""}`}
+      role="img"
+      aria-label={label}
+      data-lane-strip
+    >
+      {slots.map((red, i) => (
+        <span key={i} className={`size-2.5 rounded-full ${red ? "bg-destructive" : "bg-muted"}`} />
+      ))}
+      <span className="text-muted-foreground type-meta ml-1">
+        {bluePerRed === 0 ? "Ads off" : "red = sponsored · grey = organic"}
+      </span>
+    </div>
+  );
+}
+
 // 4 ─ Consumer Catalog Pipeline ────────────────────────────────────────────
 export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
@@ -405,13 +483,21 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
   };
+  const lanes = (bluePerRed: number) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, lanes: { bluePerRed } } }));
+  };
   const pageSize = (catalogPageSize: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
   };
   const dirty = cfg.map.catalogPageSize !== saved.map.catalogPageSize || !same(params, saved.params);
   const h = params.proximity.halfKm;
-  const at = (k: number) => catalogProximity(k * h, h).toFixed(2);
+  const n = params.lanes.bluePerRed;
+  // `!==` on numbers: a rounded -0 must never flicker the saved line.
+  const hDirty = h !== saved.params.proximity.halfKm;
+  const nDirty = n !== saved.params.lanes.bluePerRed;
+  const turningAdsOff = n === 0 && saved.params.lanes.bluePerRed !== 0;
   return (
     <PipelineBox
       id="s-catalog"
@@ -424,54 +510,82 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             Home&apos;s Places: <strong>every</strong> Mesita place, ranked in
             one run from the guest&apos;s device or saved pin, and drawn a page
             at a time. There is no radius: a far place is never cut, only
-            lowered.
+            lowered. No location: Popularity alone. Mesita places only (no
+            Google call); the Map and Chat stay one list each.
           </p>
+          {/* Rendered from the live value, never static: at 0 the box must
+              not say "two lanes" while the strip says Ads off (MESITA-3033). */}
           <p className="mt-2">
-            <strong>Two lanes, one and one.</strong> The <strong>red</strong>{" "}
-            lane is the Premier places, ranked by Proximity × Popularity × the
-            Premier factor; the <strong>blue</strong> lane is every place,
-            ranked by Proximity × Popularity alone. Home shows red, blue,
-            red, blue… each place once (the first lane to place it keeps it),
-            so how much of Home is paid is this ratio, not the factor. A red
-            slot&apos;s Premier mark reads · Ad. The Map stays one list:
-            its screen radius bounds it.
-          </p>
-          <p className="mt-2">
-            Premier counts at any distance inside its lane: past the half
-            distance the score is half distance ÷ distance, so a Premier 10X
-            beats a place up to about ten times closer, and one in another
-            city never tops Home.
-          </p>
-          <p className="mt-2">
-            No location: Popularity × the Premier factor alone. Mesita places
-            only (no Google call). Chat ranks every ready Mesita place in its
-            radius the same way.
+            {n === 0 ? (
+              <>
+                <strong>Ads are off:</strong> Premier places rank organically,
+                with no · Ad.
+              </>
+            ) : (
+              <>
+                <strong>Two lanes.</strong> Home repeats one sponsored slot,
+                then {n} organic {n === 1 ? "place" : "places"}, each place once
+                (the first lane to place it keeps it). This sets how often
+                every Premier buyer&apos;s place appears; the tier (2X · 5X ·
+                10X) orders places within the sponsored slots only. A
+                sponsored slot&apos;s Premier mark reads · Ad.
+              </>
+            )}
           </p>
         </>
       }
       save={<Save editor={editor} dirty={dirty} slices={BOX_SLICES.catalog} />}
     >
-      <Group title="Signals">
+      {/* ONE RULE (MESITA-3033): each dial draws its own picture under
+          itself, so both columns read label · input · hint · picture ·
+          (dirty) the saved value. The box is a full-width page card, so
+          the breakpoint measures the page, not a narrow column. */}
+      <Group title="Hyperparameters">
         <div className="grid gap-3 sm:grid-cols-2">
-          <NumberField
-            label="Half distance (km)"
-            value={params.proximity.halfKm}
-            min={HALF_KM_MIN}
-            max={HALF_KM_MAX}
-            decimals
-            disabled={off}
-            onChange={(halfKm) => proximity({ halfKm })}
-          />
+          <div className="flex flex-col gap-2">
+            <NumberField
+              label="Half distance (km)"
+              value={h}
+              min={HALF_KM_MIN}
+              max={HALF_KM_MAX}
+              decimals
+              disabled={off}
+              onChange={(halfKm) => proximity({ halfKm })}
+              hint={`½ at this distance, ⅓ at twice it. Default ${HALF_KM_DEFAULT} km.`}
+            />
+            <CurveSparkline halfKm={h} off={off} />
+            {hDirty ? (
+              <p className="text-muted-foreground type-meta">Saved: {saved.params.proximity.halfKm} km</p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-2">
+            <NumberField
+              label="Organic places per ad"
+              value={n}
+              min={BLUE_PER_RED_MIN}
+              max={BLUE_PER_RED_MAX}
+              disabled={off}
+              onChange={lanes}
+              hint={`One sponsored slot, then this many organic places. 0 turns ads off. Default ${BLUE_PER_RED_DEFAULT}.`}
+            />
+            <LaneStrip bluePerRed={n} off={off} />
+            {turningAdsOff ? (
+              // Muted, not red: red means sponsored in this panel, and the
+              // all-grey strip is the alarm (MESITA-3033).
+              <p className="text-muted-foreground type-meta flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>Saving 0 turns ads off: Premier places still rank, organically, with no · Ad.</span>
+              </p>
+            ) : null}
+            {nDirty ? (
+              <p className="text-muted-foreground type-meta">
+                Saved: {saved.params.lanes.bluePerRed === 0
+                  ? "ads off"
+                  : `${saved.params.lanes.bluePerRed} organic per ad`}
+              </p>
+            ) : null}
+          </div>
         </div>
-        <p className="text-muted-foreground type-meta">
-          Proximity is 1 ÷ (1 + distance ÷ half distance): 1 at the guest,
-          ½ at the half distance, ⅓ at twice it, never 0. At {h} km:
-          {" "}{at(0.5)} at half of it, {at(2)} at twice it, {at(4)} at four
-          times it. Inside the half distance Popularity decides; past it
-          twice as far is half the credit, so a better place wins only up
-          to about 1.8× farther. Smaller favours nearer places; bigger
-          favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
-        </p>
       </Group>
       <Group title="Paging">
         <div className="grid gap-3 sm:grid-cols-2">

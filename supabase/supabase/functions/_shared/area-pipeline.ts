@@ -10,8 +10,9 @@
 //     every ready Mesita row (scoring columns, walked by id) → gates →
 //     two lanes from the same rows (MESITA-3016): red = Premier places by
 //     Proximity × Popularity × s, blue = every place by Proximity ×
-//     Popularity → red, blue, red, blue… → the first 1000, then their
-//     cards; the client pages it (`map.catalogPageSize`)
+//     Popularity → one red, then `params.lanes.bluePerRed` blue (1 = red,
+//     blue, red, blue…; 0 = blue alone, MESITA-3033) → the first 1000,
+//     then their cards; the client pages it (`map.catalogPageSize`)
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -46,7 +47,7 @@ import {
   rankArea,
 } from "./area-score.ts";
 import { PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
-import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
+import { CATALOG_BLUE_PER_RED_DEFAULT, type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { finiteOrNull } from "./input.ts";
 
@@ -72,6 +73,14 @@ export function areaSignalParams(
     // The Popularity floor (MESITA-2714), a gate on every caller.
     popularityFloor: map.popularityFloor,
   };
+}
+
+/** The Catalog's lane ratio from the blob (MESITA-3033): organic places
+ *  per sponsored slot. A missing or malformed key reads the default (1);
+ *  0 is kept as 0 (ads off). */
+export function catalogBluePerRed(params: Pick<SignalParams, "lanes"> | SignalParams): number {
+  const n = params.lanes?.bluePerRed;
+  return typeof n === "number" && Number.isInteger(n) && n >= 0 ? n : CATALOG_BLUE_PER_RED_DEFAULT;
 }
 
 /** A Mesita row in the pool: active and ready. */
@@ -254,15 +263,25 @@ export function selectAreaPool<T extends PoolRow>(
     rankArea(from, (item) => item.candidate, c).map((r) => ({ ...r, id: r.item.id }));
   // THE TWO LANES (MESITA-3016): the Catalog interleaves red (Premier
   // places only, × the Premier factor) and blue (every place, no factor),
-  // one and one, ranked from the same rows: no second read. The Map is
-  // red's score over every place.
+  // one red then `params.lanes.bluePerRed` blue (MESITA-3033; 1 = one and
+  // one), ranked from the same rows: no second read. The Map is red's
+  // score over every place. The ratio is read HERE, not through
+  // AreaContext: it is a merge-time number, not a per-place score input,
+  // and Chat's read must never carry it. 0 is ads off, a real value: the
+  // guard is `isInteger && >= 0`, never `> 0` (a `halfKm`-shaped read
+  // would turn a saved 0 back into the default at the one seam no config
+  // test can see).
+  const bluePerRed = catalogBluePerRed(deps.cfg.params);
   const blue = catalog ? rank(items, { ...ctx, premier: false }) : [];
-  const ranked: Array<{ item: Item; area: AreaScore; lane: CatalogLane | null }> = catalog
-    ? interleaveLanes(
+  const ranked: Array<{ item: Item; area: AreaScore; lane: CatalogLane | null }> = !catalog
+    ? rank(items, ctx).map((r) => ({ ...r, lane: null }))
+    : bluePerRed === 0
+    ? blue.map((r) => ({ ...r, lane: "blue" as const }))
+    : interleaveLanes(
       rank(items.filter((i) => (i.candidate.premierTier ?? 0) > 0), ctx),
       blue,
-    ).map(({ lane, item }) => ({ ...item, lane }))
-    : rank(items, ctx).map((r) => ({ ...r, lane: null }));
+      bluePerRed,
+    ).map(({ lane, item }) => ({ ...item, lane }));
   const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
   const kept = catalog ? ranked : ranked.slice(0, Math.max(0, shown));
   const places = kept.map(({ item, area, lane }) => {

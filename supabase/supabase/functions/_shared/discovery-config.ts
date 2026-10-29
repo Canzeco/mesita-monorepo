@@ -80,7 +80,19 @@ export type SignalParams = {
   /** `halfKm`: Proximity is ½ at this many km (MESITA-2909). */
   proximity: { halfKm: number };
   popularity: { halfReviews: number };
+  /** The Catalog's lane ratio (MESITA-3033): how many organic (blue)
+   *  places follow each sponsored (red) slot. 1 = red, blue, red, blue…;
+   *  0 = ads off (the blue lane alone). An integer, 0–7. */
+  lanes: { bluePerRed: number };
 };
+
+/** THE LANE RATIO (MESITA-3033): organic places per sponsored slot on the
+ *  Catalog. 1 is Pato's "one and one" (MESITA-3016). 0 is a real value
+ *  (ads off), never coerced to the default on any seam. 7 is the most the
+ *  admin's eight-slot strip can draw in one full period. */
+export const CATALOG_BLUE_PER_RED_DEFAULT = 1;
+export const CATALOG_BLUE_PER_RED_MIN = 0;
+export const CATALOG_BLUE_PER_RED_MAX = 7;
 
 /**
  * The Deep pipeline (MESITA-2327): open-ended discovery over Mesita Places by
@@ -315,6 +327,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT },
   popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
+  lanes: { bluePerRed: CATALOG_BLUE_PER_RED_DEFAULT },
 };
 
 /** Legal ranges for the signal numbers. */
@@ -327,6 +340,11 @@ export const SIGNAL_PARAM_BOUNDS = {
   halfReviews: {
     min: POPULARITY_HALF_REVIEWS_MIN,
     max: POPULARITY_HALF_REVIEWS_MAX,
+    decimals: 0,
+  },
+  bluePerRed: {
+    min: CATALOG_BLUE_PER_RED_MIN,
+    max: CATALOG_BLUE_PER_RED_MAX,
     decimals: 0,
   },
 } as const;
@@ -505,6 +523,7 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const lanes = (r.lanes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
@@ -519,6 +538,15 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         pop.halfReviews,
         d.popularity.halfReviews,
         SIGNAL_PARAM_BOUNDS.halfReviews,
+      ),
+    },
+    // 0 is a real value (ads off): `num` is finite-or-fallback + clamp,
+    // never `||`, so a stored 0 stays 0 (MESITA-3033).
+    lanes: {
+      bluePerRed: boundedParam(
+        lanes.bluePerRed,
+        d.lanes.bluePerRed,
+        SIGNAL_PARAM_BOUNDS.bluePerRed,
       ),
     },
   };

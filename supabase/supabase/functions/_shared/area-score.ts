@@ -270,17 +270,20 @@ export function rankArea<T>(
 }
 
 /**
- * THE ONE-AND-ONE MERGE (Pato, MESITA-3016: "red blue, red blue … el que
- * salga primero lo ordena"): red, blue, red, blue, red first, a constant
+ * THE LANE MERGE (Pato, MESITA-3016: "red blue, red blue … el que salga
+ * primero lo ordena"; the ratio a stored number since MESITA-3033): one
+ * red turn, then `bluePerRed` blue turns, red first, a fixed pattern
  * (never a coin flip per slot, which makes streaks in a short list). A
  * place already placed is skipped and the SAME lane reads its next one, so
- * a duplicate never puts two blues side by side; once a lane runs dry the
- * other fills the rest in its own order. Both lists are already ranked;
- * nothing here reads SQL.
+ * a duplicate never breaks the pattern; once a lane runs dry the other
+ * fills the rest in its own order. `bluePerRed` 0 is the blue list alone
+ * (ads off; the caller short-circuits before reaching here, this keeps the
+ * contract). Both lists are already ranked; nothing here reads SQL.
  */
 export function interleaveLanes<T extends { id: string }>(
   red: readonly T[],
   blue: readonly T[],
+  bluePerRed = 1,
 ): Array<{ lane: CatalogLane; item: T }> {
   const seen = new Set<string>();
   const out: Array<{ lane: CatalogLane; item: T }> = [];
@@ -293,18 +296,40 @@ export function interleaveLanes<T extends { id: string }>(
     }
     return null;
   };
+  const n = Number.isInteger(bluePerRed) && bluePerRed >= 0 ? bluePerRed : 1;
+  if (n === 0) {
+    for (const item of blue) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      out.push({ lane: "blue", item });
+    }
+    return out;
+  }
+  // The period: one red turn, then n blue turns. A dry lane yields every
+  // turn it has left; the other lane drains to the end, in both directions.
+  const dry = { red: false, blue: false };
   let turn: CatalogLane = "red";
-  let dry: CatalogLane | null = null;
+  let blueTurnsLeft = 0;
   for (;;) {
+    if (dry.red && dry.blue) return out;
+    if (dry[turn]) {
+      turn = turn === "red" ? "blue" : "red";
+      blueTurnsLeft = turn === "blue" ? n : 0;
+      continue;
+    }
     const item = next(turn);
     if (item) {
       seen.add(item.id);
       out.push({ lane: turn, item });
-    } else if (dry && dry !== turn) {
-      return out;
     } else {
-      dry = turn;
+      dry[turn] = true;
+      continue;
     }
-    if (!dry || dry === turn) turn = turn === "red" ? "blue" : "red";
+    if (turn === "red") {
+      turn = "blue";
+      blueTurnsLeft = n;
+    } else if (--blueTurnsLeft <= 0) {
+      turn = "red";
+    }
   }
 }

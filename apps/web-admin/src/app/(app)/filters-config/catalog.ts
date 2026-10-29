@@ -28,6 +28,9 @@ export type SignalParams = {
   /** Proximity is ½ at this many km: 1 ÷ (1 + d ÷ D) (MESITA-3015). */
   proximity: { halfKm: number };
   popularity: { halfReviews: number };
+  /** The Catalog's lane ratio: organic places per sponsored slot, 0–7;
+   *  0 = ads off (MESITA-3033). */
+  lanes: { bluePerRed: number };
 };
 
 export type NameFastConfig = {
@@ -88,9 +91,14 @@ export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 /** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-3015). */
 export const HALF_KM_MIN = 0.1;
 export const HALF_KM_MAX = 100;
+export const HALF_KM_DEFAULT = 1;
 /** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
 export const HALF_REVIEWS_MIN = 1;
 export const HALF_REVIEWS_MAX = 100_000;
+/** Mirrors CATALOG_BLUE_PER_RED_* in _shared/discovery-config.ts (MESITA-3033). */
+export const BLUE_PER_RED_MIN = 0;
+export const BLUE_PER_RED_MAX = 7;
+export const BLUE_PER_RED_DEFAULT = 1;
 
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. */
 export const MAP_RADIUS_KM_MIN = 1;
@@ -203,6 +211,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
   proximity: { halfKm: 1 },
   popularity: { halfReviews: 100 },
+  lanes: { bluePerRed: 1 },
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -235,6 +244,7 @@ function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
   const prox = (r.proximity ?? {}) as Record<string, unknown>;
   const pop = (r.popularity ?? {}) as Record<string, unknown>;
+  const lanes = (r.lanes ?? {}) as Record<string, unknown>;
   const d = DEFAULT_SIGNAL_PARAMS;
   return {
     proximity: {
@@ -242,6 +252,11 @@ function coerceParams(raw: unknown): SignalParams {
     },
     popularity: {
       halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
+    },
+    // 0 is ads off, a real value: `num` is finite-or-fallback + clamp,
+    // never `||` (MESITA-3033).
+    lanes: {
+      bluePerRed: bounded(lanes.bluePerRed, d.lanes.bluePerRed, BLUE_PER_RED_MIN, BLUE_PER_RED_MAX, 0),
     },
   };
 }

@@ -69,7 +69,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 100 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 100 }, lanes: { bluePerRed: 1 } });
   assertEquals("catalog" in cfg, false);
 });
 
@@ -83,7 +83,7 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 0.1 }, popularity: { halfReviews: 1 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 0.1 }, popularity: { halfReviews: 1 }, lanes: { bluePerRed: 1 } });
   // One decimal, clamped to 100; a stored row with only the retired divisor
   // reads the default 1 km (MESITA-3015).
   assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 2.34 } } }).params.proximity, { halfKm: 2.3 });
@@ -102,4 +102,18 @@ Deno.test("Deep: limit 5 and no floor by default; both clamp", () => {
   assertEquals(normalizeDeepConfig(undefined), { limit: 5, minSimilarity: 0 });
   assertEquals(normalizeDeepConfig({ limit: 99, minSimilarity: 1.7 }), { limit: 20, minSimilarity: 1 });
   assertEquals(normalizeDiscoveryConfig({}).deep, { limit: 5, minSimilarity: 0 });
+});
+
+// THE LANE RATIO (MESITA-3033, money: Premier is sold). 0 is ads off, a
+// real value that must survive the normalizer; a decimal from a non-admin
+// payload rounds; the top is 7 (the admin strip's full period).
+Deno.test("params.lanes.bluePerRed: absent reads 1, 0 stays 0, a decimal rounds, 99 clamps to 7 (MESITA-3033)", () => {
+  const lanes = (raw: unknown) => normalizeDiscoveryConfig({ params: { lanes: raw } }).params.lanes;
+  assertEquals(normalizeDiscoveryConfig({}).params.lanes, { bluePerRed: 1 });
+  assertEquals(lanes({}), { bluePerRed: 1 });
+  assertEquals(lanes({ bluePerRed: 0 }), { bluePerRed: 0 });
+  assertEquals(lanes({ bluePerRed: 1.6 }), { bluePerRed: 2 });
+  assertEquals(lanes({ bluePerRed: 99 }), { bluePerRed: 7 });
+  assertEquals(lanes({ bluePerRed: -3 }), { bluePerRed: 0 });
+  assertEquals(lanes({ bluePerRed: "x" }), { bluePerRed: 1 });
 });

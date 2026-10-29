@@ -168,7 +168,8 @@ Deno.test("Catalog: Family only, Proximity × Popularity × the Premier factor, 
   assertEquals(catalog.gates, ["family"]);
   assertEquals(catalog.signals, ["proximity", "popularity"]);
   // Two lanes since MESITA-3016: the model says so in its factors and scoring.
-  assert(catalog.scoring.startsWith("Two lanes interleaved one and one"));
+  assert(catalog.scoring.startsWith("Two lanes interleaved one red, then `params.lanes.bluePerRed` blue"));
+  assert(catalog.factors.some((f) => f.includes("`params.lanes.bluePerRed`")));
   assert(catalog.scoring.includes("Red (Premier places only): Proximity × Popularity × s"));
   assert(catalog.scoring.includes("Blue (every place): Proximity × Popularity, s = 1"));
   assert(catalog.factors.some((f) => f.startsWith("Two lanes (MESITA-3016)")));

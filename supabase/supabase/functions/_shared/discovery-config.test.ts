@@ -257,7 +257,7 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // (MESITA-2428), the weights table (MESITA-2687), the reach and Selected
   // (MESITA-2703) too. Popularity's half credit stays; Proximity's half
   // distance (`halfKm`, MESITA-2909) arrives at its default.
-  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 250 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 250 }, lanes: { bluePerRed: 1 } });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that

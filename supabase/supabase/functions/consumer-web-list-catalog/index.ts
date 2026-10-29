@@ -12,9 +12,10 @@
 // radio"): distance never cuts a place. TWO LANES, ONE AND ONE
 // (MESITA-3016): red holds Premier places only, ranked by Proximity ×
 // Popularity × the Premier factor (×2 · ×5 · ×10); blue holds every place,
-// ranked by Proximity × Popularity; the list is red, blue, red, blue…, a
-// place already placed skipped, so Premier's share is a decision, not a
-// multiplier's side effect. Proximity = 1 ÷ (1 + d ÷ D), D the operator's
+// ranked by Proximity × Popularity; the list is one red, then
+// `params.lanes.bluePerRed` blue (MESITA-3033; 1 = red, blue, red, blue…;
+// 0 = ads off, blue alone), a place already placed skipped, so Premier's
+// share is the operator's number, not a multiplier's side effect. Proximity = 1 ÷ (1 + d ÷ D), D the operator's
 // half distance (`params.proximity.halfKm`, MESITA-3015). No point:
 // Popularity (× the factor on red). Each place's `area.lane` says which
 // lane placed it; a red slot is a paid ad.
@@ -59,6 +60,7 @@ import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { decideNearby } from "../_shared/geo.ts";
 import {
   areaPoolLogFields,
+  catalogBluePerRed,
   CatalogReadError,
   type PoolBuilder,
   type PoolRow,
@@ -175,6 +177,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
     location: location.kind,
     familyKeys: families,
     ...pool.summary,
+    // The ratio that produced this list, beside `red` (MESITA-3033).
+    bluePerRed: catalogBluePerRed(cfg.params),
     ...areaPoolLogFields(pool.places),
   }));
 

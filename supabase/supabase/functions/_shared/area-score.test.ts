@@ -9,6 +9,7 @@ import {
   familyGate,
   insideBounds,
   rankArea,
+  interleaveLanes,
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
@@ -283,3 +284,25 @@ Deno.test("Catalog: distance alone keeps a Premier 10X in another city off Home 
   const nearPaid = cand({ ...farPaid, id: "near", lat: ANCHOR.lat + 10 * KM });
   assertEquals(rankArea([nearPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["near", "local"]);
 });
+
+// THE LANE MERGE WITH A RATIO (MESITA-3033): one red turn, then n blue
+// turns; a dry lane yields and the other drains, in both directions.
+Deno.test("interleaveLanes: n = 7 drains blue after red runs dry, and red after blue runs dry; 0 is blue alone (MESITA-3033)", () => {
+  const it = (id: string) => ({ id });
+  const lanes = (red: string[], blue: string[], n: number) =>
+    interleaveLanes(red.map(it), blue.map(it), n).map(({ lane, item }) => `${lane}:${item.id}`);
+  // Red dry after one item: every blue item follows, no gap, no duplicate.
+  assertEquals(lanes(["r1"], ["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9"], 7), [
+    "red:r1", "blue:b1", "blue:b2", "blue:b3", "blue:b4", "blue:b5", "blue:b6", "blue:b7", "blue:b8", "blue:b9",
+  ]);
+  // Blue dry first: the remaining reds follow.
+  assertEquals(lanes(["r1", "r2", "r3"], ["b1"], 7), ["red:r1", "blue:b1", "red:r2", "red:r3"]);
+  // A red place blue already placed is skipped; the pattern holds.
+  assertEquals(lanes(["x", "r2"], ["x", "b2", "b3"], 2), ["red:x", "blue:b2", "blue:b3", "red:r2"]);
+  // 1 is today's one and one.
+  assertEquals(lanes(["r1", "r2"], ["b1", "b2"], 1), ["red:r1", "blue:b1", "red:r2", "blue:b2"]);
+  // 0: the blue list alone, no red slot.
+  assertEquals(lanes(["r1"], ["b1", "r1"], 0), ["blue:b1", "blue:r1"]);
+  assertEquals(lanes([], [], 3), []);
+});
+

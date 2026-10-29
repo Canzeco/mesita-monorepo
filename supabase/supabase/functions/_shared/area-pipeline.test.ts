@@ -452,3 +452,30 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals([top5.summary.surface, top5.summary.halfKm, top5.summary.pageSize, top5.summary.placesShown], ["map", null, null, 5]);
   assertEquals(catalogPageSize({}), 20);
 });
+
+// THE LANE RATIO AT THE READ SITE (MESITA-3033, money: Premier is sold).
+// The config tests stop at the normalizer; this one proves the pipeline
+// itself keeps a saved 0 as 0 (a `> 0` guard here would turn ads back on).
+Deno.test("the Catalog reads params.lanes.bluePerRed: 0 = ads off, 2 = red, blue, blue; the Map ignores it (MESITA-3033)", async () => {
+  const rows = [
+    mrow("p1", { google_review_count: 50, boost_tier: 3 }),
+    mrow("p2", { google_review_count: 40, boost_tier: 1 }),
+    mrow("o1", { google_review_count: 9000 }),
+    mrow("o2", { google_review_count: 800 }),
+    mrow("o3", { google_review_count: 300 }),
+    mrow("o4", { google_review_count: 200 }),
+  ];
+  const withRatio = (n: number) => ({ ...DISCOVERY_DEFAULTS, params: { ...DISCOVERY_DEFAULTS.params, lanes: { bluePerRed: n } } });
+  const off = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows, cfg: withRatio(0) }).d);
+  assertEquals(off.places.some((p) => p.area.lane === "red"), false);
+  assertEquals(off.summary.red, 0);
+  assertEquals(off.places.length, 6);
+  for (const p of off.places) assertEquals(p.area.selectedFactor, 1);
+  const two = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows, cfg: withRatio(2) }).d);
+  assertEquals(two.places.map((p) => p.area.lane), ["red", "blue", "blue", "red", "blue", "blue"]);
+  assertEquals(two.summary.red, 2);
+  const map = await selectAreaPool(deps({ mesitaRows: rows, cfg: withRatio(0) }).d);
+  assertEquals(map.places.every((p) => p.area.lane === null), true);
+  assertEquals(map.places.find((p) => p.id === "p1")?.area.selectedFactor, 10);
+});
+

@@ -97,13 +97,13 @@ describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
   it("carries no weights table and no subpage tabs", () => {
     // 2 Name by Admin + 3 Name + Map: the current-location radius, Most
     // pins shown, Minimum Popularity, the reload seconds and min screen
-    // move + Catalog: the half distance and the page size (MESITA-2909; the
-    // Selected boost retired, MESITA-2925). Typed numbers, no spinner
-    // (MESITA-2733).
+    // move + Catalog: the half distance, the organic places per ad
+    // (MESITA-3033) and the page size (MESITA-2909; the Selected boost
+    // retired, MESITA-2925). Typed numbers, no spinner (MESITA-2733).
     const html = page();
-    expect(html.match(/type="text"/g)?.length).toBe(12);
+    expect(html.match(/type="text"/g)?.length).toBe(13);
     expect(html.match(/inputMode="decimal"/g)?.length).toBe(6);
-    expect(html.match(/inputMode="numeric"/g)?.length).toBe(6);
+    expect(html.match(/inputMode="numeric"/g)?.length).toBe(7);
     expect(html).not.toContain('type="number"');
     expect(html).not.toContain("step=");
     expect(html).not.toContain("Distance penalty");

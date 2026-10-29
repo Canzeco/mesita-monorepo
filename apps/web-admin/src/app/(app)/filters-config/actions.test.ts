@@ -61,6 +61,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     params: {
       proximity: { halfKm: 8 },
       popularity: { halfReviews: 250 },
+      lanes: { bluePerRed: 3 },
     },
     map: {
       ...live.map,
@@ -121,11 +122,11 @@ describe("the Map box (MESITA-2909)", () => {
 });
 
 describe("the Catalog box (MESITA-2909)", () => {
-  it("writes the half distance and the page size, and nothing else of map", async () => {
+  it("writes the half distance, the lane ratio (MESITA-3033) and the page size, and nothing else of map", async () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.catalog]);
-    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8 }, popularity: { halfReviews: 250 } });
+    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8 }, popularity: { halfReviews: 250 }, lanes: { bluePerRed: 3 } });
     expect(sent.config?.map).toEqual({ ...live.map, catalogPageSize: 33 });
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.chat).toEqual(live.chat);
