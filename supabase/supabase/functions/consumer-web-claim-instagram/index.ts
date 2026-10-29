@@ -32,6 +32,14 @@
 //   { action: "dm_status" }      → { ok, pending, handle, verifiedAt }
 //     The app polls this until the claim is spent (pending false) and the
 //     account's verifiedAt is at or after the code's issuedAt.
+//
+// DISCONNECT (MESITA-3052, Pato: "enable to disconnect account too … easy
+// switch to disconnect account to switch account"):
+//   { action: "disconnect" }     → { ok }
+//     Clears the handle, follower count and verified time and takes down a
+//     picture copied from Instagram (an upload stays, as when the photo
+//     switch goes off), through consumer-doc's disconnectInstagram. A
+//     pending claim is left to expire. The app asks to confirm first.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -47,7 +55,7 @@ import {
   normalizeHandle,
 } from "../_shared/instagram-claim.ts";
 import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
-import { readInstagramStatus } from "../_shared/consumer-doc.ts";
+import { disconnectInstagram, readInstagramStatus } from "../_shared/consumer-doc.ts";
 
 type Body = { action?: string; handle?: string };
 
@@ -82,6 +90,12 @@ serveJson("consumer-web-claim-instagram", async (req) => {
         ? { ok: true, channel: "dm", account: dm.username, link: dmLink(dm.username) }
         : { ok: true, channel: "bio" },
     );
+  }
+
+  if (body.action === "disconnect") {
+    const res = await disconnectInstagram(admin, consumerId);
+    if (!res.ok) return jsonError(res.error, 500);
+    return json({ ok: true });
   }
 
   if (body.action === "start_dm") {
@@ -245,5 +259,5 @@ serveJson("consumer-web-claim-instagram", async (req) => {
     return json({ ok: true, handle: claim.handle, followers: verdict.followers, photo: photo.ok });
   }
 
-  return jsonError('action must be "channel", "start_dm", "dm_status", "start" or "check"', 400);
+  return jsonError('action must be "channel", "start_dm", "dm_status", "disconnect", "start" or "check"', 400);
 });

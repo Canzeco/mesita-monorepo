@@ -43,7 +43,7 @@ export function InstagramSkeleton() {
       <InstagramIntro />
 
       <div className="flex flex-col gap-6">
-        {connected ? <ConnectedAccount /> : <ConnectCardSkeleton />}
+        {connected ? <ConnectedAccount pending /> : <ConnectCardSkeleton />}
 
         {connected && (
           <SettingsGroup title="Social">

@@ -25,6 +25,7 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
+  apiDisconnectInstagram,
   apiInstagramChannel,
   apiInstagramDmStatus,
   apiLookupInstagram,
@@ -36,7 +37,13 @@ import {
 } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
-import { INPUT_CLASS } from "@/lib/ui-classes";
+import {
+  INPUT_CLASS,
+  SHEET_BODY_CLASS,
+  SHEET_CANCEL_BUTTON_CLASS,
+  SHEET_TITLE_CLASS,
+} from "@/lib/ui-classes";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
@@ -165,10 +172,10 @@ export function InstagramIntro() {
 
 /** A connected guest's account card under its eyebrow. It reads only the
  *  identity context, seeded server-side, so the fallback draws it too. */
-export function ConnectedAccount() {
+export function ConnectedAccount({ pending = false }: { pending?: boolean }) {
   return (
     <SettingsGroup title="Connected">
-      <CurrentConnectionRow />
+      <CurrentConnectionRow pending={pending} />
     </SettingsGroup>
   );
 }
@@ -551,8 +558,14 @@ export function ConnectCardSkeleton() {
   return <ConnectLookup pending />;
 }
 
-function CurrentConnectionRow() {
+// DISCONNECT (Pato, MESITA-3052: "enable to disconnect account too … if
+// disconnect ask for confirmation"). The row's button opens a confirm
+// dialog; consumer-web-claim-instagram's `disconnect` clears the handle,
+// followers and an Instagram-copied picture, then the page reloads to the
+// Connect card. `pending` draws the button inert for the route's fallback.
+function CurrentConnectionRow({ pending = false }: { pending?: boolean }) {
   const { igHandle: handle, igReach: verified } = useConsumerIdentity();
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -567,7 +580,80 @@ function CurrentConnectionRow() {
           {verified ? "Verified" : "Connected"}
         </p>
       </div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => setConfirming(true)}
+        className="border-border hover:bg-muted min-h-9 shrink-0 rounded-lg border px-3 text-sm font-semibold transition disabled:opacity-60"
+        data-instagram-disconnect
+      >
+        Disconnect
+      </button>
+      <DisconnectDialog
+        open={confirming}
+        handle={handle}
+        onClose={() => setConfirming(false)}
+      />
     </div>
+  );
+}
+
+function DisconnectDialog({
+  open,
+  handle,
+  onClose,
+}: {
+  open: boolean;
+  handle: string | null;
+  onClose: () => void;
+}) {
+  const supabase = useBrowserSupabase();
+  const [busy, setBusy] = useState(false);
+
+  async function disconnect() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await apiDisconnectInstagram(supabase);
+      window.location.reload();
+    } catch (err) {
+      toast.error(errMsg(err, "Couldn’t disconnect — try again."));
+      setBusy(false);
+    }
+  }
+
+  const who = handle ? `@${handle}` : "your Instagram";
+  return (
+    <LocalDialog open={open} onClose={onClose} ariaLabel="Disconnect Instagram">
+      <div className={SHEET_BODY_CLASS}>
+        <h2 className={SHEET_TITLE_CLASS}>Disconnect {who}?</h2>
+        <p className="text-muted-foreground type-body mt-2 leading-snug">
+          Your username and followers come off Mesita, and so does a picture
+          that came from Instagram. You can connect again anytime.
+        </p>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className={SHEET_CANCEL_BUTTON_CLASS}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={disconnect}
+            disabled={busy}
+            className="bg-destructive flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+            data-instagram-disconnect-confirm
+          >
+            {busy && (
+              <Spinner size="sm" className="border-white/40 border-t-white" />
+            )}
+            {busy ? "Disconnecting…" : "Disconnect"}
+          </button>
+        </div>
+      </div>
+    </LocalDialog>
   );
 }
 

@@ -41,15 +41,16 @@ export function instagramSummary(f: ConsumerFacts): string {
 
 /** A follower count marked as approximate (Pato, MESITA-3046: "use number
  *  of followers exact but use an approximation sign"; it floored, 298 read
- *  "200+"): 298 → "≈298", 4,820 → "≈4.8K", 12,400 → "≈12.4K",
- *  1,250,000 → "≈1.3M". Under 1,000 exact; above, rounded to one decimal so
+ *  "200+"; MESITA-3052 swapped "≈" for "~", Pato: "i don't like that approx
+ *  sign"): 298 → "~298", 4,820 → "~4.8K", 12,400 → "~12.4K",
+ *  1,250,000 → "~1.3M". Under 1,000 exact; above, rounded to one decimal so
  *  the chip stays one line. Zero or less → null. */
 export function approxFollowers(n: number): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
-  if (n < 1000) return `≈${Math.round(n)}`;
+  if (n < 1000) return `~${Math.round(n)}`;
   const [div, unit] = n < 999_950 ? [1000, "K"] : [1_000_000, "M"];
   const shown = Math.round((n / div) * 10) / 10;
-  return `≈${String(shown).replace(/\.0$/, "")}${unit}`;
+  return `~${String(shown).replace(/\.0$/, "")}${unit}`;
 }
 
 /** Me's Instagram chip and tile: the summary, plus the rounded follower count
