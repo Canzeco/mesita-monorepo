@@ -48,8 +48,10 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 //
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
 // (MESITA-2324). A missing callback leaves its button visible and inert, so
-// the rows never change shape; a place that turned bookings off has an inert
-// Reserve.
+// admin's preview keeps the consumer's shape. A PLACE THAT TAKES NO
+// RESERVATIONS HAS NO RESERVE (Pato, MESITA-3076: "if not reservations, then
+// kill that"): an inert ink button read exactly like a live one, so the row
+// is gone and Prepay · Pay sits under the tiles.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -152,7 +154,8 @@ export function ProfileActions({
   const onShare = actions?.onShare;
   const onOpenLink = actions?.onOpenLink;
   const onReserve = actions?.onReserve;
-  const reserveLive = isReserveActionEnabled(place) && Boolean(onReserve);
+  const takesReservations = isReserveActionEnabled(place);
+  const reserveLive = takesReservations && Boolean(onReserve);
   const directionsUrl = buildDirectionsUrl(place);
 
   return (
@@ -215,17 +218,19 @@ export function ProfileActions({
       </div>
 
       <div className={PROFILE_MESITA_ROWS_CLASS} data-profile-actions="mesita">
-        <button
-          type="button"
-          {...(reserveLive
-            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-            : inertButtonProps(false))}
-          aria-label="Reserve a table"
-          className={inkButton}
-        >
-          <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-          <span className="truncate">Mesita Reserve</span>
-        </button>
+        {takesReservations && (
+          <button
+            type="button"
+            {...(reserveLive
+              ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+              : inertButtonProps(false))}
+            aria-label="Reserve a table"
+            className={inkButton}
+          >
+            <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+            <span className="truncate">Mesita Reserve</span>
+          </button>
+        )}
         {/* @container: "Mesita " shows on both halves only when the row is
             wide enough for "Mesita Prepay" and its Soon chip (Pato: "only if
             enough space"): measured in Inter at 380px, so @sm (24rem). A
