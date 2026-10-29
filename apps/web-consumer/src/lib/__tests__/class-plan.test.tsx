@@ -81,7 +81,7 @@ describe("the Class sheet", () => {
     expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
     const buttons = [...html.matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) => text(m[1]).trim());
-    expect(buttons).toEqual(["Join with Instagram", "Join"]);
+    expect(buttons).toEqual(["Join", "Join"]);
     // A VIP's only button is leaving it.
     const vipButtons = [...sheet("vip").matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) =>
       text(m[1]).trim()
