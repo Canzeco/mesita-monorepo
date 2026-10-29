@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { ConsumerProfile } from "@/lib/api/profile";
+import { PROFILE_KEY, seedCached } from "@/lib/screen-cache";
 import {
   INSTAGRAM_REACH_FOLLOWERS,
   type ConsumerFacts,
@@ -32,12 +40,27 @@ const NO_IDENTITY: ConsumerFacts = {
 
 const IdentityContext = createContext<ConsumerFacts>(NO_IDENTITY);
 
+// THE LAYOUT'S PROFILE ROW, FOR EVERY SCREEN (MESITA-3014). The shell layout
+// already reads the whole row on the server; it used to pass on two fields and
+// throw the rest away, so Me, Profile, Settings, Instagram, Plan and Class each
+// read it again. The row rides this context (so a hard load renders real data
+// in its HTML) and seeds lib/screen-cache.ts (so a client write wins after).
+const ServerProfileContext = createContext<ConsumerProfile | null>(null);
+
+/** The profile row the shell layout read on the server, or null. */
+export function useServerProfile(): ConsumerProfile | null {
+  return useContext(ServerProfileContext);
+}
+
 export function ConsumerIdentityProvider({
   instagramHandle = null,
   instagramFollowers = null,
   profileUnavailable = false,
+  profile = null,
   children,
 }: {
+  /** The whole row the layout read; null when the read failed. */
+  profile?: ConsumerProfile | null;
   /** Real `consumers.instagram_handle`, normalized (no leading @). */
   instagramHandle?: string | null;
   /** Real `consumers.instagram_followers_count`. */
@@ -70,8 +93,19 @@ export function ConsumerIdentityProvider({
     };
   }, [instagramHandle, instagramFollowers, profileUnavailable]);
 
+  // Seeds the store during this render, before any reader below mounts. A
+  // row already in the store (a write from this browser) is kept.
+  useState(() => {
+    if (profile) seedCached(PROFILE_KEY, profile);
+    return null;
+  });
+
   return (
-    <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>
+    <ServerProfileContext.Provider value={profile}>
+      <IdentityContext.Provider value={value}>
+        {children}
+      </IdentityContext.Provider>
+    </ServerProfileContext.Provider>
   );
 }
 

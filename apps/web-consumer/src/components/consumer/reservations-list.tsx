@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
   ReservationCard,
   ReservationCardSkeleton,
 } from "@/components/consumer/ReservationCard";
-import { apiListReservations } from "@/lib/api/reservations";
+import { apiListReservations, RESERVATIONS_KEY } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useCachedQuery } from "@/lib/use-cached-query";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { errMsg } from "@/lib/utils";
 
 // Live reservations list: Me › Reservations. Reads
 // consumer-web-list-reservations at scope "all" and renders ReservationCard
@@ -51,28 +50,23 @@ export function ReservationsListSkeleton() {
   );
 }
 
-export function ReservationsList({ empty }: { empty: ReactNode }) {
-  const supabase = useBrowserSupabase();
-  const [items, setItems] = useState<ReservationItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+const LIST_TTL_MS = 2 * 60 * 1000;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { reservations } = await apiListReservations(supabase, {
-          scope: "all",
-        });
-        const rows = reservations.map(toReservationItem);
-        if (!cancelled) setItems(orderOneFeed(rows));
-      } catch (e) {
-        if (!cancelled) setError(errMsg(e, "Couldn't load your reservations."));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
+export function ReservationsList({ empty }: { empty: ReactNode }) {
+  // Kept for two minutes and refreshed by every reservation write
+  // (MESITA-3014): a return to this list paints the cards, not skeletons.
+  const getSupabase = useLazyBrowserSupabase();
+  const { data: items, error: failed } = useCachedQuery(
+    RESERVATIONS_KEY,
+    async () => {
+      const { reservations } = await apiListReservations(getSupabase(), {
+        scope: "all",
+      });
+      return orderOneFeed(reservations.map(toReservationItem));
+    },
+    { ttl: LIST_TTL_MS },
+  );
+  const error = failed ? "Couldn't load your reservations." : null;
 
   if (error) {
     return (

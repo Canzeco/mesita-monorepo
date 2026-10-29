@@ -6,7 +6,9 @@
 //   (MESITA-2626 removed MESITA-2625's IP estimate).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-type Success = (pos: { coords: { latitude: number; longitude: number } }) => void;
+type Success = (pos: {
+  coords: { latitude: number; longitude: number };
+}) => void;
 
 describe("the location store", () => {
   let answer: Success | null = null;
@@ -21,7 +23,10 @@ describe("the location store", () => {
     asks = 0;
     vi.stubGlobal("navigator", {
       geolocation: {
-        getCurrentPosition: (ok: Success, err: (e: { code: number }) => void) => {
+        getCurrentPosition: (
+          ok: Success,
+          err: (e: { code: number }) => void,
+        ) => {
           asks += 1;
           answer = ok;
           fail = err;
@@ -39,7 +44,10 @@ describe("the location store", () => {
     const loc = await import("@/lib/use-user-location");
     const asked = loc.requestUserLocation();
 
-    expect(loc.locationSnapshot()).toMatchObject({ locating: true, settled: false });
+    expect(loc.locationSnapshot()).toMatchObject({
+      locating: true,
+      settled: false,
+    });
 
     await vi.advanceTimersByTimeAsync(4999);
     expect(loc.locationSnapshot().settled).toBe(false);
@@ -70,7 +78,10 @@ describe("the location store", () => {
     expect(asks).toBe(2);
     expect(loc.locationSnapshot().locating).toBe(true);
     await vi.advanceTimersByTimeAsync(5000);
-    expect(loc.locationSnapshot()).toMatchObject({ locating: false, error: "pending" });
+    expect(loc.locationSnapshot()).toMatchObject({
+      locating: false,
+      error: "pending",
+    });
   });
 
   it("the 5 s cap covers the retry too (MESITA-2617)", async () => {
@@ -82,7 +93,10 @@ describe("the location store", () => {
     expect(asks).toBe(2);
     expect(loc.locationSnapshot().locating).toBe(true);
     await vi.advanceTimersByTimeAsync(4000);
-    expect(loc.locationSnapshot()).toMatchObject({ locating: false, error: "pending" });
+    expect(loc.locationSnapshot()).toMatchObject({
+      locating: false,
+      error: "pending",
+    });
   });
 
   it("a denied device leaves no location (MESITA-2626)", async () => {
@@ -96,5 +110,48 @@ describe("the location store", () => {
       settled: true,
       error: "denied",
     });
+  });
+
+  it("starts from a fix remembered in this tab, and the live ask still runs (MESITA-3014)", async () => {
+    const store = new Map<string, string>([
+      [
+        "mesita:last-fix",
+        JSON.stringify({ lat: 25.6, lng: -100.3, at: Date.now() }),
+      ],
+    ]);
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+      },
+    });
+    const loc = await import("@/lib/use-user-location");
+    expect(loc.locationSnapshot().coords).toEqual({ lat: 25.6, lng: -100.3 });
+
+    void loc.requestUserLocation();
+    expect(asks).toBe(1);
+    answer?.({ coords: { latitude: 25.7, longitude: -100.4 } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(loc.locationSnapshot().coords).toEqual({ lat: 25.7, lng: -100.4 });
+    expect(JSON.parse(store.get("mesita:last-fix")!)).toMatchObject({
+      lat: 25.7,
+      lng: -100.4,
+    });
+  });
+
+  it("ignores a remembered fix older than ten minutes", async () => {
+    vi.stubGlobal("window", {
+      sessionStorage: {
+        getItem: () =>
+          JSON.stringify({
+            lat: 25.6,
+            lng: -100.3,
+            at: Date.now() - 11 * 60 * 1000,
+          }),
+        setItem: () => {},
+      },
+    });
+    const loc = await import("@/lib/use-user-location");
+    expect(loc.locationSnapshot().coords).toBeNull();
   });
 });

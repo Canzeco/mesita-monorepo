@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+
 // Home — two tabs under Home's header (Pato, MESITA-2517: "header (Mesita
 // location as it is) then another header (Places. Social) … If places, show
 // the horizontal catalog, is social, show the social feed. easy peasy").
@@ -51,13 +53,13 @@ import { Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
-import {
-  apiListAreaPool,
-  type AreaPool,
-  type Place,
-} from "@/lib/api/places";
+import { apiListAreaPool, type AreaPool, type Place } from "@/lib/api/places";
 import { EFError } from "@/lib/api/_invoke";
-import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
+import {
+  areaPoolKey,
+  readAreaPool,
+  writeAreaPool,
+} from "@/lib/area-pool-cache";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -79,7 +81,15 @@ import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
-import { SocialFeed } from "./SocialFeed";
+
+// Social is the second tab, and a big one: it loads when that tab first
+// opens, not with Places (MESITA-3014). The tile skeleton stands in.
+const SocialFeed = dynamic(
+  () => import("./SocialFeed").then((m) => m.SocialFeed),
+  {
+    loading: () => <DiscoverFallback />,
+  },
+);
 
 // The tile list's classes (PLACES_LIST) live in DiscoverFallback.tsx, beside
 // the skeleton that draws the same column (MESITA-2701).
@@ -113,9 +123,7 @@ export type HomeTab = (typeof HOME_TABS)[number]["key"];
 /** The tab a Home address shows: Social at /home/social, Places anywhere
  *  else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  return pathname === CONSUMER_ROUTES.homeSocial
-    ? "social"
-    : "places";
+  return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
 }
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
@@ -262,7 +270,8 @@ export function CatalogRails() {
   const pageCount = pages.key === pageKey ? pages.n : 1;
   const sentinel = useRef<HTMLLIElement | null>(null);
   const shown: Place[] = useMemo(
-    () => (pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : []),
+    () =>
+      pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : [],
     [pool, chip, createdPlaces],
   );
   const pageSize = pool?.pageSize ?? PLACES_PAGE;

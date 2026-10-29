@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { errMsg } from "@/lib/utils";
+import { useEffect } from "react";
 import { toast } from "@/lib/toast";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  apiFetchConsumerProfile,
-  type ConsumerProfile,
-} from "@/lib/api/profile";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import {
   instagramSummary,
@@ -49,11 +44,10 @@ import { IdentityBar } from "./IdentityBar";
 // guest's values, each behind a loading skeleton.
 
 export function ProfileClient() {
-  const supabase = useBrowserSupabase();
   const identity = useConsumerIdentity();
-
-  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  // The row the shell already read (MESITA-3014): Me paints the guest's name
+  // and photo on its first frame, and revalidates in the background.
+  const { data: profile, loading } = useConsumerProfile();
 
   // THE CONTEXT IS SEEDED SERVER-SIDE AND THE PROFILE IS FETCHED HERE, so the
   // handle can land in either place first. The context wins when it has one —
@@ -74,24 +68,6 @@ export function ProfileClient() {
     profile?.instagram_followers_count ?? igFacts.igFollowers,
     igFacts.igConnected && !igFacts.unknown,
   );
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { consumer } = await apiFetchConsumerProfile(supabase);
-        if (cancelled) return;
-        setProfile(consumer);
-      } catch (e) {
-        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
 
   // The Instagram page reloads onto /me?instagram=success after a claim, so
   // the server-seeded identity is fresh when the toast lands.

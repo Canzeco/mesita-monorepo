@@ -1,5 +1,8 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
+import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type {
   PlaceActions,
@@ -7,25 +10,48 @@ import type {
   PlaceTab,
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
-import { MenuViewer } from "@/components/consumer/MenuViewer";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { PlaceMoreSheet } from "@/components/consumer/place-detail/PlaceMoreSheet";
-import { ReportSheet } from "@/components/consumer/place-detail/ReportSheet";
-import { BoostPane, BoostUnavailable } from "@/components/consumer/place-detail/BoostPane";
-import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
+import {
+  BoostPane,
+  BoostUnavailable,
+} from "@/components/consumer/place-detail/BoostPane";
 import {
   apiPlaceActivity,
   apiTrackActivity,
   isMesitaPlaceId,
   type PlaceActivity,
 } from "@/lib/api/activity";
-import { apiGetBoost, BOOST_TIER_LABEL, shortDate, type PlaceBoost } from "@/lib/api/boost";
+import {
+  apiGetBoost,
+  BOOST_TIER_LABEL,
+  shortDate,
+  type PlaceBoost,
+} from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { toast } from "@/lib/toast";
+
+// THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
+// opens on a tap, so none belongs in the first frame's bundle; they are
+// fetched once the screen is up, well before a finger reaches them. Reserve
+// is the screen's main action, so its sheet stays in the first bundle and
+// opens on the tap itself.
+const PlaceMoreSheet = dynamic(() =>
+  import("@/components/consumer/place-detail/PlaceMoreSheet").then(
+    (m) => m.PlaceMoreSheet,
+  ),
+);
+const ReportSheet = dynamic(() =>
+  import("@/components/consumer/place-detail/ReportSheet").then(
+    (m) => m.ReportSheet,
+  ),
+);
+const MenuViewer = dynamic(() =>
+  import("@/components/consumer/MenuViewer").then((m) => m.MenuViewer),
+);
 
 // One hook per member surface so the body and the Reserve bar share the
 // sheets. The shared renderer stays presentational.
@@ -65,7 +91,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   // ⋯ › Premier and Stripe Checkout's return both open the Premier tab; the
   // later ask wins, and each new key switches once (PlaceDetailBody).
   const boostAsk = Math.max(boostAskedAt ?? 0, boost.returnedAt ?? 0);
-  const openTab = boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
+  const openTab =
+    boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
 
   const onSave = useCallback(() => {
     const nowSaved = !saved;
@@ -147,7 +174,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
-  const enriching = activity.enriching && !place.is_enriched && !place.is_enriching;
+  const enriching =
+    activity.enriching && !place.is_enriched && !place.is_enriching;
   return {
     place: enriching ? { ...place, is_enriching: true } : place,
     actions,
@@ -167,13 +195,19 @@ function sayCheckoutOutcome(data: PlaceBoost) {
   const label = p ? BOOST_TIER_LABEL[p.tier as 1 | 2 | 3] : "Premier";
   switch (data.outcome) {
     case "confirmed":
-      toast.success(p ? `You're paying for ${label}. Renews ${shortDate(p.ends_at)}.` : "You're paying for Premier.");
+      toast.success(
+        p
+          ? `You're paying for ${label}. Renews ${shortDate(p.ends_at)}.`
+          : "You're paying for Premier.",
+      );
       return;
     case "saved_as_backup":
       toast.success(`You're Backup ${data.mine?.position || 1}.`);
       return;
     case "released_stale":
-      toast(`Someone changed the line while you were paying. We released the hold on your card. You're Backup ${data.mine?.position || 1}.`);
+      toast(
+        `Someone changed the line while you were paying. We released the hold on your card. You're Backup ${data.mine?.position || 1}.`,
+      );
       return;
     case "expired":
       toast("Checkout cancelled. Nothing was charged.");
@@ -182,6 +216,8 @@ function sayCheckoutOutcome(data: PlaceBoost) {
       toast("Confirming your payment…");
   }
 }
+
+const boostKey = (placeId: string) => `boost:${placeId}`;
 
 function usePlaceBoost(placeId: string): {
   data: PlaceBoost | null;
@@ -198,9 +234,18 @@ function usePlaceBoost(placeId: string): {
     nonce: number;
     data: PlaceBoost | null;
     failed: boolean;
-  }>({ placeId, nonce: -1, data: null, failed: false });
+  }>(() => ({
+    placeId,
+    nonce: -1,
+    // A boost read kept from an earlier open paints at once (MESITA-3014).
+    data: readCached<PlaceBoost>(boostKey(placeId)),
+    failed: false,
+  }));
   const [nonce, setNonce] = useState(0);
-  const [returned, setReturned] = useState<{ placeId: string; at: number } | null>(null);
+  const [returned, setReturned] = useState<{
+    placeId: string;
+    at: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!mesita) return;
@@ -220,11 +265,20 @@ function usePlaceBoost(placeId: string): {
       .then((data) => {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
+        // A checkout return reads fresh and is never served from the store;
+        // its answer still updates what the next open paints.
+        writeCached(boostKey(placeId), data);
         if (session) setReturned({ placeId, at: Date.now() });
         if (session) sayCheckoutOutcome(data);
       })
       .catch(() => {
-        if (!cancelled) setState((s) => ({ placeId, nonce, data: s.placeId === placeId ? s.data : null, failed: true }));
+        if (!cancelled)
+          setState((s) => ({
+            placeId,
+            nonce,
+            data: s.placeId === placeId ? s.data : null,
+            failed: true,
+          }));
       });
     return () => {
       cancelled = true;
@@ -236,14 +290,18 @@ function usePlaceBoost(placeId: string): {
   const data = mesita && fresh ? state.data : null;
   return {
     data,
-    loading: mesita && (!fresh || state.nonce !== nonce),
+    // A kept read is shown while the fresh one is out, so it is not loading.
+    loading: mesita && (!fresh || state.nonce !== nonce) && data == null,
     failed: mesita && fresh && state.failed,
     returnedAt: mesita && returned?.placeId === placeId ? returned.at : null,
     reload: () => setNonce((n) => n + 1),
   };
 }
 
-function usePlaceActivity(placeId: string): { social: ReactNode; enriching: boolean } {
+function usePlaceActivity(placeId: string): {
+  social: ReactNode;
+  enriching: boolean;
+} {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{
@@ -292,4 +350,3 @@ function usePlaceActivity(placeId: string): { social: ReactNode; enriching: bool
     enriching: mesita && enrichingId === placeId,
   };
 }
-

@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
-import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { NOTIFICATIONS_KEY } from "@/lib/api/reservations";
+import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useCachedQuery } from "@/lib/use-cached-query";
 import {
   fetchConsumerNotifications,
   type ConsumerNotification,
 } from "@/lib/api/notifications";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   NotificationRow,
   NotificationRowSkeleton,
@@ -54,32 +55,17 @@ export function NotificationsSkeleton() {
 }
 
 export function NotificationsClient() {
-  const supabase = useBrowserSupabase();
-  const [rows, setRows] = useState<ConsumerNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Run the async fetch inline in the effect body (cancellation guarded) so
-  // setState isn't called synchronously on mount.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await fetchConsumerNotifications(supabase);
-        if (!cancelled) {
-          setRows(data);
-          setError(null);
-        }
-      } catch (e) {
-        if (!cancelled) setError(errMsg(e, "Couldn't load notifications."));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
+  // Kept for two minutes and refreshed by every reservation write
+  // (MESITA-3014): a return to this list paints its rows, not skeletons.
+  const getSupabase = useLazyBrowserSupabase();
+  const query = useCachedQuery(
+    NOTIFICATIONS_KEY,
+    () => fetchConsumerNotifications(getSupabase()),
+    { ttl: 2 * 60 * 1000 },
+  );
+  const rows: ConsumerNotification[] = query.data ?? [];
+  const loading = query.loading;
+  const error = query.error ? "Couldn't load notifications." : null;
 
   const visible = rows.filter((n) => RESERVATION_KINDS.has(n.kind));
 

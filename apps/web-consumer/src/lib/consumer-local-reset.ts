@@ -22,6 +22,7 @@
 
 import { clearSavedLocationsLocal } from "./saved-locations";
 import { clearSavedPlacesLocal } from "./saved-places";
+import { clearScreenCache } from "./screen-cache";
 
 const OWNER_KEY = "mesita:consumer-owner";
 
@@ -44,10 +45,17 @@ export function reconcileConsumerLocalOwner(consumerId: string | null): void {
   try {
     owner = window.localStorage.getItem(OWNER_KEY);
   } catch {
-    return; // private mode / storage blocked — nothing we can reconcile
+    // Private mode / storage blocked: the owner is unknown, so the in-memory
+    // screen data is not trusted across this mount (MESITA-3014).
+    clearScreenCache();
+    return;
   }
   if (owner === consumerId) return;
 
+  // The screens' in-memory data too (MESITA-3014): a sign-out and sign-in are
+  // soft navigations, so module memory would otherwise carry the last
+  // account's profile and reservations into the next one.
+  clearScreenCache();
   clearSavedPlacesLocal();
   clearSavedLocationsLocal();
 

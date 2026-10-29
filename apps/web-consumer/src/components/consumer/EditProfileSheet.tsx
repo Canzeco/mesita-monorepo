@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, Copy } from "lucide-react";
 import {
@@ -19,7 +19,6 @@ import {
   SettingsGroup,
 } from "@/components/consumer/me/settings-rows";
 import {
-  apiFetchConsumerProfile,
   apiUpdateConsumerProfile,
   type ConsumerProfile,
 } from "@/lib/api/profile";
@@ -30,7 +29,12 @@ import {
 } from "@/lib/avatar-upload";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { INPUT_CLASS, SHEET_CANCEL_BUTTON_CLASS } from "@/lib/ui-classes";
+import {
+  ERROR_BOX_CLASS,
+  INPUT_CLASS,
+  SHEET_CANCEL_BUTTON_CLASS,
+} from "@/lib/ui-classes";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 
 // Full-page identity editor at /me/profile (MESITA-1789). Was a LocalSheet
@@ -121,27 +125,28 @@ const FIELDS_CLASS = "mt-5 flex flex-col gap-3";
 const ACTIONS_CLASS = "mt-8 flex gap-2";
 
 export function EditProfileSheet() {
-  const supabase = useBrowserSupabase();
-  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  // The kept row (MESITA-3014): the form paints at once when the shell has
+  // read the profile, and a failed read offers a retry instead of a skeleton
+  // that never leaves.
+  const { data: profile, error, reload } = useConsumerProfile();
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { consumer } = await apiFetchConsumerProfile(supabase);
-        if (!cancelled) setProfile(consumer);
-      } catch (e) {
-        if (!cancelled) toast(errMsg(e, "Couldn't load your profile."));
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-
+  if (!profile && error) {
+    return (
+      <div className="px-4 pt-4">
+        <p className={cn(ERROR_BOX_CLASS, "rounded-xl text-sm")}>
+          Couldn&apos;t load your profile.
+        </p>
+        <Button className="mt-3 h-11 w-full" onClick={reload}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (!profile) return <EditProfileSkeleton />;
 
-  return <EditProfileForm profile={profile} onProfileChange={setProfile} />;
+  // A save writes the returned row into the store (apiUpdateConsumerProfile),
+  // so every screen reading the profile, this one included, gets it.
+  return <EditProfileForm profile={profile} />;
 }
 
 /** One field's label: SheetField's, Sex's and Birthday's, and the
@@ -268,13 +273,7 @@ export function EditProfileSkeleton() {
   );
 }
 
-function EditProfileForm({
-  profile,
-  onProfileChange,
-}: {
-  profile: ConsumerProfile;
-  onProfileChange: (next: ConsumerProfile) => void;
-}) {
+function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -332,11 +331,8 @@ function EditProfileForm({
         throw new Error("Sign in again to change your photo.");
       }
       const publicUrl = await uploadConsumerAvatar(supabase, user.id, file);
-      const updated = await apiUpdateConsumerProfile(supabase, {
-        avatar_url: publicUrl,
-      });
+      await apiUpdateConsumerProfile(supabase, { avatar_url: publicUrl });
       toast("Photo updated.");
-      onProfileChange(updated);
       setPreviewUrl(null);
     } catch (e) {
       setPreviewUrl(null);
@@ -360,14 +356,13 @@ function EditProfileForm({
     }
     setSaving(true);
     try {
-      const updated = await apiUpdateConsumerProfile(supabase, {
+      await apiUpdateConsumerProfile(supabase, {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         ...(sex === "male" || sex === "female" ? { sex } : {}),
         birthday,
       });
       toast("Profile updated.");
-      onProfileChange(updated);
       goBack();
     } catch (e) {
       toast(errMsg(e, "Couldn't save your profile."));
