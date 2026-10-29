@@ -81,7 +81,7 @@
 // (Pato, MESITA-2609: "if i press profile link, then open the modal. i can
 // even click my own profile btw"); MESITA-2580 had sent an anonymous row to
 // the place. The card is the member's IDENTITY CARD, the top of Me without
-// the phone (MESITA-2547: photo, name, "Insta: …", Class, Plan), and under
+// the phone (MESITA-2547: photo, name, Instagram, Class, Plan), and under
 // it THEIR WHOLE HISTORY, liked and viewed, newest first, scrollable (Pato,
 // MESITA-2609: "a list of notifications of exactly that user … he clicked
 // that or liked that place … just all the historic feed scrollable"; it
@@ -537,17 +537,13 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
     : (historyMemory.get(key) ?? null);
 }
 
-/** The card's Instagram box, Me's own wording (MESITA-2606): "Insta: @handle
- *  · 1.2K followers", a masked "Insta: @per***", or "No Instagram" (a fact
- *  about the member, MESITA-2696; "Insta: not connected" before).
+/** The card's Instagram box, Me's own wording: "@handle (~1.2K
+ *  followers)" beside the logo (no "Insta:" since MESITA-3067), a masked
+ *  "@per***", or "No Instagram" (a fact about the member, MESITA-2696).
  *  On your own card the handle shows too. */
 function cardInstagramLabel(person: ActivityPerson): string {
   if (!person.handle) return "No Instagram";
-  return instagramWithFollowers(
-    `Insta: @${person.handle}`,
-    person.followers,
-    true,
-  );
+  return instagramWithFollowers(`@${person.handle}`, person.followers, true);
 }
 
 /** The person card (MESITA-2546, MESITA-2547, MESITA-2609): the member's

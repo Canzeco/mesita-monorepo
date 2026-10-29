@@ -25,7 +25,7 @@ import {
 //
 //                     (photo)
 //   ( 👤 name                                    )
-//   ( ◎ Insta: @handle (~1.2K followers)         )
+//   ( ◎ @handle (~1.2K followers)                )
 //   ( ♛ Regular Class   ) ( ▭ Free Plan         )   the pair (MESITA-2614)
 //   ─────── hairline ─────── full-width white bar; content on the 16px edge
 //
@@ -68,7 +68,7 @@ export function IdentityBar({
 }: {
   profile: ConsumerProfile | null;
   loading: boolean;
-  /** "Insta: @handle (~25K followers)", "Connect Instagram", … (MESITA-2606,
+  /** "@handle (~25K followers)", "Connect Instagram", … (MESITA-2606,
    *  MESITA-2696). */
   instagramLabel: string;
   /** False draws the plain glyph (MESITA-2696). */
