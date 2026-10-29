@@ -100,7 +100,7 @@ export async function synthesizeDoorProfile(
     'name already follows the MESITA NAME rule below>",' +
     '"semantic_summary":"<one dense English paragraph (~60-90 words) of what ' +
     'this place IS, for semantic search — no marketing voice>",' +
-    '"families":["<1-5 slugs from the family list>"],' +
+    '"families":["<1-7 slugs from the family list>"],' +
     '"zone":"<the Mesita Zone, or null>"}. ' +
     FAMILIES_RULE + " " +
     ZONE_RULE + " " +

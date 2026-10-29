@@ -142,7 +142,7 @@ function presentationPrompt(): CrenupPrompt {
       "the source material the earlier functions gathered.",
     writes:
       "The Presentation (place_profiles.description), the Mesita tags (picked " +
-      "from the live tag vocabulary), 1–5 Mesita Families (picked from the " +
+      "from the live tag vocabulary), 1–7 Mesita Families (picked from the " +
       "live family list; none when the main Google category is not enabled), " +
       "the machine summary that the Embedding " +
       "step vectorises and the Mesita name candidate.",

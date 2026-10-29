@@ -43,7 +43,7 @@ export type UpdateBody = {
   description?: string | null;
   /** Mesita tags: place_tags slugs, editable since MESITA-2836. Null clears. */
   tags?: string[] | null;
-  /** Mesita families: 1–5 place_families slugs, editable since MESITA-2893. Null clears. */
+  /** Mesita families: 1–7 place_families slugs, editable since MESITA-2893. Null clears. */
   family_keys?: string[] | null;
   menu_pdf_url?: string | null;
   // Optional human label paired with menu_pdf_url. Null clears.

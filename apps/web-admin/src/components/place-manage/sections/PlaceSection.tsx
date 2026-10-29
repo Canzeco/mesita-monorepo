@@ -191,7 +191,7 @@ const FALLBACK_LIMITS: PlaceFieldLimits = {
   placeNameMax: 80,
   descriptionMax: 500,
   tagsPerPlaceMax: 20,
-  familiesPerPlaceMax: 5,
+  familiesPerPlaceMax: 7,
   photosMax: 10,
 };
 

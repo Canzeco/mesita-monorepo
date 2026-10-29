@@ -20,7 +20,7 @@ export type ProfileResult = {
   mesita_name?: string | null;
   /** Mesita tags (MESITA-2790): vocabulary slugs; filtered by the caller. */
   tags?: unknown;
-  /** Mesita Families (MESITA-2891): 1–5 family slugs; filtered by the caller. */
+  /** Mesita Families (MESITA-2891): 1–7 family slugs; filtered by the caller. */
   families?: unknown;
   /** Retired (MESITA-2420). A stale reply may still carry it; it is never applied. */
   popular_times?: unknown[] | null;

@@ -11,14 +11,16 @@ const FAMILIES = [
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 4 },
   { slug: "fun", label: "Fun", emoji: "🎯", sort_order: 5 },
   { slug: "spa", label: "Spa", emoji: "🧖", sort_order: 6 },
+  { slug: "music", label: "Music", emoji: "🎶", sort_order: 7 },
+  { slug: "cinema", label: "Cinema", emoji: "🎬", sort_order: 8 },
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 99 },
 ];
 
-Deno.test("pickFamilies: known slugs and salvaged labels, Undefined and junk dropped, at most five", () => {
+Deno.test("pickFamilies: known slugs and salvaged labels, Undefined and junk dropped, at most seven", () => {
   assertEquals(pickFamilies(["coffee", "Bar", "undefined", "nope", "coffee"], FAMILIES), ["coffee", "drinks"]);
   assertEquals(
-    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "spa"], FAMILIES),
-    ["coffee", "breakfast", "dinner", "drinks", "fun"],
+    pickFamilies(["coffee", "breakfast", "dinner", "drinks", "fun", "spa", "music", "cinema"], FAMILIES),
+    ["coffee", "breakfast", "dinner", "drinks", "fun", "spa", "music"],
   );
 });
 
