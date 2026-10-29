@@ -17,6 +17,7 @@ import { DB_PARENT } from "@/app/(app)/manage-database/nav";
 import { GUESTS_PARENT } from "@/app/(app)/guests/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
+import { PREMIER_PARENT } from "@/app/(app)/premier/nav";
 import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
 import {
   CREATION_PARENT,
@@ -64,7 +65,8 @@ const PRIMARY_NAV: NavItem[] = [
 // lists — MANY at once, then ONE (Pato, MESITA-2084: "Multiple Places /
 // Single Place"). Guests sits right after Admins (MESITA-2550): both rows
 // are people. Single Place is the one-place sibling of the bulk tool,
-// not the per-place editor MESITA-1588 deleted. Not Configurations;
+// not the per-place editor MESITA-1588 deleted. Premier closes the group
+// (MESITA-3011): every place's paid visibility at once. Not Configurations;
 // nothing here is a policy blob.
 export const MANAGE_NAV: NavItem[] = [
   { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
@@ -72,6 +74,7 @@ export const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
+  PREMIER_PARENT,
 ];
 
 // Configurations — six rows. Models, then Atlas (the Mesita Families,
