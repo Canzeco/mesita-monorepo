@@ -207,7 +207,7 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
 Deno.test("the Popularity floor drops any place under it, Google or Mesita, Premier or not (MESITA-2714)", () => {
   const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
   // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 3 });
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
   const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
   const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
   assertEquals(areaScore(thin, ctx).gates.popularity, 0);
@@ -233,7 +233,7 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   // No location: Popularity × s.
   assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.log1p(200), 1e-9);
   // It never saves a place from the Popularity floor.
-  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 3 });
+  const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
   assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
 });
 
@@ -250,7 +250,6 @@ const CATALOG: AreaContext = {
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
   { label: "Premier 2X", over: { source: "mesita", premierTier: 1 }, s: 2 },
   { label: "Premier 5X", over: { source: "mesita", premierTier: 2 }, s: 5 },
-  { label: "Premier 10X", over: { source: "mesita", premierTier: 3 }, s: 10 },
 ];
 
 Deno.test("every surface keeps the full Premier factor at any distance (MESITA-3015)", () => {
@@ -268,18 +267,26 @@ Deno.test("every surface keeps the full Premier factor at any distance (MESITA-3
     }
   }
   // No coordinates keeps the factor too; Proximity (0) is what zeroes it.
-  const noPoint = areaScore(cand({ premierTier: 3, lat: null, lng: null }), CATALOG);
-  assertEquals(noPoint.selectedFactor, 10);
+  const noPoint = areaScore(cand({ premierTier: 2, lat: null, lng: null }), CATALOG);
+  assertEquals(noPoint.selectedFactor, 5);
   assertEquals(noPoint.final, 0);
 });
 
-Deno.test("Catalog: distance alone keeps a Premier 10X in another city off Home (MESITA-3015)", () => {
-  // The worst case: the catalog's most popular place, paid 10X, 300 km
+Deno.test("Catalog: distance alone keeps a Premier 5X in another city off Home (MESITA-3015)", () => {
+  // The worst case: the catalog's most popular place, paid 5X, 300 km
   // away, against a modest local one 2 km away.
-  const farPaid = cand({ id: "far", source: "mesita", premierTier: 3, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 10_000 });
+  const farPaid = cand({ id: "far", source: "mesita", premierTier: 2, lat: ANCHOR.lat + 300 * KM, rating: 4.7, reviewCount: 10_000 });
   const local = cand({ id: "local", source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.0, reviewCount: 100 });
   assertEquals(rankArea([farPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["local", "far"]);
-  // The ad still works across town: the same 10X at 10 km tops it.
+  // The ad still works across town: the same 5X at 10 km tops it.
   const nearPaid = cand({ ...farPaid, id: "near", lat: ANCHOR.lat + 10 * KM });
   assertEquals(rankArea([nearPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["near", "local"]);
+});
+
+Deno.test("one list: equal scores keep one stable order, so pages never repeat or skip (MESITA-3041)", () => {
+  const twins = ["c", "a", "b"].map((id) => cand({ id, source: "mesita", lat: ANCHOR.lat + 2 * KM, rating: 4.5, reviewCount: 100 }));
+  const first = rankArea(twins, (c) => c, CATALOG).map((r) => r.item.id);
+  const again = rankArea([...twins].reverse(), (c) => c, CATALOG).map((r) => r.item.id);
+  assertEquals(first, ["a", "b", "c"]);
+  assertEquals(again, first);
 });

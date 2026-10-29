@@ -348,8 +348,8 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
           last, none are removed. Popularity is ln(1 + reviews × stars), never
           normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
           no Google numbers scores 0 and sinks, never disappears. A Premier
-          place&apos;s score is multiplied by its paid tier (Premier 2X · 5X ·
-          10X), every other place&apos;s by 1; being Premier never saves a place
+          place&apos;s score is multiplied by its paid tier (Premier 2X · 5X),
+          every other place&apos;s by 1; being Premier never saves a place
           from the Minimum Popularity.
         </p>
       </Group>
@@ -422,25 +422,15 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
         <>
           <p>
             Home&apos;s Places: <strong>every</strong> Mesita place, ranked in
-            one run from the guest&apos;s device or saved pin, and drawn a page
-            at a time. There is no radius: a far place is never cut, only
-            lowered.
+            one run by <strong>Proximity × Popularity</strong> × the Premier
+            factor from the guest&apos;s device or saved pin, and drawn a page at
+            a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
-            <strong>Two lanes, one and one.</strong> The <strong>red</strong>{" "}
-            lane is the Premier places, ranked by Proximity × Popularity × the
-            Premier factor; the <strong>blue</strong> lane is every place,
-            ranked by Proximity × Popularity alone. Home shows red, blue,
-            red, blue… each place once (the first lane to place it keeps it),
-            so how much of Home is paid is this ratio, not the factor. A red
-            slot&apos;s Premier mark reads · Ad. The Map stays one list:
-            its screen radius bounds it.
-          </p>
-          <p className="mt-2">
-            Premier counts at any distance inside its lane: past the half
-            distance the score is half distance ÷ distance, so a Premier 10X
-            beats a place up to about ten times closer, and one in another
-            city never tops Home.
+            Premier counts at any distance: past the half distance the score
+            is half distance ÷ distance, so a Premier 5X beats a place up
+            to about five times closer, and one in another city never tops
+            Home.
           </p>
           <p className="mt-2">
             No location: Popularity × the Premier factor alone. Mesita places

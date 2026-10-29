@@ -7,11 +7,11 @@ import { RowDivider, SettingsGroup } from "@/components/consumer/me/settings-row
 import {
   apiCancelBoost,
   apiStartBoost,
-  BOOST_TIER_LABEL,
+  tierLabel,
   BOOST_TIERS,
   money,
   shortDate,
-  TIER_MARK,
+  tierMark,
   type BoostInterval,
   type BoostQuote,
   type BoostTier,
@@ -33,7 +33,7 @@ import { cn, errMsg } from "@/lib/utils";
 //
 // One card, read top to bottom: where the place stands, your pledge (when
 // you have one), the line (who pays now, who backs up — levels only, never
-// names: MESITA-2928), then Monthly | Yearly, the three levels, and ONE
+// names: MESITA-2928), then Monthly | Yearly, the two levels, and ONE
 // price line for the level you tapped. Every amount, date and position is
 // the server's (consumer-web-get-boost `quotes`); nothing here computes
 // money. Premier is paid visibility and never verifies the place.
@@ -145,7 +145,7 @@ export function BoostPane({
                 <Fragment key={`${row.role}-${row.position}`}>
                   {i > 0 && <RowDivider />}
                   <div className="flex min-h-12 items-center gap-3 px-4 py-2.5 text-sm">
-                    <span className="font-display w-10 text-lg leading-none font-semibold">{TIER_MARK[row.tier]}</span>
+                    <span className="font-display w-10 text-lg leading-none font-semibold">{tierMark(row.tier)}</span>
                     <span className="min-w-0 flex-1 truncate">
                       {row.interval === "year" && <span className="text-muted-foreground">Yearly · </span>}
                       {row.mine && <span className="font-semibold">You</span>}
@@ -201,7 +201,7 @@ export function BoostPane({
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Premier level">
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Premier level">
             {BOOST_TIERS.map((t) => {
               const tq = boost?.quotes?.[t.key][interval];
               const on = picked === t.key;
@@ -277,7 +277,7 @@ export function BoostPane({
           <h2 className={SHEET_TITLE_CLASS}>Leave the line?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
             {mine?.role === "payer" && period
-              ? `Your ${TIER_MARK[period.tier]} runs to ${shortDate(period.ends_at)}, then the next in line pays.`
+              ? `Your ${tierMark(period.tier)} runs to ${shortDate(period.ends_at)}, then the next in line pays.`
               : "You can pledge again any time."}
           </p>
           {leaveError && <p className={ERROR_BOX_CLASS}>{leaveError}</p>}
@@ -319,11 +319,11 @@ function YourPledge({
   let text: string;
   if (mine.status === "failed") text = "Card declined · pick a level below to pledge again";
   else if (mine.status === "open") text = "Finishing payment…";
-  else if (mine.pending) text = `Upgrade to ${TIER_MARK[mine.pending]}: finishing payment…`;
+  else if (mine.pending) text = `Upgrade to ${tierMark(mine.pending)}: finishing payment…`;
   else if (mine.role === "payer" && period && mine.tier < period.tier) {
-    text = `${TIER_MARK[period.tier]} · Paying now → ${TIER_MARK[mine.tier]} from ${shortDate(period.ends_at)}`;
-  } else if (mine.role === "payer") text = `${TIER_MARK[mine.tier]} · Paying now`;
-  else text = `${TIER_MARK[mine.tier]} · Backup ${mine.position}`;
+    text = `${tierMark(period.tier)} · Paying now → ${tierMark(mine.tier)} from ${shortDate(period.ends_at)}`;
+  } else if (mine.role === "payer") text = `${tierMark(mine.tier)} · Paying now`;
+  else text = `${tierMark(mine.tier)} · Backup ${mine.position}`;
   return (
     <div className="bg-muted flex min-h-12 items-center gap-3 rounded-xl px-4 py-2.5 text-sm">
       <span className="min-w-0 flex-1">
@@ -343,9 +343,9 @@ function YourPledge({
 function statusLine(boost: PlaceBoost | null): string {
   if (!boost) return "Not Premier yet";
   const p = boost.period;
-  if (boost.renewing) return p ? `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · renewing…` : "Premier · renewing…";
-  if (p?.granted) return `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · granted by Mesita until ${shortDate(p.ends_at)}`;
-  if (p) return `${BOOST_TIER_LABEL[p.tier as 1 | 2 | 3]} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`;
+  if (boost.renewing) return p ? `${tierLabel(p.tier)} · renewing…` : "Premier · renewing…";
+  if (p?.granted) return `${tierLabel(p.tier)} · granted by Mesita until ${shortDate(p.ends_at)}`;
+  if (p) return `${tierLabel(p.tier)} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`;
   if (boost.line.length > 0) return "Not Premier · the next pledge is charged within the hour";
   return "Not Premier yet";
 }
@@ -360,11 +360,11 @@ function priceLine(
 ): string {
   if (!boost?.quotes || !q) return "Sign in to pledge.";
   const every = INTERVAL_WORD[interval];
-  const mark = TIER_MARK[{ boost_2x: 1, boost_5x: 2, boost_10x: 3 }[tier]];
+  const mark = tierMark({ boost_2x: 1, boost_5x: 2 }[tier]);
   const period = boost.period;
   const prefix = mine?.status === "failed" ? "Update your card. " : "";
   if (q.role === "payer" && q.checkout === "none" && mine?.role === "payer" && period) {
-    return `Your ${TIER_MARK[period.tier]} runs to ${shortDate(period.ends_at)}; then ${mark} at ${money(q.price_cents)} every ${every}.`;
+    return `Your ${tierMark(period.tier)} runs to ${shortDate(period.ends_at)}; then ${mark} at ${money(q.price_cents)} every ${every}.`;
   }
   if (q.role === "payer") {
     if (q.charge_cents === 0) {
@@ -373,10 +373,10 @@ function priceLine(
       }. ${q.checkout === "none" ? "You become the payer." : "Confirm your card to become the payer."}`;
     }
     if (period?.granted) {
-      return `${prefix}Pay ${money(q.charge_cents)} today. You become the payer; the granted ${TIER_MARK[period.tier]} ends now. Then ${money(q.price_cents)} every ${every}.`;
+      return `${prefix}Pay ${money(q.charge_cents)} today. You become the payer; the granted ${tierMark(period.tier)} ends now. Then ${money(q.price_cents)} every ${every}.`;
     }
     if (q.credit_cents > 0 && period) {
-      return `${prefix}Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on the current ${TIER_MARK[period.tier]}). You become the payer. Then ${money(q.price_cents)} every ${every}.`;
+      return `${prefix}Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on the current ${tierMark(period.tier)}). You become the payer. Then ${money(q.price_cents)} every ${every}.`;
     }
     return `${prefix}Pay ${money(q.charge_cents)} today, then ${money(q.price_cents)} every ${every} until you leave.`;
   }

@@ -19,14 +19,15 @@ import { SectionCard } from "@/components/admin-ui/manage";
 // running grant, or take one pledge out of the line
 // (admin-web-grant-place-boost). Nothing here refunds; Stripe is the record.
 
-const TIER_LABEL: Record<0 | 1 | 2 | 3, string> = {
+const TIER_LABEL: Record<number, string> = {
   0: "Not Premier",
   1: "Premier 2X",
   2: "Premier 5X",
-  3: "Premier 10X",
 };
 
-const MARK: Record<number, string> = { 1: "2X", 2: "5X", 3: "10X" };
+// Two levels since MESITA-3041; a tier this build does not know reads "Premier".
+const MARK: Record<number, string> = { 1: "2X", 2: "5X" };
+const mark = (tier: number) => MARK[tier] ?? "Premier";
 
 const PERIOD_STATUS: Record<AdminPeriod["status"], string> = {
   charging: "Charging",
@@ -118,7 +119,7 @@ export function BoostSection({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [grantTier, setGrantTier] = useState<1 | 2 | 3>(1);
+  const [grantTier, setGrantTier] = useState<1 | 2>(1);
   const [grantMonths, setGrantMonths] = useState(1);
 
   const apply = useCallback((r: Awaited<ReturnType<typeof getPlaceBoost>>) => {
@@ -221,12 +222,11 @@ export function BoostSection({
                   <select
                     aria-label="Grant level"
                     value={grantTier}
-                    onChange={(e) => setGrantTier(Number(e.target.value) as 1 | 2 | 3)}
+                    onChange={(e) => setGrantTier(Number(e.target.value) as 1 | 2)}
                     className="border-border bg-card rounded-full border px-3 py-1 text-xs"
                   >
                     <option value={1}>Premier 2X</option>
                     <option value={2}>Premier 5X</option>
-                    <option value={3}>Premier 10X</option>
                   </select>
                   <select
                     aria-label="Grant length"
@@ -287,8 +287,8 @@ export function BoostSection({
                       <td className="py-2 pr-4 font-semibold whitespace-nowrap">{roleLabel(p)}</td>
                       <td className="py-2 pr-4">{p.payer ?? "Deleted account"}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">
-                        {MARK[p.tier]}
-                        {p.pending_tier ? ` → ${MARK[p.pending_tier]} (paying)` : ""}
+                        {mark(p.tier)}
+                        {p.pending_tier ? ` → ${mark(p.pending_tier)} (paying)` : ""}
                       </td>
                       <td className="py-2 pr-4 whitespace-nowrap">
                         {usd(p.amount_cents)}/{p.interval === "year" ? "yr" : "mo"}
@@ -341,7 +341,7 @@ export function BoostSection({
                       <td className="py-2 pr-4 whitespace-nowrap">
                         {day(p.starts_at)} – {day(p.ends_at)}
                       </td>
-                      <td className="py-2 pr-4">{MARK[p.tier]}</td>
+                      <td className="py-2 pr-4">{mark(p.tier)}</td>
                       <td className="py-2 pr-4">{p.payer ?? (p.granted_by ? `Granted (${p.granted_by})` : "—")}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">{usd(p.price_cents)}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">

@@ -8,8 +8,8 @@ import { efInvoke } from "@/lib/supabase-ef";
 export type PremierRow = {
   id: string;
   name: string;
-  /** places.boost_tier: 0 none · 1 2X · 2 5X · 3 10X. */
-  tier: 0 | 1 | 2 | 3;
+  /** places.boost_tier: 0 none · 1 2X · 2 5X. */
+  tier: 0 | 1 | 2;
   factor: number;
   period: { tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
   /** A renewal or upgrade charge is in flight at Stripe. */

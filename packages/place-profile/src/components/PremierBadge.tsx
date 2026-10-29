@@ -2,9 +2,9 @@ import { cn } from "../lib/format";
 import { premierLabel, premierLevel } from "../premier";
 
 // THE PREMIER MARK (Pato, MESITA-2925: "Just Premier for the moment, and
-// mention the level: Premier 2X · Premier 5X · Premier 10X"): the red
+// mention the level: Premier 2X · Premier 5X"; 10X retired, MESITA-3041): the red
 // rosette right after a place's name, then its level in the same red. It
-// draws only for a Premier place (`boost_tier` 1..3) and is the place's
+// draws only for a Premier place (`boost_tier` 1..2) and is the place's
 // one mark: the grey "Boosted" text and the Selected check are gone.
 // Display only; it is never a button.
 //
@@ -14,8 +14,10 @@ import { premierLabel, premierLevel } from "../premier";
 // the word; the place screen always says Premier.
 //
 // `ad` (Pato, MESITA-3016: "marca … para que se entienda que es como paid
-// ad") appends "· Ad" where the slot itself was paid for: a Home tile the
-// red lane placed, a Search rail card (the Map ranks by the paid factor).
+// ad") appends "· Ad" where Premier lifted the place's rank: every Premier
+// Home tile (one list, MESITA-3041: the factor lifts each one) and every
+// Search rail card (the Map ranks by the paid factor). A Mesita grant lifts
+// the rank too, so it is marked the same.
 
 export function PremierBadge({
   tier,

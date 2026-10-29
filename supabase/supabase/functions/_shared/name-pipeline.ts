@@ -91,7 +91,7 @@ export type LaneItem = {
   /** Server's answer: did we write a profile for this place? */
   enriched?: boolean;
   /** Premier (MESITA-2925): the row's paid tier, `places.boost_tier`
-   *  (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); 1 or more is Premier. Absent
+   *  (0 · 1 · 2 = none · 2X · 5X); 1 or more is Premier. Absent
    *  on a Google-only row (0 on the wire). */
   premierTier?: number;
   /**

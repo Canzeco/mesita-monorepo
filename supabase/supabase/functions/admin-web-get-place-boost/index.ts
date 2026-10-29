@@ -6,7 +6,7 @@
 // the operator can see who pays for what without opening Stripe.
 //
 // Body:     { placeId | projectId }
-// Response: { ok: true, tier: 0..3, factor, period | null, line: AdminPledge[],
+// Response: { ok: true, tier: 0..2, factor, period | null, line: AdminPledge[],
 //             periods: AdminPeriod[], stuck: number }
 // Auth:     caller's JWT email must be in public.super_admins.
 
@@ -16,6 +16,7 @@ import { requireAdminRequest } from "../_shared/auth.ts";
 import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
   PREMIER_FACTOR,
+  premierRankOf,
   ladder,
   readBackerNames,
   readBoostPlace,
@@ -54,7 +55,7 @@ serveJson("admin-web-get-place-boost", async (req) => {
   const names = await readBackerNames(admin, payerIds, MEMBER_FALLBACK_NAME);
   const nameById = new Map(payerIds.map((id, i) => [id, names[i]]));
   const pledgeName = new Map(line.pledges.map((p) => [p.id, p.consumer_id ? nameById.get(p.consumer_id) ?? MEMBER_FALLBACK_NAME : null]));
-  const tier = Math.min(Math.max(Number(placeRes.place.boost_tier) || 0, 0), 3) as 0 | 1 | 2 | 3;
+  const tier = premierRankOf(Number(placeRes.place.boost_tier) || 0);
   let backup = 0;
 
   return json({

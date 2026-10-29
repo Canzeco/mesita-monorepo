@@ -16,6 +16,7 @@ import {
   ladder,
   lineView,
   parseBoostStart,
+  PREMIER_TIERS,
   type Period,
   type Pledge,
   pledgeCheckoutParams,
@@ -79,13 +80,27 @@ function period(over: Partial<Period> & { id: string }): Period {
   };
 }
 
-Deno.test("premier: $10 · $50 · $200 a month, a year for the price of ten months", () => {
+Deno.test("premier: two plans, $10 · $200 a month, a year for the price of ten months (MESITA-3041)", () => {
   assertEquals(boostAmountCents("boost_2x", "month"), 1000);
-  assertEquals(boostAmountCents("boost_5x", "month"), 5000);
-  assertEquals(boostAmountCents("boost_10x", "month"), 20000);
+  assertEquals(boostAmountCents("boost_5x", "month"), 20000);
   assertEquals(boostAmountCents("boost_2x", "year"), 10000);
-  assertEquals(boostAmountCents("boost_5x", "year"), 50000);
-  assertEquals(boostAmountCents("boost_10x", "year"), 200000);
+  assertEquals(boostAmountCents("boost_5x", "year"), 200000);
+  assertEquals(PREMIER_TIERS, ["boost_2x", "boost_5x"]);
+});
+
+Deno.test("premier: 2X → 5X credit at day 0 and mid-period, month and year (MESITA-3041)", () => {
+  for (const interval of ["month", "year"] as const) {
+    const price2 = boostAmountCents("boost_2x", interval);
+    const price5 = boostAmountCents("boost_5x", interval);
+    const ends = new Date(intervalEnd(new Date(T0), interval)).toISOString();
+    const running = period({ id: "p", backing_id: "a", tier: 1, billing_interval: interval, price_cents: price2, ends_at: ends });
+    const length = intervalEnd(new Date(T0), interval).getTime() - T0;
+    for (const at of [0, Math.floor(length / 2)]) {
+      const q = quote({ tier: "boost_5x", interval, running, charging: false, pledges: [pledge({ id: "a" })], mine: pledge({ id: "a" }), now: T0 + at });
+      const credit = Math.floor((price2 * (length - at)) / length);
+      assertEquals([q.price_cents, q.credit_cents, q.charge_cents], [price5, credit, price5 - credit], `${interval} +${at}`);
+    }
+  }
 });
 
 Deno.test("premier: periods are calendar months and years (like the SQL)", () => {
@@ -116,7 +131,7 @@ Deno.test("premier: Pato's example — a half-used $10 2X upgraded to 5X costs $
     mine: pledge({ id: "a" }),
     now: T0 + 15 * DAY,
   });
-  assertEquals(q.charge_cents, 4500);
+  assertEquals(q.charge_cents, 19500);
   assertEquals(q.credit_cents, 500);
   assertEquals(q.role, "payer");
   assertEquals(q.checkout, "payment");
@@ -133,29 +148,30 @@ Deno.test("premier: another guest upgrading gets the place's credit too", () => 
     mine: null,
     now: T0 + 15 * DAY,
   });
-  assertEquals([q.charge_cents, q.credit_cents, q.role, q.checkout], [4500, 500, "payer", "payment"]);
+  assertEquals([q.charge_cents, q.credit_cents, q.role, q.checkout], [19500, 500, "payer", "payment"]);
 });
 
 Deno.test("premier: credit above the new price is never lost — it becomes extra days", () => {
-  // A fresh yearly 2X ($100) upgraded to monthly 5X ($50): $50 left over.
+  // A fresh yearly period stored at $300 upgraded to monthly 5X ($200):
+  // $100 left over becomes half a month.
   const running = period({
     id: "p",
     backing_id: "a",
     billing_interval: "year",
-    price_cents: 10000,
+    price_cents: 30000,
     ends_at: new Date(T0 + 365 * DAY).toISOString(),
   });
   const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [], mine: null, now: T0 });
   assertEquals(q.charge_cents, 0);
-  assertEquals(q.credit_cents, 5000);
-  assertEquals(q.extra_days, 30);
+  assertEquals(q.credit_cents, 20000);
+  assertEquals(q.extra_days, 15);
   assertEquals(q.checkout, "setup");
-  assertEquals(extraDays(0, 5000, "month", T0), 0);
+  assertEquals(extraDays(0, 20000, "month", T0), 0);
 });
 
 Deno.test("premier: a charge under 50 cents is not charged (Stripe's minimum)", () => {
-  // 5X monthly ($50) with $49.60 of credit left: a 40-cent charge becomes 0.
-  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 4960 });
+  // 5X monthly ($200) with $199.60 of credit left: a 40-cent charge becomes 0.
+  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 19960 });
   const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [], mine: null, now: T0 });
   assertEquals(q.charge_cents, 0);
   assertEquals(q.checkout, "setup");
@@ -181,9 +197,9 @@ Deno.test("premier: at or below the running level → a backup, $0 today, number
 });
 
 Deno.test("premier: a backup with a saved card changes level with no Checkout", () => {
-  const running = period({ id: "p", backing_id: "a", tier: 3 });
+  const running = period({ id: "p", backing_id: "a", tier: 2 });
   const mine = pledge({ id: "b", tier: "boost_2x" });
-  const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [pledge({ id: "a", tier: "boost_10x" }), mine], mine, now: T0 });
+  const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [pledge({ id: "a", tier: "boost_5x" }), mine], mine, now: T0 });
   assertEquals([q.role, q.checkout], ["backup", "none"]);
 });
 
@@ -195,7 +211,7 @@ Deno.test("premier: the payer lowering their level keeps paying the period they 
 });
 
 Deno.test("premier: while a charge is in flight nobody jumps the line", () => {
-  const q = quote({ tier: "boost_10x", interval: "month", running: null, charging: true, pledges: [], mine: null, now: T0 });
+  const q = quote({ tier: "boost_5x", interval: "month", running: null, charging: true, pledges: [], mine: null, now: T0 });
   assertEquals(q.role, "backup");
   assertEquals(q.charge_cents, 0);
 });
@@ -205,8 +221,8 @@ Deno.test("premier: the ladder is level first, then whoever got in line first; a
     pledge({ id: "early2", tier: "boost_2x", queued_at: new Date(T0).toISOString() }),
     pledge({ id: "late5", tier: "boost_5x", queued_at: new Date(T0 + 5 * DAY).toISOString() }),
     pledge({ id: "repledged5", tier: "boost_5x", queued_at: new Date(T0 + 9 * DAY).toISOString() }),
-    pledge({ id: "failed", tier: "boost_10x", status: "failed" }),
-    pledge({ id: "nocard", tier: "boost_10x", stripe_payment_method_id: null }),
+    pledge({ id: "failed", tier: "boost_5x", status: "failed" }),
+    pledge({ id: "nocard", tier: "boost_5x", stripe_payment_method_id: null }),
   ];
   assertEquals(ladder(pledges).map((p) => p.id), ["late5", "repledged5", "early2"]);
 });
@@ -305,6 +321,11 @@ Deno.test("premier: start refuses a tier that is not one of the three, and a for
   const ok = { place_id: "11111111-1111-4111-8111-111111111111", tier: "boost_5x", return_url: "https://mesita.ai/x" };
   assertEquals(parseBoostStart(ok).ok, true);
   assertEquals(parseBoostStart({ ...ok, tier: "boost_3x" }).ok, false);
+  // 10X is retired (MESITA-3041): a cached old build gets a code it can read.
+  const retired = parseBoostStart({ ...ok, tier: "boost_10x" });
+  assertEquals(retired.ok ? null : retired.code, "tier_retired");
+  const odd = parseBoostStart({ ...ok, tier: "x".repeat(500) });
+  assertEquals(odd.ok ? null : [odd.code, odd.error.length < 120], ["tier_invalid", true]);
   assertEquals(parseBoostStart({ ...ok, return_url: "https://evil.com" }).ok, false);
   assertEquals(isAllowedReturnUrl("https://preview-x.vercel.app/p"), true);
 });
@@ -325,7 +346,8 @@ Deno.test("premier: the factor is the tier's number; a Google stub is never Prem
   assertEquals(premierFactor({ source: "mesita", premierTier: 0 }), 1);
   assertEquals(premierFactor({ source: "mesita", premierTier: 1 }), 2);
   assertEquals(premierFactor({ source: "mesita", premierTier: 2 }), 5);
-  assertEquals(premierFactor({ source: "mesita", premierTier: 3 }), 10);
+  // A tier outside 0..2 earns no paid reach (MESITA-3041).
+  assertEquals(premierFactor({ source: "mesita", premierTier: 3 }), 1);
   assertEquals(premierFactor({ source: "mesita" }), 1);
   assertEquals(premierFactor({ source: "google", premierTier: 3 }), 1);
 });

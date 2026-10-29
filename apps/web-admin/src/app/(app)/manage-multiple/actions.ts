@@ -88,7 +88,7 @@ export type PlaceHit = {
   /** When the last Enrich run completed; null for a Created place. */
   enriched_at: string | null;
   /** Premier (MESITA-2925, was Boost — MESITA-2809): the paid tier,
-   *  0 · 1 · 2 · 3 = Off · 2X · 5X · 10X. Null when the payload does not
+   *  0 · 1 · 2 = Off · 2X · 5X. Null when the payload does not
    *  carry it. */
   boost_tier?: number | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */

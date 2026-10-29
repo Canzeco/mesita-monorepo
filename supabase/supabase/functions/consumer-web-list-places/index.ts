@@ -25,7 +25,7 @@
 // del radio, pero no la metería ya para el sorting"): Mesita's read is boxed
 // to it, the Radius gate drops what lies past it, and the places inside are
 // ranked by Popularity × the Premier factor (a Premier place's paid tier,
-// ×2 · ×5 · ×10, MESITA-2925), no Proximity. EVERY ready place in the box is
+// ×2 · ×5, MESITA-2925), no Proximity. EVERY ready place in the box is
 // ranked (MESITA-2950): the read walks the scoring columns by id, page after
 // page (`selectMapPool`, the Catalog's two passes from MESITA-2921), then
 // reads only the kept places' cards, so a wide ring never ranks an
@@ -120,7 +120,7 @@ type WireScore = {
   proximity: number | null;
   popularity: number | null;
   final: number;
-  /** The factor `final` carries: the Premier factor, ×2 · ×5 · ×10, else 1
+  /** The factor `final` carries: the Premier factor, ×2 · ×5, else 1
    *  (MESITA-2925; the key predates Premier). */
   selectedFactor: number;
   /** Km from the cross (MESITA-2830); it screens, never scores. */

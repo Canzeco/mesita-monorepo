@@ -55,7 +55,7 @@ export type PlaceDetail = {
   /** Enricher finished (`places.enriched_at`). False → Enrich vote tab. */
   is_enriched: boolean;
   /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
-   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X. Above 0 the name
    *  wears "Premier 2X". Absent on callers that never read it. */
   boost_tier?: number;
   /** Consumer vote count. Progress toward the Crenup threshold. */

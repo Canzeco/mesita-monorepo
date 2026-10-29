@@ -17,7 +17,7 @@ import { listPremier, type PremierList, type PremierRow } from "./actions";
 // Single Place › Premier): grant a period nobody pays for, end a grant,
 // remove a pledge. Stripe is the record of money; nothing here refunds.
 
-const MARK: Record<number, string> = { 1: "2X", 2: "5X", 3: "10X" };
+const MARK: Record<number, string> = { 1: "2X", 2: "5X" };
 
 function usd(cents: number): string {
   return (cents / 100).toLocaleString("en-US", {
@@ -85,7 +85,7 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
       <PageHeader
         eyebrow="Manage · Premier"
         title="Premier"
-        description="Paid visibility: ×2, ×5 or ×10 on the Map and Home. Guests pledge from a place's Premier tab; only the top pledge pays each period and the rest back it up. Grant a period here to make a place Premier without a payment."
+        description="Paid visibility: ×2 or ×5 on the Map and Home. Guests pledge from a place's Premier tab; only the top pledge pays each period and the rest back it up. Grant a period here to make a place Premier without a payment."
       />
 
       <SectionCard
@@ -152,7 +152,7 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
                     (p.tier > 0 ? "" : "text-muted-foreground/40")
                   }
                 >
-                  {p.tier > 0 ? MARK[p.tier] : "—"}
+                  {p.tier > 0 ? (MARK[p.tier] ?? "Premier") : "—"}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{p.name}</span>

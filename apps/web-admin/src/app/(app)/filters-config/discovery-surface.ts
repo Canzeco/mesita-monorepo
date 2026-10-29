@@ -275,7 +275,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["popularity"],
     gates: ["family", "radius"],
     factors: [
-      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X · 10X; every other place's × 1.",
+      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X; every other place's × 1.",
     ],
     scoring: "Popularity × s, s the Premier factor (2, 5 or 10 for a Premier place, 1 for every other place, MESITA-2925), a plain product never clamped or normalized (MESITA-2710). Distance is a screen, never a sort (Pato, MESITA-2909): the screen radius gates, Proximity is not read. The Map shows the top Map places shown. Ties break on distance, then id.",
     keepsOrder: [],
@@ -298,10 +298,9 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     signals: ["proximity", "popularity"],
     gates: ["family"],
     factors: [
-      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X · 10X; every other place's × 1.",
-      "Two lanes (MESITA-3016): the red lane is the Premier places ranked with the factor, the blue lane every place ranked without it; Home takes red, blue, red, blue…, each place once (the first lane to place it keeps it). How much of Home is paid is that ratio, not the factor. A red slot's Premier mark reads · Ad.",
+      "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X; every other place's × 1.",
     ],
-    scoring: "Two lanes interleaved one and one (MESITA-3016). Red (Premier places only): Proximity × Popularity × s, s the Premier factor (MESITA-2925). Blue (every place): Proximity × Popularity, s = 1. A plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + distance ÷ half distance), ½ at the operator's half distance (MESITA-3015). No radius: a far place is never cut, only lowered. s counts at any distance inside the red lane (the reach went with MESITA-3015): past the half distance the score is half distance ÷ distance, so a Premier 10X beats a place up to about ten times closer and one in another city never tops Home. No location: the same two lanes on Popularity alone. Chat ranks one list with s inside the current-location radius. Ties break on distance, then id.",
+    scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + distance ÷ half distance), ½ at the operator's half distance (MESITA-3015). No radius: a far place is never cut, only lowered. s counts at any distance (the reach went with MESITA-3015): past the half distance the score is half distance ÷ distance, so a Premier 5X beats a place up to about five times closer and one in another city never tops Home. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id. One list (MESITA-3041): the two lanes of MESITA-3016 are retired.",
     keepsOrder: [],
     rules: [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and the best 1,000 come back; Home draws them a Catalog page size at a time (MESITA-2909, MESITA-2921).",

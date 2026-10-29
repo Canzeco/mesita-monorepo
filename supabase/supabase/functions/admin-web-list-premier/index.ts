@@ -24,6 +24,7 @@ import {
   type Pledge,
   PLEDGE_COLUMNS,
   PREMIER_FACTOR,
+  premierRankOf,
   runningPeriod,
 } from "../_shared/boost.ts";
 
@@ -59,7 +60,7 @@ serveJson("admin-web-list-premier", async (req) => {
     const periods = periodsBy.get(p.id) ?? [];
     const running = runningPeriod(periods, now);
     const inLine = ladder(pledges).filter((x) => x.id !== running?.backing_id).length;
-    const tier = Math.min(Math.max(Number(p.boost_tier) || 0, 0), 3) as 0 | 1 | 2 | 3;
+    const tier = premierRankOf(Number(p.boost_tier) || 0);
     return {
       id: p.id,
       name: p.name ?? "Unnamed place",
