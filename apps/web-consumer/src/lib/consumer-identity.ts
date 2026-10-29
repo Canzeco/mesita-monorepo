@@ -39,17 +39,17 @@ export function instagramSummary(f: ConsumerFacts): string {
   return f.igHandle ? `Insta: @${f.igHandle}` : "Insta: connected";
 }
 
-/** An approximate follower count: 47 → "40+", 760 → "700+", 4,820 → "4.8K",
- *  12,400 → "12K", 1,250,000 → "1.2M". Zero or less → null. */
+/** A follower count marked as approximate (Pato, MESITA-3046: "use number
+ *  of followers exact but use an approximation sign"; it floored, 298 read
+ *  "200+"): 298 → "≈298", 4,820 → "≈4.8K", 12,400 → "≈12.4K",
+ *  1,250,000 → "≈1.3M". Under 1,000 exact; above, rounded to one decimal so
+ *  the chip stays one line. Zero or less → null. */
 export function approxFollowers(n: number): string | null {
   if (!Number.isFinite(n) || n <= 0) return null;
-  if (n < 10) return String(Math.trunc(n));
-  if (n < 100) return `${Math.floor(n / 10) * 10}+`;
-  if (n < 1000) return `${Math.floor(n / 100) * 100}+`;
-  const [div, unit] = n < 1_000_000 ? [1000, "K"] : [1_000_000, "M"];
-  const v = n / div;
-  const shown = v < 10 ? Math.floor(v * 10) / 10 : Math.floor(v);
-  return `${String(shown).replace(/\.0$/, "")}${unit}`;
+  if (n < 1000) return `≈${Math.round(n)}`;
+  const [div, unit] = n < 999_950 ? [1000, "K"] : [1_000_000, "M"];
+  const shown = Math.round((n / div) * 10) / 10;
+  return `≈${String(shown).replace(/\.0$/, "")}${unit}`;
 }
 
 /** Me's Instagram chip and tile: the summary, plus the rounded follower count

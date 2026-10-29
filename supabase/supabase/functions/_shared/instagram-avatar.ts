@@ -11,12 +11,13 @@
 // told apart from a photo the guest uploaded (`{ms}-{uuid}.{ext}`,
 // MESITA-953).
 //
-// THE RULE: the copy becomes `consumers.avatar_url` only when the guest left
+// THE RULE: the copy becomes `consumers.avatar_url` whenever the guest left
 // "Use my Instagram photo" on (consumers.use_instagram_photo, default true,
-// MESITA-2585) AND the current avatar is empty or is itself an earlier
-// Instagram copy. An uploaded photo is never replaced. Re-verifying
-// refreshes the copy and removes the older Instagram copies. Best effort:
-// nothing here can fail a verification.
+// MESITA-2585), over any current picture, an upload included (MESITA-3046:
+// Pato's upload kept the copy out while the switch read "Your Mesita picture
+// comes from your Instagram"). Re-verifying refreshes the copy and removes
+// the older Instagram copies; an uploaded file stays in the bucket. Best
+// effort: nothing here can fail a verification.
 //
 // ONE DOOR FOR BOTH PATHS: the bio check (consumer-web-claim-instagram, the
 // Apify scrape's photo) and the DM webhook (meta-instagram-receive-message,
@@ -56,11 +57,6 @@ export function isInstagramAvatar(urlOrPath: string | null | undefined, consumer
   return typeof urlOrPath === "string" && urlOrPath.includes(`${consumerId}/instagram-`);
 }
 
-/** May the Instagram copy become the avatar? Only over nothing or an earlier copy. */
-export function mayReplaceAvatar(current: string | null | undefined, consumerId: string): boolean {
-  return !current || isInstagramAvatar(current, consumerId);
-}
-
 /** Does the guest's switch allow the Instagram photo? Anything but an
  *  explicit false is the default, on (MESITA-2585). */
 export function photoAllowed(useInstagramPhoto: unknown): boolean {
@@ -94,16 +90,13 @@ export async function adoptInstagramAvatar(
 
     const { data: row, error: readErr } = await admin
       .from("consumers")
-      .select("avatar_url, use_instagram_photo")
+      .select("use_instagram_photo")
       .eq("id", consumerId)
       .maybeSingle();
     if (readErr) return { ok: false, reason: `read_${readErr.message}` };
-    const r = row as { avatar_url?: string | null; use_instagram_photo?: boolean } | null;
+    const r = row as { use_instagram_photo?: boolean } | null;
     // The guest said no: only the handle and followers (MESITA-2585).
     if (!photoAllowed(r?.use_instagram_photo)) return { ok: false, reason: "photo_off" };
-    const current = r?.avatar_url ?? null;
-    // An uploaded photo wins: do not even download.
-    if (!mayReplaceAvatar(current, consumerId)) return { ok: false, reason: "uploaded_photo_kept" };
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
