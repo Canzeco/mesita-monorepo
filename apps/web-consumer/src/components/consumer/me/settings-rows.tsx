@@ -103,7 +103,12 @@ function RowText({
 }) {
   return (
     <span className="min-w-0 flex-1">
-      <span className={cn("block text-sm font-semibold", destructive && "text-destructive")}>
+      <span
+        className={cn(
+          "block text-sm font-semibold",
+          destructive && "text-destructive",
+        )}
+      >
         {label}
       </span>
       {sub && (
@@ -188,25 +193,33 @@ export function SettingsActionRow({
   label,
   sub,
   destructive,
+  disabled,
   onClick,
 }: {
   Icon: LucideIcon;
   label: string;
   sub?: string;
   destructive?: boolean;
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+      disabled={disabled}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition disabled:pointer-events-none disabled:opacity-60"
     >
       <IconChip>
-        <Icon className={cn("h-[18px] w-[18px]", destructive && "text-destructive")} />
+        <Icon
+          className={cn("h-[18px] w-[18px]", destructive && "text-destructive")}
+        />
       </IconChip>
       <RowText label={label} sub={sub} destructive={destructive} />
-      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+      <ChevronRight
+        className="text-muted-foreground h-4 w-4 shrink-0"
+        aria-hidden
+      />
     </button>
   );
 }
