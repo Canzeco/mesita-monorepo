@@ -320,9 +320,15 @@ export type AreaPool = {
   places: Place[];
   /** Tiles per page, the operator's `map.catalogPageSize` (MESITA-2909). */
   pageSize?: number;
-  /** Where the next server page starts, or null when the ranked catalog has
-   *  ended (MESITA-3044). Absent from an older EF: nothing more to ask. */
-  next?: number | null;
+  /** Every ranked id, best first (MESITA-3057): the server ranks once and
+   *  Home fills cards by id from here. An older EF sends none, and the pool
+   *  is then its own order: complete as returned. */
+  order: string[];
+  /** How far into `order` cards have landed (or been dropped as gone). */
+  asked: number;
+  /** The point `order` was ranked from: every fill scores from it, never
+   *  from a newer fix inside the same ~1 km key. */
+  rankedFrom: AreaOrigin | null;
 };
 
 function cleanPlace(place: Place): Place {
@@ -335,9 +341,10 @@ function cleanPlace(place: Place): Place {
 /**
  * Places' Catalog (MESITA-2384, MESITA-2909): every Mesita place the server
  * scored and ranked, Proximity × Popularity × Premier from `origin`, with no
- * radius. The server ranks the whole catalog and sends ONE page of it from
- * `offset` (MESITA-3044); `next` is where the following page starts, null
- * at the end.
+ * radius. The server ranks the whole catalog ONCE and answers `order`, every
+ * ranked id, with the first page's cards (MESITA-3057); `apiFillAreaPool`
+ * reads the rest by id as the guest scrolls. No `offset` is sent, so an EF
+ * from before MESITA-3057 answers its best 1000 and the pool is complete.
  * `familyKeys` is a family row's question (MESITA-2438). None = every
  * family. No `prefer`.
  */
@@ -345,38 +352,66 @@ export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
   familyKeys: readonly string[] = [],
-  offset = 0,
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
     location?: { kind?: "point" | "none" };
     pageSize?: number;
-    next?: number | null;
+    order?: unknown;
   }>(client, "consumer-web-list-catalog", {
     unified: true,
-    offset,
+    ids: true,
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),
   });
   const size = data.pageSize;
+  const places = (data.places ?? []).map(cleanPlace);
+  const pageSize = typeof size === "number" && Number.isFinite(size) && size > 0 ? size : null;
+  const order = Array.isArray(data.order) && data.order.every((id) => typeof id === "string")
+    ? (data.order as string[])
+    : null;
   return {
     kind: data.location?.kind ?? (origin ? "point" : "none"),
-    places: (data.places ?? []).map(cleanPlace),
-    ...(typeof size === "number" && Number.isFinite(size) && size > 0 ? { pageSize: size } : {}),
-    next: typeof data.next === "number" && Number.isInteger(data.next) && data.next > offset ? data.next : null,
+    places,
+    ...(pageSize !== null ? { pageSize } : {}),
+    // No `order` (an older EF): the answer is the whole list.
+    order: order ?? places.map((p) => p.id),
+    // The first page covers `order[0, pageSize)`: an id pass 2 did not
+    // return there is never asked again.
+    asked: order ? Math.min(pageSize ?? places.length, order.length) : places.length,
+    rankedFrom: origin ? { lat: origin.lat, lng: origin.lng } : null,
   };
 }
 
-/** A pool with the next server page appended: the server's order, each
- *  place once (a place whose score moved between pages is kept where it
- *  first came), and the page's own `next` (MESITA-3044). */
-export function appendAreaPage(pool: AreaPool, page: AreaPool): AreaPool {
+/**
+ * The cards for ids from a pool's `order` (MESITA-3057), scored from the
+ * point that order was ranked at. Ids the server no longer shows (gone,
+ * gated) are simply absent; the rest come back in the asked order.
+ */
+export async function apiFillAreaPool(
+  client: SupabaseClient,
+  rankedFrom: AreaOrigin | null,
+  familyKeys: readonly string[],
+  ids: readonly string[],
+): Promise<Place[]> {
+  const data = await invokeEF<{ places?: Place[] }>(client, "consumer-web-list-catalog", {
+    unified: true,
+    fill: [...ids],
+    ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
+    ...(rankedFrom ? { lat: rankedFrom.lat, lng: rankedFrom.lng } : {}),
+  });
+  return (data.places ?? []).map(cleanPlace);
+}
+
+/** A pool with a fill's cards appended in `order`'s order, each place once,
+ *  and `asked` moved past the slice the fill covered. */
+export function mergeFilledPlaces(pool: AreaPool, filled: readonly Place[], askedTo: number): AreaPool {
   const seen = new Set(pool.places.map((p) => p.id));
   return {
     ...pool,
-    places: [...pool.places, ...page.places.filter((p) => !seen.has(p.id))],
-    next: page.next ?? null,
+    places: [...pool.places, ...filled.filter((p) => !seen.has(p.id))],
+    asked: Math.min(askedTo, pool.order.length),
   };
 }
 

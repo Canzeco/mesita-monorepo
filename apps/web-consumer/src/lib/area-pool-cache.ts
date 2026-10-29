@@ -36,3 +36,9 @@ export function readAreaPool(key: string, now = Date.now()): AreaPool | null {
 export function writeAreaPool(key: string, pool: AreaPool, now = Date.now()): void {
   pools.set(key, { at: now, pool });
 }
+
+/** Forget a question's pool: the next read ranks again (MESITA-3057, a run
+ *  of empty fills means the order went stale). */
+export function dropAreaPool(key: string): void {
+  pools.delete(key);
+}

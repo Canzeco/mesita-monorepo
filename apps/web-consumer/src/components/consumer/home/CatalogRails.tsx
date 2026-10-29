@@ -53,10 +53,17 @@ import { Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
-import { apiListAreaPool, appendAreaPage, type AreaPool, type Place } from "@/lib/api/places";
+import {
+  apiFillAreaPool,
+  apiListAreaPool,
+  type AreaPool,
+  mergeFilledPlaces,
+  type Place,
+} from "@/lib/api/places";
 import { EFError } from "@/lib/api/_invoke";
 import {
   areaPoolKey,
+  dropAreaPool,
   readAreaPool,
   writeAreaPool,
 } from "@/lib/area-pool-cache";
@@ -242,7 +249,7 @@ export function CatalogRails() {
           requestId: ef?.body?.requestId ?? null,
         });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({ kind: "none", places: [] });
+        setPool({ kind: "none", places: [], order: [], asked: 0, rankedFrom: null });
       }
     };
     if (!kept) void fetchPool();
@@ -262,56 +269,99 @@ export function CatalogRails() {
   // screen and paid a Google call for one card.
   const createdPlaces = useCreatedPlaces();
 
-  // PAGES FROM THE SERVER (MESITA-3044, Pato: "sort all catalog places in
-  // one run, but don't load them all … once the user scrolls you can load
-  // more and more and never stop until the catalog is gone"): the server
-  // ranks the whole catalog and sends one page; the sentinel under the last
-  // tile asks for the page at `pool.next` and appends it, until `next` is
-  // null. One request at a time; a request for an older key is dropped.
+  // RANK ONCE, FILL BY ID (MESITA-3057, Pato: "don't bring the data of all
+  // 1000 places in one run … have all the ids … then populate with data and
+  // the images"): the pool holds every ranked id (`order`) and the cards
+  // filled so far; the sentinel under the last tile asks for the next
+  // `pageSize` ids' cards, scored from the point the order was ranked at,
+  // until `asked` reaches the end. One fill at a time per question; a fill
+  // that lands for an older question, or after `asked` moved, is dropped, so
+  // no slice is skipped. A failed fill retries after 1 s, 2 s and 4 s, then
+  // the next time the sentinel scrolls into view; `fill_invalid` never
+  // retries. Two empty fills in a row mean the order went stale: rank again.
   const sentinel = useRef<HTMLLIElement | null>(null);
-  const loadingMore = useRef<string | null>(null);
-  // The question on screen now: a page that lands for an older one is dropped.
+  const filling = useRef<string | null>(null);
+  const fails = useRef(0);
+  const emptyRun = useRef(0);
+  const invalidAt = useRef<string | null>(null);
+  const [fillRetry, setFillRetry] = useState(0);
+  // The question on screen now: a fill that lands for an older one is dropped.
   const liveKey = useRef(requestKey);
   useEffect(() => {
     liveKey.current = requestKey;
+    fails.current = 0;
+    emptyRun.current = 0;
   }, [requestKey]);
   const shown: Place[] = useMemo(
     () =>
       pool ? withCreatedPlaces(poolPlaces(pool, chip), createdPlaces) : [],
     [pool, chip, createdPlaces],
   );
-  const nextOffset = pool?.next ?? null;
-  const hasMore = nextOffset !== null;
+  const asked = pool?.asked ?? 0;
+  const order = pool?.order;
+  const hasMore = order !== undefined && asked < order.length;
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || nextOffset === null || typeof IntersectionObserver === "undefined") return;
+    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined") return;
     const key = requestKey;
+    const start = asked;
+    const ids = pool.order.slice(start, start + (pool.pageSize ?? PLACES_PAGE));
+    const rankedFrom = pool.rankedFrom;
+    const tag = `${key}@${start}`;
+    let disposed = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const io = new IntersectionObserver((entries) => {
       if (!entries.some((e) => e.isIntersecting)) return;
-      if (loadingMore.current === `${key}@${nextOffset}`) return;
-      loadingMore.current = `${key}@${nextOffset}`;
-      void apiListAreaPool(supabase, from, families, nextOffset)
-        .then((page) => {
+      if (filling.current === tag || invalidAt.current === tag) return;
+      filling.current = tag;
+      void apiFillAreaPool(supabase, rankedFrom, families, ids)
+        .then((filled) => {
+          if (key !== liveKey.current) return;
+          fails.current = 0;
+          emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
+          if (emptyRun.current >= 2) {
+            emptyRun.current = 0;
+            dropAreaPool(key);
+            setRetry((n) => n + 1);
+            return;
+          }
           setPool((cur) => {
-            // The guest moved on (another location or family): drop it.
-            if (!cur || key !== liveKey.current || (cur.next ?? null) !== nextOffset) return cur;
-            const merged = appendAreaPage(cur, page);
+            if (!cur || key !== liveKey.current || cur.asked !== start) return cur;
+            const merged = mergeFilledPlaces(cur, filled, start + ids.length);
             writeAreaPool(key, merged);
             return merged;
           });
         })
         .catch((err) => {
-          // The next tap of the sentinel tries again; the loaded tiles stay.
-          console.warn("[catalog] next page failed", { offset: nextOffset, message: errMsg(err, "") });
+          // The EF's code and requestId join this to its log line.
+          const ef = err instanceof EFError ? err : null;
+          const invalid = ef?.code === "fill_invalid";
+          (invalid ? console.error : console.warn)("[catalog] fill failed", {
+            start,
+            size: ids.length,
+            code: ef?.code ?? null,
+            requestId: ef?.body?.requestId ?? null,
+            attempt: fails.current + 1,
+          });
+          if (invalid) invalidAt.current = tag;
+          if (invalid || disposed || key !== liveKey.current) return;
+          fails.current += 1;
+          if (fails.current <= 3) {
+            timer = setTimeout(() => setFillRetry((n) => n + 1), 1000 * 2 ** (fails.current - 1));
+          }
         })
         .finally(() => {
-          if (loadingMore.current === `${key}@${nextOffset}`) loadingMore.current = null;
+          if (filling.current === tag) filling.current = null;
         });
     }, { rootMargin: "600px 0px" });
     io.observe(el);
-    return () => io.disconnect();
+    return () => {
+      disposed = true;
+      io.disconnect();
+      if (timer) clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nextOffset, requestKey]);
+  }, [asked, order, requestKey, fillRetry]);
 
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
