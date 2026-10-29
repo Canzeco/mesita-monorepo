@@ -423,5 +423,5 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "cinema", label: "Cinema", emoji: "🎬" },
   { key: "casino", label: "Casino", emoji: "🎰" },
   { key: "spa", label: "Spa", emoji: "🧖" },
-  { key: "tourist", label: "Tourist", emoji: "🏛️" },
+  { key: "tourist", label: "Tourism", emoji: "🏛️" },
 ];

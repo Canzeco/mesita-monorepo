@@ -90,7 +90,7 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "cinema", label: "Cinema", emoji: "🎬" },
   { key: "casino", label: "Casino", emoji: "🎰" },
   { key: "spa", label: "Spa", emoji: "🧖" },
-  { key: "tourist", label: "Tourist", emoji: "🏛️" },
+  { key: "tourist", label: "Tourism", emoji: "🏛️" },
   { key: "undefined", label: "Undefined", emoji: "·" },
 ];
 
