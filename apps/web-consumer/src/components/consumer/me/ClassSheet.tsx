@@ -64,6 +64,7 @@ import {
   IconChip,
   ME_BUTTON_CLASS,
   RowDivider,
+  SectionEyebrow,
   SettingsGroup,
 } from "./settings-rows";
 
@@ -137,27 +138,49 @@ function SoonPill() {
 }
 
 const REASON_CLASS = "text-muted-foreground type-label mt-2 block";
+// One of the two ways in: a card like SettingsGroup's, its words on top
+// (JOIN_BODY_CLASS takes the spare height) and its button at the bottom, so
+// the two buttons line up whatever each card says.
+const JOIN_CARD_CLASS =
+  "border-border bg-card flex min-w-0 flex-col rounded-2xl border p-4";
+const JOIN_BODY_CLASS = "flex-1 pb-4";
 const LINK_CLASS = "text-foreground font-semibold underline underline-offset-2";
 
 /** Where the Instagram row stands, from what the page last knew. The server
  *  checks again on the tap. */
-function instagramLock(ig: ClassInstagram):
+function instagramLock(
+  ig: ClassInstagram,
+):
   | { open: true; followers: number }
   | { open: false; reason: string | null; link: string | null } {
   if (!ig) return { open: false, reason: null, link: null };
-  if (!ig.handle) return { open: false, reason: JOIN_WORDS.connect, link: null };
+  if (!ig.handle)
+    return { open: false, reason: JOIN_WORDS.connect, link: null };
   if (ig.followers === null) {
-    return { open: false, reason: JOIN_WORDS.unknownCount, link: JOIN_WORDS.update };
+    return {
+      open: false,
+      reason: JOIN_WORDS.unknownCount,
+      link: JOIN_WORDS.update,
+    };
   }
   if (ig.followers < INSTAGRAM_REACH_FOLLOWERS) {
-    return { open: false, reason: JOIN_WORDS.needs(ig.followers), link: JOIN_WORDS.update };
+    return {
+      open: false,
+      reason: JOIN_WORDS.needs(ig.followers),
+      link: JOIN_WORDS.update,
+    };
   }
   return { open: true, followers: ig.followers };
 }
 
 /** "1234 5678 9012" as the guest types; the server drops the spaces. */
 function groupCode(raw: string): string {
-  return (raw.replace(/\D/g, "").slice(0, 12).match(/\d{1,4}/g) ?? []).join(" ");
+  return (
+    raw
+      .replace(/\D/g, "")
+      .slice(0, 12)
+      .match(/\d{1,4}/g) ?? []
+  ).join(" ");
 }
 
 /** The two ways in for a Regular guest (MESITA-3054). */
@@ -193,7 +216,8 @@ function BecomeVip({
     } catch (e) {
       // A 5xx, a 401 or no network is already a toast (reportEFFailure);
       // only the refusals the EF names get a line here.
-      const words = e instanceof EFError ? joinErrorWords(e.code, e.body) : null;
+      const words =
+        e instanceof EFError ? joinErrorWords(e.code, e.body) : null;
       if (via === "code") setCodeError(words);
       else setIgError(words);
       if (via === "instagram" && e instanceof EFError && e.status === 403) {
@@ -205,18 +229,52 @@ function BecomeVip({
     }
   }
 
-  const igReason = igError ?? (lock.open ? JOIN_WORDS.ready(lock.followers) : lock.reason);
+  const igReason =
+    igError ?? (lock.open ? JOIN_WORDS.ready(lock.followers) : lock.reason);
   const igLink = igError ? JOIN_WORDS.update : lock.open ? null : lock.link;
 
+  // SIDE BY SIDE (Pato, MESITA-3056: "since are two ways to upgrade, not top
+  // and bottom but left and right"): two equal cards in one row, each its
+  // title, its line, and its Join at the bottom, so the two buttons align.
   return (
-    <div className="mt-6" data-class-join="">
-      <SettingsGroup title={JOIN_WORDS.group}>
-        <div className="px-4 py-3" data-class-join-instagram="">
+    <section className="mt-6 flex flex-col gap-2" data-class-join="">
+      <SectionEyebrow>{JOIN_WORDS.group}</SectionEyebrow>
+      <div className="grid grid-cols-2 gap-3">
+        <div className={JOIN_CARD_CLASS} data-class-join-instagram="">
+          <div className={JOIN_BODY_CLASS}>
+            <span className="type-label block font-semibold">
+              {JOIN_WORDS.instagramTitle}
+            </span>
+            {igReason && (
+              <span id="class-join-instagram-reason" className={REASON_CLASS}>
+                {igReason}
+              </span>
+            )}
+            {instagram && !instagram.handle && (
+              <Link
+                href={CONSUMER_ROUTES.mePages.instagram}
+                className={cn(REASON_CLASS, LINK_CLASS)}
+              >
+                Go to Instagram
+              </Link>
+            )}
+            {igLink && instagram?.handle && (
+              <Link
+                href={CONSUMER_ROUTES.mePages.instagram}
+                className={cn(REASON_CLASS, LINK_CLASS)}
+              >
+                {igLink}
+              </Link>
+            )}
+          </div>
           <Button
             type="button"
             size="sm"
+            aria-label={JOIN_WORDS.instagramButton}
             aria-disabled={!lock.open || busy !== null || undefined}
-            aria-describedby={igReason ? "class-join-instagram-reason" : undefined}
+            aria-describedby={
+              igReason ? "class-join-instagram-reason" : undefined
+            }
             onClick={() => {
               if (lock.open) void join("instagram");
             }}
@@ -229,74 +287,60 @@ function BecomeVip({
             {busy === "instagram" && (
               <Spinner size="sm" className="border-white/40 border-t-white" />
             )}
-            {JOIN_WORDS.instagramButton}
+            {JOIN_WORDS.codeButton}
           </Button>
-          {igReason && (
-            <span id="class-join-instagram-reason" className={REASON_CLASS}>
-              {igReason}
-            </span>
-          )}
-          {instagram && !instagram.handle && (
-            <Link
-              href={CONSUMER_ROUTES.mePages.instagram}
-              className={cn(REASON_CLASS, LINK_CLASS)}
-            >
-              Go to Instagram
-            </Link>
-          )}
-          {igLink && instagram?.handle && (
-            <Link
-              href={CONSUMER_ROUTES.mePages.instagram}
-              className={cn(REASON_CLASS, LINK_CLASS)}
-            >
-              {igLink}
-            </Link>
-          )}
         </div>
-        <RowDivider />
         <form
-          className="px-4 py-3"
+          className={JOIN_CARD_CLASS}
           data-class-join-code=""
           onSubmit={(e) => {
             e.preventDefault();
             if (digits.length === 12) void join("code");
           }}
         >
-          <span className="type-label block font-semibold">{JOIN_WORDS.codeLabel}</span>
-          <input
-            value={code}
-            onChange={(e) => {
-              setCode(groupCode(e.target.value));
-              setCodeError(null);
-            }}
-            disabled={busy !== null}
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="0000 0000 0000"
-            aria-label={JOIN_WORDS.codeField}
-            aria-describedby={codeError ? "class-join-code-error" : undefined}
-            maxLength={14}
-            className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-2 h-11 w-full rounded-xl border px-5 text-center font-mono text-sm tracking-widest outline-none"
-          />
+          <div className={JOIN_BODY_CLASS}>
+            <span className="type-label block font-semibold">
+              {JOIN_WORDS.codeTitle}
+            </span>
+            <input
+              value={code}
+              onChange={(e) => {
+                setCode(groupCode(e.target.value));
+                setCodeError(null);
+              }}
+              disabled={busy !== null}
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="0000 0000 0000"
+              aria-label={JOIN_WORDS.codeField}
+              aria-describedby={codeError ? "class-join-code-error" : undefined}
+              maxLength={14}
+              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-2 h-11 w-full min-w-0 rounded-xl border px-2 text-center font-mono text-sm outline-none"
+            />
+            {codeError && (
+              <span
+                id="class-join-code-error"
+                role="alert"
+                className={REASON_CLASS}
+              >
+                {codeError}
+              </span>
+            )}
+          </div>
           <Button
             type="submit"
             size="sm"
             disabled={digits.length !== 12 || busy !== null}
-            className={cn(ME_BUTTON_CLASS, "mt-2 w-full")}
+            className={cn(ME_BUTTON_CLASS, "w-full")}
           >
             {busy === "code" && (
               <Spinner size="sm" className="border-white/40 border-t-white" />
             )}
             {JOIN_WORDS.codeButton}
           </Button>
-          {codeError && (
-            <span id="class-join-code-error" role="alert" className={REASON_CLASS}>
-              {codeError}
-            </span>
-          )}
         </form>
-      </SettingsGroup>
-    </div>
+      </div>
+    </section>
   );
 }
 
@@ -333,7 +377,11 @@ function LeaveVip({ onLeft }: { onLeft: () => void }) {
       >
         {LEAVE_WORDS.button}
       </button>
-      <LocalDialog open={open} onClose={() => setOpen(false)} ariaLabel={LEAVE_WORDS.title}>
+      <LocalDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        ariaLabel={LEAVE_WORDS.title}
+      >
         <div className={SHEET_BODY_CLASS}>
           <h2 className={SHEET_TITLE_CLASS}>{LEAVE_WORDS.title}</h2>
           <p className="text-muted-foreground type-body mt-2 leading-snug">

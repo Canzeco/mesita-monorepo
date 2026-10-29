@@ -47,8 +47,11 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 
 export const JOIN_WORDS = {
   group: "Become VIP",
+  // Side by side (MESITA-3056): each card is titled by its way in, and both
+  // buttons say Join. The Instagram one is read aloud as instagramButton.
+  instagramTitle: "With Instagram",
   instagramButton: "Join with Instagram",
-  codeLabel: "Have an invitation code?",
+  codeTitle: "With a code",
   codeField: "12-digit invitation code",
   codeButton: "Join",
   joined: "You're VIP.",
