@@ -198,6 +198,14 @@
   --fact-star: oklch(0.828 0.189 84.429);
   /* The $$ on a card (MESITA-2673): green-700, ~5:1 on white at 14px. */
   --fact-price: oklch(0.527 0.154 150.069);
+  /* SEARCH BAR'S TWO COLOURED BUBBLES (MESITA-3000, Pato: "give it the AI
+     vibes … location it's okay if blue background"). Ask AI is the one
+     gradient in the app, violet-600 → fuchsia-600 under white (≥4.5:1 at
+     both ends); locate is a pale tint of the map's guest blue (#007aff). */
+  --ai-from: oklch(0.541 0.281 293.009);
+  --ai-to: oklch(0.591 0.293 322.896);
+  --ai-foreground: oklch(1 0 0);
+  --locate-tint: oklch(0.932 0.032 255.585);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -243,6 +251,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-ai-foreground: var(--ai-foreground);
+  --color-locate-tint: var(--locate-tint);
   --color-on-media: var(--on-media);
   --color-on-media-muted: var(--on-media-muted);
   --color-media-glass: var(--media-glass);
@@ -348,6 +358,9 @@
 }
 @utility shadow-media {
   box-shadow: var(--shadow-media);
+}
+@utility bg-ai {
+  background-image: linear-gradient(135deg, var(--ai-from), var(--ai-to));
 }
 @utility shadow-float {
   box-shadow: var(--shadow-float);
