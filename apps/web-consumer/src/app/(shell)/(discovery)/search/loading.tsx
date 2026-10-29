@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/shared";
-import { CHIP } from "@/components/consumer/search/header-classes";
+import { CHIP, HEADER_PILL } from "@/components/consumer/search/header-classes";
 import {
   CatalogRailSkeleton,
   MapVeil,
@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 // /search Suspense fallback: SearchClient's frame, block for block (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader floating
-// on its top edge, no band (MESITA-2996): the one 48px bar with the 48px locate
-// disc beside it (MESITA-3006), then the 32px chip row (the Filters disc,
+// on its top edge, no band (MESITA-2996): the 48px locate disc, the 48px bar and
+// the 48px Ask AI pill (MESITA-3009), then the 32px chip row (the Filters disc,
 // Top, then families; MESITA-2882). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
@@ -40,8 +40,9 @@ export default function SearchLoading() {
         <MapVeil />
         <div className="absolute inset-x-0 top-0 z-30">
           <div className="flex items-center gap-2 px-3 pt-3">
-            <Skeleton className="h-12 min-w-0 flex-1 rounded-full" />
             <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
+            <Skeleton className="h-12 min-w-0 flex-1 rounded-full" />
+            <ControlSkeleton token={HEADER_PILL} label="Ask AI" />
           </div>
           <div className="flex items-center gap-2 overflow-hidden pl-3">
             <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
