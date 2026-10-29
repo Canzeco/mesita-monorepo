@@ -245,7 +245,7 @@ const KM = 1 / 111.195;
 const CATALOG: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: null },
   families: [],
-  halfKm: 10,
+  halfKm: 1,
 };
 const TIERS: Array<{ label: string; over: Partial<AreaCandidate>; s: number }> = [
   { label: "Premier 2X", over: { source: "mesita", premierTier: 1 }, s: 2 },

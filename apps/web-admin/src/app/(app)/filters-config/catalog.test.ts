@@ -52,7 +52,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { halfKm: 10 },
+      proximity: { halfKm: 1 },
       popularity: { halfReviews: 250 },
     });
   });
