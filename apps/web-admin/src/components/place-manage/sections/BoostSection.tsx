@@ -14,10 +14,10 @@ import { SectionCard } from "@/components/admin-ui/manage";
 // Single Place › Premier (MESITA-2995; Premier MESITA-2925, Boost
 // MESITA-2789). The place's line — who pays now, who backs up, in the order
 // a renewal walks them — and its recent periods with what each one charged,
-// read from admin-web-get-place-boost. The operator can grant a period
+// read from admin-web-get-place-premier. The operator can grant a period
 // nobody pays for (so a place can be Premier without a payment), end a
 // running grant, or take one pledge out of the line
-// (admin-web-grant-place-boost). Nothing here refunds; Stripe is the record.
+// (admin-web-grant-place-premier). Nothing here refunds; Stripe is the record.
 
 const TIER_LABEL: Record<number, string> = {
   0: "Not Premier",

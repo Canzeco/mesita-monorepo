@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-get-boost
+// Supabase Edge Function — consumer-web-get-premier
 //
 // MESITA-2995: a place's Premier as its tab shows it — the period running,
 // the line (payer first, then backups; levels only, never names:
@@ -7,7 +7,7 @@
 // money). With `session_id` (Checkout's return, `?boost=`) it first settles
 // the caller's own pledge through confirmPledge — only the session stored on
 // that pledge, never one taken on trust — and says what happened (`outcome`).
-// A guest who never comes back is settled by supabase-cron-sync-boosts.
+// A guest who never comes back is settled by supabase-cron-sync-premier.
 //
 // Body: { place_id: uuid, session_id?: string }
 // Response: { ok: true, tier, period: { tier, ends_at, granted, renews } | null,
@@ -35,7 +35,7 @@ import {
 } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
-serveJson("consumer-web-get-boost", async (req) => {
+serveJson("consumer-web-get-premier", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -64,7 +64,7 @@ serveJson("consumer-web-get-boost", async (req) => {
         outcome = await confirmPledge(admin, stripeClient(key), own, boostLivemode());
       } catch (err) {
         // The reply says pending; the cron settles it.
-        console.error("[consumer-web-get-boost] confirm:", err);
+        console.error("[consumer-web-get-premier] confirm:", err);
         outcome = "pending";
       }
       line = await readLine(admin, placeId);

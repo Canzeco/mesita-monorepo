@@ -1,9 +1,9 @@
-// Supabase Edge Function — supabase-cron-sync-boosts (internal)
+// Supabase Edge Function — supabase-cron-sync-premier (internal)
 //
 // MESITA-2995: keeps Premier periods true to Stripe. pg_cron calls it every
-// 5 minutes (job `sync-boosts`):
+// 5 minutes (job `sync-premier`):
 //   1. Checkouts a guest never came back from are settled through the same
-//      confirmPledge as consumer-web-get-boost (a paid one starts its period);
+//      confirmPledge as consumer-web-get-premier (a paid one starts its period);
 //   2. charges in flight are settled (held upgrades captured, renewals asked
 //      again with the same key; past 24 h cancelled and declined);
 //   3. every place with a ready pledge and no period running is renewed:
@@ -38,7 +38,7 @@ const MAX_LIMIT = 500;
 /** A Checkout younger than this is still the guest's to finish. */
 const CHECKOUT_GRACE_MS = 2 * 60_000;
 
-serveJson("supabase-cron-sync-boosts", async (req) => {
+serveJson("supabase-cron-sync-premier", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -74,7 +74,7 @@ serveJson("supabase-cron-sync-boosts", async (req) => {
       if (outcome !== "pending" && outcome !== "none") counts.checkouts++;
     } catch (err) {
       counts.failed++;
-      console.error("[supabase-cron-sync-boosts] checkout", pledge.id, err);
+      console.error("[supabase-cron-sync-premier] checkout", pledge.id, err);
     }
   }
 
@@ -91,7 +91,7 @@ serveJson("supabase-cron-sync-boosts", async (req) => {
       if ((await settleCharging(admin, stripe, period)) !== "unknown") counts.settled++;
     } catch (err) {
       counts.failed++;
-      console.error("[supabase-cron-sync-boosts] settle", period.id, err);
+      console.error("[supabase-cron-sync-premier] settle", period.id, err);
     }
   }
 
@@ -110,13 +110,13 @@ serveJson("supabase-cron-sync-boosts", async (req) => {
       if (r === "paid") counts.renewed++;
     } catch (err) {
       counts.failed++;
-      console.error("[supabase-cron-sync-boosts] renew", placeId, err);
+      console.error("[supabase-cron-sync-premier] renew", placeId, err);
     }
   }
 
   // 4. Tiers follow time.
   const { error: recErr } = await admin.rpc("recompute_due_place_boosts");
-  if (recErr) console.error("[supabase-cron-sync-boosts] recompute", recErr.message);
+  if (recErr) console.error("[supabase-cron-sync-premier] recompute", recErr.message);
 
   return json({ ok: true, ...counts });
 });

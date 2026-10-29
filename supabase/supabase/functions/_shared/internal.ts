@@ -19,7 +19,7 @@
 // this list to the code and to verify_jwt = true:
 //   supabase-cron-refresh-instagram-token
 //   supabase-cron-reservation-retries
-//   supabase-cron-sync-boosts
+//   supabase-cron-sync-premier
 //   supabase-edgefunc-discover-places
 //   supabase-edgefunc-get-memo-config
 //   supabase-edgefunc-reservation-call

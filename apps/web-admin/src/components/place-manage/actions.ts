@@ -358,14 +358,14 @@ export type AdminPlaceBoost = {
 };
 
 /** The place's Premier: period, line and recent periods
- *  (admin-web-get-place-boost). */
+ *  (admin-web-get-place-premier). */
 export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceBoost>> {
-  const r = await efInvoke<AdminPlaceBoost>("admin-web-get-place-boost", { placeId });
+  const r = await efInvoke<AdminPlaceBoost>("admin-web-get-place-premier", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
 }
 
-/** The operator's Premier writes (admin-web-grant-place-boost): grant a
+/** The operator's Premier writes (admin-web-grant-place-premier): grant a
  *  period nobody pays for, end a running grant, or take a pledge out of
  *  the line. None refunds. */
 export async function changePlaceBoost(
@@ -375,7 +375,7 @@ export async function changePlaceBoost(
     | { action: "end" }
     | { action: "remove_pledge"; backingId: string },
 ): Promise<Result<true>> {
-  const r = await efInvoke<{ ok: true }>("admin-web-grant-place-boost", { placeId, ...change });
+  const r = await efInvoke<{ ok: true }>("admin-web-grant-place-premier", { placeId, ...change });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: true };
 }

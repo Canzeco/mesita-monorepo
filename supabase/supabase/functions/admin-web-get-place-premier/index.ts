@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-get-place-boost
+// Supabase Edge Function — admin-web-get-place-premier
 //
 // MESITA-2995: Single Place › Premier, read. The place's tier, the period
 // running, the line with first names (the console only; guests never see a
@@ -25,7 +25,7 @@ import {
   TIER_RANK,
 } from "../_shared/boost.ts";
 
-serveJson("admin-web-get-place-boost", async (req) => {
+serveJson("admin-web-get-place-premier", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;

@@ -1,4 +1,4 @@
-// Supabase Edge Function — consumer-web-cancel-boost
+// Supabase Edge Function — consumer-web-cancel-premier
 //
 // MESITA-2995: a guest leaves a place's Premier line. A backup leaves at
 // once; the payer keeps the period they already paid for, and the next
@@ -14,7 +14,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostStripeKey, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
-serveJson("consumer-web-cancel-boost", async (req) => {
+serveJson("consumer-web-cancel-premier", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -42,7 +42,7 @@ serveJson("consumer-web-cancel-boost", async (req) => {
     await leavePledge(admin, key ? stripeClient(key) : null, pledge);
     return json({ ok: true });
   } catch (err) {
-    console.error("[consumer-web-cancel-boost]", err);
+    console.error("[consumer-web-cancel-premier]", err);
     return json({ ok: false, error: "Couldn't leave. Try again." }, 500);
   }
 });
