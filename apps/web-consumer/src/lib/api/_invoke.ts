@@ -11,12 +11,21 @@
 //   • one place to evolve the contract (telemetry, retry, etc.).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reportEFFailure } from "@/lib/report-error";
+
+// EVERY FUNCTION RUNS NEXT TO THE DATABASE (MESITA-3021). The project lives
+// in us-west-2 (Oregon). Unpinned, a call from Monterrey enters Supabase's
+// edge in Dallas and runs in us-east-2 (Ohio), and every auth check and query
+// inside it then crosses the country: get-profile took 505 ms there against
+// 277 ms in the West (function_edge_logs, 2026-10-28). The query parameter,
+// not the `x-region` header, because the functions' CORS allow-list does not
+// name that header and the browser would refuse the call.
+const FUNCTION_REGION = "us-west-2";
 
 // The shape every EF returns. Discriminated on `ok` so TypeScript narrows
 // correctly after the helper's success check.
 type EFResult<T> =
-  | ({ ok: true } & T)
-  | { ok: false; error: string; code?: string | null };
+  ({ ok: true } & T) | { ok: false; error: string; code?: string | null };
 
 // Thrown by invokeEF for every failure (transport non-2xx OR `ok: false`).
 // Carries the EF's machine-readable `code`, the HTTP `status` (when the
@@ -57,18 +66,21 @@ export async function invokeEF<T>(
   // wouldn't be readable on its own.
   fallback = `${fn} failed`,
 ): Promise<T> {
-  const { data, error } = await client.functions.invoke<EFResult<T>>(fn, {
-    body,
-  });
+  const { data, error } = await client.functions.invoke<EFResult<T>>(
+    `${fn}?forceFunctionRegion=${FUNCTION_REGION}`,
+    { body },
+  );
 
   if (error) {
     const parsed = await parseInvokeErrorBody(error);
     const message = pickErrorMessage(parsed) ?? error.message;
     const code = parsed && typeof parsed.code === "string" ? parsed.code : null;
+    const status = readInvokeStatus(error);
+    reportEFFailure(fn, message, status);
     throw new EFError(message, {
       fn,
       code,
-      status: readInvokeStatus(error),
+      status,
       body: parsed,
     });
   }

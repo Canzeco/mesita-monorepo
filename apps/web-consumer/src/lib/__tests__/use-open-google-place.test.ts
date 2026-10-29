@@ -14,7 +14,10 @@ type Body = Record<string, unknown>;
 
 function fakeClient(answer: (fn: string, body: Body) => unknown) {
   const calls: Array<{ fn: string; body: Body }> = [];
-  const invoke = async (fn: string, opts: { body: Body }) => {
+  const invoke = async (target: string, opts: { body: Body }) => {
+    // invokeEF pins the region with a query parameter (MESITA-3021).
+    const [fn, query] = target.split("?");
+    expect(query).toBe("forceFunctionRegion=us-west-2");
     calls.push({ fn, body: opts.body });
     return { data: await answer(fn, opts.body), error: null };
   };

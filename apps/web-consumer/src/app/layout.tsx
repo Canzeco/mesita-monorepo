@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
+import { ErrorNotifier } from "@/components/consumer/ErrorNotifier";
 import { RouteBadge } from "@/components/consumer/RouteBadge";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
 import { SHARE_CARD } from "@/lib/share-app";
@@ -100,11 +101,7 @@ export default async function RootLayout({
   // emulators with two banners (Bugbot, PR #1995). /gift left with the First
   // Stage cut. Sign-in draws inside the phone card (MESITA-2137).
   const preShell = bare === "/" || bare.startsWith("/auth");
-  const body = preShell ? (
-    <MobileFrame>{children}</MobileFrame>
-  ) : (
-    children
-  );
+  const body = preShell ? <MobileFrame>{children}</MobileFrame> : children;
   return (
     <html
       lang="en"
@@ -124,6 +121,8 @@ export default async function RootLayout({
         {/* Self-refresh an open session when a newer production build ships,
             so merged changes actually appear without a manual hard reload. */}
         <DeploymentWatcher />
+        {/* Any error nothing caught is said as a notification (MESITA-3021). */}
+        <ErrorNotifier />
         {/* The consumer shell mounts its own <Toaster /> (see
             src/components/consumer/Toaster.tsx + src/lib/toast.ts) so the
             toaster surfaces inside the mobile-frame stacking context,
