@@ -105,7 +105,14 @@ function ConfirmButton({
   );
 }
 
-export function BoostSection({ placeId }: { placeId: string }) {
+export function BoostSection({
+  placeId,
+  onChanged,
+}: {
+  placeId: string;
+  /** Manage › Premier re-reads its list after a write here (MESITA-3011). */
+  onChanged?: () => void;
+}) {
   const [data, setData] = useState<AdminPlaceBoost | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,6 +158,7 @@ export function BoostSection({ placeId }: { placeId: string }) {
       return;
     }
     await load();
+    onChanged?.();
   }
 
   const testMode = data?.line.some((p) => !p.livemode) ?? false;

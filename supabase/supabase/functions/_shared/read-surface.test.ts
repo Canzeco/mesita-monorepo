@@ -221,6 +221,8 @@ const PROFILES_READ_ALLOWLIST = [
   "admin-web-get-place-enrichment/index.ts",
   // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
+  // Manage › Premier (MESITA-3011): id, name and tier of every active place.
+  "admin-web-list-premier/index.ts",
   // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
   "_shared/vip-partners.ts",
 ];
