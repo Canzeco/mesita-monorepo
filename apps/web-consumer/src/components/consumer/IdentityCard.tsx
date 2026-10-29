@@ -89,8 +89,8 @@ const TAP_TARGET_CLASS =
   "after:absolute after:inset-x-0 after:inset-y-[-4px] after:content-['']";
 
 export type IdentityInstagram = {
-  /** Me: "Insta: @handle · 25K followers" or "Connect Instagram"
-   *  (MESITA-2606, MESITA-2696); Social: "Insta: @per*** · 1.2K followers"
+  /** Me: "Insta: @handle (~25K followers)" or "Connect Instagram"
+   *  (MESITA-2606, MESITA-2696); Social: "Insta: @per*** (~1.2K followers)"
    *  or "No Instagram" (MESITA-2594, MESITA-2696). */
   label: string;
   /** False draws the plain ink glyph, no gradient: colour means connected,

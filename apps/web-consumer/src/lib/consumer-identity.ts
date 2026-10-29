@@ -74,14 +74,16 @@ export function updatedAgo(iso: string, now: number): string {
   });
 }
 
-/** Me's Instagram chip and tile: the summary, plus the rounded follower count
- *  once a handle is connected ("Insta: @pato · 1.2K followers"), the same rounding Social
- *  shows (MESITA-2574: "Instagram Instagram Followers"). */
+/** Me's Instagram chip and Social's person card: the summary, plus the
+ *  rounded follower count in parentheses once a handle is connected
+ *  ("Insta: @pato (~1.2K followers)"; Pato, MESITA-3066: "followers in (200
+ *  followers)"; a " · " joined them before), the same rounding Social shows
+ *  (MESITA-2574: "Instagram Instagram Followers"). */
 export function instagramWithFollowers(
   summary: string,
   followers: number | null | undefined,
   connected: boolean,
 ): string {
   const n = connected ? approxFollowers(followers ?? 0) : null;
-  return n ? `${summary} · ${n} followers` : summary;
+  return n ? `${summary} (${n} followers)` : summary;
 }
