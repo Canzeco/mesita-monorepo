@@ -7,8 +7,9 @@
 //       | { via: "leave" } — a VIP goes back to Regular (Pato, MESITA-3054:
 //         "add button to downgrade class in the weird case someone wishes
 //         to"); 200 { ok, guest_class: "regular", left }.
-//   code — EMULATED: every well-formed code is accepted (Pato, 2026-10-28:
-//          "make class functional for the moment even if its an emulator").
+//   code — EMULATED: only twelve zeros join (EMULATOR_CODE in join.ts; Pato,
+//          MESITA-3071: "for the moment use emulator code … 12 zeros to
+//          accept upgrade"); any other twelve digits is 403 invalid_code.
 //          Real one-use codes are MESITA-3055; this EF is where they will be
 //          checked.
 //   instagram — the guest's STORED handle and follower count (set when they
@@ -19,7 +20,8 @@
 // the guest was already VIP (a retry is safe).
 // Errors { ok: false, code, error, ... } — the codes are listed in Notion
 // Docs › Identity (Class):
-//   400 bad_request · 400 bad_code · 404 consumer_not_found ·
+//   400 bad_request · 400 bad_code · 403 invalid_code ·
+//   404 consumer_not_found ·
 //   403 instagram_not_connected · 403 followers_unknown ·
 //   403 not_enough_followers { followers, needed } ·
 //   500 join_failed { request_id } (never the database's own words).

@@ -89,6 +89,8 @@ export function joinErrorWords(
   switch (code) {
     case "bad_code":
       return "Enter the 12-digit code.";
+    case "invalid_code":
+      return "That code isn't valid.";
     case "instagram_not_connected":
       return JOIN_WORDS.connect;
     case "followers_unknown":
