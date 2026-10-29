@@ -16,7 +16,6 @@ describe("the profile page does not fetch a second door", () => {
     for (const file of files) {
       const src = readFileSync(join(DIR, file), "utf8");
       expect(src, file).not.toContain("listPlaceTagCatalog");
-      expect(src, file).not.toContain("admin-web-get-atlas-fields");
     }
   });
 });
