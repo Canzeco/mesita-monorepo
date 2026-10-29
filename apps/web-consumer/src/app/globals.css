@@ -198,14 +198,6 @@
   --fact-star: oklch(0.828 0.189 84.429);
   /* The $$ on a card (MESITA-2673): green-700, ~5:1 on white at 14px. */
   --fact-price: oklch(0.527 0.154 150.069);
-  /* SEARCH BAR'S TWO TINTED BUBBLES (MESITA-3003, Pato: "more discreet
-     colors … that purple is screaming"; MESITA-3000's violet→fuchsia
-     gradient is gone). Colour as a hint: Ask AI a violet-50 fill under
-     violet-600 text (~5:1), locate a blue-50 fill under the map's guest
-     blue (#007aff). */
-  --ai-tint: oklch(0.969 0.016 293.756);
-  --ai-ink: oklch(0.541 0.281 293.009);
-  --locate-tint: oklch(0.97 0.014 254.604);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -251,9 +243,6 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-ai-tint: var(--ai-tint);
-  --color-ai-ink: var(--ai-ink);
-  --color-locate-tint: var(--locate-tint);
   --color-on-media: var(--on-media);
   --color-on-media-muted: var(--on-media-muted);
   --color-media-glass: var(--media-glass);
