@@ -31,11 +31,12 @@
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
 //
-// NO BAND (Pato, MESITA-2996: "the searchbar must look more like the google
-// one … it must have no background. and the categories must be floating
-// too"; reverses MESITA-2413/2469's white band). The header is an overlay on
-// the map's top edge: the rows are transparent and let taps through to the
-// map, and each control is a white pill with a shadow (header-classes.ts).
+// A WHITE TOP HEADER, FLOATING CHIPS (Pato, MESITA-3019: "make a top header
+// for the searchbar … location searchbar and ask ai with white background,
+// then the filters and categories actually floating"; MESITA-2996 had no
+// band at all). Row one is a white band with a hairline under it; the chip
+// row under it is transparent, lets taps through to the map, and each chip
+// is a white pill with a shadow (header-classes.ts).
 // The chips are shorter than the bar (MESITA-2996; reverses MESITA-2445).
 // `children` (the bar's results, the load error) COVER the chip row and run
 // on over the map (MESITA-2417); while the bar queries the chip row is not
@@ -60,6 +61,7 @@ import {
   CHIP_DISC,
   CHIP_OFF,
   CHIP_ON,
+  HEADER_BAND,
   HEADER_PILL,
 } from "./header-classes";
 
@@ -101,7 +103,13 @@ export function SearchHeader({
     >
       {/* Row one, three separate controls (Pato, MESITA-3009: "location at
           the left, searchbar, ask ai at the right, all separated"). */}
-      <div className="flex min-w-0 items-center gap-3 px-3 pt-3 [&>*]:pointer-events-auto">
+      <div
+        className={cn(
+          HEADER_BAND,
+          "pointer-events-auto flex min-w-0 items-center gap-3 p-3",
+        )}
+        data-search-header-band
+      >
         {locate}
         <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
         <Link
