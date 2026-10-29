@@ -147,7 +147,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
   // half that actually enforces it: the client's field is a courtesy, and a
   // client cached from before that shipped has no field at all.
   //
-  // It is not cosmetic. supabase-edgefunc-reservation-call books the table
+  // It is not cosmetic. supabase-edgefunc-place-reservation-call books the table
   // under the full name (host systems key on "last name + party size"), and
   // when the place calls back, eleven-agent-get-reservation finds the booking
   // by fuzzy first/last match. A first-name-only booking is a table nobody can
@@ -254,7 +254,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
   const call = await invokeInternalCaller(
     envRes.env,
     "consumer-web-create-reservation",
-    "supabase-edgefunc-reservation-call",
+    "supabase-edgefunc-place-reservation-call",
     { reservation_id: reservation.id },
   );
 

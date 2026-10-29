@@ -18,11 +18,11 @@
 // endpoint runs requireInternalCaller, and internal-callers.test.ts holds
 // this list to the code and to verify_jwt = true:
 //   supabase-cron-refresh-instagram-token
-//   supabase-cron-reservation-retries
+//   supabase-cron-retry-reservations
 //   supabase-cron-sync-boosts
 //   supabase-edgefunc-discover-places
 //   supabase-edgefunc-get-memo-config
-//   supabase-edgefunc-reservation-call
+//   supabase-edgefunc-place-reservation-call
 //   supabase-edgefunc-start-smoke-enrich
 //   supabase-edgefunc-sync-reservationist
 // enricher-edgefunc-write-place and enricher-edgefunc-sync-sources are not on
@@ -132,7 +132,7 @@ export function requireInternalCaller(
 export async function invokeInternalCaller<T = unknown>(
   env: EFEnv,
   callerName: string, // who the product caller is, e.g. "consumer-web-create-reservation"
-  internalName: string, // who we're calling, e.g. "supabase-edgefunc-reservation-call"
+  internalName: string, // who we're calling, e.g. "supabase-edgefunc-place-reservation-call"
   body: unknown,
 ): Promise<
   | { ok: true; data: T }

@@ -14,7 +14,7 @@
 // named `reservations` then; the table is `reservation_tickets` now). `slug`
 // isn't on `place_profiles` either — it lives on `places`. Both facts make the
 // one-query embed a trap; this helper does the explicit lookup instead, exactly
-// like the call engine (supabase-edgefunc-reservation-call) already does for a
+// like the call engine (supabase-edgefunc-place-reservation-call) already does for a
 // single row.
 //
 // One extra query per list: the place entity embedded with its profile — that

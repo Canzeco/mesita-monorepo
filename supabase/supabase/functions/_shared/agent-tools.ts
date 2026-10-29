@@ -384,7 +384,7 @@ export function cleanNote(v: unknown, max = 300): string {
 }
 
 /**
- * Fire-and-forget cancel-notice hop to `supabase-edgefunc-reservation-call`.
+ * Fire-and-forget cancel-notice hop to `supabase-edgefunc-place-reservation-call`.
  * Callers that set notice_state='pending' via `cancelTicket` should invoke this
  * once; the reservation-retries cron is the safety net if the hop is lost.
  */
@@ -396,7 +396,7 @@ export async function fireCancelNotice(
   await invokeInternalCaller(
     env,
     callerName,
-    "supabase-edgefunc-reservation-call",
+    "supabase-edgefunc-place-reservation-call",
     { reservation_id: reservationId, intent: "cancel_notice" },
   );
 }

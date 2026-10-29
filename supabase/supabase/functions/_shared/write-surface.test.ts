@@ -133,8 +133,8 @@ Deno.test("CONSUMER: no new writer of consumers outside the allowlist", async ()
 // ── RESERVATION (reservation_tickets) ───────────────────────────────────
 const RESERVATION_ALLOWLIST = [
   "_shared/reservation-doc.ts", // THE reservation door (writeReservation, MESITA-1280)
-  "supabase-cron-reservation-retries/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
+  "supabase-cron-retry-reservations/index.ts",
+  "supabase-edgefunc-place-reservation-call/index.ts",
 ];
 
 Deno.test("RESERVATION: no new writer of reservation_tickets outside the allowlist", async () => {

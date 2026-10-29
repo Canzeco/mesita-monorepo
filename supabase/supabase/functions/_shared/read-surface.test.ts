@@ -143,9 +143,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "consumer-web-create-reservation/index.ts",
   "consumer-web-list-reservations/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "supabase-cron-reservation-retries/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
-  "supabase-edgefunc-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
+  "supabase-cron-retry-reservations/index.ts",
+  "supabase-edgefunc-place-reservation-call/index.ts",
+  "supabase-edgefunc-place-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
 ];
 
 Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside the allowlist", async () => {
@@ -172,7 +172,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-reload-place-reviews/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
   "eleven-a4-cancel-reservation/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
+  "supabase-edgefunc-place-reservation-call/index.ts",
 ];
 
 Deno.test("PLACE PROFILE READ: no new raw reader of place_profiles outside the allowlist", async () => {
@@ -358,9 +358,9 @@ const SWALLOWED_TODAY = [
   "eleven-a3-verify-caller/index.ts",
   "eleven-a4-cancel-reservation/index.ts",
   "eleven-agent-get-reservation/index.ts",
-  "supabase-cron-reservation-retries/index.ts",
-  "supabase-edgefunc-reservation-call/index.ts",
-  "supabase-edgefunc-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
+  "supabase-cron-retry-reservations/index.ts",
+  "supabase-edgefunc-place-reservation-call/index.ts",
+  "supabase-edgefunc-place-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
 ];
 
 Deno.test("READ SURFACE: no NEW raw read of a doored table discards its error", async () => {
