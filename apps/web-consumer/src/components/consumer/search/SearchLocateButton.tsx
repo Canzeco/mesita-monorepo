@@ -12,10 +12,9 @@ import { HEADER_DISC } from "./header-classes";
 // The map's location control: a 36px bubble at the RIGHT END of Search's
 // long bar, after Ask AI (Pato, MESITA-2999: "move the location to the
 // right … search · ask bubble · loc bubble"; it was a disc at the top left,
-// 2026-10-17). It wears the "my location" target and nothing else. The target turns the map's you-are-here blue once the
-// guest's fix is held (Pato, MESITA-2454: "a better icon for location, or
-// add blue"; it was a black corner dot, MESITA-2304). No hover tint while
-// it is locating and disabled. A refusal turns the icon red and toasts the
+// 2026-10-17). It wears the "my location" target and nothing else, blue on a
+// pale blue bubble (MESITA-3000; until then ink, turning blue once a fix was
+// held, MESITA-2454). No hover tint while it is locating and disabled. A refusal turns the icon red and toasts the
 // same sentence Home's location sheet shows (LOCATION_HELP).
 //
 // One tap, two meanings: with no fix yet it asks the browser for one (the
@@ -54,11 +53,7 @@ export function SearchLocateButton({
               ? LOCATION_HELP[error]
               : "Use my location"
       }
-      className={cn(
-        "relative",
-        HEADER_DISC,
-        "disabled:hover:bg-muted disabled:opacity-60",
-      )}
+      className={cn("relative", HEADER_DISC, "disabled:opacity-60")}
     >
       <LocateFixed
         className={cn(
@@ -67,7 +62,9 @@ export function SearchLocateButton({
           blocked && "text-destructive",
         )}
         strokeWidth={2}
-        style={located ? { color: MAP_USER_LOCATION_PIN_COLOR } : undefined}
+        // Always the map's guest blue on the pale-blue bubble (MESITA-3000;
+        // it was ink until a fix was held, MESITA-2454) — red when refused.
+        style={blocked ? undefined : { color: MAP_USER_LOCATION_PIN_COLOR }}
         aria-hidden
       />
     </button>
