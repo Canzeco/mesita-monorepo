@@ -14,28 +14,40 @@ export type BoostTier = "boost_2x" | "boost_5x";
 export type BoostInterval = "month" | "year";
 export type TierRank = 1 | 2;
 
-/** The two levels (10X retired, MESITA-3041), labels only: prices come
- *  from the server's quotes. */
+/** The two plans (10X retired, MESITA-3041; named MESITA-3063): each sells
+ *  what the place gets, and `priority` is the factor the ranking applies
+ *  (Home's list and the Map). Prices come from the server's quotes. */
 export const BOOST_TIERS = [
-  { key: "boost_2x", rank: 1, mark: "2X", label: "Premier 2X", blurb: "Twice as likely to show on the Map and Home" },
-  { key: "boost_5x", rank: 2, mark: "5X", label: "Premier 5X", blurb: "Five times as likely to show" },
-] as const satisfies ReadonlyArray<{ key: BoostTier; rank: TierRank; mark: string; label: string; blurb: string }>;
+  {
+    key: "boost_2x",
+    rank: 1,
+    label: "Premier",
+    priority: "2X",
+    blurb: "Moves the place up on Home and the Map",
+  },
+  {
+    key: "boost_5x",
+    rank: 2,
+    label: "Premier Max",
+    priority: "5X",
+    blurb: "The biggest lift on Home and the Map",
+  },
+] as const satisfies ReadonlyArray<{
+  key: BoostTier;
+  rank: TierRank;
+  label: string;
+  priority: string;
+  blurb: string;
+}>;
 
 export const BOOST_TIER_LABEL: Record<number, string | null> = {
   0: null,
-  1: "Premier 2X",
-  2: "Premier 5X",
+  1: "Premier",
+  2: "Premier Max",
 };
 
-export const TIER_MARK: Record<number, string> = { 1: "2X", 2: "5X" };
-
-/** A tier's mark ("2X"); a tier this build does not know reads plain
- *  "Premier", never `undefined` (MESITA-3041). */
-export function tierMark(tier: number): string {
-  return TIER_MARK[tier] ?? "Premier";
-}
-
-/** A tier's label ("Premier 2X"); an unknown tier reads "Premier". */
+/** A tier's plan name ("Premier Max"); a tier this build does not know
+ *  reads plain "Premier", never `undefined` (MESITA-3041). */
 export function tierLabel(tier: number): string {
   return BOOST_TIER_LABEL[tier] ?? "Premier";
 }
@@ -57,6 +69,8 @@ export type LineRow = {
   role: "payer" | "backup";
   position: number;
   mine: boolean;
+  /** "You", @handle or a first name (MESITA-3063); never an email. */
+  name: string;
 };
 
 export type MyPledge = {
@@ -70,11 +84,22 @@ export type MyPledge = {
   has_card: boolean;
 };
 
-export type BoostOutcome = "confirmed" | "saved_as_backup" | "released_stale" | "pending" | "expired" | "none";
+export type BoostOutcome =
+  | "confirmed"
+  | "saved_as_backup"
+  | "released_stale"
+  | "pending"
+  | "expired"
+  | "none";
 
 export type PlaceBoost = {
   tier: 0 | 1 | 2 | 3;
-  period: { tier: number; ends_at: string; granted: boolean; renews: boolean } | null;
+  period: {
+    tier: number;
+    ends_at: string;
+    granted: boolean;
+    renews: boolean;
+  } | null;
   renewing: boolean;
   line: LineRow[];
   more: number;
@@ -105,7 +130,10 @@ export async function apiStartBoost(
     returnUrl: string;
   },
 ): Promise<{ url: string | null; outcome?: "updated" | "confirmed" }> {
-  return await invokeEF<{ url: string | null; outcome?: "updated" | "confirmed" }>(client, "consumer-web-start-premier", {
+  return await invokeEF<{
+    url: string | null;
+    outcome?: "updated" | "confirmed";
+  }>(client, "consumer-web-start-premier", {
     place_id: input.placeId,
     tier: input.tier,
     interval: input.interval,
@@ -123,7 +151,10 @@ export async function apiCancelBoost(
   });
 }
 
-const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const USD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 
 /** "$45.00". */
 export function money(cents: number): string {
@@ -133,5 +164,8 @@ export function money(cents: number): string {
 /** "Nov 14". */
 export function shortDate(iso: string | null): string {
   if (!iso) return "soon";
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }

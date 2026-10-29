@@ -5,6 +5,7 @@ export { PlaceTopBar } from "./components/PlaceTopBar";
 export { PremierBadge } from "./components/PremierBadge";
 export {
   PREMIER_LEVELS,
+  PREMIER_PLANS,
   isPremierPlace,
   premierLabel,
   premierLevel,

@@ -27,6 +27,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
 import { errorMessage } from "./errors.ts";
+import { cleanHandle, MEMBER_FALLBACK_NAME } from "./place-activity.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x";
 export type BoostInterval = "month" | "year";
@@ -196,18 +197,26 @@ export type LineRow = {
   role: "payer" | "backup";
   position: number;
   mine: boolean;
+  /** Who it is, as the tab shows them (MESITA-3063): "You", @handle or a
+   *  first name. Never an email. */
+  name: string;
 };
 
 export const LINE_SHOWN = 5;
 
 /** The line a guest reads: the payer first (the current period's pledge,
  *  at the period's level), then the backups in ladder order. Top five, plus
- *  the caller's own row when it falls past them. Anonymous: no names. */
+ *  the caller's own row when it falls past them. Each row is named
+ *  (MESITA-3063, reversing MESITA-2928's "never names"): `names` maps a
+ *  consumer to what the caller may see; the caller is "You". */
 export function lineView(
   pledges: Pledge[],
   running: Period | null,
   consumerId: string | null,
+  names: ReadonlyMap<string, string> = new Map(),
 ): { line: LineRow[]; more: number } {
+  const nameOf = (id: string | null) =>
+    id == null ? MEMBER_FALLBACK_NAME : id === consumerId ? "You" : names.get(id) ?? MEMBER_FALLBACK_NAME;
   const payerId = running?.backing_id ?? null;
   const rows: LineRow[] = [];
   const payer = payerId ? pledges.find((p) => p.id === payerId && p.status !== "ended") : undefined;
@@ -218,6 +227,7 @@ export function lineView(
       role: "payer",
       position: 0,
       mine: consumerId != null && payer.consumer_id === consumerId,
+      name: nameOf(payer.consumer_id),
     });
   }
   ladder(pledges)
@@ -229,12 +239,45 @@ export function lineView(
         role: "backup",
         position: i + 1,
         mine: consumerId != null && p.consumer_id === consumerId,
+        name: nameOf(p.consumer_id),
       })
     );
   const shown = rows.slice(0, LINE_SHOWN);
   const mineLate = rows.slice(LINE_SHOWN).find((r) => r.mine);
   if (mineLate) shown.push(mineLate);
   return { line: shown, more: rows.length - shown.length };
+}
+
+/** A member as the Premier line names them (MESITA-3063), Social's rule
+ *  (MESITA-3051, MESITA-2594): @handle when they show a verified Instagram
+ *  and the caller may see handles, else the first name. */
+export function lineName(
+  row: { first_name: string | null; instagram_handle: string | null; appear_anonymous: boolean | null },
+  canSeeHandles: boolean,
+): string {
+  const handle = row.appear_anonymous === true ? null : cleanHandle(row.instagram_handle);
+  if (handle && canSeeHandles) return `@${handle}`;
+  return row.first_name?.trim() || MEMBER_FALLBACK_NAME;
+}
+
+/** The names `lineView` prints, one read for the whole line. */
+export async function readLineNames(
+  admin: SupabaseClient,
+  consumerIds: (string | null)[],
+  canSeeHandles: boolean,
+): Promise<Map<string, string>> {
+  const ids = [...new Set(consumerIds.filter((id): id is string => id != null))];
+  if (ids.length === 0) return new Map();
+  const { data, error } = await admin
+    .from("consumers")
+    .select("id, first_name, instagram_handle, appear_anonymous")
+    .in("id", ids);
+  // A failed read still draws the line, every row as "Mesita member".
+  if (error) {
+    console.error("[premier] line names:", error.message);
+    return new Map();
+  }
+  return new Map((data ?? []).map((r) => [r.id as string, lineName(r, canSeeHandles)]));
 }
 
 export type Quote = {

@@ -357,7 +357,7 @@ describe("a Location wears the location icon, never a place tone (MESITA-1404)",
     );
     expect(html).toContain("Strana, Monterrey, Basic Mesita profile");
     expect(html).toContain("Casa, Monterrey, Basic Mesita profile");
-    expect(html).toContain("Nectarworks, Monterrey, Premier 2X");
+    expect(html).toContain("Nectarworks, Monterrey, Premier");
     expect(html).not.toContain("No profile yet");
     expect(html).not.toMatch(/enriched/i);
   });
