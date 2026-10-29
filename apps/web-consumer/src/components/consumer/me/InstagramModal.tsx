@@ -6,7 +6,7 @@ import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import { Skeleton, Spinner } from "@/components/shared";
+import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import {
   IconChip,
@@ -50,9 +50,14 @@ import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 // always draws the message flow: one tap sends your code to Mesita's
 // Instagram, and the page waits while Meta tells the server who sent it. The
 // server says whether that channel is live; until it is (the Meta secrets,
-// MESITA-2579) the flow is a preview — the button is tagged Soon and nothing
-// is called. The bio-code screen is gone from the page; the
-// server still answers its actions.
+// MESITA-2579) the card is one "Coming soon" row and nothing is called.
+// The bio-code screen is gone from the page; the server still answers its
+// actions.
+//
+// NO STEPS FOR A DEAD BUTTON (Pato, MESITA-3001: "this is confusing"). The
+// off card used to number three instructions over a greyed "Soon" button,
+// telling the guest to do what they could not. The steps show only when the
+// button works.
 
 /** How often the page asks whether the message landed, and for how long. */
 const DM_POLL_MS = 3_000;
@@ -104,9 +109,8 @@ export function InstagramModal() {
               Photo's row below jumped (Pato, MESITA-2701). */}
         {showForm && channel === null && <ConnectCardSkeleton />}
 
-        {showForm && channel !== null && (
-          <ConnectByMessage live={channel.channel === "dm"} />
-        )}
+        {showForm && channel !== null &&
+          (channel.channel === "dm" ? <ConnectByMessage /> : <ConnectSoon />)}
 
         {/* Public or private, asked where the member connects (MESITA-2594):
               public is what lets them see other members' Instagram. */}
@@ -163,8 +167,9 @@ export function ConnectedAccount() {
 // bound to this account on the server, and the bot reads who sent it from
 // Meta, so nothing is typed. It is fetched when the card opens, so the button
 // is a plain link: the tap copies the code and opens the DM in one gesture
-// (an await before opening would get the new tab blocked on iOS).
-function ConnectByMessage({ live }: { live: boolean }) {
+// (an await before opening would get the new tab blocked on iOS). Drawn only
+// while the channel is live: the code is asked for on open.
+function ConnectByMessage() {
   const supabase = useBrowserSupabase();
   const [claim, setClaim] = useState<InstagramDmClaim | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -175,9 +180,7 @@ function ConnectByMessage({ live }: { live: boolean }) {
   const [gaveUp, setGaveUp] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The channel off (MESITA-2579): a preview, nothing is called.
   useEffect(() => {
-    if (!live) return;
     let cancelled = false;
     apiStartInstagramDm(supabase)
       .then((c) => {
@@ -189,7 +192,7 @@ function ConnectByMessage({ live }: { live: boolean }) {
     return () => {
       cancelled = true;
     };
-  }, [live, supabase, attempt]);
+  }, [supabase, attempt]);
 
   useEffect(() => {
     if (!claim || waitingSince === null) return;
@@ -285,18 +288,10 @@ function ConnectByMessage({ live }: { live: boolean }) {
           className={cn(ME_BUTTON_CLASS, "w-full")}
           data-instagram-dm-start
         >
-          {live && (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
-          )}
+          <Spinner size="sm" className="border-white/40 border-t-white" />
           Send my code on Instagram
-          {!live && (
-            <span className="bg-background/20 type-meta rounded-full px-1.5 py-0.5 font-semibold">
-              Soon
-            </span>
-          )}
         </Button>
       )}
-      {!live && <ConnectSoonLine />}
       {claim && waitingSince !== null && (
         gaveUp ? (
           <Button
@@ -325,32 +320,27 @@ function ConnectByMessage({ live }: { live: boolean }) {
   );
 }
 
-/** The Connect card's frame and fixed words — the title, the three steps,
- *  the password line — around `children`, the code and the send button. ConnectByMessage and its silhouette both draw it, so the silhouette is
- *  the card's own box (MESITA-2701). `account` is the Instagram the code goes
- *  to, Mesita's until the server names one. */
+/** The live Connect card: three steps that match the screen, then
+ *  `children` (the code and the send button) and the password line.
+ *  `account` is the Instagram the code goes to, Mesita's until the server
+ *  names one. "Connected", never "verified": Verified is the follower bar. */
 function ConnectCard({
   account = "mesita",
-  pending = false,
   children,
 }: {
   account?: string;
-  pending?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div
-      data-instagram-connect={pending ? undefined : "dm"}
-      aria-busy={pending || undefined}
-    >
+    <div data-instagram-connect="dm">
       <SettingsGroup title="Connect">
         <ol className="divide-border/60 divide-y">
           {[
-            <>Tap the button: it copies your code and opens Instagram</>,
+            <>Tap Send my code: it copies a one-time code and opens Instagram</>,
             <>
-              Send the code to <b>@{account}</b>
+              Paste it in a message to <b>@{account}</b> and send
             </>,
-            <>That&apos;s it: you&apos;re verified in a few seconds</>,
+            <>Come back here: you&apos;re connected in a few seconds</>,
           ].map((line, i) => (
             <li key={i} className="flex items-center gap-3 px-4 py-3">
               <IconChip>
@@ -364,52 +354,56 @@ function ConnectCard({
         </ol>
         <div className="border-border/60 border-t px-4 py-3">
           {children}
-          <p className="text-muted-foreground type-label mt-2 text-center">
-            We never ask for your password.
-          </p>
+          <PasswordLine />
         </div>
       </SettingsGroup>
     </div>
   );
 }
 
-/** Under the button while the Meta channel is off (MESITA-2579): the flow is
- *  a preview. `held` is the silhouette's: the words in no ink on a muted bar
- *  per line, so the slot wraps where the line does without claiming it. */
-function ConnectSoonLine({ held = false }: { held?: boolean }) {
+function PasswordLine() {
   return (
-    <p
-      className="text-muted-foreground type-label mt-2 text-center"
-      data-instagram-dm-soon={held ? undefined : true}
-      aria-hidden={held || undefined}
-    >
-      <span
-        className={cn(
-          held &&
-            "bg-muted animate-pulse rounded-lg box-decoration-clone text-transparent",
-        )}
-      >
-        Connecting by Instagram message opens soon.
-      </span>
+    <p className="text-muted-foreground type-label mt-2 text-center">
+      We never ask for your password.
     </p>
+  );
+}
+
+/** The Connect card while the Meta channel is off (MESITA-2579, MESITA-3001):
+ *  one row that says it is coming and how it will work. No steps, no
+ *  button. `pending` marks it as the silhouette drawn while the page asks
+ *  which way connecting works today; the channel is off until the Meta
+ *  secrets land, so today's card lands with nothing moving. */
+function ConnectSoon({ pending = false }: { pending?: boolean }) {
+  return (
+    <div
+      data-instagram-connect={pending ? undefined : "soon"}
+      aria-busy={pending || undefined}
+    >
+      <SettingsGroup title="Connect">
+        <div className="flex items-start gap-3 px-4 py-3">
+          <IconChip tint="instagram">
+            <Instagram className="h-[18px] w-[18px]" />
+          </IconChip>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">Coming soon</p>
+            <p className="text-muted-foreground type-label">
+              You&apos;ll connect by sending a one-time code to @mesita from
+              your Instagram. We never ask for your password.
+            </p>
+          </div>
+        </div>
+      </SettingsGroup>
+    </div>
   );
 }
 
 /** The Connect card while the page asks which way connecting works today
  *  (Pato, MESITA-2701: "the placeholders must be similar to the page you are
- *  loading, like the sizes"). The frame and fixed words are the card's own;
- *  the send button (44px) is an inert block at its size. The one line the
- *  read decides — "opens soon" — is HELD: the channel is off until the Meta
- *  secrets land, so today's card lands with nothing
- *  moving; a live channel lands it without that line. Shared with the
+ *  loading, like the sizes"): today's card, the off one. Shared with the
  *  route's fallback (InstagramSkeleton). */
 export function ConnectCardSkeleton() {
-  return (
-    <ConnectCard pending>
-      <Skeleton className="h-11 w-full rounded-xl" />
-      <ConnectSoonLine held />
-    </ConnectCard>
-  );
+  return <ConnectSoon pending />;
 }
 
 function CurrentConnectionRow() {

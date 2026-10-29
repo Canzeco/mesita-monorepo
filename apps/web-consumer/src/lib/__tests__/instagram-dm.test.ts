@@ -31,20 +31,14 @@ describe("connecting Instagram by message", () => {
     "utf8",
   );
 
-  // MESITA-2602: the message flow is always the screen; the channel only
-  // says whether it is live or a Soon preview. No bio-code screen.
-  it("always draws the message flow, live only when the channel is dm", () => {
+  // MESITA-2602, MESITA-3001: the message flow draws only when the channel
+  // is dm; off, the page asks for no code.
+  it("asks for a code only when the channel is live", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
-    expect(PAGE).toContain('<ConnectByMessage live={channel.channel === "dm"} />');
+    expect(PAGE).toContain('channel.channel === "dm" ? <ConnectByMessage /> : <ConnectSoon />');
     expect(PAGE).not.toContain("function ConnectModule");
     expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
-  });
-
-  it("is a Soon preview while the channel is off: no code is asked for", () => {
-    const dm = PAGE.slice(PAGE.indexOf("function ConnectByMessage"), PAGE.indexOf("function CurrentConnectionCard"));
-    // MESITA-2992: the code is fetched on open, so the off switch guards it.
-    expect(dm).toContain("if (!live) return;");
-    expect(dm.indexOf("if (!live) return;")).toBeLessThan(dm.indexOf("apiStartInstagramDm(supabase)"));
-    expect(dm).toContain("Connecting by Instagram message opens soon.");
+    const soon = PAGE.slice(PAGE.indexOf("function ConnectSoon"), PAGE.indexOf("export function ConnectCardSkeleton"));
+    expect(soon).not.toContain("apiStartInstagramDm");
   });
 });
