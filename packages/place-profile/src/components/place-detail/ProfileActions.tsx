@@ -49,9 +49,10 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
 // (MESITA-2324). A missing callback leaves its button visible and inert, so
 // admin's preview keeps the consumer's shape. A PLACE THAT TAKES NO
-// RESERVATIONS HAS NO RESERVE (Pato, MESITA-3076: "if not reservations, then
-// kill that"): an inert ink button read exactly like a live one, so the row
-// is gone and Prepay · Pay sits under the tiles.
+// RESERVATIONS HAS A DISABLED RESERVE, NEVER A MISSING ONE (Pato, MESITA-3078:
+// "must be disabled, but never fucking disapearing"; MESITA-3076 had hidden
+// it): the inert ink button read exactly like a live one, so it turns grey,
+// muted and `disabled`.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -60,6 +61,12 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 const inkButton = cn(
   PLACE_BUTTON_CLASS,
   "bg-foreground text-paper w-full text-sm hover:opacity-90",
+);
+// Reserve at a place that takes no reservations: the same box, grey and
+// muted, no hover (MESITA-3078).
+const disabledButton = cn(
+  PLACE_BUTTON_CLASS,
+  "bg-muted text-muted-foreground w-full cursor-not-allowed text-sm active:scale-100",
 );
 
 // THE ROWS' LAYOUT AND A TILE'S BOX ARE WRITTEN ONCE (Pato, MESITA-2701:
@@ -218,19 +225,22 @@ export function ProfileActions({
       </div>
 
       <div className={PROFILE_MESITA_ROWS_CLASS} data-profile-actions="mesita">
-        {takesReservations && (
-          <button
-            type="button"
-            {...(reserveLive
-              ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-              : inertButtonProps(false))}
-            aria-label="Reserve a table"
-            className={inkButton}
-          >
-            <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-            <span className="truncate">Mesita Reserve</span>
-          </button>
-        )}
+        <button
+          type="button"
+          {...(reserveLive
+            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false))}
+          disabled={!takesReservations}
+          aria-label={
+            takesReservations
+              ? "Reserve a table"
+              : "Reserve a table, not available at this place"
+          }
+          className={takesReservations ? inkButton : disabledButton}
+        >
+          <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+          <span className="truncate">Mesita Reserve</span>
+        </button>
         {/* @container: "Mesita " shows on both halves only when the row is
             wide enough for "Mesita Prepay" and its Soon chip (Pato: "only if
             enough space"): measured in Inter at 380px, so @sm (24rem). A
