@@ -382,57 +382,66 @@ export type Database = {
         Row: {
           amount_cents: number
           billing_interval: string
-          cancel_at_period_end: boolean
           consumer_id: string | null
           created_at: string
           currency: string
-          current_period_end: string | null
+          ended_at: string | null
           id: string
           livemode: boolean
+          pending_amount_cents: number | null
+          pending_interval: string | null
+          pending_tier: string | null
           place_id: string
-          show_name: boolean
+          queued_at: string
+          quoted_credit_cents: number
+          quoted_period_id: string | null
           status: string
           stripe_checkout_session_id: string | null
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
+          stripe_payment_method_id: string | null
           tier: string
           updated_at: string
         }
         Insert: {
           amount_cents: number
           billing_interval: string
-          cancel_at_period_end?: boolean
           consumer_id?: string | null
           created_at?: string
           currency?: string
-          current_period_end?: string | null
+          ended_at?: string | null
           id?: string
           livemode?: boolean
+          pending_amount_cents?: number | null
+          pending_interval?: string | null
+          pending_tier?: string | null
           place_id: string
-          show_name?: boolean
+          queued_at?: string
+          quoted_credit_cents?: number
+          quoted_period_id?: string | null
           status?: string
           stripe_checkout_session_id?: string | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
+          stripe_payment_method_id?: string | null
           tier: string
           updated_at?: string
         }
         Update: {
           amount_cents?: number
           billing_interval?: string
-          cancel_at_period_end?: boolean
           consumer_id?: string | null
           created_at?: string
           currency?: string
-          current_period_end?: string | null
+          ended_at?: string | null
           id?: string
           livemode?: boolean
+          pending_amount_cents?: number | null
+          pending_interval?: string | null
+          pending_tier?: string | null
           place_id?: string
-          show_name?: boolean
+          queued_at?: string
+          quoted_credit_cents?: number
+          quoted_period_id?: string | null
           status?: string
           stripe_checkout_session_id?: string | null
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
+          stripe_payment_method_id?: string | null
           tier?: string
           updated_at?: string
         }
@@ -754,6 +763,87 @@ export type Database = {
           place_id?: string | null
         }
         Relationships: []
+      }
+      place_premier_periods: {
+        Row: {
+          backing_id: string | null
+          billing_interval: string
+          charged_cents: number
+          created_at: string
+          credit_cents: number
+          cut_from: string | null
+          ends_at: string
+          extra_days: number
+          granted_by: string | null
+          id: string
+          livemode: boolean
+          place_id: string
+          price_cents: number
+          starts_at: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          backing_id?: string | null
+          billing_interval: string
+          charged_cents?: number
+          created_at?: string
+          credit_cents?: number
+          cut_from?: string | null
+          ends_at: string
+          extra_days?: number
+          granted_by?: string | null
+          id?: string
+          livemode?: boolean
+          place_id: string
+          price_cents?: number
+          starts_at: string
+          status: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          backing_id?: string | null
+          billing_interval?: string
+          charged_cents?: number
+          created_at?: string
+          credit_cents?: number
+          cut_from?: string | null
+          ends_at?: string
+          extra_days?: number
+          granted_by?: string | null
+          id?: string
+          livemode?: boolean
+          place_id?: string
+          price_cents?: number
+          starts_at?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_premier_periods_backing_id_fkey"
+            columns: ["backing_id"]
+            isOneToOne: false
+            referencedRelation: "place_backings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_premier_periods_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_profiles: {
         Row: {
@@ -1115,6 +1205,35 @@ export type Database = {
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premier_customers: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          livemode: boolean
+          stripe_customer: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          livemode?: boolean
+          stripe_customer: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          livemode?: boolean
+          stripe_customer?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premier_customers_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
             referencedColumns: ["id"]
           },
         ]
@@ -1713,6 +1832,48 @@ export type Database = {
         Args: { fallback: string; google_types: Json; stored: string[] }
         Returns: string[]
       }
+      premier_begin_renewal: { Args: { p_place_id: string }; Returns: Json }
+      premier_claim: {
+        Args: {
+          p_backing_id: string
+          p_charged_cents: number
+          p_checkout_session_id: string
+          p_credit_cents: number
+          p_extra_days: number
+          p_interval: string
+          p_livemode: boolean
+          p_payment_intent_id: string
+          p_price_cents: number
+          p_quoted_period_id: string
+          p_status: string
+          p_tier: string
+        }
+        Returns: Json
+      }
+      premier_end_grant: { Args: { p_place_id: string }; Returns: string }
+      premier_grant: {
+        Args: {
+          p_by: string
+          p_months: number
+          p_place_id: string
+          p_tier: number
+        }
+        Returns: string
+      }
+      premier_interval_end: {
+        Args: { p_extra_days: number; p_interval: string; p_start: string }
+        Returns: string
+      }
+      premier_settle: {
+        Args: {
+          p_outcome: string
+          p_payment_intent_id: string
+          p_period_id: string
+        }
+        Returns: string
+      }
+      premier_tier_rank: { Args: { p_tier: string }; Returns: number }
+      recompute_due_place_boosts: { Args: never; Returns: number }
       recompute_place_boost: { Args: { p_place_id: string }; Returns: number }
       seed_place_categories: { Args: never; Returns: undefined }
       seed_place_families: { Args: never; Returns: undefined }
