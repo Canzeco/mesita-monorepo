@@ -602,7 +602,7 @@ export async function ensureCustomer(
   if (!id) throw new Error("customer_create: no id");
   const { error } = await admin
     .from("premier_customers")
-    .upsert({ consumer_id: consumerId, livemode, stripe_customer_id: id }, {
+    .upsert({ consumer_id: consumerId, livemode, stripe_customer: id }, {
       onConflict: "consumer_id,livemode",
       ignoreDuplicates: true,
     });
@@ -1042,12 +1042,12 @@ export async function readPeriod(admin: SupabaseClient, id: string): Promise<Per
 async function readCustomer(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<string | null> {
   const { data, error } = await admin
     .from("premier_customers")
-    .select("stripe_customer_id")
+    .select("stripe_customer")
     .eq("consumer_id", consumerId)
     .eq("livemode", livemode)
     .maybeSingle();
   if (error) throw new Error(`customer_read: ${error.message}`);
-  return (data as { stripe_customer_id: string } | null)?.stripe_customer_id ?? null;
+  return (data as { stripe_customer: string } | null)?.stripe_customer ?? null;
 }
 
 async function readAuthEmail(admin: SupabaseClient, consumerId: string): Promise<string | null> {

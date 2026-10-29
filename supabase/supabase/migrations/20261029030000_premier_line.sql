@@ -20,14 +20,14 @@
 create extension if not exists btree_gist with schema extensions;
 
 -- ── One Stripe customer per guest ────────────────────────────────────────
--- Its own table, not a consumers column: consumers.stripe_customer_id is a
+-- Its own table, not a consumers column: consumers' Stripe customer id is a
 -- retired column (dropped-column-refs.test.ts) and consumers has one write
 -- door; Premier's customer is Premier's.
 create table public.premier_customers (
   consumer_id uuid not null references public.consumers (id) on delete cascade,
   -- A test-mode customer does not exist in live mode: one row per mode.
   livemode boolean not null default false,
-  stripe_customer_id text not null unique,
+  stripe_customer text not null unique,
   created_at timestamptz not null default now(),
   primary key (consumer_id, livemode)
 );

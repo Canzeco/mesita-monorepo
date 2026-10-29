@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(175);
+select plan(180);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1581,18 +1581,23 @@ select ok(
   'no dead app_config key survives'
 );
 
--- ━━━ MESITA-2789 (was Spotlight, MESITA-1998) — Boost: pooled paid tier ━━━
--- Money: the tier a place holds is what its LIVE backings pay together
--- (a yearly one as a TENTH a month: twelve months for the price of ten),
--- one lapse never strips the others, and no client reads or writes a
--- backing. Thresholds $10 · $50 · $200 a month = tier 1 · 2 · 3.
+-- ━━━ MESITA-2995 — Premier's line: one payer per period ━━━
+-- Money: the tier a place holds is the paid period covering now (or a charge
+-- in flight for up to an hour); two periods never overlap; an upgrade cuts
+-- the running period and a capture that then fails gives its end back; a
+-- grant is a period nobody paid for; no client reads or writes any of it.
 select ok(
-  (select relrowsecurity from pg_class
-    where oid = 'public.place_backings'::regclass)
+  (select relrowsecurity from pg_class where oid = 'public.place_backings'::regclass)
+    and (select relrowsecurity from pg_class where oid = 'public.place_premier_periods'::regclass)
+    and (select relrowsecurity from pg_class where oid = 'public.premier_customers'::regclass)
     and not has_table_privilege('anon', 'public.place_backings', 'SELECT')
-    and not has_table_privilege('authenticated', 'public.place_backings', 'SELECT')
-    and not has_table_privilege('authenticated', 'public.place_backings', 'INSERT'),
-  'place_backings is EF-only (RLS on, no client SELECT or INSERT)'
+    and not has_table_privilege('authenticated', 'public.place_backings', 'INSERT')
+    and not has_table_privilege('anon', 'public.place_premier_periods', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_premier_periods', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.premier_customers', 'SELECT')
+    and not has_function_privilege('authenticated', 'public.premier_claim(uuid, uuid, text, text, integer, integer, integer, integer, text, text, text, boolean)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.premier_grant(uuid, smallint, integer, text)', 'EXECUTE'),
+  'Premier pledges, periods and customers are EF-only; the premier_* RPCs are service-role only'
 );
 
 select has_column(
@@ -1601,66 +1606,110 @@ select has_column(
 );
 
 insert into public.place_profiles (id, google_name)
-values ('00000000-0000-4000-8000-000000001998', 'Boost Probe');
-
+values ('00000000-0000-4000-8000-000000002995', 'Premier Probe');
 insert into public.places (id, slug, state, content_state, currency)
-values ('00000000-0000-4000-8000-000000001998', 'mesita-2789-probe', 'active', 'generating', 'USD');
+values ('00000000-0000-4000-8000-000000002995', 'mesita-2995-probe', 'active', 'generating', 'USD');
 
--- A $50 yearly (=$5/mo) plus an unfinished Checkout is not Boost 2x.
-insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, current_period_end)
-values
-  ('00000000-0000-4000-8000-000000001998', 'boost_2x', 'year', 5000, 'active', now() + interval '300 days'),
-  ('00000000-0000-4000-8000-000000001998', 'boost_2x', 'month', 1000, 'open', null);
+select premier_grant('00000000-0000-4000-8000-000000002995', 2::smallint, 1, 'probe@mesita.ai');
 
 select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
-  0::smallint,
-  'an open Checkout pays nothing: $5/mo equivalent holds no tier'
-);
-
-insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, current_period_end)
-values ('00000000-0000-4000-8000-000000001998', 'boost_2x', 'month', 500, 'active', now() + interval '20 days');
-
-select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
-  1::smallint,
-  'two backers pool: $5/mo yearly + $5 monthly = Boost 2x'
-);
-
-insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, current_period_end)
-values ('00000000-0000-4000-8000-0000000019a1', '00000000-0000-4000-8000-000000001998', 'boost_10x', 'month', 20000, 'active', now() + interval '20 days');
-
-select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
-  3::smallint,
-  'a $200/mo backing lifts the place to Boost 10x'
-);
-
-update public.place_backings set status = 'canceled'
- where id = '00000000-0000-4000-8000-0000000019a1';
-
-select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
-  1::smallint,
-  'one backer lapsing keeps what the others still pay for'
-);
-
-insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, current_period_end)
-values ('00000000-0000-4000-8000-000000001998', 'boost_5x', 'year', 50000, 'active', now() + interval '300 days');
-
-select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   2::smallint,
-  'a $500 yearly counts $50 a month: Boost 5x, like its monthly twin'
+  'a grant is a period nobody paid for: Premier 5X at once'
 );
 
-update public.place_backings set current_period_end = now() - interval '1 minute'
- where place_id = '00000000-0000-4000-8000-000000001998';
+select throws_ok(
+  $$select premier_grant('00000000-0000-4000-8000-000000002995', 1::smallint, 1, 'probe@mesita.ai')$$,
+  'P0001', null,
+  'no second grant while a period is running'
+);
+
+select throws_ok(
+  $$insert into public.place_premier_periods (place_id, tier, billing_interval, starts_at, ends_at, status)
+    values ('00000000-0000-4000-8000-000000002995', 3, 'month', now(), now() + interval '1 day', 'paid')$$,
+  '23P01', null,
+  'two paid periods of one place never overlap'
+);
+
+select throws_ok(
+  $$insert into public.place_premier_periods (place_id, tier, billing_interval, starts_at, ends_at, status)
+    values ('00000000-0000-4000-8000-000000002995', 1, 'month', now(), now() - interval '1 day', 'replaced')$$,
+  '23514', null,
+  'a period never ends before it starts'
+);
+
+select premier_end_grant('00000000-0000-4000-8000-000000002995');
 
 select is(
-  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000001998'),
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   0::smallint,
-  'an ended period pays nothing, whatever the status says'
+  'ending the grant ends the tier now'
+);
+
+-- A paying pledge claims a period; a second pledge quoting "nothing runs" is stale.
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000c2995');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000c2995');
+insert into public.place_backings (id, place_id, consumer_id, tier, billing_interval, amount_cents, status)
+values ('00000000-0000-4000-8000-0000000b2995', '00000000-0000-4000-8000-000000002995',
+        '00000000-0000-4000-8000-0000000c2995', 'boost_2x', 'month', 1000, 'ready');
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status)
+values ('00000000-0000-4000-8000-0000000b2996', '00000000-0000-4000-8000-000000002995',
+        'boost_5x', 'month', 5000, 'open');
+
+select is(
+  premier_claim('00000000-0000-4000-8000-0000000b2995', null, 'boost_2x', 'month', 1000, 0, 0, 1000,
+                'pi_probe_1', 'cs_probe_1', 'paid', false) ->> 'result',
+  'started',
+  'the first pledge claims a period'
+);
+
+select is(
+  premier_claim('00000000-0000-4000-8000-0000000b2995', null, 'boost_2x', 'month', 1000, 0, 0, 1000,
+                'pi_probe_1', 'cs_probe_1', 'paid', false) ->> 'result',
+  'settled',
+  'confirming the same payment twice claims nothing twice'
+);
+
+select is(
+  premier_claim('00000000-0000-4000-8000-0000000b2996', null, 'boost_5x', 'month', 5000, 0, 0, 5000,
+                'pi_probe_2', 'cs_probe_2', 'charging', false) ->> 'result',
+  'stale',
+  'a quote made when nothing ran is stale once a period runs'
+);
+
+select throws_ok(
+  $$insert into public.place_backings (place_id, consumer_id, tier, billing_interval, amount_cents, status)
+    values ('00000000-0000-4000-8000-000000002995', '00000000-0000-4000-8000-0000000c2995', 'boost_5x', 'month', 5000, 'open')$$,
+  '23505', null,
+  'one live pledge per guest per place'
+);
+
+-- An upgrade cuts the running 2X; its capture fails; the 2X gets its end back.
+select premier_settle(
+  ((premier_claim('00000000-0000-4000-8000-0000000b2996',
+     (select id from public.place_premier_periods
+       where place_id = '00000000-0000-4000-8000-000000002995' and status = 'paid'),
+     'boost_5x', 'month', 5000, 500, 0, 4500, 'pi_probe_3', 'cs_probe_3', 'charging', false)) ->> 'period_id')::uuid,
+  'declined', 'pi_probe_3');
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
+  1::smallint,
+  'a failed upgrade capture gives the cut period its end back: still Premier 2X'
+);
+
+-- A charge in flight holds the tier for an hour, not longer.
+update public.place_premier_periods set status = 'ended', ends_at = starts_at
+ where place_id = '00000000-0000-4000-8000-000000002995';
+insert into public.place_premier_periods (place_id, backing_id, tier, billing_interval, starts_at, ends_at, status)
+values ('00000000-0000-4000-8000-000000002995', '00000000-0000-4000-8000-0000000b2995', 3, 'month',
+        now() - interval '2 hours', now() + interval '28 days', 'charging');
+select recompute_due_place_boosts();
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
+  0::smallint,
+  'a charge still unknown after an hour holds no tier'
 );
 
 -- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━
