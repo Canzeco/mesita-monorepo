@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(180);
+select plan(184);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1798,6 +1798,46 @@ select is(
   (select content_state::text from public.places where id = '00000000-0000-4000-8000-000000002805'),
   'failed',
   'a stuck place never enriched goes to failed'
+);
+
+-- MESITA-3024: guest feedback is append-only. Two reports from one guest on
+-- one place are two rows; the reason CHECK takes wrong_links and nothing
+-- unknown; the hourly flood cap has its (consumer_id, created_at) index.
+insert into public.place_profiles (id, google_name)
+values ('00000000-0000-4000-8000-000000003024', 'Feedback Probe');
+insert into public.places (id, slug, state, content_state, currency)
+values ('00000000-0000-4000-8000-000000003024', 'mesita-3024-probe', 'active', 'ready', 'USD');
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000c3024');
+insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000c3024');
+insert into public.place_reports (consumer_id, place_id, reason, note) values
+  ('00000000-0000-4000-8000-0000000c3024', '00000000-0000-4000-8000-000000003024', 'wrong_links', 'Instagram'),
+  ('00000000-0000-4000-8000-0000000c3024', '00000000-0000-4000-8000-000000003024', 'closed', null);
+
+select is(
+  (select count(*)::int from public.place_reports
+    where consumer_id = '00000000-0000-4000-8000-0000000c3024'
+      and place_id = '00000000-0000-4000-8000-000000003024'),
+  2,
+  'a second report from the same guest on the same place is a second row'
+);
+
+select lives_ok(
+  $$insert into public.place_reports (consumer_id, place_id, reason)
+    values ('00000000-0000-4000-8000-0000000c3024', '00000000-0000-4000-8000-000000003024', 'wrong_links')$$,
+  'place_reports takes the wrong_links reason'
+);
+
+select throws_ok(
+  $$insert into public.place_reports (consumer_id, place_id, reason)
+    values ('00000000-0000-4000-8000-0000000c3024', '00000000-0000-4000-8000-000000003024', 'bogus')$$,
+  '23514', null,
+  'place_reports refuses an unknown reason'
+);
+
+select has_index(
+  'public', 'place_reports', 'place_reports_consumer_recent_idx',
+  array['consumer_id', 'created_at'],
+  'the flood cap counts on (consumer_id, created_at)'
 );
 
 select * from finish();
