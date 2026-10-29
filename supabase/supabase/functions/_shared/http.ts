@@ -3,6 +3,7 @@
 // no fetches, no auth — safe to import from any product or internal EF.
 
 import { CORS } from "./cors.ts";
+import { errorMessage } from "./errors.ts";
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -42,7 +43,7 @@ export function withJsonErrors(fnName: string, handler: EFHandler): EFHandler {
 }
 
 function unhandledError(fnName: string, err: unknown): Response {
-  console.error(`[${fnName}] unhandled`, err instanceof Error ? err.message : String(err));
+  console.error(`[${fnName}] unhandled`, errorMessage(err));
   return jsonError("Internal error", 500);
 }
 
@@ -159,4 +160,9 @@ export function readPlaceIdAlias(body: {
 // Keeps limit handling consistent across list endpoints.
 export function clampIntRange(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.trunc(n)));
+}
+
+/** A body `limit`: a number is truncated into 1..max; anything else is the default. */
+export function readLimit(raw: unknown, fallback: number, max: number): number {
+  return typeof raw === "number" ? clampIntRange(raw, 1, max) : fallback;
 }

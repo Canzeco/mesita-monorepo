@@ -3,6 +3,8 @@
 // source of truth on purpose — it counts the Supabase and the Render callers
 // alike, and every run it billed, including ones our side aborted.
 
+import { finiteOrNull } from "../_shared/input.ts";
+
 // Every Apify actor Mesita calls, in the order the page lists them. Keep in
 // step with APIFY_ACTORS in _shared/apify.ts and the actors in render/src.
 export const SCRAPERS = [
@@ -61,9 +63,6 @@ export type ScraperStats = {
   lastFailureStatus: string | null;
 };
 
-const num = (v: unknown): number | null =>
-  typeof v === "number" && Number.isFinite(v) ? v : null;
-
 // One page of GET /v2/actor-runs. Rows without an actor or a start drop.
 export function readRunPage(body: unknown): { rows: RunRow[]; total: number | null } {
   const data = (body as { data?: unknown } | null)?.data as
@@ -80,10 +79,10 @@ export function readRunPage(body: unknown): { rows: RunRow[]; total: number | nu
       status: typeof r.status === "string" ? r.status : "UNKNOWN",
       startedAt: r.startedAt,
       finishedAt: typeof r.finishedAt === "string" ? r.finishedAt : null,
-      usageTotalUsd: num(r.usageTotalUsd),
+      usageTotalUsd: finiteOrNull(r.usageTotalUsd),
     });
   }
-  return { rows, total: num(data?.total) };
+  return { rows, total: finiteOrNull(data?.total) };
 }
 
 const FAILURES = new Set(["FAILED", "TIMED-OUT", "TIMING-OUT", "ABORTED", "ABORTING"]);
@@ -196,7 +195,7 @@ export function readMonth(usage: unknown, limits: unknown): MonthUsage {
     for (const d of u.dailyServiceUsages) {
       if (!d || typeof d !== "object") continue;
       const row = d as Record<string, unknown>;
-      const spend = num(row.totalUsageCreditsUsd);
+      const spend = finiteOrNull(row.totalUsageCreditsUsd);
       if (typeof row.date !== "string" || spend === null) continue;
       daily.push({ date: row.date.slice(0, 10), spendUsd: round(spend, 4) });
     }
@@ -205,10 +204,10 @@ export function readMonth(usage: unknown, limits: unknown): MonthUsage {
   return {
     cycleStart: typeof cycle.startAt === "string" ? cycle.startAt : null,
     cycleEnd: typeof cycle.endAt === "string" ? cycle.endAt : null,
-    spendUsd: num(u.totalUsageCreditsUsdAfterVolumeDiscount) ??
-      num(cur.monthlyUsageUsd) ??
-      num(u.totalUsageCreditsUsdBeforeVolumeDiscount),
-    limitUsd: num(lim.maxMonthlyUsageUsd),
+    spendUsd: finiteOrNull(u.totalUsageCreditsUsdAfterVolumeDiscount) ??
+      finiteOrNull(cur.monthlyUsageUsd) ??
+      finiteOrNull(u.totalUsageCreditsUsdBeforeVolumeDiscount),
+    limitUsd: finiteOrNull(lim.maxMonthlyUsageUsd),
     daily,
   };
 }

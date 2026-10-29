@@ -43,6 +43,7 @@ import {
 import { PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
 import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
+import { finiteOrNull } from "./input.ts";
 
 /** Which pipeline runs: the Map (the Search tab) or the Catalog (Home),
  *  MESITA-2909. Chat ranks like the Catalog. */
@@ -75,21 +76,19 @@ export type PoolRow = Record<string, unknown> & {
   lng?: number | null;
 };
 
-const numOrNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
-
 /** A Mesita row as an Area candidate. */
 export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
   return {
     id: String(row.id ?? ""),
-    lat: numOrNull(row.lat),
-    lng: numOrNull(row.lng),
-    rating: numOrNull(row.google_stars_overall),
-    reviewCount: numOrNull(row.google_review_count),
+    lat: finiteOrNull(row.lat),
+    lng: finiteOrNull(row.lng),
+    rating: finiteOrNull(row.google_stars_overall),
+    reviewCount: finiteOrNull(row.google_review_count),
     familyKeys: familiesForPlace(row),
     source: "mesita",
     ready: 1,
     reviews: null,
-    premierTier: numOrNull(row.boost_tier) ?? 0,
+    premierTier: finiteOrNull(row.boost_tier) ?? 0,
   };
 }
 
@@ -98,8 +97,8 @@ export function mesitaCandidate(row: Record<string, unknown>): AreaCandidate {
 function latLngOrNull(raw: unknown): LatLng | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
-  const lat = numOrNull(o.lat);
-  const lng = numOrNull(o.lng);
+  const lat = finiteOrNull(o.lat);
+  const lng = finiteOrNull(o.lng);
   if (lat === null || lng === null) return null;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   return { lat, lng };
@@ -210,7 +209,7 @@ export type AreaPoolSummary = {
 
 function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number | null {
   if (location.kind !== "point") return null;
-  const km = haversineKm(location.anchor.lat, location.anchor.lng, numOrNull(lat), numOrNull(lng));
+  const km = haversineKm(location.anchor.lat, location.anchor.lng, finiteOrNull(lat), finiteOrNull(lng));
   return Number.isFinite(km) ? Math.round(km * 10) / 10 : null;
 }
 

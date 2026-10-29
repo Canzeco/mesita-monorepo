@@ -7,16 +7,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { runPlaceSync } from "../_shared/place-sync-run.ts";
+import { nonBlank } from "../_shared/input.ts";
 
 type Body = {
   googlePlaceId?: unknown;
   instagramUrl?: unknown;
   facebookUrl?: unknown;
 };
-
-function link(value: unknown): string | null {
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
 
 serveJson("enricher-edgefunc-sync-sources", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -34,9 +31,9 @@ serveJson("enricher-edgefunc-sync-sources", async (req) => {
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const synced = await runPlaceSync({
-    googlePlaceId: link(bodyRes.body.googlePlaceId),
-    instagramUrl: link(bodyRes.body.instagramUrl),
-    facebookUrl: link(bodyRes.body.facebookUrl),
+    googlePlaceId: nonBlank(bodyRes.body.googlePlaceId),
+    instagramUrl: nonBlank(bodyRes.body.instagramUrl),
+    facebookUrl: nonBlank(bodyRes.body.facebookUrl),
   });
   return json({
     ok: true,

@@ -17,28 +17,31 @@
 // buys Premier 2X exactly like $10/mo.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isUuid } from "./place-id.ts";
+import { finiteOrNull } from "./input.ts";
+import { errorMessage } from "./errors.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
 
-export const BOOST_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
+export const PREMIER_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
 
 /** Monthly price in US cents. The SQL trigger's thresholds are these three
  *  numbers (recompute_place_boost); change both together. */
-export const BOOST_MONTHLY_CENTS: Record<BoostTier, number> = {
+export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
   boost_2x: 1000,
   boost_5x: 5000,
   boost_10x: 20000,
 };
 
 /** A year is billed as this many months. */
-export const BOOST_YEAR_MONTHS = 10;
+export const PREMIER_YEAR_MONTHS = 10;
 
-export const BOOST_CURRENCY = "usd";
+export const PREMIER_CURRENCY = "usd";
 
 /** The Stripe product line's name (MESITA-2925). The wire tiers keep their
  *  stored `boost_*` keys. */
-export const BOOST_LABEL: Record<BoostTier, string> = {
+export const PREMIER_LABEL: Record<BoostTier, string> = {
   boost_2x: "Premier 2X",
   boost_5x: "Premier 5X",
   boost_10x: "Premier 10X",
@@ -46,29 +49,27 @@ export const BOOST_LABEL: Record<BoostTier, string> = {
 
 /** The Premier factor a place's `boost_tier` (0..3) earns in the Area
  *  score. Literal: the tier names promise the number. */
-export const BOOST_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
+export const PREMIER_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
 
 /** What the guest pays per interval. */
 export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
-  const monthly = BOOST_MONTHLY_CENTS[tier];
-  return interval === "year" ? monthly * BOOST_YEAR_MONTHS : monthly;
+  const monthly = PREMIER_MONTHLY_CENTS[tier];
+  return interval === "year" ? monthly * PREMIER_YEAR_MONTHS : monthly;
 }
 
 /** What one backing counts toward its place's tier, per month. */
 export function monthlyEquivalentCents(amountCents: number, interval: BoostInterval): number {
-  return interval === "year" ? amountCents / BOOST_YEAR_MONTHS : amountCents;
+  return interval === "year" ? amountCents / PREMIER_YEAR_MONTHS : amountCents;
 }
 
 /** The place's tier from its live backings' monthly-equivalent total — the
  *  same rule the SQL trigger runs, kept here for the wire and its test. */
 export function tierFromMonthlyCents(cents: number): 0 | 1 | 2 | 3 {
-  if (cents >= BOOST_MONTHLY_CENTS.boost_10x) return 3;
-  if (cents >= BOOST_MONTHLY_CENTS.boost_5x) return 2;
-  if (cents >= BOOST_MONTHLY_CENTS.boost_2x) return 1;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_10x) return 3;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_5x) return 2;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_2x) return 1;
   return 0;
 }
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type BoostStart = {
   placeId: string;
@@ -96,11 +97,11 @@ export function parseBoostStart(
   body: Record<string, unknown>,
 ): { ok: true; start: BoostStart } | { ok: false; error: string } {
   const placeId = body.place_id;
-  if (typeof placeId !== "string" || !UUID_RE.test(placeId)) {
+  if (!isUuid(placeId)) {
     return { ok: false, error: "place_id must be a Mesita place id" };
   }
   const tier = body.tier;
-  if (typeof tier !== "string" || !(BOOST_TIERS as readonly string[]).includes(tier)) {
+  if (typeof tier !== "string" || !(PREMIER_TIERS as readonly string[]).includes(tier)) {
     return { ok: false, error: "tier must be boost_2x, boost_5x or boost_10x" };
   }
   const interval = body.interval ?? "month";
@@ -200,10 +201,10 @@ export function checkoutParams(
     line_items: [{
       quantity: 1,
       price_data: {
-        currency: BOOST_CURRENCY,
+        currency: PREMIER_CURRENCY,
         unit_amount: boostAmountCents(start.tier, start.interval),
         recurring: { interval: start.interval },
-        product_data: { name: `${BOOST_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
+        product_data: { name: `${PREMIER_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
       },
     }],
     metadata,
@@ -215,7 +216,7 @@ export function checkoutParams(
  *  2025-03-31 the period lives on the item; older shapes keep it on top. */
 export function subscriptionPatch(sub: Record<string, unknown>): Record<string, unknown> {
   const items = (sub.items as { data?: Array<Record<string, unknown>> } | undefined)?.data ?? [];
-  const end = numOr(sub.current_period_end) ?? numOr(items[0]?.current_period_end);
+  const end = finiteOrNull(sub.current_period_end) ?? finiteOrNull(items[0]?.current_period_end);
   const customer = typeof sub.customer === "string"
     ? sub.customer
     : (sub.customer as { id?: string } | null)?.id ?? null;
@@ -228,10 +229,6 @@ export function subscriptionPatch(sub: Record<string, unknown>): Record<string, 
     livemode: sub.livemode === true,
     updated_at: new Date().toISOString(),
   };
-}
-
-function numOr(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 /** A backing that still pays: what the SQL trigger counts. */
@@ -275,11 +272,11 @@ export async function cancelConsumerBackings(
     try {
       sub = await stripe("DELETE", path);
     } catch (err) {
-      const deleteError = errorText(err);
+      const deleteError = errorMessage(err);
       try {
         sub = await stripe("GET", path);
       } catch (getErr) {
-        return { ok: false, error: `boost_cancel: ${deleteError} (lookup: ${errorText(getErr)})` };
+        return { ok: false, error: `boost_cancel: ${deleteError} (lookup: ${errorMessage(getErr)})` };
       }
       if (!STRIPE_ENDED.has(String(sub.status))) {
         return { ok: false, error: `boost_cancel: ${deleteError} (still ${String(sub.status)})` };
@@ -296,10 +293,6 @@ export async function cancelConsumerBackings(
 
 /** Stripe subscription statuses that never bill again. */
 const STRIPE_ENDED = new Set(["canceled", "incomplete_expired"]);
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 export type BoostReply = { status: number; body: Record<string, unknown> };
 
@@ -324,7 +317,7 @@ export async function openBackingCheckout(
   try {
     session = await stripe("POST", "checkout/sessions", checkoutParams(start, ctx));
   } catch (err) {
-    console.error("[consumer-web-start-boost] checkout:", errorText(err));
+    console.error("[consumer-web-start-boost] checkout:", errorMessage(err));
     await deleteOpenBacking(admin, ctx.backingId, null);
     return failed;
   }
@@ -347,7 +340,7 @@ export async function openBackingCheckout(
   } catch (err) {
     console.error(
       "[consumer-web-start-boost] expire_failed",
-      JSON.stringify({ backing_id: ctx.backingId, session_id: sessionId, error: errorText(err) }),
+      JSON.stringify({ backing_id: ctx.backingId, session_id: sessionId, error: errorMessage(err) }),
     );
   }
   await deleteOpenBacking(admin, ctx.backingId, sessionId);
@@ -371,7 +364,7 @@ export async function cancelBackingAtPeriodEnd(
       { cancel_at_period_end: true },
     );
   } catch (err) {
-    console.error("[consumer-web-cancel-boost] stripe:", errorText(err));
+    console.error("[consumer-web-cancel-boost] stripe:", errorMessage(err));
     return { status: 502, body: { ok: false, error: "Couldn't cancel. Try again." } };
   }
   const patch = subscriptionPatch(sub);
@@ -460,11 +453,11 @@ export async function reconcileStaleBacking(
     if (!(err instanceof BackingWriteError) && Number.isFinite(age) && age > STALE_LOOKUP_GIVE_UP_MS) {
       console.error(
         "[supabase-cron-sync-boosts] give_up",
-        JSON.stringify({ backing_id: row.id, session_id: sessionId, error: errorText(err) }),
+        JSON.stringify({ backing_id: row.id, session_id: sessionId, error: errorMessage(err) }),
       );
       return (await dropOpenBacking(admin, row.id)) ? "dropped" : "kept";
     }
-    console.error("[supabase-cron-sync-boosts] lookup", row.id, errorText(err));
+    console.error("[supabase-cron-sync-boosts] lookup", row.id, errorMessage(err));
     return "kept";
   }
   if (verdict === "keep") return "kept";
@@ -472,7 +465,7 @@ export async function reconcileStaleBacking(
     try {
       await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
     } catch (err) {
-      console.error("[supabase-cron-sync-boosts] expire", row.id, errorText(err));
+      console.error("[supabase-cron-sync-boosts] expire", row.id, errorMessage(err));
       return "kept";
     }
   }
@@ -487,7 +480,7 @@ async function dropOpenBacking(admin: SupabaseClient, backingId: string): Promis
     if (!error) return true;
     console.error("[supabase-cron-sync-boosts] drop", backingId, error.message);
   } catch (err) {
-    console.error("[supabase-cron-sync-boosts] drop", backingId, errorText(err));
+    console.error("[supabase-cron-sync-boosts] drop", backingId, errorMessage(err));
   }
   return false;
 }
@@ -502,7 +495,7 @@ async function updateBacking(
     const { error } = await admin.from("place_backings").update(patch).eq("id", backingId);
     return error ? error.message : null;
   } catch (err) {
-    return errorText(err);
+    return errorMessage(err);
   }
 }
 
@@ -521,7 +514,7 @@ async function deleteOpenBacking(
   } catch (err) {
     console.error(
       "[consumer-web-start-boost] delete_failed",
-      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: errorText(err) }),
+      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: errorMessage(err) }),
     );
   }
 }

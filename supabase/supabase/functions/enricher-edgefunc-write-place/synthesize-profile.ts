@@ -14,6 +14,7 @@ import {
   synthesisModelFor,
 } from "../_shared/enrich-synthesis.ts";
 import { findAddressComponent } from "../_shared/enrich-google-basics-normalizers.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 // The one sentence-safe cap (MESITA-2641); re-exported for this EF's callers
 // and its test.
@@ -132,7 +133,7 @@ export async function fillAtlasProfile(
   try {
     return await fillAtlasProfileInner(admin, placeId, patch, grounding, saved);
   } catch (err) {
-    const why = err instanceof Error ? err.message : String(err);
+    const why = errorMessage(err);
     console.error(`[enrich] profile synthesis skipped: ${why}`);
     return { patch, mesitaName: null, families: undefined };
   }

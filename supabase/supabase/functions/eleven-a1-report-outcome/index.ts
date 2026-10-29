@@ -42,6 +42,7 @@ import { writeReservation } from "../_shared/reservation-doc.ts";
 import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
 import { refetchGoogleAfterWrongNumber } from "../_shared/google-refetch.ts";
 import { runInBackground } from "../_shared/background.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 const VERDICTS = [
   "confirmed",
@@ -135,7 +136,7 @@ async function emitOnReservationFailed(
     // Enrichment is a side effect of reporting a wrong number, never a
     // condition of it — log and let the outcome write stand.
     console.error(
-      `[eleven-a1-report-outcome] Google refetch: ${err instanceof Error ? err.message : String(err)}`,
+      `[eleven-a1-report-outcome] Google refetch: ${errorMessage(err)}`,
     );
   }
 }

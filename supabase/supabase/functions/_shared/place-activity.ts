@@ -12,6 +12,8 @@
 // the feed's events (one row each, newest first, near the guest) and the
 // place profile's line.
 
+import { isUuid } from "./place-id.ts";
+
 export const ACTIVITY_KINDS = ["saved", "viewed"] as const;
 export type ActivityKind = typeof ACTIVITY_KINDS[number];
 
@@ -20,13 +22,10 @@ export function isActivityKind(v: unknown): v is ActivityKind {
     (ACTIVITY_KINDS as readonly string[]).includes(v);
 }
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** Only Mesita places carry activity. A Google-only card (`g:<id>`) is not a
  *  row yet, so its save stays in the browser until the place is created. */
 export function isMesitaPlaceId(v: unknown): v is string {
-  return typeof v === "string" && UUID_RE.test(v);
+  return isUuid(v);
 }
 
 /** One person as the feed and the line show them. */

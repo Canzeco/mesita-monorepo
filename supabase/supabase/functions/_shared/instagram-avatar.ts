@@ -25,6 +25,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writeConsumer } from "./consumer-doc.ts";
 import { savePhotoSizes } from "./photo-sizes.ts";
+import { errorMessage } from "./errors.ts";
 
 export const AVATAR_BUCKET = "consumer-avatars";
 /** The bucket's own limits (20260807200655_consumer_avatars_bucket.sql). */
@@ -151,6 +152,6 @@ export async function adoptInstagramAvatar(
 
     return { ok: true, avatarUrl };
   } catch (err) {
-    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+    return { ok: false, reason: errorMessage(err) };
   }
 }

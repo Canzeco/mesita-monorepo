@@ -25,8 +25,7 @@ import {
   loadRequestThreshold,
   placeRequestState,
 } from "../_shared/place-requests.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "../_shared/place-id.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -55,7 +54,7 @@ serveJson("consumer-web-get-place", async (req) => {
   }
 
   const supabase = anonClient(envRes.env);
-  const column = UUID_RE.test(idOrSlug) ? "id" : "slug";
+  const column = isUuid(idOrSlug) ? "id" : "slug";
 
   const { data, error } = await supabase
     .from("profiles")

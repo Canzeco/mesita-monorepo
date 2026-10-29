@@ -38,6 +38,7 @@
 // them. This validator checks the STORED SHAPE only.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isNullableString } from "./doc-schema.ts";
 
 // ── ConsumerDoc — the full row shape ────────────────────────────────────────
 
@@ -123,10 +124,6 @@ export function isCanonicalConsumerCode(code: string): boolean {
 }
 
 const INSTAGRAM_HANDLE_RE = /^[a-z0-9._]{1,30}$/;
-
-function isNullableString(v: unknown): v is string | null {
-  return v === null || typeof v === "string";
-}
 
 /**
  * The consumer aggregate's runtime shape guard. Rejects an unknown key

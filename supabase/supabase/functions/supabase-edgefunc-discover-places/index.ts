@@ -43,6 +43,7 @@ import {
   searchTextWithPagination,
   type PlaceLite,
 } from "./discover-places-search.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 // Batch cap. With concurrency 10 and ~3 pages × ~500ms per query, 200
 // queries land in roughly 30 seconds — comfortably inside the EF timeout
@@ -157,7 +158,7 @@ serveJson("supabase-edgefunc-discover-places", async (req) => {
           places: [],
           rawCount: 0,
           truncated: false,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         };
       }
     }
@@ -201,7 +202,7 @@ serveJson("supabase-edgefunc-discover-places", async (req) => {
           places: [],
           rawCount: 0,
           truncated: false,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         };
       }
     }

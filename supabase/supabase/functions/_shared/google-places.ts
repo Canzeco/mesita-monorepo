@@ -9,6 +9,7 @@
 
 import { json } from "./http.ts";
 import { googleFetch } from "./google-fetch.ts";
+import { errorMessage } from "./errors.ts";
 
 export {
   classifyGoogleError,
@@ -19,6 +20,17 @@ export {
 // Cloud secret is GMP_KEY; SUPA_GMP_KEY is the legacy name, kept as a fallback
 // for environments that haven't been renamed yet.
 const GOOGLE_PLACES_KEY_ENVS = ["GMP_KEY", "SUPA_GMP_KEY"] as const;
+
+/**
+ * The Google Places key from GMP_KEY (SUPA_GMP_KEY fallback), trimmed, or
+ * null when neither is set. For callers that shape their own "no key" reply;
+ * request handlers that want the standard envelope use readGooglePlacesKey.
+ */
+export function googlePlacesKeyOrNull(
+  env: { get(name: string): string | undefined } = Deno.env,
+): string | null {
+  return (env.get("GMP_KEY") ?? env.get("SUPA_GMP_KEY") ?? "").trim() || null;
+}
 
 // Endpoint URLs for the Places (New) surfaces we use.
 export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
@@ -120,7 +132,7 @@ export async function fetchLocationAnchor(
   } catch (err) {
     console.error(
       "[google-places] location anchor unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return { ok: false, reason: "upstream" };
   }
@@ -219,7 +231,7 @@ export async function fetchPlacePreview(
   } catch (err) {
     console.error(
       "[google-places] place preview unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return { ok: false, reason: "upstream" };
   }

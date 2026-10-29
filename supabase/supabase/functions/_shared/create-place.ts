@@ -60,6 +60,7 @@ import { loadDiscoveryConfig } from "./discovery-config.ts";
 import { evaluatePlaceForMap } from "./map-engine.ts";
 import { omitReviewsTileColumns } from "./reviews-state.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
+import { googlePlacesKeyOrNull } from "./google-places.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { mainGoogleCategoryOnMesita } from "./categories.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
@@ -203,7 +204,7 @@ export async function createMinimalPlace(opts: {
   // ── 1) Minimal seed — Google basics only. fetchGoogleBasics builds the
   // identity spine directly (no EF hop). No Apify/Firecrawl/Perplexity here —
   // deep enrichment is async. ──
-  const GOOGLE_KEY = Deno.env.get("GMP_KEY") ?? Deno.env.get("SUPA_GMP_KEY");
+  const GOOGLE_KEY = googlePlacesKeyOrNull();
   if (!GOOGLE_KEY) {
     return {
       ok: false,

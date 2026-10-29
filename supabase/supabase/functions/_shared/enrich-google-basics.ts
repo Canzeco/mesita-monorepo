@@ -33,6 +33,7 @@ import {
   GOOGLE_ATMOSPHERE_FIELDS,
   googleTagsFromAtmosphere,
 } from "./google-atmosphere.ts";
+import { errorMessage } from "./errors.ts";
 
 const GOOGLE_FIELD_MASK = [
   "id",
@@ -411,7 +412,7 @@ export async function fetchGoogleDetails(
   } catch (err) {
     console.error(
       "[enrich-google-basics] place details unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return {
       error:
