@@ -131,7 +131,7 @@ import { SearchHeader } from "./SearchHeader";
 import { SearchResultsPanel } from "./SearchResultsPanel";
 import {
   RAIL_LEAD_PAGES,
-  RAIL_PAGE_SHARE,
+  railPageWidth,
   RAIL_PAGE_SIZE,
   SearchRailOverlay,
   type LoadCoords,
@@ -989,7 +989,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
   const handleRailScroll = () => {
     const el = railScrollRef.current;
     if (!el || catalog.length === 0) return;
-    const page = el.clientWidth * RAIL_PAGE_SHARE;
+    const page = railPageWidth(el.clientWidth);
     if (page <= 0) return;
     // railIndex counts PLACE pages, RAIL_PAGE_SIZE cards each. The Add card
     // is scroll page 0 (MESITA-2886), so place page n is scroll page n + 1.
@@ -1065,7 +1065,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     const idx = catalog.findIndex((p) => p.id === railSelectedId);
     const page = idx < 0 ? 0 : Math.floor(idx / RAIL_PAGE_SIZE);
     // Past the Add card (scroll page 0, MESITA-2886): it waits to the left.
-    el.scrollLeft = (page + RAIL_LEAD_PAGES) * el.clientWidth * RAIL_PAGE_SHARE;
+    el.scrollLeft = (page + RAIL_LEAD_PAGES) * railPageWidth(el.clientWidth);
     // Only a new set or the rail's return re-rests it; a selection change
     // scrolls through the centring effect above.
     // eslint-disable-next-line react-hooks/exhaustive-deps

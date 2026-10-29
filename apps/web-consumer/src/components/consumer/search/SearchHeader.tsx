@@ -121,8 +121,9 @@ export function SearchHeader({
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
           // py-2 inside the scroller, not around it: its overflow would clip
-          // the chips' shadows.
-          <div className="flex min-w-0 items-center gap-2 pt-1 pl-3 [&>*]:pointer-events-auto">
+          // the chips' shadows. That py-2 is the whole bar-to-chips gap: 8px,
+          // the header's one gap, across and down (MESITA-3008).
+          <div className="flex min-w-0 items-center gap-2 pl-3 [&>*]:pointer-events-auto">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}

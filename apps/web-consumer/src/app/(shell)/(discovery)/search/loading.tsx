@@ -43,7 +43,7 @@ export default function SearchLoading() {
             <Skeleton className="h-12 min-w-0 flex-1 rounded-full" />
             <Skeleton className="h-12 w-12 shrink-0 rounded-full" />
           </div>
-          <div className="flex items-center gap-2 overflow-hidden pt-1 pl-3">
+          <div className="flex items-center gap-2 overflow-hidden pl-3">
             <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
             <div className="flex items-center gap-2 py-2 pr-3">
               <ControlSkeleton token={CHIP} label="Top" />

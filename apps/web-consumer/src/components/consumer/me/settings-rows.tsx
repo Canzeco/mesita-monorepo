@@ -71,7 +71,7 @@ export type RowTint = "muted" | "instagram";
  *  square in the page grey (Pato, MESITA-2569 "A · Ink chip"). Rows inside
  *  the pages wore 36px circles at 70% ink until MESITA-2983. */
 export const ICON_CHIP_CLASS =
-  "flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]";
+  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl";
 
 const TINT_CLASSES = {
   muted: "bg-muted text-foreground",
