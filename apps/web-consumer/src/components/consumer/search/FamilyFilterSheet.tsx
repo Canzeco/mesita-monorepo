@@ -17,7 +17,7 @@ import {
 import { setMapFamilies, useMapFilters } from "@/lib/use-map-filters";
 import { cn } from "@/lib/utils";
 
-import { CHIP, CHIP_OFF, CHIP_ON } from "./header-classes";
+import { CHIP, CHIP_OFF_FLAT, CHIP_ON } from "./header-classes";
 
 // THE FILTERS SHEET (Pato, MESITA-2903: "when i click filters, open the modal
 // to see select multiple families"). The Filters disc opens it. Every family
@@ -90,7 +90,7 @@ function FamilyFilterBody({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => toggle(family.key)}
                 aria-pressed={on}
-                className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
+                className={cn(CHIP, on ? CHIP_ON : CHIP_OFF_FLAT)}
               >
                 {on ? (
                   <Check

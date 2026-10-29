@@ -58,7 +58,7 @@ export function SearchLocateButton({
       className={cn(
         "relative",
         HEADER_DISC,
-        "disabled:hover:bg-muted disabled:opacity-60",
+        "disabled:hover:bg-card disabled:opacity-60",
       )}
     >
       <LocateFixed

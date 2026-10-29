@@ -1070,67 +1070,68 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* Search's header, a white band over the map (Pato, MESITA-2409/2413):
-        location disc · query bar · Ask AI, then the family chips (MESITA-2879
-        undid MESITA-2875/2876's one row); the bar's results and the load
-        error cover the chips and hang over the map's top edge. The pair that keeps the disc
-        visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
-      <SearchHeader
-        locate={
-          <SearchLocateButton
-            located={location !== null}
-            locating={locating}
-            error={locationError}
-            onClick={recentreOnGuest}
-          />
-        }
-        chipsHidden={querying}
-        bar={
-          <SearchBar
-            query={query}
-            showClear={query.length > 0}
-            onQueryChange={updateQuery}
-            onFocus={() => setBarFocused(true)}
-            onBlur={() => setBarFocused(false)}
-            onClear={() => updateQuery("")}
-          />
-        }
-      >
-        {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
-          chip row is not drawn while querying (Pato, MESITA-2487, was
-          MESITA-2417's "cover the chips"), so they hang just under the bar.
-
-          THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
-          claimed 70% of the viewport whether it held two rows or ten is what
-          covered the map. `max-h` sizes to content, so three results take a
-          third of the screen and the pins stay visible underneath — the
-          overlays test pins the absence of a fixed height. */}
-        {querying && (
-          <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
-            <SearchResultsPanel
-              query={query}
-              searching={searching}
-              searchError={searchError}
-              predictions={predictions}
-              onPick={handleBarPick}
-              onAction={openGoogleOnly}
-              onClearSearch={() => updateQuery("")}
-              onRetry={() => {
-                setSearchError(null);
-                setSearching(true);
-                setSearchNonce((n) => n + 1);
-              }}
-            />
-          </div>
-        )}
-
-        {fetchError && (
-          <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
-            {fetchError}
-          </p>
-        )}
-      </SearchHeader>
       <div className="relative min-h-0 flex-1 overflow-hidden">
+        {/* Search's header, floating on the map's top edge with no band (Pato,
+          MESITA-2996, was MESITA-2409/2413's white band): location disc ·
+          query bar · Ask AI, then the family chips (MESITA-2879); the bar's
+          results and the load error cover the chips. The pair that keeps the disc
+          visible: `min-w-0 flex-1` on the bar, `shrink-0` on the disc. */}
+        <SearchHeader
+          locate={
+            <SearchLocateButton
+              located={location !== null}
+              locating={locating}
+              error={locationError}
+              onClick={recentreOnGuest}
+            />
+          }
+          chipsHidden={querying}
+          bar={
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={updateQuery}
+              onFocus={() => setBarFocused(true)}
+              onBlur={() => setBarFocused(false)}
+              onClear={() => updateQuery("")}
+            />
+          }
+        >
+          {/* RESULTS DROP UNDER THE BAR, the way every autocomplete does; the
+            chip row is not drawn while querying (Pato, MESITA-2487, was
+            MESITA-2417's "cover the chips"), so they hang just under the bar.
+
+            THE OLD REGRESSION WAS A FIXED HEIGHT, not the top anchor. A panel that
+            claimed 70% of the viewport whether it held two rows or ten is what
+            covered the map. `max-h` sizes to content, so three results take a
+            third of the screen and the pins stay visible underneath — the
+            overlays test pins the absence of a fixed height. */}
+          {querying && (
+            <div className="border-border bg-card/95 shadow-elev flex max-h-[55dvh] min-h-0 flex-col overflow-hidden rounded-2xl border backdrop-blur-xl">
+              <SearchResultsPanel
+                query={query}
+                searching={searching}
+                searchError={searchError}
+                predictions={predictions}
+                onPick={handleBarPick}
+                onAction={openGoogleOnly}
+                onClearSearch={() => updateQuery("")}
+                onRetry={() => {
+                  setSearchError(null);
+                  setSearching(true);
+                  setSearchNonce((n) => n + 1);
+                }}
+              />
+            </div>
+          )}
+
+          {fetchError && (
+            <p className={cn(ERROR_BOX_CLASS, "rounded-xl backdrop-blur")}>
+              {fetchError}
+            </p>
+          )}
+        </SearchHeader>
+
         {/* Base layer — pins are the nearby catalog after Places scope + Family. */}
         <SearchMap
           apiKey={apiKey}

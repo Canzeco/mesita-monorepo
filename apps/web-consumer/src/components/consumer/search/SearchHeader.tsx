@@ -4,10 +4,8 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ Ask AI )   one white band …
-//   ─────────────────── hairline ──────────────────────
-//   ( ≡ ) (▦ Top) (○ Coffee) (○ Breakfast) (○ Quick) …   … one hairline under
-//   ─────────────────── map ───────────────────────────
+//   ( ⌖ ) [ ⚲ Search places…  ] ( ✦ Ask AI )   44px, floating on the map
+//   (≡) (▦ Top) (○ Coffee) (○ Breakfast) …      32px, floating on the map
 //
 // The bar's row: the locate disc, the query bar, the Ask AI pill (→ Search ›
 // Chat). One token set for every control lives in header-classes.ts. NO ADD
@@ -30,10 +28,12 @@
 // server-side `familyKeys`. The Minimum Popularity stays the operator's,
 // Admin › Discovery › Area.
 //
-// ONE SOLID WHITE BAND for both rows, like Home's header and the bottom bar
-// (Pato, MESITA-2413, MESITA-2469; MESITA-2462: "i don't like a transparent
-// scrolling at all"); the controls are grey fills, so white-on-white
-// (MESITA-2450) cannot happen. Every control is h-9 (MESITA-2445).
+// NO BAND (Pato, MESITA-2996: "the searchbar must look more like the google
+// one … it must have no background. and the categories must be floating
+// too"; reverses MESITA-2413/2469's white band). The header is an overlay on
+// the map's top edge: the rows are transparent and let taps through to the
+// map, and each control is a white pill with a shadow (header-classes.ts).
+// The chips are shorter than the bar (MESITA-2996; reverses MESITA-2445).
 // `children` (the bar's results, the load error) COVER the chip row and run
 // on over the map (MESITA-2417); while the bar queries the chip row is not
 // drawn at all (MESITA-2487).
@@ -53,9 +53,9 @@ import { FamilyFilterSheet } from "./FamilyFilterSheet";
 import { cn } from "@/lib/utils";
 import {
   CHIP,
+  CHIP_DISC,
   CHIP_OFF,
   CHIP_ON,
-  HEADER_DISC,
   HEADER_PILL,
 } from "./header-classes";
 
@@ -66,7 +66,7 @@ const CHIP_ICON = "h-4 w-4 shrink-0";
 /** The Filters disc while a family is picked: red, so a pick that scrolled
  *  out of view still shows at the row's edge (MESITA-2884). */
 const DISC_LIT =
-  "relative border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/15";
+  "relative border-destructive/40 text-destructive";
 
 /** The count bubble on the lit disc's top-right corner, ringed in the
  *  band's white so it reads off the disc. */
@@ -93,12 +93,13 @@ export function SearchHeader({
   const everyFamily = filters.familyKeys.length === 0;
   const [sheetOpen, setSheetOpen] = useState(false);
   return (
+    // pointer-events-none on the overlay, back on for each control: the gaps
+    // between the pills are the map's.
     <div
-      className="border-border bg-card relative z-30 shrink-0 border-b"
+      className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
-      data-search-band
     >
-      <div className="flex min-w-0 items-center gap-2 px-3 py-2.5">
+      <div className="flex min-w-0 items-center gap-2 px-3 pt-3 [&>*]:pointer-events-auto">
         {locate}
         <div className="min-w-0 flex-1">{bar}</div>
         <Link
@@ -114,12 +115,11 @@ export function SearchHeader({
           <span>Ask AI</span>
         </Link>
       </div>
-      <div
-        className={cn("relative", !chipsHidden && "border-border border-t")}
-        data-search-chip-band
-      >
+      <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
-          <div className="flex min-w-0 items-center gap-2 py-2.5 pl-3">
+          // py-2 inside the scroller, not around it: its overflow would clip
+          // the chips' shadows.
+          <div className="flex min-w-0 items-center gap-2 pt-1 pl-3 [&>*]:pointer-events-auto">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
@@ -130,7 +130,7 @@ export function SearchHeader({
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={cn(HEADER_DISC, !everyFamily && DISC_LIT)}
+              className={cn(CHIP_DISC, !everyFamily && DISC_LIT)}
               data-search-filters
             >
               <SlidersHorizontal
@@ -150,7 +150,7 @@ export function SearchHeader({
             </button>
             <nav
               aria-label="Families"
-              className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain pr-3"
+              className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain py-2 pr-3"
               data-search-chips
             >
               <button
@@ -193,8 +193,7 @@ export function SearchHeader({
         {children ? (
           <div
             className={cn(
-              "absolute inset-x-3 top-0 z-10 flex flex-col gap-2",
-              chipsHidden && "pt-2",
+              "pointer-events-auto absolute inset-x-3 top-0 z-10 flex flex-col gap-2 pt-2",
             )}
             data-search-over-chips
           >
