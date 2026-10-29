@@ -38,8 +38,7 @@ import { PlaceTabBar } from "./tabs";
 // placeholders must be similar to the page you are loading, like the
 // sizes"). Every block here stands where the loaded screen draws its own, at
 // its size: PlaceTopBar, then ProfileSummary's white band (photo and the
-// three counts, the facts boxes, the four tiles, Mesita Reserve, Prepay ·
-// Pay), the tab strip, then Overview's white cards on the grey ground.
+// three counts, the facts boxes, the four tiles, Prepay · Pay), the tab strip, then Overview's white cards on the grey ground.
 // NOTHING HERE RE-TYPES A REAL PART: the top bar, the tab strip, the Boxes
 // and the "No overview yet" screen are the real components; the summary's
 // band, rows and boxes are the classes ProfileSummary, ProfilePhoto,
@@ -116,8 +115,10 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: four tiles, then Mesita Reserve full width and
-          Prepay · Pay halved, the 44px place button. */}
+      {/* ProfileActions: four tiles, then Prepay · Pay halved, the 44px
+          place button. No Reserve bone: most places take no reservations
+          and draw no Reserve (MESITA-3076), so the common screen never
+          moves; one that does take them grows a row when data lands. */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
           {[0, 1, 2, 3].map((i) => (
@@ -125,7 +126,6 @@ function ProfileSummarySkeleton() {
           ))}
         </div>
         <div className={PROFILE_MESITA_ROWS_CLASS}>
-          <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
           <div className={PROFILE_HALVES_ROW_CLASS}>
             <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
             <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
