@@ -56,6 +56,8 @@ export type ConsumerDoc = {
   instagram_followers_count: number | null;
   // MESITA-2461: when the handle was proved (code in the bio). The DB CHECK
   // refuses a handle without it; only consumer_instagram_verify sets both.
+  // A Sync (MESITA-3060) writes the follower count through
+  // consumer_instagram_sync and stamps instagram_synced_at, never this.
   instagram_verified_at: string | null;
   // MESITA-2585: may verifying Instagram set the picture? Default true.
   use_instagram_photo: boolean;
@@ -330,6 +332,36 @@ export async function readInstagramStatus(
   };
 }
 
+// ── readInstagramSyncState — what a Sync reads first (MESITA-3060) ─────────
+
+/** The handle and stored follower count a Sync starts from; `deleted` for a
+ *  closed account. A missing row reads as no handle. */
+export async function readInstagramSyncState(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<
+  | {
+    ok: true;
+    handle: string | null;
+    followers: number | null;
+    deleted: boolean;
+  }
+  | { ok: false; error: string }
+> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("instagram_handle, instagram_followers_count, deleted_at")
+    .eq("id", consumerId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    handle: (data?.instagram_handle as string | null) ?? null,
+    followers: (data?.instagram_followers_count as number | null) ?? null,
+    deleted: Boolean(data?.deleted_at),
+  };
+}
+
 // ── disconnectInstagram — Me › Instagram's Disconnect (MESITA-3052) ────────
 
 /** Takes the Instagram off the account: handle, follower count, verified
@@ -411,10 +443,14 @@ export type ClassJoinRow = {
 export async function readClassJoinRow(
   admin: SupabaseClient,
   consumerId: string,
-): Promise<{ ok: true; row: ClassJoinRow | null } | { ok: false; message: string }> {
+): Promise<
+  { ok: true; row: ClassJoinRow | null } | { ok: false; message: string }
+> {
   const { data, error } = await admin
     .from("consumers")
-    .select("guest_class, instagram_handle, instagram_followers_count, guest_class_note")
+    .select(
+      "guest_class, instagram_handle, instagram_followers_count, guest_class_note",
+    )
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
