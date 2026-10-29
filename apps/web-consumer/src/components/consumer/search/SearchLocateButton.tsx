@@ -9,10 +9,10 @@ import { toast } from "@/lib/toast";
 import { LOCATION_HELP, type LocationError } from "@/lib/use-user-location";
 import { HEADER_DISC } from "./header-classes";
 
-// The map's location control: a 48px floating disc at the TOP RIGHT, beside
-// the bar on its row (Pato, MESITA-3006: "the location at top right at the
-// same level"; under the chips in MESITA-3005, inside the bar in
-// MESITA-2999, a disc at the top left before that). It wears the "my location" target and
+// The map's location control: a 48px floating disc at the TOP LEFT, before
+// the bar on its row (Pato, MESITA-3009: "location at the left, searchbar,
+// ask ai at the right"; right of the bar in MESITA-3006, under the chips in
+// MESITA-3005, inside the bar in MESITA-2999). It wears the "my location" target and
 // nothing else, ink on white (MESITA-3004 took off MESITA-3000/3003's blue
 // tint), turning the map's you-are-here blue once a fix is held (MESITA-2454). No
 // hover tint while it is locating and disabled. A refusal turns the icon red and toasts the

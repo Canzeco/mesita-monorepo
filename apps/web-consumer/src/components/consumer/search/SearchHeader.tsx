@@ -4,12 +4,13 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…      (✦ Ask AI) ] (⌖)   48px bar + 48px locate disc
+//   (⌖) [ ⚲ Search places…   ] (✨ Ask AI)      three separate 48px controls
 //   (≡) (▦ Top) (○ Coffee) …                    32px chips, floating
 //
-// ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long"): the query
-// field, then the black Ask AI pill with sparkles (→ Search › Chat; MESITA-3007), in one pill across the
-// screen; the locate disc sits right of it on the same row (MESITA-3006). One token set for every control lives in header-classes.ts. NO ADD
+// THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
+// searchbar, ask ai at the right, all separated"; MESITA-2999's one long
+// bar held Ask AI and locate): the locate disc, the query bar, the black
+// Ask AI pill with sparkles (→ Search › Chat; MESITA-3007). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
@@ -78,9 +79,9 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate disc, right of the bar on row one. */
+  /** The locate disc, left of the bar on row one. */
   locate: ReactNode;
-  /** The query field; it takes what the Ask AI pill leaves. */
+  /** The query field; the bar takes what the two controls leave. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -98,25 +99,19 @@ export function SearchHeader({
       className="pointer-events-none absolute inset-x-0 top-0 z-30"
       data-search-header
     >
-      {/* Row one (Pato, MESITA-3006: "searchbar with ask ai inside at the
-          right, and then the location at top right at the same level"). */}
+      {/* Row one, three separate controls (Pato, MESITA-3009: "location at
+          the left, searchbar, ask ai at the right, all separated"). */}
       <div className="flex min-w-0 items-center gap-2 px-3 pt-3 [&>*]:pointer-events-auto">
-        <div className={cn(BAR, "min-w-0 flex-1")}>
-          {bar}
-          <Link
-            href={CONSUMER_ROUTES.searchChat}
-            className={HEADER_PILL}
-            data-search-ask-ai
-          >
-            <Sparkles
-              className="h-4 w-4 shrink-0"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <span>Ask AI</span>
-          </Link>
-        </div>
         {locate}
+        <div className={cn(BAR, "min-w-0 flex-1")}>{bar}</div>
+        <Link
+          href={CONSUMER_ROUTES.searchChat}
+          className={HEADER_PILL}
+          data-search-ask-ai
+        >
+          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <span>Ask AI</span>
+        </Link>
       </div>
       <div className="relative" data-search-chip-band>
         {chipsHidden ? null : (
