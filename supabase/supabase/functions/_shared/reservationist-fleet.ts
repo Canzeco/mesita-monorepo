@@ -1036,7 +1036,7 @@ function a4Workflow(t: FleetToolIds): FleetWorkflow {
  * Build the four fleet workflows (v2 — complex graphs). Tool nodes need live
  * workspace tool ids.
  *
- * Engine truths these graphs encode (supabase-edgefunc-reservation-call):
+ * Engine truths these graphs encode (supabase-edgefunc-place-reservation-call):
  * - a1: an ANSWERED call that ends without a1_report_outcome goes terminal
  *   (analysis fallback → declined/unresolved), so EVERY spoken path funnels
  *   through exactly one report tool node before the farewell — including the

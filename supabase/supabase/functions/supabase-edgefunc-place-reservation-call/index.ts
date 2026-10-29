@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-edgefunc-reservation-call (internal)
+// Supabase Edge Function — supabase-edgefunc-place-reservation-call (internal)
 //
 // THE Reservationist call engine — the sandbox AND the admin Playground are
 // retired (2026-07-27): every ticket is a real public.reservation_tickets row and
@@ -28,7 +28,7 @@
 // RETRIES ARE OPEN-HOURS AWARE (no longer seconds apart): a no-answer parks
 // the ticket with attempts_state='scheduled' + next_attempt_at — +5 min if the
 // place is open right now, else ~30 min after it next opens — and
-// supabase-cron-reservation-retries wakes it. A run therefore places ONE call
+// supabase-cron-retry-reservations wakes it. A run therefore places ONE call
 // and returns; the run that resumes reads call_attempts and continues the
 // sequence. See _shared/reservation-retry.ts.
 //
@@ -57,7 +57,7 @@
 // Layout: this file validates, gates, resolves numbers and claims the ticket
 // (one launch<Intent> per errand); legs.ts holds the background leg runners.
 //
-// Deploy: supabase functions deploy supabase-edgefunc-reservation-call
+// Deploy: supabase functions deploy supabase-edgefunc-place-reservation-call
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -181,7 +181,7 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
   // Routed through validateReservationPatch directly (not the writeReservation
   // door — this update's `.in("notice_state", …)` filter is a shape the door
   // doesn't model; see reservation-doc.ts's header and the same idiom in
-  // supabase-cron-reservation-retries).
+  // supabase-cron-retry-reservations).
   const noticeClaimValidated = validateReservationPatch({
     notice_state: "running",
     notice_next_at: null,
@@ -397,7 +397,7 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
   // Routed through validateReservationPatch directly (not the writeReservation
   // door — this update's `.or(...)` filter is a shape the door doesn't model;
   // see reservation-doc.ts's header and the same idiom in
-  // supabase-cron-reservation-retries).
+  // supabase-cron-retry-reservations).
   const bookClaimValidated = validateReservationPatch({
     attempts_state: "running",
     run_id: runId,
@@ -478,7 +478,7 @@ const LAUNCH: Record<Intent, (ctx: LaunchCtx) => Promise<Response>> = {
   book: launchBook,
 };
 
-serveJson("supabase-edgefunc-reservation-call", async (req) => {
+serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;

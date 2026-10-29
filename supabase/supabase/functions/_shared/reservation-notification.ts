@@ -9,7 +9,7 @@
 //
 //   outcome          written when
 //   ───────────────  ─────────────────────────────────────────────────────────
-//   confirmed        the place confirmed (supabase-edgefunc-reservation-call)
+//   confirmed        the place confirmed (supabase-edgefunc-place-reservation-call)
 //   counter_offer    the place offered alternatives — the guest picks one
 //   declined         the place said no
 //   unreachable      nobody who books was reached after every attempt

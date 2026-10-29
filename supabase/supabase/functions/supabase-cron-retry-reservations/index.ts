@@ -1,4 +1,4 @@
-// Supabase Edge Function — supabase-cron-reservation-retries (internal)
+// Supabase Edge Function — supabase-cron-retry-reservations (internal)
 //
 // THE waker for every parked reservation leg (Docs › Reservations §B). The
 // call engine can't sleep (the edge runtime dies at ~400s), so anything that
@@ -31,7 +31,7 @@
 // Body: { limit?: number } — per-sweep batch cap (default 25).
 // Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
 //
-// Deploy: supabase functions deploy supabase-cron-reservation-retries
+// Deploy: supabase functions deploy supabase-cron-retry-reservations
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, readLimit, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -54,7 +54,7 @@ const MAX_LIMIT = 100;
 const EXPIRE_AFTER_MS = 4 * 3600_000; // mirrors the app's passed-grace window
 const STALE_CLAIM_MS = 10 * 60_000; // any leg's longest legal run is < 5 min
 
-serveJson("supabase-cron-reservation-retries", async (req) => {
+serveJson("supabase-cron-retry-reservations", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -161,8 +161,8 @@ serveJson("supabase-cron-reservation-retries", async (req) => {
     for (const id of ids) {
       const res = await invokeInternalCaller(
         envRes.env,
-        "supabase-cron-reservation-retries",
-        "supabase-edgefunc-reservation-call",
+        "supabase-cron-retry-reservations",
+        "supabase-edgefunc-place-reservation-call",
         intent === "book" ? { reservation_id: id } : { reservation_id: id, intent },
       );
       if (res.ok) woken++;
