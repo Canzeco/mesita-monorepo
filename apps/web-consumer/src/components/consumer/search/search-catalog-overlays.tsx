@@ -233,8 +233,7 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
 /**
  * The same numbers ON THE CARD'S PHOTO (Pato, MESITA-2877: "remove the scores
  * from there for the moment and put them on top of the image but kinda
- * transparent"): Search's rail only; Home's rails keep RailScoreTag above
- * the tile. A translucent dark scrim at the photo's foot, small white mono,
+ * transparent"): Search's rail, and Home's tiles too since MESITA-3053. A translucent dark scrim at the photo's foot, small white mono,
  * one number a line so it fits the square (what Proximity read, km and k,
  * on a line of its own). It never takes a tap: the photo
  * is the card's open target. The sources line is gone here: since
@@ -259,7 +258,7 @@ export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
       ) : null}
       <p>pop {fmtScore(score.popularity)}</p>
       <p>
-        off{" "}
+        premier{" "}
         {fmtScore(
           typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
         )}

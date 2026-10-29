@@ -75,7 +75,7 @@ import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
-import { RailScoreTag } from "@/components/consumer/search/search-catalog-overlays";
+import { RailScoreOverlay } from "@/components/consumer/search/search-catalog-overlays";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
@@ -479,28 +479,29 @@ export function CatalogRails() {
             return (
               <Fragment key={place.id}>
                 {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
-                    score and sub scores in the home feed"): the Search
-                    map's tag above each tile, from the server's breakdown;
-                    Premier's factor is its `premier` number (MESITA-2925).
-                    Remove with the Search tag once the ranking is verified. */}
-                {place.area ? (
-                  <li className="-mb-1.5" data-home-score-tag>
-                    <RailScoreTag
-                      place={{
-                        score: {
-                          proximity: place.area.signals.proximity,
-                          popularity: place.area.signals.popularity,
-                          selectedFactor: place.area.selectedFactor,
-                          final: place.area.final,
-                          foundBy: place.area.foundBy,
-                          distanceKm: place.area.distanceKm,
-                          distancePenalty: place.area.distancePenalty,
-                        },
-                      }}
-                    />
-                  </li>
-                ) : null}
+                    score and sub scores in the home feed"): the server's
+                    breakdown ON THE PHOTO (MESITA-3053: "put the score data
+                    on top of the image … not below … like … in map"),
+                    Search's own overlay. Remove with Search's once the
+                    ranking is verified. */}
                 <CatalogTile
+                  photoOverlay={
+                    place.area ? (
+                      <RailScoreOverlay
+                        place={{
+                          score: {
+                            proximity: place.area.signals.proximity,
+                            popularity: place.area.signals.popularity,
+                            selectedFactor: place.area.selectedFactor,
+                            final: place.area.final,
+                            foundBy: place.area.foundBy,
+                            distanceKm: place.area.distanceKm,
+                            distancePenalty: place.area.distancePenalty,
+                          },
+                        }}
+                      />
+                    ) : null
+                  }
                   place={located}
                   saved={cards.isSaved(place)}
                   onToggle={() => cards.toggle(place, i + 1)}
