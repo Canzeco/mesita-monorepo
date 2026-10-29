@@ -69,7 +69,7 @@ Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESI
     params: { proximity: { maxKm: 25, kneeKm: 1, missingGeo: 0.35 }, popularity: { confidence: 60 } },
     catalog: { ranking: { proximity: 1, popularity: 1 } },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 100 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33 } });
   assertEquals("catalog" in cfg, false);
 });
 
@@ -78,17 +78,24 @@ Deno.test("params clamp; the reach, the divisor, Selected and the weights table 
     params: {
       proximity: { reachKm: 7, halfKm: 0.01, radiusDivisor: 3 },
       selected: { otherFactor: 0.3 },
-      popularity: { halfReviews: 0 },
+      popularity: { halfReviews: 0, root: 0 },
       modes: { nearby: { proximity: 99, popularity: -4 }, popular: { popularity: 1.234 } },
       balance: { proximity: 7 },
     },
   });
-  assertEquals(cfg.params, { proximity: { halfKm: 0.1 }, popularity: { halfReviews: 1 } });
+  assertEquals(cfg.params, { proximity: { halfKm: 0.1, exponent: 1 }, popularity: { root: 0.1 } });
+  // The exponent and the root clamp at their own decimals (MESITA-3083); a
+  // stored `halfReviews` drops.
+  assertEquals(
+    normalizeDiscoveryConfig({ params: { proximity: { exponent: 9 }, popularity: { root: 0.3333 } } }).params,
+    { proximity: { halfKm: 1, exponent: 4 }, popularity: { root: 0.33 } },
+  );
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { exponent: 0.04 } } }).params.proximity.exponent, 0.5);
   // One decimal, clamped to 100; a stored row with only the retired divisor
   // reads the default 1 km (MESITA-3015).
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 2.34 } } }).params.proximity, { halfKm: 2.3 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity, { halfKm: 100 });
-  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 1 } } }).params.proximity, { halfKm: 1 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 2.34 } } }).params.proximity, { halfKm: 2.3, exponent: 1 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity, { halfKm: 100, exponent: 1 });
+  assertEquals(normalizeDiscoveryConfig({ params: { proximity: { radiusDivisor: 1 } } }).params.proximity, { halfKm: 1, exponent: 1 });
   // Most pins 1..200 default 50; the Catalog page size 5..100 default 20,
   // and the retired cut `catalogPlacesShown` drops (MESITA-2909).
   const m = normalizeDiscoveryConfig({ map: { placesShown: 33, catalogPlacesShown: 40 } }).map;

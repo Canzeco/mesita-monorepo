@@ -38,7 +38,7 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(Object.keys(cfg).sort()).toEqual(Object.keys(DEFAULT_CONFIG).sort());
   });
 
-  it("params keeps the half distance and the reviews half point; the reach, the divisor, Selected, the linear balance and the weights table are dropped (MESITA-2687, MESITA-2703, MESITA-2909)", () => {
+  it("params keeps the half distance, the exponent and the Popularity root; the reach, the divisor, Selected, the linear balance, the weights table and the reviews half point are dropped (MESITA-2687, MESITA-2703, MESITA-2909, MESITA-3083)", () => {
     expect(coerceConfig(LIVE_BLOB).params).toEqual(DEFAULT_CONFIG.params);
     expect(
       coerceConfig({
@@ -52,23 +52,25 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
         },
       }).params,
     ).toEqual({
-      proximity: { halfKm: 1 },
-      popularity: { halfReviews: 250 },
+      proximity: { halfKm: 1, exponent: 1 },
+      popularity: { root: 0.33 },
     });
   });
 
-  it("the half distance clamps to 0.5–50 km at one decimal; reach and Selected are dropped (MESITA-2703, MESITA-2909)", () => {
+  it("the half distance clamps to 0.1–100 km at one decimal, the exponent to 0.5–4, the root to 0.1–1 at two; reach and Selected are dropped (MESITA-2703, MESITA-2909, MESITA-3083)", () => {
     expect(
       coerceConfig({
         params: {
-          proximity: { reachKm: 12.34, halfKm: 2.34 },
-          popularity: { halfReviews: 0 },
+          proximity: { reachKm: 12.34, halfKm: 2.34, exponent: 1.26 },
+          popularity: { halfReviews: 0, root: 0.3333 },
           selected: { otherFactor: 0 },
         },
       }).params,
-    ).toEqual({ proximity: { halfKm: 2.3 }, popularity: { halfReviews: 1 } });
-    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1 });
-    expect(coerceConfig({ params: { proximity: { halfKm: 999 } } }).params.proximity).toEqual({ halfKm: 100 });
+    ).toEqual({ proximity: { halfKm: 2.3, exponent: 1.3 }, popularity: { root: 0.33 } });
+    expect(coerceConfig({ params: { proximity: { halfKm: 0 } } }).params.proximity).toEqual({ halfKm: 0.1, exponent: 1 });
+    expect(coerceConfig({ params: { proximity: { halfKm: 999, exponent: 9 } } }).params.proximity).toEqual({ halfKm: 100, exponent: 4 });
+    expect(coerceConfig({ params: { popularity: { root: 0 } } }).params.popularity).toEqual({ root: 0.1 });
+    expect(coerceConfig({ params: { popularity: { root: 5 } } }).params.popularity).toEqual({ root: 1 });
   });
 
   it("the four source switches and catalogPlacesShown are dropped (MESITA-2872, MESITA-2909)", () => {
@@ -89,8 +91,9 @@ describe("the Swipe deck's keys are gone (MESITA-2328)", () => {
     expect(coerceConfig({ map: { placesShown: 0 } }).map.placesShown).toBe(1);
     expect(coerceConfig({ map: { placesShown: 900 } }).map.placesShown).toBe(200);
     expect(coerceConfig({ map: { placesShown: 33.4 } }).map.placesShown).toBe(33);
-    // Minimum Popularity (MESITA-2714): 0..20, one decimal, default 3.
-    expect(DEFAULT_MAP.popularityFloor).toBe(3);
+    // Minimum Popularity (MESITA-2714): 0..20, one decimal, default 2.7 in
+    // the Popularity root's units (MESITA-3083).
+    expect(DEFAULT_MAP.popularityFloor).toBe(2.7);
     expect(coerceConfig({ map: { popularityFloor: -1 } }).map.popularityFloor).toBe(0);
     expect(coerceConfig({ map: { popularityFloor: 99 } }).map.popularityFloor).toBe(20);
     expect(coerceConfig({ map: { popularityFloor: 3.44 } }).map.popularityFloor).toBe(3.4);

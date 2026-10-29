@@ -5,9 +5,9 @@
 // Admin: one page, five pipeline boxes (Admin Name · Consumer Name · Consumer
 // Map · Consumer Catalog · Consumer Deep); each box saves only its own slices.
 //
-//   params     Proximity's half distance (the Catalog pipeline's, MESITA-2909)
-//              and Popularity's stored reviews for half credit
-//              (pipeline-signals.ts). The Catalog box edits the first.
+//   params     Proximity's half distance and exponent (the Catalog
+//              pipeline's, MESITA-2909, MESITA-3083) and Popularity's root
+//              (pipeline-signals.ts). The Catalog box edits all three.
 //   general    Discovery-wide. requireActive — the post-Google wipe
 //              (discovery-general-gate.ts). No reviews floor: the
 //              Popularity floor is the quality cut (MESITA-2721).
@@ -61,9 +61,12 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { bool, num } from "./config-coerce.ts";
 import {
-  POPULARITY_HALF_REVIEWS_DEFAULT,
-  POPULARITY_HALF_REVIEWS_MAX,
-  POPULARITY_HALF_REVIEWS_MIN,
+  POPULARITY_ROOT_DEFAULT,
+  POPULARITY_ROOT_MAX,
+  POPULARITY_ROOT_MIN,
+  PROXIMITY_EXPONENT_DEFAULT,
+  PROXIMITY_EXPONENT_MAX,
+  PROXIMITY_EXPONENT_MIN,
   PROXIMITY_HALF_KM_DEFAULT,
   PROXIMITY_HALF_KM_MAX,
   PROXIMITY_HALF_KM_MIN,
@@ -71,15 +74,19 @@ import {
 import { errorMessage } from "./errors.ts";
 
 /**
- * The stored signal numbers: Proximity's half distance (km; the Catalog
- * pipeline and Chat, MESITA-2909) and Popularity's reviews for half credit.
- * There are no exponents (MESITA-2722 retired `map.proximityWeight` and
- * `map.popularityWeight`).
+ * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
+ * and exponent (the Catalog pipeline and Chat, MESITA-2909), and
+ * Popularity's root (the Map, the Catalog and Chat). The two Area weights
+ * (`map.proximityWeight`, `map.popularityWeight`) stay retired
+ * (MESITA-2722); Popularity's reviews for half credit (`halfReviews`) was
+ * stored and mirrored but read by nothing, so it retired with MESITA-3083.
  */
 export type SignalParams = {
-  /** `halfKm`: Proximity is ½ at this many km (MESITA-2909). */
-  proximity: { halfKm: number };
-  popularity: { halfReviews: number };
+  /** `halfKm`: Proximity is ½ at this many km (MESITA-2909); `exponent`:
+   *  the curve's shape, 1 = the plain reciprocal (MESITA-3083). */
+  proximity: { halfKm: number; exponent: number };
+  /** `root`: Popularity is (1 + reviews × stars)^root, 0.33 = the cube root. */
+  popularity: { root: number };
 };
 
 /**
@@ -149,9 +156,10 @@ export type MapConfig = {
   /**
    * THE POPULARITY FLOOR (Pato, MESITA-2714: "if popularity score is below
    * 3 you cannot be shown … it doesn't matter what"): a place whose
-   * Popularity, ln(1 + reviews × stars), is under it never shows on Home,
-   * the Map or Chat, Google or Mesita. `MAP_POPULARITY_FLOOR_MIN`..`MAX`,
-   * one decimal, default 3; 0 is off.
+   * Popularity, (1 + reviews × stars)^root, is under it never shows on
+   * Home, the Map or Chat, Google or Mesita. `MAP_POPULARITY_FLOOR_MIN`..
+   * `MAX`, one decimal, default 2.7 (the old 3 in ln units, re-expressed
+   * at the cube root, MESITA-3083); 0 is off.
    */
   popularityFloor: number;
   // `selectedFactor` (the Selected boost, MESITA-2717) retired with
@@ -245,10 +253,12 @@ export const MAP_PLACES_SHOWN_DEFAULT = 50;
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
 export const CATALOG_PAGE_SIZE_DEFAULT = 20;
-/** `map.popularityFloor` bounds (ln units: 3 ≈ reviews × stars of 19). */
+/** `map.popularityFloor` bounds, in Popularity's own units (the root's,
+ *  MESITA-3083: at the cube root 2.7 ≈ reviews × stars of 19, what the old
+ *  ln floor of 3 meant). */
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
-export const MAP_POPULARITY_FLOOR_DEFAULT = 3;
+export const MAP_POPULARITY_FLOOR_DEFAULT = 2.7;
 /** The Map's reload throttle (s): the consumer clamps to the same 0.5–10. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -313,8 +323,8 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** The signal numbers. A blob with no `params` reads these. */
 export const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT },
-  popularity: { halfReviews: POPULARITY_HALF_REVIEWS_DEFAULT },
+  proximity: { halfKm: PROXIMITY_HALF_KM_DEFAULT, exponent: PROXIMITY_EXPONENT_DEFAULT },
+  popularity: { root: POPULARITY_ROOT_DEFAULT },
 };
 
 /** Legal ranges for the signal numbers. */
@@ -324,10 +334,15 @@ export const SIGNAL_PARAM_BOUNDS = {
     max: PROXIMITY_HALF_KM_MAX,
     decimals: 1,
   },
-  halfReviews: {
-    min: POPULARITY_HALF_REVIEWS_MIN,
-    max: POPULARITY_HALF_REVIEWS_MAX,
-    decimals: 0,
+  exponent: {
+    min: PROXIMITY_EXPONENT_MIN,
+    max: PROXIMITY_EXPONENT_MAX,
+    decimals: 1,
+  },
+  root: {
+    min: POPULARITY_ROOT_MIN,
+    max: POPULARITY_ROOT_MAX,
+    decimals: 2,
   },
 } as const;
 
@@ -497,9 +512,13 @@ function boundedParam(
  * popularity.referenceRating/referenceReviews, MESITA-2347), the linear
  * `balance` (MESITA-2428), the weights table `modes` (MESITA-2687) or
  * `proximity.reachKm` / `selected` (MESITA-2703) is dropped on the next
- * save. `proximity.halfKm` (the half distance, MESITA-2909) is the one
- * proximity field read; `radiusDivisor` (MESITA-2720, retired by
- * MESITA-2909) and `catalogRadiusDivisor` (MESITA-2727/2776) drop.
+ * save. `proximity.halfKm` (the half distance, MESITA-2909) and
+ * `proximity.exponent` (MESITA-3083) are the proximity fields read;
+ * `radiusDivisor` (MESITA-2720, retired by MESITA-2909) and
+ * `catalogRadiusDivisor` (MESITA-2727/2776) drop. `popularity.root` is the
+ * one popularity field (MESITA-3083); `halfReviews`, read by nothing,
+ * drops with it. A missing key reads its default: a row stored before a
+ * knob existed never resets the others (keys are added, never renamed).
  */
 export function normalizeSignalParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -513,12 +532,17 @@ export function normalizeSignalParams(raw: unknown): SignalParams {
         d.proximity.halfKm,
         SIGNAL_PARAM_BOUNDS.halfKm,
       ),
+      exponent: boundedParam(
+        prox.exponent,
+        d.proximity.exponent,
+        SIGNAL_PARAM_BOUNDS.exponent,
+      ),
     },
     popularity: {
-      halfReviews: boundedParam(
-        pop.halfReviews,
-        d.popularity.halfReviews,
-        SIGNAL_PARAM_BOUNDS.halfReviews,
+      root: boundedParam(
+        pop.root,
+        d.popularity.root,
+        SIGNAL_PARAM_BOUNDS.root,
       ),
     },
   };

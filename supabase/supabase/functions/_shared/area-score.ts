@@ -11,20 +11,23 @@
 // sort ("como screening dentro del radio, pero no la metería ya para el
 // sorting"): the Radius gate decides who is in and Popularity alone orders
 // them. The Catalog has no radius: every Mesita place is ranked, and
-// Proximity, 1 ÷ (1 + d ÷ D), D the operator's half distance
-// (MESITA-3015), pulls nearer places up without ever cutting a far one.
-// Popularity is ln(1 + reviews × stars), unbounded, and the product is never
-// clamped or normalized (MESITA-2710). s is the Premier factor: a Premier
-// place's paid tier, ×2 · ×5 (`places.boost_tier`, MESITA-2789; 10X retired
-// by MESITA-3041), and 1
-// for every other place, at any distance. Selected and its operator boost
-// died with MESITA-2925. No exponents (MESITA-2722).
+// Proximity, 1 ÷ (1 + (d ÷ D)^e), D the operator's half distance and e the
+// operator's exponent (MESITA-3015, MESITA-3083), pulls nearer places up
+// without ever cutting a far one. Popularity is (1 + reviews × stars)^root,
+// the root the operator's (0.33, the cube root, MESITA-3083; ln before it,
+// MESITA-2710), unbounded, and the product is never clamped or normalized
+// (MESITA-2710). s is the Premier factor: a Premier place's paid tier,
+// ×2 · ×5 (`places.boost_tier`, MESITA-2789; 10X retired by MESITA-3041),
+// and 1 for every other place, at any distance. Selected and its operator
+// boost died with MESITA-2925. The two Area weights stay retired
+// (MESITA-2722): the only exponents are the two knobs above.
 //
 // NO REACH (MESITA-3015): the reach (s only within 2 × h, MESITA-2920)
 // existed because the log curve kept a far place alive. The reciprocal
-// bounds Premier by itself: past D the score is D ÷ d, so a Premier 5X
-// beats a place up to ~5× closer and a place in another city (100× the
-// distance) never tops a guest's Home.
+// bounds Premier by itself: at e = 1, past D the score is D ÷ d, so a
+// Premier 5X beats a place up to ~5× closer (125× the reviews at the cube
+// root) and a place in another city (100× the distance) never tops a
+// guest's Home.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
@@ -33,7 +36,7 @@
 // radius: the Map, and Chat's read) and the Popularity floor. Ties break on
 // distance (a point only), then id.
 
-import { clearsPopularityFloor, logPopularity, proximity } from "./pipeline-signals.ts";
+import { clearsPopularityFloor, proximity, rootPopularity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 import { PREMIER_FACTOR } from "./boost.ts";
 
@@ -64,6 +67,12 @@ export type AreaContext = {
    *  `params.proximity.halfKm`. null = no Proximity: the Map ranks by
    *  Popularity alone. */
   halfKm: number | null;
+  /** Proximity's exponent e (MESITA-3083): the operator's
+   *  `params.proximity.exponent`; absent = 1, the plain reciprocal. */
+  exponent?: number;
+  /** Popularity's root (MESITA-3083): the operator's
+   *  `params.popularity.root`; absent = 0.33, the cube root. */
+  popularityRoot?: number;
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
@@ -146,16 +155,16 @@ export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">):
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
-function popularityOrNull(c: AreaCandidate): number | null {
+function popularityOrNull(c: AreaCandidate, root?: number): number | null {
   const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v);
   if (!ok(c.rating) || !ok(c.reviewCount)) return null;
-  return logPopularity(c);
+  return rootPopularity(c, root);
 }
 
 /** The score without Proximity: Popularity × the Premier factor. The
  *  whole score with no location. */
-export function popularPart(c: AreaCandidate): number {
-  return factor(popularityOrNull(c) ?? 0) * premierFactor(c);
+export function popularPart(c: AreaCandidate, root?: number): number {
+  return factor(popularityOrNull(c, root) ?? 0) * premierFactor(c);
 }
 
 /** One candidate's breakdown — the wire's `area` object (MESITA-2379).
@@ -189,7 +198,7 @@ export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
 
 export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const loc = ctx.location;
-  const pop = popularityOrNull(c);
+  const pop = popularityOrNull(c, ctx.popularityRoot);
   let km: number | null = null;
   if (loc.kind === "point" && typeof c.lat === "number" && typeof c.lng === "number") {
     const d = haversineKm(loc.anchor.lat, loc.anchor.lng, c.lat, c.lng);
@@ -202,18 +211,21 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   // The Map passes no half distance: distance screens, never sorts
   // (MESITA-2909).
   const prox = loc.kind === "point" && ctx.halfKm !== null
-    ? proximity(c, loc.anchor, ctx.halfKm)
+    ? proximity(c, loc.anchor, ctx.halfKm, ctx.exponent)
     : null;
   const sel = premierFactor(c);
-  const popPart = popularPart(c);
+  const popPart = popularPart(c, ctx.popularityRoot);
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
-  // below 3 you cannot be shown … it doesn't matter what"): Google or
-  // Mesita, Premier or not; no Google numbers reads 0, so it is out too.
+  // below 3 you cannot be shown … it doesn't matter what"; 2.7 in the
+  // root's units since MESITA-3083): Google or Mesita, Premier or not; no
+  // Google numbers reads 0, so it is out too.
   const floor = typeof ctx.popularityFloor === "number" && ctx.popularityFloor > 0
     ? ctx.popularityFloor
     : null;
-  const popularityGate = floor === null ? null : clearsPopularityFloor(c, floor) ? 1 : 0;
+  const popularityGate = floor === null
+    ? null
+    : clearsPopularityFloor(c, floor, ctx.popularityRoot) ? 1 : 0;
   const open = family === 1 && radius !== 0 && popularityGate !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),

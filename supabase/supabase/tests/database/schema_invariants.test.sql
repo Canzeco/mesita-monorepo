@@ -1572,8 +1572,11 @@ select ok(
       -- MESITA-2767: the Search bar's always-on family switches.
       and discovery_config #> '{name,fast,supers}' is null
       and discovery_config #> '{name,deep,supers}' is null
-      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'halfReviews') = '{}'::jsonb
-      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfKm') = '{}'::jsonb
+      -- MESITA-3083: Popularity's root and Proximity's exponent joined the
+      -- knobs; `halfReviews` (read by nothing) retired. A stored row may
+      -- still carry it until the next Save rebuilds the blob.
+      and (coalesce(discovery_config #> '{params,popularity}', '{}'::jsonb) - 'root' - 'halfReviews') = '{}'::jsonb
+      and (coalesce(discovery_config #> '{params,proximity}', '{}'::jsonb) - 'halfKm' - 'exponent') = '{}'::jsonb
       and not (enrichment_config ? 'atlasPerRunCostCapUsd')
       -- MESITA-2831: the Atlas prefix is gone from every Enrichment key.
       and not exists (select 1 from jsonb_object_keys(enrichment_config) k where k like 'atlas%')

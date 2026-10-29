@@ -190,8 +190,10 @@ Deno.test("the admin twin mirrors the signal params' bounds", () => {
   };
   assertEquals(constant("HALF_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfKm.min);
   assertEquals(constant("HALF_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfKm.max);
-  assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
-  assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
+  assertEquals(constant("EXPONENT_MIN"), SIGNAL_PARAM_BOUNDS.exponent.min);
+  assertEquals(constant("EXPONENT_MAX"), SIGNAL_PARAM_BOUNDS.exponent.max);
+  assertEquals(constant("POPULARITY_ROOT_MIN"), SIGNAL_PARAM_BOUNDS.root.min);
+  assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
 });
 
 // ── The normalizer, key by key ───────────────────────────────────────────────
@@ -255,9 +257,10 @@ Deno.test("the deck's param bags and numbers do not survive a normalize", () => 
   // The retired calibration (halfDistanceKm, referenceRating/Reviews,
   // MESITA-2347) goes with the deck's bags; the linear `balance`
   // (MESITA-2428), the weights table (MESITA-2687), the reach and Selected
-  // (MESITA-2703) too. Popularity's half credit stays; Proximity's half
-  // distance (`halfKm`, MESITA-2909) arrives at its default.
-  assertEquals(cfg.params, { proximity: { halfKm: 1 }, popularity: { halfReviews: 250 } });
+  // (MESITA-2703) too. Popularity's half credit (`halfReviews`, read by
+  // nothing) went with MESITA-3083; the half distance, the exponent and the
+  // root arrive at their defaults.
+  assertEquals(cfg.params, { proximity: { halfKm: 1, exponent: 1 }, popularity: { root: 0.33 } });
 });
 
 // The tentative Social engine's box had no reader (MESITA-2144). A blob that

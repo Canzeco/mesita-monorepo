@@ -20,14 +20,17 @@
 import { num } from "@/lib/config-coerce";
 
 /**
- * The stored signal numbers: Proximity's half distance (km; the Catalog
- * pipeline and Chat, MESITA-2909) and Popularity's reviews for half credit.
- * Mirrors SignalParams in _shared/discovery-config.ts.
+ * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
+ * and exponent (the Catalog pipeline and Chat, MESITA-2909) and
+ * Popularity's root (the Map, the Catalog and Chat). Mirrors SignalParams
+ * in _shared/discovery-config.ts. `halfReviews` retired with MESITA-3083.
  */
 export type SignalParams = {
-  /** Proximity is ½ at this many km: 1 ÷ (1 + d ÷ D) (MESITA-3015). */
-  proximity: { halfKm: number };
-  popularity: { halfReviews: number };
+  /** Proximity is 1 ÷ (1 + (d ÷ D)^e): ½ at D km whatever e is
+   *  (MESITA-3015); e = 1 is the plain reciprocal (MESITA-3083). */
+  proximity: { halfKm: number; exponent: number };
+  /** Popularity is (1 + reviews × stars)^root; 0.33 is the cube root. */
+  popularity: { root: number };
 };
 
 export type NameFastConfig = {
@@ -85,12 +88,14 @@ export const DEEP_LIMIT_MIN = 1;
 export const DEEP_LIMIT_MAX = 20;
 export const DEFAULT_DEEP: DeepConfig = { limit: 5, minSimilarity: 0 };
 
-/** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-3015). */
+/** Mirrors the Proximity bounds in _shared/pipeline-signals.ts (MESITA-3015, MESITA-3083). */
 export const HALF_KM_MIN = 0.1;
 export const HALF_KM_MAX = 100;
-/** Mirrors the Popularity bounds in _shared/pipeline-signals.ts. */
-export const HALF_REVIEWS_MIN = 1;
-export const HALF_REVIEWS_MAX = 100_000;
+export const EXPONENT_MIN = 0.5;
+export const EXPONENT_MAX = 4;
+/** Mirrors the Popularity root bounds in _shared/pipeline-signals.ts (MESITA-3083). */
+export const POPULARITY_ROOT_MIN = 0.1;
+export const POPULARITY_ROOT_MAX = 1;
 
 /** Mirrors MAP_RADIUS_KM_* in _shared/discovery-config.ts. */
 export const MAP_RADIUS_KM_MIN = 1;
@@ -104,10 +109,11 @@ const MAP_PLACES_SHOWN_DEFAULT = 50;
 export const CATALOG_PAGE_SIZE_MIN = 5;
 export const CATALOG_PAGE_SIZE_MAX = 100;
 const CATALOG_PAGE_SIZE_DEFAULT = 20;
-/** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714). */
+/** Mirrors MAP_POPULARITY_FLOOR_* in _shared/discovery-config.ts (MESITA-2714;
+ *  in the Popularity root's units since MESITA-3083: 2.7 ≈ reviews × stars of 19). */
 export const MAP_POPULARITY_FLOOR_MIN = 0;
 export const MAP_POPULARITY_FLOOR_MAX = 20;
-const MAP_POPULARITY_FLOOR_DEFAULT = 3;
+const MAP_POPULARITY_FLOOR_DEFAULT = 2.7;
 /** Mirrors MAP_RELOAD_IDLE_SEC_* in _shared/discovery-config.ts. */
 export const MAP_RELOAD_IDLE_SEC_MIN = 0.5;
 export const MAP_RELOAD_IDLE_SEC_MAX = 10;
@@ -137,7 +143,8 @@ export type MapConfig = {
   /** Home's Catalog page size, 5..100, default 20 (MESITA-2909; it
    *  replaced `catalogPlacesShown`). */
   catalogPageSize: number;
-  /** The Popularity floor, ln units, 0..20, default 3; 0 = off (MESITA-2714). */
+  /** The Popularity floor in the root's units, 0..20, default 2.7; 0 = off
+   *  (MESITA-2714, MESITA-3083). */
   popularityFloor: number;
   // `selectedFactor` (the Selected boost) retired with Selected (MESITA-2925):
   // Premier's factor is the paid tier, no knob; the next Save drops it.
@@ -201,8 +208,8 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { halfKm: 1 },
-  popularity: { halfReviews: 100 },
+  proximity: { halfKm: 1, exponent: 1 },
+  popularity: { root: 0.33 },
 };
 
 export const DEFAULT_CONFIG: DiscoveryConfig = {
@@ -227,9 +234,11 @@ function bounded(raw: unknown, fallback: number, min: number, max: number, decim
  * referenceRating/Reviews, MESITA-2347), the linear `balance`
  * (MESITA-2428), the weights table `modes` (MESITA-2687), `proximity.reachKm`
  * and `selected` (MESITA-2703) are dropped on the next Save;
- * `proximity.halfKm` (the Catalog's half distance, MESITA-2909) is the one
- * proximity field; `radiusDivisor` (MESITA-2720) and `catalogRadiusDivisor`
- * drop.
+ * `proximity.halfKm` (the Catalog's half distance, MESITA-2909) and
+ * `proximity.exponent` (MESITA-3083) are the proximity fields;
+ * `radiusDivisor` (MESITA-2720) and `catalogRadiusDivisor` drop.
+ * `popularity.root` is the one popularity field (MESITA-3083); the unread
+ * `halfReviews` drops with it. A missing key reads its default.
  */
 function coerceParams(raw: unknown): SignalParams {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -239,9 +248,10 @@ function coerceParams(raw: unknown): SignalParams {
   return {
     proximity: {
       halfKm: bounded(prox.halfKm, d.proximity.halfKm, HALF_KM_MIN, HALF_KM_MAX, 1),
+      exponent: bounded(prox.exponent, d.proximity.exponent, EXPONENT_MIN, EXPONENT_MAX, 1),
     },
     popularity: {
-      halfReviews: bounded(pop.halfReviews, d.popularity.halfReviews, HALF_REVIEWS_MIN, HALF_REVIEWS_MAX, 0),
+      root: bounded(pop.root, d.popularity.root, POPULARITY_ROOT_MIN, POPULARITY_ROOT_MAX, 2),
     },
   };
 }

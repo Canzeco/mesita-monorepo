@@ -14,7 +14,7 @@
 // rating × saturating volume since MESITA-2347).
 // A SIGNAL DEMOTES; a MAP FLOOR EXCLUDES.
 
-import type { MapConfig, SignalParams } from "./discovery-config.ts";
+import type { MapConfig } from "./discovery-config.ts";
 import { popularity, POPULARITY_HALF_REVIEWS_DEFAULT } from "./pipeline-signals.ts";
 import { type EligibilityResult, familiesForGoogleType } from "./sourcing.ts";
 
@@ -26,15 +26,16 @@ export type ListedMapRow = {
 
 
 /**
- * The Map popularity floor, on the Area pipeline's Popularity: 0..1 with
- * the operator's reviews-for-half-credit (`params.popularity.halfReviews`).
- * An unrated place scores 0, so any floor above 0 drops it, the same
- * reading as a Google stub.
+ * The Map popularity floor, on the old 0..1 Popularity with a half credit
+ * at K reviews (the constant 100 since MESITA-3083: the stored
+ * `params.popularity.halfReviews` was read by nothing and retired; a caller
+ * may still pass its own K). An unrated place scores 0, so any floor above
+ * 0 drops it, the same reading as a Google stub.
  */
 export function listedClearsMapPopularity(
   place: ListedMapRow,
   map: MapConfig,
-  params?: SignalParams["popularity"],
+  params?: { halfReviews?: number },
 ): boolean {
   if (!(map.minPopularity > 0)) return true;
   const score = popularity(
