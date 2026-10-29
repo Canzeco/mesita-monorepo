@@ -21,6 +21,11 @@ import { numOf } from "./parse-utils.ts";
 import { errorMessage } from "./errors.ts";
 
 export const REVIEW_VERIFY_TIMEOUT_MS = 20_000;
+// An Apify run-sync often needs more than 20s just to start, and a timed-out
+// lookup leaves the follower count empty, so the header greys a channel
+// whose link was found (MESITA-3080). Sync runs the longer Google review
+// scrape in parallel, so this wait does not lengthen a run.
+export const APIFY_VERIFY_TIMEOUT_MS = 60_000;
 
 export const REVIEW_FOUND_FLAG_KEYS = [
   "google_found",
@@ -153,7 +158,7 @@ export async function verifyInstagram(
     APIFY_ACTORS.instagramProfile,
     { usernames: [handle] },
     key,
-    REVIEW_VERIFY_TIMEOUT_MS,
+    APIFY_VERIFY_TIMEOUT_MS,
   );
   if (run.error) {
     const reason = apifyActorError(run.error);
@@ -186,7 +191,7 @@ export async function verifyFacebook(
     APIFY_ACTORS.facebookPages,
     { startUrls: [{ url }] },
     key,
-    REVIEW_VERIFY_TIMEOUT_MS,
+    APIFY_VERIFY_TIMEOUT_MS,
   );
   if (run.error) {
     const reason = apifyActorError(run.error);
