@@ -11,7 +11,6 @@ import {
   INSTAGRAM_PHOTO_SWITCH,
   PUBLIC_PROFILE_SWITCH,
 } from "@/components/consumer/me/switch-words";
-import { SkeletonLine } from "@/components/shared";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { SettingsRowSkeleton } from "../me-skeletons";
 
@@ -29,7 +28,7 @@ import { SettingsRowSkeleton } from "../me-skeletons";
 //                   one the page draws while it asks how connecting works
 //                   today), then Photo's switch row
 //   connected       the account card, Social's and Photo's switch rows,
-//                   then the one quiet link
+//                   then the Account group's Disconnect row
 //
 // THE WORDS ARE THE PAGE'S: the intro, the account card and the
 // Connect card are InstagramModal's own components, and the switch rows'
@@ -64,12 +63,12 @@ export function InstagramSkeleton() {
         </SettingsGroup>
 
         {connected && (
-          <div className="flex min-h-11 items-center">
-            <SkeletonLine
-              className="type-body w-full"
-              bar="inset-x-0 mx-auto w-44"
+          <SettingsGroup title="Account">
+            <SettingsRowSkeleton
+              label="Disconnect Instagram"
+              sub="Take @handle off Mesita"
             />
-          </div>
+          </SettingsGroup>
         )}
       </div>
       <p role="status" className="sr-only">

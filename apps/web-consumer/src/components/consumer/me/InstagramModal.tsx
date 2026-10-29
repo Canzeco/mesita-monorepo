@@ -10,7 +10,15 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
-import { BadgeCheck, Copy, ImageIcon, RefreshCw, Send } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BadgeCheck,
+  Copy,
+  ImageIcon,
+  RefreshCw,
+  Send,
+  Unlink,
+} from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
@@ -21,6 +29,8 @@ import {
   IconChip,
   ME_BUTTON_CLASS,
   MeLead,
+  RowDivider,
+  SettingsActionRow,
   SettingsGroup,
   Switch,
 } from "@/components/consumer/me/settings-rows";
@@ -349,72 +359,58 @@ export function ConnectedAccount({
     }
   }
 
+  // THREE ROWS, THE ME PAGES' OWN (Pato, MESITA-3062: "more standarized
+  // buttons … cleaner"): the account, then Sync and Change account as the
+  // same action rows Settings uses; the outlined buttons are gone.
   return (
     <SettingsGroup title="Connected">
       <CurrentConnectionRow pending={pending} />
-      <div className="border-border/60 border-t px-4 py-3">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={sync}
-            disabled={pending || busy || resting}
-            className={cn(
-              ME_BUTTON_CLASS,
-              "border-border hover:bg-muted flex items-center justify-center gap-2 border transition disabled:opacity-60",
-            )}
-            data-instagram-sync
+      <RowDivider />
+      <SettingsActionRow
+        Icon={RefreshCw}
+        label={syncing ? "Syncing…" : "Sync"}
+        sub={
+          syncing
+            ? "Reading your Instagram. This can take up to a minute."
+            : "Update your followers and photo"
+        }
+        disabled={pending || busy || resting}
+        onClick={sync}
+      />
+      <RowDivider />
+      <SettingsActionRow
+        Icon={ArrowLeftRight}
+        label="Change account"
+        sub="Connect a different Instagram"
+        disabled={pending || busy}
+        onClick={() => onChange?.()}
+      />
+      <div aria-live="polite">
+        {!syncing && message && (
+          <p
+            className="text-destructive type-label border-border/60 border-t px-4 py-3"
+            data-instagram-sync-error
           >
-            {syncing ? (
-              <Spinner size="sm" />
-            ) : (
-              <RefreshCw className="h-4 w-4" />
+            {message.text}{" "}
+            {message.reload && (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="underline underline-offset-2"
+              >
+                Reload
+              </button>
             )}
-            {syncing ? "Syncing…" : "Sync"}
-          </button>
-          <button
-            type="button"
-            onClick={onChange}
-            disabled={pending || busy}
-            className={cn(
-              ME_BUTTON_CLASS,
-              "border-border hover:bg-muted border transition disabled:opacity-60",
-            )}
-            data-instagram-change
-          >
-            Change account
-          </button>
-        </div>
-        <div aria-live="polite">
-          {syncing && (
-            <p className="text-muted-foreground type-label mt-2 text-center">
-              Reading your Instagram. This can take up to a minute.
-            </p>
-          )}
-          {!syncing && message && (
-            <p
-              className="text-destructive type-label mt-2 text-center"
-              data-instagram-sync-error
-            >
-              {message.text}{" "}
-              {message.reload && (
-                <button
-                  type="button"
-                  onClick={() => window.location.reload()}
-                  className="underline underline-offset-2"
-                >
-                  Reload
-                </button>
-              )}
-            </p>
-          )}
-        </div>
+          </p>
+        )}
       </div>
     </SettingsGroup>
   );
 }
 
-/** "Disconnect Instagram", a quiet link at the page bottom (MESITA-3060:
- *  out of the account row), opening MESITA-3052's confirm. */
+/** "Disconnect Instagram", the last group on the page (MESITA-3060 moved it
+ *  off the account row; MESITA-3062 made it the destructive action row, like
+ *  Settings › Delete account), opening MESITA-3052's confirm. */
 export function DisconnectLink({
   disabled = false,
   open = false,
@@ -429,15 +425,16 @@ export function DisconnectLink({
   const { igHandle: handle } = useConsumerIdentity();
   return (
     <>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={onOpen}
-        className="text-muted-foreground hover:text-destructive type-body min-h-11 self-center font-medium underline underline-offset-4 transition disabled:opacity-60"
-        data-instagram-disconnect
-      >
-        Disconnect Instagram
-      </button>
+      <SettingsGroup title="Account">
+        <SettingsActionRow
+          Icon={Unlink}
+          label="Disconnect Instagram"
+          sub={handle ? `Take @${handle} off Mesita` : undefined}
+          destructive
+          disabled={disabled}
+          onClick={() => onOpen?.()}
+        />
+      </SettingsGroup>
       <DisconnectDialog
         open={open}
         handle={handle}
