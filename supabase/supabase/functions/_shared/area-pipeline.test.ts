@@ -261,7 +261,7 @@ Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the P
   assertEquals("lane" in byId["off"], false);
   assertEquals(byId["plain"].selectedFactor, 1);
   for (const a of Object.values(byId)) {
-    assertEquals(a.halfKm, 10);
+    assertEquals(a.halfKm, 1);
     const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0) * a.selectedFactor;
     assertEquals(Math.abs(a.final - want) < 1e-12, true);
   }
@@ -422,7 +422,7 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals((await run("map")).places.length, 50);
   const home = await run("catalog", { placesShown: 5, catalogPageSize: 12 });
   assertEquals(home.places.length, 80);
-  assertEquals([home.summary.surface, home.summary.halfKm, home.summary.pageSize, home.summary.placesShown], ["catalog", 10, 12, null]);
+  assertEquals([home.summary.surface, home.summary.halfKm, home.summary.pageSize, home.summary.placesShown], ["catalog", 1, 12, null]);
   assertEquals([top5.summary.surface, top5.summary.halfKm, top5.summary.pageSize, top5.summary.placesShown], ["map", null, null, 5]);
   assertEquals(catalogPageSize({}), 20);
 });

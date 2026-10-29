@@ -390,9 +390,9 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
 }
 
 /** Proximity at d km with half distance D (km): the Catalog's curve,
- *  1 ÷ (1 + (d ÷ D)²) (MESITA-3079). Mirrors proximityFromDistance. */
+ *  1 ÷ (1 + d ÷ D) (MESITA-3015). Mirrors proximityFromDistance. */
 function catalogProximity(d: number, h: number): number {
-  return 1 / (1 + (d / h) ** 2);
+  return 1 / (1 + d / h);
 }
 
 // 4 ─ Consumer Catalog Pipeline ────────────────────────────────────────────
@@ -428,8 +428,8 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
           </p>
           <p className="mt-2">
             Premier counts at any distance: past the half distance the score
-            is (half distance ÷ distance)², so a Premier 5X beats a place up
-            to about 2.2 times closer, and one in another city never tops
+            is half distance ÷ distance, so a Premier 5X beats a place up
+            to about five times closer, and one in another city never tops
             Home.
           </p>
           <p className="mt-2">
@@ -454,14 +454,13 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
           />
         </div>
         <p className="text-muted-foreground type-meta">
-          Proximity is 1 ÷ (1 + (distance ÷ half distance)²): 1 at the
-          guest, ½ at the half distance, ⅕ at twice it, never 0. At {h} km:
+          Proximity is 1 ÷ (1 + distance ÷ half distance): 1 at the guest,
+          ½ at the half distance, ⅓ at twice it, never 0. At {h} km:
           {" "}{at(0.5)} at half of it, {at(2)} at twice it, {at(4)} at four
-          times it. Inside the half distance it stays nearly flat, so
-          Popularity decides; past it twice as far is a quarter of the
-          credit, so a better place wins only up to about 1.34× farther.
-          Smaller favours nearer places; bigger favours popular ones.
-          {HALF_KM_MIN}–{HALF_KM_MAX} km.
+          times it. Inside the half distance Popularity decides; past it
+          twice as far is half the credit, so a better place wins only up
+          to about 1.8× farther. Smaller favours nearer places; bigger
+          favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
         </p>
       </Group>
       <Group title="Paging">
