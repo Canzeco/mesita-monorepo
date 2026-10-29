@@ -75,7 +75,7 @@ export function SearchBar({
           type="button"
           onClick={onClear}
           aria-label="Clear search"
-          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition outline-none"
+          className="text-muted-foreground hover:text-foreground focus-visible:text-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition outline-none"
         >
           <X className="h-4 w-4" />
         </button>

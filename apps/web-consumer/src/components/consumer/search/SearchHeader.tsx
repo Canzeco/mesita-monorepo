@@ -4,7 +4,7 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   (⌖) [ ⚲ Search places…   ] (✨ Ask AI)      three separate 48px controls
+//   (⌖) [ ⚲ Search places…   ] (✨ Ask AI)      three separate 40px controls
 //   (≡) (▦ Top) (○ Coffee) …                    32px chips, floating
 //
 // THREE SEPARATE CONTROLS (Pato, MESITA-3009: "location at the left,
