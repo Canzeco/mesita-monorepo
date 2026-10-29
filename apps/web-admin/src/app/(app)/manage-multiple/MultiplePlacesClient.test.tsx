@@ -49,6 +49,9 @@ describe("Multiple Places renders six boxes (MESITA-2096, MESITA-2739)", () => {
     expect(buttons(box("edit"))).toEqual([
       "Enable",
       "Disable",
+      "Premier 2X",
+      "Premier 5X",
+      "End Premier",
       "Delete",
     ]);
   });

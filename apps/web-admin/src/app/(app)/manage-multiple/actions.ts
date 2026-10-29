@@ -487,3 +487,49 @@ export async function enrichPlacesAll(
   );
   return Object.fromEntries(rows.flat());
 }
+
+// ── Premier (MESITA-3090) ────────────────────────────────────────────────
+// Edit box › Premier 2X · Premier 5X · End Premier. One call per place
+// through admin-web-grant-place-premier action "set", all at once like
+// writePlaces. A refusal (a guest pays, guests waiting, a guest checking
+// out, archived) comes back as a failed Result whose `code` names it.
+
+export type PremierSet = {
+  result: "granted" | "ended" | "already";
+  ends_at: string | null;
+  previous_tier: number | null;
+  previous_ends_at: string | null;
+};
+
+/** Move every place to `tier` (0 none · 1 2X · 2 5X) for `months` (1..12;
+ *  null for tier 0). Keyed by the Mesita place id. */
+export async function setPlacesPremier(
+  placeIds: string[],
+  tier: 0 | 1 | 2,
+  months: number | null,
+): Promise<Record<string, Result<PremierSet>>> {
+  const rows = await Promise.all(
+    placeIds.map(async (id) => {
+      const r: Result<PremierSet> = await efInvoke<PremierSet & { ok: true }>(
+        "admin-web-grant-place-premier",
+        { placeId: id, action: "set", tier, months },
+      )
+        .then((res): Result<PremierSet> =>
+          res.ok
+            ? {
+                ok: true,
+                data: {
+                  result: res.data.result,
+                  ends_at: res.data.ends_at ?? null,
+                  previous_tier: res.data.previous_tier ?? null,
+                  previous_ends_at: res.data.previous_ends_at ?? null,
+                },
+              }
+            : { ok: false, error: res.error, code: res.code },
+        )
+        .catch((err: unknown): Result<PremierSet> => ({ ok: false, error: thrown(err) }));
+      return [id, r] as const;
+    }),
+  );
+  return Object.fromEntries(rows);
+}

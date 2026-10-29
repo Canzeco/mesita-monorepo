@@ -1,4 +1,4 @@
-import { CheckCircle2, CircleDot, Loader2, Sparkles, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleDot, Loader2, Sparkles, XCircle } from "lucide-react";
 
 export type BatchRowState =
   | "pending"
@@ -6,9 +6,11 @@ export type BatchRowState =
   | "ok"
   | "existed"
   | "enriching"
+  | "refused"
   | "error";
 
-/** Shared glyph for batch rows. Distinguishes created / already existed / enriching / failed. */
+/** Shared glyph for batch rows. Distinguishes created / already existed / enriching / failed,
+ *  and refused: a Premier run left the place unchanged on purpose (MESITA-3090). */
 export function StateIcon({ state }: { state: BatchRowState }) {
   if (state === "ok")
     return <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />;
@@ -16,6 +18,8 @@ export function StateIcon({ state }: { state: BatchRowState }) {
     return <CircleDot className="h-4 w-4 shrink-0 text-sky-600" />;
   if (state === "enriching")
     return <Sparkles className="h-4 w-4 shrink-0 text-amber-600" />;
+  if (state === "refused")
+    return <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />;
   if (state === "error")
     return <XCircle className="text-destructive h-4 w-4 shrink-0" />;
   if (state === "running")

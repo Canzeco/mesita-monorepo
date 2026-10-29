@@ -8,8 +8,10 @@
 // update box. i don't care if kinda redundant"). Create mints the place,
 // Enrich fills it, and that run is the only way a place becomes Enriched.
 // Edit writes a place that already exists: Enable and Disable toggle guest
-// visibility, and Delete archives (Select and Unselect died with Selected,
-// MESITA-2925). Edit is a box, never a button, and there is no Create +
+// visibility, Premier 2X · Premier 5X · End Premier set its Premier for N
+// months (MESITA-3090; refused, unchanged, where a guest pays, guests wait to
+// pay, a guest is checking out, or the place is archived), and Delete
+// archives (Select and Unselect died with Selected, MESITA-2925). Edit is a box, never a button, and there is no Create +
 // Enrich combo. Edit does not sync.
 
 export const PIPELINE_STEPS = [
@@ -31,14 +33,17 @@ export type CrenupAction =
   | "list"
   | "unlist"
   | "enrich"
-  | "google-update";
+  | "google-update"
+  | "premier-2x"
+  | "premier-5x"
+  | "premier-off";
 
 /** The buttons each write box carries, in order. */
 export const WRITE_BOX_ACTIONS = {
   create: ["create"],
   enrich: ["enrich"],
   "google-update": ["google-update"],
-  edit: ["list", "unlist", "delete"],
+  edit: ["list", "unlist", "premier-2x", "premier-5x", "premier-off", "delete"],
 } as const satisfies Partial<Record<PipelineStepId, readonly CrenupAction[]>>;
 
 /** Retired hashes: the one-box era (#crenup), the old Search / Create /
