@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
-  feedInstagram,
+  feedFollowers,
   feedSentence,
   VERB,
 } from "@/components/consumer/home/SocialFeed";
@@ -137,7 +137,7 @@ describe("anonymous members in the feed", () => {
       anonymous: true,
     };
     expect(feedSentence({ person: anon, kind: "saved" })).toBe("Sofia liked");
-    expect(feedInstagram(anon)).toBeNull();
+    expect(feedFollowers(anon)).toBeNull();
   });
 });
 

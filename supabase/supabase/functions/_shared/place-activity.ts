@@ -168,7 +168,7 @@ export function toPerson(
   // Your own handle is never masked to you.
   const locked = handle != null && !isYou && !canSeeHandles;
   return {
-    // The name is the first name, never "@handle"; the handle rides beside it.
+    // The name is the first name; the feed leads with the handle when there is one (MESITA-3051).
     name: first,
     avatarUrl: row.avatar_url ?? null,
     handle: handle && locked ? maskHandle(handle) : handle,

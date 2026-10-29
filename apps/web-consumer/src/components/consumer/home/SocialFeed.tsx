@@ -25,12 +25,15 @@
 // the same for the subtype of user"): Instagram bottom-left when verified,
 // a VIP crown bottom-right. The server sends the photo and the marks for
 // every member who keeps Public profile on.
-// One line: the name (bold), the verb, the place (bold), no period; under
-// it, muted, the Instagram glyph and the member's Instagram as social proof —
-// the full @handle (MESITA-2590) and an approximate follower count — then
-// the time. You see others' handles only if you show yours (MESITA-2594):
-// without your own Instagram verified and your profile public, the server
-// sends "@per***" instead. No Instagram → the quiet line is the time alone.
+// One line, ALWAYS THIRD PERSON (Pato, MESITA-3051: "never mention first
+// person, always mention all as third person, even if the event is
+// yourself"; it retires "You"): the member's @handle and an approximate
+// follower count when they show their Instagram ("if has instagram don't
+// mention the name, mention the instgarma username instead"), else the first
+// name; then the verb, the place, no period. Views carry the handle too
+// (retires MESITA-2594's nameless view). You see others' handles only if you
+// show yours (MESITA-2594): a masked "@per***" never leads, the first name
+// does. Under it, muted, the time and the place's km.
 // The place's photo on the right; no photo → the card placeholder (family
 // icon or initial), never an empty box. Two verbs — liked (stored `saved`)
 // and viewed (stored `viewed`); the labels changed, never the keys. There is
@@ -40,11 +43,9 @@
 // events. its readl time uner you radious or near you, just enough to odn't
 // kill"): the server returns every event inside the operator's Area circle
 // around the guest, newest first, at most 50, and the pane refetches every
-// LIVE_MS while the tab is visible. EVERY MEMBER IS NAMED BY FIRST NAME
-// (Pato, MESITA-2612: "who the fuck is a member, remove that shit"; it
-// retires MESITA-2580's and MESITA-2594's "A member"). The Instagram proof
-// rides only on a like by a member with a verified Instagram and a public
-// profile (MESITA-2594: a view carries no handle). NO MOCK DATA
+// LIVE_MS while the tab is visible. NEVER "A MEMBER" (Pato, MESITA-2612:
+// "who the fuck is a member, remove that shit"; it retires MESITA-2580's and
+// MESITA-2594's "A member"): a handle, else the first name. NO MOCK DATA
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
 // rows): only the server's rows, and with none, the empty state.
 //
@@ -159,29 +160,33 @@ export function shortAgo(iso: string, now = Date.now()): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-/** Who leads the line: "You", else the member's name. */
+/** Who leads the line, always in the third person (Pato, MESITA-3051:
+ *  "never mention first person … even if the event is yourself"): the
+ *  member's @handle when they show their Instagram ("if has instagram don't
+ *  mention the name, mention the instgarma username instead"), else the
+ *  first name. A masked "@per***" never stands in for a name. */
 export function feedWho(lead: ActivityPerson): string {
-  if (lead.isYou) return "You";
+  if (lead.handle && !lead.handleLocked) return `@${lead.handle}`;
   return lead.name;
 }
 
-/** The Instagram proof on a row's quiet line ("@perdon · 1.2K followers";
- *  the glyph before it says Instagram), plain text, never a link, or null
- *  without a named Instagram (or for the guest's own row). The full handle
- *  since MESITA-2590, or "@per***" when the viewer does not show their own
- *  (MESITA-2594; the server masked it). */
-export function feedInstagram(lead: ActivityPerson): string | null {
-  const handle = lead.isYou || !lead.handle ? null : `@${lead.handle}`;
-  if (!handle) return null;
+/** "(1.2K followers)" beside a lead @handle (MESITA-3051), or null: no
+ *  handle on the line, or no count to show. */
+export function feedFollowers(lead: ActivityPerson): string | null {
+  if (!lead.handle || lead.handleLocked) return null;
   const followers = approxFollowers(lead.followers);
-  return followers ? `${handle} · ${followers} followers` : handle;
+  return followers ? `(${followers} followers)` : null;
 }
 
-/** "Perdón liked" / "You viewed": one person, never "and N others". */
+/** "@perdon (1.2K followers) liked" / "Sofia viewed": one person, never
+ *  "and N others", never "You". */
 export function feedSentence(
   item: Pick<ActivityFeedItem, "person" | "kind">,
 ): string {
-  return `${feedWho(item.person)} ${VERB[item.kind]}`;
+  const followers = feedFollowers(item.person);
+  return [feedWho(item.person), followers, VERB[item.kind]]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** How often the open pane asks again (MESITA-2532: live, "just enough to
@@ -351,7 +356,7 @@ function FeedRow({
   fresh: boolean;
   onPerson: (item: ActivityFeedItem) => void;
 }) {
-  const instagram = feedInstagram(item.person);
+  const followers = feedFollowers(item.person);
   const ago = shortAgo(item.at);
   const href = placeHref(item.place.slug || item.place.id);
   const who = feedWho(item.person);
@@ -369,23 +374,15 @@ function FeedRow({
             things a row opens, the person and the place, so they read as
             links. The verb between them stays plain. */}
         <span className="text-foreground line-clamp-2 text-sm leading-snug">
-          <span className={LINK_WORD_CLASS}>{who}</span> {VERB[item.kind]}{" "}
+          <span className={LINK_WORD_CLASS}>{who}</span>{" "}
+          {followers ? <>{followers} </> : null}
+          {VERB[item.kind]}{" "}
           <span className={LINK_WORD_CLASS}>{item.place.name}</span>
         </span>
         <span
           className="text-muted-foreground mt-0.5 flex min-w-0 items-center gap-1 text-xs"
           data-social-quiet
         >
-          {instagram ? (
-            <>
-              <InstagramGlyph className="h-3 w-3 shrink-0" />
-              <span className="sr-only">Instagram</span>
-              <span className="truncate" data-social-instagram>
-                {instagram}
-              </span>
-              <span aria-hidden>·</span>
-            </>
-          ) : null}
           <span className="flex shrink-0 items-center gap-0.5" data-social-ago>
             <Clock className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             {ago}
@@ -613,7 +610,7 @@ function PersonCard({
   }, [key, ready]);
   if (!event || !key) return null;
   const person = history?.person ?? fallback;
-  const who = person ? feedWho(person) : "Member";
+  const who = person ? person.name : "Member";
   const igUrl =
     person && person.handle && !person.isYou && !person.handleLocked
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
