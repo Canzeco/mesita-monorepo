@@ -8,8 +8,17 @@
 //     then their cards (MESITA-2950)
 //   Catalog (Home)         (point or nothing, NO radius)
 //     every ready Mesita row (scoring columns, walked by id) → gates →
-//     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
-//     the client pages it (`map.catalogPageSize`)
+//     TWO LANES (MESITA-3017): red = the Premier places, Proximity ×
+//     Popularity × s; blue = every place, Proximity × Popularity (s = 1);
+//     interleaved red, blue, red, blue… (CATALOG_LANE_PATTERN), an id the
+//     first lane placed never placed again → the best 1000 BY RANK, then
+//     their cards; the client pages it (`map.catalogPageSize`)
+//
+// (Pato, MESITA-3017: "no quiero que premier invada el catálogo … si le
+// metemos de más, va a opacar todo el catálogo; si le metemos de menos,
+// nunca va a aparecer": with no data the Premier factor cannot be tuned, so
+// how much of Home is paid is an explicit number, one and one, not a
+// weight. The Map stays one list: its screen radius bounds it.)
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
@@ -35,7 +44,9 @@ import {
   type AreaCandidate,
   type AreaContext,
   type AreaDiagnostics,
+  type AreaLane,
   type AreaLocation,
+  type AreaScore,
   insideBounds,
   type LatLng,
   rankArea,
@@ -205,7 +216,49 @@ export type AreaPoolSummary = {
   placesShown: number | null;
   /** The Catalog's page size; null on the Map. */
   pageSize: number | null;
+  /** How many places each lane placed on the Catalog (MESITA-3017); null
+   *  on the Map. red + blue = ranked. */
+  lanes: { red: number; blue: number } | null;
 };
+
+// ── The Catalog's two lanes (MESITA-3017) ───────────────────────────────
+
+/** The order the lanes take turns in, repeated: red, blue, red, blue…
+ *  (Pato: "one and one"). A constant, not a knob, until there is data. */
+export const CATALOG_LANE_PATTERN: readonly AreaLane[] = ["red", "blue"];
+
+/**
+ * Interleave two ranked lists by the pattern, each id placed once. A lane's
+ * turn is filled by its next NEW id: a duplicate (an id the other lane
+ * already placed) is skipped and that same lane walks on, so the pattern
+ * holds; a lane only yields its turn once it is exhausted. Ends when both
+ * are. No read happens here: both lists are already in memory.
+ */
+export function interleaveLanes<T extends { id: string }>(
+  lanes: Record<AreaLane, readonly T[]>,
+  pattern: readonly AreaLane[] = CATALOG_LANE_PATTERN,
+): Array<{ item: T; lane: AreaLane }> {
+  const out: Array<{ item: T; lane: AreaLane }> = [];
+  const seen = new Set<string>();
+  const at: Record<AreaLane, number> = { red: 0, blue: 0 };
+  const next = (lane: AreaLane): T | null => {
+    const list = lanes[lane];
+    while (at[lane] < list.length) {
+      const item = list[at[lane]++];
+      if (!seen.has(item.id)) return item;
+    }
+    return null;
+  };
+  const exhausted = () => (["red", "blue"] as const).every((l) => at[l] >= lanes[l].length);
+  for (let turn = 0; !exhausted(); turn++) {
+    const lane = pattern[turn % pattern.length];
+    const item = next(lane);
+    if (item === null) continue;
+    seen.add(item.id);
+    out.push({ item, lane });
+  }
+  return out;
+}
 
 function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number | null {
   if (location.kind !== "point") return null;
@@ -221,7 +274,9 @@ const CATALOG_PAGE_SIZE_FALLBACK = 20;
 /**
  * The Map or Catalog pool: the caller's Mesita read gated, scored and ranked,
  * every place carrying its `area` breakdown. The Map keeps its top
- * `map.placesShown`; the Catalog keeps every place, best first.
+ * `map.placesShown`. The Catalog ranks the same rows twice in memory, the
+ * red lane (Premier places, with s) and the blue lane (every place, s = 1),
+ * and interleaves them one and one (MESITA-3017), every place once.
  */
 export function selectAreaPool<T extends PoolRow>(
   deps: AreaPoolDeps<T>,
@@ -232,23 +287,39 @@ export function selectAreaPool<T extends PoolRow>(
     families: deps.families,
     ...areaSignalParams(deps.cfg.params, deps.cfg.map, deps.surface),
   };
-  const ranked = rankArea(
-    deps.mesitaRows.map((row) => ({
-      candidate: mesitaCandidate(row),
-      place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
-    })),
-    (item) => item.candidate,
-    ctx,
-  );
+  const items = deps.mesitaRows.map((row) => ({
+    candidate: mesitaCandidate(row),
+    place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
+  }));
+  type Item = typeof items[number];
+  const rank = (c: AreaContext) => rankArea(items, (item: Item) => item.candidate, c);
+  let ranked: Array<{ item: Item; area: AreaScore; lane: AreaLane | null }>;
+  let lanes: AreaPoolSummary["lanes"] = null;
+  if (catalog) {
+    // The red lane: only Premier places, scored with s. The blue lane:
+    // everyone, scored with s = 1. Same rows, same gates, no second read.
+    const red = rank(ctx)
+      .filter(({ item }) => (item.candidate.premierTier ?? 0) >= 1)
+      .map((r) => ({ ...r, id: r.item.candidate.id }));
+    const blue = rank({ ...ctx, premier: false })
+      .map((r) => ({ ...r, id: r.item.candidate.id }));
+    ranked = interleaveLanes({ red, blue }).map(({ item, lane }) => ({ item: item.item, area: item.area, lane }));
+    lanes = {
+      red: ranked.filter((r) => r.lane === "red").length,
+      blue: ranked.filter((r) => r.lane === "blue").length,
+    };
+  } else {
+    ranked = rank(ctx).map((r) => ({ ...r, lane: null }));
+  }
   const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
   const kept = catalog ? ranked : ranked.slice(0, Math.max(0, shown));
-  const places = kept.map(({ item, area }) => {
+  const places = kept.map(({ item, area, lane }) => {
     const { distanceKm: km, ...diagnostics } = area;
     // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
     return {
       ...item.place,
-      area: { ...diagnostics, distanceKm, halfKm: ctx.halfKm },
+      area: { ...diagnostics, ...(lane ? { lane } : {}), distanceKm, halfKm: ctx.halfKm },
     } as AreaPoolPlace;
   });
   const summary: AreaPoolSummary = {
@@ -259,6 +330,7 @@ export function selectAreaPool<T extends PoolRow>(
     halfKm: ctx.halfKm,
     placesShown: catalog ? null : shown,
     pageSize: catalog ? catalogPageSize(deps.cfg.map) : null,
+    lanes,
   };
   return Promise.resolve({ places, summary });
 }

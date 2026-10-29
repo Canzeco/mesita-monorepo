@@ -307,6 +307,10 @@ export type AreaDiagnostics = {
   distancePenalty?: number;
   final: number;
   formula: "point" | "none";
+  /** The Catalog lane that placed the place (MESITA-3017): `red` = the
+   *  Premier lane, a paid slot the tile marks Sponsored; `blue` = the
+   *  organic lane. Absent on the Map and from an older EF. */
+  lane?: "red" | "blue";
 };
 
 /** Where Places ranks from: always a point (MESITA-2501) — the device, a

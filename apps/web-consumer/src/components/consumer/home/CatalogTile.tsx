@@ -194,6 +194,17 @@ export function CatalogTile({
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               <PremierBadge tier={place.boost_tier} />
+              {/* The red lane is a paid slot (MESITA-3017; Pato: "que se
+                  entienda que es como paid ad"): the word, never colour
+                  alone. The blue lane shows nothing, Premier or not. */}
+              {place.area?.lane === "red" ? (
+                <span
+                  className="text-muted-foreground shrink-0 text-sm leading-5 font-normal"
+                  data-sponsored
+                >
+                  Sponsored
+                </span>
+              ) : null}
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />

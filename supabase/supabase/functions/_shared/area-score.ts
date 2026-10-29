@@ -5,6 +5,9 @@
 //
 //   Map      final = Popularity × s           inside the screen radius
 //   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
+//            in two lanes (MESITA-3017): red = Premier places with s,
+//            blue = every place with s = 1, interleaved one and one by
+//            area-pipeline.ts
 //   no location (either)  final = Popularity × s
 //
 // THE SPLIT (Pato, MESITA-2909): on the Map distance is a SCREEN, never a
@@ -66,7 +69,14 @@ export type AreaContext = {
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
+  /** false = the Premier factor is 1 for every place: the Catalog's blue
+   *  lane, the organic order (MESITA-3017). Absent or true = s counts. */
+  premier?: boolean;
 };
+
+/** The Catalog's two lanes (MESITA-3017): `red` = Premier places, ranked
+ *  with s; `blue` = every place, ranked with s = 1. Absent on the Map. */
+export type AreaLane = "red" | "blue";
 
 /** One candidate, normalized from whichever source produced it. */
 export type AreaCandidate = {
@@ -180,6 +190,9 @@ export type AreaDiagnostics = {
   /** Popularity × selectedFactor, × Proximity on the Catalog. */
   final: number;
   formula: "point" | "none";
+  /** The lane that placed the place on the Catalog (MESITA-3017); the
+   *  pipeline sets it, the scorer never does. Absent on the Map. */
+  lane?: AreaLane;
 };
 
 export type AreaScore = AreaDiagnostics & { distanceKm: number | null };
@@ -201,8 +214,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point" && ctx.halfKm !== null
     ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
-  const sel = premierFactor(c);
-  const popPart = popularPart(c);
+  // The blue lane (MESITA-3017) ranks with s = 1: the organic order.
+  const sel = ctx.premier === false ? 1 : premierFactor(c);
+  const popPart = factor(pop ?? 0) * sel;
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or

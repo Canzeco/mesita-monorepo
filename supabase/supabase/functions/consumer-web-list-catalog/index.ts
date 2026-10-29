@@ -32,6 +32,9 @@
 //   summary.chunks    pass-2 card reads
 //   summary.scanCapped  10,000 rows read and more remain: cut by id again
 //   summary.missing   kept ids pass 2 did not return
+//   summary.lanes     { red, blue }: places each lane placed (MESITA-3017)
+//   Each place's `area.lane` is "red" (the Premier lane, a paid slot) or
+//   "blue" (the organic lane); the list alternates red, blue, red, blue…
 // Error: 502 { ok: false, code: "catalog_read_failed", error, pass, page |
 //   chunk, requestId }; the PostgREST message is logged, never sent.
 //   Read-only, safe to retry.

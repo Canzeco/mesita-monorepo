@@ -10,6 +10,8 @@ import {
   mesitaPoolQuery,
   rankMesitaPlaces,
   selectAreaPool,
+  CATALOG_LANE_PATTERN,
+  interleaveLanes,
 } from "./area-pipeline.ts";
 import { DISCOVERY_DEFAULTS, type DiscoveryConfig } from "./discovery-config.ts";
 import { nearbyBbox } from "./geo.ts";
@@ -423,4 +425,79 @@ Deno.test("the Map keeps its top map.placesShown; the Catalog keeps all and send
   assertEquals([home.summary.surface, home.summary.halfKm, home.summary.pageSize, home.summary.placesShown], ["catalog", 1, 12, null]);
   assertEquals([top5.summary.surface, top5.summary.halfKm, top5.summary.pageSize, top5.summary.placesShown], ["map", null, null, 5]);
   assertEquals(catalogPageSize({}), 20);
+});
+
+// THE CATALOG'S TWO LANES (MESITA-3017, money: Premier is sold). Red = the
+// Premier places with s, blue = every place with s = 1, interleaved red,
+// blue, red, blue…, each place once; the Map stays one list.
+const lanesOf = (places: readonly { area: { lane?: string } }[]) => places.map((p) => p.area.lane ?? null);
+
+Deno.test("interleaveLanes: one and one, a duplicate is skipped and the same lane walks on (MESITA-3017)", () => {
+  const it = (id: string) => ({ id });
+  const red = ["a", "b", "c"].map(it);
+  const blue = ["a", "x", "y"].map(it);
+  assertEquals(
+    interleaveLanes({ red, blue }).map(({ item, lane }) => `${lane}:${item.id}`),
+    ["red:a", "blue:x", "red:b", "blue:y", "red:c"],
+  );
+  // An exhausted lane yields its turns; the other runs on alone.
+  assertEquals(interleaveLanes({ red: [], blue: ["p", "q"].map(it) }).map((r) => r.item.id), ["p", "q"]);
+  assertEquals(interleaveLanes({ red: ["p"].map(it), blue: ["p"].map(it) }).map((r) => r.lane), ["red"]);
+  assertEquals(interleaveLanes({ red: [], blue: [] }), []);
+  assertEquals(CATALOG_LANE_PATTERN, ["red", "blue"]);
+});
+
+Deno.test("the Catalog: red (Premier, with s), blue (everyone, s = 1), one and one, each place once (MESITA-3017)", async () => {
+  const same = { lat: 25.6702, google_stars_overall: 4.0 };
+  const rows = [
+    mrow("p1", { ...same, boost_tier: 3, google_review_count: 50 }),
+    mrow("p2", { ...same, boost_tier: 1, google_review_count: 40 }),
+    mrow("o1", { ...same, google_review_count: 9000 }),
+    mrow("o2", { ...same, google_review_count: 800 }),
+    mrow("o3", { ...same, google_review_count: 100 }),
+  ];
+  const out = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows }).d);
+  // red = [p1, p2]; blue = [o1, o2, o3, p1, p2]; the two paid rows are
+  // placed by red, so blue skips them.
+  assertEquals(ids(out.places), ["p1", "o1", "p2", "o2", "o3"]);
+  assertEquals(lanesOf(out.places), ["red", "blue", "red", "blue", "blue"]);
+  assertEquals(out.summary.lanes, { red: 2, blue: 3 });
+  assertEquals(out.summary.ranked, 5);
+  const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
+  assertEquals(byId["p1"].selectedFactor, 10);
+  assertEquals(byId["o1"].selectedFactor, 1);
+  for (const a of Object.values(byId)) {
+    const want = (a.signals.proximity ?? 0) * (a.signals.popularity ?? 0) * a.selectedFactor;
+    assertEquals(Math.abs(a.final - want) < 1e-12, true);
+  }
+});
+
+Deno.test("the Catalog: a Premier place the blue lane reaches first is organic there, s = 1 (MESITA-3017)", async () => {
+  const same = { lat: 25.6702, google_stars_overall: 4.0 };
+  const rows = [
+    // Premier 2X and the most loved place in town: blue's first pick.
+    mrow("a", { ...same, boost_tier: 1, google_review_count: 9000 }),
+    // Premier 10X, modest: red's first pick.
+    mrow("b", { ...same, boost_tier: 3, google_review_count: 50 }),
+    mrow("o", { ...same, google_review_count: 100 }),
+  ];
+  const out = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows }).d);
+  assertEquals(ids(out.places), ["b", "a", "o"]);
+  assertEquals(lanesOf(out.places), ["red", "blue", "blue"]);
+  const byId = Object.fromEntries(out.places.map((p) => [p.id, p.area]));
+  assertEquals(byId["b"].selectedFactor, 10);
+  assertEquals(byId["a"].selectedFactor, 1);
+  assertEquals(byId["a"].final, byId["a"].signals.proximity! * byId["a"].signals.popularity!);
+});
+
+Deno.test("no Premier place: the Catalog is the blue lane alone; the Map has no lanes (MESITA-3017)", async () => {
+  const rows = [mrow("x", { google_review_count: 100 }), mrow("y", { google_review_count: 9000 })];
+  const home = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows }).d);
+  assertEquals(lanesOf(home.places), ["blue", "blue"]);
+  assertEquals(home.summary.lanes, { red: 0, blue: 2 });
+  const map = await selectAreaPool(deps({ mesitaRows: rows.map((r) => ({ ...r, boost_tier: 3 })) }).d);
+  assertEquals(lanesOf(map.places), [null, null]);
+  assertEquals(map.summary.lanes, null);
+  assertEquals("lane" in map.places[0].area, false);
+  assertEquals(map.places[0].area.selectedFactor, 10);
 });

@@ -27,10 +27,12 @@ export function diagExpression(a: Area): string {
     ? ` × premier ${a.selectedFactor}`
     : "";
   const rest = `popularity ${diagNumber(a.signals.popularity)}${sel}`;
+  // The Catalog lane that placed it (MESITA-3017); the Map has none.
+  const lane = a.lane ? `${a.lane}: ` : "";
   // Home asks from a point or nothing (MESITA-2501); anything but a point
   // has no Proximity term.
-  if (a.formula !== "point") return `${rest} = ${fin}`;
-  return `proximity ${diagNumber(a.signals.proximity)} × ${rest} = ${fin}`;
+  if (a.formula !== "point") return `${lane}${rest} = ${fin}`;
+  return `${lane}proximity ${diagNumber(a.signals.proximity)} × ${rest} = ${fin}`;
 }
 
 export function AreaDiagnostics({ area }: { area: Area }) {

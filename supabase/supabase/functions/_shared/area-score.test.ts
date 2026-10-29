@@ -283,3 +283,18 @@ Deno.test("Catalog: distance alone keeps a Premier 10X in another city off Home 
   const nearPaid = cand({ ...farPaid, id: "near", lat: ANCHOR.lat + 10 * KM });
   assertEquals(rankArea([nearPaid, local], (c) => c, CATALOG).map((r) => r.item.id), ["near", "local"]);
 });
+
+// THE BLUE LANE (MESITA-3017, money: Premier is sold): `premier: false`
+// ranks every place with s = 1, Premier or not; the red lane keeps s.
+Deno.test("premier: false scores a Premier place like a plain one (MESITA-3017)", () => {
+  const blue: AreaContext = { ...CATALOG, premier: false };
+  for (const { label, over } of TIERS) {
+    const paid = cand({ ...over, lat: ANCHOR.lat + 3 * KM });
+    const plain = cand({ source: "mesita", lat: ANCHOR.lat + 3 * KM });
+    assertEquals(areaScore(paid, blue).selectedFactor, 1, label);
+    assertAlmostEquals(areaScore(paid, blue).final, areaScore(plain, blue).final, 1e-9, label);
+    assertAlmostEquals(areaScore(plain, blue).final, areaScore(plain, CATALOG).final, 1e-9, label);
+  }
+  // The scorer never names a lane; the pipeline does.
+  assertEquals("lane" in areaScore(cand({ premierTier: 3 }), blue), false);
+});
