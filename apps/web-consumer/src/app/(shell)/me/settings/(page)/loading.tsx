@@ -12,7 +12,8 @@ import { SettingsRowSkeleton } from "../../me-skeletons";
 // the page you are loading, like the sizes"). Every row is a door or a
 // fetched fact, so each is a silhouette at its height:
 //
-//   Your account   Phone (a fact) · Contact (a link)       60px rows
+//   Your account   Phone (a fact) · Contact (a link) ·
+//                  Delete account (a dialog)               60px rows
 //   Social         Public profile, with its switch; its words are
 //                  SocialNameRow's first paint (switch-words.ts), drawn as
 //                  themselves because the line wraps to two on a narrow phone
@@ -28,6 +29,8 @@ export default function SettingsLoading() {
     <SettingsFrame
       account={
         <>
+          <SettingsRowSkeleton />
+          <RowDivider />
           <SettingsRowSkeleton />
           <RowDivider />
           <SettingsRowSkeleton />

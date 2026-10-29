@@ -208,3 +208,15 @@ export function dmVerified(
   if (status.pending || !status.handle || !status.verifiedAt) return false;
   return Date.parse(status.verifiedAt) >= Date.parse(issuedAt);
 }
+
+// ─── Account deletion ────────────────────────────────────────────────────
+
+// consumer-web-delete-account: irreversibly closes the caller's account —
+// Premier pledges ended first, then the account tombstoned or deleted. The
+// session is dead server-side afterwards; callers must locally sign out and
+// hard-navigate.
+export async function apiDeleteConsumerAccount(
+  client: SupabaseClient,
+): Promise<void> {
+  await invokeEF<{ id: string }>(client, "consumer-web-delete-account", {});
+}
