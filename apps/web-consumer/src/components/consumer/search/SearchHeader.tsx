@@ -62,12 +62,14 @@ import {
   CHIP_OFF,
   CHIP_ON,
   HEADER_BAND,
+  HEADER_ICON,
+  HEADER_ICON_STROKE,
   HEADER_PILL,
 } from "./header-classes";
 
-/** A chip's line icon, never an emoji (MESITA-2478): 1.75 stroke, 2.25 when
- *  on — BottomNav's pair. */
-const CHIP_ICON = "h-4 w-4 shrink-0";
+// A chip's icon is a line icon, never an emoji (MESITA-2478), at the
+// header's one size and stroke (HEADER_ICON, MESITA-3023; it was 1.75 off,
+// 2.25 on).
 
 /** The count bubble on the Filters disc's top-right corner while families
  *  are picked: ink, not red (Pato, MESITA-3006; MESITA-2884's red disc is
@@ -117,7 +119,11 @@ export function SearchHeader({
           className={HEADER_PILL}
           data-search-ask-ai
         >
-          <Sparkles className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <Sparkles
+            className={HEADER_ICON}
+            strokeWidth={HEADER_ICON_STROKE}
+            aria-hidden
+          />
           <span>Ask AI</span>
         </Link>
       </div>
@@ -144,8 +150,8 @@ export function SearchHeader({
               data-search-filters
             >
               <SlidersHorizontal
-                className="h-4 w-4 shrink-0"
-                strokeWidth={2}
+                className={HEADER_ICON}
+                strokeWidth={HEADER_ICON_STROKE}
                 aria-hidden
               />
               {everyFamily ? null : (
@@ -172,8 +178,8 @@ export function SearchHeader({
               >
                 <FamilyIcon
                   name="all"
-                  className={CHIP_ICON}
-                  strokeWidth={everyFamily ? 2.25 : 1.75}
+                  className={HEADER_ICON}
+                  strokeWidth={HEADER_ICON_STROKE}
                 />
                 <span>Top</span>
               </button>
@@ -190,8 +196,8 @@ export function SearchHeader({
                   >
                     <FamilyIcon
                       name={family.key}
-                      className={CHIP_ICON}
-                      strokeWidth={on ? 2.25 : 1.75}
+                      className={HEADER_ICON}
+                      strokeWidth={HEADER_ICON_STROKE}
                     />
                     <span>{family.label}</span>
                   </button>
