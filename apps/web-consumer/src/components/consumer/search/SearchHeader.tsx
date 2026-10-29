@@ -4,13 +4,13 @@
 // back the MESITA-2875 chip row and the three-control bar row ("Location |
 // Searchbar | Ask AI / Families Carousel as in the past"):
 //
-//   [ ⚲ Search places…      (✦ Ask AI) (⌖) ]   one 48px bar, floating
+//   [ ⚲ Search places…          (✦ Ask AI) ]   one 48px bar, floating
 //   (≡ Filters) (▦ Top) (○ Coffee) …            32px chips, floating
+//                                        (⌖)   44px locate disc, top right
 //
-// ONE LONG BAR (Pato, MESITA-2999: "searchbar contains location searchbar
-// and askai", then "search · ask bubble · loc bubble"): the query field,
-// then the Ask AI bubble (→ Search › Chat), then the locate bubble, all in
-// one pill across the screen (MESITA-2879 had three separate controls). One token set for every control lives in header-classes.ts. NO ADD
+// ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long"): the query
+// field, then the Ask AI bubble (→ Search › Chat), in one pill across the
+// screen. Locate left the bar for its own disc under the chips (MESITA-3005). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
 // THE FILTERS CHIP AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
@@ -75,7 +75,7 @@ export function SearchHeader({
   chipsHidden = false,
   children,
 }: {
-  /** The locate bubble, at the bar's right end. */
+  /** The locate disc, floating at the top right under the chips. */
   locate: ReactNode;
   /** The query field; it takes what the two bubbles leave. */
   bar: ReactNode;
@@ -110,7 +110,6 @@ export function SearchHeader({
             />
             <span>Ask AI</span>
           </Link>
-          {locate}
         </div>
       </div>
       <div className="relative" data-search-chip-band>
@@ -187,6 +186,15 @@ export function SearchHeader({
                 );
               })}
             </nav>
+          </div>
+        )}
+        {chipsHidden ? null : (
+          // THE LOCATE DISC, top right under the chips (Pato, MESITA-3005:
+          // "the location icon at the top right below the filters"): Google
+          // Maps' map-control spot. Not drawn while querying: the results
+          // hang there.
+          <div className="flex justify-end px-3">
+            <div className="pointer-events-auto">{locate}</div>
           </div>
         )}
         {children ? (

@@ -11,7 +11,8 @@ import { cn } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes"). The map under MapVeil with SearchHeader floating
 // on its top edge, no band (MESITA-2996): the one 48px bar (MESITA-2999), then
-// the 32px chip row (Filters, Top, then families; MESITA-2882). Then the spinner on the cross, and the carousel floating
+// the 32px chip row (Filters, Top, then families; MESITA-2882), then the
+// 44px locate disc at the right (MESITA-3005). Then the spinner on the cross, and the carousel floating
 // over the map's foot (MESITA-2670): the same veil and the same first-load
 // row (skeleton pages) the mounted page draws until its
 // tiles and catalog land, so nothing moves on arrival.
@@ -49,6 +50,9 @@ export default function SearchLoading() {
                 <ControlSkeleton key={label} token={CHIP} label={label} />
               ))}
             </div>
+          </div>
+          <div className="flex justify-end px-3">
+            <Skeleton className="h-11 w-11 rounded-full" />
           </div>
         </div>
         <div className={RAIL_FLOAT_CLASS}>
