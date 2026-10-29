@@ -330,6 +330,36 @@ export async function readInstagramStatus(
   };
 }
 
+// ── disconnectInstagram — Me › Instagram's Disconnect (MESITA-3052) ────────
+
+/** Takes the Instagram off the account: handle, follower count, verified
+ *  time, and the picture when it is an Instagram copy (`{id}/instagram-…`,
+ *  instagram-avatar.ts's naming; an upload stays). */
+export async function disconnectInstagram(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("avatar_url")
+    .eq("id", consumerId)
+    .maybeSingle();
+  if (error) return { ok: false, error: error.message };
+  const avatar = (data?.avatar_url as string | null) ?? null;
+  const fromInstagram = !!avatar && avatar.includes(`${consumerId}/instagram-`);
+  const written = await writeConsumer(admin, {
+    mode: "update",
+    id: consumerId,
+    patch: {
+      instagram_handle: null,
+      instagram_followers_count: null,
+      instagram_verified_at: null,
+      ...(fromInstagram ? { avatar_url: null } : {}),
+    },
+  });
+  return written.ok ? { ok: true } : { ok: false, error: written.error };
+}
+
 // ── readSocialStanding — what Social masks by (MESITA-2594) ───────────────
 
 /** Whether the viewer shows themself in Social: a verified Instagram and the
