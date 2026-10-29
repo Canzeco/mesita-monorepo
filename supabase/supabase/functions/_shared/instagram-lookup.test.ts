@@ -1,47 +1,54 @@
-import { assert, assertEquals, assertMatch } from "jsr:@std/assert@1";
-import {
-  emulatedFollowerCount,
-  emulatorLookup,
-  readInstagramLookup,
-} from "./instagram-lookup.ts";
+import { assertEquals } from "jsr:@std/assert@1";
+import { profileFromScrape } from "./instagram-lookup.ts";
 
-// The emulator must stay an emulator: predictable, marked, and offline.
+// What a scrape turns into before anything is stored on the account.
 
-Deno.test("emulator: the same username always gets the same sample", async () => {
-  const a = await emulatorLookup.lookup("mesita.mx");
-  const b = await emulatorLookup.lookup("mesita.mx");
-  assertEquals(a, b);
-  assert(a.ok);
-  assertEquals(a.profile.username, "mesita.mx");
-  assertMatch(a.profile.profilePictureUrl, /^data:image\/svg\+xml,/);
-  const n = a.profile.followerCount;
-  assert(Number.isInteger(n) && n >= 100 && n < 25_000);
+Deno.test("profileFromScrape: the scraped account's followers and photo", () => {
+  assertEquals(
+    profileFromScrape(
+      {
+        username: "Mesita.MX",
+        followersCount: 1234.9,
+        profilePicUrlHD: "https://cdn.example/hd.jpg",
+        fullName: "Mesita",
+      },
+      "mesita.mx",
+    ),
+    {
+      username: "mesita.mx",
+      profilePictureUrl: "https://cdn.example/hd.jpg",
+      followerCount: 1234,
+    },
+  );
 });
 
-Deno.test("emulator: different usernames get different counts", () => {
-  const counts = new Set(["a", "b", "c", "d", "e"].map(emulatedFollowerCount));
-  assert(counts.size > 1);
+Deno.test("profileFromScrape: another account is not this one", () => {
+  assertEquals(
+    profileFromScrape({
+      username: "someone_else",
+      followersCount: 10,
+      fullName: "x",
+    }, "mesita.mx"),
+    null,
+  );
 });
 
-Deno.test("emulator: an `unavailable…` username finds nothing", async () => {
-  assertEquals(await emulatorLookup.lookup("unavailable_test"), {
-    ok: false,
-    reason: "not_found",
-  });
+Deno.test("profileFromScrape: an empty or error item finds nothing", () => {
+  assertEquals(profileFromScrape(undefined, "mesita.mx"), null);
+  assertEquals(
+    profileFromScrape(
+      { username: "mesita.mx", error: "not_found" },
+      "mesita.mx",
+    ),
+    null,
+  );
+  assertEquals(profileFromScrape({ username: "mesita.mx" }, "mesita.mx"), null);
 });
 
-Deno.test("emulator: never touches the network", async () => {
-  const realFetch = globalThis.fetch;
-  globalThis.fetch = () => {
-    throw new Error("the emulator must not fetch");
-  };
-  try {
-    await emulatorLookup.lookup("someone");
-  } finally {
-    globalThis.fetch = realFetch;
-  }
-});
-
-Deno.test("the provider in use is marked emulator", () => {
-  assertEquals(readInstagramLookup().source, "emulator");
+Deno.test("profileFromScrape: no count reads as zero, never negative", () => {
+  assertEquals(
+    profileFromScrape({ username: "a", fullName: "A", followersCount: -5 }, "a")
+      ?.followerCount,
+    0,
+  );
 });
