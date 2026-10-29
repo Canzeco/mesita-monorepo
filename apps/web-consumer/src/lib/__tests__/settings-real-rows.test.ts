@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 
 // Settings shows only rows that do something (Pato, MESITA-2589: "remove
 // stupid fake buttons from settings"). The four device prefs saved to
-// localStorage and nothing read them; Export my data was a mailto; Delete
-// account went with them.
+// localStorage and nothing read them; Export my data was a mailto. Delete
+// account went with them and came back wired to the real function
+// (MESITA-3049).
 const SRC = join(__dirname, "../..");
 const SETTINGS = readFileSync(
   join(SRC, "components", "consumer", "me", "SettingsModal.tsx"),
@@ -24,6 +25,10 @@ describe("Settings", () => {
       expect(SETTINGS).not.toContain(`label="${label}"`);
     }
     expect(SETTINGS).not.toMatch(/StoredToggleRow|StoredSelectRow|mesita:pref|mesita:perm|mesita:notif/);
+  });
+
+  it("keeps a way to delete the account (legal)", () => {
+    expect(SETTINGS).toContain("<DeleteAccountRow />");
   });
 
   it("keeps Phone, Contact, Sign out, Terms and Privacy", () => {

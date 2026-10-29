@@ -92,10 +92,20 @@ export function IconChip({
   );
 }
 
-function RowText({ label, sub }: { label: string; sub?: string }) {
+function RowText({
+  label,
+  sub,
+  destructive,
+}: {
+  label: string;
+  sub?: string;
+  destructive?: boolean;
+}) {
   return (
     <span className="min-w-0 flex-1">
-      <span className="block text-sm font-semibold">{label}</span>
+      <span className={cn("block text-sm font-semibold", destructive && "text-destructive")}>
+        {label}
+      </span>
       {sub && (
         <span className="text-muted-foreground type-label block truncate">
           {sub}
@@ -168,6 +178,36 @@ export function SettingsLinkRow({
     <Link href={href} className={className}>
       {inner}
     </Link>
+  );
+}
+
+/** A door that opens a dialog, not a page (Settings › Delete account,
+ *  MESITA-3049). SettingsLinkRow's chrome; `destructive` inks the label. */
+export function SettingsActionRow({
+  Icon,
+  label,
+  sub,
+  destructive,
+  onClick,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  sub?: string;
+  destructive?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hover:bg-muted flex w-full items-center gap-3 px-4 py-3 text-left transition"
+    >
+      <IconChip>
+        <Icon className={cn("h-[18px] w-[18px]", destructive && "text-destructive")} />
+      </IconChip>
+      <RowText label={label} sub={sub} destructive={destructive} />
+      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+    </button>
   );
 }
 
