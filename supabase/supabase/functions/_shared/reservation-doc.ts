@@ -104,6 +104,7 @@ import {
   remapPlaceIdSelect,
   toPlaceIdPatch,
 } from "./place-id.ts";
+import { isNullableString } from "./doc-schema.ts";
 
 // ── ReservationDoc — the full row shape ─────────────────────────────────────
 
@@ -387,10 +388,6 @@ const CLOSED_SET_FIELDS: ReadonlyArray<
 const REFERENCE_CODE_RE = /^\d{8}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
-
-function isNullableString(v: unknown): v is string | null {
-  return v === null || typeof v === "string";
-}
 
 function isNonNegativeInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;

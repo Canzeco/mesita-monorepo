@@ -10,3 +10,15 @@ export function clean(v: unknown, max = 256): string | null {
   if (!s) return null;
   return s.slice(0, max);
 }
+
+/** A string trimmed, or null when it is not a string or trims to nothing. */
+export function nonBlank(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim();
+  return s ? s : null;
+}
+
+/** A finite number as-is, or null (no coercion: "3" is null). */
+export function finiteOrNull(v: unknown): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}

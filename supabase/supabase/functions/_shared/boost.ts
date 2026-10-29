@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
+import { finiteOrNull } from "./input.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
@@ -214,7 +215,7 @@ export function checkoutParams(
  *  2025-03-31 the period lives on the item; older shapes keep it on top. */
 export function subscriptionPatch(sub: Record<string, unknown>): Record<string, unknown> {
   const items = (sub.items as { data?: Array<Record<string, unknown>> } | undefined)?.data ?? [];
-  const end = numOr(sub.current_period_end) ?? numOr(items[0]?.current_period_end);
+  const end = finiteOrNull(sub.current_period_end) ?? finiteOrNull(items[0]?.current_period_end);
   const customer = typeof sub.customer === "string"
     ? sub.customer
     : (sub.customer as { id?: string } | null)?.id ?? null;
@@ -227,10 +228,6 @@ export function subscriptionPatch(sub: Record<string, unknown>): Record<string, 
     livemode: sub.livemode === true,
     updated_at: new Date().toISOString(),
   };
-}
-
-function numOr(v: unknown): number | null {
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
 /** A backing that still pays: what the SQL trigger counts. */

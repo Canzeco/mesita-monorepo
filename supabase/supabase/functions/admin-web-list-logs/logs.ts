@@ -1,6 +1,8 @@
 // Pure readers for the enrichment workflow's log. The EF fetches; this file
 // decides which workflow and which lines the console shows.
 
+import { nonBlank } from "../_shared/input.ts";
+
 export const ENRICHMENT_WORKFLOW = {
   name: "mesita-enrich",
   slug: "mesita-monorepo",
@@ -30,10 +32,6 @@ type WorkflowPage = {
   nextCursor: string | null;
 };
 
-function str(value: unknown): string | null {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
-}
-
 /** Bearer tokens and vendor key shapes never reach the console. */
 export function redactLine(message: string): string {
   return message
@@ -46,13 +44,13 @@ export function redactLine(message: string): string {
 function asWorkflow(value: unknown): WorkflowRow | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
-  const id = str(row.id);
-  const ownerId = str(row.ownerId);
+  const id = nonBlank(row.id);
+  const ownerId = nonBlank(row.ownerId);
   if (!id || !ownerId) return null;
   return {
     id,
-    name: str(row.name) ?? "",
-    slug: str(row.slug) ?? "",
+    name: nonBlank(row.name) ?? "",
+    slug: nonBlank(row.slug) ?? "",
     ownerId,
   };
 }
@@ -69,7 +67,7 @@ export function readWorkflowPage(body: unknown): WorkflowPage {
     const record = item as Record<string, unknown>;
     const workflow = asWorkflow(record.workflow ?? record);
     if (workflow) rows.push(workflow);
-    const cursor = str(record.cursor);
+    const cursor = nonBlank(record.cursor);
     if (cursor) nextCursor = cursor;
   }
   return { rows, nextCursor };
@@ -90,7 +88,7 @@ function labelValue(
   for (const label of labels) {
     if (!label || typeof label !== "object") continue;
     const row = label as Record<string, unknown>;
-    if (row.name === name) return str(row.value);
+    if (row.name === name) return nonBlank(row.value);
   }
   return null;
 }
@@ -104,8 +102,8 @@ export function readLogPage(body: unknown): { lines: LogLine[]; hasMore: boolean
   for (const item of logs) {
     if (!item || typeof item !== "object") continue;
     const row = item as Record<string, unknown>;
-    const id = str(row.id);
-    const timestamp = str(row.timestamp);
+    const id = nonBlank(row.id);
+    const timestamp = nonBlank(row.timestamp);
     if (!id || !timestamp) continue;
     const message = redactLine(typeof row.message === "string" ? row.message : "");
     lines.push({

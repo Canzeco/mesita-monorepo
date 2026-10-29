@@ -32,6 +32,7 @@ import {
   pickFamilies,
 } from "./families-infer.ts";
 import { pickZone, ZONE_RULE } from "./zone-infer.ts";
+import { nonBlank } from "./input.ts";
 
 export type DoorProfile = {
   /** Null when the reply carried no tags array: Create then writes none. */
@@ -60,10 +61,6 @@ export type DoorSignals = {
 };
 
 const SUMMARY_MAX = 700;
-
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
 
 export async function synthesizeDoorProfile(
   admin: SupabaseClient,
@@ -159,7 +156,7 @@ export async function synthesizeDoorProfile(
 
     const tags = pickVocabularyTags(parsed.tags, tagSlugs);
     const description = (() => {
-      const d = str(parsed.presentation);
+      const d = nonBlank(parsed.presentation);
       return d
         ? capPresentation(formatDescriptionParagraphs(d))
         : null;
@@ -171,8 +168,8 @@ export async function synthesizeDoorProfile(
       zone: pickZone(parsed.zone, signals.city),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),
-      mesitaNameCandidate: str(parsed.mesita_name)?.slice(0, nameMax) ?? null,
-      semanticSummary: str(parsed.semantic_summary)?.slice(0, SUMMARY_MAX) ??
+      mesitaNameCandidate: nonBlank(parsed.mesita_name)?.slice(0, nameMax) ?? null,
+      semanticSummary: nonBlank(parsed.semantic_summary)?.slice(0, SUMMARY_MAX) ??
         null,
     };
   } catch {
