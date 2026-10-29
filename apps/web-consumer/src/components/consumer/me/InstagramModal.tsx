@@ -33,7 +33,6 @@ import {
   dmVerified,
   type InstagramChannel,
   type InstagramDmClaim,
-  type InstagramLookup,
 } from "@/lib/api/profile";
 import { EFError } from "@/lib/api/_invoke";
 import { normalizeInstagramHandle } from "@/lib/instagram-handle";
@@ -62,8 +61,8 @@ import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 // always draws the message flow: one tap sends your code to Mesita's
 // Instagram, and the page waits while Meta tells the server who sent it. The
 // server says whether that channel is live; until it is (the Meta secrets,
-// MESITA-2579) no code is asked for, and the card is a demo lookup
-// (MESITA-3038, ConnectLookup) that shows sample data and stores nothing.
+// MESITA-2579) no code is asked for, and the card connects a typed username
+// through an Apify scrape (MESITA-3039, ConnectLookup), trusted for testing.
 // The bio-code screen is gone from the page; the server still answers its
 // actions.
 //
@@ -386,11 +385,11 @@ function PasswordLine() {
 }
 
 /** The Connect card while the Meta channel is off (MESITA-2579, MESITA-3001):
- *  a DEMO LOOKUP (MESITA-3038). The guest types a username, says it is
- *  theirs, and sees who it is: photo, @username, followers. The answer is
- *  consumer-web-lookup-instagram's emulator, so the card says "Sample data"
- *  and never "connected" or "verified": nothing is stored and Social never
- *  sees it. When an approved source replaces the emulator, this card stays.
+ *  CONNECT BY USERNAME, FOR TESTING (MESITA-3039, Pato: "you just assume is
+ *  true and use apify … it's a testing bot"). The guest types a username and
+ *  says it is theirs; consumer-web-lookup-instagram scrapes it (Apify) and
+ *  stores the handle, followers and photo, then the page lands connected
+ *  like the DM flow. Nothing proves ownership until the Meta DM bot.
  *  `pending` marks it as the silhouette drawn while the page asks which way
  *  connecting works today: the same card, nothing interactive. */
 function ConnectLookup({ pending = false }: { pending?: boolean }) {
@@ -399,7 +398,6 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
   const [mine, setMine] = useState(false);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<
-    | { kind: "found"; lookup: InstagramLookup }
     | { kind: "not_found"; username: string }
     | { kind: "error"; message: string }
     | null
@@ -416,18 +414,17 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
     setBusy(true);
     setResult(null);
     try {
-      const lookup = await apiLookupInstagram(supabase, username);
-      setResult({ kind: "found", lookup });
+      await apiLookupInstagram(supabase, username);
+      landConnected();
     } catch (err) {
       setResult(
         err instanceof EFError && err.code === "profile_not_found"
           ? { kind: "not_found", username }
           : {
               kind: "error",
-              message: errMsg(err, "Couldn’t look that up — try again."),
+              message: errMsg(err, "Couldn’t connect — try again."),
             },
       );
-    } finally {
       setBusy(false);
     }
   }
@@ -443,13 +440,10 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
             <Instagram className="h-[18px] w-[18px]" />
           </IconChip>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">
-              Look up your Instagram
-              <DemoPill />
-            </p>
+            <p className="text-sm font-semibold">Connect your Instagram</p>
             <p className="text-muted-foreground type-label">
-              Connecting by message to @mesita is coming soon. Until then this
-              shows sample data, not your real profile.
+              Type your username. We add your followers and photo from your
+              Instagram.
             </p>
           </div>
         </div>
@@ -506,19 +500,21 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
             {busy && (
               <Spinner size="sm" className="border-white/40 border-t-white" />
             )}
-            {busy ? "Looking up…" : "Look up"}
+            {busy ? "Connecting…" : "Connect"}
           </Button>
           <div aria-live="polite">
-            {result?.kind === "found" && (
-              <LookupResult lookup={result.lookup} />
+            {busy && (
+              <p className="text-muted-foreground type-label text-center">
+                Reading your Instagram. This can take up to a minute.
+              </p>
             )}
             {result?.kind === "not_found" && (
               <p
                 className="text-muted-foreground type-label text-center"
                 data-instagram-lookup-empty
               >
-                No sample profile for @{result.username}. Check the username and
-                try again.
+                We couldn&apos;t find @{result.username} on Instagram. Check the
+                username and try again.
               </p>
             )}
             {result?.kind === "error" && (
@@ -534,46 +530,6 @@ function ConnectLookup({ pending = false }: { pending?: boolean }) {
         </form>
       </SettingsGroup>
     </div>
-  );
-}
-
-/** The looked-up profile, labelled as the sample it is. */
-function LookupResult({ lookup }: { lookup: InstagramLookup }) {
-  const { username, profilePictureUrl, followerCount } = lookup.profile;
-  return (
-    <div
-      className="border-border bg-muted/30 flex items-center gap-3 rounded-xl border p-3"
-      data-instagram-lookup-result={lookup.source}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={profilePictureUrl}
-        alt=""
-        width={48}
-        height={48}
-        className="h-12 w-12 shrink-0 rounded-full object-cover"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">@{username}</p>
-        <p className="text-muted-foreground type-label">
-          {followerCount.toLocaleString("en-US")} followers
-        </p>
-      </div>
-      {lookup.source === "emulator" && (
-        <span className="bg-muted text-muted-foreground type-meta shrink-0 rounded-full px-1.5 py-0.5 font-semibold">
-          Sample data
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Beside the lookup's title: ClassSheet's Soon pill's shape. */
-function DemoPill() {
-  return (
-    <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
-      Demo
-    </span>
   );
 }
 
