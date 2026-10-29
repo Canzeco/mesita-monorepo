@@ -199,6 +199,16 @@ export async function apiLookupInstagram(
   );
 }
 
+/** Takes the Instagram off the account: handle, followers and a picture
+ *  copied from it (MESITA-3052). The page confirms first. */
+export async function apiDisconnectInstagram(
+  client: SupabaseClient,
+): Promise<void> {
+  await invokeEF(client, "consumer-web-claim-instagram", {
+    action: "disconnect",
+  });
+}
+
 /** The DM landed: the claim is spent and the account was proved after the
  *  code was issued. */
 export function dmVerified(
