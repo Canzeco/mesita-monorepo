@@ -255,10 +255,12 @@ verify_jwt = true
 [functions.admin-web-list-place-reports]
 verify_jwt = true
 
-# Boost (MESITA-2789, was Spotlight MESITA-1998): a guest backs a place's
-# paid tier with their own Stripe subscription; place_backings mirrors it,
-# places.boost_tier is derived. No webhook: supabase-cron-sync-boosts polls
-# Stripe hourly. admin-web-get-place-boost is Single Place › Boost (read).
+# Premier (MESITA-2995; Boost MESITA-2789, Spotlight MESITA-1998): a line of
+# pledges per place, one payer per period, backups charged only when the
+# cards above them fail. place_premier_periods holds the paid stretches;
+# places.boost_tier follows them. No webhook: supabase-cron-sync-boosts polls
+# Stripe every 5 minutes. admin-web-get-place-boost is Single Place › Premier
+# (read); admin-web-grant-place-boost grants, ends a grant, removes a pledge.
 [functions.consumer-web-start-boost]
 verify_jwt = true
 
@@ -276,6 +278,9 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.admin-web-get-place-boost]
+verify_jwt = true
+
+[functions.admin-web-grant-place-boost]
 verify_jwt = true
 
 [functions.consumer-web-list-activity]

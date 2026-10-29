@@ -1,29 +1,39 @@
 // Supabase Edge Function — consumer-web-get-boost
 //
-// MESITA-1998: a place's Boost as the place screen shows it — its tier,
-// how many guests back it (never who: MESITA-2928), and the signed-in guest's own backings (to cancel). With `session_id`
-// (Checkout's return, `?boost=`) it first confirms that guest's backing
-// from Stripe, so the tier is right the moment they land. A guest who never
-// comes back is confirmed by supabase-cron-sync-boosts (MESITA-2857).
+// MESITA-2995: a place's Premier as its tab shows it — the period running,
+// the line (payer first, then backups; levels only, never names:
+// MESITA-2928), the signed-in guest's own pledge, and what each level would
+// mean for them right now (`quotes`, computed here; the UI never computes
+// money). With `session_id` (Checkout's return, `?boost=`) it first settles
+// the caller's own pledge through confirmPledge — only the session stored on
+// that pledge, never one taken on trust — and says what happened (`outcome`).
+// A guest who never comes back is settled by supabase-cron-sync-boosts.
 //
 // Body: { place_id: uuid, session_id?: string }
-// Response: { ok: true, tier: 0|1|2, backers: number,
-//             mine: Backing[], confirmed?: boolean }
-//
-// Anonymous callers get the tier and the count; never a Stripe id.
+// Response: { ok: true, tier, period: { tier, ends_at, granted, renews } | null,
+//             renewing: boolean, line: LineRow[], more: number,
+//             mine: MinePledge | null, quotes: Record<tier, Record<interval, Quote>> | null,
+//             outcome?: "confirmed" | "saved_as_backup" | "released_stale" | "pending" | "expired" | "none" }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
+  boostLivemode,
   boostStripeKey,
-  confirmBackingFromSession,
-  isLiveBacking,
+  chargingPeriod,
+  type ConfirmOutcome,
+  confirmPledge,
+  isUuid,
+  ladder,
+  lineView,
+  quotes,
   readBoostPlace,
+  readLine,
+  runningPeriod,
   stripeClient,
+  TIER_RANK,
 } from "../_shared/boost.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serveJson("consumer-web-get-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -37,69 +47,73 @@ serveJson("consumer-web-get-boost", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
-  if (typeof placeId !== "string" || !UUID_RE.test(placeId)) {
-    return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  }
+  if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   const sessionId = typeof bodyRes.body.session_id === "string" ? bodyRes.body.session_id : null;
 
   const admin = adminClient(envRes.env);
-  let confirmed: boolean | undefined;
+  let line = await readLine(admin, placeId);
+  if (!line.ok) return json({ ok: false, error: line.error }, 500);
 
-  // Checkout's return: confirm the guest's own backing from Stripe.
+  let outcome: ConfirmOutcome | undefined;
   if (sessionId && user) {
-    confirmed = false;
+    outcome = "none";
+    const own = line.pledges.find((p) => p.consumer_id === user.id && p.stripe_checkout_session_id === sessionId);
     const key = boostStripeKey();
-    const { data: open, error: openErr } = await admin
-      .from("place_backings")
-      .select("id")
-      .eq("stripe_checkout_session_id", sessionId)
-      .eq("consumer_id", user.id)
-      .eq("place_id", placeId)
-      .maybeSingle();
-    // The reply stays as it was (confirmed: false); the cron confirms later.
-    if (openErr) console.error("[consumer-web-get-boost] open backing read:", openErr.message);
-    if (key && open) {
+    if (own && key) {
       try {
-        ({ confirmed } = await confirmBackingFromSession(admin, stripeClient(key), open.id, sessionId));
+        outcome = await confirmPledge(admin, stripeClient(key), own, boostLivemode());
       } catch (err) {
+        // The reply says pending; the cron settles it.
         console.error("[consumer-web-get-boost] confirm:", err);
+        outcome = "pending";
       }
+      line = await readLine(admin, placeId);
+      if (!line.ok) return json({ ok: false, error: line.error }, 500);
     }
   }
 
-  const [placeRes, { data: rows, error }] = await Promise.all([
-    readBoostPlace(admin, placeId),
-    admin
-      .from("place_backings")
-      .select("id, consumer_id, tier, billing_interval, amount_cents, status, current_period_end, cancel_at_period_end, created_at")
-      .eq("place_id", placeId)
-      .order("created_at", { ascending: true }),
-  ]);
+  const placeRes = await readBoostPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
-  if (error) return json({ ok: false, error: `backings_read: ${error.message}` }, 500);
 
-  const live = (rows ?? []).filter((r) => isLiveBacking(r));
-
-  const mine = user
-    ? (rows ?? [])
-      .filter((r) => r.consumer_id === user.id && r.status !== "open")
-      .map((r) => ({
-        id: r.id,
-        tier: r.tier,
-        interval: r.billing_interval,
-        amount_cents: r.amount_cents,
-        status: r.status,
-        current_period_end: r.current_period_end,
-        cancel_at_period_end: r.cancel_at_period_end,
-        live: isLiveBacking(r),
-      }))
-    : [];
+  const now = Date.now();
+  const running = runningPeriod(line.periods, now);
+  const charging = chargingPeriod(line.periods);
+  const view = lineView(line.pledges, running, user?.id ?? null);
+  const mine = user ? line.pledges.find((p) => p.consumer_id === user.id) ?? null : null;
+  const payerId = running?.backing_id ?? null;
+  const backups = ladder(line.pledges).filter((p) => p.id !== payerId);
+  const minePosition = mine ? backups.findIndex((p) => p.id === mine.id) + 1 : 0;
 
   return json({
     ok: true,
     tier: placeRes.place?.boost_tier ?? 0,
-    backers: new Set(live.map((r) => r.consumer_id ?? r.id)).size,
-    mine,
-    ...(confirmed === undefined ? {} : { confirmed }),
+    period: running
+      ? {
+        tier: running.tier,
+        ends_at: running.ends_at,
+        granted: running.backing_id == null,
+        // Renews when anyone with a saved card stands in line.
+        renews: ladder(line.pledges).length > 0,
+      }
+      : null,
+    renewing: charging != null,
+    line: view.line,
+    more: view.more,
+    mine: mine
+      ? {
+        id: mine.id,
+        tier: TIER_RANK[mine.tier],
+        interval: mine.billing_interval,
+        status: mine.status,
+        role: payerId === mine.id ? "payer" : "backup",
+        position: payerId === mine.id ? 0 : minePosition,
+        pending: mine.pending_tier ? TIER_RANK[mine.pending_tier] : null,
+        has_card: !!mine.stripe_payment_method_id,
+      }
+      : null,
+    quotes: user
+      ? quotes({ running, charging: charging != null, pledges: line.pledges, mine, now })
+      : null,
+    ...(outcome === undefined ? {} : { outcome }),
   });
 });
