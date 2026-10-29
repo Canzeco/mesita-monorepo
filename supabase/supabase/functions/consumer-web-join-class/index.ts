@@ -4,6 +4,9 @@
 // MESITA-3054). The guest always taps; nothing joins on its own.
 //
 // Body: { via: "code", code: "<12 digits>" } | { via: "instagram" }
+//       | { via: "leave" } — a VIP goes back to Regular (Pato, MESITA-3054:
+//         "add button to downgrade class in the weird case someone wishes
+//         to"); 200 { ok, guest_class: "regular", left }.
 //   code — EMULATED: every well-formed code is accepted (Pato, 2026-10-28:
 //          "make class functional for the moment even if its an emulator").
 //          Real one-use codes are MESITA-3055; this EF is where they will be
@@ -34,7 +37,7 @@ import {
   serveJson,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { joinVipClass, readClassJoinRow } from "../_shared/consumer-doc.ts";
+import { readClassJoinRow, writeOwnGuestClass } from "../_shared/consumer-doc.ts";
 import { handleJoin } from "./join.ts";
 
 serveJson("consumer-web-join-class", async (req) => {
@@ -54,7 +57,7 @@ serveJson("consumer-web-join-class", async (req) => {
   const userId = authRes.user.id;
   const res = await handleJoin(bodyRes.body, {
     readRow: () => readClassJoinRow(admin, userId),
-    writeVip: (note) => joinVipClass(admin, userId, note),
+    writeClass: (guestClass, note) => writeOwnGuestClass(admin, userId, guestClass, note),
     requestId: crypto.randomUUID(),
   });
   const line = JSON.stringify({ event: "class_join", ...res.log });

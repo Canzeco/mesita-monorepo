@@ -60,6 +60,15 @@ export const JOIN_WORDS = {
   ready: (followers: number) => `${fmt(followers)} followers on Instagram.`,
 } as const;
 
+/** Leaving VIP, in the rare case a guest wants to (MESITA-3054). */
+export const LEAVE_WORDS = {
+  button: "Leave VIP",
+  title: "Leave VIP?",
+  body: "You go back to Regular. To be VIP again you need an invitation code or your Instagram.",
+  cancel: "Cancel",
+  confirm: "Leave VIP",
+} as const;
+
 /** An inline line for each refusal the join EF names (consumer-web-join-class
  *  codes); anything else is a 5xx or the network, which the toast reports. */
 export function joinErrorWords(

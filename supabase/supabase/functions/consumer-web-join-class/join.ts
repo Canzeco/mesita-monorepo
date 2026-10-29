@@ -10,8 +10,11 @@
 //          ▼ via instagram: decideInstagram (the STORED handle and count)
 //   no handle → 403 · null count → 403 · < bar → 403 · ≥ bar ─┐
 //          ▼ via code: any twelve digits (emulated, MESITA-2984)  │
-//   writeVip(note) ◄──────────────────────────────────────────────┘
+//   writeClass("vip", note) ◄─────────────────────────────────────┘
 //   error → 500 join_failed · ok → 200 joined:true
+//
+//   via leave (after the row read): not VIP → 200 left:false ·
+//   writeClass("regular", "[left] …") → 200 left:true
 //
 // The note is tagged, [code:emulated] or [instagram:typed], so the VIPs of
 // the testing period are found and demoted in one query before VIP grants
@@ -21,11 +24,16 @@ import type { ClassJoinRow } from "../_shared/consumer-doc.ts";
 import { INSTAGRAM_REACH_FOLLOWERS } from "../_shared/instagram-reach.ts";
 import { parseClassCode } from "./class-code.ts";
 
-export type JoinBody = { via: "code"; code: string } | { via: "instagram" };
+export type JoinBody =
+  | { via: "code"; code: string }
+  | { via: "instagram" }
+  | { via: "leave" };
 
 export type JoinOutcome =
   | "joined"
   | "already_vip"
+  | "left"
+  | "already_regular"
   | "bad_request"
   | "bad_code"
   | "consumer_not_found"
@@ -35,7 +43,7 @@ export type JoinOutcome =
   | "error";
 
 export type JoinLog = {
-  via: "code" | "instagram" | null;
+  via: "code" | "instagram" | "leave" | null;
   outcome: JoinOutcome;
   cause?: "consumer_read" | "consumer_write";
   message?: string;
@@ -47,7 +55,10 @@ export type JoinResult = { status: number; body: Record<string, unknown>; log: J
 
 export type JoinDeps = {
   readRow: () => Promise<{ ok: true; row: ClassJoinRow | null } | { ok: false; message: string }>;
-  writeVip: (note: string) => Promise<{ ok: true } | { ok: false; message: string }>;
+  writeClass: (
+    guestClass: "vip" | "regular",
+    note: string,
+  ) => Promise<{ ok: true } | { ok: false; message: string }>;
   requestId: string;
 };
 
@@ -60,6 +71,7 @@ export function parseJoinBody(body: unknown): JoinBody | { via: "code"; code: nu
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
   if (b.via === "instagram") return { via: "instagram" };
+  if (b.via === "leave") return { via: "leave" };
   if (b.via === "code") {
     const code = parseClassCode(b.code);
     return code ? { via: "code", code } : { via: "code", code: null };
@@ -108,7 +120,8 @@ const fail = (
   extra: Record<string, unknown> = {},
 ): JoinResult => ({ status, body: { ok: false, code, error, ...extra }, log });
 
-const JOIN_FAILED = "Couldn't join right now. Try again.";
+const JOIN_FAILED = "Couldn't change your class right now. Try again.";
+const LEFT_NOTE = "[left] Left VIP";
 
 export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<JoinResult> {
   const body = parseJoinBody(rawBody);
@@ -142,6 +155,33 @@ export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<Join
       outcome: "consumer_not_found",
     });
   }
+  // Leaving VIP (Pato, MESITA-3054: "in the weird case someone wishes to"):
+  // back to Regular, the partner and last day cleared by the RPC.
+  if (body.via === "leave") {
+    if (row.guest_class !== "vip") {
+      return {
+        status: 200,
+        body: { ok: true, guest_class: "regular", left: false },
+        log: { via, outcome: "already_regular" },
+      };
+    }
+    const left = await deps.writeClass("regular", mergeNote(LEFT_NOTE, row.guest_class_note));
+    if (!left.ok) {
+      return fail(500, "join_failed", JOIN_FAILED, {
+        via,
+        outcome: "error",
+        cause: "consumer_write",
+        message: left.message,
+        request_id: deps.requestId,
+      }, { request_id: deps.requestId });
+    }
+    return {
+      status: 200,
+      body: { ok: true, guest_class: "regular", left: true },
+      log: { via, outcome: "left" },
+    };
+  }
+
   // Before any follower check: a VIP whose cached page still says Regular
   // must land on VIP, not on "Needs 1,000 followers".
   if (row.guest_class === "vip") {
@@ -176,7 +216,7 @@ export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<Join
     joinNote = codeJoinNote(body.code);
   }
 
-  const write = await deps.writeVip(mergeNote(joinNote, row.guest_class_note));
+  const write = await deps.writeClass("vip", mergeNote(joinNote, row.guest_class_note));
   if (!write.ok) {
     return fail(500, "join_failed", JOIN_FAILED, {
       via,

@@ -15,6 +15,8 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, replace() {} 
 vi.mock("@/components/consumer/overlay/LocalOverlay", () => ({
   LocalSheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-sheet>{children}</div> : null,
+  LocalDialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div data-dialog>{children}</div> : null,
 }));
 
 const text = (html: string) => html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
@@ -80,7 +82,11 @@ describe("the Class sheet", () => {
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
     const buttons = [...html.matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) => text(m[1]).trim());
     expect(buttons).toEqual(["Join with Instagram", "Join"]);
-    expect(sheet("vip")).not.toContain("<button");
+    // A VIP's only button is leaving it.
+    const vipButtons = [...sheet("vip").matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) =>
+      text(m[1]).trim()
+    );
+    expect(vipButtons).toEqual(["Leave VIP"]);
   });
 });
 

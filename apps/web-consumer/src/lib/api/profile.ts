@@ -97,6 +97,31 @@ export async function apiJoinClass(
   }
 }
 
+/** Leave VIP, back to Regular (MESITA-3054). Same cache order as a join:
+ *  patch first, and a refetch that still says VIP never overwrites it. */
+export async function apiLeaveClass(client: SupabaseClient): Promise<void> {
+  await invokeEF<{ guest_class: "regular"; left: boolean }>(
+    client,
+    "consumer-web-join-class",
+    { via: "leave" },
+  );
+  const cached = readCached<ConsumerProfile>(PROFILE_KEY);
+  if (cached) {
+    writeCached(PROFILE_KEY, {
+      ...cached,
+      guest_class: "regular",
+      vip_partner: null,
+      vip_until: null,
+    });
+  }
+  try {
+    const { consumer } = await apiFetchConsumerProfile(client);
+    if (consumer.guest_class !== "vip") writeCached(PROFILE_KEY, consumer);
+  } catch {
+    // The change stands; the patched cache already reads Regular.
+  }
+}
+
 /** After a refused Instagram join: the server's count, so the row re-locks
  *  with it. Best effort. */
 export async function apiRefreshConsumerProfile(

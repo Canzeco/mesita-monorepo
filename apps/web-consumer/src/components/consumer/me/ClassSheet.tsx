@@ -25,18 +25,26 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Crown, UsersRound } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  LocalDialog,
+  LocalSheet,
+} from "@/components/consumer/overlay/LocalOverlay";
 import {
   CLASS_ROWS,
   JOIN_WORDS,
   joinErrorWords,
+  LEAVE_WORDS,
   type ClassRowWords,
 } from "@/components/consumer/me/class-words";
 import { PerkList } from "@/components/consumer/me/perk-list";
 import { Spinner } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
-import { apiJoinClass, apiRefreshConsumerProfile } from "@/lib/api/profile";
+import {
+  apiJoinClass,
+  apiLeaveClass,
+  apiRefreshConsumerProfile,
+} from "@/lib/api/profile";
 import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import {
@@ -45,7 +53,11 @@ import {
   type VipDetails,
 } from "@/lib/guest-standing";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import {
+  SHEET_BODY_CLASS,
+  SHEET_CANCEL_BUTTON_CLASS,
+  SHEET_TITLE_CLASS,
+} from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import {
   CurrentPill,
@@ -288,9 +300,76 @@ function BecomeVip({
   );
 }
 
+/** Leaving VIP, in the rare case a guest wants to (Pato, MESITA-3054): a
+ *  quiet text button under the card, then a confirm. */
+function LeaveVip({ onLeft }: { onLeft: () => void }) {
+  const getSupabase = useLazyBrowserSupabase();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function leave() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await apiLeaveClass(getSupabase());
+      setOpen(false);
+      onLeft();
+      router.refresh();
+    } catch {
+      // A failure is a toast already (reportEFFailure).
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-muted-foreground type-label mt-3 font-semibold underline underline-offset-2"
+        data-class-leave=""
+      >
+        {LEAVE_WORDS.button}
+      </button>
+      <LocalDialog open={open} onClose={() => setOpen(false)} ariaLabel={LEAVE_WORDS.title}>
+        <div className={SHEET_BODY_CLASS}>
+          <h2 className={SHEET_TITLE_CLASS}>{LEAVE_WORDS.title}</h2>
+          <p className="text-muted-foreground type-body mt-2 leading-snug">
+            {LEAVE_WORDS.body}
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className={SHEET_CANCEL_BUTTON_CLASS}
+            >
+              {LEAVE_WORDS.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={() => void leave()}
+              disabled={busy}
+              className="bg-destructive flex flex-1 items-center justify-center gap-2 rounded-lg py-3 text-sm font-semibold text-white transition disabled:opacity-60"
+              data-class-leave-confirm=""
+            >
+              {busy && (
+                <Spinner size="sm" className="border-white/40 border-t-white" />
+              )}
+              {LEAVE_WORDS.confirm}
+            </button>
+          </div>
+        </div>
+      </LocalDialog>
+    </>
+  );
+}
+
 /** Both classes, the guest's marked. Null (the read failed) marks neither and
- *  offers no join: never a guessed Regular. A Regular guest gets the two ways
- *  in (MESITA-3054); after a join, one line says so. */
+ *  offers no change: never a guessed Regular. A Regular guest gets the two
+ *  ways in (MESITA-3054); after a join, one line says so. A VIP gets Leave
+ *  VIP. */
 export function ClassList({
   guestClass,
   vip = null,
@@ -300,24 +379,26 @@ export function ClassList({
   vip?: VipDetails | null;
   instagram?: ClassInstagram;
 }) {
-  const [joined, setJoined] = useState(false);
+  // What this page just did, ahead of the cached profile catching up.
+  const [changed, setChanged] = useState<GuestClass | null>(null);
+  const shown = guestClass ? (changed ?? guestClass) : null;
   return (
     <>
       <SettingsGroup>
         <ClassRow
           {...CLASS_ROWS.regular}
           icon={<UsersRound className="h-[18px] w-[18px]" />}
-          mine={guestClass === "regular" && !joined}
+          mine={shown === "regular"}
         />
         <RowDivider />
         <ClassRow
           {...CLASS_ROWS.vip}
           icon={<Crown className="h-[18px] w-[18px]" />}
-          mine={guestClass === "vip" || joined}
-          vip={vip}
+          mine={shown === "vip"}
+          vip={changed ? null : vip}
         />
       </SettingsGroup>
-      {joined ? (
+      {changed === "vip" && (
         <p
           role="status"
           className="text-foreground type-label mt-3 font-semibold"
@@ -325,11 +406,11 @@ export function ClassList({
         >
           {JOIN_WORDS.joined}
         </p>
-      ) : (
-        guestClass === "regular" && (
-          <BecomeVip instagram={instagram} onJoined={() => setJoined(true)} />
-        )
       )}
+      {shown === "regular" && (
+        <BecomeVip instagram={instagram} onJoined={() => setChanged("vip")} />
+      )}
+      {shown === "vip" && <LeaveVip onLeft={() => setChanged("regular")} />}
     </>
   );
 }

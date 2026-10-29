@@ -422,18 +422,21 @@ export async function readClassJoinRow(
   return { ok: true, row: (data as ClassJoinRow | null) ?? null };
 }
 
-/** Make a Regular guest VIP. The caller has read the row and knows the guest
- *  is Regular. The write is admin_set_guest_standing, guest_class's one
- *  writer, with no actor (the guest joined, no operator set it); `note` says
- *  how, already merged with any operator note. */
-export async function joinVipClass(
+/** The guest's own class change: a Regular joining VIP, or a VIP leaving it
+ *  (MESITA-3054). The caller has read the row and knows the current class.
+ *  The write is admin_set_guest_standing, guest_class's one writer, with no
+ *  actor (the guest did it, no operator); `note` says how, already merged
+ *  with any operator note. Going Regular clears the partner and last day (the
+ *  RPC does it). */
+export async function writeOwnGuestClass(
   admin: SupabaseClient,
   consumerId: string,
+  guestClass: "vip" | "regular",
   note: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const { error: rpcErr } = await admin.rpc("admin_set_guest_standing", {
     p_consumer: consumerId,
-    p_guest_class: "vip",
+    p_guest_class: guestClass,
     p_plan: null,
     p_note: note,
     p_note_set: true,
