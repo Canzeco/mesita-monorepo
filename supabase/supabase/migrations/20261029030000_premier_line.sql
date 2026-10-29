@@ -40,8 +40,10 @@ comment on table public.premier_customers is
   'MESITA-2995 Premier: the guest''s Stripe customer (saved cards for pledges), one per guest. EF-only.';
 
 -- ── Pledges ──────────────────────────────────────────────────────────────
--- The 3 rows here are unpaid subscription-mode Checkouts (expired at Stripe
--- before this landed); none can be confirmed under the new model.
+-- The 3 rows here are unpaid TEST-mode subscription Checkouts; none can be
+-- confirmed under the new model. decision: they are dropped, not expired by
+-- API (no key outside the EF environment); Stripe lapses each within 24 h of
+-- its creation and TEST mode charges no real card.
 delete from public.place_backings;
 
 drop trigger if exists place_backings_recompute on public.place_backings;
