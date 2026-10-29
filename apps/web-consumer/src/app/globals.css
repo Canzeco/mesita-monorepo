@@ -169,6 +169,10 @@
      height — outside the ladder, like --shadow-media. */
   --shadow-float:
     0 1px 2px oklch(0 0 0 / 0.3), 0 2px 6px 2px oklch(0 0 0 / 0.15);
+  /* Home's place tile (MESITA-3074, Pato: "the shadow just below not on
+     the sides" … "stronger"): a dark drop under the tile, its negative
+     spread keeping it off the sides. Context, not height. */
+  --shadow-tile: 0 18px 24px -14px oklch(0 0 0 / 0.45);
   /* ON-MEDIA COLOURS (MESITA-2105). Chrome drawn ON a full-bleed photo —
      Scroll's action discs, its name and meta lines — needs white on black,
      and the package rule says semantic tokens only, never `text-white`. These
@@ -351,6 +355,9 @@
 }
 @utility shadow-float {
   box-shadow: var(--shadow-float);
+}
+@utility shadow-tile {
+  box-shadow: var(--shadow-tile);
 }
 @utility bg-media-scrim {
   background-image: var(--media-scrim);

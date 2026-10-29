@@ -7,12 +7,12 @@
 /** EVERY TILE IS SQUARE (MESITA-2652), rounded-2xl, edged by a shadow,
  *  not a line (Pato, MESITA-2838: "I don't like the borders of the items
  *  here in home"; the MESITA-2661 grey hairline). The shadow is
- *  shadow-glow-sm, darker than shadow-rest (Pato, MESITA-3065: "places must
- *  have maybe a stronger shadow") and only BELOW the tile (MESITA-3068:
- *  "the shadow just below not on the sides"): its negative spread keeps it
- *  off the sides, its drop puts it underneath. */
+ *  shadow-tile, only BELOW the tile and dark (Pato, MESITA-3065: "places
+ *  must have maybe a stronger shadow"; MESITA-3068: "the shadow just below
+ *  not on the sides"; MESITA-3074: "stronger"): its negative spread keeps
+ *  it off the sides, its drop puts it underneath. */
 export const TILE_FRAME =
-  "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl shadow-glow-sm";
+  "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl shadow-tile";
 
 /** The photo, the top 60% (Pato, MESITA-2655: "better 40% and 60%, and use
  *  the space for 4 rows"). It carries the radius itself, as the band does:
