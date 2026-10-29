@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
-import { apiUpdateConsumerProfile } from "@/lib/api/profile";
+import {
+  apiLookupInstagram,
+  apiUpdateConsumerProfile,
+} from "@/lib/api/profile";
+import { EFError } from "@/lib/api/_invoke";
+import { normalizeInstagramHandle } from "@/lib/instagram-handle";
 import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 import {
   CONSUMER_SEXES,
@@ -35,6 +40,17 @@ import {
 // ONE SCREEN (MESITA-2746): first name, birthday and sex together. A
 // returning half-finished profile prefills what is already stored; one
 // Continue writes whatever is still missing (usually all three at once).
+//
+// INSTAGRAM, OPTIONAL (Pato, MESITA-3075: "in the onboarding ask for the
+// instagram and actually kinda like scrape the site … in the future we are
+// going to correct that, with verification"). A fourth field under sex: a
+// typed username is connected after the profile saves, through Me ›
+// Instagram's own trusted lookup (consumer-web-lookup-instagram, MESITA-3039:
+// Apify reads the handle, followers and photo; nothing is proved). Optional
+// (decision, reversible): a guest without Instagram, or a scrape that fails,
+// is never kept out. A failed lookup keeps them here with the reason; the
+// profile is already saved, so clearing the field and Continue goes on. The
+// Meta DM bot (MESITA-2579) replaces this with proof.
 //
 // PRESERVED FROM EARLIER VERSIONS, all still load-bearing: the FormData-over-
 // state read of the name (autofill populates the input without firing
@@ -77,7 +93,10 @@ export function OnboardForm({
   const [sex, setSex] = useState<ConsumerSex | "">(() =>
     isConsumerSex(initial?.sex) ? initial.sex : "",
   );
+  const [instagram, setInstagram] = useState("");
   const [loading, setLoading] = useState(false);
+  // True while the Instagram lookup runs (a scrape, up to a minute).
+  const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const birthdayField = ONBOARD_FIELDS.find((f) => f.key === "birthday");
@@ -115,9 +134,7 @@ export function OnboardForm({
     setError(null);
 
     const fd = new FormData(e.currentTarget);
-    const first = (
-      (fd.get("first_name") as string | null) ?? firstName
-    ).trim();
+    const first = ((fd.get("first_name") as string | null) ?? firstName).trim();
     if (!first) return setError("Tell us your first name.");
     if (!birthday) return setError("Add your birthday.");
     const age = ageFromBirthday(birthday);
@@ -125,6 +142,13 @@ export function OnboardForm({
       return setError(`You must be at least ${MIN_SIGNUP_AGE} to use Mesita.`);
     }
     if (!isConsumerSex(sex)) return setError("Pick one to continue.");
+    const typed = instagram.trim().replace(/^@/, "");
+    const handle = typed ? normalizeInstagramHandle(typed) : null;
+    if (typed && !handle) {
+      return setError(
+        "That isn't an Instagram username. Check it, or leave it empty.",
+      );
+    }
 
     setFirstName(first);
     setLoading(true);
@@ -135,20 +159,34 @@ export function OnboardForm({
           birthday,
           sex,
         });
-        router.push(safeNextPath(next) ?? CONSUMER_ROUTES.home);
-        router.refresh();
       } catch (err) {
         setError(errMsg(err, "Couldn't save. Try again."));
         setLoading(false);
+        return;
       }
+      if (handle) {
+        setReading(true);
+        try {
+          await apiLookupInstagram(getSupabase(), handle);
+        } catch (err) {
+          setError(
+            err instanceof EFError && err.code === "profile_not_found"
+              ? `We couldn't find @${handle} on Instagram. Check the username, or leave it empty.`
+              : `${errMsg(err, "Couldn't connect your Instagram.")} You can leave it empty and connect it later in Me.`,
+          );
+          setReading(false);
+          setLoading(false);
+          return;
+        }
+      }
+      router.push(safeNextPath(next) ?? CONSUMER_ROUTES.home);
+      router.refresh();
     })();
   };
 
   return (
     <form onSubmit={submit} className="flex flex-1 flex-col">
-      <h1
-        className="font-display text-3xl leading-tight font-semibold tracking-tight"
-      >
+      <h1 className="font-display text-3xl leading-tight font-semibold tracking-tight">
         {ONBOARD_PAGE_HEADLINE}
       </h1>
       <p className="text-muted-foreground mt-2 text-sm">{ONBOARD_PAGE_DEK}</p>
@@ -174,9 +212,7 @@ export function OnboardForm({
         </div>
 
         <div>
-          <span className={FIELD_LABEL_CLASS}>
-            {ONBOARD_FIELDS[1].label}
-          </span>
+          <span className={FIELD_LABEL_CLASS}>{ONBOARD_FIELDS[1].label}</span>
           <BirthdayPicker
             value={birthday}
             onChange={(v) => {
@@ -223,6 +259,40 @@ export function OnboardForm({
             </div>
           </div>
         </div>
+
+        <div>
+          <label htmlFor="onboard-instagram" className={FIELD_LABEL_CLASS}>
+            Instagram (optional)
+          </label>
+          {/* The @ is drawn, never typed (MESITA-3045); a pasted one is
+              dropped. */}
+          <span className="relative block">
+            <span
+              aria-hidden
+              className="text-muted-foreground pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm"
+            >
+              @
+            </span>
+            <input
+              id="onboard-instagram"
+              name="instagram"
+              className={cn(INPUT_CLASS, "pl-7")}
+              value={instagram}
+              onChange={(e) => {
+                setInstagram(e.target.value.replace(/^@/, ""));
+                setError(null);
+              }}
+              maxLength={31}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </span>
+          <p className="text-muted-foreground type-body mt-3">
+            Your username. We add your followers and photo from your Instagram.
+          </p>
+        </div>
       </div>
 
       {error && <p className={cn(ERROR_BOX_CLASS, "mt-5")}>{error}</p>}
@@ -239,6 +309,14 @@ export function OnboardForm({
             "Continue"
           )}
         </button>
+        <p
+          aria-live="polite"
+          className="text-muted-foreground type-label mt-2 min-h-5 text-center"
+        >
+          {reading
+            ? "Reading your Instagram. This can take up to a minute."
+            : ""}
+        </p>
       </div>
     </form>
   );
