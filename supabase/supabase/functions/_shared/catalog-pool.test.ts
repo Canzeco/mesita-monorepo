@@ -146,7 +146,7 @@ Deno.test("the Catalog keeps the best 1000 BY RANK, not the first 1000 by id (ME
   const finals = places.map((p) => p.area.final);
   assertEquals(finals, [...finals].sort((a, b) => b - a));
   assertEquals(places[0].name, "Place 1000");
-  assertEquals(places[0].area.halfKm, 1);
+  assertEquals(places[0].area.halfKm, 10);
   assertEquals(summary.read, 1500);
   assertEquals(summary.total, 1500);
   assertEquals(summary.returned, 1000);

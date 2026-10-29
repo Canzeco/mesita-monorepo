@@ -25,7 +25,7 @@ import { num } from "@/lib/config-coerce";
  * Mirrors SignalParams in _shared/discovery-config.ts.
  */
 export type SignalParams = {
-  /** Proximity is ½ at this many km: 1 ÷ (1 + d ÷ D) (MESITA-3015). */
+  /** Proximity is ½ at this many km: 1 ÷ (1 + (d ÷ D)²) (MESITA-3079). */
   proximity: { halfKm: number };
   popularity: { halfReviews: number };
 };
@@ -201,7 +201,7 @@ export const DEFAULT_GENERAL: GeneralConfig = {
 
 /** Mirrors DEFAULT_SIGNAL_PARAMS. */
 const DEFAULT_SIGNAL_PARAMS: SignalParams = {
-  proximity: { halfKm: 1 },
+  proximity: { halfKm: 10 },
   popularity: { halfReviews: 100 },
 };
 

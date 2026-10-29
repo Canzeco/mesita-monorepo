@@ -11,8 +11,8 @@
 // sort ("como screening dentro del radio, pero no la metería ya para el
 // sorting"): the Radius gate decides who is in and Popularity alone orders
 // them. The Catalog has no radius: every Mesita place is ranked, and
-// Proximity, 1 ÷ (1 + d ÷ D), D the operator's half distance
-// (MESITA-3015), pulls nearer places up without ever cutting a far one.
+// Proximity, 1 ÷ (1 + (d ÷ D)²), D the operator's half distance
+// (MESITA-3079), pulls nearer places up without ever cutting a far one.
 // Popularity is ln(1 + reviews × stars), unbounded, and the product is never
 // clamped or normalized (MESITA-2710). s is the Premier factor: a Premier
 // place's paid tier, ×2 · ×5 (`places.boost_tier`, MESITA-2789; 10X retired
