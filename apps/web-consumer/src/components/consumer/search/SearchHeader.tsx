@@ -8,7 +8,7 @@
 //   (≡) (▦ Top) (○ Coffee) …                    32px chips, floating
 //
 // ONE LONG BAR (Pato, MESITA-2999: "the searchbar must be long"): the query
-// field, then the Ask AI bubble (→ Search › Chat), in one pill across the
+// field, then the black Ask AI pill with sparkles (→ Search › Chat; MESITA-3007), in one pill across the
 // screen; the locate disc sits right of it on the same row (MESITA-3006). One token set for every control lives in header-classes.ts. NO ADD
 // DISC (MESITA-2876's `+`), and no Add button since MESITA-2883: Add a
 // place has its own sheet (MESITA-2902). Under the bar's row one chip row:
@@ -42,7 +42,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { BotMessageSquare, SlidersHorizontal } from "lucide-react";
+import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { FamilyIcon } from "@/lib/family-icons";
 import {
@@ -80,7 +80,7 @@ export function SearchHeader({
 }: {
   /** The locate disc, right of the bar on row one. */
   locate: ReactNode;
-  /** The query field; it takes what the two bubbles leave. */
+  /** The query field; it takes what the Ask AI pill leaves. */
   bar: ReactNode;
   /** While the bar is querying the chip row is not drawn (MESITA-2487);
    *  the results then hang just under the bar's row. */
@@ -108,7 +108,7 @@ export function SearchHeader({
             className={HEADER_PILL}
             data-search-ask-ai
           >
-            <BotMessageSquare
+            <Sparkles
               className="h-4 w-4 shrink-0"
               strokeWidth={2}
               aria-hidden
