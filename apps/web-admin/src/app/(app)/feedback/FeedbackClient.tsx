@@ -4,7 +4,7 @@ import { PageContainer, PageHeader } from "@/components/PageContainer";
 import type { AdminPlaceReport } from "@/components/place-manage/actions";
 import { ReportRow } from "@/components/reports/ReportRow";
 
-// Manage › Feedback (Pato, MESITA-3024: "in admin create a Feedback page
+// Activity › Feedback (Pato, MESITA-3024: "in admin create a Feedback page
 // where you receive those logs. It's not interactive. You just receive the
 // feedback"). Every guest report from the place screen's three dots, every
 // place, newest first, one card of rows. Each row's place opens that place's
@@ -22,7 +22,7 @@ export function FeedbackClient({
   return (
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Manage · Feedback"
+        eyebrow="Activity · Feedback"
         title="Feedback"
         description="Every guest report, newest first."
       />

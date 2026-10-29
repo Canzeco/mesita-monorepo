@@ -3,7 +3,7 @@
 // MESITA-2684 (Pato, 2026-10-22: "three dots is a button to report"): a
 // signed-in guest reports a Mesita place from the three dots on its screen.
 // MESITA-3024: the report is guest feedback, append-only. Every send is its
-// own row; Manage › Feedback lists them all.
+// own row; Activity › Feedback lists them all.
 //
 // Body: { place_id: uuid, reason: string, note?: string }
 //   reason  closed · wrong_info · wrong_links · wrong_location ·

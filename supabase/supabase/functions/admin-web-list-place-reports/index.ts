@@ -7,7 +7,7 @@
 //
 //   { placeId } (or the legacy { projectId }) — one place: Single Place ›
 //                                               Admin › Reports (MESITA-2686)
-//   { all: true }                             — every place: Manage › Feedback
+//   { all: true }                             — every place: Activity › Feedback
 //                                               (MESITA-3024)
 //   anything else                             — 400 (_shared/place-reports.ts)
 //

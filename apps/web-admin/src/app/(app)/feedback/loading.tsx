@@ -1,7 +1,7 @@
 import { BONE_CLASS, SECTION_CARD_CLASS } from "@/components/admin-ui/manage";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 
-// Manage › Feedback while the reports load: the real header, then the card
+// Activity › Feedback while the reports load: the real header, then the card
 // with three rows at their sizes (place + chip, note, who · when). Without
 // it the previous page stays painted after the rail tap.
 
@@ -13,7 +13,7 @@ export default function FeedbackLoading() {
   return (
     <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Manage · Feedback"
+        eyebrow="Activity · Feedback"
         title="Feedback"
         description="Every guest report, newest first."
       />

@@ -198,7 +198,7 @@ const PROFILES_READ_ALLOWLIST = [
   // The AdminPlace read-back of set-place-active, set-place-listed and
   // delete-place (MESITA-2982).
   "_shared/admin-place.ts",
-  // Manage › Feedback (MESITA-3024): place names only, for the admin's list of
+  // Activity › Feedback (MESITA-3024): place names only, for the admin's list of
   // guest reports. Read-only, error checked.
   "admin-web-list-place-reports/index.ts",
   // Social v1 (MESITA-2442): the place cards behind the feed and Saved,

@@ -36,8 +36,8 @@ describe("Configurations rail", () => {
 // Pato, MESITA-2084, on the rail with Places highlighted: "Multiple Places /
 // Single Place". Many then one, after the two wider records.
 describe("Activity rail", () => {
-  it("is exactly Logs · Analytics", () => {
-    expect(ACTIVITY_NAV.map((i) => i.label)).toEqual(["Logs", "Analytics"]);
+  it("is exactly Logs · Analytics · Feedback", () => {
+    expect(ACTIVITY_NAV.map((i) => i.label)).toEqual(["Logs", "Analytics", "Feedback"]);
   });
 
   it("gives each row its own page", () => {
@@ -55,11 +55,10 @@ describe("Testing rail", () => {
 });
 
 describe("Manage rail", () => {
-  it("is exactly Admins · Guests · Feedback · Database · Multiple Places · Single Place · Premier", () => {
+  it("is exactly Admins · Guests · Database · Multiple Places · Single Place · Premier", () => {
     expect(MANAGE_NAV.map((i) => i.label)).toEqual([
       "Admins",
       "Guests",
-      "Feedback",
       "Database",
       "Multiple Places",
       "Single Place",
@@ -73,7 +72,7 @@ describe("Manage rail", () => {
     for (const a of hrefs)
       for (const b of hrefs)
         if (a !== b) expect(b.startsWith(`${a}/`), `${a} lights on ${b}`).toBe(false);
-    for (const href of ["/guests", "/feedback", "/manage-multiple", "/manage-single", "/premier"])
+    for (const href of ["/guests", "/manage-multiple", "/manage-single", "/premier"])
       expect(existsSync(join(APP, ...href.split("/").filter(Boolean), "page.tsx")), href).toBe(true);
   });
 });
