@@ -17,7 +17,7 @@
 // a MANUAL capture, captured only once the quote is confirmed under the
 // place lock; waits: `setup`), renewals are off-session PaymentIntents.
 // No subscriptions, no webhook (the EF name is the ACL): the 5-minute
-// supabase-cron-sync-boosts confirms abandoned Checkouts, settles charges in
+// supabase-cron-sync-premier confirms abandoned Checkouts, settles charges in
 // flight and runs renewals. Every period write is a `premier_*` RPC.
 //
 // decision: prices are fixed here, not a console knob — a price is a money
@@ -1071,7 +1071,7 @@ async function readAuthEmail(admin: SupabaseClient, consumerId: string): Promise
   }
 }
 
-/** A place's line and its recent periods (what get-boost, start-boost and
+/** A place's line and its recent periods (what get-premier, start-premier and
  *  the admin read). */
 export async function readLine(
   admin: SupabaseClient,

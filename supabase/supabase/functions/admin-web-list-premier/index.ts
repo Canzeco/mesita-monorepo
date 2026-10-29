@@ -5,7 +5,7 @@
 // many pledges stand in its line and what it charged in the last 30 days —
 // plus the totals and which Stripe universe the money runs in. One place's
 // full line and the grant / end / remove writes stay on
-// admin-web-get-place-boost and admin-web-grant-place-boost.
+// admin-web-get-place-premier and admin-web-grant-place-premier.
 //
 // Body:     {}
 // Response: { ok: true, stripe: "test" | "live" | "off", totals, places: PremierRow[] }

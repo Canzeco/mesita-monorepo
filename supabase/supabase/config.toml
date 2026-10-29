@@ -261,20 +261,20 @@ verify_jwt = true
 # Premier (MESITA-2995; Boost MESITA-2789, Spotlight MESITA-1998): a line of
 # pledges per place, one payer per period, backups charged only when the
 # cards above them fail. place_premier_periods holds the paid stretches;
-# places.boost_tier follows them. No webhook: supabase-cron-sync-boosts polls
-# Stripe every 5 minutes. admin-web-get-place-boost is Single Place › Premier
-# (read); admin-web-grant-place-boost grants, ends a grant, removes a pledge.
-[functions.consumer-web-start-boost]
+# places.boost_tier follows them. No webhook: supabase-cron-sync-premier polls
+# Stripe every 5 minutes. admin-web-get-place-premier is Single Place › Premier
+# (read); admin-web-grant-place-premier grants, ends a grant, removes a pledge.
+[functions.consumer-web-start-premier]
 verify_jwt = true
 
-[functions.consumer-web-get-boost]
+[functions.consumer-web-get-premier]
 verify_jwt = true
 
-[functions.consumer-web-cancel-boost]
+[functions.consumer-web-cancel-premier]
 verify_jwt = true
 
-# Kill switch: select cron.unschedule('sync-boosts');
-[functions.supabase-cron-sync-boosts]
+# Kill switch: select cron.unschedule('sync-premier');
+[functions.supabase-cron-sync-premier]
 verify_jwt = true
 
 # MESITA-3037: weekly pg_cron refresh of the Instagram DM bot's 60-day token.
@@ -284,10 +284,10 @@ verify_jwt = true
 [functions.supabase-edgefunc-start-smoke-enrich]
 verify_jwt = true
 
-[functions.admin-web-get-place-boost]
+[functions.admin-web-get-place-premier]
 verify_jwt = true
 
-[functions.admin-web-grant-place-boost]
+[functions.admin-web-grant-place-premier]
 verify_jwt = true
 
 # Manage › Premier (MESITA-3011): every place's Premier standing, read.

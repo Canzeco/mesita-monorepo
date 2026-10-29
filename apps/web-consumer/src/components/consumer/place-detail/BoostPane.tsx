@@ -35,7 +35,7 @@ import { cn, errMsg } from "@/lib/utils";
 // you have one), the line (who pays now, who backs up — levels only, never
 // names: MESITA-2928), then Monthly | Yearly, the two levels, and ONE
 // price line for the level you tapped. Every amount, date and position is
-// the server's (consumer-web-get-boost `quotes`); nothing here computes
+// the server's (consumer-web-get-premier `quotes`); nothing here computes
 // money. Premier is paid visibility and never verifies the place.
 
 const INTERVAL_WORD: Record<BoostInterval, string> = { month: "month", year: "year" };

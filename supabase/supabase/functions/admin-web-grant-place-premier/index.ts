@@ -1,4 +1,4 @@
-// Supabase Edge Function — admin-web-grant-place-boost
+// Supabase Edge Function — admin-web-grant-place-premier
 //
 // MESITA-2995: Single Place › Premier, the operator's writes.
 //   grant         a period with no payer and nothing charged (tier 1..2,
@@ -19,7 +19,7 @@ import { requireAdminRequest } from "../_shared/auth.ts";
 import { boostStripeKey, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
-serveJson("admin-web-grant-place-boost", async (req) => {
+serveJson("admin-web-grant-place-premier", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
@@ -72,7 +72,7 @@ serveJson("admin-web-grant-place-boost", async (req) => {
       await leavePledge(admin, key ? stripeClient(key) : null, pledge);
       return json({ ok: true });
     } catch (err) {
-      console.error("[admin-web-grant-place-boost] remove_pledge", err);
+      console.error("[admin-web-grant-place-premier] remove_pledge", err);
       return json({ ok: false, error: "Couldn't remove the pledge. Try again." }, 500);
     }
   }

@@ -1,10 +1,10 @@
-// Supabase Edge Function — consumer-web-start-boost
+// Supabase Edge Function — consumer-web-start-premier
 //
 // MESITA-2995: a guest pledges for a place's Premier (or changes their own
 // pledge). One pledge per guest per place. What it takes comes from the
 // server's quote (_shared/boost.ts `quote`):
 //   - pays now (no period running, or a level above it): Stripe Checkout
-//     `payment`, held until consumer-web-get-boost confirms the quote;
+//     `payment`, held until consumer-web-get-premier confirms the quote;
 //   - waits (at or below the running level): Checkout `setup`, saves the card;
 //   - an edit of a pledge whose card is saved: no Checkout, written at once.
 // A previous Checkout of this pledge is settled first (paid ones confirmed,
@@ -40,7 +40,7 @@ import {
   stripeClient,
 } from "../_shared/boost.ts";
 
-serveJson("consumer-web-start-boost", async (req) => {
+serveJson("consumer-web-start-premier", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
   if (methodReject) return methodReject;
@@ -84,7 +84,7 @@ serveJson("consumer-web-start-boost", async (req) => {
         try {
           await stripe("POST", `checkout/sessions/${encodeURIComponent(mine.stripe_checkout_session_id)}/expire`);
         } catch (err) {
-          console.error("[consumer-web-start-boost] expire_previous", mine.id, String(err));
+          console.error("[consumer-web-start-premier] expire_previous", mine.id, String(err));
         }
         await confirmPledge(admin, stripe, mine, livemode);
       }
@@ -189,17 +189,17 @@ serveJson("consumer-web-start-boost", async (req) => {
         .update({ stripe_checkout_session_id: sessionId, updated_at: new Date().toISOString() })
         .eq("id", pledge.id);
       if (!error) return json({ ok: true, url: session.url });
-      console.error(`[consumer-web-start-boost] session_write attempt ${attempt + 1}:`, error.message);
+      console.error(`[consumer-web-start-premier] session_write attempt ${attempt + 1}:`, error.message);
     }
     try {
       await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
     } catch (err) {
-      console.error("[consumer-web-start-boost] expire_failed", JSON.stringify({ backing_id: pledge.id, session_id: sessionId, error: String(err) }));
+      console.error("[consumer-web-start-premier] expire_failed", JSON.stringify({ backing_id: pledge.id, session_id: sessionId, error: String(err) }));
     }
     if (inserted) await admin.from("place_backings").delete().eq("id", pledge.id).eq("status", "open");
     return json({ ok: false, error: "Couldn't open checkout. Try again." }, 502);
   } catch (err) {
-    console.error("[consumer-web-start-boost]", err);
+    console.error("[consumer-web-start-premier]", err);
     return json({ ok: false, error: "Couldn't open checkout. Try again." }, 502);
   }
 });

@@ -4,7 +4,7 @@
 // period and the rest are backups, charged only if the pledges above them
 // stop paying. Upgrading takes the unused days of the running period off
 // the new price. Every amount and position here comes from the server
-// (consumer-web-get-boost's `quotes`): this file never computes money. The
+// (consumer-web-get-premier's `quotes`): this file never computes money. The
 // wire keeps its Boost names (the EFs, the `boost_*` tiers).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -88,7 +88,7 @@ export async function apiGetBoost(
   placeId: string,
   sessionId?: string,
 ): Promise<PlaceBoost> {
-  return await invokeEF<PlaceBoost>(client, "consumer-web-get-boost", {
+  return await invokeEF<PlaceBoost>(client, "consumer-web-get-premier", {
     place_id: placeId,
     ...(sessionId ? { session_id: sessionId } : {}),
   });
@@ -105,7 +105,7 @@ export async function apiStartBoost(
     returnUrl: string;
   },
 ): Promise<{ url: string | null; outcome?: "updated" | "confirmed" }> {
-  return await invokeEF<{ url: string | null; outcome?: "updated" | "confirmed" }>(client, "consumer-web-start-boost", {
+  return await invokeEF<{ url: string | null; outcome?: "updated" | "confirmed" }>(client, "consumer-web-start-premier", {
     place_id: input.placeId,
     tier: input.tier,
     interval: input.interval,
@@ -118,7 +118,7 @@ export async function apiCancelBoost(
   client: SupabaseClient,
   backingId: string,
 ): Promise<void> {
-  await invokeEF<Record<string, never>>(client, "consumer-web-cancel-boost", {
+  await invokeEF<Record<string, never>>(client, "consumer-web-cancel-premier", {
     backing_id: backingId,
   });
 }
