@@ -50,6 +50,9 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
           area: area(["coffee"], 0.7),
         },
       ],
+      order: ["a", "b", "c"],
+      asked: 3,
+      rankedFrom: null,
     };
     expect(poolPlaces(pool, ALL_CHIP).map((p) => p.id)).toEqual([
       "a",
@@ -60,9 +63,8 @@ describe("Home's tabs and the Places chips (MESITA-2517)", () => {
     expect(poolPlaces(pool, "breakfast")).toEqual([]);
   });
 
-  it("pages from the server: a sentinel asks for the next page at pool.next (MESITA-3044)", () => {
+  it("fills by id from the ranked order: a sentinel under the last tile (MESITA-3057)", () => {
     expect(PLACES_PAGE).toBe(20);
-    expect(src).toContain("apiListAreaPool(supabase, from, families, nextOffset)");
     expect(src).toContain("data-places-more");
     expect(src).toContain("new IntersectionObserver(");
     // A kept pool paints without a request.

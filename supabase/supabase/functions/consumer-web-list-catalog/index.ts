@@ -12,6 +12,15 @@
 // A request with no `offset` (a build from before MESITA-3044) gets the best
 // 1000 at once, as before (MESITA-2921: a capped id-ordered read ranked a
 // random 1000).
+//
+// RANK ONCE, FILL BY ID (MESITA-3057, Pato: "don't bring the data of all
+// 1000 places in one run … have all the ids … then populate with data and
+// the images"): `ids: true` ranks once and answers `order`, every ranked id
+// best first, with the first page's cards; Home then sends `fill`, up to
+// `CATALOG_PAGE_SIZE_MAX` of those ids, and gets only their cards, read
+// through the same gates and scored from the point it sends (the rank's).
+// Nothing is ranked again on scroll. `offset` and the bare request stay for
+// builds already open; every log line names its `mode`.
 // Nothing here calls Google (MESITA-2872).
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
@@ -25,7 +34,14 @@
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.
 //
-// Request: POST { unified: true, google: true, lat, lng, familyKeys?, offset? }
+// Request: POST { unified: true, google: true, lat, lng, familyKeys?,
+//   fill? | ids? | offset? }   (that precedence; one per request)
+//   fill      1..100 Mesita ids (uuids, duplicates collapsed): their cards
+//             only, in that order; anything else in an array = 400
+//             `fill_invalid`. Answer { ok, places, summary: { asked,
+//             returned, chunks } }.
+//   ids       true: rank once and answer `order` (every ranked id) + the
+//             first page's cards.
 //   offset    a whole number ≥ 0: the ranked position the page starts at;
 //             absent = the old whole answer (≤ 1000).
 //   lat/lng   a POINT; none = no location (Popularity alone).
@@ -33,8 +49,9 @@
 //             carry none since MESITA-2914.
 //   bounds    ignored (Territory retired, MESITA-2500).
 //   google    ignored since MESITA-2872 (no Google stub comes back).
-// Response: { ok, location: { kind }, pageSize, next, total,
+// Response: { ok, location: { kind }, pageSize, next, total, order?,
 //   places: [... { area }], summary }.
+//   order     every ranked id, best first (`ids: true` only)
 //   next      the next page's offset, or null: the catalog has ended
 //   total     every ranked place (the list the pages walk)
 //   summary.read      pass-1 rows read (scoring columns)
@@ -71,8 +88,10 @@ import {
   type PoolBuilder,
   type PoolRow,
   resolveAreaLocation,
+  selectCatalogFill,
   selectCatalogPool,
 } from "../_shared/area-pipeline.ts";
+import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 
 type Body = {
@@ -95,7 +114,21 @@ type Body = {
   /** The page's first ranked position (MESITA-3044); absent = the whole
    *  answer, for builds from before it. */
   offset?: unknown;
+  /** `true`: rank once and answer `order` (MESITA-3057). */
+  ids?: unknown;
+  /** Ids from an `order` whose cards Home wants (MESITA-3057). */
+  fill?: unknown;
 };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A fill's ids, duplicates collapsed, or null when the list is empty, too
+ *  long or holds a non-uuid. */
+function readFill(v: unknown[]): string[] | null {
+  const ids = [...new Set(v)];
+  if (ids.length === 0 || ids.length > CATALOG_PAGE_SIZE_MAX) return null;
+  return ids.every((id) => typeof id === "string" && UUID.test(id)) ? ids as string[] : null;
+}
 
 /** A whole number ≥ 0, else null (absent or junk = an unpaged request). */
 function readOffset(v: unknown): number | null {
@@ -135,30 +168,19 @@ serveJson("consumer-web-list-catalog", async (req) => {
   const location = resolveAreaLocation(center, null);
   const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
   const offset = readOffset(body.offset);
+  const fill = Array.isArray(body.fill) ? body.fill : null;
+  const rank = fill === null && body.ids === true;
+  const mode = fill !== null ? "fill" : rank ? "rank" : offset !== null ? "offset" : "legacy";
 
   const requestId = crypto.randomUUID();
   const started = Date.now();
-  let pool: Awaited<ReturnType<typeof selectCatalogPool<PoolRow>>>;
-  try {
-    pool = await selectCatalogPool<PoolRow>({
-      read: (columns) =>
-        admin.from("profiles").select(columns).eq("state", "active") as unknown as PoolBuilder,
-      cfg,
-      location,
-      families,
-      // Card columns only: no Catalog signal reads the summary vector, so the
-      // pool does not select it (MESITA-2328).
-      cardColumns: PLACE_CARD_COLUMNS,
-      wire: wirePlaces,
-      ...(offset === null ? {} : { page: { offset, size: catalogPageSize(cfg.map) } }),
-    });
-  } catch (err) {
-    if (!(err instanceof CatalogReadError)) throw err;
+  const readError = (err: CatalogReadError) => {
     const at = err.pass === 1 ? { page: err.at } : { chunk: err.at };
     console.error(JSON.stringify({
       fn: "consumer-web-list-catalog",
       event: "catalog_page_error",
       requestId,
+      mode,
       pass: err.pass,
       ...at,
       pgCode: err.pgCode,
@@ -172,6 +194,65 @@ serveJson("consumer-web-list-catalog", async (req) => {
       ...at,
       requestId,
     }, 502);
+  };
+  const read = (columns: string) =>
+    admin.from("profiles").select(columns).eq("state", "active") as unknown as PoolBuilder;
+
+  if (fill !== null) {
+    const ids = readFill(fill);
+    if (ids === null) {
+      console.warn(JSON.stringify({ fn: "consumer-web-list-catalog", event: "fill_invalid", requestId, mode, n: fill.length }));
+      return json({ ok: false, code: "fill_invalid", error: "fill takes 1 to 100 place ids", requestId }, 400);
+    }
+    let filled: Awaited<ReturnType<typeof selectCatalogFill<PoolRow>>>;
+    try {
+      filled = await selectCatalogFill<PoolRow>({
+        read,
+        cfg,
+        location,
+        families,
+        cardColumns: PLACE_CARD_COLUMNS,
+        wire: wirePlaces,
+        ids,
+      });
+    } catch (err) {
+      if (!(err instanceof CatalogReadError)) throw err;
+      return readError(err);
+    }
+    console.log(JSON.stringify({
+      fn: "consumer-web-list-catalog",
+      event: "catalog_fill",
+      requestId,
+      mode,
+      ms: Date.now() - started,
+      location: location.kind,
+      familyKeys: families,
+      ...filled.summary,
+    }));
+    return json({ ok: true, places: filled.places, summary: filled.summary });
+  }
+
+  let pool: Awaited<ReturnType<typeof selectCatalogPool<PoolRow>>>;
+  try {
+    pool = await selectCatalogPool<PoolRow>({
+      read,
+      cfg,
+      location,
+      families,
+      // Card columns only: no Catalog signal reads the summary vector, so the
+      // pool does not select it (MESITA-2328).
+      cardColumns: PLACE_CARD_COLUMNS,
+      wire: wirePlaces,
+      // A rank answers the first page; `order` carries the rest by id.
+      ...(rank
+        ? { page: { offset: 0, size: catalogPageSize(cfg.map) } }
+        : offset === null
+        ? {}
+        : { page: { offset, size: catalogPageSize(cfg.map) } }),
+    });
+  } catch (err) {
+    if (!(err instanceof CatalogReadError)) throw err;
+    return readError(err);
   }
 
   if (pool.summary.scanCapped) {
@@ -189,6 +270,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     fn: "consumer-web-list-catalog",
     wire: "unified",
     requestId,
+    mode,
     ms: Date.now() - started,
     location: location.kind,
     familyKeys: families,
@@ -202,9 +284,11 @@ serveJson("consumer-web-list-catalog", async (req) => {
     // names none (MESITA-2914).
     location: { kind: location.kind },
     pageSize: pool.summary.pageSize,
-    // An unpaged request gets no `next`: its build pages the list itself.
-    next: offset === null ? null : pool.summary.next,
+    // An unpaged request gets no `next`: its build pages the list itself; a
+    // rank's build fills by id from `order`.
+    next: offset === null || rank ? null : pool.summary.next,
     total: pool.summary.total,
+    ...(rank ? { order: pool.order } : {}),
     places: pool.places,
     summary: pool.summary,
   });
