@@ -3,7 +3,7 @@ import type { AdminPlaceReport } from "@/components/place-manage/actions";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { reportReasonLabel } from "@/lib/report-reasons";
 
-// ONE GUEST REPORT, read-only (MESITA-3024). Manage › Feedback and Single
+// ONE GUEST REPORT, read-only (MESITA-3024). Activity › Feedback and Single
 // Place › Admin › Reports draw the same row:
 //   line 1  the place (a link to its Admin tab, where Reports lives; left out
 //           inside a place's own card) and the reason as a small chip

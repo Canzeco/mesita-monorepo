@@ -10,7 +10,7 @@ import { ReportRow } from "@/components/reports/ReportRow";
 // newest first. A guest reports a place from the three dots on its screen
 // (MESITA-2684, consumer-web-report-place). Reports are append-only
 // (MESITA-3024): a guest who sent two shows twice, so the count is sends,
-// not guests. Every place's reports at once are Manage › Feedback.
+// not guests. Every place's reports at once are Activity › Feedback.
 // Read-only: nothing here resolves or clears a report.
 
 export function ReportsCard({ place }: { place: AdminPlace }) {

@@ -1,7 +1,7 @@
 // A guest's report on a place (MESITA-2684): the three dots on the place
 // screen open Report, and Send stores it through consumer-web-report-place.
 // Reports are guest feedback, append-only (MESITA-3024): every send is its own
-// row, and admin reads them all on Manage › Feedback.
+// row, and admin reads them all on Activity › Feedback.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";

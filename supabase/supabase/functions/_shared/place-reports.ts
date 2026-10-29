@@ -72,7 +72,7 @@ export function parsePlaceReport(
 }
 
 /** What admin-web-list-place-reports lists: one place (`{placeId}`, or the
- *  legacy `{projectId}`) or every report (`{all: true}`, Manage › Feedback).
+ *  legacy `{projectId}`) or every report (`{all: true}`, Activity › Feedback).
  *  Presence is read off the raw keys, so `{placeId: 123, all: true}` is a
  *  400, never "everything". */
 export type ReportListScope = { kind: "place"; placeId: string } | { kind: "all" };

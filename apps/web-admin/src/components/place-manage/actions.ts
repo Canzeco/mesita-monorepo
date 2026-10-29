@@ -393,7 +393,7 @@ export type AdminPlaceReport = {
 };
 
 /** The place's guest reports, newest first (admin-web-list-place-reports,
- *  MESITA-2686). Read-only. Every place's at once is Manage › Feedback
+ *  MESITA-2686). Read-only. Every place's at once is Activity › Feedback
  *  (app/(app)/feedback/actions.ts). */
 export async function listPlaceReports(
   placeId: string,

@@ -27,7 +27,7 @@ import { cn, errMsg } from "@/lib/utils";
 // feedback channel (MESITA-3024): once a reason is picked a note box asks the
 // right question for it ("Which link?" for a wrong link), and Something else
 // needs words. Send stores it (consumer-web-report-place); every send is its
-// own row and lands on admin's Manage › Feedback. A refused send (4xx) says
+// own row and lands on admin's Activity › Feedback. A refused send (4xx) says
 // why here and keeps the sheet open with the choice intact; network, session
 // and server failures are said once, by the app's error notifier
 // (MESITA-3021).
