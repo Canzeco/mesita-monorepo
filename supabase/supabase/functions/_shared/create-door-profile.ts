@@ -17,7 +17,7 @@ import { fetchPlaceTags, MAX_PLACE_TAGS, pickVocabularyTags } from "./tags.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
+import { openaiChat } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
@@ -124,35 +124,18 @@ export async function synthesizeDoorProfile(
     `Place:\n${placeLines}`;
 
   try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: models.enricherModel || "gpt-4o-mini",
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const res = await openaiChat({
+      key: openaiKey,
+      model: models.enricherModel || "gpt-4o-mini",
+      temperature: 0.2,
+      json: true,
+      messages: [
+        { role: "system", content: systemContent },
+        { role: "user", content: userPrompt },
+      ],
     });
-    if (!r.ok) return null;
-    const data = (await r.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "") as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      return null;
-    }
+    if (!res.ok || !res.parsed) return null;
+    const parsed = res.parsed as Record<string, unknown>;
 
     const tags = pickVocabularyTags(parsed.tags, tagSlugs);
     const description = (() => {

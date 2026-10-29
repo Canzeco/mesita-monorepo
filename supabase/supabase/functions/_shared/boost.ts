@@ -19,6 +19,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
 import { finiteOrNull } from "./input.ts";
+import { errorMessage } from "./errors.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
@@ -271,11 +272,11 @@ export async function cancelConsumerBackings(
     try {
       sub = await stripe("DELETE", path);
     } catch (err) {
-      const deleteError = errorText(err);
+      const deleteError = errorMessage(err);
       try {
         sub = await stripe("GET", path);
       } catch (getErr) {
-        return { ok: false, error: `boost_cancel: ${deleteError} (lookup: ${errorText(getErr)})` };
+        return { ok: false, error: `boost_cancel: ${deleteError} (lookup: ${errorMessage(getErr)})` };
       }
       if (!STRIPE_ENDED.has(String(sub.status))) {
         return { ok: false, error: `boost_cancel: ${deleteError} (still ${String(sub.status)})` };
@@ -292,10 +293,6 @@ export async function cancelConsumerBackings(
 
 /** Stripe subscription statuses that never bill again. */
 const STRIPE_ENDED = new Set(["canceled", "incomplete_expired"]);
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 export type BoostReply = { status: number; body: Record<string, unknown> };
 
@@ -320,7 +317,7 @@ export async function openBackingCheckout(
   try {
     session = await stripe("POST", "checkout/sessions", checkoutParams(start, ctx));
   } catch (err) {
-    console.error("[consumer-web-start-boost] checkout:", errorText(err));
+    console.error("[consumer-web-start-boost] checkout:", errorMessage(err));
     await deleteOpenBacking(admin, ctx.backingId, null);
     return failed;
   }
@@ -343,7 +340,7 @@ export async function openBackingCheckout(
   } catch (err) {
     console.error(
       "[consumer-web-start-boost] expire_failed",
-      JSON.stringify({ backing_id: ctx.backingId, session_id: sessionId, error: errorText(err) }),
+      JSON.stringify({ backing_id: ctx.backingId, session_id: sessionId, error: errorMessage(err) }),
     );
   }
   await deleteOpenBacking(admin, ctx.backingId, sessionId);
@@ -367,7 +364,7 @@ export async function cancelBackingAtPeriodEnd(
       { cancel_at_period_end: true },
     );
   } catch (err) {
-    console.error("[consumer-web-cancel-boost] stripe:", errorText(err));
+    console.error("[consumer-web-cancel-boost] stripe:", errorMessage(err));
     return { status: 502, body: { ok: false, error: "Couldn't cancel. Try again." } };
   }
   const patch = subscriptionPatch(sub);
@@ -456,11 +453,11 @@ export async function reconcileStaleBacking(
     if (!(err instanceof BackingWriteError) && Number.isFinite(age) && age > STALE_LOOKUP_GIVE_UP_MS) {
       console.error(
         "[supabase-cron-sync-boosts] give_up",
-        JSON.stringify({ backing_id: row.id, session_id: sessionId, error: errorText(err) }),
+        JSON.stringify({ backing_id: row.id, session_id: sessionId, error: errorMessage(err) }),
       );
       return (await dropOpenBacking(admin, row.id)) ? "dropped" : "kept";
     }
-    console.error("[supabase-cron-sync-boosts] lookup", row.id, errorText(err));
+    console.error("[supabase-cron-sync-boosts] lookup", row.id, errorMessage(err));
     return "kept";
   }
   if (verdict === "keep") return "kept";
@@ -468,7 +465,7 @@ export async function reconcileStaleBacking(
     try {
       await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
     } catch (err) {
-      console.error("[supabase-cron-sync-boosts] expire", row.id, errorText(err));
+      console.error("[supabase-cron-sync-boosts] expire", row.id, errorMessage(err));
       return "kept";
     }
   }
@@ -483,7 +480,7 @@ async function dropOpenBacking(admin: SupabaseClient, backingId: string): Promis
     if (!error) return true;
     console.error("[supabase-cron-sync-boosts] drop", backingId, error.message);
   } catch (err) {
-    console.error("[supabase-cron-sync-boosts] drop", backingId, errorText(err));
+    console.error("[supabase-cron-sync-boosts] drop", backingId, errorMessage(err));
   }
   return false;
 }
@@ -498,7 +495,7 @@ async function updateBacking(
     const { error } = await admin.from("place_backings").update(patch).eq("id", backingId);
     return error ? error.message : null;
   } catch (err) {
-    return errorText(err);
+    return errorMessage(err);
   }
 }
 
@@ -517,7 +514,7 @@ async function deleteOpenBacking(
   } catch (err) {
     console.error(
       "[consumer-web-start-boost] delete_failed",
-      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: errorText(err) }),
+      JSON.stringify({ backing_id: backingId, session_id: sessionId, error: errorMessage(err) }),
     );
   }
 }

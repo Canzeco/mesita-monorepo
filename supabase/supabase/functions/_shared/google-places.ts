@@ -9,6 +9,7 @@
 
 import { json } from "./http.ts";
 import { googleFetch } from "./google-fetch.ts";
+import { errorMessage } from "./errors.ts";
 
 export {
   classifyGoogleError,
@@ -131,7 +132,7 @@ export async function fetchLocationAnchor(
   } catch (err) {
     console.error(
       "[google-places] location anchor unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return { ok: false, reason: "upstream" };
   }
@@ -230,7 +231,7 @@ export async function fetchPlacePreview(
   } catch (err) {
     console.error(
       "[google-places] place preview unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return { ok: false, reason: "upstream" };
   }

@@ -35,6 +35,7 @@ import {
 } from "./google-listing.ts";
 import { googleStub } from "./google-stub.ts";
 import type { LaneItem, LaneKind } from "./name-pipeline.ts";
+import { errorMessage } from "./errors.ts";
 
 export const GOOGLE_TEXT_MAX = 20;
 
@@ -233,7 +234,7 @@ export async function fetchAutocomplete(
   } catch (err) {
     console.error(
       "[name-pipeline] autocomplete unreachable:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return {
       predictions: [],
@@ -308,7 +309,7 @@ export async function fetchTextSearch(
   } catch (err) {
     console.error(
       "[name-pipeline] text search body:",
-      err instanceof Error ? err.message : String(err),
+      errorMessage(err),
     );
     return [];
   }

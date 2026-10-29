@@ -8,8 +8,63 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
 import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { safeParseJson } from "./parse-utils.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+
+export type OpenAIChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+/** One chat completion, tagged. `ok: false` carries the HTTP status and body
+ *  (status null when the call threw). `parsed` is set only for `json` calls:
+ *  safeParseJson of the content, null when it is not a JSON object. */
+export type OpenAIChatResult =
+  | { ok: true; status: number; content: string; parsed?: unknown }
+  | { ok: false; status: number | null; errorBody?: string; error?: unknown };
+
+/**
+ * POST one OpenAI chat completion. Never throws: every failure comes back as
+ * `ok: false`, so each caller keeps its own fallback. `json` asks for a JSON
+ * object (`response_format`) and parses it.
+ */
+export async function openaiChat(opts: {
+  key: string;
+  model: string;
+  messages: OpenAIChatMessage[];
+  temperature?: number;
+  maxTokens?: number;
+  json?: boolean;
+  signal?: AbortSignal;
+}): Promise<OpenAIChatResult> {
+  try {
+    const r = await fetch(OPENAI_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${opts.key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: opts.model,
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+        ...(opts.maxTokens !== undefined ? { max_tokens: opts.maxTokens } : {}),
+        ...(opts.json ? { response_format: { type: "json_object" } } : {}),
+        messages: opts.messages,
+      }),
+      signal: opts.signal,
+    });
+    if (!r.ok) {
+      const errorBody = await r.text().catch(() => "");
+      return { ok: false, status: r.status, errorBody };
+    }
+    const data = (await r.json()) as { choices?: { message?: { content?: unknown } }[] };
+    const raw = data.choices?.[0]?.message?.content;
+    const content = typeof raw === "string" ? raw : "";
+    return opts.json
+      ? { ok: true, status: r.status, content, parsed: safeParseJson(content) }
+      : { ok: true, status: r.status, content };
+  } catch (error) {
+    return { ok: false, status: null, error };
+  }
+}
 
 // Vision + sort always run on the cheap multimodal model — image work doesn't
 // need the synthesis-quality setting (which governs only the profile text model).

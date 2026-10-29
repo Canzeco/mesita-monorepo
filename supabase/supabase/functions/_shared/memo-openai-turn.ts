@@ -5,7 +5,8 @@
 // flags a cheaper ingest as Due). This file does not persist conversation
 // state. The only cap is a char fuse so a runaway paste cannot blow the model.
 
-import { OPENAI_URL } from "./enrich-config.ts";
+import { openaiChat } from "./enrich-config.ts";
+import { errorMessage } from "./errors.ts";
 
 /** Fuse, not a product cap: drop oldest turns only after this many chars. */
 export const CONTEXT_CHAR_BUDGET = 120_000;
@@ -58,30 +59,17 @@ export async function completeChatTurn(opts: {
   if (!key) return null;
   const model = opts.model.trim();
   if (!model) return null;
-  try {
-    const res = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.7,
-        messages: buildChatMessages(opts.system, opts.history, opts.query),
-      }),
-    });
-    if (!res.ok) {
-      console.error("[memo-openai-turn]", res.status, await res.text());
-      return null;
-    }
-    const body = await res.json() as {
-      choices?: { message?: { content?: unknown } }[];
-    };
-    const text = body.choices?.[0]?.message?.content;
-    return typeof text === "string" && text.trim().length > 0 ? text.trim() : null;
-  } catch (e) {
-    console.error("[memo-openai-turn]", (e as Error).message);
+  const res = await openaiChat({
+    key,
+    model,
+    temperature: 0.7,
+    messages: buildChatMessages(opts.system, opts.history, opts.query),
+  });
+  if (!res.ok) {
+    if (res.status !== null) console.error("[memo-openai-turn]", res.status, res.errorBody ?? "");
+    else console.error("[memo-openai-turn]", errorMessage(res.error));
     return null;
   }
+  const text = res.content;
+  return text.trim().length > 0 ? text.trim() : null;
 }
