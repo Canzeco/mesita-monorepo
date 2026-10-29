@@ -62,13 +62,25 @@ describe("Class and Plan on the identity card", () => {
 
 describe("the Class sheet", () => {
   const sheet = (guestClass: "regular" | "vip") =>
-    renderToStaticMarkup(<ClassSheet open onClose={() => {}} guestClass={guestClass} />);
+    renderToStaticMarkup(
+      <ClassSheet
+        open
+        onClose={() => {}}
+        guestClass={guestClass}
+        instagram={{ handle: "diego", followers: 5000 }}
+      />,
+    );
 
+  // VIP is joined, never bought (MESITA-3054): the only buttons a Regular
+  // guest sees are the two Joins.
   it("never names a plan, a price or a buy button", () => {
-    const words = text(sheet("regular"));
+    const html = sheet("regular");
+    const words = text(html);
     expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
-    expect(sheet("regular")).not.toContain("<button");
+    const buttons = [...html.matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) => text(m[1]).trim());
+    expect(buttons).toEqual(["Join with Instagram", "Join"]);
+    expect(sheet("vip")).not.toContain("<button");
   });
 });
 

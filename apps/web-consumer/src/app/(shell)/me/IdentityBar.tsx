@@ -134,6 +134,14 @@ export function IdentityBar({
             profile?.vip_partner,
             profile?.vip_until,
           )}
+          instagram={
+            profile
+              ? {
+                handle: profile.instagram_handle,
+                followers: profile.instagram_followers_count ?? null,
+              }
+              : null
+          }
         />
       )}
     </header>
