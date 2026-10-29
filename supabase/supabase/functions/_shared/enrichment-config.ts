@@ -59,6 +59,12 @@ export type EnrichmentConfig = {
   /** Consumer Requests: auto-enrich when request_count reaches this. */
   enrichRequestThreshold: number;
   /**
+   * UPDATE EVERY N VIEWS (MESITA-2997): the same view count runs Google
+   * Update each time it lands on a multiple of N (10, 20, 30…), enriched or
+   * not. 0 turns it off.
+   */
+  updateEveryViews: number;
+  /**
    * CREATE ON OPEN (MESITA-2298): opening a Google-only result's full
    * profile is the one thing that mints a Mesita Place — one switch per app.
    * Off, the consumer app's open answers 403 `create_on_open_off` and the
@@ -76,6 +82,7 @@ export type EnrichmentConfig = {
 };
 
 export const CONSUMER_CREATES_PER_DAY_MAX = 10000;
+export const UPDATE_EVERY_VIEWS_MAX = 1000;
 
 export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichGatherGoogleImages: 10,
@@ -98,6 +105,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichDiscoverOpentableN: 3,
   enrichDiscoverUbereatsN: 2,
   enrichRequestThreshold: 10, // MESITA-2653: Pato, "set it to 10"
+  updateEveryViews: 10, // MESITA-2997: Pato, "every 10 visits"
   enrichCreateOnOpenConsumer: true,
   enrichCreateOnOpenAdmin: true,
   enrichConsumerCreatesPerDay: 1000,
@@ -155,6 +163,7 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     enrichDiscoverOpentableN: intIn(r.enrichDiscoverOpentableN, 0, 10, d.enrichDiscoverOpentableN),
     enrichDiscoverUbereatsN: intIn(r.enrichDiscoverUbereatsN, 0, 10, d.enrichDiscoverUbereatsN),
     enrichRequestThreshold: intIn(r.enrichRequestThreshold, 1, 100, d.enrichRequestThreshold),
+    updateEveryViews: intIn(r.updateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.updateEveryViews),
     enrichCreateOnOpenConsumer: r.enrichCreateOnOpenConsumer !== false,
     enrichCreateOnOpenAdmin: r.enrichCreateOnOpenAdmin !== false,
     enrichConsumerCreatesPerDay: intIn(

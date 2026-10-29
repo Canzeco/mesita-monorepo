@@ -32,14 +32,22 @@
 // signed-in guest counts once per place (apply_place_request), and reaching
 // the enrichment config's threshold ("Enrich after N views",
 // enrichRequestThreshold) starts the same Render run admin Enrich starts. It
-// replaced the guest vote (consumer-web-request-place, retired). An Enriched
-// place is untouched; a failure here never fails the view.
+// replaced the guest vote (consumer-web-request-place, retired). A failure
+// here never fails the view.
+//
+// A VIEW ALSO DRIVES UPDATE (Pato, MESITA-2997: "every 10 visits, 20, 30 we
+// update the place"). The count keeps going after Enrich; each new view that
+// lands it on a multiple of "Update every N views" (updateEveryViews) runs
+// the same Google Update the admin Update runs (Google factuals into
+// place_profiles), in the background after the answer.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
+import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
+import { runInBackground } from "../_shared/background.ts";
 
 type Body = {
   kind?: string;
@@ -114,6 +122,17 @@ serveJson("consumer-web-track-activity", async (req) => {
     });
     if (counted.ok) {
       enriching = counted.enriching;
+      if (counted.updateDue) {
+        runInBackground(
+          runGooglePlaceUpdate(admin, placeId, { supabaseUrl: envRes.env.url }).then((r) => {
+            if (!r.ok) {
+              console.error(
+                `[consumer-web-track-activity] the view's Update did not run: ${r.error}`,
+              );
+            }
+          }),
+        );
+      }
     } else {
       console.error(
         `[consumer-web-track-activity] the view did not count toward Enrich: ${counted.error}`,

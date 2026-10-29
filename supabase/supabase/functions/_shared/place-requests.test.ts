@@ -3,6 +3,7 @@ import {
   placeRequestLifecycle,
   placeRequestState,
   shouldTriggerRequestEnrichment,
+  shouldTriggerViewUpdate,
 } from "./place-requests.ts";
 
 const STAMP = "2026-08-28T00:00:00Z";
@@ -156,4 +157,19 @@ Deno.test("a missing enrichedAt never lets ready read as Enriched (MESITA-2154)"
   });
   assertEquals(state.is_enriched, false);
   assertEquals(state.request_lifecycle, "requested");
+});
+
+Deno.test("Update every N views: each new view on a multiple of N, never a repeat view or mid-run (MESITA-2997)", () => {
+  const base = { inserted: true, everyViews: 10, contentState: "ready", enrichmentTriggered: false };
+  assertEquals([9, 10, 11, 20, 30].map((n) => shouldTriggerViewUpdate({ ...base, requestCount: n })), [
+    false,
+    true,
+    false,
+    true,
+    true,
+  ]);
+  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, inserted: false }), false);
+  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, enrichmentTriggered: true }), false);
+  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, contentState: "generating" }), false);
+  assertEquals(shouldTriggerViewUpdate({ ...base, requestCount: 10, everyViews: 0 }), false);
 });

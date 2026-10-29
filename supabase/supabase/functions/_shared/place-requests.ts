@@ -12,6 +12,11 @@
 // `enriching` tells the guest the place is mid-run after this view
 // (MESITA-2952): the page loaded before the run began, so the guest whose
 // view started it would otherwise never see the Enriching tag.
+//
+// UPDATE EVERY N VIEWS (MESITA-2997): the count keeps going after Enrich, and
+// each NEW view that lands it on a multiple of "Update every N views"
+// (updateEveryViews: 10, 20, 30…) asks the caller to run Google Update
+// (`updateDue`). Never on the view that just started Enrich, never mid-run.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { loadEnrichmentConfig } from "./enrichment-config.ts";
@@ -73,6 +78,20 @@ export function shouldTriggerRequestEnrichment(input: {
   return input.requestCount >= input.threshold;
 }
 
+/** Cyclical Google Update: every N-th distinct view, enriched or not. */
+export function shouldTriggerViewUpdate(input: {
+  inserted: boolean;
+  requestCount: number;
+  everyViews: number;
+  contentState: unknown;
+  enrichmentTriggered: boolean;
+}): boolean {
+  if (!input.inserted || input.enrichmentTriggered) return false;
+  if (isPlaceEnriching(input.contentState)) return false;
+  if (input.everyViews < 1 || input.requestCount < 1) return false;
+  return input.requestCount % input.everyViews === 0;
+}
+
 export function placeRequestState(input: {
   requestCount: number;
   threshold: number;
@@ -114,7 +133,7 @@ export async function applyPlaceRequest(
     callerName: string;
   },
 ): Promise<
-  | { ok: true; state: PlaceRequestState; enriching: boolean }
+  | { ok: true; state: PlaceRequestState; enriching: boolean; updateDue: boolean }
   | { ok: false; status: number; error: string; code?: string }
 > {
   const { data: place, error: placeErr } = await admin
@@ -137,26 +156,16 @@ export async function applyPlaceRequest(
     };
   }
 
-  const threshold = await loadRequestThreshold(admin);
+  const config = await loadEnrichmentConfig(admin);
+  const threshold = config.enrichRequestThreshold;
   const contentState = (place as { content_state?: unknown }).content_state;
   const enrichedAt = (place as { enriched_at?: unknown }).enriched_at;
   const existingCount = Number((place as { request_count?: unknown }).request_count) || 0;
+  const googlePlaceId = String(
+    (place as { google_place_id?: unknown }).google_place_id ?? "",
+  ).trim();
 
-  if (isPlaceEnriched(enrichedAt)) {
-    return {
-      ok: true,
-      state: placeRequestState({
-        requestCount: existingCount,
-        threshold,
-        requested: true,
-        contentState,
-        enrichedAt,
-        enrichmentTriggered: false,
-      }),
-      enriching: false,
-    };
-  }
-
+  // Every view counts, Enriched or not: the count drives Update after Enrich.
   const { data: applied, error: rpcErr } = await admin.rpc("apply_place_request", {
     p_consumer_id: opts.consumerId,
     p_place_id: opts.placeId,
@@ -167,6 +176,7 @@ export async function applyPlaceRequest(
   const row = Array.isArray(applied) ? applied[0] : applied;
   const requestCount = Number((row as { request_count?: unknown } | null)?.request_count);
   const count = Number.isFinite(requestCount) ? requestCount : existingCount;
+  const inserted = (row as { inserted?: unknown } | null)?.inserted === true;
 
   let enrichmentTriggered = false;
   // Another guest's run won the claim between our read and our start.
@@ -177,9 +187,6 @@ export async function applyPlaceRequest(
     contentState,
     enrichedAt,
   })) {
-    const googlePlaceId = String(
-      (place as { google_place_id?: unknown }).google_place_id ?? "",
-    ).trim();
     // The vote already counted, so nothing below fails the request. A missing
     // spine cannot be enriched (Admin adds the id later). The claim loses to a
     // run already in flight (another guest's vote). A refused start is logged
@@ -198,6 +205,14 @@ export async function applyPlaceRequest(
     }
   }
 
+  const updateDue = googlePlaceId !== "" && !claimedElsewhere && shouldTriggerViewUpdate({
+    inserted,
+    requestCount: count,
+    everyViews: config.updateEveryViews,
+    contentState,
+    enrichmentTriggered,
+  });
+
   return {
     ok: true,
     state: placeRequestState({
@@ -209,5 +224,6 @@ export async function applyPlaceRequest(
       enrichmentTriggered,
     }),
     enriching: enrichmentTriggered || claimedElsewhere || isPlaceEnriching(contentState),
+    updateDue,
   };
 }
