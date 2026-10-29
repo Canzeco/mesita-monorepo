@@ -50,7 +50,7 @@ export function ReservationDetailModalShell({
             onClick={onShare}
             disabled={placeName == null}
             aria-label="Share"
-            className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition"
+            className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
           >
             <Share2 className="h-4 w-4" />
           </button>

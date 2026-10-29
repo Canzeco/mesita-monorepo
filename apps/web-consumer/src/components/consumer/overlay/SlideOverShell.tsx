@@ -107,7 +107,7 @@ export function SlideOverHeader({
         type="button"
         onClick={close}
         aria-label="Back"
-        className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border transition"
+        className="bg-card text-foreground border-border hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition"
       >
         <ChevronLeft className="h-5 w-5" strokeWidth={2.25} />
       </button>

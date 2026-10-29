@@ -58,7 +58,7 @@ function ToastCard({ t }: { t: Toast }) {
       aria-live="polite"
       aria-atomic="true"
       className={cn(
-        "animate-in slide-in-from-top-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-lg border px-4 py-2.5 text-sm backdrop-blur duration-200",
+        "animate-in slide-in-from-top-2 fade-in bg-card/95 shadow-elev pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl border px-4 py-2.5 text-sm backdrop-blur duration-200",
         t.tone === "error" ? "border-destructive/40" : "border-border",
       )}
     >

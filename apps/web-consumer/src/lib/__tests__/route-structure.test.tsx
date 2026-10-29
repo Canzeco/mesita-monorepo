@@ -722,7 +722,7 @@ describe("T8 — Me's grid is ten live cells", () => {
       "utf8",
     );
     expect(rows).toContain(
-      '"flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]"',
+      '"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"',
     );
     expect(src).toContain("className={DEST_CHIP} aria-hidden data-dest-chip");
     expect(src).not.toContain("opacity-[0.22]");
