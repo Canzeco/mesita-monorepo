@@ -10,14 +10,14 @@ import { AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
 import { SIGHT_Y } from "./search-utils";
 
-/** How much narrower than the carousel one card page is. The card's edges
- *  sit on the header's 12px gutter (Pato, MESITA-3008: "better vertical and
- *  horizontal alignment"; MESITA-2670's 88% page left them ~28px in): a page
- *  is the carousel less 18px, a 6px gap between cards (px-[3px] each side),
- *  the first and last pages padded 9px, so the neighbour peeks 6px. The
- *  carousel spans the map's full width, floating over its foot. The scroll
- *  math in SearchClient reads `railPageWidth`. */
-export const RAIL_PAGE_INSET_PX = 18;
+/** How much narrower than the carousel one card page is. A page is the
+ *  carousel less 64px (Pato, MESITA-3018: "its tooo wide, the other options
+ *  must be kinda partially visible too"; MESITA-3008's 18px left a 6px
+ *  peek): a 6px gap between cards (px-[3px] each side), the first and last
+ *  pages padded 32px, so the centred card sits 32px in and each neighbour
+ *  peeks ~26px. The carousel spans the map's full width, floating over its
+ *  foot. The scroll math in SearchClient reads `railPageWidth`. */
+export const RAIL_PAGE_INSET_PX = 64;
 
 /** One card page's width in px for a carousel `clientWidth` wide. */
 export function railPageWidth(clientWidth: number): number {
@@ -25,7 +25,7 @@ export function railPageWidth(clientWidth: number): number {
 }
 
 const RAIL_PAGE =
-  "flex w-[calc(100%-18px)] shrink-0 snap-center flex-col gap-1.5 px-[3px] first:ml-[9px] last:mr-[9px]";
+  "flex w-[calc(100%-64px)] shrink-0 snap-center flex-col gap-1.5 px-[3px] first:ml-[32px] last:mr-[32px]";
 
 /** Cards per carousel page: the rail is ONE card tall (Pato, MESITA-2885:
  *  "the carousel must be one item tall, not two, its a horizontal
