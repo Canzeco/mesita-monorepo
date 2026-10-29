@@ -23,7 +23,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Crown, UsersRound } from "lucide-react";
+import { Crown, Ticket, UsersRound } from "lucide-react";
+
+import { Instagram } from "@/components/shared/instagram-icon";
 
 import {
   LocalDialog,
@@ -58,11 +60,9 @@ import {
   SHEET_CANCEL_BUTTON_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
-import { cn } from "@/lib/utils";
 import {
   CurrentPill,
   IconChip,
-  ME_BUTTON_CLASS,
   RowDivider,
   SectionEyebrow,
   SettingsGroup,
@@ -137,14 +137,10 @@ function SoonPill() {
   );
 }
 
-const REASON_CLASS = "text-muted-foreground type-label mt-2 block";
-// One of the two ways in: a card like SettingsGroup's, its words on top
-// (JOIN_BODY_CLASS takes the spare height) and its button at the bottom, so
-// the two buttons line up whatever each card says.
-const JOIN_CARD_CLASS =
-  "border-border bg-card flex min-w-0 flex-col rounded-2xl border p-4";
-const JOIN_BODY_CLASS = "flex-1 pb-4";
-const LINK_CLASS = "text-foreground font-semibold underline underline-offset-2";
+const REASON_CLASS = "text-muted-foreground type-label mt-1 block";
+// A row's action on the right (Join, Connect): compact, black, 44px tall.
+const ROW_ACTION_CLASS =
+  "h-11 min-h-11 shrink-0 rounded-xl px-4 py-0 text-sm font-semibold";
 
 /** Where the Instagram card stands, from what the page last knew. The server
  *  checks again on the tap (MESITA-3069's states). */
@@ -166,22 +162,18 @@ function instagramState(ig: ClassInstagram): InstagramState {
 
 const fmtCount = (n: number) => n.toLocaleString("en-US");
 
-/** The follower count toward the bar (Pato, MESITA-3069: lead with the
- *  number). A thin bar on the muted track, full at the bar or above. */
+/** The follower count toward the bar (MESITA-3069), as the Instagram row's
+ *  line: "298 of 1,000 followers" over a thin bar, full at the bar. */
 function FollowerProgress({ followers }: { followers: number }) {
   const needed = INSTAGRAM_REACH_FOLLOWERS;
   const share = Math.min(followers / needed, 1);
   const ready = followers >= needed;
   return (
-    <div className="mt-2" data-class-join-progress="">
-      <span className="block text-xl font-semibold tabular-nums">
-        {fmtCount(followers)}
-        {!ready && (
-          <span className="text-muted-foreground font-medium">
-            {" "}
-            / {fmtCount(needed)}
-          </span>
-        )}
+    <div data-class-join-progress="">
+      <span className="text-muted-foreground type-label mt-1 block tabular-nums">
+        {ready
+          ? JOIN_WORDS.qualify(fmtCount(followers))
+          : JOIN_WORDS.progress(fmtCount(followers), fmtCount(needed))}
       </span>
       <div
         role="progressbar"
@@ -196,9 +188,6 @@ function FollowerProgress({ followers }: { followers: number }) {
           style={{ width: `${share * 100}%` }}
         />
       </div>
-      <span className="text-muted-foreground type-label mt-2 block">
-        {ready ? JOIN_WORDS.qualify : JOIN_WORDS.toJoin}
-      </span>
     </div>
   );
 }
@@ -259,17 +248,23 @@ function BecomeVip({
     }
   }
 
-  // SIDE BY SIDE (Pato, MESITA-3056), stacked under 360px like the identity
-  // card's Class · Plan pair (MESITA-3069). Each card: words on top, at most
-  // one LIVE button at the bottom — never a greyed-out one (MESITA-3069:
-  // two dead buttons read as a broken page).
+  // ONE CARD OF ROWS (Pato, MESITA-3073: "better make it vertical but better
+  // cleaner design"; it replaced MESITA-3056's two side-by-side cards): the
+  // Regular/VIP card's own pattern — icon chip, title, one grey line — so
+  // the page reads as one system. Only LIVE buttons (MESITA-3069).
   return (
     <section className="mt-6 flex flex-col gap-2" data-class-join="">
       <SectionEyebrow>{JOIN_WORDS.group}</SectionEyebrow>
-      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
-        <div className={JOIN_CARD_CLASS} data-class-join-instagram="">
-          <div className={JOIN_BODY_CLASS}>
-            <span className="type-label block font-semibold">
+      <div className="border-border bg-card overflow-hidden rounded-2xl border">
+        <div
+          className="flex items-start gap-3 px-4 py-3"
+          data-class-join-instagram=""
+        >
+          <IconChip>
+            <Instagram className="h-[18px] w-[18px]" />
+          </IconChip>
+          <div className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">
               {JOIN_WORDS.instagramTitle}
             </span>
             {(ig.kind === "below" || ig.kind === "ready") && (
@@ -288,18 +283,9 @@ function BecomeVip({
                 {igError}
               </span>
             )}
-            {(ig.kind === "below" || ig.kind === "count_unknown" || igError) &&
-              ig.kind !== "not_connected" && (
-                <Link
-                  href={CONSUMER_ROUTES.mePages.instagram}
-                  className={cn(REASON_CLASS, LINK_CLASS)}
-                >
-                  {JOIN_WORDS.update}
-                </Link>
-              )}
           </div>
           {ig.kind === "not_connected" && (
-            <Button asChild size="sm" className={cn(ME_BUTTON_CLASS, "w-full")}>
+            <Button asChild size="sm" className={ROW_ACTION_CLASS}>
               <Link href={CONSUMER_ROUTES.mePages.instagram}>
                 {JOIN_WORDS.connectButton}
               </Link>
@@ -312,7 +298,7 @@ function BecomeVip({
               aria-label={JOIN_WORDS.instagramButton}
               disabled={busy !== null}
               onClick={() => void join("instagram")}
-              className={cn(ME_BUTTON_CLASS, "w-full")}
+              className={ROW_ACTION_CLASS}
             >
               {busy === "instagram" && (
                 <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -321,8 +307,9 @@ function BecomeVip({
             </Button>
           )}
         </div>
+        <RowDivider />
         <form
-          className={JOIN_CARD_CLASS}
+          className="flex items-start gap-3 px-4 py-3"
           data-class-join-code=""
           onSubmit={(e) => {
             e.preventDefault();
@@ -331,25 +318,46 @@ function BecomeVip({
             else setCodeError(JOIN_WORDS.shortCode);
           }}
         >
-          <div className={JOIN_BODY_CLASS}>
-            <span className="type-label block font-semibold">
+          <IconChip>
+            <Ticket className="h-[18px] w-[18px]" />
+          </IconChip>
+          <div className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold">
               {JOIN_WORDS.codeTitle}
             </span>
-            <input
-              value={code}
-              onChange={(e) => {
-                setCode(groupCode(e.target.value));
-                setCodeError(null);
-              }}
-              disabled={busy !== null}
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="0000 0000 0000"
-              aria-label={JOIN_WORDS.codeField}
-              aria-describedby={codeError ? "class-join-code-error" : undefined}
-              maxLength={14}
-              className="border-border bg-muted/30 placeholder:text-muted-foreground/70 mt-2 h-11 w-full min-w-0 rounded-xl border px-2 text-center font-mono text-sm outline-none"
-            />
+            <div className="mt-2 flex gap-2">
+              <input
+                value={code}
+                onChange={(e) => {
+                  setCode(groupCode(e.target.value));
+                  setCodeError(null);
+                }}
+                disabled={busy !== null}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder="0000 0000 0000"
+                aria-label={JOIN_WORDS.codeField}
+                aria-describedby={
+                  codeError ? "class-join-code-error" : undefined
+                }
+                maxLength={14}
+                className="border-border bg-muted/30 placeholder:text-muted-foreground/70 h-11 w-full min-w-0 flex-1 rounded-xl border px-3 font-mono text-sm tabular-nums outline-none"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={busy !== null}
+                className={ROW_ACTION_CLASS}
+              >
+                {busy === "code" && (
+                  <Spinner
+                    size="sm"
+                    className="border-white/40 border-t-white"
+                  />
+                )}
+                {JOIN_WORDS.codeButton}
+              </Button>
+            </div>
             {codeError && (
               <span
                 id="class-join-code-error"
@@ -360,17 +368,6 @@ function BecomeVip({
               </span>
             )}
           </div>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={busy !== null}
-            className={cn(ME_BUTTON_CLASS, "w-full")}
-          >
-            {busy === "code" && (
-              <Spinner size="sm" className="border-white/40 border-t-white" />
-            )}
-            {JOIN_WORDS.codeButton}
-          </Button>
         </form>
       </div>
     </section>
