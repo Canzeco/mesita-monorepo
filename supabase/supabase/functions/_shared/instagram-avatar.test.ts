@@ -3,7 +3,6 @@ import {
   avatarExt,
   instagramAvatarPath,
   isInstagramAvatar,
-  mayReplaceAvatar,
   photoAllowed,
   pickProfilePicUrl,
 } from "./instagram-avatar.ts";
@@ -26,13 +25,10 @@ Deno.test("instagram-avatar: a copy lives in the guest's own folder, named insta
   assertEquals(instagramAvatarPath(ID, 1700000000000, "jpg"), `${ID}/instagram-1700000000000.jpg`);
 });
 
-Deno.test("instagram-avatar: an uploaded photo is never replaced", () => {
-  // Empty, or an earlier Instagram copy → replace.
-  assertEquals(mayReplaceAvatar(null, ID), true);
-  assertEquals(mayReplaceAvatar("", ID), true);
-  assertEquals(mayReplaceAvatar(`${BASE}/${ID}/instagram-1.jpg`, ID), true);
-  // An upload ({ms}-{uuid}.{ext}, MESITA-953) → keep.
-  assertEquals(mayReplaceAvatar(`${BASE}/${ID}/1700000000000-abc.jpg`, ID), false);
+Deno.test("instagram-avatar: only this guest's instagram- files are copies", () => {
+  assertEquals(isInstagramAvatar(`${BASE}/${ID}/instagram-1.jpg`, ID), true);
+  // An upload ({ms}-{uuid}.{ext}, MESITA-953) is not a copy, so the sweep keeps it.
+  assertEquals(isInstagramAvatar(`${BASE}/${ID}/1700000000000-abc.jpg`, ID), false);
   // Another guest's Instagram copy is not this guest's.
   assertEquals(isInstagramAvatar(`${BASE}/other/instagram-1.jpg`, ID), false);
 });

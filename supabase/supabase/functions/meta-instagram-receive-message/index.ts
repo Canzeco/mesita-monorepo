@@ -117,7 +117,7 @@ async function handle(
     claim.consumer_id,
     profile.photoUrl,
   );
-  if (!photo.ok && !["no_photo", "photo_off", "uploaded_photo_kept"].includes(photo.reason)) {
+  if (!photo.ok && !["no_photo", "photo_off"].includes(photo.reason)) {
     console.error("ig_photo_failed", claim.consumer_id, photo.reason);
   }
   await reply(cfg, senderId, DM_REPLY.verified(profile.handle));

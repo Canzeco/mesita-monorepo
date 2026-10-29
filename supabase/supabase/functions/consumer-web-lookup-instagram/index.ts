@@ -37,7 +37,6 @@ type Body = { username?: unknown; confirmed?: unknown };
 
 // A photo that was not taken for one of these reasons is not an error.
 const QUIET_PHOTO_REASONS = new Set([
-  "uploaded_photo_kept",
   "no_photo",
   "photo_off",
 ]);
