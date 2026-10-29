@@ -32,13 +32,20 @@
 //   { action: "dm_status" }      → { ok, pending, handle, verifiedAt }
 //     The app polls this until the claim is spent (pending false) and the
 //     account's verifiedAt is at or after the code's issuedAt.
+//
+// DISCONNECT (MESITA-3052, Pato: "enable to disconnect account too … easy
+// switch to disconnect account to switch account"):
+//   { action: "disconnect" }     → { ok }
+//     Clears the handle, follower count and verified time, drops any pending
+//     claim, and takes down a picture copied from Instagram (an upload stays,
+//     as when the photo switch goes off). The app asks to confirm first.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
 import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
-import { adoptInstagramAvatar, pickProfilePicUrl } from "../_shared/instagram-avatar.ts";
+import { adoptInstagramAvatar, isInstagramAvatar, pickProfilePicUrl } from "../_shared/instagram-avatar.ts";
 import {
   checkWaitMs,
   claimIsLive,
@@ -47,7 +54,7 @@ import {
   normalizeHandle,
 } from "../_shared/instagram-claim.ts";
 import { dmLink, readInstagramDmConfig } from "../_shared/instagram-dm.ts";
-import { readInstagramStatus } from "../_shared/consumer-doc.ts";
+import { readInstagramStatus, writeConsumer } from "../_shared/consumer-doc.ts";
 
 type Body = { action?: string; handle?: string };
 
@@ -82,6 +89,32 @@ serveJson("consumer-web-claim-instagram", async (req) => {
         ? { ok: true, channel: "dm", account: dm.username, link: dmLink(dm.username) }
         : { ok: true, channel: "bio" },
     );
+  }
+
+  if (body.action === "disconnect") {
+    const { data: row, error: readErr } = await admin
+      .from("consumers")
+      .select("avatar_url")
+      .eq("id", consumerId)
+      .maybeSingle();
+    if (readErr) return jsonError(readErr.message, 500);
+    const written = await writeConsumer(admin, {
+      mode: "update",
+      id: consumerId,
+      patch: {
+        instagram_handle: null,
+        instagram_followers_count: null,
+        instagram_verified_at: null,
+        ...(isInstagramAvatar(row?.avatar_url as string | null, consumerId) ? { avatar_url: null } : {}),
+      },
+    });
+    if (!written.ok) return jsonError(written.error, 500);
+    const { error: claimErr } = await admin
+      .from("consumer_instagram_claims")
+      .delete()
+      .eq("consumer_id", consumerId);
+    if (claimErr) return jsonError(claimErr.message, 500);
+    return json({ ok: true });
   }
 
   if (body.action === "start_dm") {
@@ -245,5 +278,5 @@ serveJson("consumer-web-claim-instagram", async (req) => {
     return json({ ok: true, handle: claim.handle, followers: verdict.followers, photo: photo.ok });
   }
 
-  return jsonError('action must be "channel", "start_dm", "dm_status", "start" or "check"', 400);
+  return jsonError('action must be "channel", "start_dm", "dm_status", "disconnect", "start" or "check"', 400);
 });
