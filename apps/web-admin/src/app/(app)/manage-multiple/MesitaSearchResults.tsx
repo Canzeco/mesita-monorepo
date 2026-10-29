@@ -50,14 +50,23 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                     className={`max-w-[60vw] px-4 py-3 sm:max-w-[280px] ${STICKY_COL_CELL}`}
                   >
                     {hit ? (
-                      // The name is the door to Single Place (MESITA-2086):
-                      // the place surface, not a second facts card.
-                      <Link
-                        href={placeTabHref(hit.id, "profile")}
-                        className="block truncate font-medium underline-offset-4 hover:underline"
-                      >
-                        {hit.name || hit.google_name}
-                      </Link>
+                      <>
+                        {/* The name is the door to Single Place (MESITA-2086):
+                            the place surface, not a second facts card. */}
+                        <Link
+                          href={placeTabHref(hit.id, "profile")}
+                          className="block truncate font-medium underline-offset-4 hover:underline"
+                        >
+                          {hit.name || hit.google_name}
+                        </Link>
+                        {/* Premier tier, so a Multiple Places › Edit run can
+                            be checked by searching again (MESITA-3090). */}
+                        {hit.boost_tier === 1 || hit.boost_tier === 2 ? (
+                          <span className="border-border mt-1 inline-flex rounded-full border px-2 py-0.5 type-label font-semibold">
+                            {hit.boost_tier === 2 ? "Premier 5X" : "Premier 2X"}
+                          </span>
+                        ) : null}
+                      </>
                     ) : (
                       <>
                         <p className="text-muted-foreground font-mono text-xs">
