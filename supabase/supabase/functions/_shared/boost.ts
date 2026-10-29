@@ -28,16 +28,18 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
 import { errorMessage } from "./errors.ts";
 
-export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
+export type BoostTier = "boost_2x" | "boost_5x";
 export type BoostInterval = "month" | "year";
 
-export const PREMIER_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
+export const PREMIER_TIERS = ["boost_2x", "boost_5x"] as const satisfies readonly BoostTier[];
 
-/** Monthly price in US cents. */
+/** Monthly price in US cents: two plans, 2X $10 and 5X $100 (Pato,
+ *  MESITA-3041: "Premier must be only 2 options, 10usd for 2x and 100usd
+ *  for 5x";
+ *  10X retired). */
 export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
   boost_2x: 1000,
-  boost_5x: 5000,
-  boost_10x: 20000,
+  boost_5x: 10000,
 };
 
 /** A year is billed as this many months. */
@@ -60,17 +62,22 @@ export const CHARGING_GIVE_UP_MS = 24 * 3600_000;
 export const PREMIER_LABEL: Record<BoostTier, string> = {
   boost_2x: "Premier 2X",
   boost_5x: "Premier 5X",
-  boost_10x: "Premier 10X",
 };
 
-/** The Premier factor a place's `boost_tier` (0..3) earns in the Area
+/** The Premier factor a place's `boost_tier` (0..2) earns in the Area
  *  score. Literal: the tier names promise the number. */
-export const PREMIER_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
+export const PREMIER_FACTOR: Record<0 | 1 | 2, number> = { 0: 1, 1: 2, 2: 5 };
 
-export type TierRank = 1 | 2 | 3;
+export type TierRank = 1 | 2;
 
-export const TIER_RANK: Record<BoostTier, TierRank> = { boost_2x: 1, boost_5x: 2, boost_10x: 3 };
-export const TIER_BY_RANK: Record<TierRank, BoostTier> = { 1: "boost_2x", 2: "boost_5x", 3: "boost_10x" };
+export const TIER_RANK: Record<BoostTier, TierRank> = { boost_2x: 1, boost_5x: 2 };
+export const TIER_BY_RANK: Record<TierRank, BoostTier> = { 1: "boost_2x", 2: "boost_5x" };
+
+/** A place's stored `boost_tier` as a Premier rank: 1 or 2, else 0 (an
+ *  unknown value never reads as Premier, MESITA-3041). */
+export function premierRankOf(boostTier: number): 0 | TierRank {
+  return boostTier === 1 || boostTier === 2 ? boostTier : 0;
+}
 
 /** What the guest pays per interval. */
 export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
@@ -377,12 +384,20 @@ export function isAllowedReturnUrl(raw: string): boolean {
 
 export function parseBoostStart(
   body: Record<string, unknown>,
-): { ok: true; start: BoostStart } | { ok: false; error: string } {
+): { ok: true; start: BoostStart } | { ok: false; error: string; code?: "tier_retired" | "tier_invalid" } {
   const placeId = body.place_id;
   if (!isUuid(placeId)) return { ok: false, error: "place_id must be a Mesita place id" };
   const tier = body.tier;
+  if (tier === "boost_10x") {
+    // Retired by MESITA-3041; a cached old build may still offer it.
+    return { ok: false, code: "tier_retired", error: 'tier "boost_10x" is not offered; use boost_2x or boost_5x' };
+  }
   if (typeof tier !== "string" || !(PREMIER_TIERS as readonly string[]).includes(tier)) {
-    return { ok: false, error: "tier must be boost_2x, boost_5x or boost_10x" };
+    return {
+      ok: false,
+      code: "tier_invalid",
+      error: `tier ${JSON.stringify(String(tier).slice(0, 32))} is not offered; use boost_2x or boost_5x`,
+    };
   }
   const interval = body.interval ?? "month";
   if (interval !== "month" && interval !== "year") {
@@ -909,7 +924,8 @@ export async function attemptRenewalCharge(
         periodId: period.id,
         backingId: pledge.id,
         placeId: period.place_id,
-        label: `${PREMIER_LABEL[TIER_BY_RANK[period.tier as TierRank] ?? "boost_2x"]} renewal`,
+        // An unknown tier names no level (MESITA-3041: never the wrong one).
+        label: `${PREMIER_LABEL[TIER_BY_RANK[period.tier as TierRank]] ?? "Premier"} renewal`,
       }),
       { idempotencyKey: chargeKey(period.id) },
     );

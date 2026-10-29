@@ -1,13 +1,13 @@
 // Supabase Edge Function — admin-web-grant-place-boost
 //
 // MESITA-2995: Single Place › Premier, the operator's writes.
-//   grant         a period with no payer and nothing charged (tier 1..3,
+//   grant         a period with no payer and nothing charged (tier 1..2,
 //                 1..12 months); refused while a period is running.
 //   end           ends the running grant now; the line pays at the next run.
 //   remove_pledge takes one pledge out of the line (its card detached); a
 //                 payer's paid period runs out. Never refunds.
 //
-// Body:     { placeId | projectId, action: "grant", tier: 1|2|3, months?: 1..12 }
+// Body:     { placeId | projectId, action: "grant", tier: 1|2, months?: 1..12 }
 //         | { placeId | projectId, action: "end" }
 //         | { placeId | projectId, action: "remove_pledge", backingId: uuid }
 // Response: { ok: true }
@@ -33,7 +33,9 @@ serveJson("admin-web-grant-place-boost", async (req) => {
   if (body.action === "grant") {
     const tier = Number(body.tier);
     const months = body.months == null ? 1 : Number(body.months);
-    if (![1, 2, 3].includes(tier)) return json({ ok: false, error: "tier must be 1, 2 or 3" }, 400);
+    if (![1, 2].includes(tier)) {
+      return json({ ok: false, code: "tier_invalid", error: `tier must be 1 (2X) or 2 (5X), got ${JSON.stringify(String(body.tier).slice(0, 32))}` }, 400);
+    }
     if (!Number.isInteger(months) || months < 1 || months > 12) {
       return json({ ok: false, error: "months must be 1 to 12" }, 400);
     }

@@ -18,7 +18,7 @@ export type Place = {
    *  answers, never `content_state`. */
   enriched?: boolean | null;
   /** Mesita Premier (MESITA-2925, the paid tier since MESITA-2789):
-   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Above 0 the name
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X. Above 0 the name
    *  wears "Premier 2X" and the pin is red. Absent on an older payload
    *  reads as not Premier. */
   boost_tier?: number | null;
@@ -307,9 +307,6 @@ export type AreaDiagnostics = {
   distancePenalty?: number;
   final: number;
   formula: "point" | "none";
-  /** The Catalog lane that placed it (MESITA-3016): `red` a paid slot
-   *  (drawn with the Ad mark), `blue` organic; null or absent off Home. */
-  lane?: "red" | "blue" | null;
 };
 
 /** Where Places ranks from: always a point (MESITA-2501) — the device, a

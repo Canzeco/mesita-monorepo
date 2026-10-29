@@ -8,15 +8,13 @@
 //     then their cards (MESITA-2950)
 //   Catalog (Home)         (point or nothing, NO radius)
 //     every ready Mesita row (scoring columns, walked by id) → gates →
-//     two lanes from the same rows (MESITA-3016): red = Premier places by
-//     Proximity × Popularity × s, blue = every place by Proximity ×
-//     Popularity → red, blue, red, blue… → the first 1000, then their
-//     cards; the client pages it (`map.catalogPageSize`)
+//     Proximity × Popularity × s → the best 1000 BY RANK, then their cards;
+//     the client pages it (`map.catalogPageSize`)
 //
 // (Pato, MESITA-2909: on the Map distance is a screen, not a sort; the
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
 // corrida", paged, with Proximity's half distance as its knob.) s is the
-// Premier factor, the paid tier's ×2 · ×5 · ×10 (area-score.ts). Gates: Family, Radius
+// Premier factor, the paid tier's ×2 · ×5 (area-score.ts). Gates: Family, Radius
 // (the Map), the operational ones the read applies (active, ready) and the
 // Popularity floor; no reviews floor (MESITA-2721). The two source switches
 // (Mesita Popularity / Mesita Proximity, 20 + 20, MESITA-2703) and the
@@ -38,10 +36,7 @@ import {
   type AreaContext,
   type AreaDiagnostics,
   type AreaLocation,
-  type AreaScore,
-  type CatalogLane,
   insideBounds,
-  interleaveLanes,
   type LatLng,
   rankArea,
 } from "./area-score.ts";
@@ -193,10 +188,6 @@ export type AreaPoolDiagnostics = AreaDiagnostics & {
   distanceKm: number | null;
   /** The half distance Proximity read (km); null on the Map (MESITA-2909). */
   halfKm: number | null;
-  /** The Catalog lane that placed it (MESITA-3016): `red` a paid slot (a
-   *  Premier place, × its factor), `blue` organic (factor 1); null on the
-   *  Map. */
-  lane: CatalogLane | null;
 };
 
 export type AreaPoolPlace = Record<string, unknown> & { id: string; area: AreaPoolDiagnostics };
@@ -214,9 +205,6 @@ export type AreaPoolSummary = {
   placesShown: number | null;
   /** The Catalog's page size; null on the Map. */
   pageSize: number | null;
-  /** Red (paid) slots in the Catalog's merged list (MESITA-3016); null on
-   *  the Map. */
-  red: number | null;
 };
 
 function roundedKm(location: AreaLocation, lat: unknown, lng: unknown): number | null {
@@ -244,41 +232,28 @@ export function selectAreaPool<T extends PoolRow>(
     families: deps.families,
     ...areaSignalParams(deps.cfg.params, deps.cfg.map, deps.surface),
   };
-  const items = deps.mesitaRows.map((row) => ({
-    id: String(row.id),
-    candidate: mesitaCandidate(row),
-    place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
-  }));
-  type Item = (typeof items)[number];
-  const rank = (from: readonly Item[], c: AreaContext) =>
-    rankArea(from, (item) => item.candidate, c).map((r) => ({ ...r, id: r.item.id }));
-  // THE TWO LANES (MESITA-3016): the Catalog interleaves red (Premier
-  // places only, × the Premier factor) and blue (every place, no factor),
-  // one and one, ranked from the same rows: no second read. The Map is
-  // red's score over every place.
-  const blue = catalog ? rank(items, { ...ctx, premier: false }) : [];
-  const ranked: Array<{ item: Item; area: AreaScore; lane: CatalogLane | null }> = catalog
-    ? interleaveLanes(
-      rank(items.filter((i) => (i.candidate.premierTier ?? 0) > 0), ctx),
-      blue,
-    ).map(({ lane, item }) => ({ ...item, lane }))
-    : rank(items, ctx).map((r) => ({ ...r, lane: null }));
+  const ranked = rankArea(
+    deps.mesitaRows.map((row) => ({
+      candidate: mesitaCandidate(row),
+      place: { ...row, distance_km: roundedKm(deps.location, row.lat, row.lng) },
+    })),
+    (item) => item.candidate,
+    ctx,
+  );
   const shown = deps.cfg.map.placesShown ?? AREA_PLACES_SHOWN_FALLBACK;
   const kept = catalog ? ranked : ranked.slice(0, Math.max(0, shown));
-  const places = kept.map(({ item, area, lane }) => {
+  const places = kept.map(({ item, area }) => {
     const { distanceKm: km, ...diagnostics } = area;
     // The score tag prints it beside Proximity (MESITA-2830).
     const distanceKm = km === null ? null : Math.round(km * 100) / 100;
     return {
       ...item.place,
-      area: { ...diagnostics, distanceKm, halfKm: ctx.halfKm, lane },
+      area: { ...diagnostics, distanceKm, halfKm: ctx.halfKm },
     } as AreaPoolPlace;
   });
   const summary: AreaPoolSummary = {
     read: deps.mesitaRows.length,
-    // Every gated place once: blue holds them all on the Catalog.
-    ranked: catalog ? blue.length : ranked.length,
-    red: catalog ? ranked.filter((r) => r.lane === "red").length : null,
+    ranked: ranked.length,
     returned: places.length,
     surface: deps.surface,
     halfKm: ctx.halfKm,

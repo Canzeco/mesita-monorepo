@@ -3,7 +3,7 @@
 // Single Place › Find › the one results table (MESITA-2124, MESITA-2181,
 // MESITA-2187, MESITA-2188). A row per place. The first column says whether
 // Mesita holds it or it is Google only — the first fact to read. Then the
-// states (Premier is a tier: Off · 2X · 5X · 10X, MESITA-2925), then Views · Likes,
+// states (Premier is a tier: Off · 2X · 5X, MESITA-2925), then Views · Likes,
 // then, on a word, Google's rank. 50 rows a page
 // (MESITA-2335); no group header over the states.
 // Reviews stay off this table (MESITA-2222). The action sits at the row end.
@@ -551,7 +551,7 @@ const QUICK_STATS = [
 ] as const;
 
 /** Premier is a tier, not a yes/no (MESITA-2925, was Boost — MESITA-2809):
- *  Off · 2X · 5X · 10X. Off is the normal case, so it is muted rather than
+ *  Off · 2X · 5X. Off is the normal case, so it is muted rather than
  *  rose; a paid tier is green. */
 function PremierPill({ tier }: { tier: number | null | undefined }) {
   const chip = premierTierChip(tier);

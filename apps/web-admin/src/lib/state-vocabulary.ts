@@ -108,8 +108,8 @@ export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
 
 /** Premier tier chip (MESITA-2925, was Boost — MESITA-2809): Premier is a
  *  tier, not a yes/no — `places.boost_tier` 0 · 1 · 2 · 3 reads
- *  Off · 2X · 5X · 10X. */
-export const BOOST_TIER_LABELS = ["Off", "2X", "5X", "10X"] as const;
+ *  Off · 2X · 5X. */
+export const BOOST_TIER_LABELS = ["Off", "2X", "5X"] as const;
 
 export function premierTierChip(tier: number | null | undefined): string {
   if (tier == null) return "?";

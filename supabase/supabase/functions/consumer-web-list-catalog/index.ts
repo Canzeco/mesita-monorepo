@@ -9,15 +9,12 @@
 // Nothing here calls Google (MESITA-2872).
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
-// radio"): distance never cuts a place. TWO LANES, ONE AND ONE
-// (MESITA-3016): red holds Premier places only, ranked by Proximity ×
-// Popularity × the Premier factor (×2 · ×5 · ×10); blue holds every place,
-// ranked by Proximity × Popularity; the list is red, blue, red, blue…, a
-// place already placed skipped, so Premier's share is a decision, not a
-// multiplier's side effect. Proximity = 1 ÷ (1 + d ÷ D), D the operator's
-// half distance (`params.proximity.halfKm`, MESITA-3015). No point:
-// Popularity (× the factor on red). Each place's `area.lane` says which
-// lane placed it; a red slot is a paid ad.
+// radio"): distance never cuts a place. THE SCORE: Proximity × Popularity ×
+// the Premier factor (a Premier place's paid tier, ×2 · ×5, MESITA-2925;
+// one list again since MESITA-3041, the two lanes of MESITA-3016 retired),
+// Proximity = 1 ÷ (1 + d ÷ D), D the operator's half distance
+// (`params.proximity.halfKm`, MESITA-3015): 1 at the guest, ½ at D, ⅓ at
+// twice D. No point: Popularity × the factor.
 //
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.

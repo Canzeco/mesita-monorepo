@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(184);
+select plan(189);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1626,7 +1626,7 @@ select throws_ok(
 
 select throws_ok(
   $$insert into public.place_premier_periods (place_id, tier, billing_interval, starts_at, ends_at, status)
-    values ('00000000-0000-4000-8000-000000002995', 3, 'month', now(), now() + interval '1 day', 'paid')$$,
+    values ('00000000-0000-4000-8000-000000002995', 2, 'month', now(), now() + interval '1 day', 'paid')$$,
   '23P01', null,
   'two paid periods of one place never overlap'
 );
@@ -1644,6 +1644,36 @@ select is(
   (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   0::smallint,
   'ending the grant ends the tier now'
+);
+
+-- ━━━ MESITA-3041 — Premier is two plans: 10X is refused everywhere ━━━
+select throws_ok(
+  $$select premier_grant('00000000-0000-4000-8000-000000002995', 3::smallint, 1, 'probe@mesita.ai')$$,
+  'P0001', null,
+  'an operator grant takes tier 1 (2X) or 2 (5X), never 3'
+);
+
+select throws_ok(
+  $$update public.places set boost_tier = 3 where id = '00000000-0000-4000-8000-000000002995'$$,
+  '23514', null,
+  'places.boost_tier stops at 2 (5X)'
+);
+
+select is(
+  (select count(*)::int from pg_constraint
+    where conname in ('place_backings_tier_check', 'place_backings_pending_tier_check',
+                      'place_premier_periods_tier_check', 'places_boost_tier_check')
+      and pg_get_constraintdef(oid) !~ '10x|<= 3'),
+  4,
+  'the four tier checks exist by name and none allows 10X'
+);
+
+select is(premier_tier_rank(null), null::smallint, 'premier_tier_rank(NULL) is NULL: the backer line orders without throwing');
+
+select throws_ok(
+  $$select premier_tier_rank('boost_10x')$$,
+  'P0001', null,
+  'premier_tier_rank raises on a tier it does not know, never a silent NULL'
 );
 
 -- A paying pledge claims a period; a second pledge quoting "nothing runs" is stale.
@@ -1702,7 +1732,7 @@ select is(
 update public.place_premier_periods set status = 'ended', ends_at = starts_at
  where place_id = '00000000-0000-4000-8000-000000002995';
 insert into public.place_premier_periods (place_id, backing_id, tier, billing_interval, starts_at, ends_at, status)
-values ('00000000-0000-4000-8000-000000002995', '00000000-0000-4000-8000-0000000b2995', 3, 'month',
+values ('00000000-0000-4000-8000-000000002995', '00000000-0000-4000-8000-0000000b2995', 2, 'month',
         now() - interval '2 hours', now() + interval '28 days', 'charging');
 select recompute_due_place_boosts();
 

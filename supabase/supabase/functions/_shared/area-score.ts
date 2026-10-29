@@ -4,9 +4,7 @@
 // Premier factor since MESITA-2925, Selected's multiplier before it).
 //
 //   Map      final = Popularity × s           inside the screen radius
-//   Catalog  no radius, the whole catalog, two lanes one and one
-//            (MESITA-3016): red  final = Proximity × Popularity × s,
-//            Premier places only; blue  final = Proximity × Popularity
+//   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
 //   no location (either)  final = Popularity × s
 //
 // THE SPLIT (Pato, MESITA-2909): on the Map distance is a SCREEN, never a
@@ -17,14 +15,15 @@
 // (MESITA-3015), pulls nearer places up without ever cutting a far one.
 // Popularity is ln(1 + reviews × stars), unbounded, and the product is never
 // clamped or normalized (MESITA-2710). s is the Premier factor: a Premier
-// place's paid tier, ×2 · ×5 · ×10 (`places.boost_tier`, MESITA-2789), and 1
+// place's paid tier, ×2 · ×5 (`places.boost_tier`, MESITA-2789; 10X retired
+// by MESITA-3041), and 1
 // for every other place, at any distance. Selected and its operator boost
 // died with MESITA-2925. No exponents (MESITA-2722).
 //
 // NO REACH (MESITA-3015): the reach (s only within 2 × h, MESITA-2920)
 // existed because the log curve kept a far place alive. The reciprocal
-// bounds Premier by itself: past D the score is D ÷ d, so a Premier 10X
-// beats a place up to ~10× closer and a place in another city (100× the
+// bounds Premier by itself: past D the score is D ÷ d, so a Premier 5X
+// beats a place up to ~5× closer and a place in another city (100× the
 // distance) never tops a guest's Home.
 //
 // Gates are binary eligibility (0 or 1) and stay separate from the
@@ -68,15 +67,7 @@ export type AreaContext = {
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
-  /** false = the blue lane (MESITA-3016): the Premier factor reads 1 for
-   *  every place. Absent = true. */
-  premier?: boolean;
 };
-
-/** The Catalog's two lanes (MESITA-3016): `red` holds Premier places
- *  only, ranked WITH the Premier factor; `blue` holds every place, ranked
- *  without it. The Map is red's score over every place. */
-export type CatalogLane = "red" | "blue";
 
 /** One candidate, normalized from whichever source produced it. */
 export type AreaCandidate = {
@@ -93,7 +84,7 @@ export type AreaCandidate = {
   ready?: 1 | null;
   reviews?: 1 | null;
   /** Premier (MESITA-2925, was Boost MESITA-2789): the paid tier,
-   *  `places.boost_tier` (0 · 1 · 2 · 3 = none · 2X · 5X · 10X); absent = 0. */
+   *  `places.boost_tier` (0 · 1 · 2 = none · 2X · 5X); absent = 0. */
   premierTier?: number;
 };
 
@@ -145,11 +136,13 @@ function factor(x: number): number {
 }
 
 /** The Premier factor a candidate's score is multiplied by (MESITA-2925,
- *  was Boost MESITA-2789): a Premier place's tier, ×2 · ×5 · ×10
+ *  was Boost MESITA-2789): a Premier place's tier, ×2 · ×5
  *  (PREMIER_FACTOR); 1 for every other place and for a Google stub. */
 export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">): number {
   const tier = c.source === "google" ? 0 : c.premierTier ?? 0;
-  return tier >= 3 ? PREMIER_FACTOR[3] : tier >= 2 ? PREMIER_FACTOR[2] : tier >= 1 ? PREMIER_FACTOR[1] : 1;
+  // A tier outside 0..2 (impossible past the DB check) earns no paid reach
+  // (MESITA-3041): it reads 1, never the top rung.
+  return tier === 2 ? PREMIER_FACTOR[2] : tier === 1 ? PREMIER_FACTOR[1] : 1;
 }
 
 /** Popularity, or null when the place has no rating or no review count. */
@@ -211,8 +204,8 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point" && ctx.halfKm !== null
     ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
-  const sel = ctx.premier === false ? 1 : premierFactor(c);
-  const popPart = factor(pop ?? 0) * sel;
+  const sel = premierFactor(c);
+  const popPart = popularPart(c);
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
@@ -267,44 +260,4 @@ export function rankArea<T>(
       a.id.localeCompare(b.id)
     )
     .map(({ item, area }) => ({ item, area }));
-}
-
-/**
- * THE ONE-AND-ONE MERGE (Pato, MESITA-3016: "red blue, red blue … el que
- * salga primero lo ordena"): red, blue, red, blue, red first, a constant
- * (never a coin flip per slot, which makes streaks in a short list). A
- * place already placed is skipped and the SAME lane reads its next one, so
- * a duplicate never puts two blues side by side; once a lane runs dry the
- * other fills the rest in its own order. Both lists are already ranked;
- * nothing here reads SQL.
- */
-export function interleaveLanes<T extends { id: string }>(
-  red: readonly T[],
-  blue: readonly T[],
-): Array<{ lane: CatalogLane; item: T }> {
-  const seen = new Set<string>();
-  const out: Array<{ lane: CatalogLane; item: T }> = [];
-  const lanes = { red: { list: red, at: 0 }, blue: { list: blue, at: 0 } };
-  const next = (lane: CatalogLane): T | null => {
-    const l = lanes[lane];
-    while (l.at < l.list.length) {
-      const item = l.list[l.at++];
-      if (!seen.has(item.id)) return item;
-    }
-    return null;
-  };
-  let turn: CatalogLane = "red";
-  let dry: CatalogLane | null = null;
-  for (;;) {
-    const item = next(turn);
-    if (item) {
-      seen.add(item.id);
-      out.push({ lane: turn, item });
-    } else if (dry && dry !== turn) {
-      return out;
-    } else {
-      dry = turn;
-    }
-    if (!dry || dry === turn) turn = turn === "red" ? "blue" : "red";
-  }
 }

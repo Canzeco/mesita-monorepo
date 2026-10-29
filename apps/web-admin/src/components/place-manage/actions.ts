@@ -142,7 +142,7 @@ export type AdminPlace = {
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
   /** Premier (MESITA-2995; MESITA-2925, was Boost — MESITA-2789): the paid tier,
-   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from the
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X. Derived from the
    *  paid period covering now; never set here. Profile States shows it (MESITA-2795). */
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
@@ -320,7 +320,7 @@ export async function setPlaceListed(
 export type AdminPledge = {
   id: string;
   payer: string | null;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2;
   interval: "month" | "year";
   amount_cents: number;
   status: "open" | "ready" | "failed" | "ended";
@@ -336,7 +336,7 @@ export type AdminPeriod = {
   id: string;
   payer: string | null;
   granted_by: string | null;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2;
   interval: "month" | "year";
   starts_at: string;
   ends_at: string;
@@ -348,7 +348,7 @@ export type AdminPeriod = {
 };
 
 export type AdminPlaceBoost = {
-  tier: 0 | 1 | 2 | 3;
+  tier: 0 | 1 | 2;
   factor: number;
   period: { id: string; tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
   line: AdminPledge[];
@@ -371,7 +371,7 @@ export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceB
 export async function changePlaceBoost(
   placeId: string,
   change:
-    | { action: "grant"; tier: 1 | 2 | 3; months: number }
+    | { action: "grant"; tier: 1 | 2; months: number }
     | { action: "end" }
     | { action: "remove_pledge"; backingId: string },
 ): Promise<Result<true>> {

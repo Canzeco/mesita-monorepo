@@ -10,25 +10,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
+export type BoostTier = "boost_2x" | "boost_5x";
 export type BoostInterval = "month" | "year";
-export type TierRank = 1 | 2 | 3;
+export type TierRank = 1 | 2;
 
-/** The three levels, labels only: prices come from the server's quotes. */
+/** The two levels (10X retired, MESITA-3041), labels only: prices come
+ *  from the server's quotes. */
 export const BOOST_TIERS = [
   { key: "boost_2x", rank: 1, mark: "2X", label: "Premier 2X", blurb: "Twice as likely to show on the Map and Home" },
   { key: "boost_5x", rank: 2, mark: "5X", label: "Premier 5X", blurb: "Five times as likely to show" },
-  { key: "boost_10x", rank: 3, mark: "10X", label: "Premier 10X", blurb: "Ten times as likely to show, the most there is" },
 ] as const satisfies ReadonlyArray<{ key: BoostTier; rank: TierRank; mark: string; label: string; blurb: string }>;
 
-export const BOOST_TIER_LABEL: Record<0 | 1 | 2 | 3, string | null> = {
+export const BOOST_TIER_LABEL: Record<number, string | null> = {
   0: null,
   1: "Premier 2X",
   2: "Premier 5X",
-  3: "Premier 10X",
 };
 
-export const TIER_MARK: Record<number, string> = { 1: "2X", 2: "5X", 3: "10X" };
+export const TIER_MARK: Record<number, string> = { 1: "2X", 2: "5X" };
+
+/** A tier's mark ("2X"); a tier this build does not know reads plain
+ *  "Premier", never `undefined` (MESITA-3041). */
+export function tierMark(tier: number): string {
+  return TIER_MARK[tier] ?? "Premier";
+}
+
+/** A tier's label ("Premier 2X"); an unknown tier reads "Premier". */
+export function tierLabel(tier: number): string {
+  return BOOST_TIER_LABEL[tier] ?? "Premier";
+}
 
 export type BoostQuote = {
   price_cents: number;

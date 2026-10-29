@@ -10,7 +10,7 @@
 // A previous Checkout of this pledge is settled first (paid ones confirmed,
 // open ones expired), so a payment is never orphaned.
 //
-// Body: { place_id: uuid, tier: "boost_2x" | "boost_5x" | "boost_10x",
+// Body: { place_id: uuid, tier: "boost_2x" | "boost_5x",
 //         interval?: "month" | "year", return_url: string }
 // Response: { ok: true, url: string | null, outcome?: "updated" | "confirmed" }
 //
@@ -54,7 +54,9 @@ serveJson("consumer-web-start-boost", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const parsed = parseBoostStart(bodyRes.body);
-  if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
+  if (!parsed.ok) {
+    return json({ ok: false, ...(parsed.code ? { code: parsed.code } : {}), error: parsed.error }, 400);
+  }
   const start = parsed.start;
 
   const key = boostStripeKey();

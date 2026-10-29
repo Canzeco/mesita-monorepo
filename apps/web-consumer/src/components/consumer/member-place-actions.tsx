@@ -23,7 +23,7 @@ import {
 } from "@/lib/api/activity";
 import {
   apiGetBoost,
-  BOOST_TIER_LABEL,
+  tierLabel,
   shortDate,
   type PlaceBoost,
 } from "@/lib/api/boost";
@@ -192,7 +192,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 // reload does not settle twice.
 function sayCheckoutOutcome(data: PlaceBoost) {
   const p = data.period;
-  const label = p ? BOOST_TIER_LABEL[p.tier as 1 | 2 | 3] : "Premier";
+  const label = p ? tierLabel(p.tier) : "Premier";
   switch (data.outcome) {
     case "confirmed":
       toast.success(

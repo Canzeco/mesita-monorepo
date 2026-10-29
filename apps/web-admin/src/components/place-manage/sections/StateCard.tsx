@@ -169,7 +169,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
       : "No Enrich run has completed — a Created profile is not enriched.";
   // Premier (MESITA-2925, was Boost — MESITA-2789, shown here since
   // MESITA-2795): paid visibility guests bought, read off `places.boost_tier`
-  // (1 · 2 · 3 = 2X · 5X · 10X). Read-only: payers manage it in the consumer
+  // (1 · 2 = 2X · 5X). Read-only: payers manage it in the consumer
   // app; the Premier view lists them.
   const premierTier =
     typeof place.boost_tier === "number" ? place.boost_tier : null;
