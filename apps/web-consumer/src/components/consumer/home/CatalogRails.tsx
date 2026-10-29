@@ -72,7 +72,6 @@ import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { barePath } from "@/lib/surface";
 import { EmptyState } from "@/components/shared";
 import { RailScoreTag } from "@/components/consumer/search/search-catalog-overlays";
 import { CatalogTile } from "./CatalogTile";
@@ -114,7 +113,7 @@ export type HomeTab = (typeof HOME_TABS)[number]["key"];
 /** The tab a Home address shows: Social at /home/social, Places anywhere
  *  else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  return barePath(pathname) === CONSUMER_ROUTES.homeSocial
+  return pathname === CONSUMER_ROUTES.homeSocial
     ? "social"
     : "places";
 }

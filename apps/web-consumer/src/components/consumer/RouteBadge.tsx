@@ -5,7 +5,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 import { Z_ROUTE_BADGE } from "@/lib/z-index";
-import { barePath, prefixPath, type Surface } from "@/lib/surface";
 
 /**
  * Prints the current route into the page.
@@ -22,12 +21,12 @@ import { barePath, prefixPath, type Surface } from "@/lib/surface";
  * sits translucent over the top-left corner — `pointer-events-none`
  * throughout, so it can never eat a tap meant for the app.
  */
-export function RouteBadge({ surface }: { surface: Surface }) {
+export function RouteBadge() {
   // usePathname needs no Suspense boundary, so the path is in the
   // server-rendered HTML. useSearchParams does, and opts its subtree into
   // client rendering — hence the split: the path paints immediately and the
   // query string fills in on hydration.
-  const pathname = prefixPath(surface, barePath(usePathname() ?? "/"));
+  const pathname = usePathname() ?? "/";
 
   return (
     <div

@@ -6,6 +6,6 @@ import { ShellLoadingFor } from "./shell-loading";
 // bar from Me, Pay or Share paints while the target is in flight. It draws
 // the target's placeholder, never a spinner (MESITA-2840).
 export default async function ConsumerShellLoading() {
-  const bare = (await headers()).get("x-bare-pathname") ?? "/";
+  const bare = (await headers()).get("x-pathname") ?? "/";
   return <ShellLoadingFor bare={bare} />;
 }

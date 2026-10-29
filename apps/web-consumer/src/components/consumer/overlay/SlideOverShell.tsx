@@ -10,7 +10,6 @@ import {
   useOverlayPresence,
 } from "@/components/consumer/overlay/overlay-presence";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
-import { barePath } from "@/lib/surface";
 
 // THE detail-modal chrome: a full-height panel that pushes in from the right
 // edge, iOS-navigation style, and slides back out on dismiss. Used by every
@@ -42,7 +41,7 @@ export function useSlideOverClose() {
 
 export function SlideOverShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = barePath(usePathname() ?? "/");
+  const pathname = usePathname() ?? "/";
   const onModalRoute = isModalContractPath(pathname);
   const { open, requestClose } = useOverlayPresence(() => router.back(), {
     active: onModalRoute,

@@ -1,7 +1,10 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
-import { LEGACY_REDIRECTS, withSurfaceTwins } from "./src/lib/legacy-redirects";
+import {
+  LEGACY_REDIRECTS,
+  SURFACE_PREFIX_REDIRECTS,
+} from "./src/lib/legacy-redirects";
 
 const appDir = __dirname;
 const repoRoot = path.resolve(appDir, "../..");
@@ -44,6 +47,14 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_SHA: buildSha,
   },
+  experimental: {
+    // THE ROUTER KEEPS WHAT IT HAS SHOWN (MESITA-3013). Next 15+ defaults
+    // `dynamic` to 0 s, so every tap back to a tab you just left went to the
+    // server again (Vercel in Oregon → Supabase) before the screen moved.
+    // Five minutes: a tab you came from paints from the client cache, and
+    // each screen's own data still revalidates in the client.
+    staleTimes: { dynamic: 300, static: 300 },
+  },
   images: {
     // Photos can come from Google Places (lh*.googleusercontent.com),
     // Firecrawl-scraped place sites, and partner CDNs.
@@ -51,11 +62,10 @@ const nextConfig: NextConfig = {
     // strict provenance.
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
-  // The legacy table lives in src/lib/legacy-redirects.ts. Every entry is
-  // served bare AND under /web and /mob (MESITA-2138): redirects() matches
-  // the browser's URL, which still carries the surface prefix.
+  // The legacy table lives in src/lib/legacy-redirects.ts. The retired /web
+  // and /mob prefixes (MESITA-3013) 308 to the bare path after it.
   async redirects() {
-    return [...LEGACY_REDIRECTS, ...withSurfaceTwins(LEGACY_REDIRECTS)];
+    return [...LEGACY_REDIRECTS, ...SURFACE_PREFIX_REDIRECTS];
   },
 };
 

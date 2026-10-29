@@ -5,9 +5,7 @@ import "./globals.css";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
 import { RouteBadge } from "@/components/consumer/RouteBadge";
-import { SurfacePrefixer } from "@/components/consumer/SurfacePrefixer";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
-import { isSurface } from "@/lib/surface";
 import { SHARE_CARD } from "@/lib/share-app";
 
 const inter = Inter({
@@ -97,13 +95,10 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const requestHeaders = await headers();
-  const surfaceHeader = requestHeaders.get("x-surface");
-  const surface = isSurface(surfaceHeader) ? surfaceHeader : "web";
-  const bare = requestHeaders.get("x-bare-pathname") ?? "/";
+  const bare = (await headers()).get("x-pathname") ?? "/";
   // /onboard draws its own MobileFrame, so wrapping it here stacked two
   // emulators with two banners (Bugbot, PR #1995). /gift left with the First
-  // Stage cut. Both surfaces sign in inside the phone card (MESITA-2137).
+  // Stage cut. Sign-in draws inside the phone card (MESITA-2137).
   const preShell = bare === "/" || bare.startsWith("/auth");
   const body = preShell ? (
     <MobileFrame>{children}</MobileFrame>
@@ -113,17 +108,15 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      data-surface={surface}
       className={`${inter.variable} ${fraunces.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body className="bg-background text-foreground flex h-full flex-col">
         {body}
-        <SurfacePrefixer />
         {/* The route, printed into the body — the preview panes and
             screenshot harnesses we QA in have no address bar. Mounted at
             the root so it covers every surface, shell and pre-auth alike. */}
-        <RouteBadge surface={surface} />
+        <RouteBadge />
         {/* The imperative half of the 100%-only lock: Safari ignores the
             viewport meta for pinch, but it does honour a refused
             gesturestart. See the viewport export above. */}

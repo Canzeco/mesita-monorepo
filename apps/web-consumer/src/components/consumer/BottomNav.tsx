@@ -4,7 +4,12 @@ import { Z_BOTTOM_NAV } from "@/lib/z-index";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ComponentType, type PointerEvent } from "react";
+import {
+  useRef,
+  type ComponentType,
+  type MouseEvent,
+  type PointerEvent,
+} from "react";
 import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
@@ -13,8 +18,6 @@ import {
   CONSUMER_ROUTES,
   CONSUMER_ROUTE_PREFIX,
 } from "@/lib/consumer-route-contract";
-import { NAV_FALLBACK_MS } from "@/lib/navigate";
-import { barePath, prefixPath, surfaceOf } from "@/lib/surface";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
@@ -101,60 +104,26 @@ const ITEMS: Item[] = [
 ];
 
 export function BottomNav() {
-  const pathname = barePath(usePathname() ?? "/");
-  // Hrefs stay BARE (/search, not /web/search); SurfacePrefixer's
-  // capture-phase click listener pushes the prefixed URL, as for every other
-  // in-app link. MESITA-2762 rendered the prefixed URL so Link handled the
-  // tap itself, and Link's navigation to that proxy-rewritten URL never
-  // committed: the tab lit, the old screen stayed (MESITA-2772).
-  const getSupabase = useLazyBrowserSupabase();
-  // EACH TAB IS PREFETCHED AT THE URL THE TAP GOES TO (MESITA-2780). Link
-  // would prefetch its bare href, which the proxy only redirects onto the
-  // surface, so the pushed /web/... URL had nothing cached: no loading frame
-  // to paint, and the old screen stayed up for the whole round trip to
-  // Oregon while only the tab moved. Link's own prefetch is off. The surface
-  // is read from the address bar, which keeps /web or /mob.
+  const pathname = usePathname() ?? "/";
   const router = useRouter();
-  useEffect(() => {
-    const surface = surfaceOf(window.location.pathname) ?? "web";
-    for (const item of ITEMS) router.prefetch(prefixPath(surface, item.href));
-  }, [router]);
-  // The tapped tab lights AT ONCE, and its placeholder paints over the old
-  // screen (PendingScreen), both on finger-down. usePathname only moves when
-  // the new screen commits, which waits on a server round trip (the proxy
-  // checks the session in Oregon on every request), so a slow tap used to
-  // leave the old screen up under a lit tab (MESITA-2762, MESITA-2846). The
-  // mark holds only while the path it was tapped on is still the path.
+  const getSupabase = useLazyBrowserSupabase();
+  // EACH TAB IS A PLAIN LINK WITH NEXT'S OWN PREFETCH (MESITA-3013). The app
+  // is served at its real paths now, so the URL a tab prefetches is the URL
+  // the tap pushes: the tab's loading.tsx (its placeholder) is already in
+  // the router cache, and a tab you came from is cached whole (staleTimes in
+  // next.config.ts). Until then the proxy rewrote /web/... onto a bare tree,
+  // every prefetch missed, and the old screen stood for the round trip.
+  //
+  // The tapped tab lights AT ONCE and its placeholder paints over the old
+  // screen (PendingScreen), both on finger-down: usePathname only moves when
+  // the new screen commits (MESITA-2762, MESITA-2846).
   const pending = usePendingTab(pathname);
-  // THE BAR NAVIGATES ON FINGER-DOWN, NOT ON CLICK (MESITA-2837, 2846).
-  // Live, a tap reached pointerdown (nav_tab_tap was logged) but the click
-  // that SurfacePrefixer turns into a push sometimes never ran, so Search
-  // stayed up under a lit Home. Why the click died was never seen. The bar
-  // no longer needs it: the push goes out with the touch itself, the
-  // earliest moment there is, and SurfacePrefixer swallows the pointer
-  // click that follows (`data-press-nav`). A keyboard click still
-  // navigates through it.
-  // A LIT TAB ALWAYS MOVES THE SCREEN. Whatever stops the push — a lost
-  // pointerup, a router stuck behind another navigation — once a tab has
-  // been lit for NAV_FALLBACK_MS on the screen it was tapped on, the page
-  // loads at the tab's URL. It reads the committed pathname, not the address
-  // bar, so a URL that moved under a screen that did not still loads.
-  useEffect(() => {
-    if (!pending) return;
-    const timer = window.setTimeout(() => {
-      const target = prefixPath(
-        surfaceOf(window.location.pathname) ?? "web",
-        pending,
-      );
-      console.warn("[nav] tab never moved; loading the page", {
-        from: window.location.pathname,
-        to: target,
-      });
-      window.location.assign(target);
-    }, NAV_FALLBACK_MS);
-    return () => window.clearTimeout(timer);
-  }, [pending]);
-
+  // THE BAR NAVIGATES ON FINGER-DOWN, NOT ON CLICK (MESITA-2837, 2846): the
+  // push leaves with the touch itself, the earliest moment there is. The
+  // pointer click that follows is swallowed here so it does not push twice;
+  // a keyboard click (no pointerdown before it) still navigates through
+  // Link. A lost pointerup is harmless: the push already left.
+  const pushedByPointer = useRef(false);
   return (
     <nav
       // Hook for surfaces that own their whole frame and suppress the tab
@@ -212,23 +181,31 @@ export function BottomNav() {
           const here = pathname === item.href;
           const down = (event: PointerEvent) => {
             if (event.button !== 0) return;
-            trackEvent(getSupabase(), "nav_tab_tap", { tab: label });
-            if (here || pending === item.href) return;
-            setPendingTab(item.href, pathname);
-            router.push(
-              prefixPath(
-                surfaceOf(window.location.pathname) ?? "web",
-                item.href,
-              ),
+            pushedByPointer.current = true;
+            if (!here && pending !== item.href) {
+              setPendingTab(item.href, pathname);
+              router.push(item.href);
+            }
+            // Analytics leaves after the navigation request, never before it.
+            window.setTimeout(
+              () => trackEvent(getSupabase(), "nav_tab_tap", { tab: label }),
+              0,
             );
+          };
+          const click = (event: MouseEvent) => {
+            // detail is 0 for a keyboard click: let Link navigate.
+            if (pushedByPointer.current && event.detail > 0) {
+              event.preventDefault();
+            }
+            pushedByPointer.current = false;
+            if (here) event.preventDefault();
           };
           return (
             <Link
               key={item.href}
               href={item.href}
-              prefetch={false}
-              data-press-nav=""
               onPointerDown={down}
+              onClick={click}
               className={className}
             >
               {body}

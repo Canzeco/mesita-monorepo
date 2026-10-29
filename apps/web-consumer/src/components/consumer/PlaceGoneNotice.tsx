@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { forgetSavedPlace } from "@/lib/saved-places";
-import { barePath } from "@/lib/surface";
 import { toast } from "@/lib/toast";
 
 // Explains the place-detail bounce.
@@ -36,7 +35,7 @@ import { toast } from "@/lib/toast";
 export function PlaceGoneNotice() {
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = barePath(usePathname() ?? "/");
+  const pathname = usePathname() ?? "/";
   const gone = params.get("gone");
 
   useEffect(() => {

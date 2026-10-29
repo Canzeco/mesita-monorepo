@@ -33,7 +33,7 @@ function fill() {
 }
 
 export default async function RootLoading() {
-  const bare = (await headers()).get("x-bare-pathname") ?? "/";
+  const bare = (await headers()).get("x-pathname") ?? "/";
   if (bare === "/" || bare.startsWith("/auth")) return fill();
   if (bare === "/onboard" || bare.startsWith("/onboard/")) {
     return <MobileFrame>{fill()}</MobileFrame>;

@@ -12,7 +12,6 @@ import {
 import { SEMI_MODAL_PANEL_CLASS } from "@/components/consumer/overlay/LocalOverlay";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
 import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
-import { barePath } from "@/lib/surface";
 
 // THE ROUTED SHEET: a route modal that rises from the bottom instead of
 // pushing in from the right, so the page under it stays in view (Ask AI over
@@ -34,7 +33,7 @@ export function RouteSheetShell({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const pathname = barePath(usePathname() ?? "/");
+  const pathname = usePathname() ?? "/";
   const onModalRoute = isModalContractPath(pathname);
   const { open, requestClose } = useOverlayPresence(() => router.back(), {
     active: onModalRoute,
