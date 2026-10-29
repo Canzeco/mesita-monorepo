@@ -1,5 +1,5 @@
 // The words of Me's two privacy switches, the same shape: Public profile
-// (SocialNameRow, on Settings › Social and Me › Instagram) and Use my
+// (SocialNameRow, on Settings › Social only since MESITA-3072) and Use my
 // Instagram photo (Me › Instagram's Photo group). Each paints its `on` line
 // before its read lands, and the route fallbacks draw that first paint as
 // itself so the line wraps where the row's does (Pato, MESITA-2701: "the

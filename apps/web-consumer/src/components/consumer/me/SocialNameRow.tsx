@@ -11,8 +11,10 @@ import { IconChip, Switch } from "@/components/consumer/me/settings-rows";
 import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 
 // "PUBLIC PROFILE" (Pato, MESITA-2590: "a Settings switch where private
-// means you appear as 'A member'"; MESITA-2594 named it Public profile and
-// asks it on Me › Instagram too). A server fact, consumers.appear_anonymous
+// means you appear as 'A member'"; MESITA-2594 named it Public profile).
+// Asked in Settings only (Pato, MESITA-3072: "ask this in settings, but the
+// default is public"; MESITA-2594 had asked it on Me › Instagram too).
+// A server fact, consumers.appear_anonymous
 // (default false, so the switch is on). Off, the guest's activity still shows
 // in Social, by first name, with no photo or handle (MESITA-2612 retired "A
 // member"); it never disappears. Private also costs something: you see others' Instagram

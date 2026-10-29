@@ -71,7 +71,7 @@ type ConsumerInstagramPhotoPatch = {
   use_instagram_photo: boolean;
 };
 
-// "Public profile" in Settings and Me › Instagram (MESITA-2590, MESITA-2594). Off = no photo
+// "Public profile" in Settings (MESITA-2590, MESITA-2594, MESITA-3072). Off = no photo
 // or handle in Social; the first name still shows (MESITA-2612).
 type ConsumerAppearAnonymousPatch = {
   appear_anonymous: boolean;
