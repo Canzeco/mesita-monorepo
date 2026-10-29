@@ -12,11 +12,9 @@
 // Nothing here may name /home/places, /home/social, /pay, /search,
 // /search/chat, /me or any live /me/<box>.
 //
-// BARE ONLY. next.config.ts serves every entry twice: as written, and as a
-// `/:surface(web|mob)` twin that keeps the guest's surface. Next runs
-// redirects() on the URL the browser sent, BEFORE middleware strips /web or
-// /mob, so without the twins every prefixed retired address — which is every
-// one the app ever linked, since SurfacePrefixer prefixes all links — 404'd.
+// BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
+// SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and
+// a prefixed retired address then takes a second hop through this table.
 /** The slice of Next's redirect shape this table uses. */
 export type Redirect = {
   source: string;
@@ -193,11 +191,9 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/inbox/:path*", destination: "/me", permanent: true },
 ];
 
-/** `/x` → `/web/x` and `/mob/x`, one hop, the prefix kept on the way out. */
-export function withSurfaceTwins(table: readonly Redirect[]): Redirect[] {
-  return table.map((r) => ({
-    ...r,
-    source: `/:surface(web|mob)${r.source}`,
-    destination: `/:surface${r.destination}`,
-  }));
-}
+/** The retired surface prefixes (MESITA-3013): /web/x and /mob/x → /x.
+ *  Served AFTER the legacy table so a bare legacy source still wins first. */
+export const SURFACE_PREFIX_REDIRECTS: Redirect[] = [
+  { source: "/:surface(web|mob)", destination: "/", permanent: true },
+  { source: "/:surface(web|mob)/:path*", destination: "/:path*", permanent: true },
+];

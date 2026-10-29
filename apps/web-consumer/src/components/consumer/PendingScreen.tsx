@@ -3,7 +3,6 @@
 import { useEffect, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { clearPendingTabOff, usePendingTab } from "@/lib/pending-tab";
-import { barePath } from "@/lib/surface";
 import { cn } from "@/lib/utils";
 import { Z_PENDING_SCREEN } from "@/lib/z-index";
 
@@ -24,7 +23,7 @@ export function PendingScreen({
 }: {
   frames: Readonly<Record<string, ReactNode>>;
 }) {
-  const pathname = barePath(usePathname() ?? "/");
+  const pathname = usePathname() ?? "/";
   const pending = usePendingTab(pathname);
   useEffect(() => clearPendingTabOff(pathname), [pathname]);
   const frame = pending ? frames[pending] : null;

@@ -545,22 +545,23 @@ describe("middleware auth wall (shouldGate)", () => {
     "/reservation/r1",
     "/inbox/mine",
     "/inbox/global",
-  ];
-  // "Ungated at middleware" — NOT "public". Everything under app/(shell)
-  // (/discover, /search, /place) is still walled by that layout's own
-  // getUser() check; middleware just doesn't pay for an SSR render first.
-  // Only "/" and "/onboard" are reachable signed-out.
-  const ungatedAtMiddleware = [
-    "/",
-    "/home", // 308s to /home/places (MESITA-2597)
+    // Every shell tab is walled at the edge (MESITA-3013): a signed-out tap
+    // gets the redirect before an SSR render that would redirect anyway.
+    "/home",
     "/home/places",
     "/home/social",
+    "/search",
+    "/place/abc",
+  ];
+  // "Ungated at middleware" — NOT "public". Everything under app/(shell) is
+  // still walled by that layout's own getUser() check. Only "/" and
+  // "/onboard" are reachable signed-out.
+  const ungatedAtMiddleware = [
+    "/",
     "/discover/places", // 308s to /home/places
     "/discover/social", // 308s to /home/social (MESITA-2597)
     "/discover/chat", // 308s to /search/chat (MESITA-2401)
     "/discover/favs", // 308s to Home (MESITA-2383)
-    "/search",
-    "/place/abc",
     "/onboard",
     // Not gated but also unreachable as pages — next.config 308s them to a
     // canonical destination that IS gated.

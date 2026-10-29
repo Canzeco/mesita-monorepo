@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // NO ANONYMOUS SESSIONS (Pato, MESITA-2137: "there are no anonymous sign-ins.
-// should not now"). /web and /mob both sign in by phone, so the middleware
-// wall is the same on both, and nothing ever mints an anonymous session.
+// should not now"). One sign-in, by phone, and nothing ever mints an
+// anonymous session. Since MESITA-3013 the app has one address space (no /web
+// or /mob), and every shell tab is walled at the edge.
 //
 // The SSR client is faked at its boundary. `signInAnonymously` throws, so a
 // regression that calls it again fails here loudly instead of quietly
@@ -44,22 +45,22 @@ const visit = (path: string) =>
 const location = (res: Response) =>
   new URL(res.headers.get("location") ?? "", "https://x");
 
-describe("both surfaces sign in by phone", () => {
+describe("the edge wall", () => {
   beforeEach(() => {
     state.user = null;
   });
 
-  it.each(["web", "mob"])(
-    "/%s walls a signed-out visitor at its own sign-in, keeping ?next=",
-    async (surface) => {
-      const res = await visit(`/${surface}/me`);
-      expect(location(res).pathname).toBe(`/${surface}`);
-      expect(location(res).searchParams.get("next")).toBe(`/${surface}/me`);
+  it.each(["/me", "/home/places", "/search", "/place/abc", "/pay"])(
+    "%s walls a signed-out visitor at the sign-in, keeping ?next=",
+    async (path) => {
+      const res = await visit(`${path}?ref=ig`);
+      expect(location(res).pathname).toBe("/");
+      expect(location(res).searchParams.get("next")).toBe(`${path}?ref=ig`);
     },
   );
 
-  it("never mints a session for a browse page", async () => {
-    const res = await visit("/web/discover/scroll");
+  it("never mints a session for the sign-in page", async () => {
+    const res = await visit("/");
     expect(res.headers.get("location")).toBeNull();
     expect(res.cookies.getAll()).toEqual(
       expect.not.arrayContaining([
@@ -68,30 +69,22 @@ describe("both surfaces sign in by phone", () => {
     );
   });
 
-  it.each(["web", "mob"])(
-    "a leftover anonymous session does not pass /%s's wall",
-    async (surface) => {
-      state.user = { id: "anon-1", is_anonymous: true };
-      const res = await visit(`/${surface}/me`);
-      expect(location(res).pathname).toBe(`/${surface}`);
-    },
-  );
+  it("a leftover anonymous session does not pass the wall", async () => {
+    state.user = { id: "anon-1", is_anonymous: true };
+    const res = await visit("/me");
+    expect(location(res).pathname).toBe("/");
+  });
 
-  it.each(["web", "mob"])(
-    "a registered account goes through /%s",
-    async (surface) => {
-      state.user = { id: "user-1", is_anonymous: false };
-      const res = await visit(`/${surface}/me`);
-      expect(res.headers.get("location")).toBeNull();
-    },
-  );
+  it("a registered account goes through, with its path stamped", async () => {
+    state.user = { id: "user-1", is_anonymous: false };
+    const res = await visit("/me");
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("x-middleware-request-x-pathname")).toBe("/me");
+  });
 
-  it.each(["web", "mob"])(
-    "a registered account on /%s's sign-in page is bounced through post-signin",
-    async (surface) => {
-      state.user = { id: "user-1", is_anonymous: false };
-      const res = await visit(`/${surface}`);
-      expect(location(res).pathname).toBe(`/${surface}/auth/post-signin`);
-    },
-  );
+  it("a registered account on the sign-in page is bounced through post-signin", async () => {
+    state.user = { id: "user-1", is_anonymous: false };
+    const res = await visit("/");
+    expect(location(res).pathname).toBe("/auth/post-signin");
+  });
 });

@@ -184,17 +184,15 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     }
   });
 
-  it("no app file prefetches a route but the bottom bar, and it only its own tabs", () => {
+  it("no app file prefetches by hand: links prefetch through Next itself", () => {
+    // Since MESITA-3013 the app is served at its real paths, so Next's own
+    // Link prefetch names the URL the tap pushes and the bar needs no manual
+    // router.prefetch. A dynamic route prefetches only up to its
+    // loading.tsx, so no page code (and no place create) runs on a prefetch.
     const prefetchers = appCode
-      .filter((f) => /\bprefetch\b/.test(f.src))
+      .filter((f) => /router\.prefetch\(|prefetch=\{true\}/.test(f.src))
       .map((f) => f.path);
-    // The bar prefetches its five tab pages at the surface-prefixed URL the
-    // tap pushes, or a tap paints nothing until the round trip returns
-    // (MESITA-2780). No tab page creates a place.
-    expect(prefetchers).toEqual(["components/consumer/BottomNav.tsx"]);
-    const nav = code(read("components/consumer/BottomNav.tsx"));
-    expect(nav.match(/router\.prefetch\(/g)).toHaveLength(1);
-    expect(nav).toContain("router.prefetch(prefixPath(surface, item.href))");
+    expect(prefetchers).toEqual([]);
   });
 
   it("Search's effects never open or create; the explicit open is a tap handler", () => {

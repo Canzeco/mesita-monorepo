@@ -1,12 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
-import {
-  isSurface,
-  resolveSurface,
-  SURFACE_COOKIE,
-  type Surface,
-} from "@/lib/surface";
 
 // Routing rules. Two passes:
 //
@@ -24,10 +18,10 @@ import {
 // Onboard pages and dashboards each do their own server-side check.
 //
 // PROTECTED_PREFIXES is a fast path, NOT the security boundary. Every route
-// under app/(shell) — which is all of these plus /search, /place, /discover
-// and /pay — is walled by that layout's own getUser() check. Listing the
-// personal-data routes here just means we redirect at the edge instead of
-// paying for an SSR render first.
+// under app/(shell) is walled by that layout's own getUser() check. Listing
+// every shell tab here means a signed-out visitor is redirected at the edge
+// instead of paying for an SSR render that then redirects (MESITA-3013 added
+// Home, Search and the place screens).
 //
 // So there is no anonymous browsing: a shared /place/<id> link is a sign-in
 // wall, on /web as on /mob. MESITA-2066 opened /web on anonymous sessions;
@@ -35,9 +29,21 @@ import {
 //
 // Legacy addresses (consumer-route-contract.ts › `legacy`) are NOT listed:
 // next.config.ts redirects() 308s them to their canonical destination BEFORE
-// middleware runs, and the destination is walled here.
+// middleware runs, and the destination is walled here. So are the retired
+// /web and /mob surface prefixes (MESITA-3013): one 308 each to the bare path.
+//
+// ONE ADDRESS SPACE (MESITA-3013). The app used to live at /web/* and /mob/*
+// with this proxy rewriting onto a bare route tree. The browser URL and the
+// route then never matched, so every Link prefetched one URL and the tap
+// pushed another: nothing was cached, the old screen stayed up for the round
+// trip, and eleven patches chased the symptoms. Routes are served where they
+// live now; this proxy only refreshes the session and walls signed-out guests.
 
 const PROTECTED_PREFIXES = [
+  // The bar's tabs and what they open (MESITA-3013).
+  "/home",
+  "/search",
+  "/place",
   // Still gated although it only 308s to /me (MESITA-1626): middleware runs
   // before the redirect, so gating here keeps a logged-out visitor's `next`
   // param pointing at what they asked for instead of at Me.
@@ -74,53 +80,17 @@ export function shouldGate(pathname: string): boolean {
 export async function updateSupabaseSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  const browserPath = request.nextUrl.pathname;
-  const cookieSurface = request.cookies.get(SURFACE_COOKIE)?.value;
-  const surfaceDecision = resolveSurface(
-    browserPath,
-    isSurface(cookieSurface) ? cookieSurface : null,
-  );
-
-  if (surfaceDecision.kind === "redirect") {
-    const dest = request.nextUrl.clone();
-    dest.pathname = surfaceDecision.pathname;
-    const redirected = NextResponse.redirect(dest);
-    redirected.cookies.set(SURFACE_COOKIE, surfaceDecision.surface, {
-      path: "/",
-      sameSite: "lax",
-    });
-    return redirected;
-  }
-
-  // Gate and render against the bare route. The browser keeps /mob or /web.
-  const pathname =
-    surfaceDecision.kind === "rewrite" ? surfaceDecision.bare : browserPath;
-  const surface: Surface | null =
-    surfaceDecision.kind === "rewrite" ? surfaceDecision.surface : null;
+  const pathname = request.nextUrl.pathname;
 
   function nextWithPathname(req: NextRequest = request) {
     const requestHeaders = new Headers(req.headers);
-    // What the guest typed, surface included, so ?next= survives sign-in.
-    requestHeaders.set("x-pathname", browserPath);
-    requestHeaders.set("x-bare-pathname", pathname);
-    if (surface) requestHeaders.set("x-surface", surface);
-    // Server Components can't read the query string of their own request.
-    // The (shell) layout needs it to build a `?next=` that survives sign-in
-    // with its params intact (a shared /place/<id>?ref=ig link is worthless
-    // if the ref dies at the auth wall).
+    // Server Components can't read their own URL. The (shell) layout needs
+    // the path and the query to build a `?next=` that survives sign-in with
+    // its params intact (a shared /place/<id>?ref=ig link is worthless if the
+    // ref dies at the auth wall), and the loading boundaries pick the
+    // target's placeholder by path.
+    requestHeaders.set("x-pathname", pathname);
     requestHeaders.set("x-search", request.nextUrl.search);
-    if (surfaceDecision.kind === "rewrite") {
-      const rewriteUrl = request.nextUrl.clone();
-      rewriteUrl.pathname = pathname;
-      const rewritten = NextResponse.rewrite(rewriteUrl, {
-        request: { headers: requestHeaders },
-      });
-      rewritten.cookies.set(SURFACE_COOKIE, surfaceDecision.surface, {
-        path: "/",
-        sameSite: "lax",
-      });
-      return rewritten;
-    }
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
@@ -179,12 +149,12 @@ export async function updateSupabaseSession(request: NextRequest) {
     return redirected;
   }
 
-  // Signed-out wall (phone OTP), on both surfaces and the bare paths.
+  // Signed-out wall (phone OTP).
   if (shouldGate(pathname) && !registered) {
     const signInUrl = request.nextUrl.clone();
-    signInUrl.pathname = surface ? `/${surface}` : "/";
+    signInUrl.pathname = "/";
     signInUrl.search = `?next=${encodeURIComponent(
-      browserPath + request.nextUrl.search,
+      pathname + request.nextUrl.search,
     )}`;
     return redirectKeepingSession(signInUrl);
   }
@@ -193,9 +163,7 @@ export async function updateSupabaseSession(request: NextRequest) {
   // deep link that forced a sign-in still lands at the original target.
   if (registered && SIGNED_IN_BOUNCE.has(pathname)) {
     const bounce = request.nextUrl.clone();
-    bounce.pathname = surface
-      ? `/${surface}/auth/post-signin`
-      : "/auth/post-signin";
+    bounce.pathname = "/auth/post-signin";
     const incomingNext = request.nextUrl.searchParams.get("next");
     const safeNext =
       incomingNext &&

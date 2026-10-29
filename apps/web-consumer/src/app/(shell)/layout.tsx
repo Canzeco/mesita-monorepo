@@ -17,7 +17,6 @@ import { ConsumerIdentityProvider } from "@/lib/identity-context";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
-import { prefixPath } from "@/lib/surface";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -55,11 +54,10 @@ export default async function ConsumerShellLayout({
   modal: React.ReactNode;
 }) {
   const requestHeaders = await headers();
-  // Middleware stamps both halves — a Server Component can't read its own
+  // The proxy stamps both halves — a Server Component can't read its own
   // URL. `here` is what the guest actually asked for, params included, and
   // it rides every redirect below so nothing is lost at the wall.
   const pathname = requestHeaders.get("x-pathname") ?? "";
-  const surface = requestHeaders.get("x-surface") === "mob" ? "mob" : "web";
   const here = pathname
     ? `${pathname}${requestHeaders.get("x-search") ?? ""}`
     : "";
@@ -74,11 +72,11 @@ export default async function ConsumerShellLayout({
     (error: unknown) => ({ ok: false as const, error }),
   );
   const user = (await supabase.auth.getUser()).data.user;
-  // ONE WALL FOR BOTH SURFACES (MESITA-2137): no anonymous sessions, so a
-  // visitor without an account goes to its surface's phone sign-in. A
-  // leftover anonymous session from the MESITA-2066 era counts as none.
+  // ONE WALL (MESITA-2137): no anonymous sessions, so a visitor without an
+  // account goes to the phone sign-in. A leftover anonymous session from the
+  // MESITA-2066 era counts as none.
   if (!user || user.is_anonymous) {
-    redirect(withNext(prefixPath(surface, "/"), here));
+    redirect(withNext("/", here));
   }
 
   // consumer-get-profile lazily creates the row, so a brand-new account still

@@ -14,10 +14,10 @@ import AskAiSheetPage from "./(.)search/chat/page";
 // dim scrim with a spinner, so every open went spinner → skeleton (Pato,
 // MESITA-2840: "why spinning and then placeholder, don't do that"). It now
 // draws what the segment will draw, its shell around its skeleton, picked by
-// the bare path (the proxy's x-bare-pathname names the target on a
+// the bare path (the proxy's x-pathname names the target on a
 // navigation's request), so the open lands in one step (MESITA-2848).
 export default async function ModalLoading() {
-  const bare = (await headers()).get("x-bare-pathname") ?? "";
+  const bare = (await headers()).get("x-pathname") ?? "";
   if (bare.startsWith("/place/open/")) {
     return (
       <SlideOverShell>
