@@ -19,6 +19,8 @@ import {
   RESERVATION_CAP_OVERRIDE_MAX,
   readCapOverride,
 } from "./reservation-cap.ts";
+import { isUuid } from "./place-id.ts";
+import { nonBlank } from "./input.ts";
 
 /** Columns both admin EFs read back. */
 export const GUEST_ROW_SELECT =
@@ -73,30 +75,26 @@ export type RawGuest = {
   created_at?: unknown;
 };
 
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.trim() !== "" ? v.trim() : null;
-}
-
 /** `setByEmail` maps a `guest_class_set_by` user id to the operator's email. */
 export function toGuestRow(
   raw: RawGuest,
   setByEmail: (userId: string) => string | null = () => null,
 ): GuestRow {
-  const name = str(raw.full_name) ??
-    ([str(raw.first_name), str(raw.last_name)].filter(Boolean).join(" ") || "No name yet");
-  const setBy = str(raw.guest_class_set_by);
+  const name = nonBlank(raw.full_name) ??
+    ([nonBlank(raw.first_name), nonBlank(raw.last_name)].filter(Boolean).join(" ") || "No name yet");
+  const setBy = nonBlank(raw.guest_class_set_by);
   return {
     id: String(raw.id ?? ""),
     name,
-    code: str(raw.code),
-    instagram: str(raw.instagram_verified_at) ? str(raw.instagram_handle) : null,
+    code: nonBlank(raw.code),
+    instagram: nonBlank(raw.instagram_verified_at) ? nonBlank(raw.instagram_handle) : null,
     guestClass: toClass(raw.guest_class),
     plan: toPlan(raw.plan),
-    guestClassSetAt: str(raw.guest_class_set_at),
+    guestClassSetAt: nonBlank(raw.guest_class_set_at),
     guestClassSetByEmail: setBy ? setByEmail(setBy) : null,
-    guestClassNote: str(raw.guest_class_note),
-    vipPartnerId: str(raw.vip_partner_id),
-    vipUntil: str(raw.vip_until),
+    guestClassNote: nonBlank(raw.guest_class_note),
+    vipPartnerId: nonBlank(raw.vip_partner_id),
+    vipUntil: nonBlank(raw.vip_until),
     reservationCapOverride: readCapOverride(raw.reservation_cap_override),
     planReservationCap: planReservationCap(raw.plan),
     createdAt: String(raw.created_at ?? ""),
@@ -142,8 +140,6 @@ export type StandingPatch = {
 
 /** A refusal with a stable code and a message that says the fix. */
 export type StandingError = { code: string; error: string; status: number };
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A real calendar day as YYYY-MM-DD, or null. */
 function calendarDay(v: string): string | null {
@@ -226,7 +222,7 @@ export function readStandingBody(
   }
   if ("vipPartnerId" in b) {
     const v = b.vipPartnerId;
-    if (v !== null && (typeof v !== "string" || !UUID_RE.test(v.trim()))) {
+    if (v !== null && (typeof v !== "string" || !isUuid(v.trim()))) {
       return {
         ok: false,
         status: 400,

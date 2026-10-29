@@ -61,6 +61,7 @@ import {
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { readSocialStanding } from "../_shared/consumer-doc.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { finiteOrNull } from "../_shared/input.ts";
 
 const FEED_ROWS = 500;
 const FEED_ITEMS = 50;
@@ -107,11 +108,6 @@ async function viewerSeesHandles(
   return seesHandles(res.row);
 }
 
-function finite(v: unknown): number | null {
-  const n = typeof v === "number" ? v : Number.NaN;
-  return Number.isFinite(n) ? n : null;
-}
-
 serveJson("consumer-web-list-activity", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
   const methodReject = rejectUnlessMethods(req, "POST");
@@ -139,14 +135,14 @@ serveJson("consumer-web-list-activity", async (req) => {
     const events = feedEvents((feedRes.data ?? []) as ActivityRow[], viewerId, canSee);
     const cardsRes = await readCards(anon, [...new Set(events.map((e) => e.placeId))]);
     if (!cardsRes.ok) return json({ ok: false, error: cardsRes.error }, 500);
-    const lat = finite(body.lat);
-    const lng = finite(body.lng);
+    const lat = finiteOrNull(body.lat);
+    const lng = finiteOrNull(body.lng);
     const hasPoint = lat != null && lng != null;
     const items = events.flatMap((e) => {
       const place = cardsRes.cards.get(e.placeId);
       if (!place) return [];
       const km = hasPoint
-        ? haversineKm(lat, lng, finite(place.lat), finite(place.lng))
+        ? haversineKm(lat, lng, finiteOrNull(place.lat), finiteOrNull(place.lng))
         : Number.POSITIVE_INFINITY;
       const distanceKm = Number.isFinite(km) ? km : null;
       if (!nearYou(distanceKm, cfg.map.radiusKm, hasPoint)) return [];

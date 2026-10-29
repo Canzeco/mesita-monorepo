@@ -18,7 +18,7 @@
 // keys; multiple ranges per day cover same-day split shifts (lunch + dinner);
 // an overnight shift is a single range on the opening day where `close <= open`
 // means the close lands the next day; closed days omit the key.
-type HourRange = { open: string; close: string };
+export type HourRange = { open: string; close: string };
 export type WeeklyHours = Record<string, HourRange[]>;
 
 // Coarse Mexico-centric timezone by longitude. Intl handles DST. Falls back to

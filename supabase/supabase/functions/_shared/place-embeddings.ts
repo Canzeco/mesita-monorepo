@@ -27,7 +27,7 @@ import {
   EMBEDDING_DIMS,
   embedSingle,
 } from "./embeddings-http.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
+import { openaiChat } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { DEFAULT_MODELS_CONFIG, loadModelsConfig } from "./models-config.ts";
 import { writePlace, type PlaceProfilePatch } from "./place-doc.ts";
@@ -93,48 +93,38 @@ export async function synthesizePlaceEmbeddingText(
   const facts = placeEmbeddingFacts(v);
   if (!facts.trim()) return composeEmbeddingBlurb(v);
 
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+  const res = await openaiChat({
+    key: apiKey,
+    model: synthModel,
+    temperature: 0,
+    maxTokens: 160,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You write a short place blurb for semantic search embeddings. " +
+          `Output 1–3 sentences, at most ${MAX_BLURB_WORDS} words, plain text only — no labels, no bullets, no tags. ` +
+          "Capture what the place IS (cuisine/format), where it is, and the vibe from About. " +
+          "Never invent facts not present in the input. Never list amenity tags. " +
+          "Finish on a complete word — never truncate mid-word.",
       },
-      body: JSON.stringify({
-        model: synthModel,
-        temperature: 0,
-        max_tokens: 160,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You write a short place blurb for semantic search embeddings. " +
-              `Output 1–3 sentences, at most ${MAX_BLURB_WORDS} words, plain text only — no labels, no bullets, no tags. ` +
-              "Capture what the place IS (cuisine/format), where it is, and the vibe from About. " +
-              "Never invent facts not present in the input. Never list amenity tags. " +
-              "Finish on a complete word — never truncate mid-word.",
-          },
-          {
-            role: "user",
-            content: `Write the embedding blurb (≤${MAX_BLURB_WORDS} words) for this place:\n\n${facts}`,
-          },
-        ],
-      }),
-    });
-    if (!r.ok) {
-      console.error("[place-embeddings] synth HTTP", r.status, (await r.text()).slice(0, 200));
-      return composeEmbeddingBlurb(v);
+      {
+        role: "user",
+        content: `Write the embedding blurb (≤${MAX_BLURB_WORDS} words) for this place:\n\n${facts}`,
+      },
+    ],
+  });
+  if (!res.ok) {
+    if (res.status !== null) {
+      console.error("[place-embeddings] synth HTTP", res.status, (res.errorBody ?? "").slice(0, 200));
+    } else {
+      console.error("[place-embeddings] synth exception:", res.error);
     }
-    const data = (await r.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    const text = (data.choices?.[0]?.message?.content ?? "").trim();
-    if (!text) return composeEmbeddingBlurb(v);
-    return clampToWordLimit(text);
-  } catch (err) {
-    console.error("[place-embeddings] synth exception:", err);
     return composeEmbeddingBlurb(v);
   }
+  const text = res.content.trim();
+  if (!text) return composeEmbeddingBlurb(v);
+  return clampToWordLimit(text);
 }
 
 export type PlaceEmbeddingWrite = {

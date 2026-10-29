@@ -11,7 +11,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostStripeKey, isUuid, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
+import { boostStripeKey, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-cancel-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

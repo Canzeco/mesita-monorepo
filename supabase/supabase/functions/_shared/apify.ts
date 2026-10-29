@@ -7,6 +7,8 @@
 // returns null so the enricher degrades to whatever other sources found
 // rather than failing the whole profile.
 
+import { errorMessage } from "./errors.ts";
+
 const APIFY_BASE = "https://api.apify.com/v2/acts";
 
 // Store actor ids (the "~" form the API expects). Standard Apify store actors.
@@ -66,7 +68,7 @@ export async function runApifyActor<T = Record<string, unknown>>(
       status: null,
       error: ctrl.signal.aborted
         ? `client timeout after ${timeoutMs}ms`
-        : (err instanceof Error ? err.message : String(err)).slice(0, 200),
+        : errorMessage(err).slice(0, 200),
     };
   } finally {
     clearTimeout(timer);

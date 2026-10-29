@@ -68,6 +68,7 @@ import {
   PROXIMITY_HALF_KM_MAX,
   PROXIMITY_HALF_KM_MIN,
 } from "./pipeline-signals.ts";
+import { errorMessage } from "./errors.ts";
 
 /**
  * The stored signal numbers: Proximity's half distance (km; the Catalog
@@ -569,7 +570,7 @@ export async function loadDiscoveryConfig(
     }
     return normalizeDiscoveryConfig(data?.discovery_config);
   } catch (e) {
-    console.error("[discovery-config] read threw:", (e as Error).message);
+    console.error("[discovery-config] read threw:", errorMessage(e));
     return DISCOVERY_DEFAULTS;
   }
 }

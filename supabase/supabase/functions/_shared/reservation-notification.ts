@@ -21,6 +21,7 @@
 // the run that recorded the outcome.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { errorMessage } from "./errors.ts";
 
 /** The kinds Me › Notifications renders — web-consumer's RESERVATION_KINDS. */
 export const RESERVATION_NOTIFICATION_KINDS = ["reservation", "booking"] as const;
@@ -88,7 +89,7 @@ export async function notifyReservationOutcome(
   } catch (err) {
     console.error(
       `[reservation-notification] ${n.outcome} for ${n.reservationId} threw: ${
-        err instanceof Error ? err.message : String(err)
+        errorMessage(err)
       }`,
     );
   }

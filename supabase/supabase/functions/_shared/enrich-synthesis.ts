@@ -8,10 +8,9 @@ import {
   ENRICH_DESCRIPTION_MAX,
   ENRICH_DESCRIPTION_TARGET_CHARS,
   ENRICH_DESCRIPTION_TARGET_WORDS,
-  OPENAI_URL,
+  openaiChat,
   QUALITY_MODEL,
 } from "./enrich-config.ts";
-import { safeParseJson } from "./parse-utils.ts";
 import { MAX_PLACE_TAGS } from "./tags.ts";
 import { FAMILIES_RULE } from "./families-infer.ts";
 import { ZONE_RULE } from "./zone-infer.ts";
@@ -113,34 +112,24 @@ export async function synthesizeProfile(input: {
 
   const systemContent = PRESENTATION_INSTRUCTIONS;
 
-  try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (r.ok) {
-      const data = (await r.json()) as { choices?: { message?: { content?: string } }[] };
-      const parsed = safeParseJson(data.choices?.[0]?.message?.content ?? "") as
-        | ProfileResult
-        | null;
-      return { parsed, diag: { provider: "openai", model, ok: !!parsed } };
-    }
-    return { parsed: null, diag: { provider: "openai", model, ok: false, status: r.status } };
-  } catch {
-    return { parsed: null, diag: { provider: "openai", model, ok: false } };
+  const res = await openaiChat({
+    key: openaiKey,
+    model,
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: systemContent },
+      { role: "user", content: userPrompt },
+    ],
+    json: true,
+  });
+  if (res.ok) {
+    const parsed = res.parsed as ProfileResult | null;
+    return { parsed, diag: { provider: "openai", model, ok: !!parsed } };
   }
+  if (res.status !== null) {
+    return { parsed: null, diag: { provider: "openai", model, ok: false, status: res.status } };
+  }
+  return { parsed: null, diag: { provider: "openai", model, ok: false } };
 }
 
 // Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The

@@ -16,6 +16,7 @@
 // dollar abort was retired. A stored copy is unknown here, so it is dropped on
 // the next write, the same as any other leftover key.
 
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { asRecord } from "./config-coerce.ts";
 
@@ -163,4 +164,20 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
       d.enrichConsumerCreatesPerDay,
     ),
   };
+}
+
+// Read + normalize app_config.enrichment_config (row id=1). A read error or a
+// missing row yields the defaults. The select is a single string LITERAL on
+// purpose: supabase-js infers the row type only from a literal argument.
+export async function loadEnrichmentConfig(
+  admin: SupabaseClient,
+): Promise<EnrichmentConfig> {
+  const { data } = await admin
+    .from("app_config")
+    .select("enrichment_config")
+    .eq("id", 1)
+    .maybeSingle();
+  return normalizeEnrichmentConfig(
+    (data as { enrichment_config?: unknown } | null)?.enrichment_config,
+  );
 }

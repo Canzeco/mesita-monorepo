@@ -15,7 +15,7 @@ import { json, readJson, readPlaceIdAlias, serveJson } from "../_shared/http.ts"
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
-  BOOST_FACTOR,
+  PREMIER_FACTOR,
   ladder,
   readBackerNames,
   readBoostPlace,
@@ -60,7 +60,7 @@ serveJson("admin-web-get-place-boost", async (req) => {
   return json({
     ok: true,
     tier,
-    factor: BOOST_FACTOR[tier],
+    factor: PREMIER_FACTOR[tier],
     period: running
       ? { id: running.id, tier: running.tier, ends_at: running.ends_at, granted: running.backing_id == null, granted_by: running.granted_by }
       : null,

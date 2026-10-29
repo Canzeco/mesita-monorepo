@@ -17,7 +17,7 @@ import { fetchPlaceTags, MAX_PLACE_TAGS, pickVocabularyTags } from "./tags.ts";
 import {
   formatDescriptionParagraphs,
 } from "./enrich-synthesis-profile.ts";
-import { OPENAI_URL } from "./enrich-config.ts";
+import { openaiChat } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
@@ -32,6 +32,7 @@ import {
   pickFamilies,
 } from "./families-infer.ts";
 import { pickZone, ZONE_RULE } from "./zone-infer.ts";
+import { nonBlank } from "./input.ts";
 
 export type DoorProfile = {
   /** Null when the reply carried no tags array: Create then writes none. */
@@ -60,10 +61,6 @@ export type DoorSignals = {
 };
 
 const SUMMARY_MAX = 700;
-
-function str(v: unknown): string | null {
-  return typeof v === "string" && v.trim() ? v.trim() : null;
-}
 
 export async function synthesizeDoorProfile(
   admin: SupabaseClient,
@@ -127,39 +124,22 @@ export async function synthesizeDoorProfile(
     `Place:\n${placeLines}`;
 
   try {
-    const r = await fetch(OPENAI_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: models.enricherModel || "gpt-4o-mini",
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userPrompt },
-        ],
-      }),
+    const res = await openaiChat({
+      key: openaiKey,
+      model: models.enricherModel || "gpt-4o-mini",
+      temperature: 0.2,
+      json: true,
+      messages: [
+        { role: "system", content: systemContent },
+        { role: "user", content: userPrompt },
+      ],
     });
-    if (!r.ok) return null;
-    const data = (await r.json()) as {
-      choices?: { message?: { content?: string } }[];
-    };
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "") as Record<
-        string,
-        unknown
-      >;
-    } catch {
-      return null;
-    }
+    if (!res.ok || !res.parsed) return null;
+    const parsed = res.parsed as Record<string, unknown>;
 
     const tags = pickVocabularyTags(parsed.tags, tagSlugs);
     const description = (() => {
-      const d = str(parsed.presentation);
+      const d = nonBlank(parsed.presentation);
       return d
         ? capPresentation(formatDescriptionParagraphs(d))
         : null;
@@ -171,8 +151,8 @@ export async function synthesizeDoorProfile(
       zone: pickZone(parsed.zone, signals.city),
       description,
       reservationsLikely: reservationsLikelyFromInference(parsed),
-      mesitaNameCandidate: str(parsed.mesita_name)?.slice(0, nameMax) ?? null,
-      semanticSummary: str(parsed.semantic_summary)?.slice(0, SUMMARY_MAX) ??
+      mesitaNameCandidate: nonBlank(parsed.mesita_name)?.slice(0, nameMax) ?? null,
+      semanticSummary: nonBlank(parsed.semantic_summary)?.slice(0, SUMMARY_MAX) ??
         null,
     };
   } catch {

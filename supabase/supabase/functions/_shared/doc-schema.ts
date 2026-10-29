@@ -24,6 +24,11 @@ export interface Schema<T> {
 /** The EF contract: `type X = Infer<typeof XSchema>` — never hand-typed. */
 export type Infer<S> = S extends Schema<infer T> ? T : never;
 
+/** The plain predicate the hand-written aggregate guards share. */
+export function isNullableString(v: unknown): v is string | null {
+  return v === null || typeof v === "string";
+}
+
 export function str(): Schema<string> {
   return {
     parse: (raw) =>

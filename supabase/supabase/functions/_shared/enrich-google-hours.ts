@@ -1,16 +1,16 @@
 // Twin of render/src/hours.ts (weeklyHoursFromPeriods, closesAtFromHours), pinned by render-twins.test.ts.
+import type { HourRange } from "./local-time.ts";
+import { DAY_KEYS } from "./local-time-open.ts";
+
 export type GooglePeriod = {
   open?: { day?: number; hour?: number; minute?: number };
   close?: { day?: number; hour?: number; minute?: number };
 };
 
-type DayKey =
-  | "sunday" | "monday" | "tuesday" | "wednesday"
-  | "thursday" | "friday" | "saturday";
-const DAY_KEYS: DayKey[] = [
-  "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
-];
-export type WeeklyHours = Partial<Record<DayKey, { open: string; close: string }[]>>;
+// Sunday-first day keys and the range shape are local-time's (one home); this
+// keeps the stricter day-keyed view of local-time's WeeklyHours.
+type DayKey = typeof DAY_KEYS[number];
+export type WeeklyHours = Partial<Record<DayKey, HourRange[]>>;
 
 export function weeklyHoursFromPeriods(periods: GooglePeriod[] | undefined): WeeklyHours | null {
   if (!periods || periods.length === 0) return null;

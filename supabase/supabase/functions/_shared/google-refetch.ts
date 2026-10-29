@@ -24,6 +24,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { reportCrenupSteps, stepDone, stepFailed, type StepOutcome } from "./crenup-report.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns, type FieldPins } from "./enrich-corrections.ts";
 import { fetchGoogleBasics } from "./enrich-google-basics.ts";
+import { googlePlacesKeyOrNull } from "./google-places.ts";
 import { closeEnrichmentRun, openEnrichmentRun } from "./enrich-runs.ts";
 import type { SubprocessKey } from "./enrich-triggers.ts";
 import { phoneDigits } from "./phone.ts";
@@ -103,10 +104,6 @@ export type RefetchResult =
   | { ran: false; reason: "no_google_id" | "enriching" | "cooldown" | "already_open" | "no_key" | "error"; error?: string }
   | { ran: true; phoneChanged: boolean };
 
-function googleKey(env: { get(name: string): string | undefined }): string {
-  return (env.get("GMP_KEY") ?? env.get("SUPA_GMP_KEY") ?? "").trim();
-}
-
 /**
  * Run the refetch for one place. Best-effort by contract: the caller is
  * reporting a call outcome, and nothing here may fail that report.
@@ -138,7 +135,7 @@ export async function refetchGoogleAfterWrongNumber(
   if (stateErr) return { ran: false, reason: "error", error: stateErr.message };
   if (state?.content_state === "generating") return { ran: false, reason: "enriching" };
 
-  const key = googleKey(opts.env ?? Deno.env);
+  const key = googlePlacesKeyOrNull(opts.env ?? Deno.env);
   if (!key) return { ran: false, reason: "no_key" };
 
   const opened = await openEnrichmentRun(admin, placeId, {

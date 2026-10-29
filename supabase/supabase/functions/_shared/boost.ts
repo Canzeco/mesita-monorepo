@@ -25,23 +25,25 @@
 // decision (Pato, MESITA-2789): a yearly pledge costs ten months for twelve.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isUuid } from "./place-id.ts";
+import { errorMessage } from "./errors.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
 
-export const BOOST_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
+export const PREMIER_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
 
 /** Monthly price in US cents. */
-export const BOOST_MONTHLY_CENTS: Record<BoostTier, number> = {
+export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
   boost_2x: 1000,
   boost_5x: 5000,
   boost_10x: 20000,
 };
 
 /** A year is billed as this many months. */
-export const BOOST_YEAR_MONTHS = 10;
+export const PREMIER_YEAR_MONTHS = 10;
 
-export const BOOST_CURRENCY = "usd";
+export const PREMIER_CURRENCY = "usd";
 
 /** Stripe refuses a USD charge under 50 cents; an upgrade whose credit
  *  leaves less than that is charged nothing. */
@@ -55,7 +57,7 @@ export const CHARGING_GIVE_UP_MS = 24 * 3600_000;
 
 /** The Stripe product line's name (MESITA-2925). The wire tiers keep their
  *  stored `boost_*` keys. */
-export const BOOST_LABEL: Record<BoostTier, string> = {
+export const PREMIER_LABEL: Record<BoostTier, string> = {
   boost_2x: "Premier 2X",
   boost_5x: "Premier 5X",
   boost_10x: "Premier 10X",
@@ -63,7 +65,7 @@ export const BOOST_LABEL: Record<BoostTier, string> = {
 
 /** The Premier factor a place's `boost_tier` (0..3) earns in the Area
  *  score. Literal: the tier names promise the number. */
-export const BOOST_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
+export const PREMIER_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
 
 export type TierRank = 1 | 2 | 3;
 
@@ -72,8 +74,8 @@ export const TIER_BY_RANK: Record<TierRank, BoostTier> = { 1: "boost_2x", 2: "bo
 
 /** What the guest pays per interval. */
 export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
-  const monthly = BOOST_MONTHLY_CENTS[tier];
-  return interval === "year" ? monthly * BOOST_YEAR_MONTHS : monthly;
+  const monthly = PREMIER_MONTHLY_CENTS[tier];
+  return interval === "year" ? monthly * PREMIER_YEAR_MONTHS : monthly;
 }
 
 /** Calendar interval, like the SQL `premier_interval_end`: one month or one
@@ -307,7 +309,7 @@ export function quote(args: {
 /** Every tier × interval, for the tiles. */
 export function quotes(args: Omit<Parameters<typeof quote>[0], "tier" | "interval">): Record<BoostTier, Record<BoostInterval, Quote>> {
   const out = {} as Record<BoostTier, Record<BoostInterval, Quote>>;
-  for (const tier of BOOST_TIERS) {
+  for (const tier of PREMIER_TIERS) {
     out[tier] = {
       month: quote({ ...args, tier, interval: "month" }),
       year: quote({ ...args, tier, interval: "year" }),
@@ -351,12 +353,6 @@ export const customerKey = (consumerId: string, livemode: boolean) =>
 
 // ── Start: parse and guard ────────────────────────────────────────────────
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function isUuid(v: unknown): v is string {
-  return typeof v === "string" && UUID_RE.test(v);
-}
-
 export type BoostStart = {
   placeId: string;
   tier: BoostTier;
@@ -385,7 +381,7 @@ export function parseBoostStart(
   const placeId = body.place_id;
   if (!isUuid(placeId)) return { ok: false, error: "place_id must be a Mesita place id" };
   const tier = body.tier;
-  if (typeof tier !== "string" || !(BOOST_TIERS as readonly string[]).includes(tier)) {
+  if (typeof tier !== "string" || !(PREMIER_TIERS as readonly string[]).includes(tier)) {
     return { ok: false, error: "tier must be boost_2x, boost_5x or boost_10x" };
   }
   const interval = body.interval ?? "month";
@@ -522,7 +518,7 @@ export function pledgeCheckoutParams(args: {
     metadata,
   };
   if (args.kind === "setup") {
-    return { ...common, mode: "setup", currency: BOOST_CURRENCY, setup_intent_data: { metadata } };
+    return { ...common, mode: "setup", currency: PREMIER_CURRENCY, setup_intent_data: { metadata } };
   }
   return {
     ...common,
@@ -530,9 +526,9 @@ export function pledgeCheckoutParams(args: {
     line_items: [{
       quantity: 1,
       price_data: {
-        currency: BOOST_CURRENCY,
+        currency: PREMIER_CURRENCY,
         unit_amount: args.quote.charge_cents,
-        product_data: { name: `${BOOST_LABEL[args.tier]} · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `${PREMIER_LABEL[args.tier]} · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: {
@@ -556,7 +552,7 @@ export function renewalChargeParams(args: {
 }): Record<string, unknown> {
   return {
     amount: args.amountCents,
-    currency: BOOST_CURRENCY,
+    currency: PREMIER_CURRENCY,
     customer: args.customer,
     payment_method: args.paymentMethod,
     off_session: true,
@@ -570,10 +566,6 @@ export function renewalChargeParams(args: {
       place_id: args.placeId,
     },
   };
-}
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
 
 function idOf(v: unknown): string | null {
@@ -626,7 +618,7 @@ async function updatePledge(
       .eq("id", id);
     return error ? error.message : null;
   } catch (err) {
-    return errorText(err);
+    return errorMessage(err);
   }
 }
 
@@ -721,7 +713,7 @@ async function captureClaim(
       await settle(admin, periodId, "declined", piId);
       return "declined";
     }
-    console.error("[premier] capture_unknown", JSON.stringify({ period_id: periodId, pi: piId, error: errorText(err) }));
+    console.error("[premier] capture_unknown", JSON.stringify({ period_id: periodId, pi: piId, error: errorMessage(err) }));
   }
   return "unknown";
 }
@@ -861,7 +853,7 @@ export async function settleCharging(
     try {
       pi = await stripe("GET", `payment_intents/${encodeURIComponent(period.stripe_payment_intent_id)}`);
     } catch (err) {
-      console.error("[premier] settle_lookup", period.id, errorText(err));
+      console.error("[premier] settle_lookup", period.id, errorMessage(err));
       return "unknown";
     }
     if (pi.status === "requires_capture") {
@@ -877,7 +869,7 @@ export async function settleCharging(
       try {
         await stripe("POST", `payment_intents/${encodeURIComponent(period.stripe_payment_intent_id)}/cancel`);
       } catch (err) {
-        console.error("[premier] settle_cancel", period.id, errorText(err));
+        console.error("[premier] settle_cancel", period.id, errorMessage(err));
         return "unknown";
       }
     }
@@ -917,7 +909,7 @@ export async function attemptRenewalCharge(
         periodId: period.id,
         backingId: pledge.id,
         placeId: period.place_id,
-        label: `${BOOST_LABEL[TIER_BY_RANK[period.tier as TierRank] ?? "boost_2x"]} renewal`,
+        label: `${PREMIER_LABEL[TIER_BY_RANK[period.tier as TierRank] ?? "boost_2x"]} renewal`,
       }),
       { idempotencyKey: chargeKey(period.id) },
     );
@@ -931,11 +923,11 @@ export async function attemptRenewalCharge(
     return outcome;
   }
   if (now - Date.parse(period.created_at) >= CHARGING_GIVE_UP_MS) {
-    console.error("[premier] charge_give_up", JSON.stringify({ period_id: period.id, error: errorText(error) }));
+    console.error("[premier] charge_give_up", JSON.stringify({ period_id: period.id, error: errorMessage(error) }));
     await settle(admin, period.id, "declined", piId);
     return "declined";
   }
-  console.error("[premier] charge_unknown", JSON.stringify({ period_id: period.id, error: error ? errorText(error) : String(pi?.status) }));
+  console.error("[premier] charge_unknown", JSON.stringify({ period_id: period.id, error: error ? errorMessage(error) : String(pi?.status) }));
   return "unknown";
 }
 
@@ -971,7 +963,7 @@ export async function leavePledge(admin: SupabaseClient, stripe: StripeCall | nu
       await stripe("POST", `checkout/sessions/${encodeURIComponent(pledge.stripe_checkout_session_id)}/expire`);
     } catch (err) {
       // Already complete or expired: nothing payable is left open.
-      console.error("[premier] leave_expire", pledge.id, errorText(err));
+      console.error("[premier] leave_expire", pledge.id, errorMessage(err));
     }
   }
   if (pledge.stripe_payment_method_id && stripe) {
@@ -1023,7 +1015,7 @@ export async function endConsumerPledges(
     }
     for (const pledge of pledges) await leavePledge(admin, stripe, pledge);
   } catch (err) {
-    return { ok: false, error: `premier_end: ${errorText(err)}` };
+    return { ok: false, error: `premier_end: ${errorMessage(err)}` };
   }
   return { ok: true, ended: pledges.length };
 }

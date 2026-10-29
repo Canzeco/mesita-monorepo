@@ -36,3 +36,10 @@ export function rowPlaceId(
 ): string | null {
   return row.place_id ?? row.project_id ?? null;
 }
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A canonical 8-4-4-4-12 hex UUID string (any case). */
+export function isUuid(v: unknown): v is string {
+  return typeof v === "string" && UUID_RE.test(v);
+}

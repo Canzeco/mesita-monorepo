@@ -24,7 +24,6 @@ import {
   chargingPeriod,
   type ConfirmOutcome,
   confirmPledge,
-  isUuid,
   ladder,
   lineView,
   quotes,
@@ -34,6 +33,7 @@ import {
   stripeClient,
   TIER_RANK,
 } from "../_shared/boost.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-get-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();

@@ -18,6 +18,7 @@ import {
 } from "./google-places.ts";
 import { googleFetch } from "./google-fetch.ts";
 import { numOf } from "./parse-utils.ts";
+import { errorMessage } from "./errors.ts";
 
 export const REVIEW_VERIFY_TIMEOUT_MS = 20_000;
 
@@ -225,7 +226,7 @@ export async function verifyGoogle(
       },
     );
   } catch (e) {
-    const reason = e instanceof Error ? e.message : String(e);
+    const reason = errorMessage(e);
     logMiss("google", reason);
     return notFound(reason);
   }

@@ -16,7 +16,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
-import { boostStripeKey, isUuid, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
+import { boostStripeKey, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("admin-web-grant-place-boost", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");

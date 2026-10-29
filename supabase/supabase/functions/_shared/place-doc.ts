@@ -63,7 +63,7 @@
 
 import { cleanGoogleTypes } from "./google-table-b.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { nullable } from "./doc-schema.ts";
+import { isNullableString, nullable } from "./doc-schema.ts";
 import { GoogleReviewsSchema, PopularTimesSchema } from "./place-jsonb-schemas.ts";
 import { EnrichmentMapSchema } from "./schema-catalog.ts";
 // ── PlaceProfileRow — the full `place_profiles` row shape ──────────────────────────────────
@@ -286,9 +286,6 @@ export type ProfilePatch = PlaceProfilePatch & PlacePatch;
 
 // ── shape primitives ─────────────────────────────────────────────────────
 
-function isNullableString(v: unknown): v is string | null {
-  return v === null || typeof v === "string";
-}
 function isNonEmptyString(v: unknown): v is string {
   return typeof v === "string" && v.length > 0;
 }

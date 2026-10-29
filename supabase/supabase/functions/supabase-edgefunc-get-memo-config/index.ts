@@ -29,6 +29,7 @@ import { requireInternalCaller } from "../_shared/internal.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import { normalizeMemoConfig } from "../_shared/memo-config.ts";
 import { normalizeDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("supabase-edgefunc-get-memo-config", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -92,7 +93,7 @@ serveJson("supabase-edgefunc-get-memo-config", async (req) => {
       caller: callerRes.callerName,
     });
   } catch (e) {
-    console.error("[get-memo-config] threw:", (e as Error).message);
+    console.error("[get-memo-config] threw:", errorMessage(e));
     return json(fallback);
   }
 });
