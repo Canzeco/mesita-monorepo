@@ -91,8 +91,9 @@
 // and looks like shit"), and the history scrolls with no bar drawn over its
 // photos ("fix the scrolling bar").
 
-import { useEffect, useRef, useState, type SVGProps } from "react";
+import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
   Clock,
@@ -110,6 +111,7 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   apiListActivityFeed,
   apiMemberHistory,
+  isMesitaPlaceId,
   type ActivityFeedItem,
   type ActivityKind,
   type ActivityPerson,
@@ -437,6 +439,73 @@ function FeedRow({
   );
 }
 
+/** THE OPEN CARD IS AN ADDRESS (MESITA-3026, Pato: "use routing there …
+ *  have a bit persistence"): /home/social?person=<place>&kind=<verb>&at=<time>,
+ *  and &grid=saved on the Likes tab. The event names the member, never a
+ *  member id (MESITA-2460). Opening a card pushes it, so back from a place
+ *  the card is open again; the tab is replaced, never pushed. */
+export type CardEvent = Pick<ActivityFeedItem, "placeId" | "kind" | "at">;
+
+export function cardEventOf(params: {
+  get(name: string): string | null;
+}): CardEvent | null {
+  const placeId = params.get("person");
+  const kind = params.get("kind");
+  const at = params.get("at");
+  if (!placeId || !isMesitaPlaceId(placeId)) return null;
+  if (kind !== "saved" && kind !== "viewed") return null;
+  if (!at || !Number.isFinite(Date.parse(at))) return null;
+  return { placeId, kind, at };
+}
+
+export function cardHref(
+  base: string,
+  event: CardEvent,
+  tab: HistoryTab,
+): string {
+  const q = new URLSearchParams({
+    person: event.placeId,
+    kind: event.kind,
+    at: event.at,
+  });
+  if (tab === "saved") q.set("grid", "saved");
+  return `${base}?${q.toString()}`;
+}
+
+const cardKey = (e: CardEvent) => `${e.placeId}|${e.kind}|${e.at}`;
+
+/** What survives leaving Home for a place and coming back (MESITA-3026):
+ *  the last feed, each opened card's history, and each card's mounted tiles
+ *  and scroll. In memory only, for this tab's life; every one is refetched
+ *  behind what it repaints. */
+let lastFeed: ActivityFeedItem[] | null = null;
+const MEMORY_CARDS = 20;
+const historyMemory = new Map<string, MemberHistory>();
+const cardMemory = new Map<
+  string,
+  { shown: Partial<Record<HistoryTab, number>>; scrollTop: number }
+>();
+/** The card this tab pushed, so its close is a back, not a second entry. */
+let pushedCard: string | null = null;
+function setPushedCard(key: string | null) {
+  pushedCard = key;
+}
+
+function remember<V>(map: Map<string, V>, key: string, value: V) {
+  map.delete(key);
+  map.set(key, value);
+  if (map.size > MEMORY_CARDS) map.delete(map.keys().next().value as string);
+}
+
+function cardMemoryOf(key: string) {
+  let mem = cardMemory.get(key);
+  if (!mem) {
+    mem = { shown: {}, scrollTop: 0 };
+    remember(cardMemory, key, mem);
+  }
+  return mem;
+}
+
 /** The places the card's member liked, from the server for the event the
  *  card was opened from (MESITA-2583). Null while it loads; a failed read
  *  lists nothing rather than guessing. */
@@ -447,21 +516,19 @@ type MemberHistory = {
 
 /** The member behind the open card and their history (MESITA-2609); null
  *  while it loads. A failed read shows the row's person and no history. */
-function useMemberHistory(
-  item: ActivityFeedItem | null,
-  open: boolean,
-): MemberHistory | null {
+function useMemberHistory(event: CardEvent | null): MemberHistory | null {
   const supabase = useBrowserSupabase();
-  const key = item ? eventKey(item) : null;
+  const key = event ? cardKey(event) : null;
   const [loaded, setLoaded] = useState<{
     key: string;
     history: MemberHistory;
   } | null>(null);
   useEffect(() => {
-    if (!open || !item || !key) return;
+    if (!event || !key) return;
     let cancelled = false;
-    apiMemberHistory(supabase, item)
+    apiMemberHistory(supabase, event)
       .then((history) => {
+        remember(historyMemory, key, history);
         if (!cancelled) setLoaded({ key, history });
       })
       .catch((err) => {
@@ -469,7 +536,9 @@ function useMemberHistory(
           "social_member_history_failed",
           errMsg(err, "consumer-web-list-activity failed"),
         );
-        if (!cancelled) {
+        // A remembered history stays on screen; only a first read that
+        // fails shows none.
+        if (!cancelled && !historyMemory.has(key)) {
           setLoaded({ key, history: { person: null, items: [] } });
         }
       });
@@ -477,8 +546,11 @@ function useMemberHistory(
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, key, open]);
-  return loaded && loaded.key === key ? loaded.history : null;
+  }, [supabase, key]);
+  if (!key) return null;
+  return loaded && loaded.key === key
+    ? loaded.history
+    : (historyMemory.get(key) ?? null);
 }
 
 /** The card's Instagram box, Me's own wording (MESITA-2606): "Insta: @handle
@@ -509,27 +581,46 @@ function cardInstagramLabel(person: ActivityPerson): string {
  *  disc there; MESITA-2709 made it the bare glyph); the backdrop and
  *  Escape still close it too. */
 function PersonCard({
-  item,
-  open,
+  event,
+  fallback,
+  tab,
+  onTab,
   onClose,
 }: {
-  item: ActivityFeedItem | null;
-  open: boolean;
+  event: CardEvent | null;
+  /** The feed row's person, drawn until the server's arrives. */
+  fallback: ActivityPerson | null;
+  tab: HistoryTab;
+  onTab: (tab: HistoryTab) => void;
   onClose: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const history = useMemberHistory(item, open);
+  const history = useMemberHistory(event);
   const { igConnected } = useConsumerIdentity();
-  if (!item) return null;
-  const person = history?.person ?? item.person;
-  const who = feedWho(person);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const key = event ? cardKey(event) : null;
+  const ready = history != null;
+  // Back on a remembered card: the scroll it was left at, once its tiles
+  // are mounted (the dialog's portal can mount a frame late).
+  useEffect(() => {
+    if (!key || !ready) return;
+    const top = cardMemory.get(key)?.scrollTop ?? 0;
+    if (top <= 0) return;
+    const raf = requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = top;
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [key, ready]);
+  if (!event || !key) return null;
+  const person = history?.person ?? fallback;
+  const who = person ? feedWho(person) : "Member";
   const igUrl =
-    person.handle && !person.isYou && !person.handleLocked
+    person && person.handle && !person.isYou && !person.handleLocked
       ? `https://www.instagram.com/${encodeURIComponent(person.handle)}/`
       : null;
   return (
     <LocalDialog
-      open={open}
+      open
       onClose={onClose}
       ariaLabel={`${who}'s profile`}
       instant
@@ -545,6 +636,10 @@ function PersonCard({
           positioned on the panel, not this scroller, so it stays put. No bar,
           and a fling at either end stays in the card. */}
       <div
+        ref={scrollRef}
+        onScroll={(e) => {
+          cardMemoryOf(key).scrollTop = e.currentTarget.scrollTop;
+        }}
         className="scrollbar-hide min-h-0 overflow-y-auto overscroll-y-contain p-5"
         data-social-person-card
       >
@@ -565,16 +660,38 @@ function PersonCard({
         >
           <X className="h-5 w-5" strokeWidth={2.25} aria-hidden />
         </button>
-        <IdentityCard
-          name={who}
-          avatarUrl={person.avatarUrl}
-          instagram={{
-            label: cardInstagramLabel(person),
-            connected: Boolean(person.handle),
-          }}
-          guestClass={toGuestClass(person.guestClass)}
-          plan={toGuestPlan(person.plan)}
-        />
+        {person ? (
+          <IdentityCard
+            name={who}
+            avatarUrl={person.avatarUrl}
+            instagram={{
+              label: cardInstagramLabel(person),
+              connected: Boolean(person.handle),
+            }}
+            guestClass={toGuestClass(person.guestClass)}
+            plan={toGuestPlan(person.plan)}
+          />
+        ) : history ? (
+          // A link to a member who is gone (deleted, or the event is).
+          <p
+            className="text-muted-foreground py-10 text-center text-sm"
+            data-social-person-gone
+          >
+            This profile isn&apos;t available
+          </p>
+        ) : (
+          // Opened from its address before anything is known: the card's
+          // own shape, empty.
+          <div className="flex flex-col items-center gap-3" aria-busy>
+            <Skeleton className="h-24 w-24 rounded-full" />
+            <Skeleton className="h-11 w-full rounded-full" />
+            <div className="flex w-full gap-3">
+              <Skeleton className="h-11 flex-1 rounded-full" />
+              <Skeleton className="h-11 flex-1 rounded-full" />
+            </div>
+            <Skeleton className="h-11 w-full rounded-full" />
+          </div>
+        )}
         {/* ONE HAIRLINE, EDGE TO EDGE, between the identity boxes and the
             history (Pato, MESITA-2611: "this activity feed must be divided
             by a line, like in instagram"): the way Instagram's profile
@@ -586,8 +703,11 @@ function PersonCard({
           data-social-history-divider
         >
           <HistoryList
-            key={`${item.placeId}:${item.kind}:${item.at}`}
+            key={key}
+            memoryKey={key}
             items={history ? history.items : null}
+            tab={tab}
+            onTab={onTab}
           />
         </div>
         {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
@@ -607,7 +727,7 @@ function PersonCard({
           </a>
         )}
         {/* You see others' Instagram only if you show yours (MESITA-2594). */}
-        {person.handleLocked && !person.isYou && (
+        {person?.handleLocked && !person.isYou && (
           <Link
             href={CONSUMER_ROUTES.mePages.instagram}
             className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
@@ -679,9 +799,23 @@ const HISTORY_AHEAD = "600px";
  *  before that MESITA-2609's rows. Not a scroller of its own: it scrolls
  *  with the whole card (MESITA-2845), which draws no bar and keeps a fling
  *  at either end from scrolling Home behind it. */
-function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
-  const [tab, setTab] = useState<HistoryTab>("viewed");
-  const [shown, setShown] = useState(HISTORY_BATCH);
+function HistoryList({
+  items,
+  tab,
+  onTab,
+  memoryKey,
+}: {
+  items: MemberHistoryItem[] | null;
+  tab: HistoryTab;
+  onTab: (tab: HistoryTab) => void;
+  memoryKey: string;
+}) {
+  // How many tiles were mounted on each tab, remembered so back from a place
+  // finds the grid as long as it was left (MESITA-3026).
+  const [shownBy, setShownBy] = useState<Partial<Record<HistoryTab, number>>>(
+    () => ({ ...cardMemoryOf(memoryKey).shown }),
+  );
+  const shown = shownBy[tab] ?? HISTORY_BATCH;
   const footRef = useRef<HTMLDivElement>(null);
   const current = HISTORY_TABS.find((t) => t.tab === tab) ?? HISTORY_TABS[0];
   const tiles = items ? historyTiles(items, tab) : null;
@@ -694,14 +828,21 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
     const io = new IntersectionObserver(
       (entries) => {
         if (entries.some((e) => e.isIntersecting)) {
-          setShown((n) => n + HISTORY_BATCH);
+          setShownBy((by) => {
+            const next = {
+              ...by,
+              [tab]: (by[tab] ?? HISTORY_BATCH) + HISTORY_BATCH,
+            };
+            cardMemoryOf(memoryKey).shown = next;
+            return next;
+          });
         }
       },
       { rootMargin: `${HISTORY_AHEAD} 0px` },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [more, shown, tab]);
+  }, [more, shown, tab, memoryKey]);
   return (
     <>
       <div
@@ -719,10 +860,7 @@ function HistoryList({ items }: { items: MemberHistoryItem[] | null }) {
               role="tab"
               aria-selected={on}
               aria-label={label}
-              onClick={() => {
-                setTab(t);
-                setShown(HISTORY_BATCH);
-              }}
+              onClick={() => onTab(t)}
               className={cn(
                 "focus-visible:ring-ring relative flex h-11 flex-1 items-center justify-center outline-none focus-visible:ring-2 focus-visible:ring-inset",
                 on ? "text-foreground" : "text-muted-foreground",
@@ -894,7 +1032,16 @@ function FeedSkeleton() {
   );
 }
 
+/** Social reads its address (the open card), so it waits under Suspense. */
 export function SocialFeed() {
+  return (
+    <Suspense fallback={<FeedSkeleton />}>
+      <SocialFeedBody />
+    </Suspense>
+  );
+}
+
+function SocialFeedBody() {
   const supabase = useBrowserSupabase();
   const coords = useUserLocation();
   const origin = useActiveLocation();
@@ -906,7 +1053,10 @@ export function SocialFeed() {
     | { status: "loading" }
     | { status: "error"; message: string }
     | { status: "ready"; items: ActivityFeedItem[] }
-  >({ status: "loading" });
+  >(() =>
+    // Back on Social: the last list repaints at once while it refetches.
+    lastFeed ? { status: "ready", items: lastFeed } : { status: "loading" },
+  );
   // Bumped by Try again and the refresh button: the effect refetches.
   const [attempt, setAttempt] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -916,7 +1066,9 @@ export function SocialFeed() {
   const [now, setNow] = useState(0);
   // The events already shown (null before the first load, which glows
   // nothing) and the ones that just arrived.
-  const seenRef = useRef<Set<string> | null>(null);
+  const seenRef = useRef<Set<string> | null>(
+    lastFeed ? new Set(lastFeed.map(eventKey)) : null,
+  );
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const freshTimer = useRef<number | undefined>(undefined);
   // Level 1 (MESITA-2536): the pane's scroller, whether it is at the top,
@@ -924,10 +1076,13 @@ export function SocialFeed() {
   const rootRef = useRef<HTMLDivElement>(null);
   const atTopRef = useRef(true);
   const [pendingNew, setPendingNew] = useState(0);
-  // The person sheet: who is shown, and whether it is open (the item stays
-  // while it slides away).
-  const [personItem, setPersonItem] = useState<ActivityFeedItem | null>(null);
-  const [personOpen, setPersonOpen] = useState(false);
+  // The person card is the address (MESITA-3026).
+  const router = useRouter();
+  const pathname = usePathname() ?? CONSUMER_ROUTES.homeSocial;
+  const params = useSearchParams();
+  const cardEvent = params ? cardEventOf(params) : null;
+  const cardTab: HistoryTab =
+    params?.get("grid") === "saved" ? "saved" : "viewed";
   const [pull, setPull] = useState(0);
   const pullStart = useRef<number | null>(null);
   const scroller = () =>
@@ -966,6 +1121,7 @@ export function SocialFeed() {
           const at = Date.now();
           setUpdatedAt(at);
           setNow(at);
+          lastFeed = items;
           setState({ status: "ready", items });
           setRefreshing(false);
         })
@@ -1012,35 +1168,74 @@ export function SocialFeed() {
     return () => el.removeEventListener("scroll", onScroll);
   }, [ready]);
 
-  if (state.status === "loading") return <FeedSkeleton />;
+  const openPerson = (it: ActivityFeedItem) => {
+    setPushedCard(cardKey(it));
+    router.push(cardHref(pathname, it, "viewed"), { scroll: false });
+  };
+  const closePerson = () => {
+    if (cardEvent && pushedCard === cardKey(cardEvent)) {
+      setPushedCard(null);
+      router.back();
+    } else {
+      router.replace(pathname, { scroll: false });
+    }
+  };
+  const cardRow =
+    cardEvent && state.status === "ready"
+      ? state.items.find((it) => cardKey(it) === cardKey(cardEvent))
+      : undefined;
+  const card = (
+    <PersonCard
+      event={cardEvent}
+      fallback={cardRow?.person ?? null}
+      tab={cardTab}
+      onTab={(t) => {
+        if (cardEvent) {
+          router.replace(cardHref(pathname, cardEvent, t), { scroll: false });
+        }
+      }}
+      onClose={closePerson}
+    />
+  );
+
+  if (state.status === "loading") {
+    return (
+      <>
+        <FeedSkeleton />
+        {card}
+      </>
+    );
+  }
   if (state.status === "error") {
     return (
-      <EmptyState
-        icon={Users}
-        title="Couldn't load Social"
-        description={state.message}
-        action={{
-          label: "Try again",
-          onClick: () => {
-            setState({ status: "loading" });
-            setAttempt((n) => n + 1);
-          },
-        }}
-      />
+      <>
+        <EmptyState
+          icon={Users}
+          title="Couldn't load Social"
+          description={state.message}
+          action={{
+            label: "Try again",
+            onClick: () => {
+              setState({ status: "loading" });
+              setAttempt((n) => n + 1);
+            },
+          }}
+        />
+        {card}
+      </>
     );
   }
   const rows = state.items;
-  const openPerson = (it: ActivityFeedItem) => {
-    setPersonItem(it);
-    setPersonOpen(true);
-  };
   if (rows.length === 0) {
     return (
-      <EmptyState
-        icon={Users}
-        title="No activity yet"
-        description="When members like or view a place, it shows up here."
-      />
+      <>
+        <EmptyState
+          icon={Users}
+          title="No activity yet"
+          description="When members like or view a place, it shows up here."
+        />
+        {card}
+      </>
     );
   }
   return (
@@ -1130,11 +1325,7 @@ export function SocialFeed() {
           />
         ))}
       </ul>
-      <PersonCard
-        item={personItem}
-        open={personOpen}
-        onClose={() => setPersonOpen(false)}
-      />
+      {card}
     </div>
   );
 }
