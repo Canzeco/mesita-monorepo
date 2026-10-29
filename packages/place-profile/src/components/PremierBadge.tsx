@@ -12,14 +12,20 @@ import { premierLabel, premierLevel } from "../premier";
 // MESITA-2865), 20px after the name (MESITA-2628). `compact` keeps the
 // rosette and the level alone ("2X") where a narrow card has no room for
 // the word; the place screen always says Premier.
+//
+// `ad` (Pato, MESITA-3016: "marca … para que se entienda que es como paid
+// ad") appends "· Ad" where the slot itself was paid for: a Home tile the
+// red lane placed, a Search rail card (the Map ranks by the paid factor).
 
 export function PremierBadge({
   tier,
   compact = false,
+  ad = false,
   className,
 }: {
   tier: number | null | undefined;
   compact?: boolean;
+  ad?: boolean;
   className?: string;
 }) {
   const label = premierLabel(tier);
@@ -47,6 +53,7 @@ export function PremierBadge({
       </svg>
       <span className="text-xs leading-none font-semibold tracking-normal whitespace-nowrap text-[#F4212E]">
         {compact ? premierLevel(tier) : label}
+        {ad ? " · Ad" : null}
       </span>
     </span>
   );

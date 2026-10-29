@@ -264,12 +264,40 @@ Deno.test("the Catalog: every place, no radius, Proximity × Popularity × the P
     assertEquals(Math.abs(a.final - want) < 1e-12, true);
   }
   assertEquals(ids(out.places)[2], "far");
-  // Premier 10X lifts the quieter row over the loved plain one; tier 0 does not.
-  assert(ids(out.places).indexOf("off") < ids(out.places).indexOf("plain"));
+  // The red lane opens with the Premier place; blue follows by its own score.
+  assertEquals(out.places.map((p) => [p.id, p.area.lane]), [["off", "red"], ["plain", "blue"], ["far", "blue"]]);
+  assertEquals(out.summary.red, 1);
+  // Tier 0: no red lane, blue alone, best first.
   const none = await run(0);
-  assert(ids(none.places).indexOf("plain") < ids(none.places).indexOf("off"));
-  const finals = out.places.map((p) => p.area.final);
+  assertEquals(none.places.map((p) => p.area.lane), ["blue", "blue", "blue"]);
+  const finals = none.places.map((p) => p.area.final);
   assertEquals(finals, [...finals].sort((a, b) => b - a));
+});
+
+Deno.test("the Catalog's lanes: red, blue one and one; a duplicate refills its own lane; a dry lane yields (MESITA-3016)", async () => {
+  // Three Premier places that are also blue's best: the first lane to reach
+  // a place keeps it (blue earns p2 organically), the other lane skips it
+  // and reads its own next, so the turns never break while both have places.
+  const rows = [
+    mrow("p1", { google_review_count: 9000, boost_tier: 1 }),
+    mrow("p2", { google_review_count: 8000, boost_tier: 1 }),
+    mrow("p3", { google_review_count: 7000, boost_tier: 1 }),
+    mrow("o1", { google_review_count: 500 }),
+    mrow("o2", { google_review_count: 400 }),
+    mrow("o3", { google_review_count: 300 }),
+    mrow("o4", { google_review_count: 200 }),
+  ];
+  const out = await selectAreaPool(deps({ surface: "catalog", radiusKm: null, mesitaRows: rows }).d);
+  assertEquals(out.places.map((p) => `${p.area.lane}:${p.id}`), [
+    "red:p1", "blue:p2", "red:p3", "blue:o1", "blue:o2", "blue:o3", "blue:o4",
+  ]);
+  // Blue never carries the factor; red does.
+  for (const p of out.places) assertEquals(p.area.selectedFactor, p.area.lane === "red" ? 2 : 1);
+  assertEquals([out.summary.ranked, out.summary.returned, out.summary.red], [7, 7, 2]);
+  // The Map is untouched: no lanes.
+  const map = await selectAreaPool(deps({ mesitaRows: rows }).d);
+  assertEquals(map.places.every((p) => p.area.lane === null), true);
+  assertEquals(map.summary.red, null);
 });
 
 // Territory is retired (MESITA-2500, MESITA-2603): a point or nothing.

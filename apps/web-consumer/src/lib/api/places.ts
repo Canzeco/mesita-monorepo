@@ -307,6 +307,9 @@ export type AreaDiagnostics = {
   distancePenalty?: number;
   final: number;
   formula: "point" | "none";
+  /** The Catalog lane that placed it (MESITA-3016): `red` a paid slot
+   *  (drawn with the Ad mark), `blue` organic; null or absent off Home. */
+  lane?: "red" | "blue" | null;
 };
 
 /** Where Places ranks from: always a point (MESITA-2501) — the device, a
