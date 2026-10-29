@@ -91,6 +91,7 @@ export function CatalogTile({
   onOpenGoogle,
   onOpen,
   onShare,
+  photoOverlay,
   className,
 }: {
   place: Place;
@@ -102,6 +103,8 @@ export function CatalogTile({
   onOpenGoogle?: () => void;
   /** Share override; a Mesita place shares its own page by default. */
   onShare?: () => void;
+  /** Drawn over the photo: the score readout for now (MESITA-3053). */
+  photoOverlay?: ReactNode;
   className?: string;
 }) {
   const photo = cardPhoto(place);
@@ -177,7 +180,10 @@ export function CatalogTile({
         label={place.name}
         className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <div className={cn("bg-muted", TILE_PHOTO)}>{media()}</div>
+        <div className={cn("bg-muted", TILE_PHOTO)}>
+          {media()}
+          {photoOverlay}
+        </div>
         {/* NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
             removing the reflection of the place in the box"): a plain white
             band, the three rows centred on it (MESITA-2645). MESITA-2657's
