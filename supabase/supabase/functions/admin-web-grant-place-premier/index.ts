@@ -6,11 +6,18 @@
 //   end           ends the running grant now; the line pays at the next run.
 //   remove_pledge takes one pledge out of the line (its card detached); a
 //                 payer's paid period runs out. Never refunds.
+//   set           MESITA-3090, Multiple Places › Edit: move the place to tier
+//                 0 (End Premier), 1 (2X) or 2 (5X) in one transaction
+//                 (premier_set_grant). Refused, nothing written, when a guest
+//                 pays, guests wait to pay, a guest is checking out, or the
+//                 place is archived — the box never starts, holds or ends a
+//                 guest charge. Errors map in _shared/premier-set.ts.
 //
 // Body:     { placeId | projectId, action: "grant", tier: 1|2, months?: 1..12 }
 //         | { placeId | projectId, action: "end" }
 //         | { placeId | projectId, action: "remove_pledge", backingId: uuid }
-// Response: { ok: true }
+//         | { placeId | projectId, action: "set", tier: 0|1|2, months: 1..12 | null }
+// Response: { ok: true }  (set: { ok, result, ends_at, previous_tier, previous_ends_at })
 // Auth:     caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -18,6 +25,7 @@ import { json, readJson, readPlaceIdAlias, serveJson } from "../_shared/http.ts"
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { boostStripeKey, leavePledge, readPledge, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { setFailure } from "../_shared/premier-set.ts";
 
 serveJson("admin-web-grant-place-premier", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");
@@ -77,5 +85,39 @@ serveJson("admin-web-grant-place-premier", async (req) => {
     }
   }
 
-  return json({ ok: false, error: "action must be grant, end or remove_pledge" }, 400);
+  if (body.action === "set") {
+    if (!isUuid(placeId)) return json({ ok: false, code: "place_id_invalid", error: "placeId must be a uuid" }, 400);
+    const tier = Number(body.tier);
+    if (![0, 1, 2].includes(tier)) {
+      return json({ ok: false, code: "tier_invalid", error: `tier must be 0, 1 (2X) or 2 (5X), got ${JSON.stringify(String(body.tier).slice(0, 32))}` }, 400);
+    }
+    // End Premier (tier 0) takes no months; a grant takes 1..12.
+    const months = tier === 0 ? null : Number(body.months);
+    if (months !== null && (!Number.isInteger(months) || months < 1 || months > 12)) {
+      return json({ ok: false, code: "months_invalid", error: `months must be 1 to 12, got ${JSON.stringify(String(body.months).slice(0, 32))}` }, 400);
+    }
+    const { data, error } = await admin.rpc("premier_set_grant", {
+      p_place_id: placeId,
+      p_tier: tier,
+      p_months: months,
+      p_by: user.emailLower ?? user.id,
+    });
+    if (error) {
+      const failure = setFailure(error.message, placeId);
+      if (failure.status !== 500) return json({ ok: false, ...failure }, failure.status);
+      const requestId = crypto.randomUUID();
+      console.error("[admin-web-grant-place-premier] set", placeId, requestId, error);
+      return json({ ok: false, ...failure, request_id: requestId }, 500);
+    }
+    const r = (data ?? {}) as Record<string, unknown>;
+    return json({
+      ok: true,
+      result: r.result,
+      ends_at: r.ends_at ?? null,
+      previous_tier: r.previous_tier ?? null,
+      previous_ends_at: r.previous_ends_at ?? null,
+    });
+  }
+
+  return json({ ok: false, error: "action must be grant, end, remove_pledge or set" }, 400);
 });

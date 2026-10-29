@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(189);
+select plan(212);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1750,6 +1750,181 @@ select is(
   (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   0::smallint,
   'a charge still unknown after an hour holds no tier'
+);
+
+-- ━━━ MESITA-3090: premier_set_grant — Multiple Places sets Premier in bulk ━━━
+-- One fresh place per scenario: …002995 above already holds guest pledges and
+-- paid periods. The box never starts, holds or ends a guest charge.
+insert into public.place_profiles (id, google_name) values
+  ('00000000-0000-4000-8000-000000003090', 'Set Probe'),
+  ('00000000-0000-4000-8000-000000003091', 'Set Archived'),
+  ('00000000-0000-4000-8000-000000003092', 'Set Guest Paid'),
+  ('00000000-0000-4000-8000-000000003093', 'Set Waiting'),
+  ('00000000-0000-4000-8000-000000003094', 'Set Checking Out'),
+  ('00000000-0000-4000-8000-000000003095', 'Set Old Checkout'),
+  ('00000000-0000-4000-8000-000000003096', 'Set Archived Waiting');
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000003090', 'mesita-3090-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003091', 'mesita-3091-probe', 'archived', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003092', 'mesita-3092-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003093', 'mesita-3093-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003094', 'mesita-3094-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003095', 'mesita-3095-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003096', 'mesita-3096-probe', 'archived', 'ready', 'USD');
+-- A guest's paid period (no operator), a ready pledge with a card, a live
+-- Checkout, a Checkout abandoned 40 minutes ago, and an archived place with
+-- a ready pledge.
+insert into public.place_premier_periods (place_id, tier, billing_interval, starts_at, ends_at, status)
+values ('00000000-0000-4000-8000-000000003092', 1, 'month', now() - interval '1 day', now() + interval '29 days', 'paid');
+insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, stripe_payment_method_id) values
+  ('00000000-0000-4000-8000-000000003093', 'boost_2x', 'month', 1000, 'ready', 'pm_probe_3093'),
+  ('00000000-0000-4000-8000-000000003096', 'boost_2x', 'month', 1000, 'ready', 'pm_probe_3096');
+insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status, stripe_checkout_session_id, updated_at) values
+  ('00000000-0000-4000-8000-000000003094', 'boost_5x', 'month', 5000, 'open', 'cs_probe_3094', now() - interval '5 minutes'),
+  ('00000000-0000-4000-8000-000000003095', 'boost_5x', 'month', 5000, 'open', 'cs_probe_3095', now() - interval '40 minutes');
+
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003090', 1::smallint, 12, 'probe@mesita.ai') ->> 'result',
+  'granted',
+  'set grants Premier 2X on a place with nothing running'
+);
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000003090'),
+  1::smallint,
+  'the bulk grant is live at once'
+);
+
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003090', 2::smallint, 12, 'probe@mesita.ai') ->> 'previous_tier',
+  '1',
+  'set switches a granted 2X to 5X and says what it replaced'
+);
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000003090'),
+  2::smallint,
+  'the switch to 5X is live at once'
+);
+
+select is(
+  (select count(*)::int from public.place_premier_periods
+    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'paid' and ends_at > now()),
+  1,
+  'a switch leaves exactly one running grant'
+);
+
+select premier_set_grant('00000000-0000-4000-8000-000000003090', 2::smallint, 1, 'probe@mesita.ai');
+
+select is(
+  (select count(*)::int from public.place_premier_periods
+    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'ended'),
+  2,
+  'the same tier again ends the old grant and starts a new one'
+);
+
+select is(
+  (select count(*)::int from public.place_premier_periods
+    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'paid' and ends_at > now()),
+  1,
+  'the same tier again still leaves exactly one running grant'
+);
+
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003090', 0::smallint, null, 'probe@mesita.ai') ->> 'result',
+  'ended',
+  'End Premier ends the running grant'
+);
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000003090'),
+  0::smallint,
+  'End Premier is live at once'
+);
+
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003090', 0::smallint, null, 'probe@mesita.ai') ->> 'result',
+  'already',
+  'End Premier on a place with nothing running says already'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-00000000ffff', 1::smallint, 1, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: no such place',
+  'set refuses a place that does not exist'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003091', 1::smallint, 1, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: archived',
+  'set refuses an archived place'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003096', 0::smallint, null, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: archived',
+  'archived is checked before the guest refusals'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003092', 0::smallint, null, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: a guest pays',
+  'set never ends a period a guest pays for'
+);
+
+select is(
+  (select count(*)::int from public.place_premier_periods
+    where place_id = '00000000-0000-4000-8000-000000003092' and status = 'paid' and ends_at > now()),
+  1,
+  'the guest-paid period is untouched after the refusal'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003093', 2::smallint, 12, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: guests are waiting to pay',
+  'set refuses a place whose guests are waiting to pay'
+);
+
+select is(
+  (select count(*)::int from public.place_premier_periods where place_id = '00000000-0000-4000-8000-000000003093'),
+  0,
+  'the waiting-guests refusal writes nothing'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003094', 2::smallint, 12, 'probe@mesita.ai')$$,
+  'P0001', 'premier_set_grant: a guest is checking out',
+  'set refuses a place with a live Checkout (it would cancel the held payment)'
+);
+
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003095', 2::smallint, 12, 'probe@mesita.ai') ->> 'result',
+  'granted',
+  'a Checkout older than 31 minutes does not block'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003090', 3::smallint, 1, 'probe@mesita.ai')$$,
+  'P0001', null,
+  'set takes tier 0, 1 or 2, never 3'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003090', 1::smallint, 13, 'probe@mesita.ai')$$,
+  'P0001', null,
+  'set grants 1 to 12 months'
+);
+
+select throws_ok(
+  $$select premier_set_grant('00000000-0000-4000-8000-000000003090', 1::smallint, null, 'probe@mesita.ai')$$,
+  'P0001', null,
+  'a grant needs its months'
+);
+
+select ok(
+  not has_function_privilege('anon', 'public.premier_set_grant(uuid, smallint, integer, text)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.premier_set_grant(uuid, smallint, integer, text)', 'EXECUTE'),
+  'premier_set_grant is service-role only'
 );
 
 -- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━
