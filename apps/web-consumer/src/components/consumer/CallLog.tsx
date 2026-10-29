@@ -69,16 +69,15 @@ export function CallLog() {
         "pointer-events-none fixed top-10 bottom-2 hidden select-none md:flex",
         // Same gutter as RouteBadge: right edge 0.75rem left of the card.
         "md:right-[calc(50%+14.75rem)] md:w-[min(26rem,calc(50%-15.5rem))]",
-        "bg-card/80 border-border flex-col gap-0.5 overflow-hidden rounded-lg border p-2 backdrop-blur-sm",
+        // A terminal: dark whatever the app theme (MESITA-3088).
+        "flex-col gap-0.5 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/95 p-2 text-zinc-200 shadow-lg backdrop-blur-sm",
         "type-label font-mono leading-tight tabular-nums",
         Z_ROUTE_BADGE,
       )}
     >
-      <div className="text-muted-foreground pb-1">
-        edge functions · navigation
-      </div>
+      <div className="pb-1 text-zinc-500">edge functions · navigation</div>
       {lines.length === 0 ? (
-        <div className="text-muted-foreground">waiting for the first call…</div>
+        <div className="text-zinc-500">waiting for the first call…</div>
       ) : (
         lines.map((line) => <Line key={line.id} line={line} />)
       )}
@@ -93,14 +92,10 @@ function Line({ line }: { line: CallLine }) {
     <div
       className={cn(
         "flex gap-2 whitespace-nowrap",
-        failed
-          ? "text-destructive"
-          : slow
-            ? "text-amber-600"
-            : "text-foreground",
+        failed ? "text-red-400" : slow ? "text-amber-400" : "text-zinc-200",
       )}
     >
-      <span className="text-muted-foreground">{clock(line.at)}</span>
+      <span className="text-zinc-500">{clock(line.at)}</span>
       <span className="w-7 shrink-0">{line.kind === "nav" ? "nav" : "ef"}</span>
       <span className="min-w-0 flex-1 truncate">
         {line.label.replace(/^consumer-web-/, "")}
