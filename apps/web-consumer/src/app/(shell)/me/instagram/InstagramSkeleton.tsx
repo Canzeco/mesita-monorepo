@@ -7,10 +7,7 @@ import {
 } from "@/components/consumer/me/InstagramModal";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { SettingsGroup } from "@/components/consumer/me/settings-rows";
-import {
-  INSTAGRAM_PHOTO_SWITCH,
-  PUBLIC_PROFILE_SWITCH,
-} from "@/components/consumer/me/switch-words";
+import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { SettingsRowSkeleton } from "../me-skeletons";
 
@@ -43,16 +40,6 @@ export function InstagramSkeleton() {
 
       <div className="flex flex-col gap-6">
         {connected ? <ConnectedAccount pending /> : <ConnectCardSkeleton />}
-
-        {connected && (
-          <SettingsGroup title="Social">
-            <SettingsRowSkeleton
-              label={PUBLIC_PROFILE_SWITCH.label}
-              sub={PUBLIC_PROFILE_SWITCH.on}
-              toggle
-            />
-          </SettingsGroup>
-        )}
 
         <SettingsGroup title="Photo">
           <SettingsRowSkeleton

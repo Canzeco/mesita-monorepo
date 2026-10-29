@@ -720,7 +720,11 @@ function PersonCard({
           {/* You see others' Instagram only if you show yours (MESITA-2594). */}
           {person?.handleLocked && !person.isYou && (
             <Link
-              href={CONSUMER_ROUTES.mePages.instagram}
+              href={
+                igConnected
+                  ? CONSUMER_ROUTES.mePages.settings
+                  : CONSUMER_ROUTES.mePages.instagram
+              }
               className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
               data-social-unlock-instagram
             >

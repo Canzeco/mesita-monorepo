@@ -206,8 +206,8 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(SETTINGS).toContain("<SocialNameRow />");
     expect(SWITCH_WORDS).toContain('label: "Public profile"');
     expect(SWITCH).toContain("{PUBLIC_PROFILE_SWITCH.label}");
-    // MESITA-2594: asked again where the member connects Instagram.
-    expect(INSTAGRAM).toContain("<SocialNameRow />");
+    // MESITA-3072: asked in Settings only, never on Me › Instagram.
+    expect(INSTAGRAM).not.toContain("<SocialNameRow />");
     expect(SWITCH).toContain("appear_anonymous: !next");
     expect(SWITCH).toContain('role="switch"');
   });

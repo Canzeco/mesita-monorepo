@@ -60,7 +60,6 @@ import {
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity, useServerProfile } from "@/lib/identity-context";
-import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
 import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 
 // Instagram connect page (MESITA-936): one lead line → Connect. The Why
@@ -263,14 +262,6 @@ export function InstagramModal() {
               onCancel={connected ? () => setAction("idle") : undefined}
             />
           ))}
-
-        {/* Public or private, asked where the member connects (MESITA-2594):
-              public is what lets them see other members' Instagram. */}
-        {connected && (
-          <SettingsGroup title="Social">
-            <SocialNameRow />
-          </SettingsGroup>
-        )}
 
         {/* Asked on the same screen as the connect (Pato, MESITA-2585:
               "keep that as default but ask the user"). */}
