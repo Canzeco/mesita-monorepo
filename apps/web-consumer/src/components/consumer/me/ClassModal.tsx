@@ -5,20 +5,26 @@
 // frame every Me box wears. While the class is unknown (the read failed)
 // neither row claims it, and nothing assumes Regular.
 
-import { ClassList } from "@/components/consumer/me/ClassSheet";
+import {
+  type ClassInstagram,
+  ClassList,
+} from "@/components/consumer/me/ClassSheet";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import type { GuestClass, VipDetails } from "@/lib/guest-standing";
 
 export function ClassModal({
   guestClass,
   vip = null,
+  instagram = null,
 }: {
   guestClass: GuestClass | null;
   vip?: VipDetails | null;
+  /** For the Join with Instagram row (MESITA-3054). */
+  instagram?: ClassInstagram;
 }) {
   return (
     <MeScreen title="Class">
-      <ClassList guestClass={guestClass} vip={vip} />
+      <ClassList guestClass={guestClass} vip={vip} instagram={instagram} />
     </MeScreen>
   );
 }

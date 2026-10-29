@@ -14,5 +14,14 @@ export function ClassFromProfile() {
   if (!data) return <ClassModal guestClass={null} vip={null} />;
   const guestClass = toGuestClass(data.guest_class);
   const vip = toVipDetails(guestClass, data.vip_partner, data.vip_until);
-  return <ClassModal guestClass={guestClass} vip={vip} />;
+  return (
+    <ClassModal
+      guestClass={guestClass}
+      vip={vip}
+      instagram={{
+        handle: data.instagram_handle,
+        followers: data.instagram_followers_count ?? null,
+      }}
+    />
+  );
 }

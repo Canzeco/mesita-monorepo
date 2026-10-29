@@ -1,5 +1,6 @@
 import type { Perk } from "@/components/consumer/me/perk-list";
 import type { GuestClass } from "@/lib/guest-standing";
+import { INSTAGRAM_REACH_FOLLOWERS } from "@/lib/consumer-identity";
 
 // The Class card's words, row by row. ClassList draws them (the sheet and
 // /me/class), and so does /me/class' loading.tsx, which draws them as
@@ -12,10 +13,8 @@ import type { GuestClass } from "@/lib/guest-standing";
 // not the words.
 //
 // CLASS IS NOT PLAN (see ClassSheet): nothing here names a plan, a price or
-// a buy; the one VIP perk is tagged Soon.
-//
-// CLASS IS SOON (Pato, MESITA-3027): everyone is Regular for now. VIP wears
-// a Soon tag on its title, and CLASS_SOON_NOTE says classes change later.
+// a buy; the one VIP perk is tagged Soon. Joining is "Join", never
+// "Upgrade" (MESITA-3054): VIP is never sold.
 
 export type ClassRowWords = {
   title: string;
@@ -33,7 +32,6 @@ export const CLASS_ROWS: Record<GuestClass, ClassRowWords> = {
   },
   vip: {
     title: "VIP",
-    soon: true,
     subtitle:
       "Through Mesita's partners, like agencies and creator partnerships. Never bought.",
     perks: {
@@ -43,6 +41,59 @@ export const CLASS_ROWS: Record<GuestClass, ClassRowWords> = {
   },
 };
 
-/** Under the card for a Regular guest (MESITA-3027). */
-export const CLASS_SOON_NOTE =
-  "Everyone is Regular for now. Classes will change later on.";
+// ── Becoming VIP (MESITA-3054): two ways, both a tap by the guest ─────────
+
+const fmt = (n: number) => n.toLocaleString("en-US");
+
+export const JOIN_WORDS = {
+  group: "Become VIP",
+  instagramButton: "Join with Instagram",
+  codeLabel: "Have an invitation code?",
+  codeField: "12-digit invitation code",
+  codeButton: "Join",
+  joined: "You're VIP.",
+  connect: "Connect Instagram first.",
+  update: "Update on Instagram",
+  unknownCount: "We couldn't read your follower count.",
+  needs: (followers: number, needed = INSTAGRAM_REACH_FOLLOWERS) =>
+    `Needs ${fmt(needed)} followers. You have ${fmt(followers)}.`,
+  ready: (followers: number) => `${fmt(followers)} followers on Instagram.`,
+} as const;
+
+/** Leaving VIP, in the rare case a guest wants to (MESITA-3054). */
+export const LEAVE_WORDS = {
+  button: "Leave VIP",
+  title: "Leave VIP?",
+  body: "You go back to Regular. To be VIP again you need an invitation code or your Instagram.",
+  cancel: "Cancel",
+  confirm: "Leave VIP",
+} as const;
+
+/** An inline line for each refusal the join EF names (consumer-web-join-class
+ *  codes); anything else is a 5xx or the network, which the toast reports. */
+export function joinErrorWords(
+  code: string | null,
+  body: Record<string, unknown> | null,
+): string | null {
+  switch (code) {
+    case "bad_code":
+      return "Enter the 12-digit code.";
+    case "instagram_not_connected":
+      return JOIN_WORDS.connect;
+    case "followers_unknown":
+      return JOIN_WORDS.unknownCount;
+    case "not_enough_followers":
+      return typeof body?.followers === "number"
+        ? JOIN_WORDS.needs(
+          body.followers,
+          typeof body.needed === "number" ? body.needed : undefined,
+        )
+        : JOIN_WORDS.needs(0);
+    case "consumer_not_found":
+      return "Your account isn't active. Sign in again.";
+    case "bad_request":
+      return "Something went wrong. Try again.";
+    default:
+      return null;
+  }
+}

@@ -1,19 +1,32 @@
 // Supabase Edge Function — consumer-web-join-class
 //
-// MESITA-2984: a Regular guest joins VIP with a 12-digit code from /me/class.
+// Me › Class: a Regular guest joins VIP (MESITA-2984, two ways since
+// MESITA-3054). The guest always taps; nothing joins on its own.
 //
-// EMULATED (Pato, 2026-10-28: "you just input a number or whatever. but make
-// class functional for the moment even if its an emulator"). Every
-// well-formed code is accepted: there is no partner-code table yet. When
-// partners issue codes, this is the one place that checks them; the page
-// does not change. The code's last four digits go in guest_class_note so an
-// operator can see how a VIP arrived. The write is the consumer door's
-// joinVipClass (admin_set_guest_standing, guest_class's one writer). No
-// partner, no end date; an operator can still set both.
+// Body: { via: "code", code: "<12 digits>" } | { via: "instagram" }
+//       | { via: "leave" } — a VIP goes back to Regular (Pato, MESITA-3054:
+//         "add button to downgrade class in the weird case someone wishes
+//         to"); 200 { ok, guest_class: "regular", left }.
+//   code — EMULATED: every well-formed code is accepted (Pato, 2026-10-28:
+//          "make class functional for the moment even if its an emulator").
+//          Real one-use codes are MESITA-3055; this EF is where they will be
+//          checked.
+//   instagram — the guest's STORED handle and follower count (set when they
+//          connected Instagram) must reach INSTAGRAM_REACH_FOLLOWERS (1,000,
+//          _shared/instagram-reach.ts). Nothing in the body is trusted.
 //
-// Body: { code: string }
-// Response: { ok: true, guest_class: "vip" }
-//   400 "Enter the 12-digit code." · 404 consumer_not_found
+// Response: 200 { ok: true, guest_class: "vip", joined } — joined:false when
+// the guest was already VIP (a retry is safe).
+// Errors { ok: false, code, error, ... } — the codes are listed in Notion
+// Docs › Identity (Class):
+//   400 bad_request · 400 bad_code · 404 consumer_not_found ·
+//   403 instagram_not_connected · 403 followers_unknown ·
+//   403 not_enough_followers { followers, needed } ·
+//   500 join_failed { request_id } (never the database's own words).
+// Every request logs one `class_join` line {via, outcome}; a code's last four
+// digits at most.
+//
+// The decisions live in join.ts (handleJoin), tested with no network.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import {
@@ -24,8 +37,8 @@ import {
   serveJson,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { joinVipClass } from "../_shared/consumer-doc.ts";
-import { parseClassCode } from "./class-code.ts";
+import { readClassJoinRow, writeOwnGuestClass } from "../_shared/consumer-doc.ts";
+import { handleJoin } from "./join.ts";
 
 serveJson("consumer-web-join-class", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -39,16 +52,16 @@ serveJson("consumer-web-join-class", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const code = parseClassCode(bodyRes.body.code);
-  if (!code) {
-    return json({ ok: false, error: "Enter the 12-digit code." }, 400);
-  }
 
-  const res = await joinVipClass(
-    adminClient(envRes.env),
-    authRes.user.id,
-    `Joined with code …${code.slice(-4)} (emulated, MESITA-2984)`,
-  );
-  if (!res.ok) return json({ ok: false, error: res.error }, res.status);
-  return json({ ok: true, guest_class: "vip" });
+  const admin = adminClient(envRes.env);
+  const userId = authRes.user.id;
+  const res = await handleJoin(bodyRes.body, {
+    readRow: () => readClassJoinRow(admin, userId),
+    writeClass: (guestClass, note) => writeOwnGuestClass(admin, userId, guestClass, note),
+    requestId: crypto.randomUUID(),
+  });
+  const line = JSON.stringify({ event: "class_join", ...res.log });
+  if (res.log.outcome === "error") console.error(line);
+  else console.log(line);
+  return json(res.body, res.status);
 });

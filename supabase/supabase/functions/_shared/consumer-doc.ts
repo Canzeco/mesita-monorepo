@@ -396,30 +396,47 @@ export async function readSocialStanding(
   };
 }
 
-// ── joinVipClass — Me › Class's join (MESITA-2984) ────────────────────────
+// ── Class joins — Me › Class (MESITA-2984, MESITA-3054) ──────────────────
 
-/** Make a Regular guest VIP. Already VIP: nothing is written, so an
- *  operator's note and partner stay. The write is admin_set_guest_standing,
- *  guest_class's one writer, with no actor (the guest joined, no operator
- *  set it); `note` says how. */
-export async function joinVipClass(
+/** What consumer-web-join-class decides on: the caller's class, and their
+ *  Instagram as stored at connect (never what the request says). */
+export type ClassJoinRow = {
+  guest_class: string | null;
+  instagram_handle: string | null;
+  instagram_followers_count: number | null;
+  guest_class_note: string | null;
+};
+
+/** The one read a join makes. `row: null` = no live account. */
+export async function readClassJoinRow(
   admin: SupabaseClient,
   consumerId: string,
-  note: string,
-): Promise<{ ok: true; joined: boolean } | { ok: false; error: string; status: number }> {
+): Promise<{ ok: true; row: ClassJoinRow | null } | { ok: false; message: string }> {
   const { data, error } = await admin
     .from("consumers")
-    .select("guest_class")
+    .select("guest_class, instagram_handle, instagram_followers_count, guest_class_note")
     .eq("id", consumerId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (error) return { ok: false, error: `consumer_read: ${error.message}`, status: 500 };
-  if (!data) return { ok: false, error: "consumer_not_found", status: 404 };
-  if (data.guest_class === "vip") return { ok: true, joined: false };
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, row: (data as ClassJoinRow | null) ?? null };
+}
 
+/** The guest's own class change: a Regular joining VIP, or a VIP leaving it
+ *  (MESITA-3054). The caller has read the row and knows the current class.
+ *  The write is admin_set_guest_standing, guest_class's one writer, with no
+ *  actor (the guest did it, no operator); `note` says how, already merged
+ *  with any operator note. Going Regular clears the partner and last day (the
+ *  RPC does it). */
+export async function writeOwnGuestClass(
+  admin: SupabaseClient,
+  consumerId: string,
+  guestClass: "vip" | "regular",
+  note: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
   const { error: rpcErr } = await admin.rpc("admin_set_guest_standing", {
     p_consumer: consumerId,
-    p_guest_class: "vip",
+    p_guest_class: guestClass,
     p_plan: null,
     p_note: note,
     p_note_set: true,
@@ -429,6 +446,5 @@ export async function joinVipClass(
     p_vip_until_set: false,
     p_actor: null,
   });
-  if (rpcErr) return { ok: false, error: `consumer_write: ${rpcErr.message}`, status: 500 };
-  return { ok: true, joined: true };
+  return rpcErr ? { ok: false, message: rpcErr.message } : { ok: true };
 }
