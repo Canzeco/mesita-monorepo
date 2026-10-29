@@ -37,7 +37,6 @@ type MapsNamespace = {
       lat: number,
       lng: number,
     ) => { lat: () => number; lng: () => number };
-    event: { trigger: (instance: object, eventName: string) => void };
   };
 };
 
@@ -56,9 +55,17 @@ export function SearchMapPinLabels({
 }) {
   const map = useMap();
   const dataRef = useRef({ items, focusedId });
+  const overlayRef = useRef<PinLabelOverlay | null>(null);
 
+  // NEW PINS REDRAW THE LABELS DIRECTLY, never by firing the map's "idle"
+  // (MESITA-3040). `items` is a fresh array on every SearchMap render, and a
+  // synthetic idle also reached ViewportReporter, which stored the viewport,
+  // which re-rendered SearchMap: an endless render loop that starved every
+  // tab tap off Search (the screen never left /search) and could end in
+  // React error #185.
   useEffect(() => {
     dataRef.current = { items, focusedId };
+    overlayRef.current?.draw();
   }, [items, focusedId]);
 
   useEffect(() => {
@@ -133,6 +140,7 @@ export function SearchMapPinLabels({
     };
 
     overlay.setMap(map);
+    overlayRef.current = overlay;
     const redraw = () => overlay.draw();
     const zoom = map.addListener("zoom_changed", redraw);
     const idle = map.addListener("idle", redraw);
@@ -140,15 +148,10 @@ export function SearchMapPinLabels({
     return () => {
       zoom.remove();
       idle.remove();
+      overlayRef.current = null;
       overlay.setMap(null);
     };
   }, [map]);
-
-  useEffect(() => {
-    const maps = mapsNamespace();
-    if (!map || !maps) return;
-    maps.event.trigger(map, "idle");
-  }, [map, items, focusedId]);
 
   return null;
 }

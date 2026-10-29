@@ -5,6 +5,7 @@ import "./globals.css";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { DeploymentWatcher } from "@/components/consumer/DeploymentWatcher";
 import { ErrorNotifier } from "@/components/consumer/ErrorNotifier";
+import { CallLog } from "@/components/consumer/CallLog";
 import { RouteBadge } from "@/components/consumer/RouteBadge";
 import { ViewportLock } from "@/components/consumer/ViewportLock";
 import { SHARE_CARD } from "@/lib/share-app";
@@ -114,6 +115,9 @@ export default async function RootLayout({
             screenshot harnesses we QA in have no address bar. Mounted at
             the root so it covers every surface, shell and pre-auth alike. */}
         <RouteBadge />
+        {/* Under it, every Edge Function call and screen change, timed
+            (MESITA-3040). Desktop gutter only, never takes a click. */}
+        <CallLog />
         {/* The imperative half of the 100%-only lock: Safari ignores the
             viewport meta for pinch, but it does honour a refused
             gesturestart. See the viewport export above. */}
