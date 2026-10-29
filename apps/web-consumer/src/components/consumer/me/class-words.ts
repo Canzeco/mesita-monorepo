@@ -13,11 +13,16 @@ import type { GuestClass } from "@/lib/guest-standing";
 //
 // CLASS IS NOT PLAN (see ClassSheet): nothing here names a plan, a price or
 // a buy; the one VIP perk is tagged Soon.
+//
+// CLASS IS SOON (Pato, MESITA-3027): everyone is Regular for now. VIP wears
+// a Soon tag on its title, and CLASS_SOON_NOTE says classes change later.
 
 export type ClassRowWords = {
   title: string;
   /** The row's fixed line; the guest's own row adds a Current pill. */
   subtitle: string;
+  /** A class nobody can be in yet: a Soon tag beside the title. */
+  soon?: boolean;
   perks?: { label: string; items: Perk[] };
 };
 
@@ -28,6 +33,7 @@ export const CLASS_ROWS: Record<GuestClass, ClassRowWords> = {
   },
   vip: {
     title: "VIP",
+    soon: true,
     subtitle:
       "Through Mesita's partners, like agencies and creator partnerships. Never bought.",
     perks: {
@@ -36,3 +42,7 @@ export const CLASS_ROWS: Record<GuestClass, ClassRowWords> = {
     },
   },
 };
+
+/** Under the card for a Regular guest (MESITA-3027). */
+export const CLASS_SOON_NOTE =
+  "Everyone is Regular for now. Classes will change later on.";

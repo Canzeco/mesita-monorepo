@@ -80,12 +80,13 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
   // CLASS BESIDE PLAN (Pato, MESITA-2562): two separate facts (MESITA-2553),
   // each a page. Never the gem on Plan: that shape was the old class chip
   // (MESITA-2551). The summary names the two values each page explains,
-  // never the guest's own (MESITA-2607).
+  // never the guest's own (MESITA-2607). Class is Soon: everyone is Regular
+  // for now (MESITA-3027).
   [
     {
       Icon: Crown,
       title: "Class",
-      summary: "Regular or VIP",
+      summary: "Soon",
       href: CONSUMER_ROUTES.mePages.class,
     },
     {
