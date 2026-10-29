@@ -14,6 +14,7 @@ import {
   intervalEnd,
   isAllowedReturnUrl,
   ladder,
+  lineName,
   lineView,
   parseBoostStart,
   PREMIER_TIERS,
@@ -227,7 +228,7 @@ Deno.test("premier: the ladder is level first, then whoever got in line first; a
   assertEquals(ladder(pledges).map((p) => p.id), ["late5", "repledged5", "early2"]);
 });
 
-Deno.test("premier: the line shows the payer first at the period's level, then backups; names never", () => {
+Deno.test("premier: the line shows the payer first at the period's level, then backups, named; never an id", () => {
   const running = period({ id: "p", backing_id: "a", tier: 2 });
   const pledges = [
     pledge({ id: "a", tier: "boost_2x", consumer_id: "ca" }), // lowered after paying 5X
@@ -235,13 +236,22 @@ Deno.test("premier: the line shows the payer first at the period's level, then b
       pledge({ id: `b${i}`, consumer_id: `cb${i}`, queued_at: new Date(T0 + (i + 1) * DAY).toISOString() })
     ),
   ];
-  const view = lineView(pledges, running, "cb5");
-  assertEquals(view.line[0], { tier: 2, interval: "month", role: "payer", position: 0, mine: false });
+  const view = lineView(pledges, running, "cb5", new Map([["ca", "@ana"]]));
+  assertEquals(view.line[0], { tier: 2, interval: "month", role: "payer", position: 0, mine: false, name: "@ana" });
+  assertEquals(view.line[1].name, "Mesita member");
   assertEquals(view.line.slice(1, 5).map((r) => r.position), [1, 2, 3, 4]);
   // The caller is Backup 6: shown pinned past the top five.
-  assertEquals(view.line.at(-1), { tier: 1, interval: "month", role: "backup", position: 6, mine: true });
+  assertEquals(view.line.at(-1), { tier: 1, interval: "month", role: "backup", position: 6, mine: true, name: "You" });
   assertEquals(view.more, 1);
   assertEquals(JSON.stringify(view).includes("cb"), false);
+});
+
+Deno.test("premier: a line name is the @handle only for a caller who may see it, else the first name", () => {
+  const row = { first_name: " Ana ", instagram_handle: "@AnaEats", appear_anonymous: false };
+  assertEquals(lineName(row, true), "@anaeats");
+  assertEquals(lineName(row, false), "Ana");
+  assertEquals(lineName({ ...row, appear_anonymous: true }, true), "Ana");
+  assertEquals(lineName({ first_name: null, instagram_handle: null, appear_anonymous: false }, true), "Mesita member");
 });
 
 Deno.test("premier: only a card decline moves to the next pledge; anything else is asked again", () => {

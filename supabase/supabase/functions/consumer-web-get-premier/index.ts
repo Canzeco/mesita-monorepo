@@ -1,8 +1,8 @@
 // Supabase Edge Function — consumer-web-get-premier
 //
 // MESITA-2995: a place's Premier as its tab shows it — the period running,
-// the line (payer first, then backups; levels only, never names:
-// MESITA-2928), the signed-in guest's own pledge, and what each level would
+// the line (payer first, then backups, each named: @handle or first name,
+// never an email — MESITA-3063), the signed-in guest's own pledge, and what each level would
 // mean for them right now (`quotes`, computed here; the UI never computes
 // money). With `session_id` (Checkout's return, `?boost=`) it first settles
 // the caller's own pledge through confirmPledge — only the session stored on
@@ -29,11 +29,14 @@ import {
   quotes,
   readBoostPlace,
   readLine,
+  readLineNames,
   runningPeriod,
   stripeClient,
   TIER_RANK,
 } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { readSocialStanding } from "../_shared/consumer-doc.ts";
+import { seesHandles } from "../_shared/place-activity.ts";
 
 serveJson("consumer-web-get-premier", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -78,7 +81,12 @@ serveJson("consumer-web-get-premier", async (req) => {
   const now = Date.now();
   const running = runningPeriod(line.periods, now);
   const charging = chargingPeriod(line.periods);
-  const view = lineView(line.pledges, running, user?.id ?? null);
+  // Names, never emails (MESITA-3063): handles only for a caller who shows
+  // their own, as in Social (MESITA-2594).
+  const standing = user ? await readSocialStanding(admin, user.id) : null;
+  const canSeeHandles = standing?.ok === true && seesHandles(standing.row);
+  const names = await readLineNames(admin, line.pledges.map((p) => p.consumer_id), canSeeHandles);
+  const view = lineView(line.pledges, running, user?.id ?? null, names);
   const mine = user ? line.pledges.find((p) => p.consumer_id === user.id) ?? null : null;
   const payerId = running?.backing_id ?? null;
   const backups = ladder(line.pledges).filter((p) => p.id !== payerId);
