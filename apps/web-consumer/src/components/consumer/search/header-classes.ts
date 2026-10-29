@@ -29,19 +29,18 @@ export const FLOAT = "bg-card text-foreground shadow-float";
  *  two bubbles; typing darkens its border. */
 export const BAR = `${FLOAT} border-transparent focus-within:border-foreground flex h-12 min-w-0 items-center gap-1 rounded-full border pr-1.5 pl-4 transition-colors`;
 
-/** A bubble inside the bar: shape only; each bubble brings its colour
- *  (MESITA-3000). */
+/** A bubble inside the bar: a plain grey fill, ink icon and text (Pato,
+ *  MESITA-3004: "definitely remove the purple for ask ai and the [blue] for
+ *  location"; MESITA-3000's gradient and MESITA-3003's tints are gone). */
 const BUBBLE =
-  "flex h-9 shrink-0 items-center justify-center rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-foreground active:scale-[0.97]";
+  "bg-muted text-foreground hover:bg-border flex h-9 shrink-0 items-center justify-center rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-foreground active:scale-[0.97]";
 
-/** The locate bubble at the bar's right end: a pale tint of the map's
- *  guest blue (MESITA-3000, paler in MESITA-3003); SearchLocateButton paints the target. */
-export const HEADER_DISC = `${BUBBLE} bg-locate-tint w-9 hover:brightness-95`;
+/** The locate bubble at the bar's right end. */
+export const HEADER_DISC = `${BUBBLE} w-9`;
 
 /** Ask AI, before locate: a bubble widened to say what it does
- *  (Pato, MESITA-2455), in a pale violet tint (MESITA-3003: "more discreet";
- *  MESITA-3000's gradient was "screaming"). */
-export const HEADER_PILL = `${BUBBLE} bg-ai-tint text-ai-ink gap-1.5 px-3 text-sm font-semibold whitespace-nowrap hover:brightness-95`;
+ *  (Pato, MESITA-2455). */
+export const HEADER_PILL = `${BUBBLE} gap-1.5 px-3 text-sm font-semibold whitespace-nowrap`;
 
 export const CHIP =
   "flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-sm font-semibold whitespace-nowrap transition outline-none focus-visible:border-foreground active:scale-[0.97]";
