@@ -995,9 +995,9 @@ select is(
 );
 
 select throws_ok(
-  'update public.place_profiles set family_keys = (select array_agg(slug) from (select slug from public.place_families where slug <> ''undefined'' order by sort_order limit 6) s) where id = ''00000000-0000-4000-8000-0000000fa111''',
+  'update public.place_profiles set family_keys = (select array_agg(slug) from (select slug from public.place_families where slug <> ''undefined'' order by sort_order limit 8) s) where id = ''00000000-0000-4000-8000-0000000fa111''',
   'P0001'::char(5), null::text,
-  'a sixth family is refused'
+  'an eighth family is refused'
 );
 
 select is(
