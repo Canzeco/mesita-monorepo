@@ -33,12 +33,13 @@ export type BoostInterval = "month" | "year";
 
 export const PREMIER_TIERS = ["boost_2x", "boost_5x"] as const satisfies readonly BoostTier[];
 
-/** Monthly price in US cents: two plans, 2X $10 and 5X $200 (Pato,
- *  MESITA-3041: "Premier now is only 10usd and 200 usd for 2x and 5x";
+/** Monthly price in US cents: two plans, 2X $10 and 5X $100 (Pato,
+ *  MESITA-3041: "Premier must be only 2 options, 10usd for 2x and 100usd
+ *  for 5x";
  *  10X retired). */
 export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
   boost_2x: 1000,
-  boost_5x: 20000,
+  boost_5x: 10000,
 };
 
 /** A year is billed as this many months. */

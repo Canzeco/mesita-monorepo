@@ -80,11 +80,11 @@ function period(over: Partial<Period> & { id: string }): Period {
   };
 }
 
-Deno.test("premier: two plans, $10 · $200 a month, a year for the price of ten months (MESITA-3041)", () => {
+Deno.test("premier: two plans, $10 · $100 a month, a year for the price of ten months (MESITA-3041)", () => {
   assertEquals(boostAmountCents("boost_2x", "month"), 1000);
-  assertEquals(boostAmountCents("boost_5x", "month"), 20000);
+  assertEquals(boostAmountCents("boost_5x", "month"), 10000);
   assertEquals(boostAmountCents("boost_2x", "year"), 10000);
-  assertEquals(boostAmountCents("boost_5x", "year"), 200000);
+  assertEquals(boostAmountCents("boost_5x", "year"), 100000);
   assertEquals(PREMIER_TIERS, ["boost_2x", "boost_5x"]);
 });
 
@@ -131,7 +131,7 @@ Deno.test("premier: Pato's example — a half-used $10 2X upgraded to 5X costs $
     mine: pledge({ id: "a" }),
     now: T0 + 15 * DAY,
   });
-  assertEquals(q.charge_cents, 19500);
+  assertEquals(q.charge_cents, 9500);
   assertEquals(q.credit_cents, 500);
   assertEquals(q.role, "payer");
   assertEquals(q.checkout, "payment");
@@ -148,30 +148,30 @@ Deno.test("premier: another guest upgrading gets the place's credit too", () => 
     mine: null,
     now: T0 + 15 * DAY,
   });
-  assertEquals([q.charge_cents, q.credit_cents, q.role, q.checkout], [19500, 500, "payer", "payment"]);
+  assertEquals([q.charge_cents, q.credit_cents, q.role, q.checkout], [9500, 500, "payer", "payment"]);
 });
 
 Deno.test("premier: credit above the new price is never lost — it becomes extra days", () => {
-  // A fresh yearly period stored at $300 upgraded to monthly 5X ($200):
-  // $100 left over becomes half a month.
+  // A fresh yearly period stored at $150 upgraded to monthly 5X ($100):
+  // $50 left over becomes half a month.
   const running = period({
     id: "p",
     backing_id: "a",
     billing_interval: "year",
-    price_cents: 30000,
+    price_cents: 15000,
     ends_at: new Date(T0 + 365 * DAY).toISOString(),
   });
   const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [], mine: null, now: T0 });
   assertEquals(q.charge_cents, 0);
-  assertEquals(q.credit_cents, 20000);
+  assertEquals(q.credit_cents, 10000);
   assertEquals(q.extra_days, 15);
   assertEquals(q.checkout, "setup");
-  assertEquals(extraDays(0, 20000, "month", T0), 0);
+  assertEquals(extraDays(0, 10000, "month", T0), 0);
 });
 
 Deno.test("premier: a charge under 50 cents is not charged (Stripe's minimum)", () => {
-  // 5X monthly ($200) with $199.60 of credit left: a 40-cent charge becomes 0.
-  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 19960 });
+  // 5X monthly ($100) with $99.60 of credit left: a 40-cent charge becomes 0.
+  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 9960 });
   const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, pledges: [], mine: null, now: T0 });
   assertEquals(q.charge_cents, 0);
   assertEquals(q.checkout, "setup");
