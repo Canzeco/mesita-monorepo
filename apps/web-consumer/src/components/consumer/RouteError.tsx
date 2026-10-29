@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { RotateCw } from "lucide-react";
 
+import { reportError } from "@/lib/report-error";
 import { recoverFromStaleBuild } from "@/lib/stale-build";
 
 // THE SCREEN A BROKEN ROUTE LANDS ON (MESITA-2993). Without it a throw
@@ -27,7 +28,14 @@ export function RouteError({
     console.error("[consumer/route-error]", error);
     let live = true;
     void recoverFromStaleBuild(error).then((reloading) => {
-      if (live && !reloading) setChecking(false);
+      if (!live || reloading) return;
+      setChecking(false);
+      // The screen says it failed; the notification says why (MESITA-3021).
+      const why = error instanceof Error ? error.message : "";
+      reportError(
+        why ? `This screen didn't load: ${why}` : "This screen didn't load.",
+        error,
+      );
     });
     return () => {
       live = false;

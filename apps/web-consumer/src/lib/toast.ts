@@ -24,6 +24,8 @@ type ToastInput = {
 
 export type Toast = {
   id: string;
+  /** When it was shown (ms), for the error merge below. */
+  at: number;
   message: string;
   tone: ToastTone;
   durationMs: number;
@@ -33,6 +35,7 @@ export type Toast = {
 type Listener = (next: Toast[]) => void;
 
 let toasts: Toast[] = [];
+const ERROR_MERGE_MS = 1500;
 const listeners = new Set<Listener>();
 const dismissTimers = new Map<string, number>();
 
@@ -66,18 +69,37 @@ function push(input: ToastInput | string): string {
   // A repeated tap on the same disabled affordance (e.g. a locked list row)
   // fires the same message every time — refresh the existing toast's timer
   // instead of stacking duplicates on screen.
+  // ONE ERROR, ONE TOAST (MESITA-3021). lib/report-error.ts says a failed
+  // call at once; the screen's own catch often says it again in its words a
+  // moment later. The later, screen-specific words replace the fresh error.
+  if (tone !== "success" && !cfg.action) {
+    const fresh = toasts.find(
+      (t) => t.tone === "error" && Date.now() - t.at < ERROR_MERGE_MS,
+    );
+    if (fresh && fresh.message !== cfg.message) {
+      toasts = toasts.map((t) =>
+        t.id === fresh.id ? { ...t, message: cfg.message } : t,
+      );
+      emit();
+      return fresh.id;
+    }
+  }
   const dup = toasts.find((t) => t.message === cfg.message && t.tone === tone);
   if (dup) {
     const timer = dismissTimers.get(dup.id);
     if (timer) window.clearTimeout(timer);
     if (durationMs > 0) {
-      dismissTimers.set(dup.id, window.setTimeout(() => dismiss(dup.id), durationMs));
+      dismissTimers.set(
+        dup.id,
+        window.setTimeout(() => dismiss(dup.id), durationMs),
+      );
     }
     return dup.id;
   }
 
   const t: Toast = {
     id: crypto.randomUUID(),
+    at: Date.now(),
     message: cfg.message,
     tone,
     durationMs,
