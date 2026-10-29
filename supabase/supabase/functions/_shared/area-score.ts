@@ -34,7 +34,7 @@
 
 import { clearsPopularityFloor, logPopularity, proximity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
-import { BOOST_FACTOR } from "./boost.ts";
+import { PREMIER_FACTOR } from "./boost.ts";
 
 /** Where a candidate's card comes from: `mesita` = a ready Mesita row,
  *  `google` = a Google-only stub (never Premier). Selected is gone
@@ -136,10 +136,10 @@ function factor(x: number): number {
 
 /** The Premier factor a candidate's score is multiplied by (MESITA-2925,
  *  was Boost MESITA-2789): a Premier place's tier, ×2 · ×5 · ×10
- *  (BOOST_FACTOR); 1 for every other place and for a Google stub. */
+ *  (PREMIER_FACTOR); 1 for every other place and for a Google stub. */
 export function premierFactor(c: Pick<AreaCandidate, "source" | "premierTier">): number {
   const tier = c.source === "google" ? 0 : c.premierTier ?? 0;
-  return tier >= 3 ? BOOST_FACTOR[3] : tier >= 2 ? BOOST_FACTOR[2] : tier >= 1 ? BOOST_FACTOR[1] : 1;
+  return tier >= 3 ? PREMIER_FACTOR[3] : tier >= 2 ? PREMIER_FACTOR[2] : tier >= 1 ? PREMIER_FACTOR[1] : 1;
 }
 
 /** The Premier reach on the Catalog, in half distances (MESITA-2920):

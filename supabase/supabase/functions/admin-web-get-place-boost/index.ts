@@ -24,7 +24,7 @@ import {
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
-  BOOST_FACTOR,
+  PREMIER_FACTOR,
   isLiveBacking,
   monthlyEquivalentCents,
   readBackerNames,
@@ -65,7 +65,7 @@ serveJson("admin-web-get-place-boost", async (req) => {
   return json({
     ok: true,
     tier,
-    factor: BOOST_FACTOR[tier],
+    factor: PREMIER_FACTOR[tier],
     monthly_cents: Math.round(
       live.reduce((sum, r) => sum + monthlyEquivalentCents(r.amount_cents, r.billing_interval as BoostInterval), 0),
     ),

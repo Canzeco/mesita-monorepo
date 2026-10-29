@@ -21,7 +21,7 @@ import {
   openBackingCheckout,
   parseBoostStart,
   readBoostPlace,
-  BOOST_CURRENCY,
+  PREMIER_CURRENCY,
   boostAmountCents,
   boostStripeKey,
   stripeClient,
@@ -62,7 +62,7 @@ serveJson("consumer-web-start-boost", async (req) => {
       tier: start.tier,
       billing_interval: start.interval,
       amount_cents: boostAmountCents(start.tier, start.interval),
-      currency: BOOST_CURRENCY,
+      currency: PREMIER_CURRENCY,
       status: "open",
     })
     .select("id")

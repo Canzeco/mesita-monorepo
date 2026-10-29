@@ -24,24 +24,24 @@ import { errorMessage } from "./errors.ts";
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
 
-export const BOOST_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
+export const PREMIER_TIERS = ["boost_2x", "boost_5x", "boost_10x"] as const satisfies readonly BoostTier[];
 
 /** Monthly price in US cents. The SQL trigger's thresholds are these three
  *  numbers (recompute_place_boost); change both together. */
-export const BOOST_MONTHLY_CENTS: Record<BoostTier, number> = {
+export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
   boost_2x: 1000,
   boost_5x: 5000,
   boost_10x: 20000,
 };
 
 /** A year is billed as this many months. */
-export const BOOST_YEAR_MONTHS = 10;
+export const PREMIER_YEAR_MONTHS = 10;
 
-export const BOOST_CURRENCY = "usd";
+export const PREMIER_CURRENCY = "usd";
 
 /** The Stripe product line's name (MESITA-2925). The wire tiers keep their
  *  stored `boost_*` keys. */
-export const BOOST_LABEL: Record<BoostTier, string> = {
+export const PREMIER_LABEL: Record<BoostTier, string> = {
   boost_2x: "Premier 2X",
   boost_5x: "Premier 5X",
   boost_10x: "Premier 10X",
@@ -49,25 +49,25 @@ export const BOOST_LABEL: Record<BoostTier, string> = {
 
 /** The Premier factor a place's `boost_tier` (0..3) earns in the Area
  *  score. Literal: the tier names promise the number. */
-export const BOOST_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
+export const PREMIER_FACTOR: Record<0 | 1 | 2 | 3, number> = { 0: 1, 1: 2, 2: 5, 3: 10 };
 
 /** What the guest pays per interval. */
 export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
-  const monthly = BOOST_MONTHLY_CENTS[tier];
-  return interval === "year" ? monthly * BOOST_YEAR_MONTHS : monthly;
+  const monthly = PREMIER_MONTHLY_CENTS[tier];
+  return interval === "year" ? monthly * PREMIER_YEAR_MONTHS : monthly;
 }
 
 /** What one backing counts toward its place's tier, per month. */
 export function monthlyEquivalentCents(amountCents: number, interval: BoostInterval): number {
-  return interval === "year" ? amountCents / BOOST_YEAR_MONTHS : amountCents;
+  return interval === "year" ? amountCents / PREMIER_YEAR_MONTHS : amountCents;
 }
 
 /** The place's tier from its live backings' monthly-equivalent total — the
  *  same rule the SQL trigger runs, kept here for the wire and its test. */
 export function tierFromMonthlyCents(cents: number): 0 | 1 | 2 | 3 {
-  if (cents >= BOOST_MONTHLY_CENTS.boost_10x) return 3;
-  if (cents >= BOOST_MONTHLY_CENTS.boost_5x) return 2;
-  if (cents >= BOOST_MONTHLY_CENTS.boost_2x) return 1;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_10x) return 3;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_5x) return 2;
+  if (cents >= PREMIER_MONTHLY_CENTS.boost_2x) return 1;
   return 0;
 }
 
@@ -101,7 +101,7 @@ export function parseBoostStart(
     return { ok: false, error: "place_id must be a Mesita place id" };
   }
   const tier = body.tier;
-  if (typeof tier !== "string" || !(BOOST_TIERS as readonly string[]).includes(tier)) {
+  if (typeof tier !== "string" || !(PREMIER_TIERS as readonly string[]).includes(tier)) {
     return { ok: false, error: "tier must be boost_2x, boost_5x or boost_10x" };
   }
   const interval = body.interval ?? "month";
@@ -201,10 +201,10 @@ export function checkoutParams(
     line_items: [{
       quantity: 1,
       price_data: {
-        currency: BOOST_CURRENCY,
+        currency: PREMIER_CURRENCY,
         unit_amount: boostAmountCents(start.tier, start.interval),
         recurring: { interval: start.interval },
-        product_data: { name: `${BOOST_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
+        product_data: { name: `${PREMIER_LABEL[start.tier]} · ${ctx.placeName}`.slice(0, 250) },
       },
     }],
     metadata,
