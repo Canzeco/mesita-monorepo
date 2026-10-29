@@ -125,10 +125,11 @@ export function rootPopularity(
 }
 
 /** True when the place's Popularity is at or over the operator's floor
- *  (`map.popularityFloor`, MESITA-2714, in the root's own units since
- *  MESITA-3083: 2.7 ≈ reviews × stars of 19); a floor of 0 or less is off.
- *  One reading for the Map and Catalog gate and the guest bar's order
- *  (MESITA-2724). */
+ *  (`name.popularityFloor`, MESITA-2714; `map.popularityFloor` until
+ *  MESITA-3086; in the root's own units since MESITA-3083: 2.7 ≈ reviews ×
+ *  stars of 19); a floor of 0 or less is off. Read only by the guest
+ *  Search bar's order (MESITA-2724): Home, the Map and Chat hide nothing
+ *  for Popularity since MESITA-3086. */
 export function clearsPopularityFloor(
   candidate: { rating?: number | null; reviewCount?: number | null },
   floor: number,

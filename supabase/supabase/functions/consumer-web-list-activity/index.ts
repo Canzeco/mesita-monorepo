@@ -3,7 +3,8 @@
 // Home › Social's feed (MESITA-2442, MESITA-2532, Pato: "is juse one person
 // one place events. list all the fucking events … uner you radious or near
 // you, just enough to odn't kill"). Everyone's events, never collapsed, newest
-// first, only places inside the operator's Area circle (`map.radiusKm`) around
+// first, only places inside a fixed 15 km circle (`NO_SCREEN_RADIUS_KM`; the
+// operator's `map.radiusKm` retired in MESITA-3086) around
 // the guest's point (no point, no circle). It reads the FEED_ROWS newest
 // events and returns at most FEED_ITEMS.
 //
@@ -32,7 +33,7 @@ import { adminClient, anonClient, getAuthedUser, readEFEnv } from "../_shared/au
 import { haversineKm } from "../_shared/geo.ts";
 import { type ActivityRow, feedEvents, nearYou } from "../_shared/place-activity.ts";
 import { readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
-import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { finiteOrNull } from "../_shared/input.ts";
 
 const FEED_ROWS = 500;
@@ -57,9 +58,8 @@ serveJson("consumer-web-list-activity", async (req) => {
   const admin = adminClient(envRes.env);
   const anon = anonClient(envRes.env);
 
-  const [feedRes, cfg, canSee] = await Promise.all([
+  const [feedRes, canSee] = await Promise.all([
     admin.rpc("place_activity_feed", { p_limit: FEED_ROWS }),
-    loadDiscoveryConfig(admin),
     viewerSeesHandles(admin, viewerId),
   ]);
   if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
@@ -76,7 +76,7 @@ serveJson("consumer-web-list-activity", async (req) => {
       ? haversineKm(lat, lng, finiteOrNull(place.lat), finiteOrNull(place.lng))
       : Number.POSITIVE_INFINITY;
     const distanceKm = Number.isFinite(km) ? km : null;
-    if (!nearYou(distanceKm, cfg.map.radiusKm, hasPoint)) return [];
+    if (!nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) return [];
     return [{ ...e, distanceKm, place }];
   });
   return json({ ok: true, items: items.slice(0, FEED_ITEMS) });

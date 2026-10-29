@@ -170,7 +170,7 @@ export type MapBounds = {
  *
  * Web Search posts the camera centre, the visible `bounds` and Families;
  * the zoom decides how wide the set is. No bounds (or a box the EF finds
- * too wide) falls back to the centre inside the operator's `map.radiusKm`.
+ * too wide) falls back to the centre inside a fixed 15 km (MESITA-3086).
  * It never posts a count (the operator's four Area sources decide; at most two Google calls per
  * load). `google: true` is web Search saying it CAN render a Google-only
  * stub, and the EF refuses a call without it (MESITA-2337).
@@ -287,8 +287,7 @@ export type AreaDiagnostics = {
     active: 1;
     ready: 1 | null;
     reviews: 1 | null;
-    /** The Popularity floor (MESITA-2714); null = off, absent = older EF. */
-    popularity?: 0 | 1 | null;
+    // `popularity` (the Area floor gate) retired in MESITA-3086.
   };
   signals: { proximity: number | null; popularity: number | null };
   /** Where the card came from; diagnostics and events only. `selected`
@@ -461,12 +460,8 @@ export type PlacePrediction = {
   mesitaSlug?: string;
   lat?: number | null;
   lng?: number | null;
-  /** A Google-only place under the Area box's Minimum Popularity
-   *  (MESITA-2849). The bar lists it last (MESITA-2724); a pick of it is a
-   *  destination — camera and Area reload land there — and never card ONE,
-   *  since the Area pipeline hides every place under that floor. Absent on
-   *  Mesita rows, Locations and an older EF. */
-  underFloor?: boolean;
+  // `underFloor` (MESITA-2849) retired in MESITA-3086: the Area hides
+  // nothing for Popularity, so any pick is card ONE.
 };
 
 /** `fast` Autocomplete · `deep` Autocomplete + Text Search, the Search

@@ -32,11 +32,13 @@
 // Gates are binary eligibility (0 or 1) and stay separate from the
 // continuous signals, so diagnostics can say WHY a place is out (a gate)
 // apart from why it is low (a signal). A place a gate closes is dropped, not
-// ranked at 0. Gates: Family (every location), Radius (a point with a
-// radius: the Map, and Chat's read) and the Popularity floor. Ties break on
-// distance (a point only), then id.
+// ranked at 0. Gates: Family (every location) and Radius (a point with a
+// radius: the Map, and Chat's read). The Popularity floor left the Area in
+// MESITA-3086 (Pato: "Minimum popularity must go to the Name Search"): a
+// place with no Google numbers scores 0 and sorts last, never dropped. Ties
+// break on distance (a point only), then id.
 
-import { clearsPopularityFloor, proximity, rootPopularity } from "./pipeline-signals.ts";
+import { proximity, rootPopularity } from "./pipeline-signals.ts";
 import { haversineKm } from "./geo.ts";
 import { PREMIER_FACTOR } from "./boost.ts";
 
@@ -70,12 +72,10 @@ export type AreaContext = {
   /** Proximity's exponent e (MESITA-3083): the operator's
    *  `params.proximity.exponent`; absent = 1, the plain reciprocal. */
   exponent?: number;
-  /** Popularity's root (MESITA-3083): the operator's
-   *  `params.popularity.root`; absent = 0.33, the cube root. */
+  /** Popularity's root (MESITA-3083): `map.popularityRoot` on the Map,
+   *  `params.popularity.root` on the Catalog and Chat (MESITA-3086); absent
+   *  = 0.33, the cube root. */
   popularityRoot?: number;
-  /** The Popularity floor (MESITA-2714): a place whose Popularity is under
-   *  it is dropped, whatever its source; 0 or absent = off. */
-  popularityFloor?: number;
 };
 
 /** One candidate, normalized from whichever source produced it. */
@@ -178,9 +178,7 @@ export type AreaDiagnostics = {
     active: 1;
     ready: 1 | null;
     reviews: 1 | null;
-    /** Popularity at or over the operator's floor (MESITA-2714); null when
-     *  the floor is off. */
-    popularity: 0 | 1 | null;
+    // `popularity` (the Area floor gate, MESITA-2714) retired in MESITA-3086.
   };
   signals: { proximity: number | null; popularity: number | null };
   source: AreaSource;
@@ -216,17 +214,7 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const sel = premierFactor(c);
   const popPart = popularPart(c, ctx.popularityRoot);
   const final = prox === null ? popPart : factor(prox) * popPart;
-  // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
-  // below 3 you cannot be shown … it doesn't matter what"; 2.7 in the
-  // root's units since MESITA-3083): Google or Mesita, Premier or not; no
-  // Google numbers reads 0, so it is out too.
-  const floor = typeof ctx.popularityFloor === "number" && ctx.popularityFloor > 0
-    ? ctx.popularityFloor
-    : null;
-  const popularityGate = floor === null
-    ? null
-    : clearsPopularityFloor(c, floor, ctx.popularityRoot) ? 1 : 0;
-  const open = family === 1 && radius !== 0 && popularityGate !== 0;
+  const open = family === 1 && radius !== 0;
   return {
     familyKeys: knownFamilies(c.familyKeys),
     gates: {
@@ -235,7 +223,6 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
       active: 1,
       ready: c.ready ?? null,
       reviews: c.reviews ?? null,
-      popularity: popularityGate,
     },
     signals: { proximity: prox, popularity: pop },
     source: c.source,
@@ -246,10 +233,9 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   };
 }
 
-/** Every gate open: Family, Radius when the point has one, and the
- *  Popularity floor when it is on. */
+/** Every gate open: Family, and Radius when the point has one. */
 export function areaGatesOpen(a: AreaDiagnostics): boolean {
-  return a.gates.family === 1 && a.gates.radius !== 0 && a.gates.popularity !== 0;
+  return a.gates.family === 1 && a.gates.radius !== 0;
 }
 
 /**

@@ -15,15 +15,16 @@
 // Catalog "literal podemos sacar la lista final de todos los lugares en una
 // corrida", paged, with Proximity's half distance as its knob.) s is the
 // Premier factor, the paid tier's ×2 · ×5 (area-score.ts). Gates: Family, Radius
-// (the Map), the operational ones the read applies (active, ready) and the
-// Popularity floor; no reviews floor (MESITA-2721). The two source switches
+// (the Map) and the operational ones the read applies (active, ready); no
+// reviews floor (MESITA-2721) and no Popularity floor (Name-only since
+// MESITA-3086). The two source switches
 // (Mesita Popularity / Mesita Proximity, 20 + 20, MESITA-2703) and the
 // Distance penalty (MESITA-2720/2776) retired with the split.
 //
 // Nothing here writes a row.
 //
 // Chat (MESITA-2339) does not use the pool: `areaMesitaPlaces` reads every
-// ready Mesita place inside `map.radiusKm`, ranked with the Catalog score
+// ready Mesita place inside `NO_SCREEN_RADIUS_KM`, ranked with the Catalog score
 // (Selected only until MESITA-2925).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -45,7 +46,7 @@ import {
   PROXIMITY_EXPONENT_DEFAULT,
   PROXIMITY_HALF_KM_DEFAULT,
 } from "./pipeline-signals.ts";
-import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
+import { type DiscoveryConfig, NO_SCREEN_RADIUS_KM, type SignalParams } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { finiteOrNull } from "./input.ts";
 
@@ -55,24 +56,24 @@ export type AreaSurface = "map" | "catalog";
 
 /** The numbers a pipeline reads from the blob: Proximity's half distance
  *  and exponent (the Catalog only; the Map has none, MESITA-2909,
- *  MESITA-3083), Popularity's root (every pipeline and Chat, MESITA-3083:
- *  (1 + reviews × stars)^root) and the Popularity floor (both pipelines and
- *  Chat). The Premier factor is the row's own tier, no knob (MESITA-2925). */
+ *  MESITA-3083) and Popularity's root, per surface since MESITA-3086: the
+ *  Map reads `map.popularityRoot`, the Catalog and Chat
+ *  `params.popularity.root`. No Popularity floor: it moved to the Name
+ *  pipeline (MESITA-3086). The Premier factor is the row's own tier, no
+ *  knob (MESITA-2925). */
 export function areaSignalParams(
   params: SignalParams,
-  map: { popularityFloor?: number },
+  map: { popularityRoot?: number },
   surface: AreaSurface,
-): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot" | "popularityFloor"> {
+): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot"> {
   const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
   const h = params.proximity?.halfKm;
   const e = params.proximity?.exponent;
-  const root = params.popularity?.root;
+  const root = surface === "map" ? map.popularityRoot : params.popularity?.root;
   return {
     halfKm: surface === "map" ? null : positive(h) ? h : PROXIMITY_HALF_KM_DEFAULT,
     exponent: positive(e) ? e : PROXIMITY_EXPONENT_DEFAULT,
     popularityRoot: positive(root) ? root : POPULARITY_ROOT_DEFAULT,
-    // The Popularity floor (MESITA-2714), a gate on every caller.
-    popularityFloor: map.popularityFloor,
   };
 }
 
@@ -113,7 +114,7 @@ function latLngOrNull(raw: unknown): LatLng | null {
 
 /** The Map's visible `bounds`, or null when absent or inverted. Any size is
  *  read (Pato, MESITA-2918: "should work doesn't matter how big is the
- *  radius"); the 100 km ceiling that fell back to `map.radiusKm` is gone. */
+ *  radius"); the 100 km ceiling that fell back to the operator's radius is gone. */
 export function parseAreaBounds(raw: unknown): AreaBounds | null {
   if (!raw || typeof raw !== "object") return null;
   const o = raw as Record<string, unknown>;
@@ -563,7 +564,7 @@ export function selectCatalogPool<T extends PoolRow>(
  * data and the images"): the cards for ids Home already holds from a rank
  * answer's `order`, read through the same gates and scored from the same
  * point, so each card carries the rank's `area` and `distance_km`. Rows a
- * gate now closes (inactive, family, under the Popularity floor) drop out;
+ * gate now closes (inactive, family) drop out;
  * the rest come back in the asked order. No pass 1: nothing is ranked again.
  */
 export async function selectCatalogFill<T extends PoolRow>(
@@ -621,8 +622,6 @@ export type MesitaOpts = {
   /** The Family gate's requested families; empty or absent = every family. */
   families?: readonly string[];
   params: SignalParams;
-  /** The Popularity floor (MESITA-2714); absent = off. */
-  popularityFloor?: number;
   limit?: number;
 };
 
@@ -642,7 +641,7 @@ export function rankMesitaPlaces<T extends Record<string, unknown>>(
       location,
       families: opts.families ?? [],
       // The Catalog score (MESITA-2909): Proximity with the half distance.
-      ...areaSignalParams(opts.params, opts, "catalog"),
+      ...areaSignalParams(opts.params, {}, "catalog"),
     },
   );
   const out = ranked.map(({ item }) => ({
@@ -661,7 +660,7 @@ const AREA_MESITA_POOL = 300;
 /**
  * Ready Mesita places for a caller that is not a view — the Chat Agent
  * (MESITA-2339). The same pool query (gates pushed down), boxed to
- * `map.radiusKm` around the guest's location when there is one, and the
+ * `NO_SCREEN_RADIUS_KM` around the guest's location when there is one, and the
  * Catalog's score (MESITA-2909), Premier factor included. Every ready place
  * since MESITA-2925 (Selected only before it). No Google call. Null on error.
  */
@@ -676,7 +675,7 @@ export async function areaMesitaPlaces(
       .select(AREA_MESITA_COLUMNS)
       .eq("state", "active") as unknown as PoolBuilder,
     cfg,
-    { center: opts.center, radiusKm: cfg.map.radiusKm, families: opts.families },
+    { center: opts.center, radiusKm: NO_SCREEN_RADIUS_KM, families: opts.families },
   ).limit(AREA_MESITA_POOL);
   if (error) {
     console.error("[area-pipeline] mesita:", error.message);
@@ -684,10 +683,9 @@ export async function areaMesitaPlaces(
   }
   return rankMesitaPlaces((data ?? []) as Record<string, unknown>[], {
     center: opts.center,
-    radiusKm: cfg.map.radiusKm,
+    radiusKm: NO_SCREEN_RADIUS_KM,
     families: opts.families,
     params: cfg.params,
-    popularityFloor: cfg.map.popularityFloor,
     limit: opts.limit,
   });
 }
