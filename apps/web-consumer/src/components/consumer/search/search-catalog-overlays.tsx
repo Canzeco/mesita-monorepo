@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 import { AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
-import { SIGHT_Y } from "./search-utils";
 
 /** How much narrower than the carousel one card page is. A page is the
  *  carousel less 96px (Pato, MESITA-3030: "make these boxes less wide";
@@ -83,9 +82,16 @@ export function CatalogRailSkeleton() {
   );
 }
 
+/** The measured clear window's edges (sight-frame.ts), as CSS SearchClient's
+ *  map frame feeds (MESITA-3035); the fallbacks are the fixed 38% sight. */
+export const SIGHT_TOP_CSS = "var(--sight-top, 0)";
+export const SIGHT_BOTTOM_CSS = "var(--sight-bottom, 0.76)";
+/** The sight's `top`: the clear window's middle. */
+export const SIGHT_MID_TOP = `calc((${SIGHT_TOP_CSS} + ${SIGHT_BOTTOM_CSS}) * 50%)`;
+
 /** The map before its tiles paint: a grey veil, the spinner ON THE CROSS
  *  (Pato, MESITA-2677: "the loading spin must be aligned with the cross"),
- *  SIGHT_Y down, not the map's middle. SearchMap holds it until the tiles
+ *  at the sight, not the map's middle. SearchMap holds it until the tiles
  *  land; search/loading.tsx draws the same one (MESITA-2701). z-10: over
  *  the canvas, under the floating rail (z-20) and the header (z-30). */
 export function MapVeil() {
@@ -94,7 +100,7 @@ export function MapVeil() {
       <Skeleton className="absolute inset-0 rounded-none" />
       <div
         className="absolute inset-x-0 flex -translate-y-1/2 justify-center"
-        style={{ top: `${SIGHT_Y * 100}%` }}
+        style={{ top: SIGHT_MID_TOP }}
       >
         <Spinner
           label="Loading map"

@@ -7,6 +7,8 @@ import { stripInsecurePhotos } from "@/lib/api/places";
 import type { LocationAnchor, PlacePrediction } from "@/lib/api/place-search";
 import { haversineKm } from "@/lib/utils";
 
+import { getSightFrame } from "./sight-frame";
+
 // Stable per-page-session token, passed on every consumer-suggest-places
 // call so Google bills the autocomplete keystrokes as one session.
 export function newSessionToken(): string {
@@ -200,7 +202,16 @@ export function anchorViewportBounds(
 // the carousel were still in its own box"): the carousel floats over the
 // map's foot since MESITA-2670, ~150px of a ~600px map on a phone, so the
 // middle of the map above it sits ~38% down.
+// Since MESITA-3020 it is only the default: the sight is the middle of the
+// measured clear window (sight-frame.ts), and SIGHT_Y is that window's
+// middle before the first measure.
 export const SIGHT_Y = 0.38;
+
+/** The sight now: the clear window's middle, a share of the map's height. */
+export function sightY(): number {
+  const f = getSightFrame();
+  return (f.top + f.bottom) / 2;
+}
 
 const mercatorY = (lat: number) =>
   Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
@@ -217,7 +228,7 @@ export function viewportSight(box: {
   const { lng } = viewportCenter(box);
   const north = mercatorY(box.north);
   const south = mercatorY(box.south);
-  return { lat: latOfMercatorY(north - (north - south) * SIGHT_Y), lng };
+  return { lat: latOfMercatorY(north - (north - south) * sightY()), lng };
 }
 
 /** The camera centre that puts `target` under the sight, for a view `scale`
@@ -229,12 +240,32 @@ export function centerForSight(
 ): { lat: number; lng: number } {
   const span = (mercatorY(box.north) - mercatorY(box.south)) * scale;
   return {
-    lat: latOfMercatorY(mercatorY(target.lat) - span * (0.5 - SIGHT_Y)),
+    lat: latOfMercatorY(mercatorY(target.lat) - span * (0.5 - sightY())),
     lng: target.lng,
   };
 }
 
 type Box = { south: number; west: number; north: number; east: number };
+
+/** The clear window's box (MESITA-3020): `box` less the strips the header
+ *  and the card rail cover, Mercator-exact. */
+export function clearBox(box: Box): Box {
+  const f = getSightFrame();
+  const north = mercatorY(box.north);
+  const span = north - mercatorY(box.south);
+  return {
+    ...box,
+    north: latOfMercatorY(north - span * f.top),
+    south: latOfMercatorY(north - span * f.bottom),
+  };
+}
+
+/** What a load sends as `bounds`: the clear window, not the whole canvas.
+ *  The EF reads `bounds` only for the screen radius (its nearest edge from
+ *  the sight), so the server's circle is the ring drawn (MESITA-3020). */
+export function sightBounds(box: Box | null): MapBounds | null {
+  return box ? boxBounds(clearBox(box)) : null;
+}
 
 /** The visible map as the EF's `bounds` (MESITA-2499). Null when the box
  *  crosses the dateline or is degenerate, which the EF cannot read: that
@@ -265,6 +296,7 @@ export function viewRadiusKm(
   cross: { lat: number; lng: number } | null,
 ): number | null {
   if (!boxBounds(box) || !box || !cross) return null;
+  box = clearBox(box);
   if (
     cross.lat < box.south ||
     cross.lat > box.north ||

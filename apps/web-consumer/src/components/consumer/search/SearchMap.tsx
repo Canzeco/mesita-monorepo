@@ -37,8 +37,13 @@ import {
   type CameraIntent,
   type CameraState,
 } from "./camera-intent";
-import { RING_INSET, SIGHT_Y } from "./search-utils";
-import { MapVeil } from "./search-catalog-overlays";
+import { RING_INSET } from "./search-utils";
+import {
+  MapVeil,
+  SIGHT_BOTTOM_CSS,
+  SIGHT_MID_TOP,
+  SIGHT_TOP_CSS,
+} from "./search-catalog-overlays";
 import { SearchMapPinLabels } from "./SearchMapPinLabels";
 import {
   pinFillColor,
@@ -249,15 +254,15 @@ export function mapFingerIsDown(): boolean {
   return fingerOnMap;
 }
 
-/** The search ring's diameter: RING_INSET of twice the cross's distance to
- *  the nearest edge of the map — the full width, or twice the gap to the
- *  nearer of top and bottom, whichever is smaller (MESITA-2511), the
- *  server's screen radius on screen. Container units of the map's box. */
-const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, ${
-  Math.round(2 * RING_INSET * Math.min(SIGHT_Y, 1 - SIGHT_Y) * 1000) / 10
-}cqh)`;
+/** The search ring's diameter: RING_INSET of the clear window's smaller
+ *  side — its full width, or its height between the chips and the cards
+ *  (MESITA-3020; MESITA-2511 measured the whole canvas), the server's
+ *  screen radius on screen. Container units of the map's box. */
+const SEARCH_RING_SIZE = `min(${Math.round(RING_INSET * 1000) / 10}cqw, calc(${
+  Math.round(RING_INSET * 1000) / 10
+}cqh * (${SIGHT_BOTTOM_CSS} - ${SIGHT_TOP_CSS})))`;
 
-/** Screen-fixed sight SIGHT_Y down the canvas (the middle; MESITA-2448,
+/** Screen-fixed sight at the clear window's middle (MESITA-3020; MESITA-2448,
  *  MESITA-2514) — the catalog fetch point, marked by ONE
  *  DISCREET WHITE RING for the search radius (Pato, MESITA-2908: "draw the
  *  circle of the radious, but only one circle, not two, make the radious
@@ -272,11 +277,14 @@ const RING_CLASS =
   "absolute top-1/2 left-1/2 aspect-square -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white bg-white/[0.06] shadow-[0_0_0_1px_rgba(0,0,0,0.18),inset_0_0_0_0.5px_rgba(0,0,0,0.10),0_1px_6px_rgba(0,0,0,0.12)]";
 
 function SearchMapReticle({ searching }: { searching: boolean }) {
+  // The ring rides the measured clear window (MESITA-3020) through CSS
+  // variables SearchClient writes (MESITA-3035): always centred between the
+  // chips and the cards, whatever the phone's height, with no re-render.
   return (
     <div
       aria-hidden
       className="pointer-events-none absolute inset-x-0 z-[15] flex -translate-y-1/2 justify-center"
-      style={{ top: `${SIGHT_Y * 100}%` }}
+      style={{ top: SIGHT_MID_TOP }}
       data-search-sight
     >
       {/* No cross (Pato, MESITA-2917: "remove the cruz as the center, the

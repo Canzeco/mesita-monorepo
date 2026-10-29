@@ -147,7 +147,7 @@ import {
   anchorSurvivesReload,
   anchorViewportBounds,
   boxAtSight,
-  boxBounds,
+  sightBounds,
   catalogIsStale,
   defaultRailSelection,
   shouldCenterRailCard,
@@ -158,6 +158,11 @@ import {
   viewportSight,
   withDistances,
 } from "./search-utils";
+import {
+  getSightFrame,
+  setSightFrame,
+  writeSightFrameVars,
+} from "./sight-frame";
 
 // Word is ONE search (MESITA-2322): Google's Autocomplete + Text Search
 // (MESITA-2896) once the guest has stopped typing for Discovery › Word's
@@ -498,7 +503,7 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
         const result = await apiFetchNearbyCatalog(
           supabase,
           nextCenter,
-          boxBounds(box),
+          sightBounds(box),
           filters.familyKeys,
         );
         if (gen !== viewportGen.current) return;
@@ -1071,9 +1076,61 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalogKey, railShown]);
 
+  // THE CLEAR WINDOW (MESITA-3020): the map between the chip row's foot and
+  // the card rail's top, measured live, so the ring and the sight sit in its
+  // middle on every phone. A hidden chip row (typing) or rail (search mode)
+  // keeps the last measure: the ring never jumps under a focus. A measure
+  // writes CSS variables on the frame and a plain value, never React state
+  // (MESITA-3035): nothing re-renders, so no update loop (MESITA-3032).
+  const mapFrameRef = useRef<HTMLDivElement | null>(null);
+  const clearInsetsRef = useRef<{ top: number; bottom: number } | null>(null);
+  useLayoutEffect(() => {
+    const frame = mapFrameRef.current;
+    if (!frame) return;
+    const measure = () => {
+      const box = frame.getBoundingClientRect();
+      if (box.height <= 0) return;
+      const last = clearInsetsRef.current;
+      const chips = frame.querySelector<HTMLElement>("[data-search-chip-band]");
+      const chipsBox = chips?.getBoundingClientRect();
+      const top =
+        chipsBox && chipsBox.height > 0
+          ? chipsBox.bottom - box.top
+          : (last?.top ?? 0);
+      const rail = frame.querySelector<HTMLElement>("[data-search-rail-cards]");
+      const railBox = rail?.getBoundingClientRect();
+      const bottom =
+        railBox && railBox.height > 0
+          ? box.bottom - railBox.top
+          : (last?.bottom ?? 0);
+      clearInsetsRef.current = { top, bottom };
+      if (
+        setSightFrame({
+          top: top / box.height,
+          bottom: 1 - bottom / box.height,
+        })
+      ) {
+        writeSightFrameVars(frame, getSightFrame());
+      }
+    };
+    // A remount's frame starts bare: hand it the last measure first.
+    writeSightFrameVars(frame, getSightFrame());
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(frame);
+    for (const sel of ["[data-search-chip-band]", "[data-search-rail-cards]"]) {
+      const el = frame.querySelector(sel);
+      if (el) ro.observe(el);
+    }
+    return () => ro.disconnect();
+  }, [searchMode, catalogLoading]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <div
+        ref={mapFrameRef}
+        className="relative min-h-0 flex-1 overflow-hidden"
+      >
         {/* Search's header, floating on the map's top edge with no band (Pato,
           MESITA-2996, was MESITA-2409/2413's white band): one long bar —
           query · Ask AI · locate (MESITA-2999) — then the family chips; the
