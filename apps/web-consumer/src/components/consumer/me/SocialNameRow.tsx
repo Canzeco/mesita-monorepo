@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { UserRound } from "lucide-react";
 import { errMsg } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import {
-  apiFetchConsumerProfile,
-  apiUpdateConsumerProfile,
-} from "@/lib/api/profile";
+import { apiUpdateConsumerProfile } from "@/lib/api/profile";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { IconChip, Switch } from "@/components/consumer/me/settings-rows";
 import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 
@@ -24,22 +22,13 @@ import { PUBLIC_PROFILE_SWITCH } from "@/components/consumer/me/switch-words";
 // Instagram fallbacks read too (MESITA-2701).
 export function SocialNameRow() {
   const supabase = useBrowserSupabase();
-  const [named, setNamed] = useState<boolean | null>(null);
+  // The kept profile row (MESITA-3014); a flip shows at once, the saved row
+  // then lands in the store.
+  const { data, error } = useConsumerProfile();
+  const [flipped, setNamed] = useState<boolean | null>(null);
+  const named =
+    flipped ?? (data ? data.appear_anonymous !== true : error ? true : null);
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiFetchConsumerProfile(supabase)
-      .then(({ consumer }) => {
-        if (!cancelled) setNamed(consumer.appear_anonymous !== true);
-      })
-      .catch(() => {
-        if (!cancelled) setNamed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
 
   const flip = () => {
     if (named == null || pending) return;
@@ -47,6 +36,7 @@ export function SocialNameRow() {
     setNamed(next);
     setPending(true);
     apiUpdateConsumerProfile(supabase, { appear_anonymous: !next })
+      .then(() => setNamed(null))
       .catch((e) => {
         setNamed(!next);
         toast.error(errMsg(e, "Couldn't change that."));

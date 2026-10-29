@@ -1,5 +1,19 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import { invalidateCached } from "@/lib/screen-cache";
+
+// The kept lists a reservation write makes stale (MESITA-3014).
+export const RESERVATIONS_KEY = "reservations";
+export const NOTIFICATIONS_KEY = "notifications";
+
+/** A reservation write: once it lands, Me's lists read again. */
+function afterWrite<T>(write: Promise<T>): Promise<T> {
+  return write.then((result) => {
+    invalidateCached(RESERVATIONS_KEY);
+    invalidateCached(NOTIFICATIONS_KEY);
+    return result;
+  });
+}
 
 // Booking through the Reservationist. The EF writes a pending reservation row
 // and (server-side) fires the outbound call to the place — the client just
@@ -39,17 +53,19 @@ export function apiCreateReservation(
   },
 ): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
-  return invokeEF<CreatedReservation>(
-    client,
-    "consumer-web-create-reservation",
-    {
-      project_id: args.projectId,
-      reserved_at: args.reservedAt,
-      party_size: args.partySize,
-      ...(notes ? { notes } : {}),
-      consumer_notify: args.guestNotify === "app" ? "app" : "call",
-    },
-    "Couldn't create the reservation",
+  return afterWrite(
+    invokeEF<CreatedReservation>(
+      client,
+      "consumer-web-create-reservation",
+      {
+        project_id: args.projectId,
+        reserved_at: args.reservedAt,
+        party_size: args.partySize,
+        ...(notes ? { notes } : {}),
+        consumer_notify: args.guestNotify === "app" ? "app" : "call",
+      },
+      "Couldn't create the reservation",
+    ),
   );
 }
 
@@ -62,15 +78,17 @@ export function apiConfirmReservation(
     newTime?: string;
   },
 ): Promise<{ guest_confirmed: boolean; confirmed_on_the_spot?: boolean }> {
-  return invokeEF<{ guest_confirmed: boolean; confirmed_on_the_spot?: boolean }>(
-    client,
-    "consumer-web-confirm-reservation",
-    {
-      reservation_id: args.reservationId,
-      ...(args.newDate ? { new_date: args.newDate } : {}),
-      ...(args.newTime ? { new_time: args.newTime } : {}),
-    },
-    "Couldn't confirm the reservation",
+  return afterWrite(
+    invokeEF<{ guest_confirmed: boolean; confirmed_on_the_spot?: boolean }>(
+      client,
+      "consumer-web-confirm-reservation",
+      {
+        reservation_id: args.reservationId,
+        ...(args.newDate ? { new_date: args.newDate } : {}),
+        ...(args.newTime ? { new_time: args.newTime } : {}),
+      },
+      "Couldn't confirm the reservation",
+    ),
   );
 }
 
@@ -126,11 +144,13 @@ export function apiCancelReservation(
   args: { reservationId: string; reason?: string },
 ): Promise<{ cancelled?: boolean; already?: boolean }> {
   const reason = args.reason?.trim();
-  return invokeEF<{ cancelled?: boolean; already?: boolean }>(
-    client,
-    "consumer-web-cancel-reservation",
-    { reservation_id: args.reservationId, ...(reason ? { reason } : {}) },
-    "Couldn't cancel the reservation",
+  return afterWrite(
+    invokeEF<{ cancelled?: boolean; already?: boolean }>(
+      client,
+      "consumer-web-cancel-reservation",
+      { reservation_id: args.reservationId, ...(reason ? { reason } : {}) },
+      "Couldn't cancel the reservation",
+    ),
   );
 }
 
@@ -148,18 +168,20 @@ export function apiUpdateReservation(
     notes?: string;
   },
 ): Promise<{ updated: boolean; call_started?: boolean }> {
-  return invokeEF<{ updated: boolean; call_started?: boolean }>(
-    client,
-    "consumer-web-update-reservation",
-    {
-      reservation_id: args.reservationId,
-      ...(args.reservedAt ? { reserved_at: args.reservedAt } : {}),
-      ...(typeof args.partySize === "number"
-        ? { party_size: args.partySize }
-        : {}),
-      ...(args.notes !== undefined ? { notes: args.notes } : {}),
-    },
-    "Couldn't update the reservation",
+  return afterWrite(
+    invokeEF<{ updated: boolean; call_started?: boolean }>(
+      client,
+      "consumer-web-update-reservation",
+      {
+        reservation_id: args.reservationId,
+        ...(args.reservedAt ? { reserved_at: args.reservedAt } : {}),
+        ...(typeof args.partySize === "number"
+          ? { party_size: args.partySize }
+          : {}),
+        ...(args.notes !== undefined ? { notes: args.notes } : {}),
+      },
+      "Couldn't update the reservation",
+    ),
   );
 }
 

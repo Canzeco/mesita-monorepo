@@ -1,5 +1,7 @@
 "use client";
 
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
+
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { BadgeCheck, Copy, ImageIcon, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -17,7 +19,6 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
-  apiFetchConsumerProfile,
   apiInstagramChannel,
   apiInstagramDmStatus,
   apiStartInstagramDm,
@@ -109,7 +110,8 @@ export function InstagramModal() {
               Photo's row below jumped (Pato, MESITA-2701). */}
         {showForm && channel === null && <ConnectCardSkeleton />}
 
-        {showForm && channel !== null &&
+        {showForm &&
+          channel !== null &&
           (channel.channel === "dm" ? <ConnectByMessage /> : <ConnectSoon />)}
 
         {/* Public or private, asked where the member connects (MESITA-2594):
@@ -292,8 +294,9 @@ function ConnectByMessage() {
           Send my code on Instagram
         </Button>
       )}
-      {claim && waitingSince !== null && (
-        gaveUp ? (
+      {claim &&
+        waitingSince !== null &&
+        (gaveUp ? (
           <Button
             type="button"
             size="sm"
@@ -314,8 +317,7 @@ function ConnectByMessage() {
             <Spinner size="sm" />
             Waiting for your message…
           </p>
-        )
-      )}
+        ))}
     </ConnectCard>
   );
 }
@@ -336,7 +338,9 @@ function ConnectCard({
       <SettingsGroup title="Connect">
         <ol className="divide-border/60 divide-y">
           {[
-            <>Tap Send my code: it copies a one-time code and opens Instagram</>,
+            <>
+              Tap Send my code: it copies a one-time code and opens Instagram
+            </>,
             <>
               Paste it in a message to <b>@{account}</b> and send
             </>,
@@ -435,22 +439,14 @@ function CurrentConnectionRow() {
 // from Instagram is taken down.
 function InstagramPhotoSwitch() {
   const supabase = useBrowserSupabase();
-  const [on, setOn] = useState<boolean | null>(null);
+  // The kept profile row (MESITA-3014); a flip shows at once, the saved row
+  // then lands in the store.
+  const { data, error } = useConsumerProfile();
+  const [flipped, setOn] = useState<boolean | null>(null);
+  const on =
+    flipped ??
+    (data ? data.use_instagram_photo !== false : error ? true : null);
   const [pending, setPending] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiFetchConsumerProfile(supabase)
-      .then(({ consumer }) => {
-        if (!cancelled) setOn(consumer.use_instagram_photo !== false);
-      })
-      .catch(() => {
-        if (!cancelled) setOn(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
 
   const flip = () => {
     if (on == null || pending) return;
@@ -458,6 +454,7 @@ function InstagramPhotoSwitch() {
     setOn(next);
     setPending(true);
     apiUpdateConsumerProfile(supabase, { use_instagram_photo: next })
+      .then(() => setOn(null))
       .catch((e) => {
         setOn(!next);
         toast.error(errMsg(e, "Couldn't change that."));

@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Phone } from "lucide-react";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { formatPhoneDisplay } from "@/lib/utils";
 import { SettingsInfoRow } from "./settings-rows";
 
@@ -13,24 +11,13 @@ import { SettingsInfoRow } from "./settings-rows";
 // not a door: the phone is the auth identity, set at sign-in (MESITA-1657),
 // so there is nothing to edit here.
 export function PhoneRow() {
-  const getSupabase = useLazyBrowserSupabase();
-  const [phone, setPhone] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    apiFetchConsumerProfile(getSupabase())
-      .then(({ consumer }) => {
-        if (!cancelled)
-          setPhone(formatPhoneDisplay(consumer.phone) ?? "Not set");
-      })
-      .catch(() => {
-        if (!cancelled) setPhone("Not set");
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // The kept profile row (MESITA-3014): the number paints with the page.
+  const { data, error } = useConsumerProfile();
+  const phone = data
+    ? (formatPhoneDisplay(data.phone) ?? "Not set")
+    : error
+      ? "Not set"
+      : null;
 
   return (
     <SettingsInfoRow

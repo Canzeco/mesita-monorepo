@@ -12,7 +12,10 @@ import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataG
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
 import { Toaster } from "@/components/consumer/Toaster";
 import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchConsumerProfile } from "@/lib/api/profile";
+import {
+  apiFetchConsumerProfile,
+  type ConsumerProfile,
+} from "@/lib/api/profile";
 import { ConsumerIdentityProvider } from "@/lib/identity-context";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -103,9 +106,10 @@ export default async function ConsumerShellLayout({
   // the same state — and a surface that states the fact would assert the
   // guess. Only this catch knows the difference, so it says so.
   let profileUnavailable = false;
+  let profile: ConsumerProfile | null = null;
   const read = await profileRead;
   if (read.ok) {
-    const { consumer: profile } = read.value;
+    profile = read.value.consumer;
     // The SIGNUP gate only — first name + birthday (MESITA-1806). A missing
     // last name no longer ejects anyone to /onboard; the reservation sheet
     // asks for it at the one moment it is load-bearing.
@@ -157,6 +161,7 @@ export default async function ConsumerShellLayout({
         instagramHandle={instagramHandle}
         instagramFollowers={instagramFollowers}
         profileUnavailable={profileUnavailable}
+        profile={profile}
       >
         <div className="relative flex flex-1 flex-col overflow-hidden">
           {/* Body + modal host only: the @modal slot must not sit above

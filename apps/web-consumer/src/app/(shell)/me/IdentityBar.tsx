@@ -129,7 +129,11 @@ export function IdentityBar({
           open={classOpen}
           onClose={() => setClassOpen(false)}
           guestClass={guestClass}
-          vip={toVipDetails(guestClass, profile?.vip_partner, profile?.vip_until)}
+          vip={toVipDetails(
+            guestClass,
+            profile?.vip_partner,
+            profile?.vip_until,
+          )}
         />
       )}
     </header>

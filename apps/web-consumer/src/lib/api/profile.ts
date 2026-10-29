@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
+import { PROFILE_KEY, writeCached } from "@/lib/screen-cache";
 
 // ─── Consumer profile ───────────────────────────────────────────────────────
 
@@ -96,6 +97,9 @@ export async function apiUpdateConsumerProfile(
     "consumer-web-update-profile",
     input,
   );
+  // Every screen that reads the profile sees the saved row at once
+  // (MESITA-3014). A no-op on the server.
+  writeCached(PROFILE_KEY, consumer);
   return consumer;
 }
 

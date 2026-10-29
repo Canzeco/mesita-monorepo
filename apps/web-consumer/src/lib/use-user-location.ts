@@ -52,7 +52,48 @@ const RETRY_OPTS: PositionOptions = {
   maximumAge: Infinity,
 };
 
-let coordsState: Coords | null = null;
+/** THE LAST FIX, REMEMBERED FOR THE TAB'S SESSION (MESITA-3014). Home held
+ *  its first catalog request up to STALL_MS for a GPS answer on every hard
+ *  load. A fix from the last ten minutes starts the store instead; the live
+ *  ask still runs and replaces it. sessionStorage, so it never outlives the
+ *  tab, and every access is guarded (no window in tests and on the server,
+ *  storage blocked in private mode). */
+const LAST_FIX_KEY = "mesita:last-fix";
+const LAST_FIX_MAX_AGE_MS = 10 * 60 * 1000;
+
+function readLastFix(now = Date.now()): Coords | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(LAST_FIX_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as { lat?: unknown; lng?: unknown; at?: unknown };
+    if (
+      typeof v.lat !== "number" ||
+      typeof v.lng !== "number" ||
+      typeof v.at !== "number" ||
+      now - v.at > LAST_FIX_MAX_AGE_MS
+    ) {
+      return null;
+    }
+    return { lat: v.lat, lng: v.lng };
+  } catch {
+    return null;
+  }
+}
+
+function writeLastFix(fix: Coords, now = Date.now()): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(
+      LAST_FIX_KEY,
+      JSON.stringify({ lat: fix.lat, lng: fix.lng, at: now }),
+    );
+  } catch {
+    /* storage blocked: the live ask still answers */
+  }
+}
+
+let coordsState: Coords | null = readLastFix();
 let locatingState = false;
 let errorState: LocationError | null = null;
 let asked = false;
@@ -187,6 +228,7 @@ export function requestUserLocation(): Promise<Coords | null> {
       coordsState && sameCoords(coordsState, next) ? coordsState : next;
     coordsState = fix;
     errorState = null;
+    writeLastFix(fix);
     emit();
     for (const listener of fixListeners) listener(fix);
     return fix;
