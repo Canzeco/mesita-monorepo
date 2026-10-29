@@ -83,9 +83,19 @@ Deno.test("each way in writes its tagged note", async () => {
   assertEquals(ig.written, ["vip: [instagram:typed] Joined via Instagram @diego (5,000 followers)"]);
 
   const code = deps({ ...REGULAR, instagram_handle: null });
-  const res = await handleJoin({ via: "code", code: "1234-5678-9012" }, code);
-  assertEquals(res.log, { via: "code", outcome: "joined", code_last4: "9012" });
-  assertEquals(code.written, ["vip: [code:emulated] Joined with code …9012"]);
+  const res = await handleJoin({ via: "code", code: "0000-0000-0000" }, code);
+  assertEquals(res.log, { via: "code", outcome: "joined", code_last4: "0000" });
+  assertEquals(code.written, ["vip: [code:emulated] Joined with code …0000"]);
+});
+
+// The emulator takes one code (Pato, MESITA-3071: "12 zeros to accept").
+Deno.test("only twelve zeros join; any other twelve digits is refused, unwritten", async () => {
+  const d = deps(REGULAR);
+  const res = await handleJoin({ via: "code", code: "1234 5678 9012" }, d);
+  assertEquals(res.status, 403);
+  assertEquals(res.body, { ok: false, code: "invalid_code", error: "That code isn't valid." });
+  assertEquals(res.log, { via: "code", outcome: "invalid_code", code_last4: "9012" });
+  assertEquals(d.written, []);
 });
 
 Deno.test("an operator's note is kept behind the join note, within 280", () => {

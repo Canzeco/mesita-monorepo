@@ -9,7 +9,8 @@
 //          │
 //          ▼ via instagram: decideInstagram (the STORED handle and count)
 //   no handle → 403 · null count → 403 · < bar → 403 · ≥ bar ─┐
-//          ▼ via code: any twelve digits (emulated, MESITA-2984)  │
+//          ▼ via code: only EMULATOR_CODE (twelve zeros, MESITA-3071) │
+//            joins; any other twelve digits → 403 invalid_code    │
 //   writeClass("vip", note) ◄─────────────────────────────────────┘
 //   error → 500 join_failed · ok → 200 joined:true
 //
@@ -24,6 +25,11 @@ import type { ClassJoinRow } from "../_shared/consumer-doc.ts";
 import { INSTAGRAM_REACH_FOLLOWERS } from "../_shared/instagram-reach.ts";
 import { parseClassCode } from "./class-code.ts";
 
+/** The one code the emulator accepts until partners issue real ones
+ *  (Pato, MESITA-3071: "for the moment use emulator code … 12 zeros to
+ *  accept upgrade"; real one-use codes are MESITA-3055). */
+export const EMULATOR_CODE = "000000000000";
+
 export type JoinBody =
   | { via: "code"; code: string }
   | { via: "instagram" }
@@ -36,6 +42,7 @@ export type JoinOutcome =
   | "already_regular"
   | "bad_request"
   | "bad_code"
+  | "invalid_code"
   | "consumer_not_found"
   | "instagram_not_connected"
   | "followers_unknown"
@@ -136,6 +143,13 @@ export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<Join
     return fail(400, "bad_code", "Enter the 12-digit code.", { via, outcome: "bad_code" });
   }
   const last4 = body.via === "code" ? { code_last4: body.code.slice(-4) } : {};
+  if (body.via === "code" && body.code !== EMULATOR_CODE) {
+    return fail(403, "invalid_code", "That code isn't valid.", {
+      via,
+      outcome: "invalid_code",
+      ...last4,
+    });
+  }
 
   const read = await deps.readRow();
   if (!read.ok) {
