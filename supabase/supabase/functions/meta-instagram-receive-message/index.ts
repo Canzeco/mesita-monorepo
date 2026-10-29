@@ -18,6 +18,8 @@
 //
 // verify_jwt = false: Meta holds no Supabase JWT; the signature is the gate.
 // Off (503) until every META_IG_* secret is set (readInstagramDmConfig).
+// Calls Meta with the weekly-refreshed token in meta_instagram_token when
+// there is one, else the META_IG_ACCESS_TOKEN seed (MESITA-3037).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
@@ -29,6 +31,7 @@ import {
   inboundMessages,
   type InstagramDmConfig,
   META_GRAPH_VERSION,
+  pickAccessToken,
   readDmProfile,
   readInstagramDmConfig,
   signatureIsValid,
@@ -138,6 +141,12 @@ serveJson("meta-instagram-receive-message", async (req) => {
   const envRes = readEFEnv();
   if (!envRes.ok) return envRes.response;
   const admin = adminClient(envRes.env);
+  const { data: stored, error: tokenErr } = await admin
+    .from("meta_instagram_token")
+    .select("access_token")
+    .maybeSingle();
+  if (tokenErr) console.error("ig_token_read_failed", tokenErr.message);
+  const live = { ...cfg, accessToken: pickAccessToken(stored?.access_token, cfg.accessToken) };
 
   let body: unknown = null;
   try {
@@ -150,7 +159,7 @@ serveJson("meta-instagram-receive-message", async (req) => {
     // A message without a code is a normal DM to Mesita: no auto-reply.
     if (!code) continue;
     try {
-      await handle(admin, envRes.env.url, cfg, m.senderId, code);
+      await handle(admin, envRes.env.url, live, m.senderId, code);
     } catch (e) {
       console.error("ig_dm_failed", e instanceof Error ? e.message : e);
     }

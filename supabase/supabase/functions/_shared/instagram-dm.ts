@@ -149,3 +149,28 @@ export const DM_REPLY = {
     "That code isn't valid or has expired. Get a new one in the Mesita app (Me › Instagram).",
   failed: "Something went wrong on our side. Try sending the code again in a minute.",
 } as const;
+
+// MESITA-3037: Instagram's long-lived user token lasts 60 days. The secret
+// META_IG_ACCESS_TOKEN seeds it; supabase-cron-refresh-instagram-token
+// refreshes it weekly into public.meta_instagram_token, and every caller
+// uses the stored one first. Without this the bot dies two months in.
+
+/** The token to call Meta with: the refreshed one when stored, else the secret. */
+export function pickAccessToken(stored: string | null | undefined, secret: string): string {
+  return typeof stored === "string" && stored.trim() ? stored.trim() : secret;
+}
+
+/** Meta's refresh_access_token answer, checked; null when it holds no token. */
+export function readRefreshAnswer(
+  raw: unknown,
+  now: number,
+): { accessToken: string; expiresAt: string | null } | null {
+  const r = raw as Record<string, unknown> | null;
+  const token = r?.access_token;
+  if (typeof token !== "string" || !token.trim()) return null;
+  const secs = numOf(r?.expires_in);
+  return {
+    accessToken: token.trim(),
+    expiresAt: secs != null && secs > 0 ? new Date(now + secs * 1000).toISOString() : null,
+  };
+}

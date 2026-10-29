@@ -17,6 +17,7 @@
 // cost (async ack, separate deploy boundary, cron claim). Every internal
 // endpoint runs requireInternalCaller, and internal-callers.test.ts holds
 // this list to the code and to verify_jwt = true:
+//   supabase-cron-refresh-instagram-token
 //   supabase-cron-reservation-retries
 //   supabase-cron-sync-boosts
 //   supabase-edgefunc-discover-places

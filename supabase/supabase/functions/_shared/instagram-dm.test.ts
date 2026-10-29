@@ -2,9 +2,11 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   codeInMessage,
   dmLink,
+  pickAccessToken,
   inboundMessages,
   readDmProfile,
   readInstagramDmConfig,
+  readRefreshAnswer,
   signatureIsValid,
   verifyHandshake,
 } from "./instagram-dm.ts";
@@ -92,4 +94,15 @@ Deno.test("a POST counts only with Meta's signature over the exact body", async 
   assertEquals(await signatureIsValid(raw, `sha256=${sig}`, "other"), false);
   assertEquals(await signatureIsValid(raw, sig, "s3cret"), false);
   assertEquals(await signatureIsValid(raw, null, "s3cret"), false);
+});
+
+Deno.test("the refreshed token wins over the secret, and a refresh answer needs a token", () => {
+  assertEquals(pickAccessToken("fresh", "seed"), "fresh");
+  assertEquals(pickAccessToken(null, "seed"), "seed");
+  assertEquals(pickAccessToken("  ", "seed"), "seed");
+  assertEquals(readRefreshAnswer({ access_token: "t2", expires_in: 5184000 }, 0), {
+    accessToken: "t2",
+    expiresAt: new Date(5184000 * 1000).toISOString(),
+  });
+  assertEquals(readRefreshAnswer({ error: { message: "x" } }, 0), null);
 });

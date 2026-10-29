@@ -274,6 +274,10 @@ verify_jwt = true
 [functions.supabase-cron-sync-boosts]
 verify_jwt = true
 
+# MESITA-3037: weekly pg_cron refresh of the Instagram DM bot's 60-day token.
+[functions.supabase-cron-refresh-instagram-token]
+verify_jwt = true
+
 [functions.supabase-edgefunc-start-smoke-enrich]
 verify_jwt = true
 
