@@ -650,49 +650,54 @@ function PersonCard({
         onScroll={(e) => {
           cardMemoryOf(key).scrollTop = e.currentTarget.scrollTop;
         }}
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-5"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-social-person-card
       >
-        {person ? (
-          <IdentityCard
-            name={who}
-            avatarUrl={person.avatarUrl}
-            instagram={{
-              label: cardInstagramLabel(person),
-              connected: Boolean(person.handle),
-            }}
-            guestClass={toGuestClass(person.guestClass)}
-            plan={toGuestPlan(person.plan)}
-          />
-        ) : history ? (
-          // A link to a member who is gone (deleted, or the event is).
-          <p
-            className="text-muted-foreground py-10 text-center text-sm"
-            data-social-person-gone
-          >
-            This profile isn&apos;t available
-          </p>
-        ) : (
-          // Opened from its address before anything is known: the card's
-          // own shape, empty.
-          <div className="flex flex-col items-center gap-3" aria-busy>
-            <Skeleton className="h-24 w-24 rounded-full" />
-            <Skeleton className="h-11 w-full rounded-full" />
-            <div className="flex w-full gap-3">
-              <Skeleton className="h-11 flex-1 rounded-full" />
-              <Skeleton className="h-11 flex-1 rounded-full" />
+        {/* NO PADDING ON THE SCROLLER (MESITA-3064): a sticky child stops at
+            its scroller's padding edge, so a p-5 here left the Views/Likes
+            strip stuck 20px under the bar with the grid scrolling through
+            the gap. Each block carries its own inset instead. */}
+        <div className="px-5 pt-5">
+          {person ? (
+            <IdentityCard
+              name={who}
+              avatarUrl={person.avatarUrl}
+              instagram={{
+                label: cardInstagramLabel(person),
+                connected: Boolean(person.handle),
+              }}
+              guestClass={toGuestClass(person.guestClass)}
+              plan={toGuestPlan(person.plan)}
+            />
+          ) : history ? (
+            // A link to a member who is gone (deleted, or the event is).
+            <p
+              className="text-muted-foreground py-10 text-center text-sm"
+              data-social-person-gone
+            >
+              This profile isn&apos;t available
+            </p>
+          ) : (
+            // Opened from its address before anything is known: the card's
+            // own shape, empty.
+            <div className="flex flex-col items-center gap-3" aria-busy>
+              <Skeleton className="h-24 w-24 rounded-full" />
+              <Skeleton className="h-11 w-full rounded-full" />
+              <div className="flex w-full gap-3">
+                <Skeleton className="h-11 flex-1 rounded-full" />
+                <Skeleton className="h-11 flex-1 rounded-full" />
+              </div>
+              <Skeleton className="h-11 w-full rounded-full" />
             </div>
-            <Skeleton className="h-11 w-full rounded-full" />
-          </div>
-        )}
+          )}
+        </div>
         {/* ONE HAIRLINE, EDGE TO EDGE, between the identity boxes and the
             history (Pato, MESITA-2611: "this activity feed must be divided
             by a line, like in instagram"): the way Instagram's profile
-            rules off the header from the grid. The line spans the card
-            (-mx-5 undoes the card's padding) and is there in every state,
-            rows, skeleton or "No activity yet". */}
+            rules off the header from the grid. The line spans the card and
+            is there in every state, tiles, skeleton or a tab's empty line. */}
         <div
-          className="border-border -mx-5 mt-4 border-t"
+          className="border-border mt-4 border-t"
           data-social-history-divider
         >
           <HistoryList
@@ -703,34 +708,36 @@ function PersonCard({
             onTab={onTab}
           />
         </div>
-        {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
+        <div className="px-5 pb-5">
+          {/* Open Instagram (MESITA-2590): a new tab, so Mesita stays open
             underneath; every tap is counted to measure who leaves. Under
             the list, small (MESITA-2594): the card is Mesita's first. */}
-        {igUrl && (
-          <a
-            href={igUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => trackEvent(supabase, "social_open_instagram", {})}
-            className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium"
-            data-social-open-instagram
-          >
-            <InstagramGlyph className="h-3.5 w-3.5" />
-            Open Instagram
-          </a>
-        )}
-        {/* You see others' Instagram only if you show yours (MESITA-2594). */}
-        {person?.handleLocked && !person.isYou && (
-          <Link
-            href={CONSUMER_ROUTES.mePages.instagram}
-            className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
-            data-social-unlock-instagram
-          >
-            {igConnected
-              ? "Make your profile public to see their Instagram"
-              : "Connect your Instagram to see theirs"}
-          </Link>
-        )}
+          {igUrl && (
+            <a
+              href={igUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => trackEvent(supabase, "social_open_instagram", {})}
+              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-sm font-medium"
+              data-social-open-instagram
+            >
+              <InstagramGlyph className="h-3.5 w-3.5" />
+              Open Instagram
+            </a>
+          )}
+          {/* You see others' Instagram only if you show yours (MESITA-2594). */}
+          {person?.handleLocked && !person.isYou && (
+            <Link
+              href={CONSUMER_ROUTES.mePages.instagram}
+              className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center justify-center gap-1.5 text-center text-sm font-medium underline underline-offset-4"
+              data-social-unlock-instagram
+            >
+              {igConnected
+                ? "Make your profile public to see their Instagram"
+                : "Connect your Instagram to see theirs"}
+            </Link>
+          )}
+        </div>
       </div>
     </LocalDialog>
   );
