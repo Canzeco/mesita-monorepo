@@ -4,7 +4,9 @@
 // Premier factor since MESITA-2925, Selected's multiplier before it).
 //
 //   Map      final = Popularity × s           inside the screen radius
-//   Catalog  final = Proximity × Popularity × s   no radius, the whole catalog
+//   Catalog  no radius, the whole catalog, two lanes one and one
+//            (MESITA-3016): red  final = Proximity × Popularity × s,
+//            Premier places only; blue  final = Proximity × Popularity
 //   no location (either)  final = Popularity × s
 //
 // THE SPLIT (Pato, MESITA-2909): on the Map distance is a SCREEN, never a
@@ -66,7 +68,15 @@ export type AreaContext = {
   /** The Popularity floor (MESITA-2714): a place whose Popularity is under
    *  it is dropped, whatever its source; 0 or absent = off. */
   popularityFloor?: number;
+  /** false = the blue lane (MESITA-3016): the Premier factor reads 1 for
+   *  every place. Absent = true. */
+  premier?: boolean;
 };
+
+/** The Catalog's two lanes (MESITA-3016): `red` holds Premier places
+ *  only, ranked WITH the Premier factor; `blue` holds every place, ranked
+ *  without it. The Map is red's score over every place. */
+export type CatalogLane = "red" | "blue";
 
 /** One candidate, normalized from whichever source produced it. */
 export type AreaCandidate = {
@@ -201,8 +211,8 @@ export function areaScore(c: AreaCandidate, ctx: AreaContext): AreaScore {
   const prox = loc.kind === "point" && ctx.halfKm !== null
     ? proximity(c, loc.anchor, ctx.halfKm)
     : null;
-  const sel = premierFactor(c);
-  const popPart = popularPart(c);
+  const sel = ctx.premier === false ? 1 : premierFactor(c);
+  const popPart = factor(pop ?? 0) * sel;
   const final = prox === null ? popPart : factor(prox) * popPart;
   // THE POPULARITY SCREEN (Pato, MESITA-2714: "if popularity score is
   // below 3 you cannot be shown … it doesn't matter what"): Google or
@@ -257,4 +267,44 @@ export function rankArea<T>(
       a.id.localeCompare(b.id)
     )
     .map(({ item, area }) => ({ item, area }));
+}
+
+/**
+ * THE ONE-AND-ONE MERGE (Pato, MESITA-3016: "red blue, red blue … el que
+ * salga primero lo ordena"): red, blue, red, blue, red first, a constant
+ * (never a coin flip per slot, which makes streaks in a short list). A
+ * place already placed is skipped and the SAME lane reads its next one, so
+ * a duplicate never puts two blues side by side; once a lane runs dry the
+ * other fills the rest in its own order. Both lists are already ranked;
+ * nothing here reads SQL.
+ */
+export function interleaveLanes<T extends { id: string }>(
+  red: readonly T[],
+  blue: readonly T[],
+): Array<{ lane: CatalogLane; item: T }> {
+  const seen = new Set<string>();
+  const out: Array<{ lane: CatalogLane; item: T }> = [];
+  const lanes = { red: { list: red, at: 0 }, blue: { list: blue, at: 0 } };
+  const next = (lane: CatalogLane): T | null => {
+    const l = lanes[lane];
+    while (l.at < l.list.length) {
+      const item = l.list[l.at++];
+      if (!seen.has(item.id)) return item;
+    }
+    return null;
+  };
+  let turn: CatalogLane = "red";
+  let dry: CatalogLane | null = null;
+  for (;;) {
+    const item = next(turn);
+    if (item) {
+      seen.add(item.id);
+      out.push({ lane: turn, item });
+    } else if (dry && dry !== turn) {
+      return out;
+    } else {
+      dry = turn;
+    }
+    if (!dry || dry === turn) turn = turn === "red" ? "blue" : "red";
+  }
 }
