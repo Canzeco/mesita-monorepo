@@ -2,7 +2,13 @@
 
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { BadgeCheck, Copy, ImageIcon, Send } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { cn, errMsg } from "@/lib/utils";
@@ -21,12 +27,17 @@ import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   apiInstagramChannel,
   apiInstagramDmStatus,
+  apiLookupInstagram,
   apiStartInstagramDm,
   apiUpdateConsumerProfile,
   dmVerified,
   type InstagramChannel,
   type InstagramDmClaim,
+  type InstagramLookup,
 } from "@/lib/api/profile";
+import { EFError } from "@/lib/api/_invoke";
+import { normalizeInstagramHandle } from "@/lib/instagram-handle";
+import { INPUT_CLASS } from "@/lib/ui-classes";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useConsumerIdentity } from "@/lib/identity-context";
 import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
@@ -51,7 +62,8 @@ import { INSTAGRAM_PHOTO_SWITCH } from "@/components/consumer/me/switch-words";
 // always draws the message flow: one tap sends your code to Mesita's
 // Instagram, and the page waits while Meta tells the server who sent it. The
 // server says whether that channel is live; until it is (the Meta secrets,
-// MESITA-2579) the card is one "Coming soon" row and nothing is called.
+// MESITA-2579) no code is asked for, and the card is a demo lookup
+// (MESITA-3038, ConnectLookup) that shows sample data and stores nothing.
 // The bio-code screen is gone from the page; the server still answers its
 // actions.
 //
@@ -112,7 +124,7 @@ export function InstagramModal() {
 
         {showForm &&
           channel !== null &&
-          (channel.channel === "dm" ? <ConnectByMessage /> : <ConnectSoon />)}
+          (channel.channel === "dm" ? <ConnectByMessage /> : <ConnectLookup />)}
 
         {/* Public or private, asked where the member connects (MESITA-2594):
               public is what lets them see other members' Instagram. */}
@@ -374,14 +386,55 @@ function PasswordLine() {
 }
 
 /** The Connect card while the Meta channel is off (MESITA-2579, MESITA-3001):
- *  one row that says it is coming and how it will work. No steps, no
- *  button. `pending` marks it as the silhouette drawn while the page asks
- *  which way connecting works today; the channel is off until the Meta
- *  secrets land, so today's card lands with nothing moving. */
-function ConnectSoon({ pending = false }: { pending?: boolean }) {
+ *  a DEMO LOOKUP (MESITA-3038). The guest types a username, says it is
+ *  theirs, and sees who it is: photo, @username, followers. The answer is
+ *  consumer-web-lookup-instagram's emulator, so the card says "Sample data"
+ *  and never "connected" or "verified": nothing is stored and Social never
+ *  sees it. When an approved source replaces the emulator, this card stays.
+ *  `pending` marks it as the silhouette drawn while the page asks which way
+ *  connecting works today: the same card, nothing interactive. */
+function ConnectLookup({ pending = false }: { pending?: boolean }) {
+  const supabase = useBrowserSupabase();
+  const [raw, setRaw] = useState("");
+  const [mine, setMine] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<
+    | { kind: "found"; lookup: InstagramLookup }
+    | { kind: "not_found"; username: string }
+    | { kind: "error"; message: string }
+    | null
+  >(null);
+
+  const username = normalizeInstagramHandle(raw);
+  const typed = raw.trim().replace(/^@/, "");
+  const invalid = typed !== "" && !username;
+  const canSubmit = !pending && !busy && username !== null && mine;
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSubmit || !username) return;
+    setBusy(true);
+    setResult(null);
+    try {
+      const lookup = await apiLookupInstagram(supabase, username);
+      setResult({ kind: "found", lookup });
+    } catch (err) {
+      setResult(
+        err instanceof EFError && err.code === "profile_not_found"
+          ? { kind: "not_found", username }
+          : {
+              kind: "error",
+              message: errMsg(err, "Couldn’t look that up — try again."),
+            },
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div
-      data-instagram-connect={pending ? undefined : "soon"}
+      data-instagram-connect={pending ? undefined : "lookup"}
       aria-busy={pending || undefined}
     >
       <SettingsGroup title="Connect">
@@ -390,15 +443,137 @@ function ConnectSoon({ pending = false }: { pending?: boolean }) {
             <Instagram className="h-[18px] w-[18px]" />
           </IconChip>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold">Coming soon</p>
+            <p className="text-sm font-semibold">
+              Look up your Instagram
+              <DemoPill />
+            </p>
             <p className="text-muted-foreground type-label">
-              You&apos;ll connect by sending a one-time code to @mesita from
-              your Instagram. We never ask for your password.
+              Connecting by message to @mesita is coming soon. Until then this
+              shows sample data, not your real profile.
             </p>
           </div>
         </div>
+        <form
+          onSubmit={submit}
+          className="border-border/60 flex flex-col gap-3 border-t px-4 py-3"
+          noValidate
+        >
+          <label className="flex flex-col gap-1">
+            <span className="type-label font-semibold">Instagram username</span>
+            <input
+              type="text"
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              placeholder="@username"
+              maxLength={31}
+              value={raw}
+              disabled={pending}
+              onChange={(e) => {
+                setRaw(e.target.value);
+                setResult(null);
+              }}
+              aria-invalid={invalid || undefined}
+              aria-describedby={invalid ? "ig-lookup-invalid" : undefined}
+              className={INPUT_CLASS}
+              data-instagram-lookup-username
+            />
+          </label>
+          {invalid && (
+            <p id="ig-lookup-invalid" className="text-destructive type-label">
+              Use letters, numbers, periods and underscores, up to 30.
+            </p>
+          )}
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={mine}
+              disabled={pending}
+              onChange={(e) => setMine(e.target.checked)}
+              className="accent-foreground h-5 w-5 shrink-0"
+              data-instagram-lookup-mine
+            />
+            This is my Instagram account
+          </label>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={!canSubmit}
+            className={cn(ME_BUTTON_CLASS, "w-full")}
+            data-instagram-lookup-submit
+          >
+            {busy && (
+              <Spinner size="sm" className="border-white/40 border-t-white" />
+            )}
+            {busy ? "Looking up…" : "Look up"}
+          </Button>
+          <div aria-live="polite">
+            {result?.kind === "found" && (
+              <LookupResult lookup={result.lookup} />
+            )}
+            {result?.kind === "not_found" && (
+              <p
+                className="text-muted-foreground type-label text-center"
+                data-instagram-lookup-empty
+              >
+                No sample profile for @{result.username}. Check the username and
+                try again.
+              </p>
+            )}
+            {result?.kind === "error" && (
+              <p
+                className="text-destructive type-label text-center"
+                data-instagram-lookup-error
+              >
+                {result.message}
+              </p>
+            )}
+          </div>
+          <PasswordLine />
+        </form>
       </SettingsGroup>
     </div>
+  );
+}
+
+/** The looked-up profile, labelled as the sample it is. */
+function LookupResult({ lookup }: { lookup: InstagramLookup }) {
+  const { username, profilePictureUrl, followerCount } = lookup.profile;
+  return (
+    <div
+      className="border-border bg-muted/30 flex items-center gap-3 rounded-xl border p-3"
+      data-instagram-lookup-result={lookup.source}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={profilePictureUrl}
+        alt=""
+        width={48}
+        height={48}
+        className="h-12 w-12 shrink-0 rounded-full object-cover"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">@{username}</p>
+        <p className="text-muted-foreground type-label">
+          {followerCount.toLocaleString("en-US")} followers
+        </p>
+      </div>
+      {lookup.source === "emulator" && (
+        <span className="bg-muted text-muted-foreground type-meta shrink-0 rounded-full px-1.5 py-0.5 font-semibold">
+          Sample data
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Beside the lookup's title: ClassSheet's Soon pill's shape. */
+function DemoPill() {
+  return (
+    <span className="bg-muted text-muted-foreground type-meta ml-1.5 rounded-full px-1.5 py-0.5 align-middle font-semibold">
+      Demo
+    </span>
   );
 }
 
@@ -407,7 +582,7 @@ function ConnectSoon({ pending = false }: { pending?: boolean }) {
  *  loading, like the sizes"): today's card, the off one. Shared with the
  *  route's fallback (InstagramSkeleton). */
 export function ConnectCardSkeleton() {
-  return <ConnectSoon pending />;
+  return <ConnectLookup pending />;
 }
 
 function CurrentConnectionRow() {

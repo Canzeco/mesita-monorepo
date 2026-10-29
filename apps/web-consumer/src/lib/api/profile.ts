@@ -173,6 +173,30 @@ export async function apiInstagramDmStatus(
   );
 }
 
+// ─── Instagram lookup (MESITA-3038) ──────────────────────────────────────
+
+// Who a username is, while the DM channel is off. `source: "emulator"` is a
+// sample, not Instagram: nothing is stored, connected or verified.
+export type InstagramLookup = {
+  source: "emulator";
+  profile: {
+    username: string;
+    profilePictureUrl: string;
+    followerCount: number;
+  };
+};
+
+export async function apiLookupInstagram(
+  client: SupabaseClient,
+  username: string,
+): Promise<InstagramLookup> {
+  return await invokeEF<InstagramLookup>(
+    client,
+    "consumer-web-lookup-instagram",
+    { username, confirmed: true },
+  );
+}
+
 /** The DM landed: the claim is spent and the account was proved after the
  *  code was issued. */
 export function dmVerified(

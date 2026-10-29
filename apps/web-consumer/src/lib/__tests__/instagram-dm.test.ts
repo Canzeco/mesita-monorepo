@@ -35,10 +35,11 @@ describe("connecting Instagram by message", () => {
   // is dm; off, the page asks for no code.
   it("asks for a code only when the channel is live", () => {
     expect(PAGE).toContain("apiInstagramChannel(supabase)");
-    expect(PAGE).toContain('channel.channel === "dm" ? <ConnectByMessage /> : <ConnectSoon />');
+    expect(PAGE).toContain('channel.channel === "dm" ? <ConnectByMessage /> : <ConnectLookup />');
     expect(PAGE).not.toContain("function ConnectModule");
     expect(PAGE).not.toMatch(/apiStartInstagramClaim|apiCheckInstagramClaim/);
-    const soon = PAGE.slice(PAGE.indexOf("function ConnectSoon"), PAGE.indexOf("export function ConnectCardSkeleton"));
-    expect(soon).not.toContain("apiStartInstagramDm");
+    // The off card is MESITA-3038's demo lookup: it reads, never claims.
+    const off = PAGE.slice(PAGE.indexOf("function ConnectLookup"), PAGE.indexOf("export function ConnectCardSkeleton"));
+    expect(off).not.toContain("apiStartInstagramDm");
   });
 });
