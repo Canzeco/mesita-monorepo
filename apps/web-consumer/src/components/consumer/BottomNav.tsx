@@ -12,6 +12,8 @@ import {
 } from "react";
 import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
+import { SizedImg } from "@mesita/place-profile";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
 import {
   CONSUMER_RESERVATION_SURFACE_PREFIX,
@@ -38,6 +40,12 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 //   everything else. just the empty page with soon."). The tab is a plain
 //   link to /pay like the others — it lights there — and wears the Soon
 //   tag so the bar and the page make the same promise.
+//
+// THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
+// picture to me instead", after first asking for it at Home's and Search's
+// top right): a round photo where the person glyph was, as Instagram's bar
+// does, from the shell-seeded profile row (a new photo shows at once). No
+// picture, the glyph. The label still reads Me.
 //
 // Every tab shows its plain label. A tab label names a DESTINATION; state
 // belongs on the page where it can be read and acted on (Pato, 2026-08-16:
@@ -105,6 +113,7 @@ const ITEMS: Item[] = [
 
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
+  const avatarUrl = useConsumerProfile().data?.avatar_url ?? null;
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   // EACH TAB IS A PLAIN LINK WITH NEXT'S OWN PREFETCH (MESITA-3013). The app
@@ -161,10 +170,23 @@ export function BottomNav() {
                   active && "bg-primary/10 ring-primary/20 ring-1",
                 )}
               >
-                <Icon
-                  className={cn("h-5 w-5", soon && !active && "opacity-60")}
-                  strokeWidth={active ? 2.25 : 1.75}
-                />
+                {item.href === CONSUMER_ROUTES.me && avatarUrl ? (
+                  <SizedImg
+                    src={avatarUrl}
+                    size="thumb"
+                    alt=""
+                    className={cn(
+                      "h-6 w-6 rounded-full object-cover",
+                      active && "ring-primary ring-2",
+                    )}
+                    data-me-tab-avatar
+                  />
+                ) : (
+                  <Icon
+                    className={cn("h-5 w-5", soon && !active && "opacity-60")}
+                    strokeWidth={active ? 2.25 : 1.75}
+                  />
+                )}
                 {/* The tag is a quiet grey chip, sentence case, cut from the
                     glyph by a card-colour ring: the solid-ink uppercase pill
                     out-shouted every label in the bar (Pato, MESITA-2079). */}
