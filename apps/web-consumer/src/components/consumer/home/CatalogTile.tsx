@@ -193,7 +193,7 @@ export function CatalogTile({
           <div className={cn("text-foreground", TILE_TEXT)}>
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
-              <PremierBadge tier={place.boost_tier} />
+              <PremierBadge tier={place.boost_tier} ad={place.area?.lane === "red"} />
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />

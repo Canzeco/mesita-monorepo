@@ -178,7 +178,7 @@ export function RailCard({
         <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
             <span className="truncate">{place.name}</span>
-            <PremierBadge tier={place.boost_tier} compact />
+            <PremierBadge tier={place.boost_tier} compact ad />
           </p>
           <PriceKindRow facts={facts} />
           <StarsOpenRow facts={facts} withDistance={withDistance} />
