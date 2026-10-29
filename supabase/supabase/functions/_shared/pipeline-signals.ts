@@ -5,7 +5,7 @@
 //
 //   description_similarity  Description · the Deep pipeline
 //   proximity               Proximity · the Catalog pipeline (and Chat)
-//                           1 ÷ (1 + d ÷ D), MESITA-3015
+//                           1 ÷ (1 + (d ÷ D)²), MESITA-3079
 //   popularity              Popularity · the Map and Catalog pipelines
 //
 // A signal scores; it never excludes (that is a gate's job, area-score.ts).
@@ -23,19 +23,21 @@ const clamp01 = (n: number) => (n <= 0 ? 0 : n >= 1 ? 1 : n);
 
 /** THE HALF DISTANCE D (km, MESITA-3015): the Catalog pipeline's Proximity
  *  is ½ at D. The one hyperparameter (`params.proximity.halfKm`), 0.1–100
- *  km. 1 km is Pato's pick (2026-10-28, "LETS USE THE 1KM FUNCTION"): a
- *  walking bubble where Popularity decides; past it distance ratios do. */
-export const PROXIMITY_HALF_KM_DEFAULT = 1;
+ *  km. 10 km is Pato's pick (2026-10-29, MESITA-3079, "Squared: 1/(1+d²)
+ *  with km=10"): the city is nearly flat, so Popularity decides inside it. */
+export const PROXIMITY_HALF_KM_DEFAULT = 10;
 export const PROXIMITY_HALF_KM_MIN = 0.1;
 export const PROXIMITY_HALF_KM_MAX = 100;
 
 /**
- * proximity(d) = 1 ÷ (1 + d ÷ D), D = the half distance (MESITA-3015): 1
- * at the point, ½ at D, ⅓ at 2D, never 0. Past D the curve is D ÷ d, so
- * only distance RATIOS order places: twice as far is half the credit at
- * any scale, and with Popularity's ln spread (≈ 1.8× at most) a better
- * place wins only up to ~1.8× farther. Another city never wins; a walking
- * city and a car city rank alike. It replaced the log curve
+ * proximity(d) = 1 ÷ (1 + (d ÷ D)²), D = the half distance (MESITA-3079):
+ * 1 at the point, 0.8 at D/2, ½ at D, ⅕ at 2D, 1/10 at 3D, never 0. Flat
+ * inside D, so nearby places tie and Popularity decides; past D the curve
+ * is (D ÷ d)², so twice as far is a quarter of the credit at any scale,
+ * and with Popularity's ln spread (≈ 1.8× at most) a better place wins only
+ * up to ~1.34× farther. It replaced the reciprocal 1 ÷ (1 + d ÷ D)
+ * (MESITA-3015, D = 1 km), which was steep right next to the guest, and
+ * that replaced the log curve
  * 1 ÷ (1 + ln(1 + (e − 1) · d ÷ h)) (MESITA-2909), which kept a famous
  * place 36 km away above an average one 5 km away. Only the Catalog
  * pipeline (Home) and Chat read it; the Map ranks by Popularity alone and
@@ -47,7 +49,8 @@ export function proximityFromDistance(distanceKm: number, halfKm: number): numbe
   if (Number.isNaN(distanceKm) || distanceKm === Infinity) return 0;
   if (distanceKm <= 0) return 1;
   if (!(Number.isFinite(halfKm) && halfKm > 0)) return 0;
-  return clamp01(1 / (1 + distanceKm / halfKm));
+  const r = distanceKm / halfKm;
+  return clamp01(1 / (1 + r * r));
 }
 
 /**

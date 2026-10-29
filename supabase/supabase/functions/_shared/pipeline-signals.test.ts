@@ -12,18 +12,18 @@ import {
 const K = POPULARITY_HALF_REVIEWS_DEFAULT;
 const D = 10;
 
-Deno.test("proximity: 1 ÷ (1 + d ÷ D) — 1 at the point, ½ at D, ⅓ at 2D, never 0 (MESITA-3015)", () => {
-  assertEquals(PROXIMITY_HALF_KM_DEFAULT, 1);
+Deno.test("proximity: 1 ÷ (1 + (d ÷ D)²) — 1 at the point, ½ at D, ⅕ at 2D, never 0 (MESITA-3079)", () => {
+  assertEquals(PROXIMITY_HALF_KM_DEFAULT, 10);
   assertEquals(proximityFromDistance(0, D), 1);
+  assertAlmostEquals(proximityFromDistance(D / 2, D), 0.8, 1e-12);
   assertAlmostEquals(proximityFromDistance(D, D), 0.5, 1e-12);
-  assertAlmostEquals(proximityFromDistance(2 * D, D), 1 / 3, 1e-12);
+  assertAlmostEquals(proximityFromDistance(2 * D, D), 1 / 5, 1e-12);
   const at = (k: number) => proximityFromDistance(k * D, D);
-  // Falls fast near the guest, ever slower after.
-  assert(1 - at(0.5) > at(1) - at(2));
-  assert(at(1) - at(2) > at(2) - at(4));
-  // Past D only ratios matter: twice as far is half the credit, at any D.
-  assertAlmostEquals(at(20) / at(10), 0.5, 0.03);
-  assertAlmostEquals(proximityFromDistance(200, 1) / proximityFromDistance(100, 1), 0.5, 0.01);
+  // Flat near the guest: the first half of D costs less than the second.
+  assert(1 - at(0.5) < at(0.5) - at(1));
+  // Past D only ratios matter: twice as far is a quarter of the credit, at any D.
+  assertAlmostEquals(at(20) / at(10), 0.25, 0.01);
+  assertAlmostEquals(proximityFromDistance(200, 1) / proximityFromDistance(100, 1), 0.25, 0.01);
   // A far place is lowered, never cut.
   assert(proximityFromDistance(10_000, D) > 0);
   assert(proximityFromDistance(1, D) < 1);
