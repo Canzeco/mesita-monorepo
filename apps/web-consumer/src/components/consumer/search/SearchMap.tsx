@@ -72,8 +72,16 @@ function mapsPinIcon(
   radius?: number,
 ) {
   const raw = mapPinIcon(fillColor, strokeColor, strokeWeight, radius);
-  const maps = (globalThis as { google?: { maps?: MapsCtor } }).google?.maps;
-  if (!maps) return raw;
+  const maps = (globalThis as { google?: { maps?: Partial<MapsCtor> } }).google
+    ?.maps;
+  // THE NAMESPACE COMES BEFORE ITS CLASSES (MESITA-3027). The Maps loader
+  // defines `google.maps` first and fills in Size and Point when the core
+  // library lands, so a pin drawn in between threw "Size is not a
+  // constructor" and took the whole Search screen down. Until both exist the
+  // plain icon draws; the next render, once they do, sizes it.
+  if (typeof maps?.Size !== "function" || typeof maps.Point !== "function") {
+    return raw;
+  }
   return {
     url: raw.url,
     scaledSize: new maps.Size(MAP_PIN_HIT_SIZE, MAP_PIN_HIT_SIZE),

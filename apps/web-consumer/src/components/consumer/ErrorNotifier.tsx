@@ -15,7 +15,20 @@ const IGNORED = [
   /AbortError/i,
   /ResizeObserver loop/i,
   /ChunkLoadError|Loading chunk|Failed to fetch dynamically imported module/i,
+  // A cross-origin script (Google Maps, an extension) reports only this.
+  /^\s*Script error\.?\s*$/i,
 ];
+
+/** An error thrown by a script from another origin (Google Maps, a browser
+ *  extension) is not Mesita's to report (MESITA-3027). */
+function fromAnotherOrigin(event: ErrorEvent): boolean {
+  if (!event.filename) return false;
+  try {
+    return new URL(event.filename).origin !== window.location.origin;
+  } catch {
+    return true;
+  }
+}
 
 function messageOf(reason: unknown): string {
   if (reason instanceof Error) return reason.message || reason.name;
@@ -26,7 +39,9 @@ function messageOf(reason: unknown): string {
 function say(reason: unknown): void {
   const message = messageOf(reason);
   const name = reason instanceof Error ? reason.name : "";
-  if (IGNORED.some((re) => re.test(`${name} ${message}`))) return;
+  if (IGNORED.some((re) => re.test(message) || re.test(`${name} ${message}`))) {
+    return;
+  }
   // EFError is said where it happened (lib/api/_invoke.ts), with its status.
   if (name === "EFError") return;
   reportError(`Something went wrong: ${message}`, reason);
@@ -34,7 +49,10 @@ function say(reason: unknown): void {
 
 export function ErrorNotifier() {
   useEffect(() => {
-    const onError = (event: ErrorEvent) => say(event.error ?? event.message);
+    const onError = (event: ErrorEvent) => {
+      if (fromAnotherOrigin(event)) return;
+      say(event.error ?? event.message);
+    };
     const onRejection = (event: PromiseRejectionEvent) => say(event.reason);
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);
