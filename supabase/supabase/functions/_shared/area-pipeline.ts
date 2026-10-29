@@ -463,7 +463,14 @@ type RankedPoolDeps<T extends PoolRow> = {
   pagesMax?: number;
 };
 
-type RankedPool = { places: AreaPoolPlace[]; summary: CatalogPoolSummary; lastId: string | null };
+type RankedPool = {
+  places: AreaPoolPlace[];
+  summary: CatalogPoolSummary;
+  lastId: string | null;
+  /** Every ranked id, best first (MESITA-3057): the Catalog hands Home the
+   *  whole order once and Home fills cards by id. Empty on the Map. */
+  order: string[];
+};
 
 /** Both passes: walk, rank with `selectAreaPool`, keep `keepMax`, read the
  *  kept cards, emit them in rank order. */
@@ -514,6 +521,7 @@ async function selectRankedPool<T extends PoolRow>(
       next: end < ranked.places.length ? end : null,
     },
     lastId: walk.lastId,
+    order: surface === "catalog" ? ranked.places.map((p) => p.id) : [],
   };
 }
 
@@ -541,6 +549,41 @@ export function selectCatalogPool<T extends PoolRow>(
     deps.page ? deps.page.size : CATALOG_RETURN_MAX,
     deps.page ? deps.page.offset : 0,
   );
+}
+
+/**
+ * A Catalog fill (MESITA-3057, Pato: "have all the ids … then populate with
+ * data and the images"): the cards for ids Home already holds from a rank
+ * answer's `order`, read through the same gates and scored from the same
+ * point, so each card carries the rank's `area` and `distance_km`. Rows a
+ * gate now closes (inactive, family, under the Popularity floor) drop out;
+ * the rest come back in the asked order. No pass 1: nothing is ranked again.
+ */
+export async function selectCatalogFill<T extends PoolRow>(
+  deps: Omit<RankedPoolDeps<T>, "pagesMax"> & { location: AreaLocation; ids: readonly string[] },
+): Promise<{ places: AreaPoolPlace[]; summary: { asked: number; returned: number; chunks: number } }> {
+  const cards = await cardsForIds(
+    deps.read,
+    deps.cfg,
+    { families: deps.families },
+    deps.cardColumns,
+    deps.ids,
+  );
+  // The card columns hold every scoring column, so the scorer reads the
+  // cards themselves.
+  const scored = await selectAreaPool({
+    surface: "catalog",
+    location: deps.location,
+    families: deps.families,
+    mesitaRows: deps.wire(cards.rows),
+    cfg: deps.cfg,
+  });
+  const byId = new Map(scored.places.map((p) => [p.id, p]));
+  const places = deps.ids.flatMap((id) => {
+    const p = byId.get(id);
+    return p ? [p] : [];
+  });
+  return { places, summary: { asked: deps.ids.length, returned: places.length, chunks: cards.chunks } };
 }
 
 /**
