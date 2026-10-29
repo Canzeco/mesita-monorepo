@@ -413,3 +413,77 @@ export async function createPlaceFromGooglePlaceId(
     enrichmentTriggered: r.data.enrichment?.enrichmentTriggered ?? false,
   };
 }
+
+// ── Batches (Multiple Places, MESITA-3085) ───────────────────────────────
+// The browser runs server actions ONE AT A TIME, so a box that fans out one
+// action per row runs its rows in series however it awaits them. Each box
+// run is therefore ONE action that calls every edge function at once and
+// returns one result per id. Render, not this page, decides how many
+// enrichments run together.
+
+/** The most places one Enrich start carries: ENRICH_MAX_PLACES in
+ *  supabase/functions/_shared/enrich-start.ts, which refuses the whole call
+ *  past it. */
+const ENRICH_CHUNK = 50;
+
+function thrown(err: unknown): string {
+  return err instanceof Error ? err.message : "Unexpected error";
+}
+
+/** Create every Google Place ID at once. Keyed by the Google Place ID. */
+export async function createPlacesFromGooglePlaceIds(
+  googlePlaceIds: string[],
+): Promise<Record<string, CreatePlaceResult>> {
+  const rows = await Promise.all(
+    googlePlaceIds.map(async (id) => {
+      const r = await createPlaceFromGooglePlaceId(id).catch(
+        (err: unknown): CreatePlaceResult => ({ ok: false, error: thrown(err) }),
+      );
+      return [id, r] as const;
+    }),
+  );
+  return Object.fromEntries(rows);
+}
+
+/** Enable, Disable, Delete or Update Google every place at once. Keyed by
+ *  the Mesita place id. */
+export async function writePlaces(
+  placeIds: string[],
+  action: "list" | "unlist" | "delete" | "google-update",
+): Promise<Record<string, Result<true>>> {
+  const rows = await Promise.all(
+    placeIds.map(async (id) => {
+      const call =
+        action === "google-update"
+          ? updatePlaceGoogle(id)
+          : action === "delete"
+            ? deletePlace(id)
+            : setPlaceListed(id, action === "list");
+      const r = await call.catch(
+        (err: unknown): Result<true> => ({ ok: false, error: thrown(err) }),
+      );
+      return [id, r] as const;
+    }),
+  );
+  return Object.fromEntries(rows);
+}
+
+/** Start Enrich for every place: all chunks of ENRICH_CHUNK at once. Keyed
+ *  by the Mesita place id; each id carries its own chunk's result. */
+export async function enrichPlacesAll(
+  placeIds: string[],
+): Promise<Record<string, Result<true>>> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < placeIds.length; i += ENRICH_CHUNK) {
+    chunks.push(placeIds.slice(i, i + ENRICH_CHUNK));
+  }
+  const rows = await Promise.all(
+    chunks.map(async (chunk) => {
+      const r = await enrichPlaces(chunk).catch(
+        (err: unknown): Result<true> => ({ ok: false, error: thrown(err) }),
+      );
+      return chunk.map((id) => [id, r] as const);
+    }),
+  );
+  return Object.fromEntries(rows.flat());
+}

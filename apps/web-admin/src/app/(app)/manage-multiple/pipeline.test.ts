@@ -14,7 +14,11 @@ describe("the page chrome names the five surfaces", () => {
     // boxes. They wrote from web-business (claim → verify → own → Stripe
     // onboarding) until MESITA-2089 deleted it.
     expect(box).toContain("window.confirm");
-    expect(box).toContain("deletePlace");
+    // Delete runs in the box's one batch action (MESITA-3085).
+    expect(box).toContain("writePlaces");
+    expect(readFileSync(join(here, "actions.ts"), "utf8")).toContain(
+      "deletePlace(id)",
+    );
     expect(box).not.toContain("Verified");
     expect(box).not.toContain("Partnered");
     expect(box).not.toContain("setPlaceActive");

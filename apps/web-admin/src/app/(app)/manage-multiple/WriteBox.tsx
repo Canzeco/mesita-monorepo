@@ -3,12 +3,10 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Loader2, Play } from "lucide-react";
 import {
-  createPlaceFromGooglePlaceId,
-  deletePlace,
-  enrichPlaces,
-  updatePlacesGoogle,
+  createPlacesFromGooglePlaceIds,
+  enrichPlacesAll,
   searchPlacesByGoogleIds,
-  setPlaceListed,
+  writePlaces,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { CrenupAction } from "./pipeline";
@@ -25,12 +23,6 @@ type Row = {
 };
 
 type Found = { placeId: string; name: string };
-
-// The most places one Enrich start carries: ENRICH_MAX_PLACES in
-// supabase/functions/_shared/enrich-start.ts, which refuses the whole call
-// past it. The box holds 250, so a longer list starts in chunks
-// (MESITA-3084).
-const ENRICH_CHUNK = 50;
 
 // Every Google Place ID in the box resolved to its Mesita place with ONE
 // search call — the EF takes the box's whole 250. An ID missing from the
@@ -118,10 +110,14 @@ export function WriteBox({
       Object.fromEntries(placeIds.map((id) => [id, { state: "pending" as const }])),
     );
     const ids = [...placeIds];
-    if (action === "create") {
-      await Promise.all(ids.map((id) => runRow(id, () => createOne(id), setResults)));
-    } else {
-      await runOnMesita(ids, action, setResults);
+    try {
+      if (action === "create") await runCreate(ids, setResults);
+      else await runOnMesita(ids, action, setResults);
+    } catch (err) {
+      const error = err instanceof Error ? err.message : "Unexpected error";
+      setResults(
+        Object.fromEntries(ids.map((id) => [id, { state: "error" as const, error }])),
+      );
     }
     setRunning(null);
   }
@@ -266,10 +262,47 @@ function ActionButton({
   );
 }
 
+// Every box run is ONE server action that calls all its edge functions at
+// once (MESITA-3085): the browser runs server actions one at a time, so a
+// call per row ran the rows in series. Rows fill in when the batch returns.
+
+async function runCreate(
+  googleIds: string[],
+  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
+): Promise<void> {
+  setResults(
+    Object.fromEntries(googleIds.map((id) => [id, { state: "running" as const }])),
+  );
+  const created = await createPlacesFromGooglePlaceIds(googleIds);
+  setResults(
+    Object.fromEntries(
+      googleIds.map((id): [string, Row] => {
+        const r = created[id];
+        if (!r) return [id, { state: "error", error: "No result" }];
+        if (!r.ok) return [id, { state: "error", error: r.error }];
+        if (r.alreadyExisted) {
+          return [id, {
+            state: "existed",
+            name: r.name,
+            detail: "Already on Mesita — skipped create",
+            placeId: r.placeId,
+            alreadyExisted: true,
+          }];
+        }
+        return [id, {
+          state: "ok",
+          name: r.name,
+          detail: "Created · not enriched",
+          placeId: r.placeId,
+        }];
+      }),
+    ),
+  );
+}
+
 // Enrich, Update, Enable, Disable and Delete write a place already on
-// Mesita: one lookup for the whole box, then the write. Enrich starts the
-// found places in chunks of ENRICH_CHUNK, each row reporting its own chunk;
-// the rest fan out one call per place.
+// Mesita: one lookup for the whole box, then one batch for every place
+// found. Enrich starts its chunks of 50 at once; Render queues them.
 async function runOnMesita(
   googleIds: string[],
   action: Exclude<CrenupAction, "create">,
@@ -278,10 +311,7 @@ async function runOnMesita(
   setResults(
     Object.fromEntries(googleIds.map((id) => [id, { state: "running" as const }])),
   );
-  const lookup = await resolveMesitaIds(googleIds).catch((err: unknown) => ({
-    ok: false as const,
-    error: err instanceof Error ? err.message : "Unexpected error",
-  }));
+  const lookup = await resolveMesitaIds(googleIds);
   if (!lookup.ok) {
     setResults(
       Object.fromEntries(
@@ -290,102 +320,33 @@ async function runOnMesita(
     );
     return;
   }
-  const resolved: { googleId: string; found: Found }[] = [];
-  for (const googleId of googleIds) {
-    const found = lookup.found.get(googleId);
-    if (found) resolved.push({ googleId, found });
-    else {
-      setResults((prev) => ({
-        ...prev,
-        [googleId]: { state: "error", error: "Not on Mesita" },
-      }));
-    }
-  }
-  if (action === "enrich") {
-    for (let i = 0; i < resolved.length; i += ENRICH_CHUNK) {
-      await enrichChunk(resolved.slice(i, i + ENRICH_CHUNK), setResults);
-    }
-    return;
-  }
-  await Promise.all(
-    resolved.map(({ googleId, found }) =>
-      runRow(googleId, () => writeOne(found, action), setResults),
+  const placeIds = googleIds
+    .map((id) => lookup.found.get(id)?.placeId)
+    .filter((id): id is string => Boolean(id));
+  const written =
+    placeIds.length === 0
+      ? {}
+      : action === "enrich"
+        ? await enrichPlacesAll(placeIds)
+        : await writePlaces(placeIds, action);
+  setResults(
+    Object.fromEntries(
+      googleIds.map((googleId): [string, Row] => {
+        const found = lookup.found.get(googleId);
+        if (!found) return [googleId, { state: "error", error: "Not on Mesita" }];
+        const r = written[found.placeId];
+        if (!r) return [googleId, { state: "error", name: found.name, error: "No result" }];
+        if (!r.ok) return [googleId, { state: "error", name: found.name, error: r.error }];
+        return [googleId, doneRow(found, action)];
+      }),
     ),
   );
 }
 
-async function enrichChunk(
-  chunk: { googleId: string; found: Found }[],
-  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
-): Promise<void> {
-  const started = await enrichPlaces(chunk.map((row) => row.found.placeId)).catch(
-    (err: unknown) => ({
-      ok: false as const,
-      error: err instanceof Error ? err.message : "Unexpected error",
-    }),
-  );
-  setResults((prev) => {
-    const next = { ...prev };
-    for (const { googleId, found } of chunk) {
-      next[googleId] = started.ok
-        ? { state: "enriching", name: found.name, detail: "Enrich started" }
-        : { state: "error", name: found.name, error: started.error };
-    }
-    return next;
-  });
-}
-
-async function runRow(
-  googleId: string,
-  write: () => Promise<Row>,
-  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
-): Promise<void> {
-  setResults((prev) => ({ ...prev, [googleId]: { state: "running" } }));
-  try {
-    const row = await write();
-    setResults((prev) => ({ ...prev, [googleId]: row }));
-  } catch (err) {
-    setResults((prev) => ({
-      ...prev,
-      [googleId]: {
-        state: "error",
-        error: err instanceof Error ? err.message : "Unexpected error",
-      },
-    }));
+function doneRow(found: Found, action: Exclude<CrenupAction, "create">): Row {
+  if (action === "enrich") {
+    return { state: "enriching", name: found.name, detail: "Enrich started" };
   }
-}
-
-async function createOne(googleId: string): Promise<Row> {
-  const r = await createPlaceFromGooglePlaceId(googleId);
-  if (!r.ok) return { state: "error", error: r.error };
-  if (r.alreadyExisted) {
-    return {
-      state: "existed",
-      name: r.name,
-      detail: "Already on Mesita — skipped create",
-      placeId: r.placeId,
-      alreadyExisted: true,
-    };
-  }
-  return {
-    state: "ok",
-    name: r.name,
-    detail: "Created · not enriched",
-    placeId: r.placeId,
-  };
-}
-
-async function writeOne(
-  found: Found,
-  action: "list" | "unlist" | "delete" | "google-update",
-): Promise<Row> {
-  const r =
-    action === "google-update"
-      ? await updatePlacesGoogle([found.placeId])
-      : action === "delete"
-        ? await deletePlace(found.placeId)
-        : await setPlaceListed(found.placeId, action === "list");
-  if (!r.ok) return { state: "error", name: found.name, error: r.error };
   const detail =
     action === "google-update"
       ? "Google data refreshed"
