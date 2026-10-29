@@ -19,6 +19,7 @@ import {
   RESERVATION_CAP_OVERRIDE_MAX,
   readCapOverride,
 } from "./reservation-cap.ts";
+import { isUuid } from "./place-id.ts";
 
 /** Columns both admin EFs read back. */
 export const GUEST_ROW_SELECT =
@@ -143,8 +144,6 @@ export type StandingPatch = {
 /** A refusal with a stable code and a message that says the fix. */
 export type StandingError = { code: string; error: string; status: number };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** A real calendar day as YYYY-MM-DD, or null. */
 function calendarDay(v: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
@@ -226,7 +225,7 @@ export function readStandingBody(
   }
   if ("vipPartnerId" in b) {
     const v = b.vipPartnerId;
-    if (v !== null && (typeof v !== "string" || !UUID_RE.test(v.trim()))) {
+    if (v !== null && (typeof v !== "string" || !isUuid(v.trim()))) {
       return {
         ok: false,
         status: 400,

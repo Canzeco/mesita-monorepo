@@ -22,8 +22,7 @@ import {
   readBoostPlace,
   stripeClient,
 } from "../_shared/boost.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-get-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -37,7 +36,7 @@ serveJson("consumer-web-get-boost", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
-  if (typeof placeId !== "string" || !UUID_RE.test(placeId)) {
+  if (!isUuid(placeId)) {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
   const sessionId = typeof bodyRes.body.session_id === "string" ? bodyRes.body.session_id : null;

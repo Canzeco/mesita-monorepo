@@ -12,8 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostStripeKey, cancelBackingAtPeriodEnd, stripeClient } from "../_shared/boost.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-cancel-boost", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -28,7 +27,7 @@ serveJson("consumer-web-cancel-boost", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const backingId = bodyRes.body.backing_id;
-  if (typeof backingId !== "string" || !UUID_RE.test(backingId)) {
+  if (!isUuid(backingId)) {
     return json({ ok: false, error: "backing_id must be a backing id" }, 400);
   }
 

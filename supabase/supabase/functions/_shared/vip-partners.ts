@@ -7,6 +7,7 @@
 // the partner their VIP came through (consumer-web-get-profile).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isUuid } from "./place-id.ts";
 
 export const VIP_PARTNER_NAME_MAX = 80;
 
@@ -30,8 +31,6 @@ export type PartnerBody = {
   googlePlaceId: string | null | undefined;
 };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** The body of a save call, checked. The name is trimmed and its inner
  *  whitespace collapsed; the uniqueness check is the database's. */
 export function readPartnerBody(
@@ -40,7 +39,7 @@ export function readPartnerBody(
   const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
   let id: string | null = null;
   if (b.id !== undefined && b.id !== null) {
-    if (typeof b.id !== "string" || !UUID_RE.test(b.id.trim())) {
+    if (typeof b.id !== "string" || !isUuid(b.id.trim())) {
       return { ok: false, status: 400, code: "invalid_partner", error: "id must be a partner's id" };
     }
     id = b.id.trim().toLowerCase();

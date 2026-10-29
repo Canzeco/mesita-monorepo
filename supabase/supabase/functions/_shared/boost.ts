@@ -17,6 +17,7 @@
 // buys Premier 2X exactly like $10/mo.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { isUuid } from "./place-id.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x" | "boost_10x";
 export type BoostInterval = "month" | "year";
@@ -68,8 +69,6 @@ export function tierFromMonthlyCents(cents: number): 0 | 1 | 2 | 3 {
   return 0;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export type BoostStart = {
   placeId: string;
   tier: BoostTier;
@@ -96,7 +95,7 @@ export function parseBoostStart(
   body: Record<string, unknown>,
 ): { ok: true; start: BoostStart } | { ok: false; error: string } {
   const placeId = body.place_id;
-  if (typeof placeId !== "string" || !UUID_RE.test(placeId)) {
+  if (!isUuid(placeId)) {
     return { ok: false, error: "place_id must be a Mesita place id" };
   }
   const tier = body.tier;

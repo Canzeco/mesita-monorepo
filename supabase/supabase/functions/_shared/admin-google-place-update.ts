@@ -9,6 +9,7 @@ import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts"
 import { mirrorPlacePhotos } from "./store-place-images.ts";
 import { writePlace } from "./place-doc.ts";
 import { googleTypesPrimaryFirst } from "./google-table-b.ts";
+import { googlePlacesKeyOrNull } from "./google-places.ts";
 
 const BUSINESS_STATES = new Set(["OPERATIONAL", "CLOSED_TEMPORARILY", "CLOSED_PERMANENTLY"]);
 
@@ -102,10 +103,6 @@ export function googleBasicsToUpdatePatch(input: {
   return patch;
 }
 
-function googleKey(env: { get(name: string): string | undefined }): string {
-  return (env.get("GMP_KEY") ?? env.get("SUPA_GMP_KEY") ?? "").trim();
-}
-
 export type GooglePlaceUpdateResult =
   | { ok: false; status: number; error: string; code?: string }
   | {
@@ -157,7 +154,7 @@ export async function runGooglePlaceUpdate(
     };
   }
 
-  const key = googleKey(opts.env ?? Deno.env);
+  const key = googlePlacesKeyOrNull(opts.env ?? Deno.env);
   if (!key) {
     return { ok: false, status: 503, code: "no_key", error: "Google Places is not configured." };
   }

@@ -20,6 +20,17 @@ export {
 // for environments that haven't been renamed yet.
 const GOOGLE_PLACES_KEY_ENVS = ["GMP_KEY", "SUPA_GMP_KEY"] as const;
 
+/**
+ * The Google Places key from GMP_KEY (SUPA_GMP_KEY fallback), trimmed, or
+ * null when neither is set. For callers that shape their own "no key" reply;
+ * request handlers that want the standard envelope use readGooglePlacesKey.
+ */
+export function googlePlacesKeyOrNull(
+  env: { get(name: string): string | undefined } = Deno.env,
+): string | null {
+  return (env.get("GMP_KEY") ?? env.get("SUPA_GMP_KEY") ?? "").trim() || null;
+}
+
 // Endpoint URLs for the Places (New) surfaces we use.
 export const GOOGLE_PLACES_AUTOCOMPLETE_URL =
   "https://places.googleapis.com/v1/places:autocomplete";
