@@ -26,17 +26,18 @@ export type ConsumerFacts = {
   unknown: boolean;
 };
 
-/** The Instagram chip line. Connected: "Insta: @handle" (Pato, MESITA-2606:
- *  "say insta: is easy"), because the handle is the one Instagram fact a
- *  guest can check at a glance. Not connected: "Connect Instagram", what the
+/** The Instagram chip line. Connected: "@handle" beside the Instagram logo,
+ *  no "Insta:" (Pato, MESITA-3067: "showing the logo is enough"; MESITA-2606
+ *  had "say insta: is easy"), because the handle is the one Instagram fact
+ *  a guest can check at a glance. Not connected: "Connect Instagram", what the
  *  box does on Me (Pato, MESITA-2696: "i dont like the insta: not
  *  connected"). */
 export const INSTAGRAM_CONNECT_LABEL = "Connect Instagram";
 
 export function instagramSummary(f: ConsumerFacts): string {
-  if (f.unknown) return "Insta: couldn't load";
+  if (f.unknown) return "Couldn't load Instagram";
   if (!f.igConnected) return INSTAGRAM_CONNECT_LABEL;
-  return f.igHandle ? `Insta: @${f.igHandle}` : "Insta: connected";
+  return f.igHandle ? `@${f.igHandle}` : "Instagram connected";
 }
 
 /** A follower count marked as approximate (Pato, MESITA-3046: "use number
@@ -76,7 +77,7 @@ export function updatedAgo(iso: string, now: number): string {
 
 /** Me's Instagram chip and Social's person card: the summary, plus the
  *  rounded follower count in parentheses once a handle is connected
- *  ("Insta: @pato (~1.2K followers)"; Pato, MESITA-3066: "followers in (200
+ *  ("@pato (~1.2K followers)"; Pato, MESITA-3066: "followers in (200
  *  followers)"; a " · " joined them before), the same rounding Social shows
  *  (MESITA-2574: "Instagram Instagram Followers"). */
 export function instagramWithFollowers(
