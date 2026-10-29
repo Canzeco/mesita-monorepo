@@ -20,7 +20,7 @@ import {
   readEFEnv,
 } from "../_shared/auth.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
-import { cancelConsumerBackings, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { boostStripeKey, endConsumerPledges, stripeClient } from "../_shared/boost.ts";
 
 serveJson("consumer-web-delete-account", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -37,10 +37,11 @@ serveJson("consumer-web-delete-account", async (req) => {
 
   const admin = adminClient(envRes.env);
 
-  // Boost (MESITA-1998): stop every subscription the guest still pays
-  // before the account goes, or Stripe keeps billing a deleted member.
+  // Premier (MESITA-2995): settle any charge in flight and take every pledge
+  // out of its line (cards detached) before the account goes, or a renewal
+  // could still charge a deleted member.
   const key = boostStripeKey();
-  const stopped = await cancelConsumerBackings(admin, userId, key ? stripeClient(key) : null);
+  const stopped = await endConsumerPledges(admin, userId, key ? stripeClient(key) : null);
   if (!stopped.ok) {
     return json({ ok: false, error: stopped.error }, 502);
   }

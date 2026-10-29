@@ -2,14 +2,22 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Zap } from "lucide-react";
-import { getPlaceBoost, type AdminBacking, type AdminPlaceBoost } from "../actions";
+import {
+  changePlaceBoost,
+  getPlaceBoost,
+  type AdminPeriod,
+  type AdminPlaceBoost,
+  type AdminPledge,
+} from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 
-// Single Place › Premier (MESITA-2789; Boost renamed Premier, MESITA-2925).
-// The place's paid tier and every guest subscription behind it, read from
-// admin-web-get-place-boost. Premier is paid visibility; nothing here
-// grants, cancels or refunds — the payer manages their own in the consumer
-// app, and Stripe is the record.
+// Single Place › Premier (MESITA-2995; Premier MESITA-2925, Boost
+// MESITA-2789). The place's line — who pays now, who backs up, in the order
+// a renewal walks them — and its recent periods with what each one charged,
+// read from admin-web-get-place-boost. The operator can grant a period
+// nobody pays for (so a place can be Premier without a payment), end a
+// running grant, or take one pledge out of the line
+// (admin-web-grant-place-boost). Nothing here refunds; Stripe is the record.
 
 const TIER_LABEL: Record<0 | 1 | 2 | 3, string> = {
   0: "Not Premier",
@@ -18,10 +26,14 @@ const TIER_LABEL: Record<0 | 1 | 2 | 3, string> = {
   3: "Premier 10X",
 };
 
-const BACKING_TIER_LABEL: Record<AdminBacking["tier"], string> = {
-  boost_2x: "Premier 2X",
-  boost_5x: "Premier 5X",
-  boost_10x: "Premier 10X",
+const MARK: Record<number, string> = { 1: "2X", 2: "5X", 3: "10X" };
+
+const PERIOD_STATUS: Record<AdminPeriod["status"], string> = {
+  charging: "Charging",
+  paid: "Paid",
+  declined: "Declined",
+  replaced: "Replaced",
+  ended: "Ended",
 };
 
 function usd(cents: number): string {
@@ -49,16 +61,58 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function statusLabel(b: AdminBacking): string {
-  if (b.live && b.cancel_at_period_end) return "Ends at period end";
-  if (b.live) return "Active";
-  return b.status.replace(/_/g, " ");
+function roleLabel(p: AdminPledge): string {
+  if (p.role === "payer") return "Paying now";
+  if (p.role === "backup") return `Backup ${p.position}`;
+  if (p.status === "failed") return "Card declined";
+  if (p.status === "open") return "Checkout open";
+  return "Not in line";
+}
+
+/** A two-step button: the first tap arms it, the second does it. */
+function ConfirmButton({
+  label,
+  confirm,
+  busy,
+  onConfirm,
+}: {
+  label: string;
+  confirm: string;
+  busy: boolean;
+  onConfirm: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        if (!armed) {
+          setArmed(true);
+          return;
+        }
+        setArmed(false);
+        onConfirm();
+      }}
+      onBlur={() => setArmed(false)}
+      className={
+        "rounded-full border px-3 py-1 text-xs font-semibold transition disabled:opacity-50 " +
+        (armed ? "border-foreground bg-foreground text-white" : "border-border hover:bg-muted")
+      }
+    >
+      {armed ? confirm : label}
+    </button>
+  );
 }
 
 export function BoostSection({ placeId }: { placeId: string }) {
   const [data, setData] = useState<AdminPlaceBoost | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [grantTier, setGrantTier] = useState<1 | 2 | 3>(1);
+  const [grantMonths, setGrantMonths] = useState(1);
 
   const apply = useCallback((r: Awaited<ReturnType<typeof getPlaceBoost>>) => {
     setLoading(false);
@@ -87,7 +141,20 @@ export function BoostSection({ placeId }: { placeId: string }) {
     };
   }, [apply, placeId]);
 
-  const testMode = data?.backings.some((b) => !b.livemode) ?? false;
+  async function change(c: Parameters<typeof changePlaceBoost>[1]) {
+    setBusy(true);
+    setActionError(null);
+    const r = await changePlaceBoost(placeId, c);
+    setBusy(false);
+    if (!r.ok) {
+      setActionError(r.error);
+      return;
+    }
+    await load();
+  }
+
+  const testMode = data?.line.some((p) => !p.livemode) ?? false;
+  const grantRunning = data?.period?.granted ?? false;
 
   return (
     <div className="flex flex-col gap-4">
@@ -95,7 +162,7 @@ export function BoostSection({ placeId }: { placeId: string }) {
         icon={<Zap className="h-4 w-4" />}
         tint="amber"
         title="Premier"
-        subtitle="Paid visibility a guest bought for this place. Marked Premier."
+        subtitle="Paid visibility. One pledge pays per period; the rest back it up."
         action={
           <button
             type="button"
@@ -115,46 +182,165 @@ export function BoostSection({ placeId }: { placeId: string }) {
         ) : !data ? (
           <p className="text-muted-foreground mt-3 text-sm">Loading…</p>
         ) : (
-          <div className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Stat label="Tier" value={TIER_LABEL[data.tier]} />
-            <Stat label="Map factor" value={`×${data.factor}`} />
-            <Stat label="Paid a month" value={usd(data.monthly_cents)} />
-            <Stat label="Backers" value={String(data.backers)} />
+          <div className="mt-3 flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Stat label="Tier" value={TIER_LABEL[data.tier]} />
+              <Stat label="Map factor" value={`×${data.factor}`} />
+              <Stat
+                label={data.period?.granted ? "Granted until" : "Paid through"}
+                value={data.period ? day(data.period.ends_at) : "—"}
+              />
+              <Stat label="In line" value={String(data.line.filter((p) => p.role !== "waiting").length)} />
+            </div>
+
+            {data.stuck > 0 ? (
+              <p className="border-border rounded-lg border px-3 py-2 text-sm">
+                {data.stuck} {data.stuck === 1 ? "charge has" : "charges have"} been waiting on Stripe for over two
+                hours. The 5-minute sync keeps asking; past 24 hours it cancels and moves to the next pledge.
+              </p>
+            ) : null}
+
+            <div className="flex flex-wrap items-center gap-2">
+              {grantRunning ? (
+                <ConfirmButton
+                  label="End grant"
+                  confirm="End it now"
+                  busy={busy}
+                  onConfirm={() => void change({ action: "end" })}
+                />
+              ) : (
+                <>
+                  <select
+                    aria-label="Grant level"
+                    value={grantTier}
+                    onChange={(e) => setGrantTier(Number(e.target.value) as 1 | 2 | 3)}
+                    className="border-border bg-card rounded-full border px-3 py-1 text-xs"
+                  >
+                    <option value={1}>Premier 2X</option>
+                    <option value={2}>Premier 5X</option>
+                    <option value={3}>Premier 10X</option>
+                  </select>
+                  <select
+                    aria-label="Grant length"
+                    value={grantMonths}
+                    onChange={(e) => setGrantMonths(Number(e.target.value))}
+                    className="border-border bg-card rounded-full border px-3 py-1 text-xs"
+                  >
+                    {[1, 2, 3, 6, 12].map((m) => (
+                      <option key={m} value={m}>
+                        {m} {m === 1 ? "month" : "months"}
+                      </option>
+                    ))}
+                  </select>
+                  <ConfirmButton
+                    label="Grant Premier"
+                    confirm="Grant, no charge"
+                    busy={busy || data.period != null}
+                    onConfirm={() => void change({ action: "grant", tier: grantTier, months: grantMonths })}
+                  />
+                  {data.period ? (
+                    <span className="text-muted-foreground text-xs">A paid period is running.</span>
+                  ) : null}
+                </>
+              )}
+            </div>
+            {actionError ? (
+              <p role="alert" className="text-destructive text-sm">
+                {actionError}
+              </p>
+            ) : null}
           </div>
         )}
         {testMode ? (
-          <p className="text-muted-foreground mt-3 text-xs">
-            Stripe test mode: these backings charge no real card.
-          </p>
+          <p className="text-muted-foreground mt-3 text-xs">Stripe test mode: these pledges charge no real card.</p>
         ) : null}
       </SectionCard>
 
       {data ? (
-        <SectionCard title="Backings" subtitle="Every subscription for this place, newest first.">
-          {data.backings.length === 0 ? (
-            <p className="text-muted-foreground mt-3 text-sm">Nobody has made this place Premier yet.</p>
+        <SectionCard title="Line" subtitle="Who pays now, then who pays if that card fails, in order.">
+          {data.line.length === 0 ? (
+            <p className="text-muted-foreground mt-3 text-sm">Nobody has pledged for this place yet.</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="text-muted-foreground type-label">
                   <tr>
-                    <th className="py-2 pr-4 font-medium">Payer</th>
-                    <th className="py-2 pr-4 font-medium">Tier</th>
+                    <th className="py-2 pr-4 font-medium">Role</th>
+                    <th className="py-2 pr-4 font-medium">Guest</th>
+                    <th className="py-2 pr-4 font-medium">Level</th>
                     <th className="py-2 pr-4 font-medium">Billing</th>
-                    <th className="py-2 pr-4 font-medium">Status</th>
-                    <th className="py-2 pr-4 font-medium">Paid through</th>
+                    <th className="py-2 pr-4 font-medium">In line since</th>
+                    <th className="py-2 font-medium" />
                   </tr>
                 </thead>
                 <tbody>
-                  {data.backings.map((b) => (
-                    <tr key={b.id} className="border-border border-t">
-                      <td className="py-2 pr-4">{b.payer ?? "Deleted account"}</td>
-                      <td className="py-2 pr-4">{BACKING_TIER_LABEL[b.tier] ?? b.tier}</td>
+                  {data.line.map((p) => (
+                    <tr key={p.id} className="border-border border-t">
+                      <td className="py-2 pr-4 font-semibold whitespace-nowrap">{roleLabel(p)}</td>
+                      <td className="py-2 pr-4">{p.payer ?? "Deleted account"}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">
-                        {usd(b.amount_cents)}/{b.interval === "year" ? "yr" : "mo"}
+                        {MARK[p.tier]}
+                        {p.pending_tier ? ` → ${MARK[p.pending_tier]} (paying)` : ""}
                       </td>
-                      <td className="py-2 pr-4 capitalize">{statusLabel(b)}</td>
-                      <td className="py-2 pr-4 whitespace-nowrap">{day(b.current_period_end)}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        {usd(p.amount_cents)}/{p.interval === "year" ? "yr" : "mo"}
+                      </td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{day(p.queued_at)}</td>
+                      <td className="py-2 text-right">
+                        <ConfirmButton
+                          label="Remove"
+                          confirm="Remove pledge"
+                          busy={busy}
+                          onConfirm={() => void change({ action: "remove_pledge", backingId: p.id })}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
+      ) : null}
+
+      {data ? (
+        <SectionCard title="Periods" subtitle="What each stretch charged, newest first.">
+          {data.periods.length === 0 ? (
+            <p className="text-muted-foreground mt-3 text-sm">No Premier period yet.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-muted-foreground type-label">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Status</th>
+                    <th className="py-2 pr-4 font-medium">Dates</th>
+                    <th className="py-2 pr-4 font-medium">Level</th>
+                    <th className="py-2 pr-4 font-medium">Paid by</th>
+                    <th className="py-2 pr-4 font-medium">Price</th>
+                    <th className="py-2 pr-4 font-medium">Credit</th>
+                    <th className="py-2 font-medium">Charged</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.periods.map((p) => (
+                    <tr
+                      key={p.id}
+                      className={
+                        "border-border border-t" + (p.status === "replaced" || p.status === "declined" ? " opacity-60" : "")
+                      }
+                    >
+                      <td className="py-2 pr-4 whitespace-nowrap">{PERIOD_STATUS[p.status]}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        {day(p.starts_at)} – {day(p.ends_at)}
+                      </td>
+                      <td className="py-2 pr-4">{MARK[p.tier]}</td>
+                      <td className="py-2 pr-4">{p.payer ?? (p.granted_by ? `Granted (${p.granted_by})` : "—")}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">{usd(p.price_cents)}</td>
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        {p.credit_cents ? usd(p.credit_cents) : "—"}
+                        {p.extra_days ? ` +${p.extra_days}d` : ""}
+                      </td>
+                      <td className="py-2 whitespace-nowrap">{usd(p.charged_cents)}</td>
                     </tr>
                   ))}
                 </tbody>

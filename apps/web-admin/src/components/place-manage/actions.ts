@@ -141,9 +141,9 @@ export type AdminPlace = {
   /** THE Enriched fact (MESITA-2154): an Enrich run completed —
    *  `enriched_at` set. Never the Crenup high-water, never content_state. */
   enriched?: boolean;
-  /** Premier (MESITA-2925, was Boost — MESITA-2789): the paid tier,
-   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from guests'
-   *  subscriptions; never set here. Profile States shows it (MESITA-2795). */
+  /** Premier (MESITA-2995; MESITA-2925, was Boost — MESITA-2789): the paid tier,
+   *  `places.boost_tier`, 0 none · 1 2X · 2 5X · 3 10X. Derived from the
+   *  paid period covering now; never set here. Profile States shows it (MESITA-2795). */
   boost_tier?: number;
   /** Guest request count — still on the row for enrich threshold; not in admin UI. */
   request_count?: number;
@@ -311,40 +311,73 @@ export async function setPlaceListed(
   };
 }
 
-// ── Premier (MESITA-2789; Boost renamed Premier, MESITA-2925) ──────────
+// ── Premier (MESITA-2995; Premier MESITA-2925, Boost MESITA-2789) ───────
 
-/** One guest's subscription behind a place's Premier tier, as Single
- *  Place › Premier lists it. Amounts are US cents per billing interval. */
-export type AdminBacking = {
+/** One pledge in a place's Premier line, as Single Place › Premier lists
+ *  it: the payer first, then the backups in the order a renewal walks
+ *  them, then pledges not in line (declined card, unfinished Checkout).
+ *  Amounts are US cents per billing interval. */
+export type AdminPledge = {
   id: string;
   payer: string | null;
-  payer_id: string | null;
-  tier: "boost_2x" | "boost_5x" | "boost_10x";
+  tier: 1 | 2 | 3;
   interval: "month" | "year";
   amount_cents: number;
-  currency: string;
-  status: string;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean;
+  status: "open" | "ready" | "failed" | "ended";
+  role: "payer" | "backup" | "waiting";
+  position: number | null;
+  pending_tier: number | null;
   livemode: boolean;
-  live: boolean;
-  created_at: string;
+  queued_at: string;
+};
+
+/** One paid stretch of the place's Premier (or a grant, `payer` null). */
+export type AdminPeriod = {
+  id: string;
+  payer: string | null;
+  granted_by: string | null;
+  tier: 1 | 2 | 3;
+  interval: "month" | "year";
+  starts_at: string;
+  ends_at: string;
+  price_cents: number;
+  credit_cents: number;
+  extra_days: number;
+  charged_cents: number;
+  status: "charging" | "paid" | "declined" | "replaced" | "ended";
 };
 
 export type AdminPlaceBoost = {
   tier: 0 | 1 | 2 | 3;
   factor: number;
-  monthly_cents: number;
-  backers: number;
-  backings: AdminBacking[];
+  period: { id: string; tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
+  line: AdminPledge[];
+  periods: AdminPeriod[];
+  /** Charges still unknown after two hours. */
+  stuck: number;
 };
 
-/** The place's paid tier and every backing behind it. Read-only
+/** The place's Premier: period, line and recent periods
  *  (admin-web-get-place-boost). */
 export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceBoost>> {
   const r = await efInvoke<AdminPlaceBoost>("admin-web-get-place-boost", { placeId });
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, data: r.data };
+}
+
+/** The operator's Premier writes (admin-web-grant-place-boost): grant a
+ *  period nobody pays for, end a running grant, or take a pledge out of
+ *  the line. None refunds. */
+export async function changePlaceBoost(
+  placeId: string,
+  change:
+    | { action: "grant"; tier: 1 | 2 | 3; months: number }
+    | { action: "end" }
+    | { action: "remove_pledge"; backingId: string },
+): Promise<Result<true>> {
+  const r = await efInvoke<{ ok: true }>("admin-web-grant-place-boost", { placeId, ...change });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
 }
 
 export type AdminPlaceReport = {
