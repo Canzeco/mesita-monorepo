@@ -60,6 +60,7 @@ type AtlasConfigResponse = {
   enrichDiscoverOpentableN: number;
   enrichDiscoverUbereatsN: number;
   enrichRequestThreshold: number;
+  updateEveryViews: number;
   enrichCreateOnOpenConsumer: boolean;
   enrichCreateOnOpenAdmin: boolean;
   enrichConsumerCreatesPerDay: number;
@@ -104,6 +105,7 @@ export async function updateAtlasConfig(patch: {
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
   requestThreshold?: number;
+  updateEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;

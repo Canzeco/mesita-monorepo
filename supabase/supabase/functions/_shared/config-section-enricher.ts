@@ -34,6 +34,7 @@ import { normalizeEnrichmentTriggers } from "./enrich-triggers.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import {
   CONSUMER_CREATES_PER_DAY_MAX,
+  UPDATE_EVERY_VIEWS_MAX,
   normalizeEnrichmentConfig,
 } from "./enrichment-config.ts";
 import { funnelLockError, intInRange } from "./atlas-config-validate.ts";
@@ -64,6 +65,7 @@ type Body = {
   discoverOpentableN?: number;
   discoverUbereatsN?: number;
   requestThreshold?: number;
+  updateEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
@@ -261,6 +263,15 @@ export async function writeEnricherSection(
     const n = intInRange(body.requestThreshold, 1, 100);
     if (n === null) return jsonError("requestThreshold must be an integer 1-100", 400);
     next.enrichRequestThreshold = n;
+    blobTouched = true;
+  }
+
+  if (body.updateEveryViews !== undefined) {
+    const n = intInRange(body.updateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX);
+    if (n === null) {
+      return jsonError(`updateEveryViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
+    }
+    next.updateEveryViews = n;
     blobTouched = true;
   }
 
