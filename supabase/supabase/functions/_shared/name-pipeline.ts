@@ -339,8 +339,8 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
 
 /**
  * The guest bar's Popularity order (MESITA-2724): a stable partition. A
- * Google-only place row whose Popularity, ln(1 + reviews × stars), is under
- * the floor moves after every other row; Mesita rows, Locations and Google
+ * Google-only place row whose Popularity, (1 + reviews × stars)^root
+ * (MESITA-3083), is under the floor moves after every other row; Mesita rows, Locations and Google
  * rows that clear the floor keep their order in front. Nothing is removed. A
  * floor of 0 or less returns the list unchanged. `unknown` counts demoted rows
  * with no rating or no review count (they read Popularity 0).
@@ -355,6 +355,7 @@ export function resolveMode(raw?: string | null): SuggestPlacesMode {
 export function demoteGoogleUnderFloor(
   items: readonly LaneItem[],
   floor: number,
+  root?: number,
 ): { items: LaneItem[]; demoted: number; unknown: number } {
   if (!(floor > 0)) return { items: [...items], demoted: 0, unknown: 0 };
   const front: LaneItem[] = [];
@@ -362,7 +363,7 @@ export function demoteGoogleUnderFloor(
   let unknown = 0;
   for (const item of items) {
     const isGooglePlace = item.kind !== "location" && item.state === "not_in_mesita";
-    if (isGooglePlace && !clearsPopularityFloor(item, floor)) {
+    if (isGooglePlace && !clearsPopularityFloor(item, floor, root)) {
       back.push({ ...item, underFloor: true });
       if (typeof item.rating !== "number" || typeof item.reviewCount !== "number") unknown++;
     } else {
@@ -432,7 +433,7 @@ async function runNamePipeline(
   // must still find it), unlike Home, the Map and Chat, where the same floor
   // hides a place. Admin Find and Word keep Google's own order.
   const ordered = shape.demoteUnderFloor
-    ? demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor)
+    ? demoteGoogleUnderFloor(predictions, cfg.map.popularityFloor, cfg.params.popularity.root)
     : { items: predictions, demoted: 0, unknown: 0 };
   console.info(JSON.stringify({
     fn: "search-lane",

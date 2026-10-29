@@ -12,9 +12,9 @@ import {
 } from "./area-score.ts";
 
 const ANCHOR = { lat: 19.43, lng: -99.13 };
-/** Popularity of a 4.0★ place with 100 reviews: ln(1 + 100 × 4) ≈ 5.99
- *  (MESITA-2710). */
-const POP = Math.log1p(400);
+/** Popularity of a 4.0★ place with 100 reviews: (1 + 100 × 4)^0.33 ≈ 7.23,
+ *  the cube root (MESITA-3083; ln before it, MESITA-2710). */
+const POP = Math.pow(401, 0.33);
 const CTX: AreaContext = {
   location: { kind: "point", anchor: ANCHOR, radiusKm: 8 },
   families: [],
@@ -167,7 +167,7 @@ Deno.test("the Map: the radius gates, Proximity is not read, Popularity orders (
   const far = cand({ id: "far", lat: ANCHOR.lat + 2.9 / 111.195, rating: 4.6, reviewCount: 1000 });
   const s = areaScore(far, map);
   assertEquals(s.signals.proximity, null);
-  assertAlmostEquals(s.final, Math.log1p(4600), 1e-9);
+  assertAlmostEquals(s.final, Math.pow(4601, 0.33), 1e-9);
   // The far, popular place outranks the near, quiet one inside the circle.
   assertEquals(rankArea([near, far], (c) => c, map).map((r) => r.item.id), ["far", "near"]);
   // Past the circle it is gated out.
@@ -187,14 +187,14 @@ Deno.test("the Catalog: no radius gate, Proximity ½ at the half distance (MESIT
   assertEquals(far.final > 0, true);
 });
 
-Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the product is never clamped (MESITA-2710)", () => {
+Deno.test("Popularity is (1 + reviews × stars)^root, never normalized, and the product is never clamped (MESITA-2710, MESITA-3083)", () => {
   const big = areaScore(cand({ rating: 4.6, reviewCount: 1000 }), NONE);
-  assertAlmostEquals(big.signals.popularity!, Math.log1p(4600), 1e-12);
+  assertAlmostEquals(big.signals.popularity!, Math.pow(4601, 0.33), 1e-12);
   assertEquals(big.signals.popularity! > 1, true);
   // The score is Popularity itself, no cap at 1.
-  assertAlmostEquals(big.final, Math.log1p(4600) * 1, 1e-9);
-  // No reviews: 0, not -Infinity.
-  assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 0);
+  assertAlmostEquals(big.final, Math.pow(4601, 0.33) * 1, 1e-9);
+  // No reviews: a factor of 1, never 0 (the place still ranks by distance and plan).
+  assertEquals(areaScore(cand({ reviewCount: 0 }), NONE).signals.popularity, 1);
   // More reviews at the same stars always rank higher; stars count too.
   const order = rankArea(
     [cand({ id: "few", reviewCount: 30, rating: 4.9 }), cand({ id: "many", reviewCount: 3000, rating: 4.2 })],
@@ -205,8 +205,8 @@ Deno.test("Popularity is ln(1 + reviews × stars), never normalized, and the pro
 });
 
 Deno.test("the Popularity floor drops any place under it, Google or Mesita, Premier or not (MESITA-2714)", () => {
-  const ctx: AreaContext = { ...CTX, popularityFloor: 3 };
-  // ln(1 + 4 × 4) ≈ 2.83 < 3: out. ln(1 + 5 × 4) ≈ 3.04: in.
+  const ctx: AreaContext = { ...CTX, popularityFloor: 2.7 };
+  // (1 + 4 × 4)^0.33 ≈ 2.55 < 2.7: out. (1 + 5 × 4)^0.33 ≈ 2.73: in.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
   const ok = cand({ id: "ok", rating: 4, reviewCount: 5, source: "google" });
   const unrated = cand({ id: "unrated", rating: null, reviewCount: null, source: "mesita" });
@@ -220,8 +220,9 @@ Deno.test("the Popularity floor drops any place under it, Google or Mesita, Prem
 });
 
 Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)", () => {
-  // One spot, so Popularity alone orders: ln(1 + 50 × 4) ≈ 5.30, × 2 ≈ 10.6,
-  // beats ln(1 + 3000 × 4.5) ≈ 9.51.
+  // One spot, so Popularity alone orders: (1 + 50 × 4)^0.33 ≈ 5.76, × 2 ≈
+  // 11.5, under (1 + 3000 × 4.5)^0.33 ≈ 23.1: at the cube root a ×2 plan is
+  // worth 8× the reviews, not 60× (MESITA-3083; under ln it won).
   const paid = cand({ id: "paid", rating: 4, reviewCount: 50, premierTier: 1 });
   const loved = cand({ id: "loved", rating: 4.5, reviewCount: 3000, source: "google" });
   const plain = cand({ id: "plain", rating: 4, reviewCount: 50 });
@@ -229,12 +230,12 @@ Deno.test("Premier multiplies by its tier, every other place by 1 (MESITA-2925)"
   assertEquals(areaScore(loved, CTX).selectedFactor, 1);
   assertEquals(areaScore(plain, CTX).selectedFactor, 1);
   assertAlmostEquals(areaScore(paid, CTX).final, 2 * areaScore(plain, CTX).final, 1e-9);
-  assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["paid", "loved", "plain"]);
+  assertEquals(rankArea([loved, plain, paid], (c) => c, CTX).map((r) => r.item.id), ["loved", "paid", "plain"]);
   // No location: Popularity × s.
-  assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.log1p(200), 1e-9);
+  assertAlmostEquals(areaScore(paid, NONE).final, 2 * Math.pow(201, 0.33), 1e-9);
   // It never saves a place from the Popularity floor.
   const thin = cand({ id: "thin", rating: 4, reviewCount: 4, premierTier: 2 });
-  assertEquals(areaScore(thin, { ...CTX, popularityFloor: 3 }).final, 0);
+  assertEquals(areaScore(thin, { ...CTX, popularityFloor: 2.7 }).final, 0);
 });
 
 // NO REACH (MESITA-3015, money: Premier is sold). The reach (MESITA-2920)

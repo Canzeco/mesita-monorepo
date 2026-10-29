@@ -24,7 +24,7 @@ const mockInvoke = vi.mocked(efInvoke);
 function liveConfig(): DiscoveryConfig {
   return coerceConfig({
     ...DEFAULT_CONFIG,
-    params: { ...DEFAULT_CONFIG.params, popularity: { halfReviews: 100 } },
+    params: { ...DEFAULT_CONFIG.params, popularity: { root: 0.33 } },
     chat: { prompt: "live prompt" },
   });
 }
@@ -59,8 +59,8 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
   return {
     ...live,
     params: {
-      proximity: { halfKm: 8 },
-      popularity: { halfReviews: 250 },
+      proximity: { halfKm: 8, exponent: 2 },
+      popularity: { root: 0.5 },
     },
     map: {
       ...live.map,
@@ -125,7 +125,7 @@ describe("the Catalog box (MESITA-2909)", () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.catalog]);
-    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8 }, popularity: { halfReviews: 250 } });
+    expect(sent.config?.params).toEqual({ proximity: { halfKm: 8, exponent: 2 }, popularity: { root: 0.5 } });
     expect(sent.config?.map).toEqual({ ...live.map, catalogPageSize: 33 });
     expect(sent.config?.name).toEqual(live.name);
     expect(sent.config?.chat).toEqual(live.chat);

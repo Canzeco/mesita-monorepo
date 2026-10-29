@@ -40,7 +40,11 @@ import {
   type LatLng,
   rankArea,
 } from "./area-score.ts";
-import { PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
+import {
+  POPULARITY_ROOT_DEFAULT,
+  PROXIMITY_EXPONENT_DEFAULT,
+  PROXIMITY_HALF_KM_DEFAULT,
+} from "./pipeline-signals.ts";
 import { type DiscoveryConfig, type SignalParams } from "./discovery-config.ts";
 import { chunked, ID_CHUNK } from "./postgrest.ts";
 import { finiteOrNull } from "./input.ts";
@@ -50,20 +54,23 @@ import { finiteOrNull } from "./input.ts";
 export type AreaSurface = "map" | "catalog";
 
 /** The numbers a pipeline reads from the blob: Proximity's half distance
- *  (the Catalog only; the Map has none, MESITA-2909) and the Popularity
- *  floor (both pipelines and Chat). Popularity takes no parameter
- *  (MESITA-2710: ln(1 + reviews × stars)); the Premier factor is the row's
- *  own tier, no knob (MESITA-2925). */
+ *  and exponent (the Catalog only; the Map has none, MESITA-2909,
+ *  MESITA-3083), Popularity's root (every pipeline and Chat, MESITA-3083:
+ *  (1 + reviews × stars)^root) and the Popularity floor (both pipelines and
+ *  Chat). The Premier factor is the row's own tier, no knob (MESITA-2925). */
 export function areaSignalParams(
   params: SignalParams,
   map: { popularityFloor?: number },
   surface: AreaSurface,
-): Pick<AreaContext, "halfKm" | "popularityFloor"> {
+): Pick<AreaContext, "halfKm" | "exponent" | "popularityRoot" | "popularityFloor"> {
+  const positive = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n > 0;
   const h = params.proximity?.halfKm;
+  const e = params.proximity?.exponent;
+  const root = params.popularity?.root;
   return {
-    halfKm: surface === "map"
-      ? null
-      : typeof h === "number" && Number.isFinite(h) && h > 0 ? h : PROXIMITY_HALF_KM_DEFAULT,
+    halfKm: surface === "map" ? null : positive(h) ? h : PROXIMITY_HALF_KM_DEFAULT,
+    exponent: positive(e) ? e : PROXIMITY_EXPONENT_DEFAULT,
+    popularityRoot: positive(root) ? root : POPULARITY_ROOT_DEFAULT,
     // The Popularity floor (MESITA-2714), a gate on every caller.
     popularityFloor: map.popularityFloor,
   };

@@ -94,8 +94,8 @@ Deno.test("chat: the Catalog score ranks; the nearer twin first", () => {
     mrow("near-twin", { lat: CENTER.lat + 0.001 }),
   ], selOpts);
   assertEquals(ids(out), ["near-twin", "far-twin"]);
-  // quiet at 0 km: 1 × ln(1 + 15.5) ≈ 2.8; loved at 1.1 km, h = 5 km:
-  // 0.76 × ln(1 + 14,700) ≈ 7.3.
+  // quiet at 0 km: 1 × (1 + 15.5)^0.33 ≈ 2.5; loved at 1.1 km, h = 5 km:
+  // 0.82 × (1 + 14,700)^0.33 ≈ 19.4 (MESITA-3083).
   const loved = rankMesitaPlaces([
     mrow("quiet", { google_stars_overall: 3.1, google_review_count: 5 }),
     mrow("loved", {
@@ -112,7 +112,10 @@ Deno.test("chat: Chat ranks like the Catalog, by the half distance (MESITA-2909)
     mrow("near-quiet", { lat: CENTER.lat + 0.001, google_stars_overall: 4.0, google_review_count: 100 }),
     mrow("far-loved", { lat: CENTER.lat + 0.05, google_stars_overall: 4.9, google_review_count: 4000 }),
   ];
-  const h = (halfKm: number) => ({ ...selOpts, params: { ...selOpts.params, proximity: { halfKm } } });
+  const h = (halfKm: number) => ({
+    ...selOpts,
+    params: { ...selOpts.params, proximity: { ...selOpts.params.proximity, halfKm } },
+  });
   assertEquals(ids(rankMesitaPlaces(rows, h(0.5)))[0], "near-quiet");
   assertEquals(ids(rankMesitaPlaces(rows, h(50)))[0], "far-loved");
 });

@@ -21,6 +21,8 @@ import { getDiscoveryConfig, updateDiscoveryConfig, type DiscoverySlice } from "
 import {
   CATALOG_PAGE_SIZE_MAX,
   CATALOG_PAGE_SIZE_MIN,
+  EXPONENT_MAX,
+  EXPONENT_MIN,
   HALF_KM_MAX,
   HALF_KM_MIN,
   MAP_PLACES_SHOWN_MAX,
@@ -37,6 +39,8 @@ import {
   NAME_IDLE_SEC_MAX,
   NAME_IDLE_SEC_MIN,
   NAME_LANE_COUNT_MAX,
+  POPULARITY_ROOT_MAX,
+  POPULARITY_ROOT_MIN,
   type DiscoveryConfig,
 } from "./catalog";
 import { PipelineBox } from "./PipelineBox";
@@ -343,11 +347,14 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
         <p className="text-muted-foreground type-meta">
           A place whose Popularity is under the Minimum Popularity (now{" "}
           {cfg.map.popularityFloor}; 0 is off) never shows on the Map, the
-          Catalog or Chat, whatever its score: 3 is about 4★ × 5 reviews.
-          On the guest Search bar it only reorders: Google places under it sort
-          last, none are removed. Popularity is ln(1 + reviews × stars), never
-          normalized: 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8; a place with
-          no Google numbers scores 0 and sinks, never disappears. A Premier
+          Catalog or Chat, whatever its score: 2.7 is about 4★ × 5 reviews at
+          the cube root. On the guest Search bar it only reorders: Google
+          places under it sort last, none are removed. Popularity is
+          (1 + reviews × stars) to the Popularity root set in the Catalog box
+          (now {cfg.params.popularity.root}; 0.33 is the cube root), never
+          normalized: at the cube root 4.6★ × 1,000 reviews ≈ 16.2, 4.0★ × 30
+          ≈ 4.9; a place with no Google numbers scores 0 and sinks, never
+          disappears. A Premier
           place&apos;s score is multiplied by its paid tier (Premier 2X · 5X),
           every other place&apos;s by 1; being Premier never saves a place
           from the Minimum Popularity.
@@ -389,10 +396,11 @@ export function MapBox(seed: ConfigSeed<DiscoveryConfig>) {
   );
 }
 
-/** Proximity at d km with half distance D (km): the Catalog's curve,
- *  1 ÷ (1 + d ÷ D) (MESITA-3015). Mirrors proximityFromDistance. */
-function catalogProximity(d: number, h: number): number {
-  return 1 / (1 + d / h);
+/** Proximity at d km with half distance D (km) and exponent e: the
+ *  Catalog's curve, 1 ÷ (1 + (d ÷ D)^e) (MESITA-3015, MESITA-3083).
+ *  Mirrors proximityFromDistance. */
+function catalogProximity(d: number, h: number, e: number): number {
+  return 1 / (1 + Math.pow(d / h, e));
 }
 
 // 4 ─ Consumer Catalog Pipeline ────────────────────────────────────────────
@@ -405,13 +413,22 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
     setOk(false);
     setCfg((c) => ({ ...c, params: { ...c.params, proximity: { ...c.params.proximity, ...p } } }));
   };
+  const popularityParam = (p: Partial<DiscoveryConfig["params"]["popularity"]>) => {
+    setOk(false);
+    setCfg((c) => ({ ...c, params: { ...c.params, popularity: { ...c.params.popularity, ...p } } }));
+  };
   const pageSize = (catalogPageSize: number) => {
     setOk(false);
     setCfg((c) => ({ ...c, map: { ...c.map, catalogPageSize } }));
   };
   const dirty = cfg.map.catalogPageSize !== saved.map.catalogPageSize || !same(params, saved.params);
   const h = params.proximity.halfKm;
-  const at = (k: number) => catalogProximity(k * h, h).toFixed(2);
+  const e = params.proximity.exponent;
+  const root = params.popularity.root;
+  const at = (k: number) => catalogProximity(k * h, h, e).toFixed(2);
+  // What a plan is worth in reviews at this root: m^(1 ÷ root).
+  const revFor = (m: number) => Math.round(Math.pow(m, 1 / root)).toLocaleString("en-US");
+  const km = (d: number) => String(Math.round(d * 10) / 10);
   return (
     <PipelineBox
       id="s-catalog"
@@ -427,10 +444,10 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             a time. There is no radius: a far place is never cut, only lowered.
           </p>
           <p className="mt-2">
-            Premier counts at any distance: past the half distance the score
-            is half distance ÷ distance, so a Premier 5X beats a place up
-            to about five times closer, and one in another city never tops
-            Home.
+            Premier counts at any distance: at exponent 1, past the half
+            distance the score is half distance ÷ distance, so a Premier 5X
+            beats a place up to about five times closer, and one in another
+            city never tops Home.
           </p>
           <p className="mt-2">
             No location: Popularity × the Premier factor alone. Mesita places
@@ -452,15 +469,43 @@ export function CatalogBox(seed: ConfigSeed<DiscoveryConfig>) {
             disabled={off}
             onChange={(halfKm) => proximity({ halfKm })}
           />
+          <NumberField
+            label="Distance exponent"
+            value={params.proximity.exponent}
+            min={EXPONENT_MIN}
+            max={EXPONENT_MAX}
+            decimals
+            disabled={off}
+            onChange={(exponent) => proximity({ exponent })}
+          />
+          <NumberField
+            label="Popularity root"
+            value={params.popularity.root}
+            min={POPULARITY_ROOT_MIN}
+            max={POPULARITY_ROOT_MAX}
+            decimals
+            disabled={off}
+            onChange={(root) => popularityParam({ root })}
+          />
         </div>
         <p className="text-muted-foreground type-meta">
-          Proximity is 1 ÷ (1 + distance ÷ half distance): 1 at the guest,
-          ½ at the half distance, ⅓ at twice it, never 0. At {h} km:
-          {" "}{at(0.5)} at half of it, {at(2)} at twice it, {at(4)} at four
-          times it. Inside the half distance Popularity decides; past it
-          twice as far is half the credit, so a better place wins only up
-          to about 1.8× farther. Smaller favours nearer places; bigger
-          favours popular ones. {HALF_KM_MIN}–{HALF_KM_MAX} km.
+          Proximity is 1 ÷ (1 + (distance ÷ half distance)^exponent): 1 at
+          the guest, ½ at the half distance whatever the exponent, never 0.
+          At {h} km and exponent {e}: {at(0.5)} at half of it, {at(2)} at
+          twice it, {at(4)} at four times it. Exponent 1 is the plain
+          reciprocal: past the half distance twice as far is half the
+          credit; under 1 the far keeps its credit, over 1 it falls off a
+          cliff. The half distance is the radius of &quot;here&quot;, the
+          distance that changes no decision: about 0.5 km on foot, 2–3 km by
+          car. {HALF_KM_MIN}–{HALF_KM_MAX} km; exponent {EXPONENT_MIN}–{EXPONENT_MAX}.
+        </p>
+        <p className="text-muted-foreground type-meta">
+          Popularity is (1 + reviews × stars)^root, never normalized; 0.33 is
+          the cube root, 0.5 the square root. Read the three together: at root{" "}
+          {root} a ×2 plan is worth {revFor(2)}× the reviews and a ×5 plan{" "}
+          {revFor(5)}×, and a ×2 plan or {revFor(2)}× the reviews buys {km(h)} km
+          from the guest&apos;s feet, a ×5 plan {km(h * Math.pow(4, 1 / e))} km.
+          {" "}{POPULARITY_ROOT_MIN}–{POPULARITY_ROOT_MAX}.
         </p>
       </Group>
       <Group title="Paging">

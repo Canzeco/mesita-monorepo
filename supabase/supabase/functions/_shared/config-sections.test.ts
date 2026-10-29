@@ -113,29 +113,30 @@ type SectionCase = {
 
 const CASES: Record<string, SectionCase> = {
   discovery: {
-    // The Catalog box's Save (MESITA-2909): the half distance, the reviews
-    // half point and the page size.
+    // The Catalog box's Save (MESITA-2909, MESITA-3083): the half distance,
+    // the exponent, the Popularity root and the page size.
     valid: {
       config: {
-        params: { proximity: { halfKm: 3 }, popularity: { halfReviews: 250 } },
+        params: { proximity: { halfKm: 3, exponent: 2 }, popularity: { root: 0.5 } },
         map: { catalogPageSize: 30 },
       },
     },
     assertSaved: (saved) => {
       const c = saved.config as Row;
       assertEquals(((c.params as Row).proximity as Row).halfKm, 3);
-      assertEquals(((c.params as Row).popularity as Row).halfReviews, 250);
+      assertEquals(((c.params as Row).proximity as Row).exponent, 2);
+      assertEquals(((c.params as Row).popularity as Row).root, 0.5);
       assertEquals((c.map as Row).catalogPageSize, 30);
       assert(c.map && typeof c.map === "object", "map missing");
     },
-    // Coerced, not stored as sent: a half credit of 0 lands clamped at 1, a
-    // half distance of 999 at 50, and a retired key (the reach,
+    // Coerced, not stored as sent: a root of 0 lands clamped at 0.1, a
+    // half distance of 999 at 100, and a retired key (the reach,
     // MESITA-2703; the weights table `params.modes`, MESITA-2687; the linear
     // `balance`) is dropped.
     invalid: {
       config: {
         params: {
-          popularity: { halfReviews: 0 },
+          popularity: { halfReviews: 0, root: 0 },
           proximity: { reachKm: 99, halfKm: 999 },
           modes: { nearby: { proximity: 2 } },
         },
@@ -145,8 +146,8 @@ const CASES: Record<string, SectionCase> = {
     refuse: {
       clamped: (saved) => {
         const c = saved.config as Row;
-        assertEquals(((c.params as Row).popularity as Row).halfReviews, 1);
-        assertEquals((c.params as Row).proximity, { halfKm: 100 });
+        assertEquals((c.params as Row).popularity, { root: 0.1 });
+        assertEquals((c.params as Row).proximity, { halfKm: 100, exponent: 1 });
         assertEquals("modes" in (c.params as Row), false);
         assertEquals("balance" in c, false);
       },

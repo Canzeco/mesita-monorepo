@@ -3,8 +3,18 @@
 // catalog.ts keeps its own copies; this pins them, so a server clamp and an
 // admin field can never disagree on what a value may be.
 import { assertEquals } from "jsr:@std/assert@1";
-import { DEEP_LIMIT_MAX, DEEP_LIMIT_MIN, DEFAULT_DEEP, SIGNAL_PARAM_BOUNDS } from "./discovery-config.ts";
-import { POPULARITY_HALF_REVIEWS_DEFAULT, PROXIMITY_HALF_KM_DEFAULT } from "./pipeline-signals.ts";
+import {
+  DEEP_LIMIT_MAX,
+  DEEP_LIMIT_MIN,
+  DEFAULT_DEEP,
+  MAP_POPULARITY_FLOOR_DEFAULT,
+  SIGNAL_PARAM_BOUNDS,
+} from "./discovery-config.ts";
+import {
+  POPULARITY_ROOT_DEFAULT,
+  PROXIMITY_EXPONENT_DEFAULT,
+  PROXIMITY_HALF_KM_DEFAULT,
+} from "./pipeline-signals.ts";
 
 const admin = await Deno.readTextFile(
   new URL("../../../../apps/web-admin/src/app/(app)/filters-config/catalog.ts", import.meta.url),
@@ -23,14 +33,23 @@ Deno.test("Deep box bounds and defaults match the server", () => {
   assertEquals(m ? { limit: Number(m[1]), minSimilarity: Number(m[2]) } : null, DEFAULT_DEEP);
 });
 
-Deno.test("Catalog box bounds and defaults match the server (MESITA-2347; the half distance since MESITA-2909)", () => {
+Deno.test("Catalog box bounds and defaults match the server (the half distance since MESITA-2909; the exponent and the root, MESITA-3083)", () => {
   assertEquals(constant("HALF_KM_MIN"), SIGNAL_PARAM_BOUNDS.halfKm.min);
   assertEquals(constant("HALF_KM_MAX"), SIGNAL_PARAM_BOUNDS.halfKm.max);
-  assertEquals(constant("HALF_REVIEWS_MIN"), SIGNAL_PARAM_BOUNDS.halfReviews.min);
-  assertEquals(constant("HALF_REVIEWS_MAX"), SIGNAL_PARAM_BOUNDS.halfReviews.max);
-  const half = admin.match(
-    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+) \},\s*popularity: \{ halfReviews: ([0-9_]+) \},\s*\};/,
+  assertEquals(constant("EXPONENT_MIN"), SIGNAL_PARAM_BOUNDS.exponent.min);
+  assertEquals(constant("EXPONENT_MAX"), SIGNAL_PARAM_BOUNDS.exponent.max);
+  assertEquals(constant("POPULARITY_ROOT_MIN"), SIGNAL_PARAM_BOUNDS.root.min);
+  assertEquals(constant("POPULARITY_ROOT_MAX"), SIGNAL_PARAM_BOUNDS.root.max);
+  const m = admin.match(
+    /const DEFAULT_SIGNAL_PARAMS: SignalParams = \{\s*proximity: \{ halfKm: ([0-9_.]+), exponent: ([0-9_.]+) \},\s*popularity: \{ root: ([0-9_.]+) \},\s*\};/,
   );
-  assertEquals(half ? Number(half[1].replaceAll("_", "")) : null, PROXIMITY_HALF_KM_DEFAULT);
-  assertEquals(half ? Number(half[2].replaceAll("_", "")) : null, POPULARITY_HALF_REVIEWS_DEFAULT);
+  const n = (i: number) => (m ? Number(m[i].replaceAll("_", "")) : null);
+  assertEquals(n(1), PROXIMITY_HALF_KM_DEFAULT);
+  assertEquals(n(2), PROXIMITY_EXPONENT_DEFAULT);
+  assertEquals(n(3), POPULARITY_ROOT_DEFAULT);
+});
+
+Deno.test("the Minimum Popularity default matches the server, in the root's units (MESITA-3083)", () => {
+  const m = admin.match(/const MAP_POPULARITY_FLOOR_DEFAULT = ([0-9.]+);/);
+  assertEquals(m ? Number(m[1]) : null, MAP_POPULARITY_FLOOR_DEFAULT);
 });

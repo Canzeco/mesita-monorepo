@@ -157,24 +157,24 @@ export const DISCOVERY_SIGNALS: readonly DiscoverySignalFact[] = [
   {
     key: "proximity",
     label: "Proximity",
-    formula: "1 ÷ (1 + distance ÷ half distance)",
+    formula: "1 ÷ (1 + (distance ÷ half distance)^exponent)",
     requires: ["coordinates"],
     query: "A point location: the device or a saved pin.",
     computation: "runtime",
     cost: "Local arithmetic, free.",
     missing: "No location: not used (n/a). No coordinates: 0.",
-    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (0.1–100 km, default 1), ⅓ at twice it, never 0 (MESITA-3015). Past the half distance the credit is half distance ÷ distance, so only distance ratios order places: twice as far is half the credit at any scale. The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
+    normalization: "0..1 by construction: 1 at the point, ½ at the operator's half distance (0.1–100 km, live 1) whatever the exponent (0.5–4, live 1, MESITA-3083), never 0. At exponent 1 the curve is the plain reciprocal (MESITA-3015): ⅓ at twice the half distance, and past it the credit is half distance ÷ distance, so only distance ratios order places: twice as far is half the credit at any scale, which with Popularity's cube root means 8× the reviews or a ×2 plan. Under 1 the far keeps its credit; over 1 the curve is flat inside the half distance and a cliff past it. The Catalog and Chat only: the Map does not read it, its distance only screens. It replaced the log curve (MESITA-2909), which kept a famous place 36 km away above an average one 5 km away.",
   },
   {
     key: "popularity",
     label: "Popularity",
-    formula: "ln(1 + reviews × stars)",
+    formula: "(1 + reviews × stars)^root",
     requires: ["rating", "review_count"],
     query: "Nothing.",
     computation: "runtime",
     cost: "Local arithmetic over stored numbers, free.",
     missing: "No rating or no review count: 0 (shown as n/a). There is no new-place prior; that lowers the place, it never removes it.",
-    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"): 4.6★ × 1,000 reviews ≈ 8.4, 4.0★ × 30 ≈ 4.8. The 1 + keeps a place with no reviews at 0. The score is a plain product, never clamped: Popularity × the Premier factor on the Map, × Proximity on the Catalog.",
+    normalization: "None, on purpose (Pato, MESITA-2710: \"popularity can be above 1, it must not be normalized\"). The root is the operator's (0.1–1, live 0.33, the cube root, MESITA-3083; ln until then): at the cube root 4.6★ × 1,000 reviews ≈ 16.2, 4.0★ × 30 ≈ 4.9, every 8× the reviews doubles the factor, so a ×2 plan is worth 8× the reviews and a ×5 plan 125×. The 1 + keeps a place with no reviews at 1, a factor, never 0. The score is a plain product, never clamped: Popularity × the Premier factor on the Map, × Proximity on the Catalog.",
   },
 ];
 
@@ -281,7 +281,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     keepsOrder: [],
     rules: [
       "Mesita places only: Google Nearby Search is gone (MESITA-2872), so the Map calls no Google. Every ready Mesita place inside the screen radius is a candidate (the two 20-place source switches retired in MESITA-2909); the guest never picks a source.",
-      "Before the cut, a place whose Popularity, ln(1 + reviews × stars), is under the Minimum Popularity (default 3; 0 is off, MESITA-2714) is dropped, Premier or not.",
+      "Before the cut, a place whose Popularity, (1 + reviews × stars)^root, is under the Minimum Popularity (default 2.7 in the root's units, MESITA-3083; 0 is off, MESITA-2714) is dropped, Premier or not.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
       "No reviews minimum (MESITA-2721): the Minimum Popularity is the quality floor; the guest has no reviews filter (MESITA-2417).",
       "The screen radius is at least 0.05 km and has no ceiling (MESITA-2918): however far out the guest zooms, the search is the ring they see. No visible map yet uses the current-location radius instead.",
@@ -300,7 +300,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     factors: [
       "Premier (MESITA-2925): a Premier place's score × its paid tier, Premier 2X · 5X; every other place's × 1.",
     ],
-    scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + distance ÷ half distance), ½ at the operator's half distance (MESITA-3015). No radius: a far place is never cut, only lowered. s counts at any distance (the reach went with MESITA-3015): past the half distance the score is half distance ÷ distance, so a Premier 5X beats a place up to about five times closer and one in another city never tops Home. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id. One list (MESITA-3041): the two lanes of MESITA-3016 are retired.",
+    scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + (distance ÷ half distance)^exponent), ½ at the operator's half distance (MESITA-3015, the exponent a knob since MESITA-3083, live 1). No radius: a far place is never cut, only lowered. s counts at any distance (the reach went with MESITA-3015): at exponent 1, past the half distance the score is half distance ÷ distance, so a Premier 5X beats a place up to about five times closer (125× the reviews at the cube root) and one in another city never tops Home. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id. One list (MESITA-3041): the two lanes of MESITA-3016 are retired.",
     keepsOrder: [],
     rules: [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and the best 1,000 come back; Home draws them a Catalog page size at a time (MESITA-2909, MESITA-2921).",

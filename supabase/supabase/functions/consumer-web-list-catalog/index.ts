@@ -27,9 +27,13 @@
 // radio"): distance never cuts a place. THE SCORE: Proximity × Popularity ×
 // the Premier factor (a Premier place's paid tier, ×2 · ×5, MESITA-2925;
 // one list again since MESITA-3041, the two lanes of MESITA-3016 retired),
-// Proximity = 1 ÷ (1 + d ÷ D), D the operator's half distance
-// (`params.proximity.halfKm`, MESITA-3015): 1 at the guest, ½ at D, ⅓ at
-// twice D. No point: Popularity × the factor.
+// Proximity = 1 ÷ (1 + (d ÷ D)^e), D the operator's half distance
+// (`params.proximity.halfKm`, MESITA-3015) and e the operator's exponent
+// (`params.proximity.exponent`, MESITA-3083): 1 at the guest, ½ at D; at
+// e = 1, ⅓ at twice D. Popularity = (1 + reviews × stars)^root, the root
+// the operator's (`params.popularity.root`, 0.33 = the cube root,
+// MESITA-3083). Live 1 km · 1 · 0.33: 8× the reviews = a ×2 plan = twice
+// as close. No point: Popularity × the factor.
 //
 // A FAMILY ROW ASKS ITS OWN QUESTION (MESITA-2438): `familyKeys` pushes the
 // Family gate into the Mesita read. Without it the pool is every family's.
