@@ -14,7 +14,7 @@
 // view started it would otherwise never see the Enriching tag.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
+import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { startEnrichment } from "./enrich-start.ts";
 import {
   isPlaceEnriched,
@@ -24,7 +24,6 @@ import {
   isPlaceRequested,
 } from "./place-state.ts";
 
-export const DEFAULT_REQUEST_THRESHOLD = 10; // MESITA-2653
 export const REQUEST_THRESHOLD_MIN = 1;
 export const REQUEST_THRESHOLD_MAX = 100;
 
@@ -104,15 +103,7 @@ export function placeRequestState(input: {
 export async function loadRequestThreshold(
   admin: SupabaseClient,
 ): Promise<number> {
-  const { data, error } = await admin
-    .from("app_config")
-    .select("enrichment_config")
-    .eq("id", 1)
-    .maybeSingle();
-  if (error) return DEFAULT_REQUEST_THRESHOLD;
-  return normalizeEnrichmentConfig(
-    (data as { enrichment_config?: unknown } | null)?.enrichment_config,
-  ).enrichRequestThreshold;
+  return (await loadEnrichmentConfig(admin)).enrichRequestThreshold;
 }
 
 export async function applyPlaceRequest(

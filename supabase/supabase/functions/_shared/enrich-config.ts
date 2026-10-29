@@ -6,7 +6,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_MODELS_CONFIG } from "./models-config.ts";
-import { normalizeEnrichmentConfig } from "./enrichment-config.ts";
+import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 export const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
@@ -85,19 +85,8 @@ export type EnrichConfig = {
 };
 
 // Read the Crenup admin knobs from app_config.enrichment_config (row id=1).
-// The select is a single string LITERAL on purpose: supabase-js infers the
-// row type only from a literal argument — anything that widens to `string`
-// falls back to GenericStringError.
 export async function loadEnrichConfig(admin: SupabaseClient): Promise<EnrichConfig> {
-  const { data: cfg } = await admin
-    .from("app_config")
-    .select("enrichment_config")
-    .eq("id", 1)
-    .maybeSingle();
-
-  const blob = normalizeEnrichmentConfig(
-    (cfg as { enrichment_config?: unknown } | null)?.enrichment_config,
-  );
+  const blob = await loadEnrichmentConfig(admin);
 
   return {
     synthesisQuality: blob.enrichSynthesisQuality,
