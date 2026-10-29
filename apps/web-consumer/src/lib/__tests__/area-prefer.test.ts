@@ -20,8 +20,7 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
     const search = src("components/consumer/search/SearchClient.tsx");
     expect(search).not.toContain("prefer");
     expect(search).toContain("[filters.familyKeys, supabase]");
-    // The clear window, not the whole canvas (MESITA-3020).
-    expect(search).toContain("sightBounds(box),");
+    expect(search).toContain("boxBounds(box),");
   });
 
   it("All is every family; a family row is that family", () => {
