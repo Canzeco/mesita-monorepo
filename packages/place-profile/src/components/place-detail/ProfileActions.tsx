@@ -51,8 +51,12 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // admin's preview keeps the consumer's shape. A PLACE THAT TAKES NO
 // RESERVATIONS HAS A DISABLED RESERVE, NEVER A MISSING ONE (Pato, MESITA-3078:
 // "must be disabled, but never fucking disapearing"; MESITA-3076 had hidden
-// it): the inert ink button read exactly like a live one, so it turns grey,
-// muted and `disabled`.
+// it). BLOCKED IS DARK (Pato, MESITA-3081: "reservations must be blocked
+// dark", "same for mesita prepay and mesita pay"): every blocked Mesita
+// button is the ink button, `disabled`, no hover, no press. Reserve varies by
+// place ("reserve can vary depending on the place"): live where it takes
+// bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
+// always blocked, with Soon.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -62,11 +66,11 @@ const inkButton = cn(
   PLACE_BUTTON_CLASS,
   "bg-foreground text-paper w-full text-sm hover:opacity-90",
 );
-// Reserve at a place that takes no reservations: the same box, grey and
-// muted, no hover (MESITA-3078).
-const disabledButton = cn(
+// A blocked Mesita button: still the ink, but `disabled`: no hover, no
+// press, the not-allowed cursor (MESITA-3081).
+const blockedInkButton = cn(
   PLACE_BUTTON_CLASS,
-  "bg-muted text-muted-foreground w-full cursor-not-allowed text-sm active:scale-100",
+  "bg-foreground text-paper w-full cursor-not-allowed text-sm active:scale-100",
 );
 
 // THE ROWS' LAYOUT AND A TILE'S BOX ARE WRITTEN ONCE (Pato, MESITA-2701:
@@ -236,10 +240,11 @@ export function ProfileActions({
               ? "Reserve a table"
               : "Reserve a table, not available at this place"
           }
-          className={takesReservations ? inkButton : disabledButton}
+          className={takesReservations ? inkButton : blockedInkButton}
         >
           <CalendarCheck className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
           <span className="truncate">Mesita Reserve</span>
+          {!takesReservations && <BlockedChip>Walk-in</BlockedChip>}
         </button>
         {/* @container: "Mesita " shows on both halves only when the row is
             wide enough for "Mesita Prepay" and its Soon chip (Pato: "only if
@@ -256,25 +261,32 @@ export function ProfileActions({
   );
 }
 
-/** A Mesita money button that is not built yet: inert, the ink button with
- *  the bar's Soon tag (BottomNav, MESITA-2079), a quiet chip white on the
- *  ink. */
+/** A Mesita money button that is not built yet: the blocked ink button
+ *  with the bar's Soon tag (BottomNav, MESITA-2079). */
 function SoonInkButton({ Icon, label }: { Icon: LucideIcon; label: string }) {
   return (
     <button
       type="button"
       {...inertButtonProps(false)}
+      disabled
       aria-label={`${label}, Soon`}
-      className={inkButton}
+      className={blockedInkButton}
     >
       <Icon className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
       <span className="truncate">
         <span className="hidden @sm:inline">Mesita </span>
         {label}
       </span>
-      <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
-        Soon
-      </span>
+      <BlockedChip>Soon</BlockedChip>
     </button>
+  );
+}
+
+/** Why a blocked ink button is blocked: a quiet chip white on the ink. */
+function BlockedChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
+      {children}
+    </span>
   );
 }
