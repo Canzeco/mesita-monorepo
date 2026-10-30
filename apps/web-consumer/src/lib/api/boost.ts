@@ -61,6 +61,9 @@ export type BoostQuote = {
   role: "payer" | "backup";
   position: number;
   checkout: "payment" | "setup" | "none";
+  /** Mesita's Manual Premier already gives this level or more: not for
+   *  sale (MESITA-3091). Absent from older EF builds. */
+  covered?: boolean;
 };
 
 export type LineRow = {
@@ -94,6 +97,9 @@ export type BoostOutcome =
 
 export type PlaceBoost = {
   tier: 0 | 1 | 2 | 3;
+  /** Manual Premier: Mesita's free lift running now (MESITA-3091). */
+  manual?: { tier: number; ends_at: string } | null;
+  /** What guests pay for (`granted` is always false since MESITA-3091). */
   period: {
     tier: number;
     ends_at: string;

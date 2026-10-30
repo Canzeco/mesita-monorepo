@@ -361,3 +361,17 @@ Deno.test("premier: the factor is the tier's number; a Google stub is never Prem
   assertEquals(premierFactor({ source: "mesita" }), 1);
   assertEquals(premierFactor({ source: "google", premierTier: 3 }), 1);
 });
+
+// MESITA-3091: Manual Premier is Mesita's free lift; nothing at or below its
+// level is for sale, and above it the quote is the plain paid one.
+Deno.test("quote: Manual 2X leaves only 5X for sale; Manual 5X leaves nothing", () => {
+  const base = { interval: "month" as const, running: null, charging: false, pledges: [], mine: null, now: T0 };
+  const at2 = quote({ ...base, tier: "boost_2x", manualTier: 1 });
+  const at5 = quote({ ...base, tier: "boost_5x", manualTier: 1 });
+  assertEquals([at2.covered, at2.charge_cents, at2.checkout], [true, 0, "none"]);
+  assertEquals([at5.covered, at5.charge_cents, at5.checkout], [false, 10000, "payment"]);
+  for (const tier of ["boost_2x", "boost_5x"] as const) {
+    assertEquals(quote({ ...base, tier, manualTier: 2 }).covered, true, tier);
+  }
+  assertEquals(quote({ ...base, tier: "boost_2x" }).covered, false, "no Manual: everything for sale");
+});

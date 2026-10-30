@@ -13,6 +13,8 @@
 // Body: { place_id: uuid, tier: "boost_2x" | "boost_5x",
 //         interval?: "month" | "year", return_url: string }
 // Response: { ok: true, url: string | null, outcome?: "updated" | "confirmed" }
+//         | 409 { ok: false, code: "covered_by_mesita" } when Manual Premier
+//           already gives that level or more (MESITA-3091)
 //
 // Backers are anonymous (MESITA-2928). Stripe stays in test mode until Pato
 // flips STRIPE_MODE and STRIPE_ALLOW_LIVE.
@@ -36,6 +38,7 @@ import {
   readBoostPlace,
   readLine,
   readPledge,
+  runningManual,
   runningPeriod,
   stripeClient,
 } from "../_shared/boost.ts";
@@ -103,7 +106,11 @@ serveJson("consumer-web-start-premier", async (req) => {
       pledges: line.pledges,
       mine,
       now,
+      manualTier: runningManual(line.manual, now)?.tier ?? 0,
     });
+    if (q.covered) {
+      return json({ ok: false, code: "covered_by_mesita", error: "Mesita already gives this place this level or more" }, 409);
+    }
     const amount = boostAmountCents(start.tier, start.interval);
 
     if (q.checkout === "none" && mine) {

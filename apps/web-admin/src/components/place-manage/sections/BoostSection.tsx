@@ -14,10 +14,11 @@ import { SectionCard } from "@/components/admin-ui/manage";
 // Single Place › Premier (MESITA-2995; Premier MESITA-2925, Boost
 // MESITA-2789). The place's line — who pays now, who backs up, in the order
 // a renewal walks them — and its recent periods with what each one charged,
-// read from admin-web-get-place-premier. The operator can grant a period
-// nobody pays for (so a place can be Premier without a payment), end a
-// running grant, or take one pledge out of the line
-// (admin-web-grant-place-premier). Nothing here refunds; Stripe is the record.
+// read from admin-web-get-place-premier. The operator can grant Manual
+// Premier (MESITA-3091: Mesita's free lift, its own table, so a place can be
+// Premier without a payment and a guest can still pay above it), end it, or
+// take one pledge out of the line (admin-web-grant-place-premier). Nothing
+// here refunds; Stripe is the record.
 
 const TIER_LABEL: Record<number, string> = {
   0: "Not Premier",
@@ -163,7 +164,7 @@ export function BoostSection({
   }
 
   const testMode = data?.line.some((p) => !p.livemode) ?? false;
-  const grantRunning = data?.period?.granted ?? false;
+  const manual = data?.manual ?? null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,7 +172,7 @@ export function BoostSection({
         icon={<Zap className="h-4 w-4" />}
         tint="amber"
         title="Premier"
-        subtitle="Paid visibility. One pledge pays per period; the rest back it up."
+        subtitle="Manual Premier is Mesita's free lift; Paid is what guests pay. The place's level is the higher of the two."
         action={
           <button
             type="button"
@@ -196,10 +197,13 @@ export function BoostSection({
               <Stat label="Tier" value={TIER_LABEL[data.tier]} />
               <Stat label="Map factor" value={`×${data.factor}`} />
               <Stat
-                label={data.period?.granted ? "Granted until" : "Paid through"}
-                value={data.period ? day(data.period.ends_at) : "—"}
+                label="Manual"
+                value={manual ? `${mark(manual.tier)} · until ${day(manual.ends_at)}` : "—"}
               />
-              <Stat label="In line" value={String(data.line.filter((p) => p.role !== "waiting").length)} />
+              <Stat
+                label="Paid"
+                value={data.period ? `${mark(data.period.tier)} · through ${day(data.period.ends_at)}` : "—"}
+              />
             </div>
 
             {data.stuck > 0 ? (
@@ -210,9 +214,9 @@ export function BoostSection({
             ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
-              {grantRunning ? (
+              {manual ? (
                 <ConfirmButton
-                  label="End grant"
+                  label="End Manual Premier"
                   confirm="End it now"
                   busy={busy}
                   onConfirm={() => void change({ action: "end" })}
@@ -220,7 +224,7 @@ export function BoostSection({
               ) : (
                 <>
                   <select
-                    aria-label="Grant level"
+                    aria-label="Manual Premier level"
                     value={grantTier}
                     onChange={(e) => setGrantTier(Number(e.target.value) as 1 | 2)}
                     className="border-border bg-card rounded-full border px-3 py-1 text-xs"
@@ -229,7 +233,7 @@ export function BoostSection({
                     <option value={2}>Premier 5X</option>
                   </select>
                   <select
-                    aria-label="Grant length"
+                    aria-label="Manual Premier length"
                     value={grantMonths}
                     onChange={(e) => setGrantMonths(Number(e.target.value))}
                     className="border-border bg-card rounded-full border px-3 py-1 text-xs"
@@ -241,13 +245,16 @@ export function BoostSection({
                     ))}
                   </select>
                   <ConfirmButton
-                    label="Grant Premier"
+                    label="Grant Manual Premier"
                     confirm="Grant, no charge"
-                    busy={busy || data.period != null}
+                    busy={busy}
                     onConfirm={() => void change({ action: "grant", tier: grantTier, months: grantMonths })}
                   />
                   {data.period ? (
-                    <span className="text-muted-foreground text-xs">A paid period is running.</span>
+                    <span className="text-muted-foreground text-xs">
+                      A guest pays for {mark(data.period.tier)}; Manual never charges or ends it, and a renewal waits
+                      while Manual covers its level.
+                    </span>
                   ) : null}
                 </>
               )}
@@ -312,9 +319,40 @@ export function BoostSection({
       ) : null}
 
       {data ? (
-        <SectionCard title="Periods" subtitle="What each stretch charged, newest first.">
+        <SectionCard title="Manual Premier" subtitle="Mesita's free lifts, newest first. Nothing is charged.">
+          {(data.manual_history ?? []).length === 0 ? (
+            <p className="text-muted-foreground mt-3 text-sm">No Manual Premier yet.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-muted-foreground type-label">
+                  <tr>
+                    <th className="py-2 pr-4 font-medium">Dates</th>
+                    <th className="py-2 pr-4 font-medium">Level</th>
+                    <th className="py-2 font-medium">Granted by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(data.manual_history ?? []).map((m) => (
+                    <tr key={m.id} className="border-border border-t">
+                      <td className="py-2 pr-4 whitespace-nowrap">
+                        {day(m.starts_at)} – {day(m.ends_at)}
+                      </td>
+                      <td className="py-2 pr-4">{mark(m.tier)}</td>
+                      <td className="py-2">{m.source === "code" ? "A Mesita code" : (m.granted_by ?? "—")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
+      ) : null}
+
+      {data ? (
+        <SectionCard title="Paid periods" subtitle="What each paid stretch charged, newest first.">
           {data.periods.length === 0 ? (
-            <p className="text-muted-foreground mt-3 text-sm">No Premier period yet.</p>
+            <p className="text-muted-foreground mt-3 text-sm">No paid period yet.</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -342,7 +380,7 @@ export function BoostSection({
                         {day(p.starts_at)} – {day(p.ends_at)}
                       </td>
                       <td className="py-2 pr-4">{mark(p.tier)}</td>
-                      <td className="py-2 pr-4">{p.payer ?? (p.granted_by ? `Granted (${p.granted_by})` : "—")}</td>
+                      <td className="py-2 pr-4">{p.payer ?? "—"}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">{usd(p.price_cents)}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">
                         {p.credit_cents ? usd(p.credit_cents) : "—"}

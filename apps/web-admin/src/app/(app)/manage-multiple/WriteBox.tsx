@@ -455,9 +455,9 @@ function doneRow(found: Found, action: Exclude<CrenupAction, "create" | PremierA
 }
 
 // Premier 2X · Premier 5X · End Premier (MESITA-3090): one lookup, then one
-// batch that moves every found place to the tier. A refusal (a guest pays,
-// guests waiting, a guest checking out, archived) leaves the place
-// unchanged and shows amber, not as a failure.
+// batch that moves every found place's Manual Premier to the tier
+// (MESITA-3091: it never touches what a guest pays). A refusal (archived)
+// leaves the place unchanged and shows amber, not as a failure.
 async function runPremier(
   googleIds: string[],
   tier: 0 | 1 | 2,
@@ -493,7 +493,7 @@ async function runPremier(
   );
 }
 
-const REFUSED_CODES = new Set(["guest_pays", "guests_waiting", "guest_checking_out", "place_archived"]);
+const REFUSED_CODES = new Set(["place_archived"]);
 
 function premierRow(
   found: Found,

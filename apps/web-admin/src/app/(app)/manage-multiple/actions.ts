@@ -491,8 +491,8 @@ export async function enrichPlacesAll(
 // ── Premier (MESITA-3090) ────────────────────────────────────────────────
 // Edit box › Premier 2X · Premier 5X · End Premier. One call per place
 // through admin-web-grant-place-premier action "set", all at once like
-// writePlaces. A refusal (a guest pays, guests waiting, a guest checking
-// out, archived) comes back as a failed Result whose `code` names it.
+// writePlaces. Sets Manual Premier only (MESITA-3091). A refusal (archived)
+// comes back as a failed Result whose `code` names it.
 
 export type PremierSet = {
   result: "granted" | "ended" | "already";
