@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --radius: 0.875rem;
+
+  /* BRAND-TOKENS:START (generated — do not hand-edit; run: deno task sync-brand) */
+  /* --- Mesita brand · generated from assets/brand/brand.json --- */
+  --brand-pink-50: oklch(0.971 0.014 5); /* #fef2f4 · 1.09:1 on white */
+  --brand-pink-100: oklch(0.941 0.03 5); /* #fee4e9 · 1.2:1 on white */
+  --brand-pink-200: oklch(0.892 0.059 5); /* #ffccd6 · 1.41:1 on white */
+  --brand-pink-300: oklch(0.823 0.104 5); /* #ffa9bc · 1.8:1 on white */
+  --brand-pink-400: oklch(0.74 0.167 5); /* #ff789d · 2.49:1 on white */
+  --brand-pink-500: oklch(0.65 0.24 5); /* #fb2b7b · 3.66:1 on white */
+  --brand-pink-600: oklch(0.585 0.235 5); /* #e10069 · 4.77:1 on white */
+  --brand-pink-700: oklch(0.51 0.205 5); /* #bb0056 · 6.47:1 on white */
+  --brand-pink-800: oklch(0.43 0.17 5); /* #940543 · 8.89:1 on white */
+  --brand-pink-900: oklch(0.36 0.135 5); /* #710b34 · 11.67:1 on white */
+  --brand-pink-950: oklch(0.265 0.095 5); /* #47071f · 15.93:1 on white */
+
+  /* THE Mesita pink. Logo fill, primary buttons, active states. */
+  --brand-pink: var(--brand-pink-500);
+  /* Pink text at body size on white — clears AA (4.77:1). --brand-pink does NOT (3.66:1). */
+  --brand-pink-text: var(--brand-pink-600);
+  /* Pressed states, pink on tinted surfaces. */
+  --brand-pink-deep: var(--brand-pink-700);
+
+  /* Both endpoints were outside sRGB and silently clipped by the browser,
+     so the ramp rendered differently per display. Snapped to the in-gamut
+     chroma ceiling at each lightness. */
+  --gradient-pink: linear-gradient(
+    135deg,
+    oklch(0.72 0.199 355),
+    oklch(0.6 0.241 5)
+  );
+
+  /* Three-stop brand wash for full-bleed panels and tiles (auth panes, 404, badges).
+     Renamed from --gradient-peacock (a pre-pivot bird name on a pink
+     gradient); its first stop was also clipping out of sRGB. */
+  --gradient-brand: linear-gradient(
+    135deg,
+    oklch(0.68 0.221 5),
+    oklch(0.62 0.24 0) 50%,
+    oklch(0.65 0.22 355)
+  );
+  /* BRAND-TOKENS:END */
+
+  /* Console surfaces: a light work area beside a warm near-black rail. */
+  --background: oklch(0.982 0.004 20);
+  --foreground: oklch(0.2 0.02 20);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 20);
+  --primary: var(--brand-pink);
+  --primary-foreground: oklch(0.99 0.005 10);
+  --muted: oklch(0.955 0.005 20);
+  --muted-foreground: oklch(0.5 0.015 20);
+  --border: oklch(0.91 0.006 20);
+  --input: oklch(0.93 0.006 20);
+  --ring: var(--brand-pink);
+  --destructive: oklch(0.58 0.22 28);
+  --success: oklch(0.55 0.13 155);
+  --success-soft: oklch(0.96 0.04 155);
+  --warning: oklch(0.62 0.14 70);
+  --warning-soft: oklch(0.97 0.05 85);
+
+  --rail: oklch(0.17 0.015 20);
+  --rail-foreground: oklch(0.93 0.008 20);
+  --rail-muted: oklch(0.62 0.015 20);
+  --rail-hover: oklch(0.24 0.02 20);
+  --rail-active: oklch(0.28 0.025 15);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-brand-text: var(--brand-pink-text);
+  --color-brand-soft: var(--brand-pink-50);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-rail: var(--rail);
+  --color-rail-foreground: var(--rail-foreground);
+  --color-rail-muted: var(--rail-muted);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-active: var(--rail-active);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer utilities {
+  .type-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
