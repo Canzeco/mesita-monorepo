@@ -331,7 +331,7 @@ export type AdminPledge = {
   queued_at: string;
 };
 
-/** One paid stretch of the place's Premier (or a grant, `payer` null). */
+/** One paid stretch of the place's Premier. */
 export type AdminPeriod = {
   id: string;
   payer: string | null;
@@ -347,9 +347,23 @@ export type AdminPeriod = {
   status: "charging" | "paid" | "declined" | "replaced" | "ended";
 };
 
+/** Manual Premier: Mesita's free lift (MESITA-3091), apart from what guests pay. */
+export type AdminManual = {
+  id: string;
+  tier: 1 | 2;
+  starts_at: string;
+  ends_at: string;
+  source: "admin" | "code";
+  granted_by: string | null;
+};
+
 export type AdminPlaceBoost = {
   tier: 0 | 1 | 2;
   factor: number;
+  /** The Manual Premier running now. Optional until every EF build sends it. */
+  manual?: AdminManual | null;
+  manual_history?: AdminManual[];
+  /** The paid period running now (`granted` is always false since MESITA-3091). */
   period: { id: string; tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
   line: AdminPledge[];
   periods: AdminPeriod[];
@@ -365,9 +379,9 @@ export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceB
   return { ok: true, data: r.data };
 }
 
-/** The operator's Premier writes (admin-web-grant-place-premier): grant a
- *  period nobody pays for, end a running grant, or take a pledge out of
- *  the line. None refunds. */
+/** The operator's Premier writes (admin-web-grant-place-premier): grant
+ *  Manual Premier (nothing charged), end it, or take a pledge out of the
+ *  line. None refunds. */
 export async function changePlaceBoost(
   placeId: string,
   change:

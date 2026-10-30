@@ -9,8 +9,13 @@
 // that pledge, never one taken on trust — and says what happened (`outcome`).
 // A guest who never comes back is settled by supabase-cron-sync-premier.
 //
+// Manual Premier (Mesita's free lift, MESITA-3091) comes back on its own as
+// `manual`; `period` is only what guests pay for, and no level at or below
+// the running Manual level is for sale (`quotes[...].covered`).
+//
 // Body: { place_id: uuid, session_id?: string }
-// Response: { ok: true, tier, period: { tier, ends_at, granted, renews } | null,
+// Response: { ok: true, tier, manual: { tier, ends_at } | null,
+//             period: { tier, ends_at, granted: false, renews } | null,
 //             renewing: boolean, line: LineRow[], more: number,
 //             mine: MinePledge | null, quotes: Record<tier, Record<interval, Quote>> | null,
 //             outcome?: "confirmed" | "saved_as_backup" | "released_stale" | "pending" | "expired" | "none" }
@@ -30,6 +35,7 @@ import {
   readBoostPlace,
   readLine,
   readLineNames,
+  runningManual,
   runningPeriod,
   stripeClient,
   TIER_RANK,
@@ -80,6 +86,7 @@ serveJson("consumer-web-get-premier", async (req) => {
 
   const now = Date.now();
   const running = runningPeriod(line.periods, now);
+  const manual = runningManual(line.manual, now);
   const charging = chargingPeriod(line.periods);
   // Names, never emails (MESITA-3063): handles only for a caller who shows
   // their own, as in Social (MESITA-2594).
@@ -95,11 +102,13 @@ serveJson("consumer-web-get-premier", async (req) => {
   return json({
     ok: true,
     tier: placeRes.place?.boost_tier ?? 0,
+    manual: manual ? { tier: manual.tier, ends_at: manual.ends_at } : null,
     period: running
       ? {
         tier: running.tier,
         ends_at: running.ends_at,
-        granted: running.backing_id == null,
+        // Grants are Manual Premier since MESITA-3091; kept for older builds.
+        granted: false,
         // Renews when anyone with a saved card stands in line.
         renews: ladder(line.pledges).length > 0,
       }
@@ -120,7 +129,7 @@ serveJson("consumer-web-get-premier", async (req) => {
       }
       : null,
     quotes: user
-      ? quotes({ running, charging: charging != null, pledges: line.pledges, mine, now })
+      ? quotes({ running, charging: charging != null, pledges: line.pledges, mine, now, manualTier: manual?.tier ?? 0 })
       : null,
     ...(outcome === undefined ? {} : { outcome }),
   });

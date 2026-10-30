@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(212);
+select plan(216);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1606,8 +1606,11 @@ select ok(
     and not has_table_privilege('authenticated', 'public.place_premier_periods', 'SELECT')
     and not has_table_privilege('authenticated', 'public.premier_customers', 'SELECT')
     and not has_function_privilege('authenticated', 'public.premier_claim(uuid, uuid, text, text, integer, integer, integer, integer, text, text, text, boolean)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.premier_grant(uuid, smallint, integer, text)', 'EXECUTE'),
-  'Premier pledges, periods and customers are EF-only; the premier_* RPCs are service-role only'
+    and not has_function_privilege('anon', 'public.premier_grant(uuid, smallint, integer, text)', 'EXECUTE')
+    and (select relrowsecurity from pg_class where oid = 'public.place_manual_premier'::regclass)
+    and not has_table_privilege('anon', 'public.place_manual_premier', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_manual_premier', 'SELECT'),
+  'Premier pledges, periods, Manual Premier and customers are EF-only; the premier_* RPCs are service-role only'
 );
 
 select has_column(
@@ -1625,20 +1628,28 @@ select premier_grant('00000000-0000-4000-8000-000000002995', 2::smallint, 1, 'pr
 select is(
   (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   2::smallint,
-  'a grant is a period nobody paid for: Premier 5X at once'
+  'a grant is Manual Premier, nothing paid: Premier 5X at once'
 );
 
 select throws_ok(
   $$select premier_grant('00000000-0000-4000-8000-000000002995', 1::smallint, 1, 'probe@mesita.ai')$$,
   'P0001', null,
-  'no second grant while a period is running'
+  'no second grant while Manual Premier is running'
 );
 
 select throws_ok(
   $$insert into public.place_premier_periods (place_id, tier, billing_interval, starts_at, ends_at, status)
-    values ('00000000-0000-4000-8000-000000002995', 2, 'month', now(), now() + interval '1 day', 'paid')$$,
+    values ('00000000-0000-4000-8000-000000002995', 2, 'month', now(), now() + interval '1 day', 'paid'),
+           ('00000000-0000-4000-8000-000000002995', 1, 'month', now(), now() + interval '2 days', 'paid')$$,
   '23P01', null,
   'two paid periods of one place never overlap'
+);
+
+select throws_ok(
+  $$insert into public.place_manual_premier (place_id, tier, starts_at, ends_at)
+    values ('00000000-0000-4000-8000-000000002995', 1, now(), now() + interval '1 day')$$,
+  '23P01', null,
+  'two Manual Premier rows of one place never overlap'
 );
 
 select throws_ok(
@@ -1754,7 +1765,8 @@ select is(
 
 -- ━━━ MESITA-3090: premier_set_grant — Multiple Places sets Premier in bulk ━━━
 -- One fresh place per scenario: …002995 above already holds guest pledges and
--- paid periods. The box never starts, holds or ends a guest charge.
+-- paid periods. Since MESITA-3091 the box writes Manual Premier only, so it
+-- never starts, holds or ends a guest charge and refuses no guest case.
 insert into public.place_profiles (id, google_name) values
   ('00000000-0000-4000-8000-000000003090', 'Set Probe'),
   ('00000000-0000-4000-8000-000000003091', 'Set Archived'),
@@ -1808,8 +1820,8 @@ select is(
 );
 
 select is(
-  (select count(*)::int from public.place_premier_periods
-    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'paid' and ends_at > now()),
+  (select count(*)::int from public.place_manual_premier
+    where place_id = '00000000-0000-4000-8000-000000003090' and starts_at <= now() and ends_at > now()),
   1,
   'a switch leaves exactly one running grant'
 );
@@ -1817,15 +1829,15 @@ select is(
 select premier_set_grant('00000000-0000-4000-8000-000000003090', 2::smallint, 1, 'probe@mesita.ai');
 
 select is(
-  (select count(*)::int from public.place_premier_periods
-    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'ended'),
+  (select count(*)::int from public.place_manual_premier
+    where place_id = '00000000-0000-4000-8000-000000003090' and ends_at <= now()),
   2,
   'the same tier again ends the old grant and starts a new one'
 );
 
 select is(
-  (select count(*)::int from public.place_premier_periods
-    where place_id = '00000000-0000-4000-8000-000000003090' and status = 'paid' and ends_at > now()),
+  (select count(*)::int from public.place_manual_premier
+    where place_id = '00000000-0000-4000-8000-000000003090' and starts_at <= now() and ends_at > now()),
   1,
   'the same tier again still leaves exactly one running grant'
 );
@@ -1863,38 +1875,38 @@ select throws_ok(
 select throws_ok(
   $$select premier_set_grant('00000000-0000-4000-8000-000000003096', 0::smallint, null, 'probe@mesita.ai')$$,
   'P0001', 'premier_set_grant: archived',
-  'archived is checked before the guest refusals'
+  'an archived place is refused even with a guest waiting to pay'
 );
 
-select throws_ok(
-  $$select premier_set_grant('00000000-0000-4000-8000-000000003092', 0::smallint, null, 'probe@mesita.ai')$$,
-  'P0001', 'premier_set_grant: a guest pays',
-  'set never ends a period a guest pays for'
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003092', 0::smallint, null, 'probe@mesita.ai') ->> 'result',
+  'already',
+  'End Premier on a guest-paid place ends no Manual Premier and refuses nothing'
 );
 
 select is(
   (select count(*)::int from public.place_premier_periods
     where place_id = '00000000-0000-4000-8000-000000003092' and status = 'paid' and ends_at > now()),
   1,
-  'the guest-paid period is untouched after the refusal'
+  'End Premier leaves the guest-paid period untouched'
 );
 
-select throws_ok(
-  $$select premier_set_grant('00000000-0000-4000-8000-000000003093', 2::smallint, 12, 'probe@mesita.ai')$$,
-  'P0001', 'premier_set_grant: guests are waiting to pay',
-  'set refuses a place whose guests are waiting to pay'
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003093', 2::smallint, 12, 'probe@mesita.ai') ->> 'result',
+  'granted',
+  'a place whose guests wait to pay still gets Manual Premier'
 );
 
 select is(
   (select count(*)::int from public.place_premier_periods where place_id = '00000000-0000-4000-8000-000000003093'),
   0,
-  'the waiting-guests refusal writes nothing'
+  'Manual Premier writes no paid period'
 );
 
-select throws_ok(
-  $$select premier_set_grant('00000000-0000-4000-8000-000000003094', 2::smallint, 12, 'probe@mesita.ai')$$,
-  'P0001', 'premier_set_grant: a guest is checking out',
-  'set refuses a place with a live Checkout (it would cancel the held payment)'
+select is(
+  premier_set_grant('00000000-0000-4000-8000-000000003094', 2::smallint, 12, 'probe@mesita.ai') ->> 'result',
+  'granted',
+  'a live Checkout does not block Manual Premier'
 );
 
 select is(
@@ -1925,6 +1937,35 @@ select ok(
   not has_function_privilege('anon', 'public.premier_set_grant(uuid, smallint, integer, text)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.premier_set_grant(uuid, smallint, integer, text)', 'EXECUTE'),
   'premier_set_grant is service-role only'
+);
+
+-- ━━━ MESITA-3091: Manual and Paid are separate; the level is the higher ━━━
+-- …003092 holds a guest's paid 2X; Manual 5X on top makes the place 5X.
+select premier_set_grant('00000000-0000-4000-8000-000000003092', 2::smallint, 12, 'probe@mesita.ai');
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000003092'),
+  2::smallint,
+  'Manual 5X over a paid 2X: the place is 5X (the higher of the two)'
+);
+
+-- Paying for a level Manual already gives is stale under the lock.
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status)
+values ('00000000-0000-4000-8000-0000000b3092', '00000000-0000-4000-8000-000000003092',
+        'boost_5x', 'month', 10000, 'open');
+
+select is(
+  premier_claim('00000000-0000-4000-8000-0000000b3092', null, 'boost_5x', 'month', 10000, 0, 0, 10000,
+                'pi_probe_3092', 'cs_probe_3092b', 'charging', false) ->> 'reason',
+  'covered',
+  'a claim at or below the running Manual level is stale: nothing is charged'
+);
+
+-- …003093's waiting 2X pledge is covered by the Manual 5X granted above.
+select is(
+  premier_begin_renewal('00000000-0000-4000-8000-000000003093') ->> 'reason',
+  'covered',
+  'no renewal charge while Manual covers the pledge''s level'
 );
 
 -- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━

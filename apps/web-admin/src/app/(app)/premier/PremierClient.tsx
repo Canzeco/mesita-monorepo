@@ -32,10 +32,14 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** "Paid · until Nov 28, 2026", "Granted · until …", "Charging…", or "Not Premier". */
+/** "Manual 5X until Dec 1, 2026 · Paid 2X until Nov 28, 2026", "Charging…", or "Not Premier". */
 export function standingLine(p: PremierRow): string {
   if (p.charging) return "Charging at Stripe…";
-  if (p.period) return `${p.period.granted ? "Granted" : "Paid"} · until ${day(p.period.ends_at)}`;
+  const parts = [
+    p.manual ? `Manual ${p.manual.tier === 2 ? "5X" : "2X"} until ${day(p.manual.ends_at)}` : null,
+    p.period ? `Paid ${p.period.tier === 2 ? "5X" : "2X"} until ${day(p.period.ends_at)}` : null,
+  ].filter(Boolean);
+  if (parts.length > 0) return parts.join(" · ");
   if (p.backups > 0) return "Not Premier · the next pledge is charged within 5 minutes";
   return "Not Premier";
 }
@@ -114,7 +118,7 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
         {list && (
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Stat label="Premier now" value={String(list.totals.premier_now)} />
-            <Stat label="Granted" value={String(list.totals.granted_now)} />
+            <Stat label="Manual" value={String(list.totals.granted_now)} />
             <Stat label="Pledges" value={String(list.totals.pledges)} />
             <Stat label="Charged · 30 days" value={usd(list.totals.charged_30d_cents)} />
           </div>

@@ -10,8 +10,11 @@
 // becomes extra days.
 //
 //   place_backings          the line: one pledge per guest per place
-//   place_premier_periods   the paid stretches; places.boost_tier follows them
+//   place_premier_periods   the paid stretches
+//   place_manual_premier    Manual Premier, Mesita's free lift (MESITA-3091)
 //   premier_customers       one Stripe customer per guest
+// places.boost_tier is the higher of the running Manual and paid levels, and
+// nothing is sold or charged at or below the running Manual level.
 //
 // Mesita runs the periods: Checkout saves the card (pays now: `payment` with
 // a MANUAL capture, captured only once the quote is confirmed under the
@@ -147,14 +150,34 @@ export type Period = {
 export const PERIOD_COLUMNS =
   "id, place_id, backing_id, granted_by, tier, billing_interval, starts_at, ends_at, price_cents, credit_cents, extra_days, charged_cents, stripe_payment_intent_id, stripe_checkout_session_id, status, created_at";
 
+/** Manual Premier: Mesita's free lift of a place (MESITA-3091). */
+export type Manual = {
+  id: string;
+  place_id: string;
+  tier: number;
+  starts_at: string;
+  ends_at: string;
+  source: "admin" | "code";
+  granted_by: string | null;
+};
+
+export const MANUAL_COLUMNS = "id, place_id, tier, starts_at, ends_at, source, granted_by";
+
 // ── The line, in pure functions ───────────────────────────────────────────
 
 const ms = (iso: string) => Date.parse(iso);
 
-/** The paid period covering `now` (a grant included). */
+/** The paid period covering `now`. */
 export function runningPeriod(periods: Period[], now: number): Period | null {
   return periods
     .filter((p) => p.status === "paid" && ms(p.starts_at) <= now && ms(p.ends_at) > now)
+    .sort((a, b) => ms(b.starts_at) - ms(a.starts_at))[0] ?? null;
+}
+
+/** The Manual Premier row covering `now`. */
+export function runningManual(rows: Manual[], now: number): Manual | null {
+  return rows
+    .filter((m) => ms(m.starts_at) <= now && ms(m.ends_at) > now)
     .sort((a, b) => ms(b.starts_at) - ms(a.starts_at))[0] ?? null;
 }
 
@@ -295,6 +318,8 @@ export type Quote = {
   /** What the pledge takes: pay now, save a card, or nothing (an edit of a
    *  pledge whose card is already saved). */
   checkout: "payment" | "setup" | "none";
+  /** Manual Premier already gives this level or more: not for sale. */
+  covered: boolean;
 };
 
 /** What choosing `tier`/`interval` means for this guest right now. The UI
@@ -307,17 +332,25 @@ export function quote(args: {
   pledges: Pledge[];
   mine: Pledge | null;
   now: number;
+  /** The running Manual Premier level (0 none, 1 2X, 2 5X). */
+  manualTier?: number;
 }): Quote {
-  const { tier, interval, running, charging, pledges, mine, now } = args;
+  const { tier, interval, running, charging, pledges, mine, now, manualTier = 0 } = args;
   const price = boostAmountCents(tier, interval);
   const rank = TIER_RANK[tier];
   const hasCard = mine?.status === "ready" && !!mine.stripe_payment_method_id;
   const isPayer = !!mine && !!running && running.backing_id === mine.id;
 
+  // Manual Premier already gives this level or more: paying would change
+  // nothing, so it is not for sale (MESITA-3091).
+  if (rank <= manualTier) {
+    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none", covered: true };
+  }
+
   // The payer changing their own terms below or at the running level: the
   // period they paid runs on; the new terms apply at the next renewal.
   if (isPayer && running && rank <= running.tier) {
-    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none" };
+    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none", covered: false };
   }
 
   if (!charging && (!running || rank > running.tier)) {
@@ -335,6 +368,7 @@ export function quote(args: {
       role: "payer",
       position: 0,
       checkout: charge > 0 ? "payment" : hasCard ? "none" : "setup",
+      covered: false,
     };
   }
 
@@ -353,6 +387,7 @@ export function quote(args: {
     role: "backup",
     position: ahead + 1,
     checkout: hasCard ? "none" : "setup",
+    covered: false,
   };
 }
 
@@ -1114,17 +1149,17 @@ async function readAuthEmail(admin: SupabaseClient, consumerId: string): Promise
   }
 }
 
-/** A place's line and its recent periods (what get-premier, start-premier and
- *  the admin read). */
+/** A place's line, its recent paid periods and its recent Manual Premier
+ *  rows (what get-premier, start-premier and the admin read). */
 export async function readLine(
   admin: SupabaseClient,
   placeId: string,
   opts: { periodsSince?: number; allPledges?: boolean } = {},
-): Promise<{ ok: true; pledges: Pledge[]; periods: Period[] } | { ok: false; error: string }> {
+): Promise<{ ok: true; pledges: Pledge[]; periods: Period[]; manual: Manual[] } | { ok: false; error: string }> {
   const since = new Date(opts.periodsSince ?? Date.now() - 2 * 3600_000).toISOString();
   let pledgeQuery = admin.from("place_backings").select(PLEDGE_COLUMNS).eq("place_id", placeId);
   if (!opts.allPledges) pledgeQuery = pledgeQuery.in("status", ["open", "ready", "failed"]);
-  const [pRes, perRes] = await Promise.all([
+  const [pRes, perRes, manRes] = await Promise.all([
     pledgeQuery.order("created_at", { ascending: true }),
     admin
       .from("place_premier_periods")
@@ -1133,10 +1168,23 @@ export async function readLine(
       .gte("ends_at", since)
       .order("starts_at", { ascending: false })
       .limit(50),
+    admin
+      .from("place_manual_premier")
+      .select(MANUAL_COLUMNS)
+      .eq("place_id", placeId)
+      .gte("ends_at", since)
+      .order("starts_at", { ascending: false })
+      .limit(50),
   ]);
   if (pRes.error) return { ok: false, error: `pledges_read: ${pRes.error.message}` };
   if (perRes.error) return { ok: false, error: `periods_read: ${perRes.error.message}` };
-  return { ok: true, pledges: (pRes.data ?? []) as Pledge[], periods: (perRes.data ?? []) as Period[] };
+  if (manRes.error) return { ok: false, error: `manual_read: ${manRes.error.message}` };
+  return {
+    ok: true,
+    pledges: (pRes.data ?? []) as Pledge[],
+    periods: (perRes.data ?? []) as Period[],
+    manual: (manRes.data ?? []) as Manual[],
+  };
 }
 
 /** The place a pledge is for, through the browse view: name, state and

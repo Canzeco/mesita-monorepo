@@ -8,9 +8,9 @@
 // update box. i don't care if kinda redundant"). Create mints the place,
 // Enrich fills it, and that run is the only way a place becomes Enriched.
 // Edit writes a place that already exists: Enable and Disable toggle guest
-// visibility, Premier 2X · Premier 5X · End Premier set its Premier for N
-// months (MESITA-3090; refused, unchanged, where a guest pays, guests wait to
-// pay, a guest is checking out, or the place is archived), and Delete
+// visibility, Premier 2X · Premier 5X · End Premier set its Manual Premier for
+// N months (MESITA-3090/3091; refused, unchanged, only for an archived place;
+// what a guest pays is never touched), and Delete
 // archives (Select and Unselect died with Selected, MESITA-2925). Edit is a box, never a button, and there is no Create +
 // Enrich combo. Edit does not sync.
 

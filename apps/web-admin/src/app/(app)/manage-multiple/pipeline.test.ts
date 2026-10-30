@@ -25,9 +25,9 @@ describe("the page chrome names the five surfaces", () => {
     expect(box).not.toContain("setPlaceVerified");
     expect(box).not.toContain("setPlacePlan");
     // Operator Premier grants are allowed here (Pato, 2026-10-29,
-    // MESITA-3090): they charge no one, and premier_set_grant refuses every
-    // place a guest pays for, waits to pay for or is checking out on. The box
-    // itself never reaches Stripe.
+    // MESITA-3090): they are Manual Premier (MESITA-3091), its own table,
+    // and never start, hold or end a guest charge. The box itself never
+    // reaches Stripe.
     expect(box).not.toContain("stripe");
     // This box never stamps enriched_at (MESITA-2730). Becoming Enriched is
     // the Enrich box.

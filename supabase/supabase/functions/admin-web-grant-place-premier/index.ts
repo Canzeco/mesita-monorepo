@@ -1,17 +1,18 @@
 // Supabase Edge Function — admin-web-grant-place-premier
 //
-// MESITA-2995: Single Place › Premier, the operator's writes.
-//   grant         a period with no payer and nothing charged (tier 1..2,
-//                 1..12 months); refused while a period is running.
-//   end           ends the running grant now; the line pays at the next run.
+// MESITA-2995: Single Place › Premier, the operator's writes. Grants are
+// Manual Premier (MESITA-3091: place_manual_premier, apart from what guests
+// pay; the place's level is the higher of the two).
+//   grant         Manual Premier, nothing charged (tier 1..2, 1..12 months);
+//                 refused while Manual Premier is running.
+//   end           ends the running Manual Premier now.
 //   remove_pledge takes one pledge out of the line (its card detached); a
 //                 payer's paid period runs out. Never refunds.
-//   set           MESITA-3090, Multiple Places › Edit: move the place to tier
-//                 0 (End Premier), 1 (2X) or 2 (5X) in one transaction
-//                 (premier_set_grant). Refused, nothing written, when a guest
-//                 pays, guests wait to pay, a guest is checking out, or the
-//                 place is archived — the box never starts, holds or ends a
-//                 guest charge. Errors map in _shared/premier-set.ts.
+//   set           MESITA-3090, Multiple Places › Edit: move the place's Manual
+//                 Premier to tier 0 (End Premier), 1 (2X) or 2 (5X) in one
+//                 transaction (premier_set_grant). Refused, nothing written,
+//                 only for an archived or unknown place; it never touches a
+//                 guest's pledge or period. Errors map in _shared/premier-set.ts.
 //
 // Body:     { placeId | projectId, action: "grant", tier: 1|2, months?: 1..12 }
 //         | { placeId | projectId, action: "end" }
@@ -54,8 +55,8 @@ serveJson("admin-web-grant-place-premier", async (req) => {
       p_by: user.emailLower ?? user.id,
     });
     if (error) {
-      const running = error.message.includes("a period is running");
-      return json({ ok: false, error: running ? "This place already has a Premier period running" : error.message }, running ? 409 : 500);
+      const running = error.message.includes("Manual Premier is running");
+      return json({ ok: false, error: running ? "This place already has Manual Premier running" : error.message }, running ? 409 : 500);
     }
     return json({ ok: true });
   }

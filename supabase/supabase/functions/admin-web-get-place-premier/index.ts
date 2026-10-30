@@ -5,9 +5,13 @@
 // name, MESITA-2928), and the recent periods with what each one charged, so
 // the operator can see who pays for what without opening Stripe.
 //
+// Manual Premier (MESITA-3091) comes back on its own: `manual` is the row
+// running now, `manual_history` the recent ones; `period` and `periods` are
+// only what guests pay for.
+//
 // Body:     { placeId | projectId }
-// Response: { ok: true, tier: 0..2, factor, period | null, line: AdminPledge[],
-//             periods: AdminPeriod[], stuck: number }
+// Response: { ok: true, tier: 0..2, factor, manual | null, manual_history,
+//             period | null, line: AdminPledge[], periods: AdminPeriod[], stuck: number }
 // Auth:     caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -21,6 +25,7 @@ import {
   readBackerNames,
   readBoostPlace,
   readLine,
+  runningManual,
   runningPeriod,
   TIER_RANK,
 } from "../_shared/boost.ts";
@@ -45,6 +50,7 @@ serveJson("admin-web-get-place-premier", async (req) => {
 
   const now = Date.now();
   const running = runningPeriod(line.periods, now);
+  const manual = runningManual(line.manual, now);
   const payerId = running?.backing_id ?? null;
   const order = [
     ...line.pledges.filter((p) => p.id === payerId),
@@ -62,8 +68,19 @@ serveJson("admin-web-get-place-premier", async (req) => {
     ok: true,
     tier,
     factor: PREMIER_FACTOR[tier],
+    manual: manual
+      ? { id: manual.id, tier: manual.tier, starts_at: manual.starts_at, ends_at: manual.ends_at, source: manual.source, granted_by: manual.granted_by }
+      : null,
+    manual_history: line.manual.map((m) => ({
+      id: m.id,
+      tier: m.tier,
+      starts_at: m.starts_at,
+      ends_at: m.ends_at,
+      source: m.source,
+      granted_by: m.granted_by,
+    })),
     period: running
-      ? { id: running.id, tier: running.tier, ends_at: running.ends_at, granted: running.backing_id == null, granted_by: running.granted_by }
+      ? { id: running.id, tier: running.tier, ends_at: running.ends_at, granted: false, granted_by: null }
       : null,
     line: order.map((p) => ({
       id: p.id,

@@ -76,6 +76,11 @@ export function BoostPane({
   const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const period = boost?.period ?? null;
+  const manual = boost?.manual ?? null;
+  // Levels Mesita's Manual Premier already gives are not for sale.
+  const forSale = BOOST_TIERS.filter(
+    (t) => !boost?.quotes?.[t.key][interval].covered,
+  );
   const line = boost?.line ?? [];
   const mine = boost?.mine ?? null;
   const live = (boost?.tier ?? 0) > 0;
@@ -130,24 +135,25 @@ export function BoostPane({
     <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
       <div className="border-border bg-card flex flex-col rounded-2xl border">
         {/* Where the place stands: one line, only when there is news. */}
-        {!loading && (period || boost?.renewing || line.length > 0) && (
-          <div
-            className="border-border flex items-center gap-2 border-b px-4 py-3 text-sm"
-            aria-live="polite"
-          >
-            <span
-              className={cn(
-                "h-2.5 w-2.5 shrink-0 rounded-full",
-                live ? "" : "bg-muted-foreground",
-              )}
-              style={
-                live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined
-              }
-              aria-hidden
-            />
-            <span className="font-semibold">{statusLine(boost)}</span>
-          </div>
-        )}
+        {!loading &&
+          (period || manual || boost?.renewing || line.length > 0) && (
+            <div
+              className="border-border flex items-center gap-2 border-b px-4 py-3 text-sm"
+              aria-live="polite"
+            >
+              <span
+                className={cn(
+                  "h-2.5 w-2.5 shrink-0 rounded-full",
+                  live ? "" : "bg-muted-foreground",
+                )}
+                style={
+                  live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined
+                }
+                aria-hidden
+              />
+              <span className="font-semibold">{statusLine(boost)}</span>
+            </div>
+          )}
 
         {/* Who's paying. */}
         <div className="flex flex-col gap-2 p-4">
@@ -201,8 +207,8 @@ export function BoostPane({
             </>
           ) : (
             <p className="text-muted-foreground text-sm leading-relaxed">
-              {period?.granted
-                ? "Nobody yet. Join now and you pay when Mesita's grant ends."
+              {manual
+                ? `Nobody pays yet. Mesita gives this place ${tierLabel(manual.tier)} until ${shortDate(manual.ends_at)}.`
                 : "Nobody yet. You'd be the first."}
             </p>
           )}
@@ -215,130 +221,139 @@ export function BoostPane({
           )}
         </div>
 
-        {/* The two plans. */}
-        <div className="border-border flex flex-col gap-3 border-t p-4">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="type-eyebrow text-muted-foreground">
-              {mine && mine.status !== "ended"
-                ? "Change your plan"
-                : "Make it Premier"}
-            </h3>
-            <div
-              className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
-              role="radiogroup"
-              aria-label="Billing"
-            >
-              {(["month", "year"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="radio"
-                  aria-checked={interval === v}
-                  onClick={() => setBillingInterval(v)}
-                  className={cn(
-                    "min-h-9 rounded-md px-3 text-xs font-semibold transition",
-                    interval === v
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {v === "month" ? "Monthly" : "Yearly −2 mo"}
-                </button>
-              ))}
-            </div>
+        {/* The two plans, minus any level Mesita already gives. */}
+        {forSale.length === 0 && manual ? (
+          <div className="border-border border-t p-4">
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Mesita gives this place {tierLabel(manual.tier)} until{" "}
+              {shortDate(manual.ends_at)}, the highest level. Nothing to buy.
+            </p>
           </div>
-          <div
-            className="flex flex-col gap-2"
-            role="radiogroup"
-            aria-label="Premier plan"
-          >
-            {BOOST_TIERS.map((t) => {
-              const tq = boost?.quotes?.[t.key][interval];
-              const on = picked === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => {
-                    setPicked(t.key);
-                    setStartError(null);
-                  }}
-                  className={cn(
-                    "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99]",
-                    on
-                      ? "border-foreground ring-foreground ring-1"
-                      : "border-border hover:bg-muted",
-                  )}
-                >
-                  <span
+        ) : (
+          <div className="border-border flex flex-col gap-3 border-t p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="type-eyebrow text-muted-foreground">
+                {mine && mine.status !== "ended"
+                  ? "Change your plan"
+                  : "Make it Premier"}
+              </h3>
+              <div
+                className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
+                role="radiogroup"
+                aria-label="Billing"
+              >
+                {(["month", "year"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={interval === v}
+                    onClick={() => setBillingInterval(v)}
                     className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                      on ? "border-foreground" : "border-border",
+                      "min-h-9 rounded-md px-3 text-xs font-semibold transition",
+                      interval === v
+                        ? "bg-card text-foreground shadow-sm"
+                        : "text-muted-foreground",
                     )}
-                    aria-hidden
                   >
-                    {on && (
-                      <span className="bg-foreground h-2.5 w-2.5 rounded-full" />
+                    {v === "month" ? "Monthly" : "Yearly −2 mo"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div
+              className="flex flex-col gap-2"
+              role="radiogroup"
+              aria-label="Premier plan"
+            >
+              {forSale.map((t) => {
+                const tq = boost?.quotes?.[t.key][interval];
+                const on = picked === t.key;
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => {
+                      setPicked(t.key);
+                      setStartError(null);
+                    }}
+                    className={cn(
+                      "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99]",
+                      on
+                        ? "border-foreground ring-foreground ring-1"
+                        : "border-border hover:bg-muted",
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-base font-semibold">
-                      {t.label}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                        on ? "border-foreground" : "border-border",
+                      )}
+                      aria-hidden
+                    >
+                      {on && (
+                        <span className="bg-foreground h-2.5 w-2.5 rounded-full" />
+                      )}
                     </span>
-                    <span className="text-muted-foreground block text-xs">
-                      {t.blurb}
-                    </span>
-                  </span>
-                  {tq && (
-                    <span className="text-sm font-semibold whitespace-nowrap">
-                      {money(tq.price_cents)}
-                      <span className="text-muted-foreground font-normal">
-                        /{interval === "year" ? "yr" : "mo"}
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-base font-semibold">
+                        {t.label}
+                      </span>
+                      <span className="text-muted-foreground block text-xs">
+                        {t.blurb}
                       </span>
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {picked && (
-            <div className="flex flex-col gap-2">
-              {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
-              {boost?.quotes && q && (
-                <button
-                  type="button"
-                  onClick={() => void pledge()}
-                  disabled={starting}
-                  className={cn(
-                    PRIMARY_BUTTON_CLASS,
-                    "inline-flex items-center justify-center gap-2",
-                  )}
-                >
-                  {starting && (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  )}
-                  {starting ? "Opening…" : buttonLabel(q)}
-                </button>
-              )}
-              <p
-                className="text-muted-foreground text-xs leading-relaxed"
-                aria-live="polite"
-              >
-                {priceLine(picked, interval, q, boost, mine)}
-              </p>
+                    {tq && (
+                      <span className="text-sm font-semibold whitespace-nowrap">
+                        {money(tq.price_cents)}
+                        <span className="text-muted-foreground font-normal">
+                          /{interval === "year" ? "yr" : "mo"}
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-          )}
 
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Premier gives the place 2X ranking priority on Home and the Map,
-            Premier Max 5X. Priority moves it up the list; it doesn&apos;t
-            guarantee more views. Premier places show “Ad”; Premier doesn&apos;t
-            verify a place. US dollars, billed by Stripe.
-          </p>
-        </div>
+            {picked && (
+              <div className="flex flex-col gap-2">
+                {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
+                {boost?.quotes && q && (
+                  <button
+                    type="button"
+                    onClick={() => void pledge()}
+                    disabled={starting}
+                    className={cn(
+                      PRIMARY_BUTTON_CLASS,
+                      "inline-flex items-center justify-center gap-2",
+                    )}
+                  >
+                    {starting && (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    )}
+                    {starting ? "Opening…" : buttonLabel(q)}
+                  </button>
+                )}
+                <p
+                  className="text-muted-foreground text-xs leading-relaxed"
+                  aria-live="polite"
+                >
+                  {priceLine(picked, interval, q, boost, mine)}
+                </p>
+              </div>
+            )}
+
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              Premier gives the place 2X ranking priority on Home and the Map,
+              Premier Max 5X. Priority moves it up the list; it doesn&apos;t
+              guarantee more views. Premier places show “Ad”; Premier
+              doesn&apos;t verify a place. US dollars, billed by Stripe.
+            </p>
+          </div>
+        )}
       </div>
 
       {failed && (
@@ -443,10 +458,19 @@ function statusLine(boost: PlaceBoost | null): string {
   const p = boost.period;
   if (boost.renewing)
     return p ? `${tierLabel(p.tier)} · renewing…` : "Premier · renewing…";
-  if (p?.granted)
-    return `${tierLabel(p.tier)} · granted by Mesita until ${shortDate(p.ends_at)}`;
-  if (p)
-    return `${tierLabel(p.tier)} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`;
+  const m = boost.manual;
+  const paid = p
+    ? `${tierLabel(p.tier)} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`
+    : null;
+  const byMesita = m
+    ? `${tierLabel(m.tier)} · by Mesita until ${shortDate(m.ends_at)}`
+    : null;
+  // The higher level leads (MESITA-3091: the place's level is the higher).
+  if (paid && byMesita)
+    return m!.tier >= p!.tier
+      ? `${byMesita} · ${paid}`
+      : `${paid} · ${byMesita}`;
+  if (paid || byMesita) return (paid ?? byMesita)!;
   if (boost.line.length > 0)
     return "Not Premier · the next pledge is charged within the hour";
   return "Not Premier yet";
@@ -479,16 +503,10 @@ function priceLine(
         q.extra_days > 0 ? `, with ${q.extra_days} extra days` : ""
       }. ${q.checkout === "none" ? "You become the payer." : "Confirm your card to become the payer."}`;
     }
-    if (period?.granted) {
-      return `${prefix}Pay ${money(q.charge_cents)} today. You become the payer; the granted ${tierLabel(period.tier)} ends now. Then ${money(q.price_cents)} every ${every}.`;
-    }
     if (q.credit_cents > 0 && period) {
       return `${prefix}Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on the current ${tierLabel(period.tier)}). You become the payer. Then ${money(q.price_cents)} every ${every}.`;
     }
     return `${prefix}Pay ${money(q.charge_cents)} today, then ${money(q.price_cents)} every ${every} until you leave.`;
-  }
-  if (period?.granted) {
-    return `${prefix}$0 today. You'd be Backup ${q.position} and pay when the grant ends ${shortDate(period.ends_at)}.`;
   }
   return `${prefix}$0 today. You'd be Backup ${q.position}. You may be charged ${money(q.price_cents)} a ${every} later, only if the pledges above you stop paying.`;
 }
