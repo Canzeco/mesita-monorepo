@@ -48,6 +48,8 @@ type Found = {
 
 const SELECT = "id, name, google_name, address, photos, phone";
 const MAX_ROWS = 20;
+/** Google searches one account may run in a rolling day (MESITA-3123). */
+const SEARCHES_PER_DAY = 200;
 
 function mesitaRow(r: Row, mine: Map<string, string>): Found {
   return {
@@ -93,6 +95,13 @@ serveJson("business-web-find-place", async (req) => {
 
   const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";
   if (q.length < 2) return json({ ok: true, places: [] });
+
+  // A daily budget per account before any Google spend (MESITA-3123).
+  const budget = await admin.rpc("business_search_take", { p_account_id: user.id, p_cap: SEARCHES_PER_DAY });
+  if (budget.error) return json({ ok: false, error: `search_budget: ${budget.error.message}` }, 500);
+  if (budget.data !== true) {
+    return json({ ok: false, code: "search_budget", error: "You've searched a lot today. Try again tomorrow." }, 429);
+  }
 
   const lane = await businessNameItems(env, {
     input: q,
