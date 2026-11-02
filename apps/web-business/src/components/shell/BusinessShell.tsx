@@ -2,11 +2,12 @@
 
 // The Business app's frame (MESITA-3103, menu MESITA-3111).
 //
-// Desktop rail, top to bottom:
-//   the place switcher (the place in the URL, else your first place) →
-//   that place's pages (Profile · Premier · Settings), only with a place →
-//   Internal for staff → Coming soon as one quiet line → the account.
-// Phone: a tab bar (the place's three pages + More); More holds the rest.
+// Desktop rail, top to bottom (Pato, 2026-11-02, MESITA-3112): the logo,
+//   the place selector (the place in the URL, else your first place; staff
+//   also find Internal in it), Settings · Profile · Premier, the account.
+// Phone: a tab bar (the same three + More); More holds the selector's list
+//   and the account. Payments, Prepayments and Rewards stay as pages, off
+//   the menu.
 //
 // Hiding a row is never the gate: every place door asks the server
 // (business-web-* → place-access) and a stranger gets 404.
@@ -34,24 +35,21 @@ import { cn } from "@/lib/utils";
 
 export type ShellPlace = { id: string; name: string | null; photo: string | null };
 
-type Row = { key: string; label: string; icon: LucideIcon; href: string };
+type Row = { key: string; label: string; icon: LucideIcon; href: string | null };
 
-const SOON = [
-  { key: "payments", label: "Payments", href: "/payments" },
-  { key: "prepayments", label: "Prepayments", href: "/prepayments" },
-  { key: "rewards", label: "Rewards", href: "/rewards" },
-] as const;
-
-function placeRows(placeId: string): Row[] {
-  const href = (tab: PlaceTab) => placeTabHref(placeId, tab);
+/** Pato, 2026-11-02: the rail is Settings · Profile · Premier, always drawn;
+ *  without a place Settings is the account's and the other two wait. */
+function placeRows(placeId: string | null): Row[] {
+  const href = (tab: PlaceTab) => (placeId ? placeTabHref(placeId, tab) : null);
   return [
+    { key: "settings", label: "Settings", icon: Settings, href: href("settings") ?? "/settings" },
     { key: "profile", label: "Profile", icon: Store, href: href("profile") },
     { key: "premier", label: "Premier", icon: BadgeCheck, href: href("premier") },
-    { key: "settings", label: "Settings", icon: Settings, href: href("settings") },
   ];
 }
 
 function isActive(pathname: string, row: Row): boolean {
+  if (!row.href) return false;
   return pathname === row.href || pathname.startsWith(`${row.href}/`);
 }
 
@@ -70,6 +68,14 @@ function PlacePhoto({ place, className }: { place: ShellPlace | null; className?
 function NavRow({ row, pathname }: { row: Row; pathname: string }) {
   const active = isActive(pathname, row);
   const Icon = row.icon;
+  if (!row.href) {
+    return (
+      <span aria-disabled title="Choose a place first" className="text-muted-foreground flex min-h-10 items-center gap-3 rounded-lg px-3 text-[0.9375rem] opacity-50">
+        <Icon className="size-[1.125rem] shrink-0" aria-hidden />
+        {row.label}
+      </span>
+    );
+  }
   return (
     <Link
       href={row.href}
@@ -86,7 +92,7 @@ function NavRow({ row, pathname }: { row: Row; pathname: string }) {
 }
 
 /** The places you can switch to, plus All places and Claim a place. */
-function PlaceList({ places, currentId, pathname }: { places: ShellPlace[]; currentId: string | null; pathname: string }) {
+function PlaceList({ places, currentId, pathname, isSuperAdmin }: { places: ShellPlace[]; currentId: string | null; pathname: string; isSuperAdmin: boolean }) {
   const item = "hover:bg-muted/60 flex min-h-10 items-center gap-3 rounded-lg px-2 text-sm";
   return (
     <div className="flex flex-col gap-0.5">
@@ -106,11 +112,17 @@ function PlaceList({ places, currentId, pathname }: { places: ShellPlace[]; curr
         <Plus className="text-muted-foreground size-4 shrink-0" aria-hidden />
         Claim a place
       </Link>
+      {isSuperAdmin ? (
+        <Link href="/internal" className={cn(item, pathname === "/internal" && "font-semibold")}>
+          <ShieldCheck className="text-muted-foreground size-4 shrink-0" aria-hidden />
+          Internal · Mesita staff
+        </Link>
+      ) : null}
     </div>
   );
 }
 
-function Switcher({ places, current, placeId, pathname }: { places: ShellPlace[]; current: ShellPlace | null; placeId: string | null; pathname: string }) {
+function Switcher({ places, current, placeId, pathname, isSuperAdmin }: { places: ShellPlace[]; current: ShellPlace | null; placeId: string | null; pathname: string; isSuperAdmin: boolean }) {
   const title = current?.name ?? (placeId ? "Staff view" : "Choose a place");
   const subtitle = current ? "Your place" : placeId ? "A place you don't run" : `${places.length ? "Pick one of yours" : "Claim yours to start"}`;
   return (
@@ -125,25 +137,9 @@ function Switcher({ places, current, placeId, pathname }: { places: ShellPlace[]
         <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" aria-hidden />
       </summary>
       <div className="border-border bg-card shadow-elev absolute inset-x-0 top-full z-40 mt-1 rounded-xl border p-1.5">
-        <PlaceList places={places} currentId={current?.id ?? null} pathname={pathname} />
+        <PlaceList places={places} currentId={current?.id ?? null} pathname={pathname} isSuperAdmin={isSuperAdmin} />
       </div>
     </details>
-  );
-}
-
-function SoonLine() {
-  return (
-    <p className="text-muted-foreground px-3 text-xs leading-relaxed">
-      <span className="type-eyebrow mr-1.5">Soon</span>
-      {SOON.map((s, i) => (
-        <span key={s.key}>
-          {i > 0 ? " · " : null}
-          <Link href={s.href} className="hover:text-foreground underline-offset-2 hover:underline">
-            {s.label}
-          </Link>
-        </span>
-      ))}
-    </p>
   );
 }
 
@@ -181,8 +177,7 @@ export function BusinessShell({
   const pathname = usePathname();
   const placeId = placeIdFromPathname(pathname) ?? places[0]?.id ?? null;
   const current = places.find((p) => p.id === placeId) ?? null;
-  const rows = placeId ? placeRows(placeId) : [];
-  const internal: Row = { key: "internal", label: "Internal", icon: ShieldCheck, href: "/internal" };
+  const rows = placeRows(placeId);
 
   return (
     <div className="min-h-dvh">
@@ -192,18 +187,9 @@ export function BusinessShell({
           <MesitaWordmark className="h-5 w-auto" />
           <span className="type-eyebrow text-muted-foreground ml-1">Business</span>
         </Link>
-        <Switcher places={places} current={current} placeId={placeId} pathname={pathname} />
+        <Switcher places={places} current={current} placeId={placeId} pathname={pathname} isSuperAdmin={isSuperAdmin} />
         <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-1 pb-4">
           {rows.map((r) => <NavRow key={r.key} row={r} pathname={pathname} />)}
-          {isSuperAdmin ? (
-            <>
-              <div className="type-eyebrow text-muted-foreground px-3 pt-5 pb-2">Mesita staff</div>
-              <NavRow row={internal} pathname={pathname} />
-            </>
-          ) : null}
-          <div className="mt-auto pt-6">
-            <SoonLine />
-          </div>
         </nav>
         <Account email={email} className="border-border border-t py-3" />
       </aside>
@@ -219,10 +205,10 @@ export function BusinessShell({
 
       <nav aria-label="Business" className="border-border bg-card/95 pb-safe fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur lg:hidden">
         <div className="grid h-16 grid-cols-4">
-          {(placeId ? placeRows(placeId) : placeRows("")).map((r) => {
+          {rows.map((r) => {
             const Icon = r.icon;
             const cls = "flex flex-col items-center justify-center gap-1 text-xs font-medium";
-            if (!placeId) {
+            if (!r.href) {
               return (
                 <span key={r.key} className={cn(cls, "text-muted-foreground opacity-40")} aria-disabled>
                   <Icon className="size-5" aria-hidden />
@@ -252,22 +238,15 @@ export function BusinessShell({
   );
 }
 
-/** The phone's More page: places, staff, Coming soon and the account. */
+/** The phone's More page: the place selector's list and the account. */
 export function MoreList({ places, isSuperAdmin, email }: { places: ShellPlace[]; isSuperAdmin: boolean; email: string | null }) {
   const pathname = usePathname();
   return (
     <div className="flex flex-col gap-6">
       <section className="flex flex-col gap-2">
         <h2 className="type-eyebrow text-muted-foreground px-2">Your places</h2>
-        <PlaceList places={places} currentId={null} pathname={pathname} />
+        <PlaceList places={places} currentId={null} pathname={pathname} isSuperAdmin={isSuperAdmin} />
       </section>
-      {isSuperAdmin ? (
-        <section className="flex flex-col gap-2">
-          <h2 className="type-eyebrow text-muted-foreground px-2">Mesita staff</h2>
-          <NavRow row={{ key: "internal", label: "Internal", icon: ShieldCheck, href: "/internal" }} pathname={pathname} />
-        </section>
-      ) : null}
-      <SoonLine />
       <div className="border-border rounded-xl border">
         <Account email={email} />
       </div>

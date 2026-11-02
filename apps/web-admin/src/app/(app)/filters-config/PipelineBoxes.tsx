@@ -122,7 +122,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-// 1 ─ Admin Name Pipeline ─────────────────────────────────────────────────
+// 1 ─ Admin & Business Name Pipeline ──────────────────────────────────────
 export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);
   const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
@@ -137,9 +137,9 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
     <PipelineBox
       id="s-name-admin"
       pipeline="name"
-      title="Admin Name Pipeline"
+      title="Admin & Business Name Pipeline"
       icon={<ScanSearch className={ICON} />}
-      callers={["Admin Single Place › Find"]}
+      callers={["Admin Single Place › Find", "Business › Claim your place"]}
       explanation={
         <p>
           The Name pipeline as an admin runs it. An admin types a name and
@@ -150,7 +150,10 @@ export function NameAdminBox(seed: ConfigSeed<DiscoveryConfig>) {
           General&apos;s active check. A Google hit Mesita holds shows as
           that Mesita place; a place neither returns is not found. Locations
           are never shown here. With the last option on, the page opens
-          listing every Mesita place, as an empty search.
+          listing every Mesita place, as an empty search. Business owners
+          search through this pipeline when they claim their place (the
+          Text Search column runs there too); a Google-only hit is added to
+          Mesita when the owner taps Add and claim.
         </p>
       }
       scoring="Rows found by both sources come first, then Text Search rank, then Autocomplete rank. Duplicates merge."
