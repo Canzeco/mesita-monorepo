@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { BadgeCheck, Flag, Heart, Link2, Share2, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Flag, Heart, Link2, Share2, Store, type LucideIcon } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -9,12 +9,15 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { copyPlaceLink, sharePlace } from "@/lib/share-place";
+import { isMesitaPlaceId } from "@/lib/api/activity";
+import { businessClaimHref } from "@/lib/business-url";
 import { SHEET_BODY_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 
 // THE THREE DOTS' MENU (Pato, MESITA-2692: "three dots in place profile is
 // not only to report"), Instagram's way: one card of rows, Report last and
-// red. Share · Add to favorites · Copy link · Premier · Report. Every row
+// red. Share · Add to favorites · Copy link · Premier · Is this your
+// business? · Report. Every row
 // closes the menu first; Report then opens the Report sheet (MESITA-2684)
 // and Premier switches the place to its Premier tab (MESITA-2861, the
 // word since MESITA-2925; a sheet on top from MESITA-2815 until then).
@@ -76,6 +79,17 @@ export function PlaceMoreSheet({
       run: onBoost,
     },
   ];
+  // "Is this your business?" (MESITA-3103): the Business app's claim page for
+  // this place, in a new tab. Mesita places only, and only when the app's
+  // address is configured; a guest never needs it.
+  const claimHref = isMesitaPlaceId(place.id) ? businessClaimHref(place.id) : null;
+  if (claimHref)
+    rows.push({
+      key: "claim",
+      label: "Is this your business?",
+      icon: Store,
+      run: () => void window.open(claimHref, "_blank", "noopener"),
+    });
   if (onReport)
     rows.push({
       key: "report",

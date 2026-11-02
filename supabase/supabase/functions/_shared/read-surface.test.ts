@@ -168,7 +168,8 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
   "admin-web-search-places/index.ts",
-  "admin-web-get-overview/index.ts",
+  // The place screen's one read, admin's and the Business app's (MESITA-3103).
+  "_shared/place-overview.ts",
   "admin-web-reload-place-reviews/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
   "eleven-a4-cancel-reservation/index.ts",
@@ -206,8 +207,9 @@ const PROFILES_READ_ALLOWLIST = [
   // (one module since MESITA-3042).
   "_shared/place-activity-read.ts",
   "admin-web-search-places/index.ts",
-  "admin-web-get-overview/index.ts",
-  "admin-web-update-place/index.ts", // the row read back on a Reset-only save (MESITA-2829)
+  // The place screen's one read, admin's and the Business app's (MESITA-3103).
+  "_shared/place-overview.ts",
+  "_shared/place-update-apply.ts", // the row read back on a Reset-only save (MESITA-2829); both save doors (MESITA-3103)
   // Names only (google_place_id, name) for the repeated-open list (MESITA-2323).
   "admin-web-list-place-opens/index.ts",
   "admin-web-get-activity-summary/index.ts",
@@ -230,6 +232,13 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/wallet.ts",
   // VIP partners (MESITA-2556): a partner venue's id by Google Place ID, and its name for the list.
   "_shared/vip-partners.ts",
+  // web-business (MESITA-3103): name and photo of the places a guest runs or
+  // asked to run; the Claim search by name with the listing phone (masked
+  // before it leaves); the phone match; the place names in the review queue.
+  "business-web-get-identity/index.ts",
+  "business-web-find-place/index.ts",
+  "business-web-request-verification/index.ts",
+  "business-web-list-verifications/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
@@ -270,6 +279,11 @@ const CONSUMER_READ_ALLOWLIST = [
   "consumer-web-update-profile/index.ts",
   "eleven-a3-verify-caller/index.ts",
   "eleven-agent-get-reservation/index.ts",
+  // web-business (MESITA-3103): the owner's row, created on first sign-in
+  // through writeConsumer; names, phone, handle and member number of owners
+  // and requesters for the super-admin review queue. Read-only, error checked.
+  "_shared/business-request.ts",
+  "_shared/place-access.ts",
 ];
 
 Deno.test("CONSUMER READ: no new raw reader of consumers outside the allowlist", async () => {

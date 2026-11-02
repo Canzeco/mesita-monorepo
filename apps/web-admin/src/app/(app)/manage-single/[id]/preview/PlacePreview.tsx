@@ -8,7 +8,7 @@ import { placeTabHref } from "@/lib/place-tabs";
 import { memberPreviewDetail } from "./member-preview";
 
 export function PlacePreview() {
-  const { place, profile, isDirty } = usePlaceContext();
+  const { place, profile } = usePlaceContext();
   const enriched =
     place.enriched === true ||
     (typeof place.enriched_at === "string" && place.enriched_at.trim() !== "");
@@ -26,18 +26,6 @@ export function PlacePreview() {
           </Link>
         </p>
       )}
-      {isDirty ? (
-        <p className="text-muted-foreground shrink-0 text-sm">
-          Showing the saved profile. Unsaved edits stay on{" "}
-          <Link
-            href={placeTabHref(place.id, "profile")}
-            className="text-foreground font-medium underline"
-          >
-            Profile
-          </Link>{" "}
-          until you Save.
-        </p>
-      ) : null}
       <PreviewBoundary name={place.name}>
         <MemberPhone
           place={place}

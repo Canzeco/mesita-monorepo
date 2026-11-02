@@ -10,8 +10,8 @@ import { stripPills } from "./PlaceTabStrip";
 describe("Single Place strip", () => {
   const tabs = FIRST_STAGE_TABS;
 
-  it("is Profile, Reviews, Preview, Admin, and Premier (MESITA-2789; segment `boost`)", () => {
-    expect(tabs).toEqual(["profile", "reviews", "preview", "admin", "boost"]);
+  it("is Reviews, Preview, Admin, and Premier (Profile moved to the Business app, MESITA-3103)", () => {
+    expect(tabs).toEqual(["reviews", "preview", "admin", "boost"]);
   });
 
   it("draws one pill per view, each with a page.tsx", () => {

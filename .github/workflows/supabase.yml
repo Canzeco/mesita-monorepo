@@ -68,6 +68,7 @@ jobs:
               # supabase test reads belongs in this filter.
               - 'apps/web-admin/src/**'
               - 'apps/web-consumer/src/**'
+              - 'apps/web-business/src/**'
             schema:
               - 'supabase/supabase/migrations/**'
               - 'supabase/supabase/tests/**'

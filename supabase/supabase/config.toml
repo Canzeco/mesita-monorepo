@@ -503,3 +503,39 @@ verify_jwt = true
 # ([auth.sms.twilio] above), and voice is the Reservationist's line, whose
 # webhooks point at ElevenLabs. The `twilio-webhook` caller is retired with
 # the WhatsApp rail that was its only user.
+
+# MESITA-3103: web-business, the place's own console. Every door opens with
+# a session; place doors then ask place-access (a live place_managers row or
+# super_admins), and the two queue doors are super-admin only.
+[functions.business-web-get-identity]
+verify_jwt = true
+
+[functions.business-web-find-place]
+verify_jwt = true
+
+[functions.business-web-request-verification]
+verify_jwt = true
+
+[functions.business-web-get-place]
+verify_jwt = true
+
+[functions.business-web-update-place]
+verify_jwt = true
+
+[functions.business-web-get-premier]
+verify_jwt = true
+
+[functions.business-web-start-premier]
+verify_jwt = true
+
+[functions.business-web-cancel-premier]
+verify_jwt = true
+
+[functions.business-web-list-verifications]
+verify_jwt = true
+
+[functions.business-web-decide-verification]
+verify_jwt = true
+
+[functions.business-web-leave-place]
+verify_jwt = true

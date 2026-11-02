@@ -8,6 +8,8 @@ import { StateCard } from "./StateCard";
 import { ProfileStatsCard } from "./ProfileStatsCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { ReportsCard } from "./ReportsCard";
+import { ActionStatesCard } from "./ActionStatesCard";
+import { OwnersCard } from "./OwnersCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -28,8 +30,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Enrichment  queues the full Enricher process
 //   Vectors / Metadata (UID & audit). The SERP Summary box went with the
 //   enrichment stage path (MESITA-2424): Render never stored the summary.
-// The Verification box (ownership proof + queue decide) went with
-// MESITA-2106: the MVP has no business app, so nobody proves ownership.
+// Who runs the place is back as the Owners card (MESITA-3103); the decisions
+// happen in the Business app's Internal page.
 
 /** The tab's masonry: one column, two from lg, three from xl, its cards
  *  never split. The tab's loading.tsx lays its cards out in it too. */
@@ -41,6 +43,10 @@ export function AdminSection({ place }: { place: AdminPlace }) {
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
+      {/* Reservations and Prepayments are Mesita's switches; they left the
+          profile editor when it moved to the Business app (MESITA-3103). */}
+      <ActionStatesCard place={place} />
+      <OwnersCard place={place} />
       <ProfileStatsCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the list when the operator switches places. */}

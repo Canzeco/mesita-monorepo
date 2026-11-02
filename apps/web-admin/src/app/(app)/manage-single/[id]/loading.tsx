@@ -15,12 +15,10 @@ import { placeTabFromPathname } from "@/lib/place-tabs";
 // placeholders must be similar to the page you are loading, like the sizes").
 // This boundary draws INSIDE this folder's layout.tsx (a loading.tsx never
 // wraps its own segment's layout), so the heading, the strip of doors
-// (PlaceTabStrip) and PlaceScroll are already the real ones above it, and
-// so is PlaceManageShell's PlaceProvider: the place is already in hand, and
+// (PlaceTabStrip) are already the real ones above it, and so is
+// PlaceStateShell's PlaceProvider: the place is already in hand, and
 // the Preview silhouette reads it the way PlacePreview does. It stands in
 // only for the tab the operator opened, under them:
-//   Profile — nothing. PlaceScroll keeps the editor mounted and on screen;
-//             anything here would draw under it and then vanish.
 //   Reviews — ReviewsSummary: its header, then the four summary cards.
 //   Preview — PlacePreview: its notes, the member phone, the place screen's
 //             own silhouette inside (the package's PlaceProfileSkeleton).
@@ -107,7 +105,7 @@ function ReviewsTabSkeleton() {
  *  context; then MemberPhone's frame (the consumer's tokens, member-phone)
  *  with the place screen's silhouette inside, read from the package. */
 function PreviewTabSkeleton() {
-  const { place, isDirty } = usePlaceContext();
+  const { place } = usePlaceContext();
   const enriched =
     place.enriched === true ||
     (typeof place.enriched_at === "string" && place.enriched_at.trim() !== "");
@@ -118,11 +116,6 @@ function PreviewTabSkeleton() {
           <Bone className="h-3.5 w-72 max-w-full" />
         </div>
       )}
-      {isDirty ? (
-        <div className="flex h-[1lh] shrink-0 items-center text-sm">
-          <Bone className="h-3.5 w-[31rem] max-w-full" />
-        </div>
-      ) : null}
       <div className="member-phone border-border mx-auto flex min-h-0 w-full max-w-md flex-1 flex-col overflow-hidden border md:rounded-3xl md:shadow-elev">
         <PlaceProfileSkeleton />
       </div>
