@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
-import { getIdentityCached } from "@/lib/identity";
-import { AccountCard } from "@/components/shell/AccountCard";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
 
@@ -21,7 +19,7 @@ function day(iso: string): string {
 
 export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [manage, identity] = await Promise.all([getManagePlace(id), getIdentityCached()]);
+  const manage = await getManagePlace(id);
   if (!manage) notFound();
 
   return (
@@ -47,10 +45,9 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
             </>
           )}
         </dl>
-        <p className="text-muted-foreground text-sm">Team members and roles are not available yet: each person claims the place with their own phone.</p>
+        <p className="text-muted-foreground text-sm">Team members and roles are not available yet: each person claims the place with their own Google account.</p>
         {manage.role === "owner" ? <LeavePlace placeId={id} /> : null}
       </Card>
-      <AccountCard email={identity.ok ? identity.data.email : null} />
     </div>
   );
 }

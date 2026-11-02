@@ -1,7 +1,6 @@
-import { ComingSoon } from "@/components/shell/ComingSoon";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Rewards" };
-
-export default function RewardsPage() {
-  return <ComingSoon title="Rewards" line="You will reward guests for reviews, stories and visits. Not available yet." />;
+// Folded into Products (MESITA-3114).
+export default function Page() {
+  redirect("/products");
 }

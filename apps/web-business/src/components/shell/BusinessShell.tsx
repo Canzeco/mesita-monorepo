@@ -2,12 +2,13 @@
 
 // The Business app's frame (MESITA-3103, menu MESITA-3111).
 //
-// Desktop rail, top to bottom (Pato, 2026-11-02, MESITA-3112): the logo,
-//   the place selector (the place in the URL, else your first place; staff
-//   also find Internal in it), Settings · Profile · Premier, the account.
-// Phone: a tab bar (the same three + More); More holds the selector's list
-//   and the account. Payments, Prepayments and Rewards stay as pages, off
-//   the menu.
+// Desktop rail, top to bottom (Pato, 2026-11-02, MESITA-3112/3114): the
+//   logo, the place selector (the place in the URL, else your first place;
+//   staff also find Internal in it), a line, Profile · Premier, a line,
+//   Settings · Products, the account.
+// Phone: a tab bar (Profile · Premier · Settings · More); More holds the
+//   selector's list, Products and the account. Payments, Prepayments and
+//   Rewards are rows on Products (their old pages redirect there).
 //
 // Hiding a row is never the gate: every place door asks the server
 // (business-web-* → place-access) and a stranger gets 404.
@@ -19,6 +20,7 @@ import {
   Check,
   ChevronsUpDown,
   LayoutGrid,
+  Package,
   LogOut,
   Menu,
   Plus,
@@ -37,14 +39,22 @@ export type ShellPlace = { id: string; name: string | null; photo: string | null
 
 type Row = { key: string; label: string; icon: LucideIcon; href: string | null };
 
-/** Pato, 2026-11-02: the rail is Settings · Profile · Premier, always drawn;
- *  without a place Settings is the account's and the other two wait. */
+/** The rail (Pato, 2026-11-02, MESITA-3114): the place selector, then
+ *  Profile · Premier, then Settings · Products. Profile, Premier and
+ *  Settings are the place's ("settings is for the place, not the account")
+ *  and wait without one; Products is Mesita's list of place products. */
 function placeRows(placeId: string | null): Row[] {
   const href = (tab: PlaceTab) => (placeId ? placeTabHref(placeId, tab) : null);
   return [
-    { key: "settings", label: "Settings", icon: Settings, href: href("settings") ?? "/settings" },
     { key: "profile", label: "Profile", icon: Store, href: href("profile") },
     { key: "premier", label: "Premier", icon: BadgeCheck, href: href("premier") },
+  ];
+}
+
+function moreRows(placeId: string | null): Row[] {
+  return [
+    { key: "settings", label: "Settings", icon: Settings, href: placeId ? placeTabHref(placeId, "settings") : null },
+    { key: "products", label: "Products", icon: Package, href: "/products" },
   ];
 }
 
@@ -178,6 +188,7 @@ export function BusinessShell({
   const placeId = placeIdFromPathname(pathname) ?? places[0]?.id ?? null;
   const current = places.find((p) => p.id === placeId) ?? null;
   const rows = placeRows(placeId);
+  const lower = moreRows(placeId);
 
   return (
     <div className="min-h-dvh">
@@ -188,8 +199,11 @@ export function BusinessShell({
           <span className="type-eyebrow text-muted-foreground ml-1">Business</span>
         </Link>
         <Switcher places={places} current={current} placeId={placeId} pathname={pathname} isSuperAdmin={isSuperAdmin} />
-        <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pt-1 pb-4">
+        <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
+          <div className="border-border mx-3 mb-2 border-t" />
           {rows.map((r) => <NavRow key={r.key} row={r} pathname={pathname} />)}
+          <div className="border-border mx-3 my-2 border-t" />
+          {lower.map((r) => <NavRow key={r.key} row={r} pathname={pathname} />)}
         </nav>
         <Account email={email} className="border-border border-t py-3" />
       </aside>
@@ -205,7 +219,7 @@ export function BusinessShell({
 
       <nav aria-label="Business" className="border-border bg-card/95 pb-safe fixed inset-x-0 bottom-0 z-30 border-t backdrop-blur lg:hidden">
         <div className="grid h-16 grid-cols-4">
-          {rows.map((r) => {
+          {[...rows, lower[0]].map((r) => {
             const Icon = r.icon;
             const cls = "flex flex-col items-center justify-center gap-1 text-xs font-medium";
             if (!r.href) {
@@ -247,6 +261,7 @@ export function MoreList({ places, isSuperAdmin, email }: { places: ShellPlace[]
         <h2 className="type-eyebrow text-muted-foreground px-2">Your places</h2>
         <PlaceList places={places} currentId={null} pathname={pathname} isSuperAdmin={isSuperAdmin} />
       </section>
+      <NavRow row={{ key: "products", label: "Products", icon: Package, href: "/products" }} pathname={pathname} />
       <div className="border-border rounded-xl border">
         <Account email={email} />
       </div>

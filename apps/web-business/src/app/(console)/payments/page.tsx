@@ -1,7 +1,6 @@
-import { ComingSoon } from "@/components/shell/ComingSoon";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Payments" };
-
-export default function PaymentsPage() {
-  return <ComingSoon title="Payments" line="Guests will pay their bill with Mesita, straight to your place. Not available yet." />;
+// Folded into Products (MESITA-3114).
+export default function Page() {
+  redirect("/products");
 }
