@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { NEXT_COOKIE } from "@/lib/safe-next";
+import { readSupabaseEnv } from "./env";
 
 // Refreshes Supabase auth cookies on every request. Env vars are read
 // at call time so middleware code stays import-safe during the build's
@@ -17,11 +18,12 @@ const PUBLIC_PATHS = (path: string) =>
   path === "/" || path.startsWith("/auth/");
 
 export async function updateSupabaseSession(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !publishableKey) {
+  const env = readSupabaseEnv();
+  if ("error" in env) {
+    console.error(`[business middleware] ${env.error}`);
     return NextResponse.next({ request });
   }
+  const { url, publishableKey } = env;
 
   let response = NextResponse.next({ request });
 
