@@ -6,7 +6,7 @@ import { VerificationQueue } from "@/components/internal/VerificationQueue";
 import { InternalCards } from "./InternalCards";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Mesita staff" };
+export const metadata = { title: "Admin" };
 
 // Mesita staff only (MESITA-3103, MESITA-3104). The data is staff-only at the
 // source: business-web-get-place adds the internal fields only for a

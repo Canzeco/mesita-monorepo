@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { Plus, ShieldCheck, Store } from "lucide-react";
+import { Plus, Store } from "lucide-react";
 import { getIdentityCached } from "@/lib/identity";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
-import { StaffFind } from "./StaffFind";
 import type { MyPlaceState } from "@/lib/business-api";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,7 @@ export default async function PlacesPage() {
   if (!identity.ok) {
     return <PageErrorState heading="Could not load your places" message={identity.error} retryHref="/places" />;
   }
-  const { places, isSuperAdmin } = identity.data;
+  const { places } = identity.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,16 +85,6 @@ export default async function PlacesPage() {
           })}
         </Card>
       )}
-      {isSuperAdmin ? (
-        <>
-          <Link href="/internal" className="border-border bg-card hover:bg-muted/50 flex items-center gap-3 rounded-2xl border px-5 py-4 transition">
-            <ShieldCheck className="text-muted-foreground size-5" aria-hidden />
-            <span className="flex-1 font-semibold">Claim requests</span>
-            <span className="text-muted-foreground text-sm">People asking to run a place · only Mesita sees this</span>
-          </Link>
-          <StaffFind />
-        </>
-      ) : null}
     </div>
   );
 }
