@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
+import { ProductList } from "@/components/shell/ProductList";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -48,6 +49,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
         <p className="text-muted-foreground text-sm">Team members and roles are not available yet: each person claims the place with their own Google account.</p>
         {manage.role === "owner" ? <LeavePlace placeId={id} /> : null}
       </Card>
+      <ProductList />
     </div>
   );
 }
