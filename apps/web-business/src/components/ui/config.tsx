@@ -66,8 +66,8 @@ export function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="border-border bg-card rounded-2xl border p-4 sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+    <section className="border-border bg-card rounded-2xl border p-4 ">
+      <div className="flex flex-col gap-4    ">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {icon}
@@ -332,7 +332,7 @@ function QueryCapRow({
           if (Number.isNaN(raw)) return;
           rung.onChange(Math.max(min, Math.min(cap, Math.round(raw))));
         }}
-        className="border-border bg-card focus:border-foreground h-11 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50 sm:w-20"
+        className="border-border bg-card focus:border-foreground h-11 w-16 shrink-0 rounded-lg border px-2 text-right text-sm tabular-nums outline-none disabled:opacity-50 "
       />
     </label>
   );

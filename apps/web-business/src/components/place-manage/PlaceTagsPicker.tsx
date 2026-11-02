@@ -203,7 +203,7 @@ function TagsModal({
                 <p className="text-muted-foreground bg-muted/30 sticky top-0 px-4 py-2 type-label font-semibold tracking-[0.12em] uppercase">
                   {group.facet.emoji} {group.facet.label_en}
                 </p>
-                <div className="grid grid-cols-1 gap-0.5 px-2 py-1 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-0.5 px-2 py-1  ">
                   {group.rows.map((tag) => {
                     const isOn = selected.has(tag.slug);
                     return (
