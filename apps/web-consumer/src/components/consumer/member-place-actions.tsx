@@ -11,6 +11,7 @@ import type {
 } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { PrepaySheet } from "@/components/consumer/wallet/PrepaySheet";
 import {
   BoostPane,
   BoostUnavailable,
@@ -81,6 +82,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
+  const [prepayOpen, setPrepayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   // When ⋯ › Premier last asked for the Premier tab (ms).
@@ -117,6 +119,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
     onReserve: () => setReserveOpen(true),
+    // Mesita Prepay (MESITA-3098): only a Mesita place can take money.
+    onPrepay: isMesitaPlaceId(place.id) ? () => setPrepayOpen(true) : undefined,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
   };
@@ -148,6 +152,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
+      />
+      <PrepaySheet
+        place={place}
+        open={prepayOpen}
+        onClose={() => setPrepayOpen(false)}
       />
       <PlaceMoreSheet
         place={place}

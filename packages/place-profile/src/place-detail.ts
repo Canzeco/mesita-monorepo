@@ -6,6 +6,8 @@
 export type PlaceDetail = {
   /** Description/Actions — false only when this place has opted out of bookings. */
   reservations_enabled?: boolean;
+  /** Mesita Prepay — true only where admin turned Prepayments on (MESITA-3098). */
+  prepay_enabled?: boolean;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.

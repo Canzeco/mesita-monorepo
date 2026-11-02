@@ -24,6 +24,8 @@ export type PlaceActions = {
    *  (MESITA-2692; they opened Report alone, MESITA-2684). */
   onMore?: () => void;
   onReserve?: () => void;
+  /** Mesita Prepay (MESITA-3098): live only where the place takes prepayments. */
+  onPrepay?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
 };

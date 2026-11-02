@@ -100,6 +100,8 @@ export type Place = {
   products?: Record<string, unknown> | null;
   /** Guest Reserve CTA. Absent or true offers Reserve; false = Not / walk-in. */
   reservations_enabled?: boolean | null;
+  /** Mesita Prepay (MESITA-3098): true where the place takes prepayments. */
+  prepay_enabled?: boolean | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //

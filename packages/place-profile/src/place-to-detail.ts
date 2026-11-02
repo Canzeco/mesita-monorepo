@@ -95,6 +95,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
   return {
     reservations_enabled: isReserveActionEnabled(row),
+    prepay_enabled: row.prepay_enabled === true,
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,

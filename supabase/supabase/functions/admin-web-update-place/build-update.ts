@@ -53,6 +53,8 @@ export type UpdateBody = {
   /** Profile's Actions toggle, sent with the operator's reservation channel. */
   reservations_enabled?: boolean;
   reservation_channel?: string;
+  /** Profile's Actions: Mesita Prepayments Enabled (MESITA-3098). */
+  prepay_enabled?: boolean;
   /** Basics' Reset (MESITA-2829): hand these fields back to Enrich. */
   reset_fields?: unknown;
 };
@@ -180,6 +182,15 @@ export function buildPlaceUpdate(
     }
     update.reservations_enabled = body.reservations_enabled;
     update.reservation_channel = channel;
+  }
+  // Profile's Actions: Mesita Prepayments Enabled (MESITA-3098). On, the
+  // place screen's Mesita Prepay sells a Wallet balance here. Nothing else
+  // writes it, so it needs no channel.
+  if ("prepay_enabled" in body) {
+    if (typeof body.prepay_enabled !== "boolean") {
+      return fail(json({ ok: false, error: "prepay_enabled must be true or false" }, 400));
+    }
+    update.prepay_enabled = body.prepay_enabled;
   }
   // Basics' Reset (MESITA-2829): a list of operator-owned fields to hand
   // back to Enrich. It may ride alone, with no edit.
