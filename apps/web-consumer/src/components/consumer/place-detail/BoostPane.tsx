@@ -1,8 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Loader2, X, XCircle } from "lucide-react";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import {
+  BadgeCheck,
+  ChevronRight,
+  Loader2,
+  Rocket,
+  Store,
+  X,
+  XCircle,
+} from "lucide-react";
+import {
+  LocalDialog,
+  LocalSheet,
+} from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiCancelBoost,
@@ -19,6 +30,7 @@ import {
   type EndedNotice,
   type PlaceBoost,
 } from "@/lib/api/boost";
+import { businessClaimHref } from "@/lib/business-url";
 import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -26,6 +38,7 @@ import { toast } from "@/lib/toast";
 import {
   ERROR_BOX_CLASS,
   PRIMARY_BUTTON_CLASS,
+  SHEET_BODY_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -36,9 +49,11 @@ import { cn, errMsg } from "@/lib/utils";
 // ends it. Mesita's Manual Premier (MESITA-3091) is apart, and levels it
 // already gives are not for sale.
 //
-// One card of rows, always in this order: a notice (an ended subscription,
-// or Mesita covering the payer's level), the status, then the actions. The
-// status grammar is `Premier <level> · <by Mesita | paid | paid by you> ·
+// Three boxes (MESITA-3107, Pato 2026-11-02): the place's Premier level on a
+// 0–3 meter; the subscription, one row that opens a sheet with the perks,
+// the prices and every action; and "Is this your business?", the Business
+// app's claim page. The database allows levels 0–2 (MESITA-3041): level 3
+// reads "Soon" and nothing sells it. The status grammar is `Premier <level> · <by Mesita | paid | paid by you> ·
 // <renews | ends> <date>`; when both layers run, the higher level leads.
 // Every amount and date is the server's (consumer-web-get-premier); nothing
 // here computes money. Premier is paid ranking priority: it never verifies
@@ -50,6 +65,22 @@ const INTERVAL_WORD: Record<BoostInterval, string> = {
 };
 
 const RANK_OF: Record<BoostTier, number> = { boost_2x: 1, boost_5x: 2 };
+
+/** The level meter's three steps above 0: the two plans, then "Soon". */
+const LEVELS: ReadonlyArray<{ rank: number; label: string; soon?: boolean }> = [
+  ...BOOST_TIERS.map((t) => ({
+    rank: t.rank,
+    label: `${t.label} · ${t.priority}`,
+  })),
+  { rank: 3, label: "Soon", soon: true },
+];
+
+/** What the plan buys, said in the sheet above the prices. */
+const PERKS = [
+  "Moves the place up on Home and the Map: 2X priority with Premier, 5X with Premier Max.",
+  "A red Premier pin on the Map.",
+  "Pay monthly, or yearly and get two months free. Stop renewing any time.",
+];
 
 export function BoostPane({
   place,
@@ -67,6 +98,7 @@ export function BoostPane({
   onChanged: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [interval, setBillingInterval] = useState<BoostInterval>(
     boost?.mine?.interval ?? "month",
   );
@@ -101,6 +133,8 @@ export function BoostPane({
   const q = picked && boost?.quotes ? boost.quotes[picked][interval] : null;
   const status = statusLines(boost);
   const notice = boost ? noticeLine(boost) : null;
+  const level = boost?.tier ?? 0;
+  const claimHref = businessClaimHref(place.id);
   const returnUrl = () =>
     `${window.location.origin}${window.location.pathname}`;
 
@@ -127,6 +161,7 @@ export function BoostPane({
       setPicked(null);
       setChoosing(false);
       setStarting(false);
+      setSheetOpen(false);
       onChanged();
     } catch (err) {
       setStartError(refusal(err, "Couldn't open checkout. Try again."));
@@ -159,6 +194,7 @@ export function BoostPane({
     try {
       await apiCancelBoost(getSupabase(), place.id);
       setStopping(false);
+      setSheetOpen(false);
       toast(
         paid
           ? `Premier won't renew. It runs until ${shortDate(paid.ends_at)}.`
@@ -186,8 +222,57 @@ export function BoostPane({
       <h2 id="boost-title" className="sr-only">
         Premier
       </h2>
+
+      {/* Box 1: the level, 0–3. */}
+      <div
+        className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4"
+        aria-live="polite"
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="type-eyebrow text-muted-foreground">Premier level</h3>
+          <span className="text-sm font-semibold">
+            {loading ? "…" : level}
+            <span className="text-muted-foreground font-normal"> / 3</span>
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5" aria-hidden>
+          {LEVELS.map((l) => (
+            <div key={l.rank} className="flex flex-col gap-1">
+              <span
+                className={cn(
+                  "h-2 rounded-full",
+                  !loading && level >= l.rank
+                    ? ""
+                    : l.soon
+                      ? "border-border border border-dashed"
+                      : "bg-muted",
+                )}
+                style={
+                  !loading && level >= l.rank
+                    ? { backgroundColor: MAP_PREMIER_PIN_COLOR }
+                    : undefined
+                }
+              />
+              <span className="text-muted-foreground type-label">
+                {l.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm">
+          <span className="block font-semibold">
+            {loading ? "Loading…" : status.head}
+          </span>
+          {!loading && (status.sub || !live) && (
+            <span className="text-muted-foreground block text-xs">
+              {status.sub ?? "Premier moves a place up on Home and the Map."}
+            </span>
+          )}
+        </p>
+      </div>
+
+      {/* Box 2: the subscription; the sheet holds the prices and actions. */}
       <div className="border-border bg-card flex flex-col rounded-2xl border">
-        {/* Notice: what happened to the guest's own subscription. */}
         {notice && (
           <div
             className="border-border bg-muted flex items-start gap-3 rounded-t-2xl border-b px-4 py-3 text-sm"
@@ -208,272 +293,55 @@ export function BoostPane({
             )}
           </div>
         )}
-
-        {/* Status. */}
-        <div
-          className="border-border flex items-start gap-2 border-b px-4 py-3 text-sm"
-          aria-live="polite"
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          disabled={loading}
+          className="flex min-h-16 items-center gap-3 px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60"
         >
-          <span
-            className={cn(
-              "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
-              live ? "" : "bg-muted-foreground",
-            )}
-            style={
-              live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined
-            }
+          <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+            <Rocket className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">
+              Premier subscription
+            </span>
+            <span className="text-muted-foreground block text-xs">
+              {subscriptionLine(boost, forSale.length > 0)}
+            </span>
+          </span>
+          <ChevronRight
+            className="text-muted-foreground h-5 w-5 shrink-0"
             aria-hidden
           />
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">
-              {loading ? "Loading…" : status.head}
-            </span>
-            {!loading && status.sub && (
-              <span className="text-muted-foreground block text-xs">
-                {status.sub}
-              </span>
-            )}
-          </span>
-        </div>
-
-        {/* Actions. */}
-        {!loading && boost?.renewing && (
-          <p className="text-muted-foreground p-4 text-sm">
-            Renewing… this takes a minute.
-          </p>
-        )}
-
-        {!loading && !boost?.renewing && payer && !choosing && (
-          <div className="flex flex-col gap-2 p-4">
-            <button
-              type="button"
-              onClick={() => {
-                setChoosing(true);
-                setStartError(null);
-              }}
-              className={PRIMARY_BUTTON_CLASS}
-            >
-              Change plan
-            </button>
-            {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
-            <div className="flex justify-center gap-6">
-              <button
-                type="button"
-                onClick={() => void updateCard()}
-                disabled={starting}
-                className="min-h-11 text-sm font-semibold underline disabled:opacity-60"
-              >
-                {starting ? "Opening…" : "Update card"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStopping(true)}
-                className="min-h-11 text-sm font-semibold underline"
-              >
-                Stop renewing
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!loading &&
-          !boost?.renewing &&
-          viewer === "former_payer" &&
-          !choosing && (
-            <div className="flex flex-col gap-2 p-4">
-              {boost?.can_resume ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setChoosing(true);
-                    setStartError(null);
-                    const current = BOOST_TIERS.find(
-                      (t) => t.rank === paid?.tier,
-                    );
-                    if (current) setPicked(current.key);
-                  }}
-                  className={PRIMARY_BUTTON_CLASS}
-                >
-                  Resume
-                </button>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  This subscription can&apos;t be resumed.
-                </p>
-              )}
-            </div>
-          )}
-
-        {!loading && !boost?.renewing && taken && !owns && (
-          <p className="text-muted-foreground p-4 text-sm leading-relaxed">
-            Someone else pays for Premier here, so it can&apos;t be bought
-            again until it ends.
-          </p>
-        )}
-
-        {showPlans && forSale.length === 0 && manual && (
-          <p className="text-muted-foreground p-4 text-sm leading-relaxed">
-            Mesita gives this place {tierLabel(manual.tier)} until{" "}
-            {shortDate(manual.ends_at)}, the highest level. Nothing to buy.
-          </p>
-        )}
-
-        {showPlans && forSale.length > 0 && (
-          <div className="flex flex-col gap-3 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="type-eyebrow text-muted-foreground">
-                {payer
-                  ? "Change your plan"
-                  : viewer === "former_payer"
-                    ? "Resume Premier"
-                    : "Make it Premier"}
-              </h3>
-              <div
-                className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
-                role="radiogroup"
-                aria-label="Billing"
-              >
-                {(["month", "year"] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    role="radio"
-                    aria-checked={interval === v}
-                    onClick={() => setBillingInterval(v)}
-                    className={cn(
-                      "min-h-9 rounded-md px-3 text-xs font-semibold transition",
-                      interval === v
-                        ? "bg-card text-foreground shadow-sm"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {v === "month" ? "Monthly" : "Yearly −2 mo"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div
-              className="flex flex-col gap-2"
-              role="radiogroup"
-              aria-label="Premier plan"
-            >
-              {forSale.map((t) => {
-                const tq = boost?.quotes?.[t.key][interval];
-                const on = picked === t.key;
-                const current =
-                  payer && mine?.tier === t.rank && mine.interval === interval;
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    disabled={current}
-                    onClick={() => {
-                      setPicked(t.key);
-                      setStartError(null);
-                    }}
-                    className={cn(
-                      "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60",
-                      on
-                        ? "border-foreground ring-foreground ring-1"
-                        : "border-border hover:bg-muted",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                        on ? "border-foreground" : "border-border",
-                      )}
-                      aria-hidden
-                    >
-                      {on && (
-                        <span className="bg-foreground h-2.5 w-2.5 rounded-full" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-base font-semibold">
-                        {t.label}
-                        {current && (
-                          <span className="text-muted-foreground text-xs font-normal">
-                            {" "}
-                            · your plan
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-muted-foreground block text-xs">
-                        {t.blurb}
-                      </span>
-                    </span>
-                    {tq && (
-                      <span className="text-sm font-semibold whitespace-nowrap">
-                        {money(tq.price_cents)}
-                        <span className="text-muted-foreground font-normal">
-                          /{interval === "year" ? "yr" : "mo"}
-                        </span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {!boost?.quotes && (
-              <p className="text-muted-foreground text-xs">
-                Sign in to make this place Premier.
-              </p>
-            )}
-
-            {picked && q && boost && (
-              <div className="flex flex-col gap-2">
-                {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
-                <button
-                  type="button"
-                  onClick={() => void start()}
-                  disabled={starting}
-                  className={cn(
-                    PRIMARY_BUTTON_CLASS,
-                    "inline-flex items-center justify-center gap-2",
-                  )}
-                >
-                  {starting && (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  )}
-                  {starting ? "Opening…" : buttonLabel(q)}
-                </button>
-                <p
-                  className="text-muted-foreground text-xs leading-relaxed"
-                  aria-live="polite"
-                >
-                  {priceLine(picked, interval, q, boost)}
-                </p>
-              </div>
-            )}
-
-            {owns && (
-              <button
-                type="button"
-                onClick={() => {
-                  setChoosing(false);
-                  setPicked(null);
-                  setStartError(null);
-                }}
-                className="min-h-11 text-sm font-semibold underline"
-              >
-                Cancel
-              </button>
-            )}
-
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              Premier gives the place 2X ranking priority on Home and the Map,
-              Premier Max 5X. Priority moves it up the list; it doesn&apos;t
-              guarantee more views. Premier places show “Ad”; Premier
-              doesn&apos;t verify a place. One subscription per place, billed
-              by Stripe in US dollars; a declined renewal ends it.
-            </p>
-          </div>
-        )}
+        </button>
       </div>
+
+      {/* Box 3: the Business app's claim page, in a new tab. */}
+      {claimHref && (
+        <a
+          href={claimHref}
+          target="_blank"
+          rel="noopener"
+          className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border px-4 py-3 transition active:scale-[0.99]"
+        >
+          <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+            <Store className="h-5 w-5" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold">
+              Is this your business?
+            </span>
+            <span className="text-muted-foreground block text-xs">
+              Claim it on Mesita Business to manage its page.
+            </span>
+          </span>
+          <ChevronRight
+            className="text-muted-foreground h-5 w-5 shrink-0"
+            aria-hidden
+          />
+        </a>
+      )}
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
@@ -487,6 +355,275 @@ export function BoostPane({
           </button>
         </div>
       )}
+
+      <LocalSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        ariaLabel="Premier subscription"
+      >
+        <div className={SHEET_BODY_CLASS}>
+          <h2 className={SHEET_TITLE_CLASS}>Mesita Premier</h2>
+          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+            A monthly or yearly plan that moves {place.name} up for every guest.
+          </p>
+          <ul className="mt-4 flex flex-col gap-2 text-sm">
+            {PERKS.map((perk) => (
+              <li key={perk} className="flex items-start gap-2">
+                <BadgeCheck
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  style={{ color: MAP_PREMIER_PIN_COLOR }}
+                  aria-hidden
+                />
+                <span className="leading-relaxed">{perk}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex flex-col gap-4">
+            {/* Actions. */}
+            {!loading && boost?.renewing && (
+              <p className="text-muted-foreground text-sm">
+                Renewing… this takes a minute.
+              </p>
+            )}
+
+            {!loading && !boost?.renewing && payer && !choosing && (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChoosing(true);
+                    setStartError(null);
+                  }}
+                  className={PRIMARY_BUTTON_CLASS}
+                >
+                  Change plan
+                </button>
+                {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
+                <div className="flex justify-center gap-6">
+                  <button
+                    type="button"
+                    onClick={() => void updateCard()}
+                    disabled={starting}
+                    className="min-h-11 text-sm font-semibold underline disabled:opacity-60"
+                  >
+                    {starting ? "Opening…" : "Update card"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStopping(true)}
+                    className="min-h-11 text-sm font-semibold underline"
+                  >
+                    Stop renewing
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!loading &&
+              !boost?.renewing &&
+              viewer === "former_payer" &&
+              !choosing && (
+                <div className="flex flex-col gap-2">
+                  {boost?.can_resume ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChoosing(true);
+                        setStartError(null);
+                        const current = BOOST_TIERS.find(
+                          (t) => t.rank === paid?.tier,
+                        );
+                        if (current) setPicked(current.key);
+                      }}
+                      className={PRIMARY_BUTTON_CLASS}
+                    >
+                      Resume
+                    </button>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      This subscription can&apos;t be resumed.
+                    </p>
+                  )}
+                </div>
+              )}
+
+            {!loading && !boost?.renewing && taken && !owns && (
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Someone else pays for Premier here, so it can&apos;t be bought
+                again until it ends.
+              </p>
+            )}
+
+            {showPlans && forSale.length === 0 && manual && (
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Mesita gives this place {tierLabel(manual.tier)} until{" "}
+                {shortDate(manual.ends_at)}, the highest level. Nothing to buy.
+              </p>
+            )}
+
+            {showPlans && forSale.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="type-eyebrow text-muted-foreground">
+                    {payer
+                      ? "Change your plan"
+                      : viewer === "former_payer"
+                        ? "Resume Premier"
+                        : "Make it Premier"}
+                  </h3>
+                  <div
+                    className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
+                    role="radiogroup"
+                    aria-label="Billing"
+                  >
+                    {(["month", "year"] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        role="radio"
+                        aria-checked={interval === v}
+                        onClick={() => setBillingInterval(v)}
+                        className={cn(
+                          "min-h-9 rounded-md px-3 text-xs font-semibold transition",
+                          interval === v
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {v === "month" ? "Monthly" : "Yearly −2 mo"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div
+                  className="flex flex-col gap-2"
+                  role="radiogroup"
+                  aria-label="Premier plan"
+                >
+                  {forSale.map((t) => {
+                    const tq = boost?.quotes?.[t.key][interval];
+                    const on = picked === t.key;
+                    const current =
+                      payer &&
+                      mine?.tier === t.rank &&
+                      mine.interval === interval;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        disabled={current}
+                        onClick={() => {
+                          setPicked(t.key);
+                          setStartError(null);
+                        }}
+                        className={cn(
+                          "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60",
+                          on
+                            ? "border-foreground ring-foreground ring-1"
+                            : "border-border hover:bg-muted",
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                            on ? "border-foreground" : "border-border",
+                          )}
+                          aria-hidden
+                        >
+                          {on && (
+                            <span className="bg-foreground h-2.5 w-2.5 rounded-full" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-base font-semibold">
+                            {t.label}
+                            {current && (
+                              <span className="text-muted-foreground text-xs font-normal">
+                                {" "}
+                                · your plan
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-muted-foreground block text-xs">
+                            {t.blurb}
+                          </span>
+                        </span>
+                        {tq && (
+                          <span className="text-sm font-semibold whitespace-nowrap">
+                            {money(tq.price_cents)}
+                            <span className="text-muted-foreground font-normal">
+                              /{interval === "year" ? "yr" : "mo"}
+                            </span>
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {!boost?.quotes && (
+                  <p className="text-muted-foreground text-xs">
+                    Sign in to make this place Premier.
+                  </p>
+                )}
+
+                {picked && q && boost && (
+                  <div className="flex flex-col gap-2">
+                    {startError && (
+                      <p className={ERROR_BOX_CLASS}>{startError}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void start()}
+                      disabled={starting}
+                      className={cn(
+                        PRIMARY_BUTTON_CLASS,
+                        "inline-flex items-center justify-center gap-2",
+                      )}
+                    >
+                      {starting && (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      )}
+                      {starting ? "Opening…" : buttonLabel(q)}
+                    </button>
+                    <p
+                      className="text-muted-foreground text-xs leading-relaxed"
+                      aria-live="polite"
+                    >
+                      {priceLine(picked, interval, q, boost)}
+                    </p>
+                  </div>
+                )}
+
+                {owns && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChoosing(false);
+                      setPicked(null);
+                      setStartError(null);
+                    }}
+                    className="min-h-11 text-sm font-semibold underline"
+                  >
+                    Cancel
+                  </button>
+                )}
+
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Premier gives the place 2X ranking priority on Home and the
+                  Map, Premier Max 5X. Priority moves it up the list; it
+                  doesn&apos;t guarantee more views. Premier places show “Ad”;
+                  Premier doesn&apos;t verify a place. One subscription per
+                  place, billed by Stripe in US dollars; a declined renewal ends
+                  it.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </LocalSheet>
 
       <LocalDialog
         open={stopping}
@@ -538,19 +675,17 @@ function refusal(err: unknown, fallback: string): string {
   return errMsg(err, fallback);
 }
 
-const ENDED_TEXT: Record<EndedNotice["reason"], (n: EndedNotice) => string> =
-  {
-    declined: (n) =>
-      `Premier ended ${shortDate(n.at)}: your card was declined.`,
-    stopped_by_place: (n) =>
-      `The place stopped renewing; Premier runs until ${shortDate(n.runs_until)}.`,
-    taken_over: (n) =>
-      n.runs_until
-        ? `The place took over this subscription; your paid days run until ${shortDate(n.runs_until)}.`
-        : "The place took over this subscription; Premier continues.",
-    covered: (n) =>
-      `Your Premier ended ${shortDate(n.at)}: Mesita covered this place for longer than your plan, so your card was not charged.`,
-  };
+const ENDED_TEXT: Record<EndedNotice["reason"], (n: EndedNotice) => string> = {
+  declined: (n) => `Premier ended ${shortDate(n.at)}: your card was declined.`,
+  stopped_by_place: (n) =>
+    `The place stopped renewing; Premier runs until ${shortDate(n.runs_until)}.`,
+  taken_over: (n) =>
+    n.runs_until
+      ? `The place took over this subscription; your paid days run until ${shortDate(n.runs_until)}.`
+      : "The place took over this subscription; Premier continues.",
+  covered: (n) =>
+    `Your Premier ended ${shortDate(n.at)}: Mesita covered this place for longer than your plan, so your card was not charged.`,
+};
 
 /** The notice row: the guest's ended subscription, or Mesita covering the
  *  level they pay for (their plan renews after). */
@@ -605,6 +740,28 @@ function statusLines(boost: PlaceBoost | null): {
       sub: "Your plan is charged within a few minutes.",
     };
   return { head: "Not Premier", sub: null };
+}
+
+/** The subscription box's one line: the guest's own plan, who else holds
+ *  it, or the lowest monthly price the server quotes. */
+function subscriptionLine(
+  boost: PlaceBoost | null,
+  anyForSale: boolean,
+): string {
+  if (!boost) return "Plans and prices";
+  if (boost.renewing) return "Renewing… this takes a minute.";
+  const p = boost.paid;
+  if (p?.by_you)
+    return `You pay for ${tierLabel(p.tier)} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`;
+  if (boost.viewer === "former_payer") return "Your plan stopped · see options";
+  if (p) return "Someone else pays for Premier here";
+  if (!anyForSale && boost.manual) return "Mesita already gives the top level";
+  const monthly = BOOST_TIERS.map(
+    (t) => boost.quotes?.[t.key].month.price_cents,
+  ).filter((c): c is number => typeof c === "number");
+  return monthly.length > 0
+    ? `From ${money(Math.min(...monthly))}/mo · 2X or 5X priority`
+    : "2X or 5X priority on Home and the Map";
 }
 
 /** ONE sentence for the plan the guest tapped, from the server's quote. */
