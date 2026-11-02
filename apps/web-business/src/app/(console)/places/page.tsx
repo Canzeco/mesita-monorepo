@@ -44,7 +44,7 @@ export default async function PlacesPage() {
         <Card className="flex flex-col items-start gap-3">
           <Store className="text-muted-foreground size-6" aria-hidden />
           <p className="font-semibold">You don&apos;t run a place on Mesita yet.</p>
-          <p className="text-muted-foreground text-sm">Find your place and claim it. If you signed in with the phone on its listing, it is yours at once.</p>
+          <p className="text-muted-foreground text-sm">Find your place and claim it. Mesita reviews every request, usually within a day.</p>
           <Link href="/claim" className="text-sm font-semibold underline underline-offset-4">Claim your place</Link>
         </Card>
       ) : (

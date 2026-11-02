@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 // Browser Supabase client. Picks up session from cookies set by the
@@ -15,7 +14,3 @@ export function createBrowserSupabase() {
   return createBrowserClient(url, publishableKey);
 }
 
-/** One browser client per component, for client forms (phone sign-in). */
-export function useBrowserSupabase() {
-  return useMemo(() => createBrowserSupabase(), []);
-}

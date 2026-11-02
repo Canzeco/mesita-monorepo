@@ -1,20 +1,7 @@
 // Who runs a place (MESITA-3103): the phone proof and the access rule.
 import { assertEquals } from "jsr:@std/assert@1";
-import { boundedText, maskPhone, phoneMatches } from "./place-verification.ts";
+import { boundedText, maskPhone } from "./place-verification.ts";
 import { isLiveManager } from "./place-access.ts";
-
-Deno.test("the signed-in phone matches the listing in any spelling", () => {
-  assertEquals(phoneMatches("+528112345678", "+52 81 1234 5678"), true);
-  assertEquals(phoneMatches("+5218112345678", "(81) 1234-5678"), true);
-  assertEquals(phoneMatches("+528112345678", "81 1234 5678"), true);
-});
-
-Deno.test("another number, a missing one or a short one never matches", () => {
-  assertEquals(phoneMatches("+528112345678", "+52 81 1234 5679"), false);
-  assertEquals(phoneMatches("+528112345678", null), false);
-  assertEquals(phoneMatches(null, "+52 81 1234 5678"), false);
-  assertEquals(phoneMatches("+52 1234", "1234"), false);
-});
 
 Deno.test("the listing phone is masked before any proof", () => {
   assertEquals(maskPhone("+52 81 1234 5678"), "+52 ••• ••• 56 78");

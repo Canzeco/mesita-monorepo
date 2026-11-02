@@ -8,7 +8,7 @@ export default function ClaimPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Claim your place"
-        sub="Find your place on Mesita. If the phone you signed in with is the one on its listing, it is yours at once; otherwise Mesita reviews your request."
+        sub="Find your place on Mesita and tell us who you are there. Mesita reviews every request, usually within a day."
       />
       <ClaimSearch />
     </div>

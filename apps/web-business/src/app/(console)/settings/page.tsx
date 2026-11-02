@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Settings" />
-      <AccountCard phone={identity.ok ? identity.data.phone : null} email={identity.ok ? identity.data.email : null} />
+      <AccountCard email={identity.ok ? identity.data.email : null} />
     </div>
   );
 }

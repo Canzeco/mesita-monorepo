@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
 
 const METHOD: Record<string, string> = {
-  phone_match: "your phone is the one on the listing",
+  phone_match: "your phone was the one on the listing",
   phone_code: "a code sent to the listing's phone",
   review: "Mesita reviewed your request",
 };
@@ -50,7 +50,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
         <p className="text-muted-foreground text-sm">Team members and roles are not available yet: each person claims the place with their own phone.</p>
         {manage.role === "owner" ? <LeavePlace placeId={id} /> : null}
       </Card>
-      <AccountCard phone={identity.ok ? identity.data.phone : null} email={identity.ok ? identity.data.email : null} />
+      <AccountCard email={identity.ok ? identity.data.email : null} />
     </div>
   );
 }
