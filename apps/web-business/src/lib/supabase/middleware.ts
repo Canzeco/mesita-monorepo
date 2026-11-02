@@ -18,12 +18,7 @@ const PUBLIC_PATHS = (path: string) =>
   path === "/" || path.startsWith("/auth/");
 
 export async function updateSupabaseSession(request: NextRequest) {
-  const env = readSupabaseEnv();
-  if ("error" in env) {
-    console.error(`[business middleware] ${env.error}`);
-    return NextResponse.next({ request });
-  }
-  const { url, publishableKey } = env;
+  const { url, publishableKey } = readSupabaseEnv();
 
   let response = NextResponse.next({ request });
 
