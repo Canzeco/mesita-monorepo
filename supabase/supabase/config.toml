@@ -501,6 +501,9 @@ verify_jwt = true
 [functions.business-web-get-identity]
 verify_jwt = true
 
+[functions.business-web-create-place]
+verify_jwt = true
+
 [functions.business-web-find-place]
 verify_jwt = true
 

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CheckCircle2, Clock } from "lucide-react";
-import { requestVerification, type ClaimOutcome, type FoundPlace } from "@/lib/business-api";
+import { requestVerification, type ClaimOutcome, type ClaimablePlace } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { INPUT_BASE } from "@/components/ui/manage";
 
@@ -16,7 +16,7 @@ const ERROR_COPY: Record<string, string> = {
   too_many_requests: "You can send three requests a day. Try again tomorrow.",
 };
 
-export function ClaimForm({ place }: { place: FoundPlace }) {
+export function ClaimForm({ place }: { place: ClaimablePlace }) {
   const router = useRouter();
   const [outcome, setOutcome] = useState<ClaimOutcome | null>(
     place.mine === "owner" ? "already_owner" : place.mine === "pending" ? "already_pending" : null,

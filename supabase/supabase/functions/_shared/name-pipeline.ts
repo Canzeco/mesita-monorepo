@@ -257,19 +257,35 @@ export function runAdminNamePipeline(
   env: EFEnv,
   args: NamePipelineArgs,
 ): Promise<Response> {
-  return runNamePipeline(env, "admin-web-suggest-places", args, {
-    admin: true,
-    name: (cfg) => ({
-      ...cfg.name,
-      fast: {
-        ...cfg.name.fast,
-        count: cfg.name.admin.autoCount,
-        googleCount: cfg.name.admin.autoCount,
-      },
-    }),
-    locations: () => false,
-    demoteUnderFloor: false,
-  });
+  return runNamePipeline(env, "admin-web-suggest-places", args, ADMIN_NAME_SHAPE);
+}
+
+/** Admin's Name caps: Autocomplete rows for `fast`, places only, Google's order. */
+const ADMIN_NAME_SHAPE: NamePipelineShape = {
+  admin: true,
+  name: (cfg) => ({
+    ...cfg.name,
+    fast: {
+      ...cfg.name.fast,
+      count: cfg.name.admin.autoCount,
+      googleCount: cfg.name.admin.autoCount,
+    },
+  }),
+  locations: () => false,
+  demoteUnderFloor: false,
+};
+
+/**
+ * Business Name: Business › Claim your place (MESITA-3112). Admin's caps and
+ * order (Discovery shows one "Admin & Business Name Pipeline" box), places
+ * only; returns rows, since the claim screen joins each Mesita row to the
+ * caller's own state on it.
+ */
+export function businessNameItems(
+  env: EFEnv,
+  args: NamePipelineArgs,
+): ReturnType<typeof nameLaneItems> {
+  return nameLaneItems(env, "business-web-find-place", args, ADMIN_NAME_SHAPE);
 }
 
 /**
@@ -372,14 +388,47 @@ async function runNamePipeline(
   args: NamePipelineArgs,
   shape: NamePipelineShape,
 ): Promise<Response> {
+  const res = await nameLaneItems(env, callerName, args, shape);
+  if (!res.ok) return res.response;
+  // Under two characters the bar answered a bare empty list (unchanged).
+  if (res.tooShort) return json({ ok: true, predictions: [] });
+  return json({
+    ok: true,
+    predictions: res.items.map(toWire),
+    caller: callerName,
+    mode: res.mode,
+    // Word's idle seconds: the consumer bar waits this long before it
+    // searches (MESITA-2322). A client cannot read app_config.
+    idleSec: res.idleSec,
+  });
+}
+
+/**
+ * The Name pipeline's rows before the wire (MESITA-3112): the same search,
+ * caps, gates and order `runNamePipeline` answers with, as `LaneItem`s, for a
+ * caller that maps rows itself (Business › Claim). Refusals and Google
+ * failures come back as the Response the bar would have answered.
+ */
+async function nameLaneItems(
+  env: EFEnv,
+  callerName: string,
+  args: NamePipelineArgs,
+  shape: NamePipelineShape,
+): Promise<
+  | { ok: true; items: LaneItem[]; mode: SuggestPlacesMode; idleSec: number; tooShort?: true }
+  | { ok: false; response: Response }
+> {
+  const fail = (response: Response) => ({ ok: false as const, response });
   const keyRes = readGooglePlacesKey();
-  if (!keyRes.ok) return keyRes.response;
+  if (!keyRes.ok) return fail(keyRes.response);
   const apiKey = keyRes.key;
 
   const input = (args.input ?? "").toString().trim();
   const sessionToken = (args.sessionToken ?? "").toString();
-  if (input.length < 2) return json({ ok: true, predictions: [] });
-  if (!sessionToken) return json({ ok: false, error: "Missing sessionToken" }, 400);
+  if (input.length < 2) {
+    return { ok: true, items: [], mode: resolveMode(args.mode), idleSec: 0, tooShort: true };
+  }
+  if (!sessionToken) return fail(json({ ok: false, error: "Missing sessionToken" }, 400));
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
@@ -417,7 +466,7 @@ async function runNamePipeline(
   // and SDKs. Fast mode answers the error rather than a partial list; Deep
   // drops a failed Autocomplete lane instead (MESITA-2855).
   if ("errorEnvelope" in predictions) {
-    return json(predictions.errorEnvelope, 502);
+    return fail(json(predictions.errorEnvelope, 502));
   }
 
   // THE GUEST BAR'S POPULARITY ORDER (MESITA-2724): after the caps and the
@@ -438,15 +487,7 @@ async function runNamePipeline(
     popularityUnknown: ordered.unknown,
   }));
 
-  return json({
-    ok: true,
-    predictions: ordered.items.map(toWire),
-    caller: callerName,
-    mode,
-    // Word's idle seconds: the consumer bar waits this long before it
-    // searches (MESITA-2322). A client cannot read app_config.
-    idleSec: cfg.name.idleSec,
-  });
+  return { ok: true, items: ordered.items, mode, idleSec: cfg.name.idleSec };
 }
 
 async function runFastSearch(

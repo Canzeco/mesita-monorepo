@@ -5,15 +5,17 @@
 // super-admin through and nobody else.
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { findPlaces, type FoundPlace } from "@/lib/business-api";
+import { findPlaces, type ClaimablePlace } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { INPUT_BASE } from "@/components/ui/manage";
 
 export function StaffFind() {
   const [q, setQ] = useState("");
-  const [rows, setRows] = useState<FoundPlace[] | null>(null);
+  const [rows, setRows] = useState<ClaimablePlace[] | null>(null);
+  // The search runs Google through the Name pipeline (MESITA-3112): one session token.
+  const session = useRef<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -22,10 +24,11 @@ export function StaffFind() {
     if (q.trim().length < 2) return;
     setBusy(true);
     setError(null);
-    const r = await findPlaces({ q });
+    session.current ??= crypto.randomUUID();
+    const r = await findPlaces({ q, sessionToken: session.current });
     setBusy(false);
     if (!r.ok) setError(r.error);
-    else setRows(r.data);
+    else setRows(r.data.filter((p): p is ClaimablePlace => !!p.id));
   }
 
   return (

@@ -36,7 +36,7 @@ describe("Discovery: one page, five pipeline boxes (MESITA-2327)", () => {
     const html = page();
     let last = -1;
     // Deep's title carries its Soon chip inside the heading.
-    for (const title of [">Admin Name Pipeline</h2>", ">Consumer Name Pipeline</h2>", ">Consumer Map Pipeline</h2>", ">Consumer Catalog Pipeline</h2>", ">Consumer Deep Pipeline "]) {
+    for (const title of [">Admin &amp; Business Name Pipeline</h2>", ">Consumer Name Pipeline</h2>", ">Consumer Map Pipeline</h2>", ">Consumer Catalog Pipeline</h2>", ">Consumer Deep Pipeline "]) {
       const at = html.indexOf(title);
       expect(at, title).toBeGreaterThan(last);
       last = at;

@@ -43,8 +43,11 @@ export async function getIdentity(): Promise<Result<Identity>> {
 
 // ── Claim ───────────────────────────────────────────────────────────────
 
+/** A search row (MESITA-3112): a Mesita place (`id`) or a Google listing
+ *  Mesita doesn't hold yet (`google_place_id`, "Add and claim"). */
 export type FoundPlace = {
-  id: string;
+  id: string | null;
+  google_place_id: string | null;
   name: string | null;
   address: string | null;
   photo: string | null;
@@ -53,13 +56,24 @@ export type FoundPlace = {
   mine: "owner" | "expired" | "pending" | null;
 };
 
-export async function findPlaces(input: { q?: string; placeId?: string }): Promise<Result<FoundPlace[]>> {
+/** A Mesita place, the only kind the claim form takes. */
+export type ClaimablePlace = FoundPlace & { id: string };
+
+export async function findPlaces(input: { q?: string; placeId?: string; sessionToken?: string }): Promise<Result<FoundPlace[]>> {
   const r = await efInvoke<{ places: FoundPlace[] }>("business-web-find-place", {
     q: input.q,
     place_id: input.placeId,
+    sessionToken: input.sessionToken,
   });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data.places ?? [] };
+}
+
+/** Adds a Google listing to Mesita (get-or-create); the id to claim. */
+export async function createPlace(googlePlaceId: string): Promise<Result<{ placeId: string; created: boolean }>> {
+  const r = await efInvoke<{ created: boolean; place: { id: string } }>("business-web-create-place", { googlePlaceId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { placeId: r.data.place.id, created: r.data.created === true } };
 }
 
 export type ClaimOutcome = "verified" | "pending" | "already_pending" | "already_owner" | "needs_details";
