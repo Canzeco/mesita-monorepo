@@ -16,7 +16,7 @@ type CrenupBlock = { at: number; reason?: string | null } | null;
 /** A menu item's nutrition, as Enrich stores it. */
 type MenuNutrition = Record<string, unknown>;
 
-export type PlaceRole = "owner" | "superadmin";
+export type PlaceRole = "owner" | "editor" | "superadmin";
 
 type Result<T> =
   | { ok: true; data: T }
@@ -183,13 +183,13 @@ export async function getPlaceAndRole(
   isSuperAdmin: boolean;
   role: PlaceRole;
   profile: ProfileRead;
-  manager: { method: string; expires_at: string } | null;
+  manager: { method: string; expires_at: string; role: "owner" | "editor" } | null;
 }>> {
   const r = await efInvoke<{
     place: AdminPlace | null;
     role?: PlaceRole;
     profile?: unknown;
-    manager?: { method: string; expires_at: string } | null;
+    manager?: { method: string; expires_at: string; role: "owner" | "editor" } | null;
   }>("business-web-get-place", { place_id: placeId });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   const place = r.data.place ?? null;
@@ -205,7 +205,7 @@ export async function getPlaceAndRole(
     data: {
       place,
       isSuperAdmin: r.data.role === "superadmin",
-      role: r.data.role === "superadmin" ? "superadmin" : "owner",
+      role: r.data.role === "superadmin" ? "superadmin" : r.data.role === "editor" ? "editor" : "owner",
       profile,
       manager: r.data.manager ?? null,
     },

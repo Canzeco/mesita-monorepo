@@ -12,7 +12,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
 import { parseBoostStart } from "../_shared/boost.ts";
-import { requirePlaceAccess } from "../_shared/place-access.ts";
+import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { startPremier } from "../_shared/premier-flow.ts";
 
 serveJson("business-web-start-premier", async (req) => {
@@ -29,6 +29,8 @@ serveJson("business-web-start-premier", async (req) => {
 
   const access = await requirePlaceAccess(admin, user, parsed.start.placeId);
   if (access instanceof Response) return access;
+  // Premier money is the owner's (MESITA-3120): editors see it, never buy or stop it.
+  if (!canManage(access.role)) return ownerOnly();
 
   const consumer = await ensureConsumer(admin, user);
   if (!consumer.ok) return json({ ok: false, error: consumer.error, code: consumer.code ?? null }, consumer.status);

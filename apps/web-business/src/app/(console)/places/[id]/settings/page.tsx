@@ -3,6 +3,9 @@ import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
 import { ProductList } from "@/components/shell/ProductList";
+import { AccountCard } from "@/components/shell/AccountCard";
+import { TeamCard } from "@/components/team/TeamCard";
+import { getIdentityCached } from "@/lib/identity";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -20,7 +23,7 @@ function day(iso: string): string {
 
 export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const manage = await getManagePlace(id);
+  const [manage, identity] = await Promise.all([getManagePlace(id), getIdentityCached()]);
   if (!manage) notFound();
 
   return (
@@ -34,7 +37,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
           <dd>{manage.place.listed === false ? "Hidden from guests by Mesita" : "Visible to guests"}</dd>
           {manage.manager ? (
             <>
-              <dt className="text-muted-foreground">You run it</dt>
+              <dt className="text-muted-foreground">{manage.manager.role === "editor" ? "You edit it" : "You own it"}</dt>
               <dd>
                 Until {day(manage.manager.expires_at)}, because {METHOD[manage.manager.method] ?? "you were verified"}.
               </dd>
@@ -46,9 +49,10 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
             </>
           )}
         </dl>
-        <p className="text-muted-foreground text-sm">Team members and roles are not available yet: each person claims the place with their own Google account.</p>
-        {manage.role === "owner" ? <LeavePlace placeId={id} /> : null}
+        {manage.role !== "superadmin" ? <LeavePlace placeId={id} /> : null}
       </Card>
+      <TeamCard placeId={id} />
+      <AccountCard email={identity.ok ? identity.data.email : null} />
       <ProductList />
     </div>
   );

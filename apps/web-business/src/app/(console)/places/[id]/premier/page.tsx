@@ -21,6 +21,11 @@ export default async function PremierPage({
   const [res, manage] = await Promise.all([getPremier(id, boost ?? null), getManagePlace(id)]);
   return (
     <div className="flex flex-col gap-4">
+      {manage?.role === "editor" ? (
+        <p className="border-border bg-muted/50 max-w-3xl rounded-xl border px-4 py-3 text-sm">
+          You are an editor here. Only the place&apos;s owner can buy, change or stop Premier.
+        </p>
+      ) : null}
       <PremierPanel placeId={id} initial={res.ok ? res.data : null} loadError={res.ok ? null : res.error} />
       {/* Mesita staff: Manual Premier (grant, end), every period and what it
           charged — the card that was web-admin's Single Place › Premier

@@ -1273,7 +1273,7 @@ select is_empty(
       'consumer_review_claims', 'consumer_subscriptions', 'credit_gift_redeem_events',
       'credit_gifts', 'credit_ledger', 'credit_lots', 'favorites', 'managers',
       'membership_plans', 'partner_memberships', 'place_api_keys',
-      'place_field_proposals', 'place_guest_customers', 'place_invites',
+      'place_field_proposals', 'place_guest_customers',
       'place_members', 'place_payment_accounts', 'place_plans', 'place_strikes',
       'place_subscriptions', 'place_verifications', 'stripe_events',
       'ticket_check_events', 'ticket_reports', 'ticket_reviews',

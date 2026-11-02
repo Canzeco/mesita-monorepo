@@ -97,7 +97,6 @@ const DROPPED_TABLES = [
   "place_api_keys",
   "place_field_proposals",
   "place_guest_customers",
-  "place_invites",
   "place_members",
   "place_name_history",
   "place_payment_accounts",

@@ -504,6 +504,18 @@ verify_jwt = true
 [functions.business-web-create-place]
 verify_jwt = true
 
+[functions.business-web-get-team]
+verify_jwt = true
+
+[functions.business-web-invite-editor]
+verify_jwt = true
+
+[functions.business-web-remove-member]
+verify_jwt = true
+
+[functions.business-web-transfer-owner]
+verify_jwt = true
+
 [functions.business-web-find-place]
 verify_jwt = true
 

@@ -20,7 +20,7 @@ export function LeavePlace({ placeId }: { placeId: string }) {
           setBusy(true);
           const r = await leavePlace(placeId);
           setBusy(false);
-          if (!r.ok) return setError(r.error);
+          if (!r.ok) return setError(r.code === "transfer_first" ? "Make an editor the owner before you leave." : r.error);
           router.push("/places");
           router.refresh();
         }}

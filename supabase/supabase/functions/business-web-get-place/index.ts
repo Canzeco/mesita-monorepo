@@ -8,7 +8,7 @@
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, role: "owner" | "superadmin", place, profile,
-//             manager: { method, expires_at } | null }
+//             manager: { method, expires_at, role } | null }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -38,6 +38,6 @@ serveJson("business-web-get-place", async (req) => {
     role: access.role,
     place: res.overview.place,
     profile: res.overview.profile,
-    manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at } : null,
+    manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at, role: access.manager.role } : null,
   });
 });

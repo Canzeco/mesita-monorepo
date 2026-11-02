@@ -7,8 +7,12 @@
 //
 // Body: {}
 // Response: { ok: true, email, phone, isSuperAdmin, hasAccount,
-//             places: [{ place_id, name, photo, state, method, expires_at, decision_note }] }
-//   state: owner | expired | pending | rejected
+//             places: [{ place_id, name, photo, state, role, method, expires_at, decision_note }] }
+//   state: owner | expired | pending | rejected  ("owner" = runs it, live)
+//   role:  owner | editor | null  (MESITA-3120; null for a request)
+//
+// Every call first takes the caller's open team invites (place_invite_accept,
+// MESITA-3120): an email the owner invited lands as an editor on sign-in.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
@@ -29,11 +33,17 @@ serveJson("business-web-get-identity", async (req) => {
   const places: Array<{
     place_id: string;
     state: PlaceState;
+    role: "owner" | "editor" | null;
     method: string | null;
     expires_at: string | null;
     decision_note: string | null;
     at: string;
   }> = [];
+
+  if (consumer.consumerId && user.emailLower) {
+    const accepted = await admin.rpc("place_invite_accept", { p_email: user.emailLower, p_consumer_id: consumer.consumerId });
+    if (accepted.error) console.error("[business-web-get-identity] place_invite_accept:", accepted.error.message);
+  }
 
   if (consumer.consumerId) {
     const [rows, reqs] = await Promise.all([
@@ -53,6 +63,7 @@ serveJson("business-web-get-identity", async (req) => {
       places.push({
         place_id: r.place_id,
         state: isLiveManager(r) ? "owner" : "expired",
+        role: r.role,
         method: r.method,
         expires_at: r.expires_at,
         decision_note: null,
@@ -65,6 +76,7 @@ serveJson("business-web-get-identity", async (req) => {
       places.push({
         place_id: r.place_id,
         state: r.status === "pending" ? "pending" : "rejected",
+        role: null,
         method: null,
         expires_at: null,
         decision_note: r.decision_note,
