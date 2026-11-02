@@ -15,7 +15,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { requirePlaceAccess } from "../_shared/place-access.ts";
+import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { cancelPremier, stopPremierAsPlace } from "../_shared/premier-flow.ts";
 
 serveJson("business-web-cancel-premier", async (req) => {
@@ -30,6 +30,8 @@ serveJson("business-web-cancel-premier", async (req) => {
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
+  // Premier money is the owner's (MESITA-3120): editors see it, never buy or stop it.
+  if (!canManage(access.role)) return ownerOnly();
 
   if (bodyRes.body.as_place === true) return await stopPremierAsPlace(env, placeId, user.id);
   return await cancelPremier(env, user.id, { placeId });

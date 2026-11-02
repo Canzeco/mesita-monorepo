@@ -21,6 +21,8 @@ export type MyPlace = {
   name: string | null;
   photo: string | null;
   state: MyPlaceState;
+  /** owner | editor on a place you run (MESITA-3120); null for a request. */
+  role: "owner" | "editor" | null;
   method: string | null;
   expires_at: string | null;
   decision_note: string | null;
@@ -96,6 +98,50 @@ export async function requestVerification(input: {
 
 export async function leavePlace(placeId: string): Promise<Result<null>> {
   const r = await efInvoke<{ ok: true }>("business-web-leave-place", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: null };
+}
+
+// ── Team (MESITA-3120: one owner, editors; per place, no org layer) ─────
+
+export type TeamMember = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: "owner" | "editor";
+  live: boolean;
+  expires_at: string;
+  me: boolean;
+};
+
+export type TeamInvite = { id: string; email: string; created_at: string };
+
+export type Team = { role: "owner" | "editor" | "superadmin"; members: TeamMember[]; invites: TeamInvite[] };
+
+export async function getTeam(placeId: string): Promise<Result<Team>> {
+  const r = await efInvoke<Team & { ok: true }>("business-web-get-team", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { role: r.data.role, members: r.data.members ?? [], invites: r.data.invites ?? [] } };
+}
+
+export async function inviteEditor(placeId: string, email: string): Promise<Result<TeamInvite>> {
+  const r = await efInvoke<{ invite: TeamInvite }>("business-web-invite-editor", { place_id: placeId, email });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.invite };
+}
+
+export async function removeMember(placeId: string, target: { managerId?: string; inviteId?: string }): Promise<Result<null>> {
+  const r = await efInvoke<{ ok: true }>("business-web-remove-member", {
+    place_id: placeId,
+    manager_id: target.managerId,
+    invite_id: target.inviteId,
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: null };
+}
+
+export async function transferOwner(placeId: string, managerId: string): Promise<Result<null>> {
+  const r = await efInvoke<{ ok: true }>("business-web-transfer-owner", { place_id: placeId, manager_id: managerId });
   if (!r.ok) return fail(r);
   return { ok: true, data: null };
 }

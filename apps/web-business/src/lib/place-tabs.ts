@@ -18,7 +18,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
  *  to anyone else; this list only decides what is drawn. */
 export const STAFF_TABS: readonly PlaceTab[] = ["reviews", "internal"];
 
-export function tabsFor(role: "owner" | "superadmin"): PlaceTab[] {
+export function tabsFor(role: "owner" | "editor" | "superadmin"): PlaceTab[] {
   return role === "superadmin" ? [...PLACE_TABS] : PLACE_TABS.filter((t) => !STAFF_TABS.includes(t));
 }
 

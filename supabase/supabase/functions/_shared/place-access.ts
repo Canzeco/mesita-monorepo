@@ -2,8 +2,10 @@
 // it; hiding a link is never the gate.
 //
 //   superadmin  the caller's email is in public.super_admins (any place)
-//   owner       the caller has a live place_managers row for this place
-//               (revoked_at null, expires_at in the future)
+//   owner       the caller's live place_managers row for this place has
+//               role owner (one per place, MESITA-3120): team, Premier money
+//   editor      a live row with role editor: profile; sees Premier
+//   (live = revoked_at null, expires_at in the future)
 //
 // Anyone else gets 404, never 403: whether a place exists, or who runs it,
 // is not something a stranger learns from this door.
@@ -13,19 +15,20 @@ import type { AuthedUser } from "./auth.ts";
 import { checkSuperAdmin } from "./auth-super-admin.ts";
 import { json } from "./http.ts";
 
-export type PlaceRole = "superadmin" | "owner";
+export type PlaceRole = "superadmin" | "owner" | "editor";
 
 export type ManagerRow = {
   id: string;
   place_id: string;
   consumer_id: string;
-  method: "phone_match" | "phone_code" | "review";
+  method: "phone_match" | "phone_code" | "review" | "invite";
+  role: "owner" | "editor";
   verified_at: string;
   expires_at: string;
   revoked_at: string | null;
 };
 
-export const MANAGER_COLUMNS = "id, place_id, consumer_id, method, verified_at, expires_at, revoked_at";
+export const MANAGER_COLUMNS = "id, place_id, consumer_id, method, role, verified_at, expires_at, revoked_at";
 
 /** A row grants the place only while it is not revoked and not expired. Pure. */
 export function isLiveManager(
@@ -64,7 +67,17 @@ export async function placeAccess(
 ): Promise<PlaceAccess | null> {
   if (await checkSuperAdmin(admin, user)) return { role: "superadmin", manager: null };
   const row = await managerRow(admin, placeId, user.id);
-  return isLiveManager(row) ? { role: "owner", manager: row } : null;
+  return isLiveManager(row) && row ? { role: row.role === "editor" ? "editor" : "owner", manager: row } : null;
+}
+
+/** May this caller manage the team and Premier money? The owner and Mesita staff. Pure. */
+export function canManage(role: PlaceRole): boolean {
+  return role === "owner" || role === "superadmin";
+}
+
+/** The refusal an editor gets on an owner-only door. */
+export function ownerOnly(): Response {
+  return json({ ok: false, code: "owner_only", error: "Only the place's owner can do this" }, 403);
 }
 
 /** placeAccess as an EF gate: the access, or the Response to return. */
@@ -90,6 +103,7 @@ export type OwnerView = {
   instagram_handle: string | null;
   member_number: string | null;
   method: ManagerRow["method"];
+  role: ManagerRow["role"];
   verified_at: string;
   expires_at: string;
   live: boolean;
@@ -175,6 +189,7 @@ export async function shapeOwners(
         instagram_handle: c?.instagram_handle ?? null,
         member_number: c?.code ?? null,
         method: r.method,
+        role: r.role,
         verified_at: r.verified_at,
         expires_at: r.expires_at,
         live: isLiveManager(r, now),
