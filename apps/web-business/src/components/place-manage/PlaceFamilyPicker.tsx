@@ -192,7 +192,7 @@ function FamiliesModal({
               No matching families.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-0.5 px-2 py-1  ">
+            <div className="grid grid-cols-2 gap-0.5 px-2 py-1 sm:grid-cols-3 lg:grid-cols-4">
               {visible.map((f) => {
                 const isOn = selected.has(f.slug);
                 return (

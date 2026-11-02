@@ -35,7 +35,7 @@ export function ProductList() {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold tracking-tight">Products</h2>
-      <Card className="divide-border divide-y p-0 ">
+      <Card className="divide-border divide-y p-0 sm:p-0">
         {PRODUCTS.map((p) => (
           <div key={p.name} className="flex items-start gap-4 px-5 py-4">
             <div className="min-w-0 flex-1">

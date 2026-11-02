@@ -191,7 +191,7 @@ export function BoostSection({
           <p className="text-muted-foreground mt-3 text-sm">Loading…</p>
         ) : (
           <div className="mt-3 flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4 ">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <Stat label="Tier" value={TIER_LABEL[data.tier]} />
               <Stat label="Map factor" value={`×${data.factor}`} />
               <Stat
