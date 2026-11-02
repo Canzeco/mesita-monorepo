@@ -1,5 +1,6 @@
-import Link from "next/link";
-import type { AdminPlaceReport } from "@/components/place-manage/actions";
+import type { AdminPlaceReport } from "@/components/reports/types";
+import { businessPlaceHref } from "@/lib/business-url";
+import { PlaceDoor } from "@/components/PlaceDoor";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { reportReasonLabel } from "@/lib/report-reasons";
 
@@ -27,12 +28,12 @@ export function ReportRow({
     <li className="border-border flex flex-col gap-1 border-t py-3 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {showPlace ? (
-          <Link
-            href={`/manage-single/${report.place_id}/admin`}
+          <PlaceDoor
+            href={businessPlaceHref(report.place_id, "internal")}
             className="focus-visible:ring-ring rounded text-sm font-semibold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {report.place_name}
-          </Link>
+          </PlaceDoor>
         ) : null}
         <span className="bg-muted text-foreground rounded-full px-2 py-0.5 text-xs font-medium">
           {reportReasonLabel(report.reason)}

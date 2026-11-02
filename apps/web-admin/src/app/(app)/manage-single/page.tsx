@@ -5,7 +5,7 @@ import { DEFAULT_NAME_ADMIN } from "../filters-config/catalog";
 import { SinglePlaceClient } from "./SinglePlaceClient";
 
 // Manage › Single Place — the picker. One box finds a place by Google Place
-// ID or by name; a hit opens the place itself at /manage-single/<id>, which
+// ID or by name; a hit opens the place in the Business app (MESITA-3104), which
 // is the Single Place editor rendered here (MESITA-2086). An ID
 // Mesita does not hold yet gets Create, and then opens the same way. With
 // Creation › "Create the profile on open · admin app" on, a Google-only
@@ -13,7 +13,7 @@ import { SinglePlaceClient } from "./SinglePlaceClient";
 // switch, so this seed only decides the affordance.
 //
 // The header lives on this page, not a layout: the place beneath
-// `/manage-single/<id>` draws its own heading and must not sit under this one.
+// the place page draws its own heading there.
 export const dynamic = "force-dynamic";
 
 export default async function ManageSinglePlacePage() {

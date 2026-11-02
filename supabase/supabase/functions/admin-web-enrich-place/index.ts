@@ -14,55 +14,7 @@
 // Internal enricher control — super-admin gated, admin console only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {
-  json,
-  readJson,
-  readPlaceIdAlias,
-  serveJson,
-} from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
-import { startEnrichment } from "../_shared/enrich-start.ts";
-import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
+import { serveJson } from "../_shared/http.ts";
+import { handleEnrichPlace } from "../_shared/enrich-place-handler.ts";
 
-type Body = {
-  projectId?: string;
-  placeId?: string;
-  placeIds?: string[];
-  // There is one Enrich (MESITA-2799). An older admin tab may still send
-  // `overwrite` or `depth`; neither is read.
-};
-
-serveJson("admin-web-enrich-place", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can re-enrich places.");
-  if (ctx instanceof Response) return ctx;
-  const { admin, user } = ctx;
-
-  const bodyRes = await readJson<Body>(req);
-  if (!bodyRes.ok) return bodyRes.response;
-  const listed = Array.isArray(bodyRes.body.placeIds)
-    ? bodyRes.body.placeIds.map((id) => String(id ?? "").trim()).filter(Boolean)
-    : [];
-  const placeId = readPlaceIdAlias(bodyRes.body);
-  const placeIds = listed.length > 0 ? listed : placeId ? [placeId] : [];
-
-  const started = await startEnrichment(admin, { placeIds });
-  if (!started.ok) {
-    await recordAdminOperatorEvent(admin, {
-      verb: "enrich",
-      outcome: "failed",
-      actorUserId: user.id,
-      source: "admin-web-enrich-place",
-      detail: { count: placeIds.length, error: started.error },
-    });
-    return json({ ok: false, error: started.error }, started.status);
-  }
-  await recordAdminOperatorEvent(admin, {
-    verb: "enrich",
-    outcome: "succeeded",
-    placeId: started.started.length === 1 ? started.started[0] : null,
-    actorUserId: user.id,
-    source: "admin-web-enrich-place",
-    detail: { count: started.started.length, skipped: started.skipped.length },
-  });
-  return json({ ok: true, enrichmentTriggered: true, task: started.task, skipped: started.skipped });
-});
+serveJson("admin-web-enrich-place", (req) => handleEnrichPlace(req, "admin-web-enrich-place"));

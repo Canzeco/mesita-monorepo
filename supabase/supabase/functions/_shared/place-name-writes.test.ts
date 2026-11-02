@@ -174,12 +174,12 @@ Deno.test("the source scan yields paths relative to the functions dir", async ()
   // nowhere near enrichment must not be caught by the Enricher filter, no
   // matter what the checkout is called.
   const innocent = sources.find(
-    (s) => s.path === "admin-web-update-place/index.ts",
+    (s) => s.path === "business-web-update-place/index.ts",
   );
   assertEquals(
     innocent !== undefined,
     true,
-    "expected admin-web-update-place/index.ts in the scan",
+    "expected business-web-update-place/index.ts in the scan",
   );
   assertEquals(
     /enrich|cron-enrich/.test(innocent!.path),

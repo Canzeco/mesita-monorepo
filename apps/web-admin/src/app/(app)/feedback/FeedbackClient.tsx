@@ -1,7 +1,7 @@
 import { Flag } from "lucide-react";
 import { SectionCard } from "@/components/admin-ui/manage";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
-import type { AdminPlaceReport } from "@/components/place-manage/actions";
+import type { AdminPlaceReport } from "@/components/reports/types";
 import { ReportRow } from "@/components/reports/ReportRow";
 
 // Activity › Feedback (Pato, MESITA-3024: "in admin create a Feedback page

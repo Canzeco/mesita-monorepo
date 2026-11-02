@@ -11,6 +11,9 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+
+// A place opens in the Business app (MESITA-3104); its origin comes from env.
+process.env.NEXT_PUBLIC_BUSINESS_URL = "https://biz.test";
 import { FindResults } from "./FindResults";
 
 const G1 = "ChIJAAAAAAAAAAAAAAAAAAAAAA";
@@ -174,7 +177,7 @@ describe("Find › one table", () => {
 
   it("opens a held place and offers Create on one Mesita lacks, both labelled", () => {
     const html = render(OK);
-    expect(html).toContain('href="/manage-single/mesita-a/admin"');
+    expect(html).toContain('href="https://biz.test/places/mesita-a/internal"');
     expect(html).toContain('aria-label="Open Café Nin"');
     expect(html).toContain('aria-label="Enrich Café Nin"');
     expect(html).toContain("visited:text-(--brand-pink-900)");
@@ -328,7 +331,7 @@ describe("Find › one table", () => {
 
   it("treats a row this page created as Mesita's", () => {
     const html = render(OK, { added: new Map([[G2, "mesita-new"]]) });
-    expect(html).toContain('href="/manage-single/mesita-new/admin"');
+    expect(html).toContain('href="https://biz.test/places/mesita-new/internal"');
     expect(html).not.toContain(">Create<");
     expect(html).not.toContain(">Google only</span>");
   });

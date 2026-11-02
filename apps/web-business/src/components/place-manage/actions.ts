@@ -123,7 +123,7 @@ export type AdminPlace = {
   embedding?: string | number[] | null;
   embedding_source_text?: string | null;
   // ── State, super-admin overview only (MESITA-1186) ───────────────────────
-  // Computed by admin-web-get-overview off _shared/place-state.ts — the
+  // Computed by the place read (business-web-get-place) off _shared/place-state.ts — the
   // same helpers admin-web-search-places uses for the Single Place table, so
   // the box and the table can never disagree. Absent (undefined) means the
   // payload predates them; the box renders "?" rather than a false "no".
@@ -146,7 +146,7 @@ export type AdminPlace = {
    *  description · tags · family_keys. Enrich skips them until the row's
    *  Reset clears the mark. */
   operator_fields?: string[];
-  /** Unique members who viewed / saved (admin-web-get-overview). */
+  /** Unique members who viewed / saved (business-web-get-place). */
   profile_stats?: { viewed?: number; saved?: number };
   /** Votes required before Enrich starts. Settings `enrichRequestThreshold`. */
   request_threshold?: number;
@@ -375,5 +375,233 @@ function readProfile(value: unknown): ProfileRead | null {
     tags: row.tags as PlaceTagOption[],
     facets: row.facets as PlaceTagFacet[],
     fieldLimits: readPlaceFieldLimits(row.fieldLimits),
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// Mesita staff only (MESITA-3104): the rest of the place page moved here
+// from web-admin's Single Place. Each door is a business-web-* EF that
+// refuses anyone not in super_admins; hiding the tabs is not the gate.
+// ════════════════════════════════════════════════════════════════════════
+
+type ReviewFoundFlags = { google_found?: boolean; instagram_found?: boolean; facebook_found?: boolean };
+
+export type ReviewsReloadSource = "sync" | "google" | "google_reviews" | "instagram" | "facebook";
+
+type ReviewsReloadPayload = {
+  source: ReviewsReloadSource;
+  google_stars_overall: number | null;
+  google_review_count: number | null;
+  instagram_followers_count: number | null;
+  facebook_followers: number | null;
+  google_reviews?: unknown;
+  lastSyncedAt?: string | null;
+  source_sync?: unknown;
+  sources?: { source: string; status: string; error: string | null }[];
+} & Partial<ReviewFoundFlags>;
+
+export async function reloadPlaceReviews(
+  placeId: string,
+  source: ReviewsReloadSource,
+): Promise<Result<ReviewsReloadPayload>> {
+  const r = await efInvoke<ReviewsReloadPayload>("business-web-reload-place-reviews", { placeId, source });
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return {
+    ok: true,
+    data: {
+      source: r.data.source,
+      google_stars_overall: r.data.google_stars_overall,
+      google_review_count: r.data.google_review_count,
+      instagram_followers_count: r.data.instagram_followers_count,
+      facebook_followers: r.data.facebook_followers,
+      ...explicitFound(r.data),
+      ...(r.data.google_reviews !== undefined ? { google_reviews: r.data.google_reviews ?? [] } : {}),
+      lastSyncedAt: r.data.lastSyncedAt ?? null,
+      source_sync: r.data.source_sync,
+      sources: r.data.sources,
+    },
+  };
+}
+
+/** A sync response omits found flags. Only a real boolean may override them. */
+function explicitFound(data: {
+  google_found?: unknown;
+  instagram_found?: unknown;
+  facebook_found?: unknown;
+}): Partial<ReviewFoundFlags> {
+  return {
+    ...(typeof data.google_found === "boolean" ? { google_found: data.google_found } : {}),
+    ...(typeof data.instagram_found === "boolean" ? { instagram_found: data.instagram_found } : {}),
+    ...(typeof data.facebook_found === "boolean" ? { facebook_found: data.facebook_found } : {}),
+  };
+}
+
+/** List or unlist the place on Mesita — the ONLY write path to
+ *  places.state, which is what the consumer RLS policy
+ *  places_select_public_visible gates every guest read on. Unlisting removes
+ *  the place from browse, search, and any shared link at once.
+ *  Its own admin door (admin-web-set-place-listed). */
+export async function setPlaceListed(
+  placeId: string,
+  listed: boolean,
+): Promise<Result<AdminPlace>> {
+  const r = await efInvoke<{ place: AdminPlace; listed?: boolean }>(
+    "business-web-set-place-listed",
+    {
+      placeId,
+      listed,
+    },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  // The EF returns `listed` beside `place`. Stamp it onto the row so
+  // PlaceEditShell's merge cannot keep the overview's stale `listed: true`
+  // after Unlist wrote `paused`.
+  return {
+    ok: true,
+    data: { ...r.data.place, listed: r.data.listed ?? listed },
+  };
+}
+
+// ── Premier (MESITA-2995; Premier MESITA-2925, Boost MESITA-2789) ───────
+
+/** One live pledge of a place's Premier, as Single Place › Premier lists
+ *  it: the place's one subscription (MESITA-3092) first, then Checkouts in
+ *  flight.
+ *  Amounts are US cents per billing interval. */
+export type AdminPledge = {
+  id: string;
+  payer: string | null;
+  tier: 1 | 2;
+  interval: "month" | "year";
+  amount_cents: number;
+  status: "open" | "ready" | "ended";
+  role: "payer" | "waiting";
+  position: number | null;
+  pending_tier: number | null;
+  livemode: boolean;
+  queued_at: string;
+};
+
+/** One paid stretch of the place's Premier. */
+export type AdminPeriod = {
+  id: string;
+  payer: string | null;
+  granted_by: string | null;
+  tier: 1 | 2;
+  interval: "month" | "year";
+  starts_at: string;
+  ends_at: string;
+  price_cents: number;
+  credit_cents: number;
+  extra_days: number;
+  charged_cents: number;
+  status: "charging" | "paid" | "declined" | "replaced" | "ended";
+};
+
+/** Manual Premier: Mesita's free lift (MESITA-3091), apart from what guests pay. */
+export type AdminManual = {
+  id: string;
+  tier: 1 | 2;
+  starts_at: string;
+  ends_at: string;
+  source: "admin" | "code";
+  granted_by: string | null;
+};
+
+export type AdminPlaceBoost = {
+  tier: 0 | 1 | 2;
+  factor: number;
+  /** The Manual Premier running now. Optional until every EF build sends it. */
+  manual?: AdminManual | null;
+  manual_history?: AdminManual[];
+  /** The paid period running now (`granted` is always false since MESITA-3091). */
+  period: { id: string; tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
+  line: AdminPledge[];
+  periods: AdminPeriod[];
+  /** Charges still unknown after two hours. */
+  stuck: number;
+};
+
+/** The place's Premier: period, line and recent periods
+ *  (business-web-get-place-premier). */
+export async function getPlaceBoost(placeId: string): Promise<Result<AdminPlaceBoost>> {
+  const r = await efInvoke<AdminPlaceBoost>("business-web-get-place-premier", { placeId });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: r.data };
+}
+
+/** The operator's Premier writes (admin-web-grant-place-premier): grant
+ *  Manual Premier (nothing charged), end it, or take a pledge out of the
+ *  line. None refunds. */
+export async function changePlaceBoost(
+  placeId: string,
+  change:
+    | { action: "grant"; tier: 1 | 2; months: number }
+    | { action: "end" }
+    | { action: "remove_pledge"; backingId: string },
+): Promise<Result<true>> {
+  const r = await efInvoke<{ ok: true }>("business-web-grant-place-premier", { placeId, ...change });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
+}
+
+export type AdminPlaceReport = {
+  id: string;
+  place_id: string;
+  place_name: string;
+  consumer_id: string;
+  first_name: string | null;
+  member_number: string | null;
+  reason: string;
+  note: string | null;
+  created_at: string;
+};
+
+/** The place's guest reports, newest first (admin-web-list-place-reports,
+ *  MESITA-2686). Read-only. Every place's at once is Activity › Feedback
+ *  (app/(app)/feedback/actions.ts). */
+export async function listPlaceReports(
+  placeId: string,
+): Promise<Result<{ reports: AdminPlaceReport[]; capped: boolean }>> {
+  const r = await efInvoke<{ reports?: AdminPlaceReport[]; capped?: boolean }>(
+    "business-web-list-place-reports",
+    { placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: { reports: r.data.reports ?? [], capped: r.data.capped === true } };
+}
+
+
+/** Start the full Enrich for this place (business-web-enrich-place). */
+export async function enrichPlace(placeId: string): Promise<Result<true>> {
+  const r = await efInvoke<{ enrichmentTriggered?: boolean }>("business-web-enrich-place", { placeId });
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return { ok: true, data: true };
+}
+
+// ── Per-place Enricher inspector (admin-only) ────────────────────────────
+// The place's enrichment state, for the Admin tab. Super-admin gated EF.
+
+export type PlaceEnrichmentState = {
+  content_state: string | null;
+  last_enriched_at: string | null;
+};
+
+type PlaceEnrichment = {
+  state: PlaceEnrichmentState | null;
+};
+
+export async function getPlaceEnrichment(
+  placeId: string,
+): Promise<Result<PlaceEnrichment>> {
+  const r = await efInvoke<PlaceEnrichment>(
+    "business-web-get-place-enrichment",
+    // Wire key stays `projectId` — this EF's MESITA-26 alias base.
+    { projectId: placeId },
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    data: { state: r.data.state ?? null },
   };
 }

@@ -15,12 +15,12 @@
 // one line beneath the address.
 
 import { Fragment, useState } from "react";
-import Link from "next/link";
 import { AlertTriangle, ExternalLink, Loader2, Plus } from "lucide-react";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
-import { placeTabHref } from "@/lib/place-tabs";
+import { businessPlaceHref } from "@/lib/business-url";
+import { PlaceDoor } from "@/components/PlaceDoor";
 import {
   BAD_WHEN_TRUE,
   premierTierChip,
@@ -401,9 +401,9 @@ function NameCell({
     FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (
-      <Link id={id} href={placeTabHref(row.mesitaId, "admin")} className={name}>
+      <PlaceDoor id={id} href={businessPlaceHref(row.mesitaId, "internal")} className={name}>
         {row.name}
-      </Link>
+      </PlaceDoor>
     );
   }
   if (row.held) {

@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { placeTabHref } from "@/lib/place-tabs";
+import { businessPlaceHref } from "@/lib/business-url";
+import { PlaceDoor } from "@/components/PlaceDoor";
 import {
   BAD_WHEN_TRUE,
   GENERAL_STATE_FACTS,
@@ -51,14 +51,14 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                   >
                     {hit ? (
                       <>
-                        {/* The name is the door to Single Place (MESITA-2086):
-                            the place surface, not a second facts card. */}
-                        <Link
-                          href={placeTabHref(hit.id, "admin")}
+                        {/* The name is the door to the place page, in the
+                            Business app since MESITA-3104. */}
+                        <PlaceDoor
+                          href={businessPlaceHref(hit.id, "internal")}
                           className="block truncate font-medium underline-offset-4 hover:underline"
                         >
                           {hit.name || hit.google_name}
-                        </Link>
+                        </PlaceDoor>
                         {/* Premier tier, so a Multiple Places › Edit run can
                             be checked by searching again (MESITA-3090). */}
                         {hit.boost_tier === 1 || hit.boost_tier === 2 ? (
