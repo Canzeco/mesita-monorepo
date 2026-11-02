@@ -35,7 +35,7 @@ const REFUSED: Record<string, string> = {
   charging: "A renewal is being charged. Try again in a few minutes.",
   not_payer: "Only the person who pays can update the card.",
   lost: "Premier changed while you were choosing. Look again.",
-  no_payer_account: "Sign in with your phone number to pay for Premier.",
+
 };
 
 const OUTCOME: Record<string, string> = {

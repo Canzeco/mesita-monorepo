@@ -1,26 +1,26 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { safeNextPath } from "@/lib/safe-next";
 
-// The Business app's front door (MESITA-3103).
+// The Business app's front door. Google accounts only (Pato, 2026-11-02,
+// MESITA-3105): owners and Mesita staff both sign in with Google, and every
+// business-web-* door refuses any other session (`google_only`).
 //
-//   no session → sign in. Owners use the phone on their place's listing
-//                (phone OTP, the same account they use as a guest); Mesita
-//                staff use Google.
+//   no session → the Google button.
 //   session    → /auth/post-signin, which routes to the place or the claim.
 //
-// `next` (a deep link, e.g. the consumer app's "Is this your business?")
-// rides the phone form's redirect directly; for Google the edge wall parked
-// it in a short cookie, because the OAuth callback cannot carry it.
+// `next` (a deep link, e.g. the consumer app's "Is this your business?") is
+// parked in a short cookie by the edge wall, because the OAuth callback
+// cannot carry it.
 
 export const dynamic = "force-dynamic";
 
 const ERROR_COPY: Record<string, string> = {
   oauth_failed: "Google sign-in failed. Try again.",
+  google_only: "Mesita Business signs in with a Google account. Sign in with Google to continue.",
 };
 
 export default async function SignInPage({
@@ -37,7 +37,6 @@ export default async function SignInPage({
   if (user) redirect(next ? `/auth/post-signin?next=${encodeURIComponent(next)}` : "/auth/post-signin");
 
   const errorMessage = params.error ? ERROR_COPY[params.error] : null;
-  const afterSignIn = next ? `/auth/post-signin?next=${encodeURIComponent(next)}` : "/auth/post-signin";
 
   return (
     <main className="bg-hero flex min-h-dvh items-center justify-center px-4 py-10">
@@ -47,17 +46,12 @@ export default async function SignInPage({
           <div>
             <h1 className="font-display text-2xl font-semibold tracking-tight">Mesita Business</h1>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-              Edit your place&apos;s Mesita profile and run its Premier. Sign in with the phone number on your
-              place&apos;s listing and your place is yours at once.
+              Edit your place&apos;s Mesita profile and run its Premier. Sign in with your Google account.
             </p>
           </div>
           {errorMessage ? <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>{errorMessage}</p> : null}
         </div>
-        <PhoneOtpForm redirectAfter={afterSignIn} />
-        <div className="border-border flex flex-col gap-3 border-t pt-5">
-          <p className="text-muted-foreground type-label">Mesita staff</p>
-          <GoogleSignInButton />
-        </div>
+        <GoogleSignInButton />
       </div>
     </main>
   );

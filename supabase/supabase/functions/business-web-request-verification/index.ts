@@ -1,23 +1,32 @@
 // Supabase Edge Function — business-web-request-verification
 //
-// MESITA-3103. "This is my place." When the phone the caller signed in with
-// is the place's listing phone, they run it at once (method phone_match).
-// Otherwise their name, role and note become a pending request a super-admin
-// approves or rejects in the Business app's Internal page. Three requests per
-// guest per day. Never says whether anyone else runs the place.
+// MESITA-3103. "This is my place." The caller's name, role and note become a
+// pending request a super-admin approves or rejects in the Business app's
+// Internal page. Three requests per guest per day. Never says whether anyone
+// else runs the place. (Phone match left with phone sign-in, MESITA-3105: a
+// Google account carries no phone to compare.)
 //
 // Body: { place_id: uuid, name?: string, role?: string, note?: string }
-// Response: { ok: true, outcome: "verified" | "pending" | "already_pending" | "already_owner" | "needs_details" }
+// Response: { ok: true, outcome: "pending" | "already_pending" | "already_owner" | "needs_details" }
 //         | { ok: false, code: "no_account" | "too_many_requests" | "invalid", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { isLiveManager, managerRow } from "../_shared/place-access.ts";
-import { boundedText, phoneMatches, VERIFICATION_DAYS } from "../_shared/place-verification.ts";
+import { boundedText } from "../_shared/place-verification.ts";
 
 const REQUESTS_PER_DAY = 3;
+
+/** The pending request row (the place_verification_requests table, EF-only). */
+function insertRequest(
+  admin: SupabaseClient,
+  row: { place_id: string; consumer_id: string; name: string; role: string; note: string | null },
+) {
+  return admin.from("place_verification_requests").insert(row);
+}
 
 serveJson("business-web-request-verification", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -37,7 +46,7 @@ serveJson("business-web-request-verification", async (req) => {
 
   const { data: place, error: placeErr } = await admin
     .from("profiles")
-    .select("id, phone, state")
+    .select("id, state")
     .eq("id", placeId)
     .maybeSingle();
   if (placeErr) return json({ ok: false, error: placeErr.message }, 500);
@@ -50,18 +59,6 @@ serveJson("business-web-request-verification", async (req) => {
     if (isLiveManager(row)) return json({ ok: true, outcome: "already_owner" });
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
-  }
-
-  if (phoneMatches(user.phone, place.phone as string | null)) {
-    const { data, error } = await admin.rpc("place_verification_approve", {
-      p_place_id: placeId,
-      p_consumer_id: user.id,
-      p_method: "phone_match",
-      p_days: VERIFICATION_DAYS,
-    });
-    if (error || !data) return json({ ok: false, error: `approve: ${error?.message ?? "no row"}` }, 500);
-    console.log(JSON.stringify({ fn: "business-web-request-verification", place_id: placeId, outcome: "verified", method: "phone_match" }));
-    return json({ ok: true, outcome: "verified" });
   }
 
   const { data: pending } = await admin
@@ -92,13 +89,7 @@ serveJson("business-web-request-verification", async (req) => {
     return json({ ok: false, code: "too_many_requests", error: "You can send three requests a day. Try again tomorrow." }, 429);
   }
 
-  const { error } = await admin.from("place_verification_requests").insert({
-    place_id: placeId,
-    consumer_id: user.id,
-    name,
-    role,
-    note,
-  });
+  const { error } = await insertRequest(admin, { place_id: placeId, consumer_id: user.id, name, role, note });
   if (error) {
     if (error.code === "23505") return json({ ok: true, outcome: "already_pending" });
     return json({ ok: false, error: error.message }, 500);

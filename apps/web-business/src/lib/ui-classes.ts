@@ -31,12 +31,3 @@ export const PILL_BUTTON_CLASS = `bg-foreground text-paper inline-flex items-cen
 
 export const CTA_BUTTON_CLASS = `bg-foreground text-paper inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition hover:opacity-90 ${FOCUS_RING_CLASS} ${TOUCH_TARGET_CLASS}`;
 
-// Form primitives the phone sign-in uses, as web-consumer draws them (MESITA-3103).
-export const INPUT_CLASS =
-  "h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none transition focus:border-foreground/40";
-
-export const INFO_BOX_CLASS =
-  "rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground";
-
-export const PRIMARY_BUTTON_CLASS =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-semibold text-paper transition disabled:opacity-60";

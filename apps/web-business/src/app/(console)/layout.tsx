@@ -15,6 +15,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   if (!user) redirect("/");
 
   const identity = await getIdentityCached();
+  if (!identity.ok && identity.code === "google_only") redirect("/auth/signout?error=google_only");
   const places = identity.ok
     ? identity.data.places.filter((p) => p.state === "owner").map((p) => ({ id: p.place_id, name: p.name }))
     : [];

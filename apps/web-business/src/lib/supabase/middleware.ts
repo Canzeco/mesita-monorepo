@@ -10,7 +10,7 @@ import { NEXT_COOKIE } from "@/lib/safe-next";
 //   - `/` (the auth surface) and `/auth/*` (callback) are always public.
 //   - Everything else requires a Supabase session; signed-out visitors
 //     bounce to /?next=<path> so a deep link (the consumer app's "Is this
-//     your business?") survives the phone sign-in. The (console) layout
+//     your business?") survives sign-in. The (console) layout
 //     is the wall; the business-web-* EFs decide every place.
 
 const PUBLIC_PATHS = (path: string) =>
