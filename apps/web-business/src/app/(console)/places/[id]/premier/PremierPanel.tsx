@@ -214,7 +214,7 @@ export function PremierPanel({
               ))}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 ">
             {PLANS.map((plan) => {
               const q = quotes[plan.key]?.[interval];
               if (!q) return null;
