@@ -13,11 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { DefaultAvatar, SizedImage } from "@mesita/place-profile";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
-import {
-  ME_BUTTON_CLASS,
-  MeLead,
-  SettingsGroup,
-} from "@/components/consumer/me/settings-rows";
+import { ME_BUTTON_CLASS } from "@/components/consumer/me/settings-rows";
 import {
   apiUpdateConsumerProfile,
   type ConsumerProfile,
@@ -29,11 +25,7 @@ import {
 } from "@/lib/avatar-upload";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import {
-  ERROR_BOX_CLASS,
-  INPUT_CLASS,
-  SHEET_CANCEL_BUTTON_CLASS,
-} from "@/lib/ui-classes";
+import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 
@@ -52,8 +44,16 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // full_name from them, and that's the name reservations are booked under.
 //
 // Photo upload (MESITA-953) is immediate on pick: Storage → EF avatar_url
-// patch. Name/sex/birthday still save via the Save button. Cancel and a
-// successful Save both pop history back to /me.
+// patch. Name/sex/birthday still save via the Save button in the header;
+// the back arrow is Cancel, and a successful Save pops history back to /me.
+//
+// ONE SCREEN, NO SCROLL (MESITA-3101, Pato: "make it smaller … not
+// scrollable"). Save sits in MeScreen's right header slot, not in a row
+// under the fields (it was under the tab bar on a phone); the photo and the
+// member number share the first row; the names share one row; Sex is a
+// two-button switch; Birthday is BirthdayPicker's compact row. The caption
+// and the photo's file hint are gone (a bad file still toasts, and the hint's
+// "max 2 MB" was the bucket's cap on the shrunk file, not the picker's).
 //
 // THE MEMBER NUMBER LIVES HERE (MESITA-2043, Pato: "we don't have
 // passports"). `consumers.code` printed in exactly one place — the Passport —
@@ -67,17 +67,14 @@ import { ageFromBirthday, cn, errMsg, MIN_SIGNUP_AGE } from "@/lib/utils";
 // MESITA-2701: "the placeholders must be similar to the page you are
 // loading, like the sizes").
 
-/** The line under the title. */
-const PROFILE_CAPTION = "How you appear across Mesita";
-
-/** The line under the photo. */
-const PHOTO_HINT = "JPG, PNG, or WEBP · max 2 MB";
-
-/** The member-number group's eyebrow, over its row. */
+/** The member-number card's label, over the number. */
 const MEMBER_NUMBER_LABEL = "Member number";
 
-const MEMBER_NUMBER_LINE =
-  "Give this number to staff or support when they ask who you are.";
+/** Sex's two choices, in the switch's order. */
+const SEX_OPTIONS = [
+  { value: "female", label: "Female" },
+  { value: "male", label: "Male" },
+] as const;
 
 /** The four fields' labels. */
 const FIELD_LABEL = {
@@ -104,8 +101,8 @@ const FIELD_SKELETON_CLASS = cn(
 // THE FORM'S BOXES, ONCE (MESITA-2701): each string below is the box the
 // form draws and the box its skeleton pulses.
 
-/** The 80px photo. */
-const PHOTO_BOX_CLASS = "h-20 w-20 rounded-full";
+/** The 64px photo. */
+const PHOTO_BOX_CLASS = "h-16 w-16 shrink-0 rounded-full";
 
 /** The camera badge on the photo's corner: 28px, a 2px paper rim. */
 const CAMERA_BADGE_BOX_CLASS =
@@ -118,11 +115,28 @@ const MEMBER_NUMBER_CLASS =
 /** The 44px copy button beside the number. */
 const COPY_BUTTON_BOX_CLASS = "h-11 w-11 shrink-0 rounded-xl";
 
-/** The fields' column, 20px under the card, 12px apart. */
+/** The photo and the member-number card, side by side. */
+const TOP_ROW_CLASS = "flex items-center gap-4";
+
+/** The member-number card: one white row beside the photo. */
+const MEMBER_CARD_CLASS =
+  "bg-card border-border flex min-w-0 flex-1 items-center gap-1 rounded-xl border py-1 pr-1 pl-3";
+
+/** The fields' column, 20px under the top row, 12px apart. */
 const FIELDS_CLASS = "mt-5 flex flex-col gap-3";
 
-/** Cancel and Save, 32px under the fields. */
-const ACTIONS_CLASS = "mt-8 flex gap-2";
+/** First and Last name on one row. */
+const NAME_ROW_CLASS = "grid grid-cols-2 gap-3";
+
+/** Sex's switch: the field's box holding two halves. */
+const SEX_SWITCH_CLASS =
+  "bg-card border-border grid grid-cols-2 gap-1 rounded-lg border p-1";
+const SEX_OPTION_CLASS =
+  "rounded-md py-1.5 text-sm font-medium transition active:scale-[0.98]";
+
+/** Save in the header: the Me button, sized to its word. */
+const SAVE_BUTTON_CLASS = cn(ME_BUTTON_CLASS, "px-4");
+const SAVE_BOX_CLASS = "h-11 w-[68px] rounded-xl";
 
 export function EditProfileSheet() {
   // The kept row (MESITA-3014): the form paints at once when the shell has
@@ -151,30 +165,19 @@ export function EditProfileSheet() {
 
 /** One field's label: SheetField's, Sex's and Birthday's, and the
  *  skeleton's. */
-function FieldLabel({ children }: { children: string }) {
+function FieldLabel({ children, id }: { children: string; id?: string }) {
   return (
-    <span className="text-muted-foreground type-label mb-1 block font-medium">
+    <span
+      id={id}
+      className="text-muted-foreground type-label mb-1 block font-medium"
+    >
       {children}
     </span>
   );
 }
 
-/** The caption under the title, the form's and the skeleton's. */
-function ProfileCaption() {
-  return <MeLead>{PROFILE_CAPTION}</MeLead>;
-}
-
-/** The hint under the photo, the form's and the skeleton's. */
-function PhotoHint() {
-  return (
-    <p className="text-muted-foreground type-label mt-2 text-center">
-      {PHOTO_HINT}
-    </p>
-  );
-}
-
-/** The member-number group: its eyebrow, then one row — the number, the
- *  line, and the copy button beside them. The form passes the number and the button; the
+/** The member-number card beside the photo: its label over the number, the
+ *  copy button on the right. The form passes the number and the button; the
  *  skeleton passes a bar on the number's line and the button's box. */
 function MemberNumberCard({
   number,
@@ -184,18 +187,14 @@ function MemberNumberCard({
   action: ReactNode;
 }) {
   return (
-    <div className="mt-5">
-      <SettingsGroup title={MEMBER_NUMBER_LABEL}>
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            {number}
-            <span className="text-muted-foreground type-label mt-0.5 block">
-              {MEMBER_NUMBER_LINE}
-            </span>
-          </div>
-          {action}
-        </div>
-      </SettingsGroup>
+    <div className={MEMBER_CARD_CLASS}>
+      <div className="min-w-0 flex-1 py-1">
+        <span className="text-muted-foreground type-label block">
+          {MEMBER_NUMBER_LABEL}
+        </span>
+        {number}
+      </div>
+      {action}
     </div>
   );
 }
@@ -204,68 +203,69 @@ function MemberNumberCard({
  * The form before the profile lands, block for block (Pato, MESITA-2701:
  * "the placeholders must be similar to the page you are loading, like the
  * sizes"; "for example in profile the current placeholders are not
- * similar"). It was a photo disc 32px too low and three 44px bars where the
- * form has a member-number card, four fields and two buttons.
+ * similar").
  *
- * The fixed words are drawn as themselves — the caption, the photo hint, the
- * member-number label and line, the field labels — from the form's own
- * components and constants, so they wrap exactly as the form's do; what the
- * read brings (photo, number, values) and every control is a block at its
- * box: the 80px photo with the camera badge on its corner, the 44px copy
- * button, the three fields as their own empty controls
- * (FIELD_SKELETON_CLASS), BirthdayPicker's own skeleton (its grid, its 52px
- * parts), Cancel (44px) and Save beside it.
+ * The fixed words are drawn as themselves — the member-number label, the
+ * field labels — from the form's own components and constants, so they wrap
+ * exactly as the form's do; what the read brings (photo, number, values) and
+ * every control is a block at its box: Save's box in the header, the 64px
+ * photo with the camera badge on its corner, the 44px copy button, the two
+ * name fields as their own empty controls (FIELD_SKELETON_CLASS), Sex's
+ * switch with its words hidden, BirthdayPicker's compact skeleton.
  * /me/profile/loading.tsx draws this same one.
  */
 export function EditProfileSkeleton() {
   return (
-    <MeScreen title="Profile">
-      <ProfileCaption />
-
-      <div className="flex justify-center">
+    <MeScreen title="Profile" action={<Skeleton className={SAVE_BOX_CLASS} />}>
+      <div className={TOP_ROW_CLASS}>
         <div className="relative">
           <Skeleton className={PHOTO_BOX_CLASS} />
           <Skeleton className={CAMERA_BADGE_BOX_CLASS} />
         </div>
+        <MemberNumberCard
+          number={<SkeletonLine className={MEMBER_NUMBER_CLASS} bar="w-24" />}
+          action={<Skeleton className={COPY_BUTTON_BOX_CLASS} />}
+        />
       </div>
-      <PhotoHint />
-
-      <MemberNumberCard
-        number={<SkeletonLine className={MEMBER_NUMBER_CLASS} bar="w-32" />}
-        action={<Skeleton className={COPY_BUTTON_BOX_CLASS} />}
-      />
 
       <div className={FIELDS_CLASS} aria-hidden>
-        {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
-          <div key={label}>
-            <FieldLabel>{label}</FieldLabel>
-            <input
-              disabled
-              tabIndex={-1}
-              aria-hidden
-              className={FIELD_SKELETON_CLASS}
-            />
-          </div>
-        ))}
+        <div className={NAME_ROW_CLASS}>
+          {[FIELD_LABEL.firstName, FIELD_LABEL.lastName].map((label) => (
+            <div key={label} className="min-w-0">
+              <FieldLabel>{label}</FieldLabel>
+              <input
+                disabled
+                tabIndex={-1}
+                aria-hidden
+                className={FIELD_SKELETON_CLASS}
+              />
+            </div>
+          ))}
+        </div>
         <div>
           <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
-          <select
-            disabled
-            tabIndex={-1}
-            aria-hidden
-            className={cn(FIELD_SKELETON_CLASS, "text-transparent")}
-          />
+          <div
+            className={cn(
+              SEX_SWITCH_CLASS,
+              "bg-muted animate-pulse border-transparent",
+            )}
+          >
+            {SEX_OPTIONS.map((option) => (
+              <span
+                key={option.value}
+                className={cn(SEX_OPTION_CLASS, "invisible")}
+              >
+                {option.label}
+              </span>
+            ))}
+          </div>
         </div>
         <div>
           <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
-          <BirthdayPickerSkeleton />
+          <BirthdayPickerSkeleton compact />
         </div>
       </div>
 
-      <div className={ACTIONS_CLASS}>
-        <Skeleton className="h-11 flex-1 rounded-xl" />
-        <Skeleton className="h-11 flex-1 rounded-xl" />
-      </div>
       <p role="status" className="sr-only">
         Loading your details
       </p>
@@ -372,10 +372,24 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   }
 
   return (
-    <MeScreen title="Profile">
-      <ProfileCaption />
-
-      <div className="flex justify-center">
+    <MeScreen
+      title="Profile"
+      action={
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => void save()}
+          disabled={!dirty || saving || uploadingPhoto}
+          className={SAVE_BUTTON_CLASS}
+        >
+          {saving && (
+            <Spinner size="sm" className="border-white/40 border-t-white" />
+          )}
+          {saving ? "Saving…" : "Save"}
+        </Button>
+      }
+    >
+      <div className={TOP_ROW_CLASS}>
         <input
           ref={fileInputRef}
           type="file"
@@ -392,7 +406,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={uploadingPhoto}
-          className="group relative disabled:opacity-70"
+          className="group relative shrink-0 disabled:opacity-70"
           aria-label="Change profile photo"
         >
           <span
@@ -408,7 +422,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
                   size="thumb"
                   alt="Profile photo"
                   fill
-                  sizes="80px"
+                  sizes="64px"
                   className="object-cover"
                   unoptimized={Boolean(previewUrl)}
                 />
@@ -434,90 +448,88 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
             <Camera className="h-3.5 w-3.5" />
           </span>
         </button>
-      </div>
-      <PhotoHint />
 
-      <MemberNumberCard
-        number={
-          <span
-            className={cn(
-              MEMBER_NUMBER_CLASS,
-              code ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            {code ?? "Pending"}
-          </span>
-        }
-        action={
-          code ? (
-            <button
-              type="button"
-              onClick={() => void copyCode()}
-              aria-label="Copy member number"
+        <MemberNumberCard
+          number={
+            <span
               className={cn(
-                COPY_BUTTON_BOX_CLASS,
-                "text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition",
+                MEMBER_NUMBER_CLASS,
+                code ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              <Copy className="h-4 w-4" />
-            </button>
-          ) : null
-        }
-      />
-
-      <div className={FIELDS_CLASS}>
-        <SheetField
-          label={FIELD_LABEL.firstName}
-          value={firstName}
-          onChange={setFirstName}
-          placeholder={FIELD_LABEL.firstName}
-          autoComplete="given-name"
+              {code ?? "Pending"}
+            </span>
+          }
+          action={
+            code ? (
+              <button
+                type="button"
+                onClick={() => void copyCode()}
+                aria-label="Copy member number"
+                className={cn(
+                  COPY_BUTTON_BOX_CLASS,
+                  "text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition",
+                )}
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            ) : null
+          }
         />
-        <SheetField
-          label={FIELD_LABEL.lastName}
-          value={lastName}
-          onChange={setLastName}
-          placeholder={FIELD_LABEL.lastName}
-          autoComplete="family-name"
-        />
-        <label className="block">
-          <FieldLabel>{FIELD_LABEL.sex}</FieldLabel>
-          <select
-            value={sex}
-            onChange={(e) => setSex(e.target.value)}
-            className={FIELD_CLASS}
-          >
-            <option value="">Select</option>
-            <option value="female">Female</option>
-            <option value="male">Male</option>
-          </select>
-        </label>
-        <label className="block">
-          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
-          <BirthdayPicker value={birthday} onChange={setBirthday} />
-        </label>
       </div>
 
-      <div className={ACTIONS_CLASS}>
-        <button
-          type="button"
-          onClick={goBack}
-          className={cn(SHEET_CANCEL_BUTTON_CLASS, ME_BUTTON_CLASS)}
-        >
-          Cancel
-        </button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => void save()}
-          disabled={!dirty || saving || uploadingPhoto}
-          className={cn(ME_BUTTON_CLASS, "flex-1")}
-        >
-          {saving && (
-            <Spinner size="sm" className="border-white/40 border-t-white" />
-          )}
-          {saving ? "Saving…" : "Save"}
-        </Button>
+      <div className={FIELDS_CLASS}>
+        <div className={NAME_ROW_CLASS}>
+          <SheetField
+            label={FIELD_LABEL.firstName}
+            value={firstName}
+            onChange={setFirstName}
+            placeholder={FIELD_LABEL.firstName}
+            autoComplete="given-name"
+          />
+          <SheetField
+            label={FIELD_LABEL.lastName}
+            value={lastName}
+            onChange={setLastName}
+            placeholder={FIELD_LABEL.lastName}
+            autoComplete="family-name"
+          />
+        </div>
+        <div>
+          <FieldLabel id="profile-sex-label">{FIELD_LABEL.sex}</FieldLabel>
+          {/* No option lit is a real state: a legacy profile with no sex
+              stored stays that way until the guest taps one. */}
+          <div
+            role="radiogroup"
+            aria-labelledby="profile-sex-label"
+            className={SEX_SWITCH_CLASS}
+          >
+            {SEX_OPTIONS.map((option) => {
+              const on = sex === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setSex(option.value)}
+                  className={cn(
+                    SEX_OPTION_CLASS,
+                    on
+                      ? "bg-foreground text-paper"
+                      : "text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <label className="block">
+          <FieldLabel>{FIELD_LABEL.birthday}</FieldLabel>
+          <BirthdayPicker value={birthday} onChange={setBirthday} compact />
+        </label>
       </div>
     </MeScreen>
   );
@@ -537,7 +549,7 @@ function SheetField({
   autoComplete?: string;
 }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <FieldLabel>{label}</FieldLabel>
       <input
         value={value}

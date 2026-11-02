@@ -23,11 +23,16 @@ export function MeScreen({
   title,
   children,
   flush = false,
+  action,
 }: {
   title: string;
   children: React.ReactNode;
   /** Skip body padding — Activity feeds need a flex column that can scroll. */
   flush?: boolean;
+  /** The header's right slot, empty by default: Profile's Save (MESITA-3101),
+   *  so the form fits on one screen without a button row under it. The two
+   *  side columns stay equal, so the title stays centred. */
+  action?: React.ReactNode;
 }) {
   const router = useRouter();
 
@@ -41,7 +46,7 @@ export function MeScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
-      <header className="border-border bg-background/90 sticky top-0 z-20 flex shrink-0 items-center gap-2 border-b px-3 py-2 backdrop-blur-xl">
+      <header className="border-border bg-background/90 sticky top-0 z-20 grid shrink-0 grid-cols-[1fr_minmax(0,auto)_1fr] items-center gap-2 border-b px-3 py-2 backdrop-blur-xl">
         <button
           type="button"
           onClick={onBack}
@@ -50,10 +55,10 @@ export function MeScreen({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="font-display min-w-0 flex-1 truncate text-center text-xl font-semibold tracking-tight">
+        <h1 className="font-display min-w-0 truncate text-center text-xl font-semibold tracking-tight">
           {title}
         </h1>
-        <div className="h-11 w-11 shrink-0" aria-hidden />
+        <div className="flex min-h-11 justify-end">{action}</div>
       </header>
 
       <div
