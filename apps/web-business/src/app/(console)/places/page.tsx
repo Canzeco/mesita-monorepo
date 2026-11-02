@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Store } from "lucide-react";
+import { Plus, ShieldCheck, Store } from "lucide-react";
 import { getIdentityCached } from "@/lib/identity";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
@@ -86,7 +86,16 @@ export default async function PlacesPage() {
           })}
         </Card>
       )}
-      {isSuperAdmin ? <StaffFind /> : null}
+      {isSuperAdmin ? (
+        <>
+          <Link href="/internal" className="border-border bg-card hover:bg-muted/50 flex items-center gap-3 rounded-2xl border px-5 py-4 transition">
+            <ShieldCheck className="text-muted-foreground size-5" aria-hidden />
+            <span className="flex-1 font-semibold">Internal</span>
+            <span className="text-muted-foreground text-sm">Requests waiting · Mesita staff</span>
+          </Link>
+          <StaffFind />
+        </>
+      ) : null}
     </div>
   );
 }
