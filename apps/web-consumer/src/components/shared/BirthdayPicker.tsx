@@ -96,15 +96,28 @@ const PART_CAPTION_CLASS =
 const PART_VALUE_CLASS =
   "w-full bg-transparent text-center text-base font-semibold tabular-nums outline-none";
 
+/** Compact (Profile, MESITA-3101): the box at a form field's height, the
+ *  value at the field's size, no captions. Profile's "Birthday" label sits
+ *  over the row and each part keeps its aria-label; onboarding, where the
+ *  boxes start empty, keeps the captions. */
+const COMPACT_PART_BOX_CLASS = "h-10";
+const COMPACT_VALUE_CLASS = "text-sm font-medium";
+
 export function BirthdayPicker({
   value,
   onChange,
   className,
+  compact = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  compact?: boolean;
 }) {
+  const partClass = cn(PART_CLASS, compact && COMPACT_PART_BOX_CLASS);
+  const valueClass = cn(PART_VALUE_CLASS, compact && COMPACT_VALUE_CLASS);
+  const caption = (text: string) =>
+    compact ? null : <span className={PART_CAPTION_CLASS}>{text}</span>;
   const [parts, setParts] = useState<Parts>(() => parse(value));
   const monthRef = useRef<HTMLSelectElement>(null);
   const yearRef = useRef<HTMLInputElement>(null);
@@ -154,25 +167,25 @@ export function BirthdayPicker({
 
   return (
     <div className={cn(GRID_CLASS, className)}>
-      <label className={PART_CLASS}>
+      <label className={partClass}>
         <input
           inputMode="numeric"
           autoComplete="bday-day"
           aria-label="Birth day"
           placeholder="DD"
-          className={PART_VALUE_CLASS}
+          className={valueClass}
           value={parts.day}
           onChange={(e) => onDay(e.target.value)}
         />
-        <span className={PART_CAPTION_CLASS}>Day</span>
+        {caption("Day")}
       </label>
 
-      <label className={PART_CLASS}>
+      <label className={partClass}>
         <select
           ref={monthRef}
           aria-label="Birth month"
           className={cn(
-            PART_VALUE_CLASS,
+            valueClass,
             "appearance-none px-1",
             !parts.month && "text-muted-foreground",
           )}
@@ -189,21 +202,21 @@ export function BirthdayPicker({
             </option>
           ))}
         </select>
-        <span className={PART_CAPTION_CLASS}>Month</span>
+        {caption("Month")}
       </label>
 
-      <label className={PART_CLASS}>
+      <label className={partClass}>
         <input
           ref={yearRef}
           inputMode="numeric"
           autoComplete="bday-year"
           aria-label="Birth year"
           placeholder="YYYY"
-          className={PART_VALUE_CLASS}
+          className={valueClass}
           value={parts.year}
           onChange={(e) => onYear(e.target.value)}
         />
-        <span className={PART_CAPTION_CLASS}>Year</span>
+        {caption("Year")}
       </label>
     </div>
   );
@@ -213,13 +226,23 @@ export function BirthdayPicker({
  *  must be similar to the page you are loading, like the sizes"): the same
  *  grid and the three parts' own 52px box, each a muted block. The parts
  *  are controls, so none of their words is drawn. */
-export function BirthdayPickerSkeleton({ className }: { className?: string }) {
+export function BirthdayPickerSkeleton({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   return (
     <div aria-hidden className={cn(GRID_CLASS, className)}>
       {["day", "month", "year"].map((part) => (
         <Skeleton
           key={part}
-          className={cn(PART_BOX_CLASS, "border-transparent")}
+          className={cn(
+            PART_BOX_CLASS,
+            compact && COMPACT_PART_BOX_CLASS,
+            "border-transparent",
+          )}
         />
       ))}
     </div>
