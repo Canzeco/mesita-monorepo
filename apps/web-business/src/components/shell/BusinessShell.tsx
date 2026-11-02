@@ -8,6 +8,7 @@
 //   Reviews   — the current place's reviews, read-only (MESITA-3121)
 //   Premier   — the current place's
 //   Settings  — the current place's, the products listed at its foot
+//   Admin     — Mesita staff only (MESITA-3122)
 //   Account   — the Google email and sign-out, at the bottom
 //
 // The current place is the one in the URL, else the first you run; without
@@ -20,7 +21,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, IdCard, LogOut, Settings, Star, Store, type LucideIcon } from "lucide-react";
+import { BadgeCheck, IdCard, LogOut, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
 import { authSignOut } from "@/app/auth/actions";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { placeIdFromPathname, placeTabHref } from "@/lib/place-tabs";
@@ -30,8 +31,8 @@ export type ShellPlace = { id: string; name: string | null; photo: string | null
 
 type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean };
 
-function menu(pathname: string, placeId: string | null): Row[] {
-  const tab = (t: "profile" | "reviews" | "premier" | "settings") => (placeId ? placeTabHref(placeId, t) : null);
+function menu(pathname: string, placeId: string | null, isSuperAdmin: boolean): Row[] {
+  const tab = (t: "profile" | "reviews" | "premier" | "settings" | "internal") => (placeId ? placeTabHref(placeId, t) : null);
   const under = (href: string | null) => !!href && (pathname === href || pathname.startsWith(`${href}/`));
   const settings = tab("settings") ?? "/settings";
   return [
@@ -40,12 +41,23 @@ function menu(pathname: string, placeId: string | null): Row[] {
       label: "Place",
       icon: Store,
       href: "/places",
-      active: pathname === "/places" || pathname.startsWith("/claim") || pathname.startsWith("/internal"),
+      active: pathname === "/places" || pathname.startsWith("/claim"),
     },
     { key: "profile", label: "Profile", icon: IdCard, href: tab("profile"), active: under(tab("profile")) },
     { key: "reviews", label: "Reviews", icon: Star, href: tab("reviews"), active: under(tab("reviews")) },
     { key: "premier", label: "Premier", icon: BadgeCheck, href: tab("premier"), active: under(tab("premier")) },
     { key: "settings", label: "Settings", icon: Settings, href: settings, active: under(settings) || pathname === "/settings" },
+    // Mesita staff only (MESITA-3122): the place's staff page, else the claim
+    // requests and Open any place. The server refuses anyone else.
+    ...(isSuperAdmin
+      ? [{
+        key: "admin",
+        label: "Admin",
+        icon: ShieldCheck,
+        href: tab("internal") ?? "/internal",
+        active: under(tab("internal")) || pathname === "/internal",
+      }]
+      : []),
   ];
 }
 
@@ -99,6 +111,7 @@ function SignOut() {
 
 export function BusinessShell({
   places,
+  isSuperAdmin,
   email,
   children,
 }: {
@@ -110,7 +123,7 @@ export function BusinessShell({
   const pathname = usePathname();
   const placeId = placeIdFromPathname(pathname) ?? places[0]?.id ?? null;
   const current = places.find((p) => p.id === placeId) ?? null;
-  const rows = menu(pathname, placeId);
+  const rows = menu(pathname, placeId, isSuperAdmin);
 
   // Desktop web (Pato, 2026-11-02, MESITA-3119): one side menu at every
   // width, no bottom bar; below lg it narrows to an icon rail.

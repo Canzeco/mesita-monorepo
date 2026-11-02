@@ -10,7 +10,7 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   preview: "Preview",
   premier: "Premier",
   settings: "Settings",
-  internal: "Mesita staff",
+  internal: "Admin",
 };
 
 /** Mesita staff only: the staff tab (state, Enrich, embedding, reports,
