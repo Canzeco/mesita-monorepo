@@ -27,7 +27,7 @@ function sayOutcome(w: Wallet) {
   switch (w.outcome) {
     case "credited":
     case "already_paid":
-      toast.success("Added to your Wallet.");
+      toast.success("Added to your balance.");
       return;
     case "expired":
       toast("Checkout cancelled. Nothing was charged.");
@@ -74,7 +74,7 @@ export function WalletPage() {
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
       <p className="text-muted-foreground type-body mt-1">
         What you prepaid at each place, ready for your next visit.
       </p>
@@ -105,7 +105,7 @@ export function WalletPage() {
         ) : failed ? (
           <EmptyState
             icon={WalletIcon}
-            title="Couldn't load your Wallet"
+            title="Couldn't load Pay"
             description="Check your connection and try again."
             action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
           />

@@ -86,7 +86,7 @@ function PrepayForm({ place }: { place: PlaceDetail }) {
       </div>
 
       <p className="text-muted-foreground mt-4 text-sm">
-        Pay ahead and keep it in your Wallet as a balance at {place.name}.
+        Pay ahead and keep it in Pay as a balance at {place.name}.
       </p>
 
       <p className="mt-5 text-sm font-semibold">How much?</p>
