@@ -273,6 +273,12 @@ verify_jwt = true
 [functions.consumer-web-cancel-premier]
 verify_jwt = true
 
+[functions.consumer-web-start-prepay]
+verify_jwt = true
+
+[functions.consumer-web-get-wallet]
+verify_jwt = true
+
 # Kill switch: select cron.unschedule('sync-premier');
 [functions.supabase-cron-sync-premier]
 verify_jwt = true
