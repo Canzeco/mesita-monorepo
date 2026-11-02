@@ -83,12 +83,13 @@ export const Taco = drawnIcon("Taco", [
   "M6 12c1-1.5 2-.5 3-1.5s2 .5 3-1 2 .5 3-1 2 .5 3 1",
 ]);
 
-/** A chili pepper and its stem: Mexican's 🌶️. Never fire, which reads as
- *  trending (MESITA-2557). */
-const Chili = drawnIcon("Chili", [
-  "M4 8c0 7 6 13 16.5 13.5-4-3-6.5-7.5-7.5-13",
-  "M4 8c2.5-1.5 7-1.5 9 .5",
-  "M8.5 7.3c0-2.3 1-4 3-4.8",
+/** The flag of Mexico: three bands and the eagle's round emblem in the
+ *  middle one, Mexican's 🇲🇽. Not a chili (Pato, MESITA-3108). */
+const MexicanFlag = drawnIcon("MexicanFlag", [
+  "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
+  "M9 5v14",
+  "M15 5v14",
+  "M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0",
 ]);
 
 /** Spaghetti wound on a fork over its bowl: Italian's 🍝. */
@@ -223,7 +224,7 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   pizza: Pizza,
   chicken: Drumstick,
   sushi: Fish,
-  mexican: Chili,
+  mexican: MexicanFlag,
   steak: Beef,
   seafood: Shrimp,
   italian: Pasta,
