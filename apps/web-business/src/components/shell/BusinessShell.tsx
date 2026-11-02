@@ -2,10 +2,11 @@
 
 // The Business app's frame (MESITA-3103, menu MESITA-3111).
 //
-// Desktop rail, top to bottom (Pato, 2026-11-02, MESITA-3112/3114): the
-//   logo, the place selector (the place in the URL, else your first place;
-//   staff also find Internal in it), a line, Profile · Premier, a line,
-//   Settings · Products, the account.
+// Desktop rail (Pato, 2026-11-02, MESITA-3112/3114/3115): admin's rail —
+//   dark, compact rows, uppercase group labels, never rules. Top to bottom:
+//   the logo + "business", the place switcher (the place in the URL, else
+//   your first place; staff also find Internal in it), PLACE (Profile ·
+//   Premier), MESITA (Settings · Products), the account.
 // Phone: a tab bar (Profile · Premier · Settings · More); More holds the
 //   selector's list, Products and the account. Payments, Prepayments and
 //   Rewards are rows on Products (their old pages redirect there).
@@ -30,8 +31,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { authSignOut } from "@/app/auth/actions";
-import { MesitaMark } from "@/components/brand/MesitaMark";
-import { MesitaWordmark } from "@/components/brand/MesitaWordmark";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
 import { placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
@@ -132,27 +132,6 @@ function PlaceList({ places, currentId, pathname, isSuperAdmin }: { places: Shel
   );
 }
 
-function Switcher({ places, current, placeId, pathname, isSuperAdmin }: { places: ShellPlace[]; current: ShellPlace | null; placeId: string | null; pathname: string; isSuperAdmin: boolean }) {
-  const title = current?.name ?? (placeId ? "Staff view" : "Choose a place");
-  const subtitle = current ? "Your place" : placeId ? "A place you don't run" : `${places.length ? "Pick one of yours" : "Claim yours to start"}`;
-  return (
-    // key: a navigation closes the panel.
-    <details key={pathname} className="group relative mx-3 mb-2">
-      <summary className="border-border hover:bg-muted/60 flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-xl border px-3 py-2 [&::-webkit-details-marker]:hidden">
-        <PlacePhoto place={current} className="size-9" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">{title}</span>
-          <span className="text-muted-foreground block truncate text-xs">{subtitle}</span>
-        </span>
-        <ChevronsUpDown className="text-muted-foreground size-4 shrink-0" aria-hidden />
-      </summary>
-      <div className="border-border bg-card shadow-elev absolute inset-x-0 top-full z-40 mt-1 rounded-xl border p-1.5">
-        <PlaceList places={places} currentId={current?.id ?? null} pathname={pathname} isSuperAdmin={isSuperAdmin} />
-      </div>
-    </details>
-  );
-}
-
 function Account({ email, className }: { email: string | null; className?: string }) {
   return (
     <div className={cn("flex items-center gap-2 px-3 py-2", className)}>
@@ -167,6 +146,84 @@ function Account({ email, className }: { email: string | null; className?: strin
           className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-10 items-center justify-center rounded-lg"
         >
           <LogOut className="size-4" aria-hidden />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── The dark rail (admin's Sidebar look, MESITA-3115) ──────────────────────
+
+function RailLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-2.5 pt-4 pb-1">
+      <span className="text-background/35 type-meta font-medium tracking-[0.14em] uppercase">{children}</span>
+    </div>
+  );
+}
+
+function RailRow({ row, pathname }: { row: Row; pathname: string }) {
+  const Icon = row.icon;
+  const base = "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-xs font-medium type-body transition";
+  if (!row.href) {
+    return (
+      <span aria-disabled title="Choose a place first" className={cn(base, "text-background/25")}>
+        <Icon className="size-3.5 shrink-0" aria-hidden />
+        <span className="truncate">{row.label}</span>
+      </span>
+    );
+  }
+  const active = isActive(pathname, row);
+  return (
+    <Link
+      href={row.href}
+      aria-current={active ? "page" : undefined}
+      className={cn(base, active ? "bg-secondary text-secondary-foreground" : "text-background/60 hover:bg-background/10 hover:text-background")}
+    >
+      <Icon className="size-3.5 shrink-0" aria-hidden />
+      <span className="truncate">{row.label}</span>
+    </Link>
+  );
+}
+
+function RailSwitcher({ places, current, placeId, pathname, isSuperAdmin }: { places: ShellPlace[]; current: ShellPlace | null; placeId: string | null; pathname: string; isSuperAdmin: boolean }) {
+  const title = current?.name ?? (placeId ? "Staff view" : "Choose a place");
+  return (
+    // key: a navigation closes the panel.
+    <details key={pathname} className="relative mt-4">
+      <summary className="bg-background/10 hover:bg-background/15 text-background flex cursor-pointer list-none items-center gap-2.5 rounded-xl px-2.5 py-2 [&::-webkit-details-marker]:hidden">
+        {current?.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={current.photo} alt="" className="size-6 shrink-0 rounded-md object-cover" />
+        ) : (
+          <span className="bg-background/10 text-background/60 flex size-6 shrink-0 items-center justify-center rounded-md">
+            <Store className="size-3.5" aria-hidden />
+          </span>
+        )}
+        <span className="type-body min-w-0 flex-1 truncate text-xs font-semibold">{title}</span>
+        <ChevronsUpDown className="text-background/45 size-3.5 shrink-0" aria-hidden />
+      </summary>
+      <div className="border-border bg-card text-foreground shadow-elev absolute inset-x-0 top-full z-40 mt-1 rounded-xl border p-1.5">
+        <PlaceList places={places} currentId={current?.id ?? null} pathname={pathname} isSuperAdmin={isSuperAdmin} />
+      </div>
+    </details>
+  );
+}
+
+function RailAccount({ email }: { email: string | null }) {
+  return (
+    <div className="border-background/10 mt-2 flex items-center gap-2 border-t pt-3">
+      <span className="text-background/50 type-meta min-w-0 flex-1 truncate px-2.5" title={email ?? undefined}>
+        {email ?? "Signed in"}
+      </span>
+      <form action={authSignOut}>
+        <button
+          type="submit"
+          aria-label="Sign out"
+          title="Sign out"
+          className="text-background/45 hover:bg-background/10 hover:text-background flex size-8 items-center justify-center rounded-xl transition"
+        >
+          <LogOut className="size-3.5" aria-hidden />
         </button>
       </form>
     </div>
@@ -192,20 +249,19 @@ export function BusinessShell({
 
   return (
     <div className="min-h-dvh">
-      <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r lg:flex">
-        <Link href="/places" className="flex items-center gap-2 px-6 pt-5 pb-4">
-          <MesitaMark className="size-7 text-(--brand-pink)" />
-          <MesitaWordmark className="h-5 w-auto" />
-          <span className="type-eyebrow text-muted-foreground ml-1">Business</span>
+      <aside className="bg-foreground text-background border-background/10 fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r px-2.5 pt-4 pb-3 lg:flex">
+        <Link href="/places" className="inline-flex shrink-0 items-center gap-2 px-2">
+          <MesitaLogo variant="horizontal" className="h-5 w-auto" />
+          <span className="text-background/50 type-meta font-medium tracking-[0.14em] uppercase">business</span>
         </Link>
-        <Switcher places={places} current={current} placeId={placeId} pathname={pathname} isSuperAdmin={isSuperAdmin} />
-        <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4">
-          <div className="border-border mx-3 mb-2 border-t" />
-          {rows.map((r) => <NavRow key={r.key} row={r} pathname={pathname} />)}
-          <div className="border-border mx-3 my-2 border-t" />
-          {lower.map((r) => <NavRow key={r.key} row={r} pathname={pathname} />)}
+        <RailSwitcher places={places} current={current} placeId={placeId} pathname={pathname} isSuperAdmin={isSuperAdmin} />
+        <nav aria-label="Business" className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+          <RailLabel>Place</RailLabel>
+          {rows.map((r) => <RailRow key={r.key} row={r} pathname={pathname} />)}
+          <RailLabel>Mesita</RailLabel>
+          {lower.map((r) => <RailRow key={r.key} row={r} pathname={pathname} />)}
         </nav>
-        <Account email={email} className="border-border border-t py-3" />
+        <RailAccount email={email} />
       </aside>
 
       <header className="border-border bg-card/95 sticky top-0 z-20 flex h-14 items-center gap-3 border-b px-4 backdrop-blur lg:hidden">
@@ -213,7 +269,7 @@ export function BusinessShell({
         <span className="min-w-0 truncate text-sm font-semibold">{current?.name ?? (placeId ? "Staff view" : "Mesita Business")}</span>
       </header>
 
-      <div className="pb-20 lg:pb-0 lg:pl-64">
+      <div className="pb-20 lg:pb-0 lg:pl-60">
         <main className="mx-auto w-full px-4 pt-6 pb-10 sm:px-6 sm:pt-8 lg:px-8">{children}</main>
       </div>
 
