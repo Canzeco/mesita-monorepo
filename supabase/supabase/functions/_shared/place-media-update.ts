@@ -1,4 +1,4 @@
-import { json } from "../_shared/http.ts";
+import { json } from "./http.ts";
 import { isUrl } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
 

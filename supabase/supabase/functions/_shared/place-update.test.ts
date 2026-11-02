@@ -4,7 +4,7 @@
 // and a refused field must stop the whole save instead of half-writing it.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { buildPlaceUpdate, type UpdateBody } from "./build-update.ts";
+import { buildPlaceUpdate, type UpdateBody } from "./place-update.ts";
 
 const FAMILIES = [
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },

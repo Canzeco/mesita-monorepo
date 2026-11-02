@@ -13,14 +13,20 @@ import { assertEquals } from "jsr:@std/assert@1";
 const SRC = await Deno.readTextFile(
   new URL("../admin-web-get-overview/index.ts", import.meta.url),
 );
+// The read moved to a shared module (MESITA-3103); its shape claims follow it.
+const READ_SRC = await Deno.readTextFile(new URL("./place-overview.ts", import.meta.url));
 
 /** Comments name what they deleted, so a "not present" assertion must never
  *  pass or fail on somebody explaining themselves. */
-const CODE = SRC.split("\n")
-  .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*") && !l.trimStart().startsWith("/*"))
-  .join("\n");
+const strip = (src: string) =>
+  src.split("\n")
+    .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*") && !l.trimStart().startsWith("/*"))
+    .join("\n");
+const CODE = strip(SRC);
+const READ = strip(READ_SRC);
 
 Deno.test("admin-web-get-overview is super-admin only", () => {
+  assertEquals(CODE.includes("buildPlaceOverview(admin, placeId, { internal: true })"), true);
   assertEquals(CODE.includes('requireAdminRequest(req, "POST")'), true);
   // The guard runs before the body is even read.
   assertEquals(
@@ -33,25 +39,25 @@ Deno.test("admin-web-get-overview is super-admin only", () => {
 });
 
 Deno.test("families resolve inside the one read, from the stored keys", () => {
-  assertEquals(CODE.includes("resolveStoredFamily("), true);
+  assertEquals(READ.includes("resolveStoredFamily("), true);
   // The category↔family dictionary is gone (MESITA-2891): no per-category families.
-  assertEquals(CODE.includes("categoriesWithFamilyDisplay("), false);
+  assertEquals(READ.includes("categoriesWithFamilyDisplay("), false);
 });
 
 Deno.test("overview returns the vote threshold", () => {
-  assertEquals(CODE.includes("loadRequestThreshold("), true);
-  assertEquals(CODE.includes("request_threshold: requestThreshold"), true);
+  assertEquals(READ.includes("loadRequestThreshold("), true);
+  assertEquals(READ.includes("request_threshold: requestThreshold"), true);
 });
 
 Deno.test("overview carries Profile Stats from place_activity", () => {
-  assertEquals(CODE.includes("fetchPlaceProfileStats("), true);
-  assertEquals(CODE.includes("profile_stats: profileStats"), true);
+  assertEquals(READ.includes("fetchPlaceProfileStats("), true);
+  assertEquals(READ.includes("place.profile_stats = profileStats"), true);
 });
 
 Deno.test("the place row and its enrichment map are read together", () => {
   // One round trip for both (MESITA-1249): the State box's `enriched`
   // high-water must come from the same request as the row it sits on.
-  assertEquals(CODE.includes("await Promise.all(["), true);
-  assertEquals((CODE.match(/from\("profiles"\)/g) ?? []).length, 1);
-  assertEquals((CODE.match(/from\("place_profiles"\)/g) ?? []).length, 1);
+  assertEquals(READ.includes("await Promise.all(["), true);
+  assertEquals((READ.match(/from\("profiles"\)/g) ?? []).length, 1);
+  assertEquals((READ.match(/from\("place_profiles"\)/g) ?? []).length, 1);
 });

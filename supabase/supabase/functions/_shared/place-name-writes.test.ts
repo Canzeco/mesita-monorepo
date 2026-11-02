@@ -109,7 +109,7 @@ const NAME_WRITERS = new Set([
   "_shared/save-place.ts",
   "_shared/place-name-door.ts",
   // The operator's edit: the whitelist builds `update.name` (MESITA-2982).
-  "admin-web-update-place/build-update.ts",
+  "_shared/place-update.ts",
 ]);
 
 Deno.test("only Create, the name door and the operator's save write place_profiles.name", async () => {

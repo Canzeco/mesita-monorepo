@@ -15,8 +15,8 @@ import { assertEquals } from "jsr:@std/assert@1";
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const REPO_ROOT = new URL("../../../../", import.meta.url);
-const APPS = ["web-admin", "web-consumer", "web-landing"];
-const NAME = /["'`]((?:admin|consumer)-web-[a-z0-9-]+)["'`]/g;
+const APPS = ["web-admin", "web-consumer", "web-landing", "web-business"];
+const NAME = /["'`]((?:admin|consumer|business)-web-[a-z0-9-]+)["'`]/g;
 const SKIP_DIRS = new Set(["node_modules", ".next", "dist", ".vercel"]);
 
 async function* sourceFiles(dir: URL): AsyncGenerator<URL> {

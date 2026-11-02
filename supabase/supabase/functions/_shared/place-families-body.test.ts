@@ -4,7 +4,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import { readFamilyKeysBody } from "./place-families-body.ts";
-import { FAMILIES_MAX } from "../_shared/families-infer.ts";
+import { FAMILIES_MAX } from "./families-infer.ts";
 
 const FAMILIES = [
   { slug: "coffee", label: "Coffee", emoji: "☕", sort_order: 1 },

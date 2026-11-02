@@ -11,8 +11,8 @@
 // order every other writer stores (gate d27a). An unknown slug names itself
 // in the 400 so a stale page can be reloaded, not guessed at.
 
-import type { PlaceFamily } from "../_shared/categories.ts";
-import { FAMILIES_MAX } from "../_shared/families-infer.ts";
+import type { PlaceFamily } from "./categories.ts";
+import { FAMILIES_MAX } from "./families-infer.ts";
 
 export type FamilyKeysRefusal = {
   ok: false;

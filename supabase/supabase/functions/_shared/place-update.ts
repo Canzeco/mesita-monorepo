@@ -3,10 +3,10 @@
 // are not touched; an explicit null clears the field. The handler owns the
 // gates before it (reviews_owned, id, read-only fields) and every write after.
 
-import { json } from "../_shared/http.ts";
-import { ENRICH_FIELD_LIMITS } from "../_shared/enrich-field-limits.ts";
-import type { PlaceFamily } from "../_shared/categories.ts";
-import { isOperatorField, type OperatorField } from "../_shared/operator-fields.ts";
+import { json } from "./http.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import type { PlaceFamily } from "./categories.ts";
+import { isOperatorField, type OperatorField } from "./operator-fields.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
