@@ -401,7 +401,7 @@ function NameCell({
     FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (
-      <Link id={id} href={placeTabHref(row.mesitaId, "profile")} className={name}>
+      <Link id={id} href={placeTabHref(row.mesitaId, "admin")} className={name}>
         {row.name}
       </Link>
     );

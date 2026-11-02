@@ -27,14 +27,20 @@
 // (MESITA-2115): nothing is a partner yet.
 
 import { usePathname } from "next/navigation";
+import { ExternalLink } from "lucide-react";
+import { KnobState } from "@/components/admin-ui/config";
 import { DisabledBadge } from "@/components/console/badges";
 import { PLACE_TAB_LABEL, placeTabFromPathname } from "@/lib/place-tabs";
 
 export function PlaceHeading({
   name,
   disabled,
+  editHref,
 }: {
   name: string;
+  /** The Business app's profile editor for this place (MESITA-3103); null
+   *  when NEXT_PUBLIC_BUSINESS_URL is not set, and the door says so. */
+  editHref?: string | null;
   /** True only when the overview says the place is switched off; a missing
    *  fact never draws the chip. */
   disabled: boolean;
@@ -58,6 +64,23 @@ export function PlaceHeading({
           {name}
         </h1>
         {disabled ? <DisabledBadge /> : null}
+        {editHref === undefined ? null : editHref ? (
+          <a
+            href={editHref}
+            target="_blank"
+            rel="noopener"
+            className="border-border hover:bg-muted ml-auto inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 type-body font-semibold"
+          >
+            Edit profile <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        ) : (
+          <span className="ml-auto inline-flex shrink-0 items-center gap-2">
+            <span className="border-border text-muted-foreground inline-flex h-8 items-center rounded-full border px-3 type-body font-semibold opacity-60">
+              Edit profile
+            </span>
+            <KnobState kind="not-wired" reason="NEXT_PUBLIC_BUSINESS_URL is not set" />
+          </span>
+        )}
       </div>
       {/* Which view you are in. The rail says it too, but the rail is a menu
           and this is the page — a title that does not name the page it titles

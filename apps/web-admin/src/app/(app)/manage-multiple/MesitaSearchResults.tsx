@@ -54,7 +54,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                         {/* The name is the door to Single Place (MESITA-2086):
                             the place surface, not a second facts card. */}
                         <Link
-                          href={placeTabHref(hit.id, "profile")}
+                          href={placeTabHref(hit.id, "admin")}
                           className="block truncate font-medium underline-offset-4 hover:underline"
                         >
                           {hit.name || hit.google_name}

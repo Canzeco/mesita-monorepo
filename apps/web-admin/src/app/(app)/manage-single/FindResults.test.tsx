@@ -174,7 +174,7 @@ describe("Find › one table", () => {
 
   it("opens a held place and offers Create on one Mesita lacks, both labelled", () => {
     const html = render(OK);
-    expect(html).toContain('href="/manage-single/mesita-a/profile"');
+    expect(html).toContain('href="/manage-single/mesita-a/admin"');
     expect(html).toContain('aria-label="Open Café Nin"');
     expect(html).toContain('aria-label="Enrich Café Nin"');
     expect(html).toContain("visited:text-(--brand-pink-900)");
@@ -328,7 +328,7 @@ describe("Find › one table", () => {
 
   it("treats a row this page created as Mesita's", () => {
     const html = render(OK, { added: new Map([[G2, "mesita-new"]]) });
-    expect(html).toContain('href="/manage-single/mesita-new/profile"');
+    expect(html).toContain('href="/manage-single/mesita-new/admin"');
     expect(html).not.toContain(">Create<");
     expect(html).not.toContain(">Google only</span>");
   });

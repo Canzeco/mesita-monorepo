@@ -10,19 +10,19 @@
 // have.
 import { PLACE_BASE } from "@/lib/place-base";
 
-// THE MVP FIRST STAGE IS TWO VIEWS (MESITA-2088): Profile is the profile
-// editor, Admin holds the facts and the Create/Enrich/Update buttons.
+// THE MVP FIRST STAGE (MESITA-2088): Admin holds the facts and the
+// Create/Enrich/Update buttons. The profile editor moved to the Business app
+// (MESITA-3103); `business-url.ts` builds its address.
 //
 // Profile has its own segment (MESITA-1732): the bare place URL is a temporary
 // redirect onto it, so the view an operator is most likely to link to has a
 // link. Premier (MESITA-2789, renamed from Boost by MESITA-2925; the segment
 // stays `boost`) is the fifth: who pays for this place's paid visibility,
 // read-only.
-export const PLACE_TABS = ["profile", "reviews", "preview", "admin", "boost"] as const;
+export const PLACE_TABS = ["reviews", "preview", "admin", "boost"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
-  profile: "Profile",
   reviews: "Reviews",
   preview: "Preview",
   admin: "Admin",

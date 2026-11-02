@@ -91,7 +91,7 @@ export function SinglePlaceClient({
   const isBusy = busy !== null;
 
   function open(placeId: string) {
-    router.push(placeTabHref(placeId, "profile"));
+    router.push(placeTabHref(placeId, "admin"));
   }
 
   async function find() {

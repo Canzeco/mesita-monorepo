@@ -9,7 +9,6 @@ import {
   type PlaceEnrichmentState,
 } from "../actions";
 import { SectionCard, Spinner } from "@/components/admin-ui/manage";
-import { usePlaceContext } from "../PlaceContext";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
@@ -22,7 +21,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const { guardIntent } = usePlaceContext();
   const [runPending, startRun] = useTransition();
   const [runError, setRunError] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
@@ -116,10 +114,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
               <button
                 type="button"
                 disabled={runPending || running}
-                onClick={() => {
-                  if (guardIntent({ kind: "reenrich", run })) return;
-                  run();
-                }}
+                onClick={run}
                 className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {runPending ? "Starting…" : "Enrich"}
