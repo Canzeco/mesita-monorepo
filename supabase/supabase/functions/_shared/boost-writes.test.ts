@@ -371,8 +371,12 @@ Deno.test("reaper: a payment still processing after 24 h is cancelled, then decl
 Deno.test("account deletion: a charge still in flight refuses it before any card is detached", async () => {
   const { admin } = fakeAdmin({
     "place_backings.select": [{ data: [SUBSCRIPTION], error: null }],
-    // Started just now (the 24-hour give-up reads the real clock here).
-    "place_premier_periods.select": [{ data: [PERIOD({ stripe_payment_intent_id: "pi_x", created_at: new Date().toISOString() })], error: null }],
+    // Created now: endConsumerPledges reads the wall clock, and a charge
+    // older than CHARGING_GIVE_UP_MS is no longer in flight (T0 went stale
+    // on 2026-11-02 and failed every Supabase PR).
+    "place_premier_periods.select": [
+      { data: [PERIOD({ stripe_payment_intent_id: "pi_x", created_at: new Date().toISOString() })], error: null },
+    ],
   });
   const { stripe, calls } = fakeStripe({ "GET payment_intents/pi_x": { id: "pi_x", status: "processing" } });
   const res = await endConsumerPledges(admin, "c1", stripe);

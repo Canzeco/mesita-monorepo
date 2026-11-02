@@ -1,6 +1,6 @@
 -- MESITA-3092 — Premier (b), cut-over: one `ready` subscription per place,
 -- and the backup line's `failed` status retires (a declined renewal ends the
--- pledge instead). Runs after 20261102000000, which every writer now uses.
+-- pledge instead). Runs after 20261102002000, which every writer now uses.
 
 do $$
 begin

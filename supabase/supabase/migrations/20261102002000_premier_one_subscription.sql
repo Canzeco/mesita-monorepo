@@ -1,7 +1,7 @@
 -- MESITA-3092 — Premier (b): one Paid subscription per place (Pato,
 -- 2026-10-29: "solo una suscripción activa"; "si no pasa la tarjeta,
 -- inmediatamente cancelarle la suscripción"). Additive half; the cut-over
--- (one-ready index, `failed` retired) is 20261102000100.
+-- (one-ready index, `failed` retired) is 20261102002100.
 --
 --   - A pledge becomes the place's one `ready` subscription only through
 --     premier_make_payer, under the place lock.
