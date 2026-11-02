@@ -258,10 +258,10 @@ verify_jwt = true
 [functions.admin-web-list-place-reports]
 verify_jwt = true
 
-# Premier (MESITA-2995; Boost MESITA-2789, Spotlight MESITA-1998): a line of
-# pledges per place, one payer per period, backups charged only when the
-# cards above them fail. place_premier_periods holds the paid stretches;
-# places.boost_tier follows them. No webhook: supabase-cron-sync-premier polls
+# Premier (MESITA-3092; Boost MESITA-2789, Spotlight MESITA-1998): one Paid
+# subscription per place (its one ready pledge); a declined renewal ends it.
+# place_premier_periods holds the paid stretches; places.boost_tier follows
+# them and Manual Premier. No webhook: supabase-cron-sync-premier polls
 # Stripe every 5 minutes. admin-web-get-place-premier is Single Place › Premier
 # (read); admin-web-grant-place-premier grants, ends a grant, removes a pledge.
 [functions.consumer-web-start-premier]
@@ -271,6 +271,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.consumer-web-cancel-premier]
+verify_jwt = true
+
+# MESITA-3092: the guest hides the notice of their ended subscription.
+[functions.consumer-web-dismiss-premier-notice]
 verify_jwt = true
 
 # Kill switch: select cron.unschedule('sync-premier');

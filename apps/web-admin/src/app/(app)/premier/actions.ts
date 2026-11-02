@@ -17,9 +17,10 @@ export type PremierRow = {
   period: { tier: number; ends_at: string; granted: boolean; granted_by: string | null } | null;
   /** A renewal or upgrade charge is in flight at Stripe. */
   charging: boolean;
-  /** Pledges with a saved card behind the payer. */
+  /** 1 when the place's subscription (MESITA-3092: one per place) is not
+   *  paying the running period: its renewal is due. */
   backups: number;
-  /** Pledges whose Checkout is open or whose card was declined. */
+  /** Pledges whose Checkout is open. */
   waiting: number;
   charged_30d_cents: number;
 };

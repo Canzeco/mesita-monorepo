@@ -1,23 +1,22 @@
 "use client";
 
-import { Fragment, useState } from "react";
-import { BadgeCheck, Loader2, XCircle } from "lucide-react";
+import { useState } from "react";
+import { BadgeCheck, Loader2, X, XCircle } from "lucide-react";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
-import {
-  RowDivider,
-  SettingsGroup,
-} from "@/components/consumer/me/settings-rows";
+import { EFError } from "@/lib/api/_invoke";
 import {
   apiCancelBoost,
+  apiDismissPremierNotice,
   apiStartBoost,
   tierLabel,
   BOOST_TIERS,
   money,
   shortDate,
+  START_REFUSED,
   type BoostInterval,
   type BoostQuote,
   type BoostTier,
-  type MyPledge,
+  type EndedNotice,
   type PlaceBoost,
 } from "@/lib/api/boost";
 import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
@@ -31,25 +30,26 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE PREMIER TAB (MESITA-2995; Premier MESITA-2925, the place's fourth tab
-// MESITA-2861). Pato, 2026-10-28: many guests pledge for one place; only
-// the top pledge is charged, and if its card fails the next one pays — the
-// others are backups; upgrading takes the unused days off the new price.
-// Pato, 2026-10-29 (MESITA-3063): "make this cleaner … multiple people can
-// be subscribed … list the people who is paying", and sell two plans by
-// what the place gets, the 2X/5X priority only in the small print.
+// THE PREMIER TAB (MESITA-3092; Premier MESITA-2925, the place's fourth tab
+// MESITA-2861). Pato, 2026-10-29: one Paid subscription per place — anyone
+// buys it when none runs, the guest who pays manages it, a declined renewal
+// ends it. Mesita's Manual Premier (MESITA-3091) is apart, and levels it
+// already gives are not for sale.
 //
-// One card, three parts: where the place stands (only when Premier), who's
-// paying (named: "You", @handle or a first name, never an email), then the
-// two plans with ONE price line and ONE button. Every amount, date and
-// position is the server's (consumer-web-get-premier); nothing here
-// computes money. Premier is paid ranking priority: it never verifies the
-// place and never promises views.
+// One card of rows, always in this order: a notice (an ended subscription,
+// or Mesita covering the payer's level), the status, then the actions. The
+// status grammar is `Premier <level> · <by Mesita | paid | paid by you> ·
+// <renews | ends> <date>`; when both layers run, the higher level leads.
+// Every amount and date is the server's (consumer-web-get-premier); nothing
+// here computes money. Premier is paid ranking priority: it never verifies
+// the place and never promises views.
 
 const INTERVAL_WORD: Record<BoostInterval, string> = {
   month: "month",
   year: "year",
 };
+
+const RANK_OF: Record<BoostTier, number> = { boost_2x: 1, boost_5x: 2 };
 
 export function BoostPane({
   place,
@@ -67,26 +67,44 @@ export function BoostPane({
   onChanged: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [interval, setBillingInterval] = useState<BoostInterval>("month");
+  const [interval, setBillingInterval] = useState<BoostInterval>(
+    boost?.mine?.interval ?? "month",
+  );
   const [picked, setPicked] = useState<BoostTier | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
-  const [leaving, setLeaving] = useState(false);
-  const [leaveBusy, setLeaveBusy] = useState(false);
-  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  const [stopBusy, setStopBusy] = useState(false);
+  const [stopError, setStopError] = useState<string | null>(null);
 
-  const period = boost?.period ?? null;
+  const viewer = boost?.viewer ?? null;
+  const paid = boost?.paid ?? null;
   const manual = boost?.manual ?? null;
-  // Levels Mesita's Manual Premier already gives are not for sale.
-  const forSale = BOOST_TIERS.filter(
-    (t) => !boost?.quotes?.[t.key][interval].covered,
-  );
-  const line = boost?.line ?? [];
   const mine = boost?.mine ?? null;
   const live = (boost?.tier ?? 0) > 0;
+  const payer = viewer === "payer" && mine?.status === "ready";
+  // Someone else holds the place's subscription: nothing to buy here.
+  const taken = Object.values(boost?.quotes ?? {}).some(
+    (byInterval) => byInterval[interval].blocked_by === "taken",
+  );
+  // What this guest may pick: never a level Mesita already gives, never
+  // anything while someone else pays.
+  const forSale = BOOST_TIERS.filter((t) => {
+    const tq = boost?.quotes?.[t.key][interval];
+    return tq ? tq.kind !== "blocked" : !manual || manual.tier < t.rank;
+  });
+  // The payer and the former payer see the plans only once they ask.
+  const owns = payer || viewer === "former_payer";
+  const showPlans =
+    !loading && !boost?.renewing && !taken && (!owns || choosing);
   const q = picked && boost?.quotes ? boost.quotes[picked][interval] : null;
+  const status = statusLines(boost);
+  const notice = boost ? noticeLine(boost) : null;
+  const returnUrl = () =>
+    `${window.location.origin}${window.location.pathname}`;
 
-  async function pledge() {
+  async function start() {
     if (!picked || starting) return;
     setStarting(true);
     setStartError(null);
@@ -95,7 +113,7 @@ export function BoostPane({
         placeId: place.id,
         tier: picked,
         interval,
-        returnUrl: `${window.location.origin}${window.location.pathname}`,
+        returnUrl: returnUrl(),
       });
       if (res.url) {
         window.location.assign(res.url);
@@ -103,139 +121,212 @@ export function BoostPane({
       }
       toast(
         res.outcome === "confirmed"
-          ? "You're paying for Premier now"
-          : "Your pledge is updated",
+          ? `${tierLabel(RANK_OF[picked])} is on`
+          : "Your plan changes at the next renewal",
       );
       setPicked(null);
+      setChoosing(false);
       setStarting(false);
       onChanged();
     } catch (err) {
-      setStartError(errMsg(err, "Couldn't open checkout. Try again."));
+      setStartError(refusal(err, "Couldn't open checkout. Try again."));
       setStarting(false);
     }
   }
 
-  async function confirmLeave() {
-    if (!mine || leaveBusy) return;
-    setLeaveBusy(true);
-    setLeaveError(null);
+  async function updateCard() {
+    if (starting) return;
+    setStarting(true);
+    setStartError(null);
     try {
-      await apiCancelBoost(getSupabase(), mine.id);
-      setLeaving(false);
-      toast("You left the line");
+      const res = await apiStartBoost(getSupabase(), {
+        placeId: place.id,
+        updateCard: true,
+        returnUrl: returnUrl(),
+      });
+      if (res.url) window.location.assign(res.url);
+      else setStarting(false);
+    } catch (err) {
+      setStartError(refusal(err, "Couldn't open checkout. Try again."));
+      setStarting(false);
+    }
+  }
+
+  async function confirmStop() {
+    if (stopBusy) return;
+    setStopBusy(true);
+    setStopError(null);
+    try {
+      await apiCancelBoost(getSupabase(), place.id);
+      setStopping(false);
+      toast(
+        paid
+          ? `Premier won't renew. It runs until ${shortDate(paid.ends_at)}.`
+          : "Premier won't renew.",
+      );
       onChanged();
     } catch (err) {
-      setLeaveError(errMsg(err, "Couldn't leave. Try again."));
+      setStopError(errMsg(err, "Couldn't stop renewing. Try again."));
     } finally {
-      setLeaveBusy(false);
+      setStopBusy(false);
+    }
+  }
+
+  async function dismissNotice() {
+    try {
+      await apiDismissPremierNotice(getSupabase(), place.id);
+      onChanged();
+    } catch (err) {
+      toast(errMsg(err, "Couldn't hide that. Try again."));
     }
   }
 
   return (
     <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
+      <h2 id="boost-title" className="sr-only">
+        Premier
+      </h2>
       <div className="border-border bg-card flex flex-col rounded-2xl border">
-        {/* Where the place stands: one line, only when there is news. */}
-        {!loading &&
-          (period || manual || boost?.renewing || line.length > 0) && (
-            <div
-              className="border-border flex items-center gap-2 border-b px-4 py-3 text-sm"
-              aria-live="polite"
+        {/* Notice: what happened to the guest's own subscription. */}
+        {notice && (
+          <div
+            className="border-border bg-muted flex items-start gap-3 rounded-t-2xl border-b px-4 py-3 text-sm"
+            aria-live="polite"
+          >
+            <span className="min-w-0 flex-1 leading-relaxed">
+              {notice.text}
+            </span>
+            {notice.dismissible && (
+              <button
+                type="button"
+                onClick={() => void dismissNotice()}
+                aria-label="Hide this notice"
+                className="text-muted-foreground -m-2 flex h-11 w-11 shrink-0 items-center justify-center"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Status. */}
+        <div
+          className="border-border flex items-start gap-2 border-b px-4 py-3 text-sm"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full",
+              live ? "" : "bg-muted-foreground",
+            )}
+            style={
+              live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined
+            }
+            aria-hidden
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">
+              {loading ? "Loading…" : status.head}
+            </span>
+            {!loading && status.sub && (
+              <span className="text-muted-foreground block text-xs">
+                {status.sub}
+              </span>
+            )}
+          </span>
+        </div>
+
+        {/* Actions. */}
+        {!loading && boost?.renewing && (
+          <p className="text-muted-foreground p-4 text-sm">
+            Renewing… this takes a minute.
+          </p>
+        )}
+
+        {!loading && !boost?.renewing && payer && !choosing && (
+          <div className="flex flex-col gap-2 p-4">
+            <button
+              type="button"
+              onClick={() => {
+                setChoosing(true);
+                setStartError(null);
+              }}
+              className={PRIMARY_BUTTON_CLASS}
             >
-              <span
-                className={cn(
-                  "h-2.5 w-2.5 shrink-0 rounded-full",
-                  live ? "" : "bg-muted-foreground",
-                )}
-                style={
-                  live ? { backgroundColor: MAP_PREMIER_PIN_COLOR } : undefined
-                }
-                aria-hidden
-              />
-              <span className="font-semibold">{statusLine(boost)}</span>
+              Change plan
+            </button>
+            {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
+            <div className="flex justify-center gap-6">
+              <button
+                type="button"
+                onClick={() => void updateCard()}
+                disabled={starting}
+                className="min-h-11 text-sm font-semibold underline disabled:opacity-60"
+              >
+                {starting ? "Opening…" : "Update card"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setStopping(true)}
+                className="min-h-11 text-sm font-semibold underline"
+              >
+                Stop renewing
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!loading &&
+          !boost?.renewing &&
+          viewer === "former_payer" &&
+          !choosing && (
+            <div className="flex flex-col gap-2 p-4">
+              {boost?.can_resume ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChoosing(true);
+                    setStartError(null);
+                    const current = BOOST_TIERS.find(
+                      (t) => t.rank === paid?.tier,
+                    );
+                    if (current) setPicked(current.key);
+                  }}
+                  className={PRIMARY_BUTTON_CLASS}
+                >
+                  Resume
+                </button>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  This subscription can&apos;t be resumed.
+                </p>
+              )}
             </div>
           )}
 
-        {/* Who's paying. */}
-        <div className="flex flex-col gap-2 p-4">
-          <h2 id="boost-title" className="type-eyebrow text-muted-foreground">
-            Who&apos;s paying
-          </h2>
-          {loading ? (
-            <p className="text-muted-foreground text-sm">Loading…</p>
-          ) : line.length > 0 ? (
-            <>
-              <SettingsGroup>
-                {line.map((row, i) => (
-                  <Fragment key={`${row.role}-${row.position}`}>
-                    {i > 0 && <RowDivider />}
-                    <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">
-                          {row.name}
-                        </span>
-                        <span className="text-muted-foreground block text-xs">
-                          {tierLabel(row.tier)} ·{" "}
-                          {row.interval === "year" ? "Yearly" : "Monthly"}
-                        </span>
-                      </span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
-                          row.role === "payer"
-                            ? "bg-foreground text-white"
-                            : "border-border text-foreground border",
-                        )}
-                      >
-                        {row.role === "payer"
-                          ? "Paying now"
-                          : `Backup ${row.position}`}
-                      </span>
-                    </div>
-                  </Fragment>
-                ))}
-              </SettingsGroup>
-              {(boost?.more ?? 0) > 0 && (
-                <p className="text-muted-foreground text-xs">
-                  and {boost!.more} more{" "}
-                  {boost!.more === 1 ? "backup" : "backups"}
-                </p>
-              )}
-              <p className="text-muted-foreground text-xs leading-relaxed">
-                Only the one paying now is charged. If they stop, the next
-                backup pays.
-              </p>
-            </>
-          ) : (
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              {manual
-                ? `Nobody pays yet. Mesita gives this place ${tierLabel(manual.tier)} until ${shortDate(manual.ends_at)}.`
-                : "Nobody yet. You'd be the first."}
-            </p>
-          )}
-          {mine && mine.status !== "ended" && (
-            <YourPledge
-              mine={mine}
-              period={period}
-              onLeave={() => setLeaving(true)}
-            />
-          )}
-        </div>
+        {!loading && !boost?.renewing && taken && !owns && (
+          <p className="text-muted-foreground p-4 text-sm leading-relaxed">
+            Someone else pays for Premier here, so it can&apos;t be bought
+            again until it ends.
+          </p>
+        )}
 
-        {/* The two plans, minus any level Mesita already gives. */}
-        {forSale.length === 0 && manual ? (
-          <div className="border-border border-t p-4">
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Mesita gives this place {tierLabel(manual.tier)} until{" "}
-              {shortDate(manual.ends_at)}, the highest level. Nothing to buy.
-            </p>
-          </div>
-        ) : (
-          <div className="border-border flex flex-col gap-3 border-t p-4">
+        {showPlans && forSale.length === 0 && manual && (
+          <p className="text-muted-foreground p-4 text-sm leading-relaxed">
+            Mesita gives this place {tierLabel(manual.tier)} until{" "}
+            {shortDate(manual.ends_at)}, the highest level. Nothing to buy.
+          </p>
+        )}
+
+        {showPlans && forSale.length > 0 && (
+          <div className="flex flex-col gap-3 p-4">
             <div className="flex items-center justify-between gap-3">
               <h3 className="type-eyebrow text-muted-foreground">
-                {mine && mine.status !== "ended"
+                {payer
                   ? "Change your plan"
-                  : "Make it Premier"}
+                  : viewer === "former_payer"
+                    ? "Resume Premier"
+                    : "Make it Premier"}
               </h3>
               <div
                 className="bg-muted grid grid-cols-2 gap-1 rounded-lg p-1"
@@ -269,18 +360,21 @@ export function BoostPane({
               {forSale.map((t) => {
                 const tq = boost?.quotes?.[t.key][interval];
                 const on = picked === t.key;
+                const current =
+                  payer && mine?.tier === t.rank && mine.interval === interval;
                 return (
                   <button
                     key={t.key}
                     type="button"
                     role="radio"
                     aria-checked={on}
+                    disabled={current}
                     onClick={() => {
                       setPicked(t.key);
                       setStartError(null);
                     }}
                     className={cn(
-                      "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99]",
+                      "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60",
                       on
                         ? "border-foreground ring-foreground ring-1"
                         : "border-border hover:bg-muted",
@@ -300,6 +394,12 @@ export function BoostPane({
                     <span className="min-w-0 flex-1">
                       <span className="block text-base font-semibold">
                         {t.label}
+                        {current && (
+                          <span className="text-muted-foreground text-xs font-normal">
+                            {" "}
+                            · your plan
+                          </span>
+                        )}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         {t.blurb}
@@ -318,39 +418,58 @@ export function BoostPane({
               })}
             </div>
 
-            {picked && (
+            {!boost?.quotes && (
+              <p className="text-muted-foreground text-xs">
+                Sign in to make this place Premier.
+              </p>
+            )}
+
+            {picked && q && boost && (
               <div className="flex flex-col gap-2">
                 {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
-                {boost?.quotes && q && (
-                  <button
-                    type="button"
-                    onClick={() => void pledge()}
-                    disabled={starting}
-                    className={cn(
-                      PRIMARY_BUTTON_CLASS,
-                      "inline-flex items-center justify-center gap-2",
-                    )}
-                  >
-                    {starting && (
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                    )}
-                    {starting ? "Opening…" : buttonLabel(q)}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void start()}
+                  disabled={starting}
+                  className={cn(
+                    PRIMARY_BUTTON_CLASS,
+                    "inline-flex items-center justify-center gap-2",
+                  )}
+                >
+                  {starting && (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  )}
+                  {starting ? "Opening…" : buttonLabel(q)}
+                </button>
                 <p
                   className="text-muted-foreground text-xs leading-relaxed"
                   aria-live="polite"
                 >
-                  {priceLine(picked, interval, q, boost, mine)}
+                  {priceLine(picked, interval, q, boost)}
                 </p>
               </div>
+            )}
+
+            {owns && (
+              <button
+                type="button"
+                onClick={() => {
+                  setChoosing(false);
+                  setPicked(null);
+                  setStartError(null);
+                }}
+                className="min-h-11 text-sm font-semibold underline"
+              >
+                Cancel
+              </button>
             )}
 
             <p className="text-muted-foreground text-xs leading-relaxed">
               Premier gives the place 2X ranking priority on Home and the Map,
               Premier Max 5X. Priority moves it up the list; it doesn&apos;t
               guarantee more views. Premier places show “Ad”; Premier
-              doesn&apos;t verify a place. US dollars, billed by Stripe.
+              doesn&apos;t verify a place. One subscription per place, billed
+              by Stripe in US dollars; a declined renewal ends it.
             </p>
           </div>
         )}
@@ -370,40 +489,40 @@ export function BoostPane({
       )}
 
       <LocalDialog
-        open={leaving}
-        onClose={() => (leaveBusy ? undefined : setLeaving(false))}
-        ariaLabel="Leave the line"
+        open={stopping}
+        onClose={() => (stopBusy ? undefined : setStopping(false))}
+        ariaLabel="Stop renewing"
       >
         <div className="flex flex-col gap-3 p-5 text-center">
           <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
             <XCircle className="h-5 w-5" aria-hidden />
           </span>
-          <h2 className={SHEET_TITLE_CLASS}>Leave the line?</h2>
+          <h2 className={SHEET_TITLE_CLASS}>Stop renewing?</h2>
           <p className="text-muted-foreground type-body leading-relaxed">
-            {mine?.role === "payer" && period
-              ? `Your ${tierLabel(period.tier)} runs to ${shortDate(period.ends_at)}, then the next in line pays.`
-              : "You can pledge again any time."}
+            {paid
+              ? `${tierLabel(paid.tier)} runs until ${shortDate(paid.ends_at)}. Nothing more is charged and your card is removed.`
+              : "Nothing more is charged and your card is removed."}
           </p>
-          {leaveError && <p className={ERROR_BOX_CLASS}>{leaveError}</p>}
+          {stopError && <p className={ERROR_BOX_CLASS}>{stopError}</p>}
           <div className="mt-1 flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => void confirmLeave()}
-              disabled={leaveBusy}
+              onClick={() => void confirmStop()}
+              disabled={stopBusy}
               className="bg-foreground inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-white transition active:scale-[0.99] disabled:opacity-60"
             >
-              {leaveBusy && (
+              {stopBusy && (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               )}
-              {leaveBusy ? "Leaving…" : "Leave"}
+              {stopBusy ? "Stopping…" : "Stop renewing"}
             </button>
             <button
               type="button"
-              onClick={() => setLeaving(false)}
-              disabled={leaveBusy}
+              onClick={() => setStopping(false)}
+              disabled={stopBusy}
               className="border-border bg-card hover:bg-muted inline-flex h-11 w-full items-center justify-center rounded-full border text-sm font-semibold transition disabled:opacity-60"
             >
-              Stay
+              Keep it
             </button>
           </div>
         </div>
@@ -412,114 +531,114 @@ export function BoostPane({
   );
 }
 
-/** The guest's own pledge, above the line. */
-function YourPledge({
-  mine,
-  period,
-  onLeave,
-}: {
-  mine: MyPledge;
-  period: PlaceBoost["period"];
-  onLeave: () => void;
-}) {
-  let text: string;
-  if (mine.status === "failed")
-    text = "Card declined · pick a level below to pledge again";
-  else if (mine.status === "open") text = "Finishing payment…";
-  else if (mine.pending)
-    text = `Upgrade to ${tierLabel(mine.pending)}: finishing payment…`;
-  else if (mine.role === "payer" && period && mine.tier < period.tier) {
-    text = `${tierLabel(period.tier)} · Paying now → ${tierLabel(mine.tier)} from ${shortDate(period.ends_at)}`;
-  } else if (mine.role === "payer")
-    text = `${tierLabel(mine.tier)} · Paying now`;
-  else text = `${tierLabel(mine.tier)} · Backup ${mine.position}`;
-  return (
-    <div className="bg-muted flex min-h-12 items-center gap-3 rounded-xl px-4 py-2.5 text-sm">
-      <span className="min-w-0 flex-1">
-        <span className="text-muted-foreground block text-xs">Your pledge</span>
-        <span className="font-semibold">{text}</span>
-      </span>
-      {mine.status !== "open" && (
-        <button
-          type="button"
-          onClick={onLeave}
-          className="min-h-11 px-1 text-sm font-semibold underline"
-        >
-          Leave
-        </button>
-      )}
-    </div>
-  );
+/** A refused start in one line, from the server's code. */
+function refusal(err: unknown, fallback: string): string {
+  if (err instanceof EFError && err.code && START_REFUSED[err.code])
+    return START_REFUSED[err.code];
+  return errMsg(err, fallback);
 }
 
-/** The status line (copy table, MESITA-2995). */
-function statusLine(boost: PlaceBoost | null): string {
-  if (!boost) return "Not Premier yet";
-  const p = boost.period;
+const ENDED_TEXT: Record<EndedNotice["reason"], (n: EndedNotice) => string> =
+  {
+    declined: (n) =>
+      `Premier ended ${shortDate(n.at)}: your card was declined.`,
+    stopped_by_place: (n) =>
+      `The place stopped renewing; Premier runs until ${shortDate(n.runs_until)}.`,
+    taken_over: (n) =>
+      n.runs_until
+        ? `The place took over this subscription; your paid days run until ${shortDate(n.runs_until)}.`
+        : "The place took over this subscription; Premier continues.",
+    covered: (n) =>
+      `Your Premier ended ${shortDate(n.at)}: Mesita covered this place for longer than your plan, so your card was not charged.`,
+  };
+
+/** The notice row: the guest's ended subscription, or Mesita covering the
+ *  level they pay for (their plan renews after). */
+function noticeLine(
+  boost: PlaceBoost,
+): { text: string; dismissible: boolean } | null {
+  const n = boost.ended_notice;
+  if (n) return { text: ENDED_TEXT[n.reason](n), dismissible: true };
+  const m = boost.manual;
+  const mine = boost.mine;
+  if (
+    boost.viewer === "payer" &&
+    mine?.status === "ready" &&
+    m &&
+    m.tier >= mine.tier
+  ) {
+    return {
+      text: `Mesita covers this place at ${tierLabel(m.tier)} until ${shortDate(m.ends_at)}; your ${tierLabel(mine.tier)} renews after that.`,
+      dismissible: false,
+    };
+  }
+  return null;
+}
+
+/** The status (the higher level leads, the other layer below it). */
+function statusLines(boost: PlaceBoost | null): {
+  head: string;
+  sub: string | null;
+} {
+  if (!boost) return { head: "Not Premier", sub: null };
+  const p = boost.paid;
   if (boost.renewing)
-    return p ? `${tierLabel(p.tier)} · renewing…` : "Premier · renewing…";
+    return {
+      head: p ? `${tierLabel(p.tier)} · renewing…` : "Premier · renewing…",
+      sub: null,
+    };
   const m = boost.manual;
   const paid = p
-    ? `${tierLabel(p.tier)} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`
+    ? `${tierLabel(p.tier)} · ${p.by_you ? "paid by you" : "paid"} · ${p.renews ? "renews" : "ends"} ${shortDate(p.ends_at)}`
     : null;
   const byMesita = m
-    ? `${tierLabel(m.tier)} · by Mesita until ${shortDate(m.ends_at)}`
+    ? `${tierLabel(m.tier)} · by Mesita · ends ${shortDate(m.ends_at)}`
     : null;
-  // The higher level leads (MESITA-3091: the place's level is the higher).
   if (paid && byMesita)
     return m!.tier >= p!.tier
-      ? `${byMesita} · ${paid}`
-      : `${paid} · ${byMesita}`;
-  if (paid || byMesita) return (paid ?? byMesita)!;
-  if (boost.line.length > 0)
-    return "Not Premier · the next pledge is charged within the hour";
-  return "Not Premier yet";
+      ? { head: byMesita, sub: paid }
+      : { head: paid, sub: byMesita };
+  if (paid || byMesita) return { head: (paid ?? byMesita)!, sub: null };
+  if (boost.viewer === "payer" && boost.mine?.status === "ready")
+    return {
+      head: "Not Premier",
+      sub: "Your plan is charged within a few minutes.",
+    };
+  return { head: "Not Premier", sub: null };
 }
 
-/** ONE sentence for the level the guest tapped, from the server's quote. */
+/** ONE sentence for the plan the guest tapped, from the server's quote. */
 function priceLine(
   tier: BoostTier,
   interval: BoostInterval,
-  q: BoostQuote | null,
-  boost: PlaceBoost | null,
-  mine: MyPledge | null,
+  q: BoostQuote,
+  boost: PlaceBoost,
 ): string {
-  if (!boost?.quotes || !q) return "Sign in to pledge.";
   const every = INTERVAL_WORD[interval];
-  const mark = tierLabel({ boost_2x: 1, boost_5x: 2 }[tier]);
-  const period = boost.period;
-  const prefix = mine?.status === "failed" ? "Update your card. " : "";
-  if (
-    q.role === "payer" &&
-    q.checkout === "none" &&
-    mine?.role === "payer" &&
-    period
-  ) {
-    return `Your ${tierLabel(period.tier)} runs to ${shortDate(period.ends_at)}; then ${mark} at ${money(q.price_cents)} every ${every}.`;
-  }
-  if (q.role === "payer") {
-    if (q.charge_cents === 0) {
-      return `${prefix}$0 today (covered by credit). Your ${mark} runs to ${shortDate(q.new_ends_at)}${
-        q.extra_days > 0 ? `, with ${q.extra_days} extra days` : ""
-      }. ${q.checkout === "none" ? "You become the payer." : "Confirm your card to become the payer."}`;
-    }
-    if (q.credit_cents > 0 && period) {
-      return `${prefix}Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on the current ${tierLabel(period.tier)}). You become the payer. Then ${money(q.price_cents)} every ${every}.`;
-    }
-    return `${prefix}Pay ${money(q.charge_cents)} today, then ${money(q.price_cents)} every ${every} until you leave.`;
-  }
-  return `${prefix}$0 today. You'd be Backup ${q.position}. You may be charged ${money(q.price_cents)} a ${every} later, only if the pledges above you stop paying.`;
+  const mark = tierLabel(RANK_OF[tier]);
+  const p = boost.paid;
+  if (q.kind === "resume")
+    return `Nothing today. ${mark} renews ${shortDate(q.renews_at)} at ${money(q.price_cents)} every ${every}.`;
+  if (q.kind === "change" && q.checkout === "none" && q.renews_at && p)
+    return `Your ${tierLabel(p.tier)} runs to ${shortDate(p.ends_at)}; then ${mark} at ${money(q.price_cents)} every ${every}.`;
+  if (q.charge_cents === 0)
+    return `$0 today (covered by what's left on your plan). ${mark} runs to ${shortDate(q.new_ends_at)}${
+      q.extra_days > 0 ? `, with ${q.extra_days} extra days` : ""
+    }, then ${money(q.price_cents)} every ${every}.`;
+  if (q.credit_cents > 0)
+    return `Pay ${money(q.charge_cents)} today (${money(q.price_cents)} − ${money(q.credit_cents)} left on your plan). Then ${money(q.price_cents)} every ${every}.`;
+  return `Pay ${money(q.charge_cents)} today, then ${money(q.price_cents)} every ${every} until you stop.`;
 }
 
 function buttonLabel(q: BoostQuote): string {
+  if (q.kind === "resume") return "Resume";
   if (q.checkout === "payment") return `Pay ${money(q.charge_cents)}`;
-  if (q.checkout === "setup")
-    return q.role === "payer" ? "Confirm card" : "Pledge as backup";
-  return "Save change";
+  if (q.checkout === "setup") return "Confirm card";
+  return q.renews_at ? "Save change" : "Upgrade now";
 }
 
 /** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
- *  nothing to pledge for yet. */
+ *  nothing to buy yet. */
 export function BoostUnavailable() {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">

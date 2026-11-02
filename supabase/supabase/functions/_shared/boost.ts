@@ -1,36 +1,41 @@
-// Premier's line (MESITA-2995; Premier since MESITA-2925, Boost MESITA-2789,
-// Spotlight MESITA-1998 before it; code names keep `boost`).
+// Premier (MESITA-2925; Boost MESITA-2789, Spotlight MESITA-1998 before it;
+// code names keep `boost`).
 //
-// Many guests may pledge for one place, but only ONE pledge pays per period:
-// the payer. Everyone else is a backup and is charged nothing until a
-// renewal reaches them because every card above them failed (Pato,
-// 2026-10-28). A pledge above the running period's level becomes the payer
-// at once and pays the new price minus the unused part of the running
-// period (the credit is the place's, whoever upgrades); leftover credit
-// becomes extra days.
+// Paid Premier is ONE subscription per place (MESITA-3092, Pato 2026-10-29:
+// "solo una suscripción activa"): the place's one `ready` pledge is its
+// subscription and its guest is the payer. Anyone signed in buys when no
+// paid Premier runs; nobody else can buy while it runs. The payer changes
+// plan, updates the card, stops renewing (their period runs out) or resumes.
+// A declined first charge leaves nothing; a declined renewal ends the
+// subscription at once (no retry, no backups). An upgrade pays the new price
+// minus the unused paid part of the running period; leftover credit becomes
+// extra days.
 //
-//   place_backings          the line: one pledge per guest per place
+//   place_backings          pledges: open (a Checkout), ready (THE
+//                           subscription, at most one per place), ended
 //   place_premier_periods   the paid stretches
 //   place_manual_premier    Manual Premier, Mesita's free lift (MESITA-3091)
 //   premier_customers       one Stripe customer per guest
-// places.boost_tier is the higher of the running Manual and paid levels, and
-// nothing is sold or charged at or below the running Manual level.
+// places.boost_tier is the higher of the running Manual and paid levels.
+// Nothing is sold or charged at or below the running Manual level, and
+// Manual at or above the paid level pauses the paid period (its end moves
+// out by the covered time).
 //
 // Mesita runs the periods: Checkout saves the card (pays now: `payment` with
 // a MANUAL capture, captured only once the quote is confirmed under the
-// place lock; waits: `setup`), renewals are off-session PaymentIntents.
+// place lock; saves only: `setup`), renewals are off-session PaymentIntents.
 // No subscriptions, no webhook (the EF name is the ACL): the 5-minute
 // supabase-cron-sync-premier confirms abandoned Checkouts, settles charges in
-// flight and runs renewals. Every period write is a `premier_*` RPC.
+// flight and runs renewals. Every period write is a `premier_*` RPC, and a
+// pledge becomes `ready` only through premier_make_payer.
 //
 // decision: prices are fixed here, not a console knob — a price is a money
-// promise to the guests already pledged, so it changes by PR.
-// decision (Pato, MESITA-2789): a yearly pledge costs ten months for twelve.
+// promise to the guests already paying, so it changes by PR.
+// decision (Pato, MESITA-2789): a yearly plan costs ten months for twelve.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
 import { errorMessage } from "./errors.ts";
-import { cleanHandle, MEMBER_FALLBACK_NAME } from "./place-activity.ts";
 
 export type BoostTier = "boost_2x" | "boost_5x";
 export type BoostInterval = "month" | "year";
@@ -101,7 +106,21 @@ export function intervalEnd(start: Date, interval: BoostInterval, extraDays = 0)
 
 // ── Rows ──────────────────────────────────────────────────────────────────
 
-export type PledgeStatus = "open" | "ready" | "failed" | "ended";
+export type PledgeStatus = "open" | "ready" | "ended";
+
+/** Why an ended pledge ended (place_backings.ended_reason, MESITA-3092). */
+export type EndedReason =
+  | "declined"
+  | "stopped"
+  | "stopped_by_place"
+  | "taken_over"
+  | "left"
+  | "checkout_failed"
+  | "lost"
+  | "covered";
+
+/** The Checkout in flight on a pledge (also its Stripe metadata `kind`). */
+export type CheckoutKind = "buy" | "change" | "resume" | "update_card";
 
 export type Pledge = {
   id: string;
@@ -121,10 +140,14 @@ export type Pledge = {
   quoted_credit_cents: number;
   livemode: boolean;
   created_at: string;
+  ended_at: string | null;
+  ended_reason: EndedReason | null;
+  checkout_kind: CheckoutKind | null;
+  notice_dismissed_at: string | null;
 };
 
 export const PLEDGE_COLUMNS =
-  "id, place_id, consumer_id, tier, billing_interval, amount_cents, status, queued_at, stripe_payment_method_id, stripe_checkout_session_id, pending_tier, pending_interval, pending_amount_cents, quoted_period_id, quoted_credit_cents, livemode, created_at";
+  "id, place_id, consumer_id, tier, billing_interval, amount_cents, status, queued_at, stripe_payment_method_id, stripe_checkout_session_id, pending_tier, pending_interval, pending_amount_cents, quoted_period_id, quoted_credit_cents, livemode, created_at, ended_at, ended_reason, checkout_kind, notice_dismissed_at";
 
 export type PeriodStatus = "charging" | "paid" | "declined" | "replaced" | "ended";
 
@@ -145,10 +168,13 @@ export type Period = {
   stripe_checkout_session_id: string | null;
   status: PeriodStatus;
   created_at: string;
+  /** Paid seconds left when Manual Premier began covering it (MESITA-3092). */
+  remaining_at_cover_sec: number | null;
+  covered_until: string | null;
 };
 
 export const PERIOD_COLUMNS =
-  "id, place_id, backing_id, granted_by, tier, billing_interval, starts_at, ends_at, price_cents, credit_cents, extra_days, charged_cents, stripe_payment_intent_id, stripe_checkout_session_id, status, created_at";
+  "id, place_id, backing_id, granted_by, tier, billing_interval, starts_at, ends_at, price_cents, credit_cents, extra_days, charged_cents, stripe_payment_intent_id, stripe_checkout_session_id, status, created_at, remaining_at_cover_sec, covered_until";
 
 /** Manual Premier: Mesita's free lift of a place (MESITA-3091). */
 export type Manual = {
@@ -163,7 +189,7 @@ export type Manual = {
 
 export const MANUAL_COLUMNS = "id, place_id, tier, starts_at, ends_at, source, granted_by";
 
-// ── The line, in pure functions ───────────────────────────────────────────
+// ── The subscription, in pure functions ───────────────────────────────────
 
 const ms = (iso: string) => Date.parse(iso);
 
@@ -186,15 +212,32 @@ export function chargingPeriod(periods: Period[]): Period | null {
   return periods.find((p) => p.status === "charging") ?? null;
 }
 
+/** The place's one Paid subscription: its `ready` pledge. */
+export function subscriptionOf(pledges: Pledge[]): Pledge | null {
+  return pledges.find((p) => p.status === "ready") ?? null;
+}
+
 /** The unused value of a paid period at `now`: its price times the share of
- *  its length still ahead. A grant (price 0) credits nothing. */
+ *  its PAID length still ahead. Time Manual Premier covered is not paid time
+ *  (MESITA-3092): while covered, what was left when the cover began; after,
+ *  that minus the time since the cover ended. A grant (price 0) credits
+ *  nothing. */
 export function creditCents(p: Period | null, now: number): number {
   if (!p || p.status !== "paid" || p.price_cents <= 0) return 0;
   const start = ms(p.starts_at);
   const end = ms(p.ends_at);
-  const length = end - start;
-  if (!(length > 0) || now >= end) return 0;
-  const remaining = Math.min(end - Math.max(now, start), length);
+  if (now >= end) return 0;
+  let length: number;
+  let remaining: number;
+  if (p.remaining_at_cover_sec != null && p.covered_until) {
+    length = intervalEnd(new Date(start), p.billing_interval, p.extra_days).getTime() - start;
+    remaining = p.remaining_at_cover_sec * 1000 - Math.max(0, now - ms(p.covered_until));
+  } else {
+    length = end - start;
+    remaining = end - Math.max(now, start);
+  }
+  if (!(length > 0)) return 0;
+  remaining = Math.max(0, Math.min(remaining, length));
   return Math.floor((p.price_cents * remaining) / length);
 }
 
@@ -206,102 +249,35 @@ export function extraDays(leftoverCents: number, priceCents: number, interval: B
   return Math.floor((leftoverCents / priceCents) * days);
 }
 
-/** Who a renewal charges, in order: ready pledges with a saved card, the
- *  higher level first, then whoever got in line first. */
-export function ladder(pledges: Pledge[]): Pledge[] {
-  return pledges
-    .filter((p) => p.status === "ready" && p.stripe_payment_method_id)
-    .sort((a, b) => TIER_RANK[b.tier] - TIER_RANK[a.tier] || ms(a.queued_at) - ms(b.queued_at));
-}
+/** Who is looking at a place's Premier: the payer (their pledge is the
+ *  subscription), the former payer (they stopped renewing; the period they
+ *  paid still runs and nobody else subscribed), or anyone else. */
+export type Viewer = "payer" | "former_payer" | "stranger";
 
-export type LineRow = {
-  tier: number;
-  interval: BoostInterval;
-  role: "payer" | "backup";
-  position: number;
-  mine: boolean;
-  /** Who it is, as the tab shows them (MESITA-3063): "You", @handle or a
-   *  first name. Never an email. */
-  name: string;
-};
-
-export const LINE_SHOWN = 5;
-
-/** The line a guest reads: the payer first (the current period's pledge,
- *  at the period's level), then the backups in ladder order. Top five, plus
- *  the caller's own row when it falls past them. Each row is named
- *  (MESITA-3063, reversing MESITA-2928's "never names"): `names` maps a
- *  consumer to what the caller may see; the caller is "You". */
-export function lineView(
-  pledges: Pledge[],
-  running: Period | null,
-  consumerId: string | null,
-  names: ReadonlyMap<string, string> = new Map(),
-): { line: LineRow[]; more: number } {
-  const nameOf = (id: string | null) =>
-    id == null ? MEMBER_FALLBACK_NAME : id === consumerId ? "You" : names.get(id) ?? MEMBER_FALLBACK_NAME;
-  const payerId = running?.backing_id ?? null;
-  const rows: LineRow[] = [];
-  const payer = payerId ? pledges.find((p) => p.id === payerId && p.status !== "ended") : undefined;
-  if (payer && running) {
-    rows.push({
-      tier: running.tier,
-      interval: payer.billing_interval,
-      role: "payer",
-      position: 0,
-      mine: consumerId != null && payer.consumer_id === consumerId,
-      name: nameOf(payer.consumer_id),
-    });
+export function viewerOf(args: {
+  consumerId: string;
+  subscription: Pledge | null;
+  running: Period | null;
+  pledges: Pledge[];
+}): Viewer {
+  const { consumerId, subscription, running, pledges } = args;
+  if (subscription?.consumer_id === consumerId) return "payer";
+  if (!subscription && running?.backing_id) {
+    const paidBy = pledges.find((p) => p.id === running.backing_id);
+    if (paidBy?.consumer_id === consumerId) return "former_payer";
   }
-  ladder(pledges)
-    .filter((p) => p.id !== payerId)
-    .forEach((p, i) =>
-      rows.push({
-        tier: TIER_RANK[p.tier],
-        interval: p.billing_interval,
-        role: "backup",
-        position: i + 1,
-        mine: consumerId != null && p.consumer_id === consumerId,
-        name: nameOf(p.consumer_id),
-      })
-    );
-  const shown = rows.slice(0, LINE_SHOWN);
-  const mineLate = rows.slice(LINE_SHOWN).find((r) => r.mine);
-  if (mineLate) shown.push(mineLate);
-  return { line: shown, more: rows.length - shown.length };
+  return "stranger";
 }
 
-/** A member as the Premier line names them (MESITA-3063), Social's rule
- *  (MESITA-3051, MESITA-2594): @handle when they show a verified Instagram
- *  and the caller may see handles, else the first name. */
-export function lineName(
-  row: { first_name: string | null; instagram_handle: string | null; appear_anonymous: boolean | null },
-  canSeeHandles: boolean,
-): string {
-  const handle = row.appear_anonymous === true ? null : cleanHandle(row.instagram_handle);
-  if (handle && canSeeHandles) return `@${handle}`;
-  return row.first_name?.trim() || MEMBER_FALLBACK_NAME;
+/** The former payer may resume renewing: their own pledge ended `stopped`,
+ *  the period it paid runs, nobody else subscribed, nothing is charging. */
+export function canResume(args: { viewer: Viewer; running: Period | null; pledges: Pledge[]; charging: boolean }): boolean {
+  if (args.viewer !== "former_payer" || !args.running || args.charging) return false;
+  const paidBy = args.pledges.find((p) => p.id === args.running!.backing_id);
+  return paidBy?.status === "ended" && paidBy.ended_reason === "stopped";
 }
 
-/** The names `lineView` prints, one read for the whole line. */
-export async function readLineNames(
-  admin: SupabaseClient,
-  consumerIds: (string | null)[],
-  canSeeHandles: boolean,
-): Promise<Map<string, string>> {
-  const ids = [...new Set(consumerIds.filter((id): id is string => id != null))];
-  if (ids.length === 0) return new Map();
-  const { data, error } = await admin
-    .from("consumers")
-    .select("id, first_name, instagram_handle, appear_anonymous")
-    .in("id", ids);
-  // A failed read still draws the line, every row as "Mesita member".
-  if (error) {
-    console.error("[premier] line names:", error.message);
-    return new Map();
-  }
-  return new Map((data ?? []).map((r) => [r.id as string, lineName(r, canSeeHandles)]));
-}
+export type QuoteKind = "buy" | "change" | "resume" | "blocked";
 
 export type Quote = {
   /** The level's full price per interval (what renewals charge). */
@@ -310,13 +286,18 @@ export type Quote = {
   charge_cents: number;
   credit_cents: number;
   extra_days: number;
-  /** When the new period would end, for a payer quote. */
+  /** When the new period would end, when it starts now. */
   new_ends_at: string | null;
-  role: "payer" | "backup";
-  /** Backup number (1 = next in line); 0 for a payer. */
-  position: number;
-  /** What the pledge takes: pay now, save a card, or nothing (an edit of a
-   *  pledge whose card is already saved). */
+  /** When the new terms are first charged, when they wait for the running
+   *  period's end (a change down, or a resume). */
+  renews_at: string | null;
+  /** buy: a place with no subscription; change: the payer's (or the former
+   *  payer's) new terms; resume: the former payer renews again; blocked:
+   *  not for this guest now (see `blocked_by`). */
+  kind: QuoteKind;
+  blocked_by: "taken" | "charging" | null;
+  /** What it takes: pay now, save a card, or nothing (a change applied at
+   *  the next renewal, or an upgrade the credit covers on a saved card). */
   checkout: "payment" | "setup" | "none";
   /** Manual Premier already gives this level or more: not for sale. */
   covered: boolean;
@@ -329,69 +310,64 @@ export function quote(args: {
   interval: BoostInterval;
   running: Period | null;
   charging: boolean;
-  pledges: Pledge[];
-  mine: Pledge | null;
+  viewer: Viewer;
+  /** The place's one subscription (its ready pledge), if any. */
+  subscription: Pledge | null;
   now: number;
   /** The running Manual Premier level (0 none, 1 2X, 2 5X). */
   manualTier?: number;
 }): Quote {
-  const { tier, interval, running, charging, pledges, mine, now, manualTier = 0 } = args;
+  const { tier, interval, running, charging, viewer, subscription, now, manualTier = 0 } = args;
   const price = boostAmountCents(tier, interval);
   const rank = TIER_RANK[tier];
-  const hasCard = mine?.status === "ready" && !!mine.stripe_payment_method_id;
-  const isPayer = !!mine && !!running && running.backing_id === mine.id;
+  const nothing = { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, renews_at: null };
 
   // Manual Premier already gives this level or more: paying would change
   // nothing, so it is not for sale (MESITA-3091).
   if (rank <= manualTier) {
-    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none", covered: true };
+    return { ...nothing, kind: "blocked", blocked_by: null, checkout: "none", covered: true };
+  }
+  // One subscription per place: nobody else buys while one stands or a paid
+  // period runs (R2).
+  if (viewer === "stranger" && (subscription || running)) {
+    return { ...nothing, kind: "blocked", blocked_by: "taken", checkout: "none", covered: false };
+  }
+  if (charging) {
+    return { ...nothing, kind: "blocked", blocked_by: "charging", checkout: "none", covered: false };
   }
 
-  // The payer changing their own terms below or at the running level: the
-  // period they paid runs on; the new terms apply at the next renewal.
-  if (isPayer && running && rank <= running.tier) {
-    return { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, role: "payer", position: 0, checkout: "none", covered: false };
+  const owns = viewer === "payer" || viewer === "former_payer";
+  // At or below the running level: the period already paid runs on; the
+  // new terms are first charged when it ends.
+  if (owns && running && rank <= running.tier) {
+    return viewer === "payer"
+      ? { ...nothing, renews_at: running.ends_at, kind: "change", blocked_by: null, checkout: "none", covered: false }
+      : { ...nothing, renews_at: running.ends_at, kind: "resume", blocked_by: null, checkout: "setup", covered: false };
   }
 
-  if (!charging && (!running || rank > running.tier)) {
-    const credit = creditCents(running, now);
-    const leftover = credit - price;
-    let charge = Math.max(0, price - credit);
-    if (charge > 0 && charge < MIN_CHARGE_CENTS) charge = 0;
-    const days = extraDays(leftover, price, interval, now);
-    return {
-      price_cents: price,
-      charge_cents: charge,
-      credit_cents: Math.min(credit, price),
-      extra_days: days,
-      new_ends_at: intervalEnd(new Date(now), interval, days).toISOString(),
-      role: "payer",
-      position: 0,
-      checkout: charge > 0 ? "payment" : hasCard ? "none" : "setup",
-      covered: false,
-    };
-  }
-
-  const myQueued = mine && mine.tier === tier && mine.status === "ready" ? ms(mine.queued_at) : Infinity;
-  const ahead = ladder(pledges).filter((p) =>
-    p.id !== mine?.id &&
-    p.id !== running?.backing_id &&
-    (TIER_RANK[p.tier] > rank || (TIER_RANK[p.tier] === rank && ms(p.queued_at) < myQueued))
-  ).length;
+  // Starts now: a first purchase at full price, or an upgrade that takes the
+  // unused paid part of the guest's own running period off the price.
+  const credit = owns ? creditCents(running, now) : 0;
+  const leftover = credit - price;
+  let charge = Math.max(0, price - credit);
+  if (charge > 0 && charge < MIN_CHARGE_CENTS) charge = 0;
+  const days = extraDays(leftover, price, interval, now);
+  const hasCard = viewer === "payer" && !!subscription?.stripe_payment_method_id;
   return {
     price_cents: price,
-    charge_cents: 0,
-    credit_cents: 0,
-    extra_days: 0,
-    new_ends_at: null,
-    role: "backup",
-    position: ahead + 1,
-    checkout: hasCard ? "none" : "setup",
+    charge_cents: charge,
+    credit_cents: Math.min(credit, price),
+    extra_days: days,
+    new_ends_at: intervalEnd(new Date(now), interval, days).toISOString(),
+    renews_at: null,
+    kind: owns ? "change" : "buy",
+    blocked_by: null,
+    checkout: charge > 0 ? "payment" : hasCard ? "none" : "setup",
     covered: false,
   };
 }
 
-/** Every tier × interval, for the tiles. */
+/** Every tier × interval, for the plan rows. */
 export function quotes(args: Omit<Parameters<typeof quote>[0], "tier" | "interval">): Record<BoostTier, Record<BoostInterval, Quote>> {
   const out = {} as Record<BoostTier, Record<BoostInterval, Quote>>;
   for (const tier of PREMIER_TIERS) {
@@ -403,9 +379,9 @@ export function quotes(args: Omit<Parameters<typeof quote>[0], "tier" | "interva
   return out;
 }
 
-/** What a renewal attempt's answer means. Only a card decline (or a charge
- *  that needs the guest) moves to the next pledge; anything else is not
- *  known yet and is asked again with the same key. */
+/** What a charge attempt's answer means. Only a card decline (or a charge
+ *  that needs the guest) is a decline; anything else is not known yet and
+ *  is asked again with the same key. */
 export type ChargeOutcome = "paid" | "declined" | "unknown";
 
 export function chargeOutcome(result: { pi?: Record<string, unknown>; error?: unknown }): ChargeOutcome {
@@ -443,6 +419,9 @@ export type BoostStart = {
   tier: BoostTier;
   interval: BoostInterval;
   returnUrl: string;
+  /** The payer replaces the saved card (a setup Checkout); tier and
+   *  interval are ignored. */
+  updateCard: boolean;
 };
 
 /** Checkout's return address: https on a Mesita or Vercel host (a preview
@@ -465,6 +444,13 @@ export function parseBoostStart(
 ): { ok: true; start: BoostStart } | { ok: false; error: string; code?: "tier_retired" | "tier_invalid" } {
   const placeId = body.place_id;
   if (!isUuid(placeId)) return { ok: false, error: "place_id must be a Mesita place id" };
+  const returnUrl = body.return_url;
+  if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
+    return { ok: false, error: "return_url is not a Mesita address" };
+  }
+  if (body.kind === "update_card") {
+    return { ok: true, start: { placeId, tier: "boost_2x", interval: "month", returnUrl, updateCard: true } };
+  }
   const tier = body.tier;
   if (tier === "boost_10x") {
     // Retired by MESITA-3041; a cached old build may still offer it.
@@ -481,11 +467,7 @@ export function parseBoostStart(
   if (interval !== "month" && interval !== "year") {
     return { ok: false, error: "interval must be month or year" };
   }
-  const returnUrl = body.return_url;
-  if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
-    return { ok: false, error: "return_url is not a Mesita address" };
-  }
-  return { ok: true, start: { placeId, tier: tier as BoostTier, interval, returnUrl } };
+  return { ok: true, start: { placeId, tier: tier as BoostTier, interval, returnUrl, updateCard: false } };
 }
 
 // ── Stripe ────────────────────────────────────────────────────────────────
@@ -573,10 +555,12 @@ export function stripeClient(key: string, fetchFn: typeof fetch = fetch): Stripe
 
 /** The Checkout that saves a guest's card for a pledge. `payment` charges the
  *  quoted amount, held (manual capture) until the quote is confirmed;
- *  `setup` only saves the card. Metadata carries the quote the server made,
- *  so confirm never trusts the browser. */
+ *  `setup` only saves the card. Metadata carries the quote the server made
+ *  and what the Checkout is for (`kind`), so confirm never trusts the
+ *  browser. */
 export function pledgeCheckoutParams(args: {
-  kind: "payment" | "setup";
+  mode: "payment" | "setup";
+  kind: CheckoutKind;
   customer: string;
   backingId: string;
   placeId: string;
@@ -600,7 +584,7 @@ export function pledgeCheckoutParams(args: {
     credit_cents: String(args.quote.credit_cents),
     extra_days: String(args.quote.extra_days),
     charge_cents: String(args.quote.charge_cents),
-    role: args.quote.role,
+    kind: args.kind,
   };
   const common = {
     customer: args.customer,
@@ -610,7 +594,7 @@ export function pledgeCheckoutParams(args: {
     expires_at: args.nowSec + CHECKOUT_TTL_SEC,
     metadata,
   };
-  if (args.kind === "setup") {
+  if (args.mode === "setup") {
     return { ...common, mode: "setup", currency: PREMIER_CURRENCY, setup_intent_data: { metadata } };
   }
   return {
@@ -715,26 +699,96 @@ async function updatePledge(
   }
 }
 
-/** A pledge's Checkout came back paid or saved: its card is kept, pending
- *  terms move in, and it stands in line (queued now unless it already was). */
-async function readyPledge(admin: SupabaseClient, pledge: Pledge, paymentMethod: string | null): Promise<void> {
-  const patch: Record<string, unknown> = {
-    status: "ready",
-    stripe_payment_method_id: paymentMethod ?? pledge.stripe_payment_method_id,
-    pending_tier: null,
-    pending_interval: null,
-    pending_amount_cents: null,
-    quoted_period_id: null,
-    quoted_credit_cents: 0,
-  };
+/** A saved card Mesita will never charge again is detached. A card that is
+ *  already gone (or was never attached) is fine; anything else is logged and
+ *  left, since the pledge holding it has ended and nothing charges it. */
+export async function detachCard(stripe: StripeCall | null, paymentMethod: string | null | undefined): Promise<void> {
+  if (!stripe || !paymentMethod) return;
+  try {
+    await stripe("POST", `payment_methods/${encodeURIComponent(paymentMethod)}/detach`);
+  } catch (err) {
+    if (err instanceof StripeError && (err.code === "resource_missing" || err.httpStatus === 400)) return;
+    console.error("[premier] detach_failed", JSON.stringify({ payment_method: paymentMethod, error: errorMessage(err) }));
+  }
+}
+
+const CLEAR_CHECKOUT = {
+  checkout_kind: null,
+  pending_tier: null,
+  pending_interval: null,
+  pending_amount_cents: null,
+  quoted_period_id: null,
+  quoted_credit_cents: 0,
+} as const;
+
+/** End a pledge (with its reason) and detach its card. */
+async function endPledge(
+  admin: SupabaseClient,
+  stripe: StripeCall | null,
+  pledge: Pledge,
+  reason: EndedReason,
+  paymentMethod: string | null = pledge.stripe_payment_method_id,
+): Promise<void> {
+  const err = await updatePledge(admin, pledge.id, {
+    ...CLEAR_CHECKOUT,
+    status: "ended",
+    ended_reason: reason,
+    ended_at: new Date().toISOString(),
+  });
+  if (err) throw new Error(`pledge_end: ${err}`);
+  await detachCard(stripe, paymentMethod);
+  if (paymentMethod !== pledge.stripe_payment_method_id) await detachCard(stripe, pledge.stripe_payment_method_id);
+}
+
+/** The payer's Checkout is settled without changing their subscription (a
+ *  change that lost or was declined): its terms stay, a card it saved that is
+ *  not the subscription's is detached. */
+async function dropChange(admin: SupabaseClient, stripe: StripeCall, pledge: Pledge, paymentMethod: string | null): Promise<void> {
+  const err = await updatePledge(admin, pledge.id, CLEAR_CHECKOUT);
+  if (err) throw new Error(`pledge_drop_change: ${err}`);
+  if (paymentMethod && paymentMethod !== pledge.stripe_payment_method_id) await detachCard(stripe, paymentMethod);
+}
+
+/** The payer's change took: pending terms move in, and the card the
+ *  Checkout saved becomes the subscription's (the old one is detached). */
+async function applyChange(admin: SupabaseClient, stripe: StripeCall, pledge: Pledge, paymentMethod: string | null): Promise<void> {
+  const patch: Record<string, unknown> = { ...CLEAR_CHECKOUT };
   if (pledge.pending_tier) {
     patch.tier = pledge.pending_tier;
     patch.billing_interval = pledge.pending_interval ?? pledge.billing_interval;
     patch.amount_cents = pledge.pending_amount_cents ?? pledge.amount_cents;
   }
-  if (pledge.status !== "ready") patch.queued_at = new Date().toISOString();
+  if (paymentMethod) patch.stripe_payment_method_id = paymentMethod;
   const err = await updatePledge(admin, pledge.id, patch);
-  if (err) throw new Error(`pledge_ready: ${err}`);
+  if (err) throw new Error(`pledge_change: ${err}`);
+  if (paymentMethod && pledge.stripe_payment_method_id && paymentMethod !== pledge.stripe_payment_method_id) {
+    await detachCard(stripe, pledge.stripe_payment_method_id);
+  }
+}
+
+/** The one path to `ready` (premier_make_payer): this pledge becomes the
+ *  place's subscription; any other ready pledge there ended `taken_over` and
+ *  its card is detached. `charging`: another charge is in flight, ask again. */
+async function makePayer(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  pledge: Pledge,
+  paymentMethod: string | null,
+): Promise<"ready" | "charging" | "ended"> {
+  const { data, error } = await admin.rpc("premier_make_payer", {
+    p_backing_id: pledge.id,
+    p_payment_method: paymentMethod,
+  });
+  if (error) throw new Error(`premier_make_payer: ${error.message}`);
+  const r = (data ?? {}) as { result?: string; detach?: string[] };
+  if (r.result === "ready") {
+    for (const pm of r.detach ?? []) await detachCard(stripe, pm);
+    const err = await updatePledge(admin, pledge.id, CLEAR_CHECKOUT);
+    if (err) throw new Error(`pledge_ready: ${err}`);
+    return "ready";
+  }
+  if (r.result === "charging") return "charging";
+  return "ended";
 }
 
 type ClaimResult = { result: "started" | "settled" | "stale" | "missing"; period_id?: string; reason?: string };
@@ -763,24 +817,38 @@ async function claim(
   return data as ClaimResult;
 }
 
+export type SettleResult = {
+  status: string;
+  /** Set when the decline ended the pledge (a renewal, or a first purchase). */
+  ended_reason?: EndedReason | null;
+  payment_method?: string | null;
+};
+
 async function settle(
   admin: SupabaseClient,
+  stripe: StripeCall | null,
   periodId: string,
   outcome: "paid" | "declined",
   paymentIntentId: string | null,
-): Promise<string> {
+): Promise<SettleResult> {
   const { data, error } = await admin.rpc("premier_settle", {
     p_period_id: periodId,
     p_outcome: outcome,
     p_payment_intent_id: paymentIntentId,
   });
   if (error) throw new Error(`premier_settle: ${error.message}`);
-  return String(data);
+  const r = (data ?? { status: "missing" }) as SettleResult;
+  if (r.ended_reason) {
+    console.error("[premier] ended", JSON.stringify({ period_id: periodId, reason: r.ended_reason }));
+    await detachCard(stripe, r.payment_method);
+  }
+  return r;
 }
 
-/** Capture a held upgrade payment for a period already claimed, then settle
- *  it. A capture Stripe refuses settles declined (the cut period gets its
- *  end back); an unknown answer leaves it charging for the cron. */
+/** Capture a held payment for a period already claimed, then settle it. A
+ *  capture Stripe refuses settles declined (the cut period gets its end back;
+ *  a first purchase ends `checkout_failed`); an unknown answer leaves it
+ *  charging for the cron. */
 async function captureClaim(
   admin: SupabaseClient,
   stripe: StripeCall,
@@ -789,21 +857,21 @@ async function captureClaim(
 ): Promise<"paid" | "declined" | "unknown"> {
   const piId = idOf(pi)!;
   if (pi.status === "succeeded") {
-    await settle(admin, periodId, "paid", piId);
-    return "paid";
+    const r = await settle(admin, stripe, periodId, "paid", piId);
+    return r.status === "declined" ? "declined" : "paid";
   }
   try {
     const captured = await stripe("POST", `payment_intents/${encodeURIComponent(piId)}/capture`, undefined, {
       idempotencyKey: captureKey(piId),
     });
     if (captured.status === "succeeded") {
-      await settle(admin, periodId, "paid", piId);
+      await settle(admin, stripe, periodId, "paid", piId);
       return "paid";
     }
   } catch (err) {
     if (err instanceof StripeError && err.httpStatus >= 400 && err.httpStatus < 500) {
       console.error("[premier] capture_refused", JSON.stringify({ period_id: periodId, pi: piId, error: err.message }));
-      await settle(admin, periodId, "declined", piId);
+      await settle(admin, stripe, periodId, "declined", piId);
       return "declined";
     }
     console.error("[premier] capture_unknown", JSON.stringify({ period_id: periodId, pi: piId, error: errorMessage(err) }));
@@ -811,13 +879,42 @@ async function captureClaim(
   return "unknown";
 }
 
-export type ConfirmOutcome = "confirmed" | "saved_as_backup" | "released_stale" | "pending" | "expired" | "none";
+/** What a Checkout came to, as the guest is told on return. */
+export type ConfirmOutcome =
+  | "confirmed" // the subscription runs (or the change took)
+  | "saved" // a card was saved (resume, update card)
+  | "lost" // another Checkout won the place first; the hold was released
+  | "declined" // the card was declined; nothing was charged
+  | "covered" // Mesita's Manual Premier already gives this level
+  | "pending"
+  | "expired"
+  | "none";
+
+/** A Checkout already settled, read back from the pledge (a second return,
+ *  or a reload). */
+function settledOutcome(pledge: Pledge): ConfirmOutcome {
+  if (pledge.status === "ready") return "confirmed";
+  if (pledge.status === "open") return "pending";
+  switch (pledge.ended_reason) {
+    case "lost":
+      return "lost";
+    case "checkout_failed":
+      return "declined";
+    case "left":
+      return "expired";
+    default:
+      return "none";
+  }
+}
 
 /** Checkout's return and the cron settle a pledge's Checkout here, and only
  *  here. Bound to the pledge's own stored session, whose metadata must name
- *  this pledge. Pays-now: claim under the place lock, then capture; a quote
- *  that no longer holds releases the hold and keeps the card as a backup.
- *  Setup: the card is saved (and a covered upgrade is claimed). Idempotent. */
+ *  this pledge. Pays now: claim under the place lock, then capture, then the
+ *  pledge becomes the subscription (premier_make_payer) or, for the payer,
+ *  takes its new terms. A Checkout that loses releases its hold; a new
+ *  pledge then ends (`lost`, card detached) and never becomes ready. Setup:
+ *  a resume becomes the subscription, an update swaps the card, a change the
+ *  credit covers is claimed. Idempotent. */
 export async function confirmPledge(
   admin: SupabaseClient,
   stripe: StripeCall,
@@ -826,6 +923,7 @@ export async function confirmPledge(
 ): Promise<ConfirmOutcome> {
   const sessionId = pledge.stripe_checkout_session_id;
   if (!sessionId) return "none";
+  if (!pledge.checkout_kind) return settledOutcome(pledge);
   const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, {
     expand: ["payment_intent", "setup_intent"],
   });
@@ -834,19 +932,12 @@ export async function confirmPledge(
     console.error("[premier] session_mismatch", JSON.stringify({ backing_id: pledge.id, session_id: sessionId }));
     return "none";
   }
+  const kind = pledge.checkout_kind;
+  const isNew = pledge.status === "open";
   if (session.status === "open") return "pending";
   if (session.status === "expired") {
-    const err = pledge.status === "open"
-      ? await updatePledge(admin, pledge.id, { status: "ended", ended_at: new Date().toISOString(), stripe_checkout_session_id: null })
-      : await updatePledge(admin, pledge.id, {
-        stripe_checkout_session_id: null,
-        pending_tier: null,
-        pending_interval: null,
-        pending_amount_cents: null,
-        quoted_period_id: null,
-        quoted_credit_cents: 0,
-      });
-    if (err) throw new Error(`pledge_expire: ${err}`);
+    if (isNew) await endPledge(admin, stripe, pledge, "left", null);
+    else await dropChange(admin, stripe, pledge, null);
     return "expired";
   }
 
@@ -854,13 +945,17 @@ export async function confirmPledge(
     const pi = session.payment_intent as Record<string, unknown> | null;
     const piId = idOf(pi);
     if (!pi || !piId) return "pending";
+    const pm = idOf(pi.payment_method);
     if (pi.status === "canceled") {
-      await readyPledge(admin, { ...pledge, pending_tier: pledge.pending_tier }, idOf(pi.payment_method));
-      return "released_stale";
+      if (isNew) await endPledge(admin, stripe, pledge, "lost", pm);
+      else await dropChange(admin, stripe, pledge, pm);
+      return "lost";
     }
     if (pi.status !== "requires_capture" && pi.status !== "succeeded") return "pending";
     const claimed = await claim(admin, pledge, meta, { paymentIntentId: piId, sessionId, status: "charging", livemode });
     if (claimed.result === "stale") {
+      // A charge in flight may still fail: keep the hold and ask again.
+      if (claimed.reason === "charging") return "pending";
       if (pi.status === "requires_capture") {
         await stripe("POST", `payment_intents/${encodeURIComponent(piId)}/cancel`, undefined, {
           idempotencyKey: `premier-release:${piId}`,
@@ -870,31 +965,68 @@ export async function confirmPledge(
         await stripe("POST", "refunds", { payment_intent: piId }, { idempotencyKey: `premier-refund:${piId}` });
         console.error("[premier] refund_after_capture", JSON.stringify({ backing_id: pledge.id, pi: piId }));
       }
-      await readyPledge(admin, pledge, idOf(pi.payment_method));
-      return "released_stale";
+      if (isNew) await endPledge(admin, stripe, pledge, "lost", pm);
+      else await dropChange(admin, stripe, pledge, pm);
+      return claimed.reason === "covered" ? "covered" : "lost";
     }
     if (claimed.result === "missing" || !claimed.period_id) return "none";
     const outcome = await captureClaim(admin, stripe, claimed.period_id, pi);
-    if (outcome === "declined") return "released_stale";
-    await readyPledge(admin, pledge, idOf(pi.payment_method));
-    return outcome === "paid" ? "confirmed" : "pending";
+    if (outcome === "unknown") return "pending";
+    if (outcome === "declined") {
+      // A first purchase was ended by premier_settle (checkout_failed); the
+      // payer's own change keeps the subscription as it was.
+      if (isNew) await detachCard(stripe, pm);
+      else await dropChange(admin, stripe, pledge, pm);
+      return "declined";
+    }
+    if (isNew) {
+      const r = await makePayer(admin, stripe, pledge, pm);
+      return r === "ready" ? "confirmed" : r === "charging" ? "pending" : "none";
+    }
+    await applyChange(admin, stripe, pledge, pm);
+    return "confirmed";
   }
 
   // Setup: the card is saved.
   const si = session.setup_intent as Record<string, unknown> | null;
   const pm = idOf(si?.payment_method);
   if (!pm) return "pending";
-  if (meta.role === "payer") {
-    const claimed = await claim(admin, pledge, meta, { paymentIntentId: null, sessionId, status: "paid", livemode });
-    await readyPledge(admin, pledge, pm);
-    return claimed.result === "started" || claimed.result === "settled" ? "confirmed" : "saved_as_backup";
+  if (kind === "update_card") {
+    if (pledge.status !== "ready") {
+      await detachCard(stripe, pm);
+      return "none";
+    }
+    await applyChange(admin, stripe, pledge, pm);
+    return "saved";
   }
-  await readyPledge(admin, pledge, pm);
-  return "saved_as_backup";
+  if (kind === "resume") {
+    const r = await makePayer(admin, stripe, pledge, pm);
+    if (r === "charging") return "pending";
+    if (r === "ended") {
+      await detachCard(stripe, pm);
+      return "none";
+    }
+    return "saved";
+  }
+  // A change the credit covers: claimed as paid, nothing charged.
+  const claimed = await claim(admin, pledge, meta, { paymentIntentId: null, sessionId, status: "paid", livemode });
+  if (claimed.result === "stale") {
+    if (claimed.reason === "charging") return "pending";
+    if (isNew) await endPledge(admin, stripe, pledge, "lost", pm);
+    else await dropChange(admin, stripe, pledge, pm);
+    return claimed.reason === "covered" ? "covered" : "lost";
+  }
+  if (claimed.result === "missing") return "none";
+  if (isNew) {
+    const r = await makePayer(admin, stripe, pledge, pm);
+    return r === "ready" ? "confirmed" : r === "charging" ? "pending" : "none";
+  }
+  await applyChange(admin, stripe, pledge, pm);
+  return "confirmed";
 }
 
-/** An upgrade covered by credit for a guest whose card is already saved:
- *  no Checkout, claimed straight away. */
+/** The payer's upgrade covered by credit on their saved card: no Checkout,
+ *  claimed straight away. */
 export async function claimWithoutCheckout(
   admin: SupabaseClient,
   pledge: Pledge,
@@ -903,7 +1035,7 @@ export async function claimWithoutCheckout(
   q: Quote,
   quotedPeriodId: string | null,
   livemode: boolean,
-): Promise<ConfirmOutcome> {
+): Promise<"confirmed" | "lost" | "covered"> {
   const { data, error } = await admin.rpc("premier_claim", {
     p_backing_id: pledge.id,
     p_quoted_period_id: quotedPeriodId,
@@ -920,7 +1052,7 @@ export async function claimWithoutCheckout(
   });
   if (error) throw new Error(`premier_claim: ${error.message}`);
   const claimed = data as ClaimResult;
-  if (claimed.result !== "started") return "released_stale";
+  if (claimed.result !== "started") return claimed.reason === "covered" ? "covered" : "lost";
   const err = await updatePledge(admin, pledge.id, {
     tier,
     billing_interval: interval,
@@ -932,9 +1064,9 @@ export async function claimWithoutCheckout(
   return "confirmed";
 }
 
-/** Settle a charge in flight. An upgrade's held payment is captured; a
- *  renewal's is re-asked with the same key; past 24 h a payment Stripe still
- *  has not finished is cancelled and declined. */
+/** Settle a charge in flight. A held payment is captured; a renewal's is
+ *  re-asked with the same key; past 24 h a payment Stripe still has not
+ *  finished is cancelled and declined. */
 export async function settleCharging(
   admin: SupabaseClient,
   stripe: StripeCall,
@@ -954,7 +1086,7 @@ export async function settleCharging(
     }
     const action = staleChargeAction(String(pi.status));
     if (action === "paid") {
-      await settle(admin, period.id, "paid", period.stripe_payment_intent_id);
+      await settle(admin, stripe, period.id, "paid", period.stripe_payment_intent_id);
       return "paid";
     }
     if (action === "wait" && now - Date.parse(period.created_at) < CHARGING_GIVE_UP_MS) return "unknown";
@@ -966,13 +1098,14 @@ export async function settleCharging(
         return "unknown";
       }
     }
-    await settle(admin, period.id, "declined", period.stripe_payment_intent_id);
+    await settle(admin, stripe, period.id, "declined", period.stripe_payment_intent_id);
     return "declined";
   }
   return await attemptRenewalCharge(admin, stripe, period, now);
 }
 
-/** One renewal charge for a `charging` row the RPC opened. */
+/** One renewal charge for a `charging` row the RPC opened. A decline ends
+ *  the subscription (premier_settle) and detaches its card. */
 export async function attemptRenewalCharge(
   admin: SupabaseClient,
   stripe: StripeCall,
@@ -984,7 +1117,7 @@ export async function attemptRenewalCharge(
     ? await readCustomer(admin, pledge.consumer_id, pledge.livemode)
     : null;
   if (!pledge || !pledge.stripe_payment_method_id || !customer || pledge.status !== "ready") {
-    await settle(admin, period.id, "declined", null);
+    await settle(admin, stripe, period.id, "declined", null);
     return "declined";
   }
   const email = pledge.consumer_id ? await readAuthEmail(admin, pledge.consumer_id) : null;
@@ -1013,46 +1146,51 @@ export async function attemptRenewalCharge(
   const outcome = chargeOutcome({ pi, error });
   const piId = idOf(pi) ?? idOf((error as { payment_intent?: unknown } | undefined)?.payment_intent);
   if (outcome === "paid" || outcome === "declined") {
-    await settle(admin, period.id, outcome, piId);
+    await settle(admin, stripe, period.id, outcome, piId);
     return outcome;
   }
   if (now - Date.parse(period.created_at) >= CHARGING_GIVE_UP_MS) {
     console.error("[premier] charge_give_up", JSON.stringify({ period_id: period.id, error: errorMessage(error) }));
-    await settle(admin, period.id, "declined", piId);
+    await settle(admin, stripe, period.id, "declined", piId);
     return "declined";
   }
   console.error("[premier] charge_unknown", JSON.stringify({ period_id: period.id, error: error ? errorMessage(error) : String(pi?.status) }));
   return "unknown";
 }
 
-/** Renew one place: walk the line top-down until a pledge pays, the line
- *  runs dry, or an answer is not known yet (then the next run asks again).
- *  Never charges a second pledge while a charge is in flight. */
+/** Renew one place's subscription once its paid period ends: one charge to
+ *  the payer's saved card. A charge already in flight is settled first; an
+ *  answer not known yet is asked again on the next run. A subscription that
+ *  Manual Premier covered for longer than one interval ends (`covered`)
+ *  instead, and its card is detached. */
 export async function renewPlace(
   admin: SupabaseClient,
   stripe: StripeCall,
   placeId: string,
   now = Date.now(),
-): Promise<"idle" | "paid" | "dry" | "unknown"> {
-  for (let i = 0; i < 20; i++) {
-    const { data, error } = await admin.rpc("premier_begin_renewal", { p_place_id: placeId });
-    if (error) throw new Error(`premier_begin_renewal: ${error.message}`);
-    const step = data as { action: "none" | "resolve" | "charge"; period_id?: string };
-    if (step.action === "none") return i === 0 ? "idle" : "dry";
-    const period = await readPeriod(admin, step.period_id!);
-    if (!period) return "unknown";
-    const outcome = await settleCharging(admin, stripe, period, now);
-    if (outcome === "paid") return "paid";
-    if (outcome === "unknown") return "unknown";
+): Promise<"idle" | "paid" | "declined" | "unknown"> {
+  const { data, error } = await admin.rpc("premier_begin_renewal", { p_place_id: placeId });
+  if (error) throw new Error(`premier_begin_renewal: ${error.message}`);
+  const step = data as { action: "none" | "resolve" | "charge"; period_id?: string; reason?: string; payment_method?: string | null };
+  if (step.action === "none") {
+    if (step.reason === "dormant") await detachCard(stripe, step.payment_method);
+    return "idle";
   }
-  return "unknown";
+  const period = await readPeriod(admin, step.period_id!);
+  if (!period) return "unknown";
+  return await settleCharging(admin, stripe, period, now);
 }
 
-/** A guest leaves a place's line: a backup goes at once; a payer keeps the
- *  period they paid for and the next renewal walks the rest of the line.
- *  Their saved card is detached; an open Checkout is expired. */
-export async function leavePledge(admin: SupabaseClient, stripe: StripeCall | null, pledge: Pledge): Promise<void> {
-  if (pledge.stripe_checkout_session_id && stripe) {
+/** A pledge ends at its guest's (or the admin's) request: an open Checkout
+ *  is expired, the saved card detached. A payer's period already paid runs
+ *  out; nothing renews it (stopping renewal). */
+export async function leavePledge(
+  admin: SupabaseClient,
+  stripe: StripeCall | null,
+  pledge: Pledge,
+  reason: "stopped" | "stopped_by_place" | "left",
+): Promise<void> {
+  if (pledge.stripe_checkout_session_id && pledge.checkout_kind && stripe) {
     try {
       await stripe("POST", `checkout/sessions/${encodeURIComponent(pledge.stripe_checkout_session_id)}/expire`);
     } catch (err) {
@@ -1060,27 +1198,12 @@ export async function leavePledge(admin: SupabaseClient, stripe: StripeCall | nu
       console.error("[premier] leave_expire", pledge.id, errorMessage(err));
     }
   }
-  if (pledge.stripe_payment_method_id && stripe) {
-    try {
-      await stripe("POST", `payment_methods/${encodeURIComponent(pledge.stripe_payment_method_id)}/detach`);
-    } catch (err) {
-      if (!(err instanceof StripeError && (err.code === "resource_missing" || err.httpStatus === 400))) throw err;
-    }
-  }
-  const err = await updatePledge(admin, pledge.id, {
-    status: "ended",
-    ended_at: new Date().toISOString(),
-    stripe_checkout_session_id: null,
-    pending_tier: null,
-    pending_interval: null,
-    pending_amount_cents: null,
-  });
-  if (err) throw new Error(`pledge_leave: ${err}`);
+  await endPledge(admin, stripe, pledge, reason);
 }
 
 /** Account deletion (consumer-web-delete-account): every charge in flight on
  *  the guest's pledges is settled first (a charge still unknown refuses the
- *  deletion; it is asked again), then every pledge leaves its line. */
+ *  deletion; it is asked again), then every pledge ends (`left`). */
 export async function endConsumerPledges(
   admin: SupabaseClient,
   consumerId: string,
@@ -1090,7 +1213,7 @@ export async function endConsumerPledges(
     .from("place_backings")
     .select(PLEDGE_COLUMNS)
     .eq("consumer_id", consumerId)
-    .in("status", ["open", "ready", "failed"]);
+    .in("status", ["open", "ready"]);
   if (error) return { ok: false, error: `pledges_read: ${error.message}` };
   const pledges = (data ?? []) as Pledge[];
   if (pledges.length === 0) return { ok: true, ended: 0 };
@@ -1107,7 +1230,10 @@ export async function endConsumerPledges(
         return { ok: false, error: "premier_end: a charge is still in flight" };
       }
     }
-    for (const pledge of pledges) await leavePledge(admin, stripe, pledge);
+    for (const pledge of pledges) {
+      const fresh = await readPledge(admin, pledge.id);
+      if (fresh && fresh.status !== "ended") await leavePledge(admin, stripe, fresh, "left");
+    }
   } catch (err) {
     return { ok: false, error: `premier_end: ${errorMessage(err)}` };
   }
@@ -1149,8 +1275,10 @@ async function readAuthEmail(admin: SupabaseClient, consumerId: string): Promise
   }
 }
 
-/** A place's line, its recent paid periods and its recent Manual Premier
- *  rows (what get-premier, start-premier and the admin read). */
+/** A place's pledges (live ones, and those ended in the last 400 days: the
+ *  running period's payer and the ended notices), its recent paid periods
+ *  and its recent Manual Premier rows (what get-premier, start-premier and
+ *  the admin read). */
 export async function readLine(
   admin: SupabaseClient,
   placeId: string,
@@ -1158,7 +1286,10 @@ export async function readLine(
 ): Promise<{ ok: true; pledges: Pledge[]; periods: Period[]; manual: Manual[] } | { ok: false; error: string }> {
   const since = new Date(opts.periodsSince ?? Date.now() - 2 * 3600_000).toISOString();
   let pledgeQuery = admin.from("place_backings").select(PLEDGE_COLUMNS).eq("place_id", placeId);
-  if (!opts.allPledges) pledgeQuery = pledgeQuery.in("status", ["open", "ready", "failed"]);
+  if (!opts.allPledges) {
+    const endedSince = new Date(Date.now() - 400 * 86_400_000).toISOString();
+    pledgeQuery = pledgeQuery.or(`status.in.(open,ready),ended_at.gte.${endedSince}`);
+  }
   const [pRes, perRes, manRes] = await Promise.all([
     pledgeQuery.order("created_at", { ascending: true }),
     admin

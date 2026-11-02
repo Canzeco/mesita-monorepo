@@ -23,7 +23,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(216);
+select plan(230);
 
 -- ━━━ public.profiles — the join every audience reads ━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1723,9 +1723,9 @@ select is(
 
 select is(
   premier_claim('00000000-0000-4000-8000-0000000b2996', null, 'boost_5x', 'month', 5000, 0, 0, 5000,
-                'pi_probe_2', 'cs_probe_2', 'charging', false) ->> 'result',
-  'stale',
-  'a quote made when nothing ran is stale once a period runs'
+                'pi_probe_2', 'cs_probe_2', 'charging', false) ->> 'reason',
+  'taken',
+  'a stranger''s Checkout is stale once the place has a subscription (MESITA-3092: one per place)'
 );
 
 select throws_ok(
@@ -1735,9 +1735,10 @@ select throws_ok(
   'one live pledge per guest per place'
 );
 
--- An upgrade cuts the running 2X; its capture fails; the 2X gets its end back.
+-- The payer's own upgrade cuts the running 2X; its capture fails; the 2X
+-- gets its end back and the subscription stands (MESITA-3092 F6).
 select premier_settle(
-  ((premier_claim('00000000-0000-4000-8000-0000000b2996',
+  ((premier_claim('00000000-0000-4000-8000-0000000b2995',
      (select id from public.place_premier_periods
        where place_id = '00000000-0000-4000-8000-000000002995' and status = 'paid'),
      'boost_5x', 'month', 5000, 500, 0, 4500, 'pi_probe_3', 'cs_probe_3', 'charging', false)) ->> 'period_id')::uuid,
@@ -1747,6 +1748,12 @@ select is(
   (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000002995'),
   1::smallint,
   'a failed upgrade capture gives the cut period its end back: still Premier 2X'
+);
+
+select is(
+  (select status from public.place_backings where id = '00000000-0000-4000-8000-0000000b2995'),
+  'ready',
+  'a payer''s own declined upgrade keeps their subscription (only a renewal ends it)'
 );
 
 -- A charge in flight holds the tier for an hour, not longer.
@@ -1966,6 +1973,134 @@ select is(
   premier_begin_renewal('00000000-0000-4000-8000-000000003093') ->> 'reason',
   'covered',
   'no renewal charge while Manual covers the pledge''s level'
+);
+
+-- ━━━ MESITA-3092: one Paid subscription per place; a declined renewal ends it ━━━
+insert into public.place_profiles (id, google_name) values
+  ('00000000-0000-4000-8000-000000003097', 'One Payer Probe'),
+  ('00000000-0000-4000-8000-000000003098', 'Cover Probe'),
+  ('00000000-0000-4000-8000-000000003099', 'Dormant Probe');
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000003097', 'mesita-3097-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003098', 'mesita-3098-probe', 'active', 'ready', 'USD'),
+  ('00000000-0000-4000-8000-000000003099', 'mesita-3099-probe', 'active', 'ready', 'USD');
+
+select throws_ok(
+  $$insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status)
+    values ('00000000-0000-4000-8000-000000002995', 'boost_5x', 'month', 10000, 'ready')$$,
+  '23505', null,
+  'one ready subscription per place: a second is refused'
+);
+
+select throws_ok(
+  $$insert into public.place_backings (place_id, tier, billing_interval, amount_cents, status)
+    values ('00000000-0000-4000-8000-000000003097', 'boost_2x', 'month', 1000, 'failed')$$,
+  '23514', null,
+  'the backup line''s `failed` status is retired'
+);
+
+select throws_ok(
+  $$update public.place_backings set status = 'ended' where id = '00000000-0000-4000-8000-0000000b2995'$$,
+  '23514', null,
+  'an ended pledge always says why'
+);
+
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status) values
+  ('00000000-0000-4000-8000-0000000a3097', '00000000-0000-4000-8000-000000003097', 'boost_2x', 'month', 1000, 'open'),
+  ('00000000-0000-4000-8000-0000000b3097', '00000000-0000-4000-8000-000000003097', 'boost_2x', 'month', 1000, 'open'),
+  ('00000000-0000-4000-8000-0000000c3097', '00000000-0000-4000-8000-000000003097', 'boost_2x', 'month', 1000, 'open'),
+  ('00000000-0000-4000-8000-0000000d3097', '00000000-0000-4000-8000-000000003097', 'boost_2x', 'month', 1000, 'open');
+
+select is(
+  premier_make_payer('00000000-0000-4000-8000-0000000a3097', 'pm_probe_a') ->> 'result',
+  'ready',
+  'premier_make_payer makes a pledge the place''s subscription'
+);
+
+select is(
+  premier_make_payer('00000000-0000-4000-8000-0000000b3097', 'pm_probe_b') -> 'detach',
+  '["pm_probe_a"]'::jsonb,
+  'a second payer takes over: the first one''s card comes back to be detached'
+);
+
+select is(
+  (select status || ':' || ended_reason from public.place_backings where id = '00000000-0000-4000-8000-0000000a3097'),
+  'ended:taken_over',
+  'the first subscription ended `taken_over`; exactly one stands'
+);
+
+insert into public.place_premier_periods (id, place_id, tier, billing_interval, starts_at, ends_at, status)
+values ('00000000-0000-4000-8000-0000000e3097', '00000000-0000-4000-8000-000000003097', 1, 'month',
+        now(), now() + interval '1 month', 'charging');
+
+select is(
+  premier_make_payer('00000000-0000-4000-8000-0000000c3097', 'pm_probe_c') ->> 'result',
+  'charging',
+  'nobody becomes the payer while another charge is in flight'
+);
+
+update public.place_premier_periods set status = 'declined', ends_at = starts_at
+ where id = '00000000-0000-4000-8000-0000000e3097';
+update public.place_backings set status = 'ended', ended_reason = 'left', ended_at = now()
+ where id = '00000000-0000-4000-8000-0000000c3097';
+
+-- R6: the subscription's renewal is declined: it ends, and so does Premier.
+select is(
+  premier_settle(
+    (premier_begin_renewal('00000000-0000-4000-8000-000000003097') ->> 'period_id')::uuid,
+    'declined', null) ->> 'ended_reason',
+  'declined',
+  'a declined renewal ends the subscription at once (R6)'
+);
+
+select is(
+  (select boost_tier from public.places where id = '00000000-0000-4000-8000-000000003097'),
+  0::smallint,
+  'after a declined renewal the place is not Premier'
+);
+
+-- R5: a first purchase whose charge is declined leaves nothing.
+select is(
+  premier_settle(
+    (premier_claim('00000000-0000-4000-8000-0000000d3097', null, 'boost_2x', 'month', 1000, 0, 0, 1000,
+                   'pi_probe_d3097', 'cs_probe_d3097', 'charging', false) ->> 'period_id')::uuid,
+    'declined', 'pi_probe_d3097') ->> 'ended_reason',
+  'checkout_failed',
+  'a declined first purchase ends its pledge; nothing is left running (R5)'
+);
+
+-- F2: Manual 5X over a paid 2X pauses it: the 20 paid days left run after.
+insert into public.place_premier_periods (id, place_id, tier, billing_interval, starts_at, ends_at, price_cents, status)
+values ('00000000-0000-4000-8000-0000000e3098', '00000000-0000-4000-8000-000000003098', 1, 'month',
+        now() - interval '10 days', now() + interval '20 days', 1000, 'paid');
+select premier_grant('00000000-0000-4000-8000-000000003098', 2::smallint, 1, 'probe@mesita.ai');
+
+select ok(
+  (select abs(extract(epoch from p.ends_at - (m.ends_at + interval '20 days'))) < 60
+     from public.place_premier_periods p, public.place_manual_premier m
+    where p.id = '00000000-0000-4000-8000-0000000e3098'
+      and m.place_id = '00000000-0000-4000-8000-000000003098'),
+  'Manual over the paid level moves the paid end out by the paid days left'
+);
+
+select premier_end_grant('00000000-0000-4000-8000-000000003098');
+
+select ok(
+  (select ends_at > now() + interval '1 month' and covered_until <= now()
+     from public.place_premier_periods where id = '00000000-0000-4000-8000-0000000e3098'),
+  'an early Manual end keeps the moved end (a gift) and records when the cover stopped'
+);
+
+-- F7: covered longer than one interval with nothing paid: the subscription ends.
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, stripe_payment_method_id, queued_at)
+values ('00000000-0000-4000-8000-0000000a3099', '00000000-0000-4000-8000-000000003099', 'boost_2x', 'month', 1000,
+        'ready', 'pm_probe_3099', now() - interval '40 days');
+select premier_grant('00000000-0000-4000-8000-000000003099', 2::smallint, 1, 'probe@mesita.ai');
+
+select is(
+  premier_begin_renewal('00000000-0000-4000-8000-000000003099') ->> 'reason',
+  'dormant',
+  'a subscription Manual covered for over an interval ends instead of charging later'
 );
 
 -- ━━━ Google categories (MESITA-2827, MESITA-2836); families are stored (MESITA-2891) ━━━

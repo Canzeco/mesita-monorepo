@@ -186,34 +186,54 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   };
 }
 
-// Premier (MESITA-2995): the place's period, its line, and the guest's own
-// pledge. Checkout returns with `?boost=<session>`: settle it, say what
+// Premier (MESITA-3092): the place's one subscription and the guest's part
+// in it. Checkout returns with `?boost=<session>`: settle it, say what
 // happened only from the server's outcome, and drop the parameter so a
-// reload does not settle twice.
+// reload does not settle twice. A payment still confirming is asked again
+// for up to 20 seconds.
+const CONFIRM_POLL_MS = 2_500;
+const CONFIRM_POLL_FOR_MS = 20_000;
+
 function sayCheckoutOutcome(data: PlaceBoost) {
-  const p = data.period;
-  const label = p ? tierLabel(p.tier) : "Premier";
+  const p = data.paid;
   switch (data.outcome) {
     case "confirmed":
       toast.success(
         p
-          ? `You're paying for ${label}. Renews ${shortDate(p.ends_at)}.`
-          : "You're paying for Premier.",
+          ? `${tierLabel(p.tier)} is on. Renews ${shortDate(p.ends_at)}.`
+          : "Premier is on.",
       );
       return;
-    case "saved_as_backup":
-      toast.success(`You're Backup ${data.mine?.position || 1}.`);
+    case "saved":
+      toast.success(
+        p
+          ? `Card saved. It will be charged on ${shortDate(p.ends_at)}.`
+          : "Card saved.",
+      );
       return;
-    case "released_stale":
+    case "lost":
       toast(
-        `Someone changed the line while you were paying. We released the hold on your card. You're Backup ${data.mine?.position || 1}.`,
+        "Someone started Premier here a moment ago. Your card was not charged.",
+      );
+      return;
+    case "declined":
+      toast("Your card was declined. Nothing was charged.");
+      return;
+    case "covered":
+      toast(
+        "Mesita already gives this place that level. Your card was not charged.",
       );
       return;
     case "expired":
       toast("Checkout cancelled. Nothing was charged.");
       return;
+    case "pending":
+      toast(
+        "Still confirming. We'll update this tab; you won't be charged twice.",
+      );
+      return;
     default:
-      toast("Confirming your payment…");
+      return;
   }
 }
 
@@ -261,7 +281,27 @@ function usePlaceBoost(placeId: string): {
         `${window.location.pathname}${q ? `?${q}` : ""}`,
       );
     }
-    void apiGetBoost(getSupabase(), placeId, session)
+    const startedAt = Date.now();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const read = (): Promise<PlaceBoost> =>
+      apiGetBoost(getSupabase(), placeId, session).then((data) => {
+        if (
+          session &&
+          !cancelled &&
+          data.outcome === "pending" &&
+          Date.now() - startedAt < CONFIRM_POLL_FOR_MS
+        ) {
+          return new Promise<PlaceBoost>((resolve, reject) => {
+            timer = setTimeout(
+              () => void read().then(resolve, reject),
+              CONFIRM_POLL_MS,
+            );
+          });
+        }
+        return data;
+      });
+    if (session) toast("Confirming your payment…");
+    void read()
       .then((data) => {
         if (cancelled) return;
         setState({ placeId, nonce, data, failed: false });
@@ -282,6 +322,7 @@ function usePlaceBoost(placeId: string): {
       });
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [placeId, mesita, nonce]);

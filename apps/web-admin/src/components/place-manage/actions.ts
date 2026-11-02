@@ -313,9 +313,9 @@ export async function setPlaceListed(
 
 // ── Premier (MESITA-2995; Premier MESITA-2925, Boost MESITA-2789) ───────
 
-/** One pledge in a place's Premier line, as Single Place › Premier lists
- *  it: the payer first, then the backups in the order a renewal walks
- *  them, then pledges not in line (declined card, unfinished Checkout).
+/** One live pledge of a place's Premier, as Single Place › Premier lists
+ *  it: the place's one subscription (MESITA-3092) first, then Checkouts in
+ *  flight.
  *  Amounts are US cents per billing interval. */
 export type AdminPledge = {
   id: string;
@@ -323,8 +323,8 @@ export type AdminPledge = {
   tier: 1 | 2;
   interval: "month" | "year";
   amount_cents: number;
-  status: "open" | "ready" | "failed" | "ended";
-  role: "payer" | "backup" | "waiting";
+  status: "open" | "ready" | "ended";
+  role: "payer" | "waiting";
   position: number | null;
   pending_tier: number | null;
   livemode: boolean;

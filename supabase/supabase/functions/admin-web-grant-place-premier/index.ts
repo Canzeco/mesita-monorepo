@@ -6,8 +6,8 @@
 //   grant         Manual Premier, nothing charged (tier 1..2, 1..12 months);
 //                 refused while Manual Premier is running.
 //   end           ends the running Manual Premier now.
-//   remove_pledge takes one pledge out of the line (its card detached); a
-//                 payer's paid period runs out. Never refunds.
+//   remove_pledge ends one pledge (`left`, its card detached); a payer's
+//                 paid period runs out and nothing renews it. Never refunds.
 //   set           MESITA-3090, Multiple Places › Edit: move the place's Manual
 //                 Premier to tier 0 (End Premier), 1 (2X) or 2 (5X) in one
 //                 transaction (premier_set_grant). Refused, nothing written,
@@ -78,7 +78,7 @@ serveJson("admin-web-grant-place-premier", async (req) => {
         return json({ ok: false, error: "Pledge not found" }, 404);
       }
       const key = boostStripeKey();
-      await leavePledge(admin, key ? stripeClient(key) : null, pledge);
+      await leavePledge(admin, key ? stripeClient(key) : null, pledge, "left");
       return json({ ok: true });
     } catch (err) {
       console.error("[admin-web-grant-place-premier] remove_pledge", err);

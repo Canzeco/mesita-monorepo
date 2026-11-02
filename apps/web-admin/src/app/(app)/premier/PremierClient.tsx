@@ -40,7 +40,7 @@ export function standingLine(p: PremierRow): string {
     p.period ? `Paid ${p.period.tier === 2 ? "5X" : "2X"} until ${day(p.period.ends_at)}` : null,
   ].filter(Boolean);
   if (parts.length > 0) return parts.join(" · ");
-  if (p.backups > 0) return "Not Premier · the next pledge is charged within 5 minutes";
+  if (p.backups > 0) return "Not Premier · the subscription renews within 5 minutes";
   return "Not Premier";
 }
 
@@ -162,7 +162,6 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
                   <span className="block truncate text-sm font-semibold">{p.name}</span>
                   <span className="text-muted-foreground block truncate text-xs">
                     {standingLine(p)}
-                    {p.backups > 0 && ` · ${p.backups} ${p.backups === 1 ? "backup" : "backups"}`}
                     {p.waiting > 0 && ` · ${p.waiting} waiting`}
                   </span>
                 </span>
