@@ -11,7 +11,7 @@ const FAMILIES = [
   { slug: "breakfast", label: "Breakfast", emoji: "🍳", sort_order: 2 },
   { slug: "quick_bite", label: "Quick", emoji: "⚡", sort_order: 6 },
   { slug: "tacos", label: "Tacos", emoji: "🌮", sort_order: 7 },
-  { slug: "mexican", label: "Mexican", emoji: "🌶️", sort_order: 12 },
+  { slug: "mexican", label: "Mexican", emoji: "🇲🇽", sort_order: 12 },
   { slug: "dinner", label: "Dinner", emoji: "🍽️", sort_order: 23 },
   { slug: "drinks", label: "Bar", emoji: "🍻", sort_order: 26 },
   { slug: "undefined", label: "Undefined", emoji: "❓", sort_order: 999 },

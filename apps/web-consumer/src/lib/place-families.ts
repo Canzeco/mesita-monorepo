@@ -65,7 +65,7 @@ export const PLACE_FAMILIES: PlaceFamily[] = [
   { key: "pizza", label: "Pizza", emoji: "🍕" },
   { key: "chicken", label: "Wings", emoji: "🍗" },
   { key: "sushi", label: "Sushi", emoji: "🍣" },
-  { key: "mexican", label: "Mexican", emoji: "🌶️" },
+  { key: "mexican", label: "Mexican", emoji: "🇲🇽" },
   { key: "steak", label: "Steak", emoji: "🥩" },
   { key: "seafood", label: "Seafood", emoji: "🦐" },
   { key: "italian", label: "Italian", emoji: "🍝" },

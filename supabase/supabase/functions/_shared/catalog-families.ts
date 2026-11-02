@@ -128,7 +128,7 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "pizza", label: "Pizza", emoji: "🍕", sort_order: 9 },
   { slug: "chicken", label: "Wings", emoji: "🍗", sort_order: 10 },
   { slug: "sushi", label: "Sushi", emoji: "🍣", sort_order: 11 },
-  { slug: "mexican", label: "Mexican", emoji: "🌶️", sort_order: 12 },
+  { slug: "mexican", label: "Mexican", emoji: "🇲🇽", sort_order: 12 },
   { slug: "steak", label: "Steak", emoji: "🥩", sort_order: 13 },
   { slug: "seafood", label: "Seafood", emoji: "🦐", sort_order: 14 },
   { slug: "italian", label: "Italian", emoji: "🍝", sort_order: 15 },

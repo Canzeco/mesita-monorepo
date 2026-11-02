@@ -397,7 +397,7 @@ export const CATALOG_FAMILY_FACTS: readonly { key: string; label: string; emoji:
   { key: "pizza", label: "Pizza", emoji: "🍕" },
   { key: "chicken", label: "Wings", emoji: "🍗" },
   { key: "sushi", label: "Sushi", emoji: "🍣" },
-  { key: "mexican", label: "Mexican", emoji: "🌶️" },
+  { key: "mexican", label: "Mexican", emoji: "🇲🇽" },
   { key: "steak", label: "Steak", emoji: "🥩" },
   { key: "seafood", label: "Seafood", emoji: "🦐" },
   { key: "italian", label: "Italian", emoji: "🍝" },
