@@ -90,8 +90,8 @@ export default async function PlacesPage() {
         <>
           <Link href="/internal" className="border-border bg-card hover:bg-muted/50 flex items-center gap-3 rounded-2xl border px-5 py-4 transition">
             <ShieldCheck className="text-muted-foreground size-5" aria-hidden />
-            <span className="flex-1 font-semibold">Internal</span>
-            <span className="text-muted-foreground text-sm">Requests waiting · Mesita staff</span>
+            <span className="flex-1 font-semibold">Claim requests</span>
+            <span className="text-muted-foreground text-sm">People asking to run a place · only Mesita sees this</span>
           </Link>
           <StaffFind />
         </>

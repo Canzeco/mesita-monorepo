@@ -5,12 +5,14 @@ import { ReviewsSummary } from "@/components/place-manage/sections/ReviewsSummar
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Reviews" };
 
-// Mesita staff only (MESITA-3104, moved from web-admin's Single Place):
-// Google, Instagram and Facebook summaries and Sync, which calls paid
-// scrapers through business-web-reload-place-reviews (super_admins only).
+// The place's reviews for its whole team (MESITA-3121, Pato: "the collection
+// of reviews … just to visualize"): Google, Instagram and Facebook summaries
+// and the stored Google reviews, read-only. Sync calls paid scrapers
+// (business-web-reload-place-reviews, super_admins only), so only Mesita
+// staff see it.
 export default async function ReviewsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const manage = await getManagePlace(id);
-  if (!manage || manage.role !== "superadmin") notFound();
-  return <ReviewsSummary />;
+  if (!manage) notFound();
+  return <ReviewsSummary canSync={manage.role === "superadmin"} />;
 }

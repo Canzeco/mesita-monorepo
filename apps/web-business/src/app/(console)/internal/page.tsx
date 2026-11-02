@@ -5,7 +5,7 @@ import { PageHeader, Card } from "@/components/shell/Page";
 import { VerificationQueue } from "@/components/internal/VerificationQueue";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Internal" };
+export const metadata = { title: "Claim requests" };
 
 // Every "I run this place" request waiting, across places (MESITA-3103).
 // Mesita staff only: the EF refuses anyone else; this page 404s for them.
@@ -15,7 +15,7 @@ export default async function InternalQueuePage() {
   const queue = await listVerifications();
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Requests" sub="People who asked to run a place. Approve to give them its profile and Premier for a year." />
+      <PageHeader title="Claim requests" sub="People asking to run a place. Approve to give them its profile and Premier for a year. Only Mesita sees this." />
       <Card>
         {queue.ok ? (
           <VerificationQueue owners={[]} pending={queue.data.pending} showPlace />
