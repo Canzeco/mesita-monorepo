@@ -29,17 +29,17 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 // renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
 // Share tab, MESITA-2566 gave it its own page):
 //
-//   Home · Search · Pay · Me
+//   Home · Search · Pay (Soon) · Me
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
 //   restoring the tab is one ITEMS entry (Share2, CONSUMER_ROUTES.share)
 //   plus BAR_HREFS in (shell)/layout.tsx.
 //
-//   PAY IS THE WALLET (Pato, 2026-11-01: "build again the wallet page to
-//   pay. Wallet is for prepayments"; MESITA-3098). It was one Soon page
-//   (MESITA-2087) and wore the Soon tag; the page is live now, so the tag is
-//   gone. The `soon` field stays for the next tab that is not built.
+//   PAY IS SOON AGAIN (Pato, 2026-11-02: "Pay must be as Soon"; MESITA-3113).
+//   It was the Wallet for a day (MESITA-3098); the tab wears the Soon tag
+//   again and /pay is the Soon page. A Mesita Prepay checkout still returns
+//   to /pay?prepay=… and sees the Wallet, since that read credits it.
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's
@@ -93,6 +93,7 @@ const ITEMS: Item[] = [
     Icon: QrCode,
     label: "Pay",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
+    soon: true,
   },
   {
     href: CONSUMER_ROUTES.me,
