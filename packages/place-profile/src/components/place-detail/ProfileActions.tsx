@@ -55,8 +55,11 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // dark", "same for mesita prepay and mesita pay"): every blocked Mesita
 // button is the ink button, `disabled`, no hover, no press. Reserve varies by
 // place ("reserve can vary depending on the place"): live where it takes
-// bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
-// always blocked, with Soon.
+// bookings, blocked with a Walk-in chip where it doesn't. PREPAY IS LIVE
+// WHERE THE PLACE TAKES PREPAYMENTS (Pato, 2026-11-01: "Wallet is for
+// prepayments"; MESITA-3098): it opens the amount sheet and the balance lands
+// in the Wallet. Elsewhere it stays blocked with Soon. Pay is always blocked,
+// with Soon.
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -165,6 +168,8 @@ export function ProfileActions({
   const onShare = actions?.onShare;
   const onOpenLink = actions?.onOpenLink;
   const onReserve = actions?.onReserve;
+  const onPrepay = actions?.onPrepay;
+  const takesPrepay = place.prepay_enabled === true;
   const takesReservations = isReserveActionEnabled(place);
   const reserveLive = takesReservations && Boolean(onReserve);
   const directionsUrl = buildDirectionsUrl(place);
@@ -253,7 +258,24 @@ export function ProfileActions({
             on the row, not the viewport, so admin's phone frame reads the
             same. */}
         <div className={cn("@container", PROFILE_HALVES_ROW_CLASS)}>
-          <SoonInkButton Icon={Wallet} label="Prepay" />
+          {takesPrepay ? (
+            <button
+              type="button"
+              {...(onPrepay
+                ? { onClick: onPrepay, "aria-haspopup": "dialog" as const }
+                : inertButtonProps(false))}
+              aria-label="Prepay at this place"
+              className={inkButton}
+            >
+              <Wallet className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
+              <span className="truncate">
+                <span className="hidden @sm:inline">Mesita </span>
+                Prepay
+              </span>
+            </button>
+          ) : (
+            <SoonInkButton Icon={Wallet} label="Prepay" />
+          )}
           <SoonInkButton Icon={QrCode} label="Pay" />
         </div>
       </div>

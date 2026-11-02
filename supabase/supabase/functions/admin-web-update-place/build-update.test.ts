@@ -77,6 +77,16 @@ Deno.test("one bad field refuses the whole save", async () => {
     400,
   );
   assertEquals((await refused({ id: "p1", reset_fields: ["hours"] })).status, 400);
+  assertEquals(
+    (await refused({ id: "p1", prepay_enabled: "yes" } as unknown as UpdateBody)).status,
+    400,
+  );
+});
+
+Deno.test("Prepayments flips on its own (MESITA-3098)", () => {
+  const r = buildPlaceUpdate({ id: "p1", prepay_enabled: true }, FAMILIES);
+  assert(r.ok);
+  assertEquals(r.update, { prepay_enabled: true });
 });
 
 Deno.test("families with no vocabulary loaded is a 500, never a clear", async () => {

@@ -62,7 +62,9 @@ describe("server components pass no component props to client modules", () => {
   });
 
   it("the guard bites: EmptyState as a client module would fail it", () => {
-    const pay = readFileSync(join(SRC, "app/(shell)/pay/page.tsx"), "utf8");
+    // A server page handing EmptyState an icon, the shape Pay had until it
+    // became the Wallet (MESITA-3098).
+    const pay = `import { QrCode } from "lucide-react";\nimport { EmptyState } from "@/components/shared/EmptyState";\nexport default function Page() {\n  return <EmptyState icon={QrCode} title="Soon" />;\n}\n`;
     expect(isClient(pay)).toBe(false);
     expect([...pay.matchAll(ICON_PROP)].map((m) => m[1])).toContain(
       "EmptyState",
