@@ -9,7 +9,8 @@
 //   Premier   — the current place's
 //   Settings  — the current place's, the products listed at its foot
 //   Admin     — Mesita staff only (MESITA-3122)
-//   Account   — the Google email and sign-out, at the bottom
+//   Account   — a standard row at the bottom; its page has the Google
+//               email and sign-out (MESITA-3123)
 //
 // The current place is the one in the URL, else the first you run; without
 // one, Profile and Premier wait and Settings shows the products alone.
@@ -21,8 +22,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, IdCard, LogOut, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
-import { authSignOut } from "@/app/auth/actions";
+import { BadgeCheck, CircleUser, IdCard, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { placeIdFromPathname, placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
@@ -94,25 +94,9 @@ function RailRow({ row, photo }: { row: Row; photo?: string | null }) {
   );
 }
 
-function SignOut() {
-  return (
-    <form action={authSignOut}>
-      <button
-        type="submit"
-        aria-label="Sign out"
-        title="Sign out"
-        className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-8 items-center justify-center rounded-lg transition-colors"
-      >
-        <LogOut className="size-4" aria-hidden />
-      </button>
-    </form>
-  );
-}
-
 export function BusinessShell({
   places,
   isSuperAdmin,
-  email,
   children,
 }: {
   places: ShellPlace[];
@@ -137,11 +121,12 @@ export function BusinessShell({
         <nav aria-label="Business" className="mt-6 flex flex-1 flex-col gap-0.5">
           {rows.map((r) => <RailRow key={r.key} row={r} photo={r.key === "place" ? current?.photo : null} />)}
         </nav>
-        <div className="border-border flex items-center justify-center gap-2 border-t pt-3 lg:justify-start">
-          <span className="text-muted-foreground hidden min-w-0 flex-1 truncate px-2.5 text-xs lg:inline" title={email ?? undefined}>
-            {email ?? "Signed in"}
-          </span>
-          <SignOut />
+        {/* The account is a standard row (Pato, MESITA-3123): its page holds
+            the Google email and sign-out. */}
+        <div className="border-border border-t pt-3">
+          <RailRow
+            row={{ key: "account", label: "Account", icon: CircleUser, href: "/account", active: pathname === "/account" }}
+          />
         </div>
       </aside>
 
