@@ -1,110 +1,138 @@
-import Image from "next/image";
-import { ArrowRight, Map, Sparkles, Utensils } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  CalendarCheck,
+  MapPin,
+  Star,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NOTIFY_URL, OVERVIEW_URL } from "@/components/landing/urls";
+import { BUSINESS_URL, CONSUMER_URL } from "@/components/landing/urls";
 
-// Pre-launch hero. The status badge does the honesty work for the whole
-// page — every section below speaks in product voice without claiming
-// liveness. The UI chips are code overlays, never baked into the photo,
-// so page copy can never go stale inside a JPG. The three chips are the
-// three First Stage products: the catalog, a discovery door, a booked table.
+const FAMILIES = ["Tacos", "Mexican", "Night"];
+
+// The hero sells both sides in one viewport: the guest's promise on the left,
+// one place profile on the right with a chip from each side of Mesita on it
+// (a guest's confirmed booking, the place's Premier mark). The card is drawn
+// in code, never a screenshot, so it cannot go stale inside an image.
 function Hero() {
   return (
     <section className="bg-hero relative overflow-hidden">
-      <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-6 px-5 pt-16 pb-12 text-center md:pt-24 md:pb-20">
-        <Badge
-          variant="outline"
-          className="bg-background/70 text-muted-foreground rounded-full px-3 py-1 text-xs font-medium backdrop-blur"
-        >
-          <span
-            className="bg-primary inline-block h-1.5 w-1.5 rounded-full"
-            aria-hidden
-          />
-          In development · Launching in San Francisco — January 2027
-        </Badge>
-
-        <h1 className="font-display max-w-3xl text-4xl leading-[1.05] font-semibold tracking-tight md:text-6xl">
-          Where are we going?
-          <br />
-          <span className="text-primary">Mesita knows.</span>
-        </h1>
-
-        <p className="text-muted-foreground max-w-2xl text-lg leading-relaxed md:text-xl">
-          Every restaurant, café and bar in your city. Found the way you like to
-          look. Booked by a phone call you never make.
-        </p>
-
-        <div className="mt-2 flex flex-col items-center gap-3 sm:flex-row">
-          <Button asChild size="lg" className="min-h-11 rounded-full">
-            <a href={OVERVIEW_URL}>
-              Learn more
-              <ArrowRight />
-            </a>
-          </Button>
-          <Button
-            asChild
-            size="lg"
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-14 px-5 pt-14 pb-20 md:grid-cols-[1.1fr_1fr] md:pt-24 md:pb-28">
+        <div className="flex flex-col items-start gap-6">
+          <Badge
             variant="outline"
-            className="min-h-11 rounded-full"
+            className="bg-background/70 text-muted-foreground rounded-full px-3 py-1 text-xs font-medium backdrop-blur"
           >
-            <a href={NOTIFY_URL}>Get notified at launch</a>
-          </Button>
+            <span
+              className="bg-primary inline-block h-1.5 w-1.5 rounded-full"
+              aria-hidden
+            />
+            Launching in Monterrey
+          </Badge>
+
+          <h1 className="font-display text-5xl leading-[1.02] font-semibold tracking-tight md:text-7xl">
+            Where are we going?
+            <br />
+            <span className="text-primary">Mesita knows.</span>
+          </h1>
+
+          <p className="text-muted-foreground max-w-xl text-lg leading-relaxed md:text-xl">
+            Every restaurant, café, bar and club in the city, found your way and
+            booked by an agent that makes the call. For the place, a profile
+            that already exists, ready to claim.
+          </p>
+
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <Button asChild size="lg" className="min-h-11 rounded-full">
+              <a href={CONSUMER_URL}>
+                Open Mesita
+                <ArrowRight />
+              </a>
+            </Button>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="bg-background/60 min-h-11 rounded-full"
+            >
+              <a href={BUSINESS_URL}>Claim your place</a>
+            </Button>
+          </div>
+
+          <p className="text-muted-foreground text-sm">
+            <span className="text-foreground font-medium">Six products</span>{" "}
+            for guests ·{" "}
+            <span className="text-foreground font-medium">five</span> for places
+            · one catalog under both
+          </p>
         </div>
 
-        <p className="text-muted-foreground text-xs">
-          Already running:{" "}
-          <span className="text-foreground font-medium">
-            the self-building catalog
-          </span>{" "}
-          ·{" "}
-          <span className="text-foreground font-medium">
-            the discovery engines
-          </span>{" "}
-          ·{" "}
-          <span className="text-foreground font-medium">
-            the reservation agent
-          </span>
-        </p>
+        <div className="relative mx-auto w-full max-w-sm" aria-hidden>
+          <div className="border-border bg-card shadow-elev overflow-hidden rounded-[2rem] border">
+            <div className="bg-pink-gradient flex aspect-[4/3] items-center justify-center text-7xl">
+              🌮
+            </div>
+            <div className="flex flex-col gap-3 p-5">
+              <div className="flex items-center gap-1.5">
+                <p className="font-display text-xl font-semibold tracking-tight">
+                  Cantina La Mesita
+                </p>
+                <BadgeCheck className="text-primary h-5 w-5" />
+              </div>
+              <div className="text-muted-foreground flex items-center gap-3 text-[13px]">
+                <span className="inline-flex items-center gap-1">
+                  <Star className="fill-primary text-primary h-3.5 w-3.5" />
+                  4.7
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  1.2 km
+                </span>
+                <span>Open until 2 am</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {FAMILIES.map((f) => (
+                  <span
+                    key={f}
+                    className="bg-primary/10 text-secondary rounded-full px-2.5 py-1 text-xs font-medium"
+                  >
+                    {f}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <span className="bg-primary text-primary-foreground rounded-full py-2.5 text-center text-sm font-semibold">
+                  Reserve
+                </span>
+                <span className="border-border text-muted-foreground rounded-full border py-2.5 text-center text-sm font-medium">
+                  Pay · Soon
+                </span>
+              </div>
+            </div>
+          </div>
 
-        <figure className="border-border shadow-elev relative mt-8 w-full overflow-hidden rounded-3xl border md:mt-12">
-          <Image
-            src="/hero-goldengate.jpg"
-            alt="Street tacos and a Mesita agua fresca on a table overlooking the Golden Gate Bridge at dusk"
-            width={2048}
-            height={1143}
-            priority
-            sizes="(max-width: 1024px) 100vw, 1100px"
-            className="h-auto w-full"
-          />
-          <span className="border-border/60 bg-background/85 absolute top-4 left-4 flex items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md">
-            <Utensils className="text-primary h-4 w-4" aria-hidden />
+          <span className="border-border/60 bg-background/90 absolute -top-4 -left-4 flex items-center gap-2 rounded-2xl border px-3.5 py-2 shadow-lg backdrop-blur-md md:-left-10">
+            <CalendarCheck className="text-whatsapp h-4 w-4" />
             <span className="text-[13px] leading-tight font-semibold">
               Table for 4 · Fri 9:00 pm
               <span className="text-whatsapp block text-[11px] font-medium">
-                Confirmed ✓
+                Confirmed by phone ✓
               </span>
             </span>
           </span>
-          <span className="border-border/60 bg-background/85 absolute bottom-4 left-4 hidden items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md sm:flex">
-            <Map className="text-primary h-4 w-4" aria-hidden />
+          <span className="border-border/60 bg-background/90 absolute -right-3 bottom-24 flex items-center gap-2 rounded-2xl border px-3.5 py-2 shadow-lg backdrop-blur-md md:-right-10">
+            <span className="bg-pink-gradient flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold text-white">
+              5X
+            </span>
             <span className="text-[13px] leading-tight font-semibold">
-              Scroll · Map · Ask
+              Premier Boost
               <span className="text-muted-foreground block text-[11px] font-medium">
-                find tonight’s place
+                marked Ad
               </span>
             </span>
           </span>
-          <span className="border-border/60 bg-background/85 absolute top-4 right-4 hidden items-center gap-2 rounded-2xl border px-3.5 py-2 text-left shadow-lg backdrop-blur-md md:flex">
-            <Sparkles className="text-secondary h-4 w-4" aria-hidden />
-            <span className="text-[13px] leading-tight font-semibold">
-              1,000 places
-              <span className="text-muted-foreground block text-[11px] font-medium">
-                built in ten minutes
-              </span>
-            </span>
-          </span>
-        </figure>
+        </div>
       </div>
     </section>
   );

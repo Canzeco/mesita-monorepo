@@ -1,6 +1,7 @@
 export { Close } from "./close";
-export { Discovery } from "./discovery";
 export { Footer } from "./footer";
+export { Guests } from "./guests";
 export { Hero } from "./hero";
+export { How } from "./how";
 export { Nav } from "./nav";
-export { ReservationAgents } from "./reservation-agents";
+export { Places } from "./places";

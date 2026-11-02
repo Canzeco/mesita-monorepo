@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 });
 
 const DESCRIPTION =
-  "Every restaurant in your city, found the way you like to look and booked by an AI agent that makes the call for you. In development — launching in San Francisco, January 2027.";
+  "Every restaurant, café, bar and club in the city, found your way and booked by an agent that makes the call. For places, a profile that already exists, ready to claim. Launching in Monterrey.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mesita.ai"),

@@ -18,7 +18,7 @@ function Footer() {
           Mesita
         </Link>
         <p className="text-muted-foreground text-[12px]">
-          © Mesita · {year} · Launching in San Francisco, January 2027
+          © Canzeco Inc · {year} · Launching in Monterrey
         </p>
         <nav className="text-muted-foreground flex flex-wrap items-center gap-4 text-[12px]">
           {[...NAV_LINKS, ...LEGAL_LINKS].map((link) => (

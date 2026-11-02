@@ -1,7 +1,4 @@
-// Pre-launch CTA targets — the product is in development (launching
-// San Francisco, January 2027), so the page deliberately links no live app.
-// OVERVIEW_URL is the one link Pato owns: drop the shareable project
-// overview here and every CTA on the page lights up.
-export const OVERVIEW_URL = "#";
-export const NOTIFY_URL =
-  "mailto:pato@canzeco.com?subject=Mesita%20launch%20list";
+// The two live apps the page sends people to (🦚 Main § 8). Guests open the
+// consumer app; places claim their profile in the Business app.
+export const CONSUMER_URL = "https://consumer.mesita.ai";
+export const BUSINESS_URL = "https://business.mesita.ai";
