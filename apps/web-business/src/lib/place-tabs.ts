@@ -10,13 +10,14 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   preview: "Preview",
   premier: "Premier",
   settings: "Settings",
-  internal: "Internal",
+  internal: "Mesita staff",
 };
 
-/** Mesita staff only: Reviews (Sync calls paid scrapers) and Internal
- *  (state, Enrich, embedding, reports, owners). The server refuses their data
- *  to anyone else; this list only decides what is drawn. */
-export const STAFF_TABS: readonly PlaceTab[] = ["reviews", "internal"];
+/** Mesita staff only: the staff tab (state, Enrich, embedding, reports,
+ *  owners). Reviews is the whole team's since MESITA-3121 (read-only; Sync,
+ *  which calls paid scrapers, stays staff-only). The server refuses staff
+ *  data to anyone else; this list only decides what is drawn. */
+export const STAFF_TABS: readonly PlaceTab[] = ["internal"];
 
 export function tabsFor(role: "owner" | "editor" | "superadmin"): PlaceTab[] {
   return role === "superadmin" ? [...PLACE_TABS] : PLACE_TABS.filter((t) => !STAFF_TABS.includes(t));

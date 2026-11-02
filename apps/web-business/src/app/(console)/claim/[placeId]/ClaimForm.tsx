@@ -2,7 +2,7 @@
 
 // "This is my place" (MESITA-3103). Since the Business app signs in with
 // Google only (MESITA-3105) there is no phone to match: every claim is a short
-// request a Mesita super-admin approves or rejects on the Internal page.
+// request a Mesita super-admin approves or rejects on the Claim requests page.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";

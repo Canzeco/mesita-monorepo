@@ -84,7 +84,10 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-export function ReviewsSummary() {
+/** `canSync`: Mesita staff (Sync calls paid scrapers). The team reads the
+ *  boxes without it (MESITA-3121); Google's id is staff-only, so a box with
+ *  data reads as synced and an empty one as never synced. */
+export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
   const { place, setPlace } = usePlaceContext();
   const [syncing, setSyncing] = useState(false);
   const [syncedAt, setSyncedAt] = useState<string | null>(null);
@@ -143,10 +146,11 @@ export function ReviewsSummary() {
 
   const stored = storedSync(place.source_sync);
   const errors = { ...stored.errors, ...sourceErrors };
-  const googleState = box.google ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google);
+  const hasGoogle = canSync ? !!place.google_place_id?.trim() : true;
+  const googleState = box.google ?? reviewBoxState(hasGoogle, stored.google);
   const igState = box.instagram ?? reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
   const fbState = box.facebook ?? reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
-  const reviewsState = box.google_reviews ?? reviewBoxState(!!place.google_place_id?.trim(), stored.google_reviews);
+  const reviewsState = box.google_reviews ?? reviewBoxState(hasGoogle, stored.google_reviews);
   const shownAt = syncedAt ?? stored.lastSyncedAt;
   const reviews = storedReviews(place.google_reviews);
 
@@ -164,6 +168,7 @@ export function ReviewsSummary() {
             </p>
           </div>
         </div>
+        {canSync ? (
         <button
           type="button"
           onClick={() => void sync()}
@@ -173,6 +178,7 @@ export function ReviewsSummary() {
           <RefreshCw className={"h-3.5 w-3.5 " + (syncing ? "animate-spin" : "")} />
           Sync
         </button>
+        ) : null}
       </header>
       <ReviewBox
         mark="/channels/google.svg"

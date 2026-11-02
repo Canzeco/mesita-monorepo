@@ -215,7 +215,7 @@ export async function cancelPremier(placeId: string, asPlace: boolean): Promise<
   return { ok: true, data: null };
 }
 
-// ── Internal (Mesita staff) ─────────────────────────────────────────────
+// ── Claim requests (Mesita staff) ────────────────────────────────────────────
 
 export type OwnerView = {
   id: string;

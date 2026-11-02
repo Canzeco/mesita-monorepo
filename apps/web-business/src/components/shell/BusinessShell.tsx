@@ -5,6 +5,7 @@
 //   Logo
 //   Place     — a page you open (/places), not a dropdown
 //   Profile   — the current place's
+//   Reviews   — the current place's reviews, read-only (MESITA-3121)
 //   Premier   — the current place's
 //   Settings  — the current place's, the products listed at its foot
 //   Account   — the Google email and sign-out, at the bottom
@@ -19,7 +20,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, IdCard, LogOut, Settings, Store, type LucideIcon } from "lucide-react";
+import { BadgeCheck, IdCard, LogOut, Settings, Star, Store, type LucideIcon } from "lucide-react";
 import { authSignOut } from "@/app/auth/actions";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { placeIdFromPathname, placeTabHref } from "@/lib/place-tabs";
@@ -30,7 +31,7 @@ export type ShellPlace = { id: string; name: string | null; photo: string | null
 type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean };
 
 function menu(pathname: string, placeId: string | null): Row[] {
-  const tab = (t: "profile" | "premier" | "settings") => (placeId ? placeTabHref(placeId, t) : null);
+  const tab = (t: "profile" | "reviews" | "premier" | "settings") => (placeId ? placeTabHref(placeId, t) : null);
   const under = (href: string | null) => !!href && (pathname === href || pathname.startsWith(`${href}/`));
   const settings = tab("settings") ?? "/settings";
   return [
@@ -42,6 +43,7 @@ function menu(pathname: string, placeId: string | null): Row[] {
       active: pathname === "/places" || pathname.startsWith("/claim") || pathname.startsWith("/internal"),
     },
     { key: "profile", label: "Profile", icon: IdCard, href: tab("profile"), active: under(tab("profile")) },
+    { key: "reviews", label: "Reviews", icon: Star, href: tab("reviews"), active: under(tab("reviews")) },
     { key: "premier", label: "Premier", icon: BadgeCheck, href: tab("premier"), active: under(tab("premier")) },
     { key: "settings", label: "Settings", icon: Settings, href: settings, active: under(settings) || pathname === "/settings" },
   ];
