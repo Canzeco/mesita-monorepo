@@ -1,9 +1,9 @@
-// Mesita Premier (MESITA-2995; Premier MESITA-2925, Boost MESITA-2789,
-// Spotlight MESITA-1998): anyone pledges for a place's Premier from its
-// Premier tab. Many guests may pledge; only the top pledge is charged each
-// period and the rest are backups, charged only if the pledges above them
-// stop paying. Upgrading takes the unused days of the running period off
-// the new price. Every amount and position here comes from the server
+// Mesita Premier (MESITA-3092; Premier MESITA-2925, Boost MESITA-2789,
+// Spotlight MESITA-1998): a place has at most ONE Paid subscription. Anyone
+// signed in buys it when none runs; the guest who pays changes the plan,
+// updates the card, stops renewing or resumes. A declined renewal ends it.
+// Mesita's Manual Premier (MESITA-3091) is apart: levels it already gives
+// are not for sale. Every amount and date here comes from the server
 // (consumer-web-get-premier's `quotes`): this file never computes money. The
 // wire keeps its Boost names (the EFs, the `boost_*` tiers).
 
@@ -58,39 +58,45 @@ export type BoostQuote = {
   credit_cents: number;
   extra_days: number;
   new_ends_at: string | null;
-  role: "payer" | "backup";
-  position: number;
+  /** When the new terms are first charged, when they wait for the running
+   *  period's end (a change down, or a resume). */
+  renews_at: string | null;
+  kind: "buy" | "change" | "resume" | "blocked";
+  blocked_by: "taken" | "charging" | null;
   checkout: "payment" | "setup" | "none";
   /** Mesita's Manual Premier already gives this level or more: not for
-   *  sale (MESITA-3091). Absent from older EF builds. */
-  covered?: boolean;
+   *  sale (MESITA-3091). */
+  covered: boolean;
 };
 
-export type LineRow = {
-  tier: number;
-  interval: BoostInterval;
-  role: "payer" | "backup";
-  position: number;
-  mine: boolean;
-  /** "You", @handle or a first name (MESITA-3063); never an email. */
-  name: string;
-};
+/** Who the guest is to this place's Premier. */
+export type PremierViewer = "payer" | "former_payer" | "stranger";
 
 export type MyPledge = {
   id: string;
   tier: number;
   interval: BoostInterval;
-  status: "open" | "ready" | "failed" | "ended";
-  role: "payer" | "backup";
-  position: number;
+  /** ready = the place's subscription (you pay); open = a Checkout. */
+  status: "open" | "ready";
   pending: number | null;
   has_card: boolean;
+  checkout: "buy" | "change" | "resume" | "update_card" | null;
 };
 
+export type EndedNotice = {
+  reason: "declined" | "stopped_by_place" | "taken_over" | "covered";
+  at: string;
+  runs_until: string | null;
+  refund_cents: number;
+};
+
+/** What a Checkout came to (consumer-web-get-premier with `session_id`). */
 export type BoostOutcome =
   | "confirmed"
-  | "saved_as_backup"
-  | "released_stale"
+  | "saved"
+  | "lost"
+  | "declined"
+  | "covered"
   | "pending"
   | "expired"
   | "none";
@@ -98,20 +104,31 @@ export type BoostOutcome =
 export type PlaceBoost = {
   tier: 0 | 1 | 2 | 3;
   /** Manual Premier: Mesita's free lift running now (MESITA-3091). */
-  manual?: { tier: number; ends_at: string } | null;
-  /** What guests pay for (`granted` is always false since MESITA-3091). */
-  period: {
+  manual: { tier: number; ends_at: string } | null;
+  /** The Paid period running now. */
+  paid: {
     tier: number;
     ends_at: string;
-    granted: boolean;
     renews: boolean;
+    by_you: boolean;
   } | null;
   renewing: boolean;
-  line: LineRow[];
-  more: number;
+  viewer: PremierViewer | null;
+  can_resume: boolean;
   mine: MyPledge | null;
+  ended_notice: EndedNotice | null;
   quotes: Record<BoostTier, Record<BoostInterval, BoostQuote>> | null;
   outcome?: BoostOutcome;
+};
+
+/** What a refused start means, in one line (the server's `code`). */
+export const START_REFUSED: Record<string, string> = {
+  covered_by_mesita:
+    "Mesita already gives this place that level. Your card was not charged.",
+  premier_taken: "Someone else pays for Premier here.",
+  charging: "A renewal is being charged. Try again in a few minutes.",
+  not_payer: "Only the guest who pays can update the card.",
+  lost: "Premier changed while you were choosing. Look again.",
 };
 
 export async function apiGetBoost(
@@ -125,36 +142,63 @@ export async function apiGetBoost(
   });
 }
 
-/** Pledges (or changes the guest's pledge). Resolves to the Checkout page
- *  to send the guest to, or null when nothing needed Checkout. */
+/** Buys, changes or resumes the place's Premier, or (`updateCard`) replaces
+ *  the payer's card. Resolves to the Checkout page to send the guest to, or
+ *  null when nothing needed Checkout. A refusal throws an EFError whose
+ *  `code` is a START_REFUSED key. */
 export async function apiStartBoost(
   client: SupabaseClient,
-  input: {
-    placeId: string;
-    tier: BoostTier;
-    interval: BoostInterval;
-    returnUrl: string;
-  },
+  input:
+    | {
+        placeId: string;
+        tier: BoostTier;
+        interval: BoostInterval;
+        returnUrl: string;
+      }
+    | { placeId: string; updateCard: true; returnUrl: string },
 ): Promise<{ url: string | null; outcome?: "updated" | "confirmed" }> {
   return await invokeEF<{
     url: string | null;
     outcome?: "updated" | "confirmed";
-  }>(client, "consumer-web-start-premier", {
-    place_id: input.placeId,
-    tier: input.tier,
-    interval: input.interval,
-    return_url: input.returnUrl,
+  }>(
+    client,
+    "consumer-web-start-premier",
+    "updateCard" in input
+      ? {
+          place_id: input.placeId,
+          kind: "update_card",
+          return_url: input.returnUrl,
+        }
+      : {
+          place_id: input.placeId,
+          tier: input.tier,
+          interval: input.interval,
+          return_url: input.returnUrl,
+        },
+  );
+}
+
+/** Stops renewing: the period already paid runs out, nothing more is
+ *  charged, the saved card is removed. */
+export async function apiCancelBoost(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<void> {
+  await invokeEF<Record<string, never>>(client, "consumer-web-cancel-premier", {
+    place_id: placeId,
   });
 }
 
-/** Leaves the line. A payer keeps the period already paid. */
-export async function apiCancelBoost(
+/** Hides the notice of the guest's ended subscription on this place. */
+export async function apiDismissPremierNotice(
   client: SupabaseClient,
-  backingId: string,
+  placeId: string,
 ): Promise<void> {
-  await invokeEF<Record<string, never>>(client, "consumer-web-cancel-premier", {
-    backing_id: backingId,
-  });
+  await invokeEF<Record<string, never>>(
+    client,
+    "consumer-web-dismiss-premier-notice",
+    { place_id: placeId },
+  );
 }
 
 const USD = new Intl.NumberFormat("en-US", {

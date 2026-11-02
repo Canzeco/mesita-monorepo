@@ -1,13 +1,13 @@
 // Supabase Edge Function — supabase-cron-sync-premier (internal)
 //
-// MESITA-2995: keeps Premier periods true to Stripe. pg_cron calls it every
-// 5 minutes (job `sync-premier`):
+// MESITA-2995 / MESITA-3092: keeps Premier periods true to Stripe. pg_cron
+// calls it every 5 minutes (job `sync-premier`):
 //   1. Checkouts a guest never came back from are settled through the same
 //      confirmPledge as consumer-web-get-premier (a paid one starts its period);
-//   2. charges in flight are settled (held upgrades captured, renewals asked
+//   2. charges in flight are settled (held payments captured, renewals asked
 //      again with the same key; past 24 h cancelled and declined);
-//   3. every place with a ready pledge and no period running is renewed:
-//      the line is walked top-down until one card pays;
+//   3. every place's subscription whose period ended is renewed: one charge
+//      to the payer's card; a decline ends the subscription (R6);
 //   4. tiers are recomputed (also its own pg_cron job, recompute-premier).
 //
 // There is no Stripe webhook: the EF name is the ACL and no caller prefix is
@@ -62,8 +62,9 @@ serveJson("supabase-cron-sync-premier", async (req) => {
   const { data: open, error: openErr } = await admin
     .from("place_backings")
     .select(PLEDGE_COLUMNS)
+    .not("checkout_kind", "is", null)
     .not("stripe_checkout_session_id", "is", null)
-    .in("status", ["open", "ready", "failed"])
+    .in("status", ["open", "ready"])
     .lt("updated_at", older)
     .order("updated_at", { ascending: true })
     .limit(limit);
@@ -95,7 +96,7 @@ serveJson("supabase-cron-sync-premier", async (req) => {
     }
   }
 
-  // 3. Renewals: every place with someone in line.
+  // 3. Renewals: every place with a subscription.
   const { data: lined, error: lineErr } = await admin
     .from("place_backings")
     .select("place_id")

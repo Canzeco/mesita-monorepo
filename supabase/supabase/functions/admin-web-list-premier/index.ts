@@ -2,8 +2,9 @@
 //
 // MESITA-3011: Manage › Premier, read. Every active Mesita place with its
 // Premier standing — the tier, the Manual Premier running (Mesita's free
-// lift, MESITA-3091) and the paid period running, how
-// many pledges stand in its line and what it charged in the last 30 days —
+// lift, MESITA-3091) and the paid period running, whether a subscription
+// waits to renew (MESITA-3092: one per place) and what it charged in the last
+// 30 days —
 // plus the totals and which Stripe universe the money runs in. One place's
 // full line and the grant / end / remove writes stay on
 // admin-web-get-place-premier and admin-web-grant-place-premier.
@@ -19,7 +20,6 @@ import {
   boostLivemode,
   boostStripeKey,
   chargingPeriod,
-  ladder,
   type Manual,
   MANUAL_COLUMNS,
   type Period,
@@ -45,7 +45,7 @@ serveJson("admin-web-list-premier", async (req) => {
   const nowIso = new Date(now).toISOString();
   const [placesRes, pledgesRes, periodsRes, manualRes] = await Promise.all([
     admin.from("profiles").select("id, name, boost_tier").eq("state", "active").order("name").limit(PLACE_LIMIT),
-    admin.from("place_backings").select(PLEDGE_COLUMNS).in("status", ["open", "ready", "failed"]).limit(5000),
+    admin.from("place_backings").select(PLEDGE_COLUMNS).in("status", ["open", "ready"]).limit(5000),
     admin
       .from("place_premier_periods")
       .select(PERIOD_COLUMNS)
@@ -68,7 +68,8 @@ serveJson("admin-web-list-premier", async (req) => {
     const periods = periodsBy.get(p.id) ?? [];
     const running = runningPeriod(periods, now);
     const manual = runningManual(manualBy.get(p.id) ?? [], now);
-    const inLine = ladder(pledges).filter((x) => x.id !== running?.backing_id).length;
+    // A subscription not paying the running period: its renewal is due.
+    const due = pledges.filter((x) => x.status === "ready" && x.id !== running?.backing_id).length;
     const tier = premierRankOf(Number(p.boost_tier) || 0);
     return {
       id: p.id,
@@ -78,8 +79,8 @@ serveJson("admin-web-list-premier", async (req) => {
       manual: manual ? { tier: manual.tier, ends_at: manual.ends_at, source: manual.source, granted_by: manual.granted_by } : null,
       period: running ? { tier: running.tier, ends_at: running.ends_at, granted: false, granted_by: null } : null,
       charging: chargingPeriod(periods) != null,
-      backups: inLine,
-      waiting: pledges.filter((x) => x.status === "open" || x.status === "failed").length,
+      backups: due,
+      waiting: pledges.filter((x) => x.status === "open").length,
       charged_30d_cents: periods
         .filter((x) => Date.parse(x.created_at) >= sinceMs)
         .reduce((sum, x) => sum + (x.charged_cents ?? 0), 0),

@@ -1,9 +1,10 @@
 // Supabase Edge Function — admin-web-get-place-premier
 //
-// MESITA-2995: Single Place › Premier, read. The place's tier, the period
-// running, the line with first names (the console only; guests never see a
-// name, MESITA-2928), and the recent periods with what each one charged, so
-// the operator can see who pays for what without opening Stripe.
+// MESITA-2995 / MESITA-3092: Single Place › Premier, read. The place's tier,
+// the period running, its pledges with first names (the console only): the
+// one subscription first, then Checkouts in flight, and the recent periods
+// with what each one charged, so the operator can see who pays for what
+// without opening Stripe.
 //
 // Manual Premier (MESITA-3091) comes back on its own: `manual` is the row
 // running now, `manual_history` the recent ones; `period` and `periods` are
@@ -21,7 +22,6 @@ import { MEMBER_FALLBACK_NAME } from "../_shared/place-activity.ts";
 import {
   PREMIER_FACTOR,
   premierRankOf,
-  ladder,
   readBackerNames,
   readBoostPlace,
   readLine,
@@ -51,18 +51,13 @@ serveJson("admin-web-get-place-premier", async (req) => {
   const now = Date.now();
   const running = runningPeriod(line.periods, now);
   const manual = runningManual(line.manual, now);
-  const payerId = running?.backing_id ?? null;
-  const order = [
-    ...line.pledges.filter((p) => p.id === payerId),
-    ...ladder(line.pledges).filter((p) => p.id !== payerId),
-    ...line.pledges.filter((p) => p.id !== payerId && !(p.status === "ready" && p.stripe_payment_method_id)),
-  ];
+  const live = line.pledges.filter((p) => p.status !== "ended");
+  const order = [...live.filter((p) => p.status === "ready"), ...live.filter((p) => p.status !== "ready")];
   const payerIds = [...new Set(line.pledges.map((r) => r.consumer_id).filter((id): id is string => typeof id === "string"))];
   const names = await readBackerNames(admin, payerIds, MEMBER_FALLBACK_NAME);
   const nameById = new Map(payerIds.map((id, i) => [id, names[i]]));
   const pledgeName = new Map(line.pledges.map((p) => [p.id, p.consumer_id ? nameById.get(p.consumer_id) ?? MEMBER_FALLBACK_NAME : null]));
   const tier = premierRankOf(Number(placeRes.place.boost_tier) || 0);
-  let backup = 0;
 
   return json({
     ok: true,
@@ -89,8 +84,8 @@ serveJson("admin-web-get-place-premier", async (req) => {
       interval: p.billing_interval,
       amount_cents: p.amount_cents,
       status: p.status,
-      role: p.id === payerId ? "payer" : p.status === "ready" && p.stripe_payment_method_id ? "backup" : "waiting",
-      position: p.id === payerId ? 0 : p.status === "ready" && p.stripe_payment_method_id ? ++backup : null,
+      role: p.status === "ready" ? "payer" : "waiting",
+      position: p.status === "ready" ? 0 : null,
       pending_tier: p.pending_tier ? TIER_RANK[p.pending_tier] : null,
       livemode: p.livemode,
       queued_at: p.queued_at,

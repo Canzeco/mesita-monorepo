@@ -11,13 +11,13 @@ import {
 } from "../actions";
 import { SectionCard } from "@/components/admin-ui/manage";
 
-// Single Place › Premier (MESITA-2995; Premier MESITA-2925, Boost
-// MESITA-2789). The place's line — who pays now, who backs up, in the order
-// a renewal walks them — and its recent periods with what each one charged,
+// Single Place › Premier (MESITA-3092; Premier MESITA-2925, Boost
+// MESITA-2789). The place's one Paid subscription and any Checkout in
+// flight, and its recent periods with what each one charged,
 // read from admin-web-get-place-premier. The operator can grant Manual
 // Premier (MESITA-3091: Mesita's free lift, its own table, so a place can be
 // Premier without a payment and a guest can still pay above it), end it, or
-// take one pledge out of the line (admin-web-grant-place-premier). Nothing
+// end one pledge (admin-web-grant-place-premier). Nothing
 // here refunds; Stripe is the record.
 
 const TIER_LABEL: Record<number, string> = {
@@ -64,11 +64,9 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 function roleLabel(p: AdminPledge): string {
-  if (p.role === "payer") return "Paying now";
-  if (p.role === "backup") return `Backup ${p.position}`;
-  if (p.status === "failed") return "Card declined";
+  if (p.role === "payer") return "Subscription";
   if (p.status === "open") return "Checkout open";
-  return "Not in line";
+  return "Ended";
 }
 
 /** A two-step button: the first tap arms it, the second does it. */
@@ -209,7 +207,7 @@ export function BoostSection({
             {data.stuck > 0 ? (
               <p className="border-border rounded-lg border px-3 py-2 text-sm">
                 {data.stuck} {data.stuck === 1 ? "charge has" : "charges have"} been waiting on Stripe for over two
-                hours. The 5-minute sync keeps asking; past 24 hours it cancels and moves to the next pledge.
+                hours. The 5-minute sync keeps asking; past 24 hours it cancels, and a declined renewal ends the subscription.
               </p>
             ) : null}
 
@@ -272,9 +270,9 @@ export function BoostSection({
       </SectionCard>
 
       {data ? (
-        <SectionCard title="Line" subtitle="Who pays now, then who pays if that card fails, in order.">
+        <SectionCard title="Subscription" subtitle="One per place: who pays, and any Checkout in flight.">
           {data.line.length === 0 ? (
-            <p className="text-muted-foreground mt-3 text-sm">Nobody has pledged for this place yet.</p>
+            <p className="text-muted-foreground mt-3 text-sm">Nobody pays for this place.</p>
           ) : (
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -284,7 +282,7 @@ export function BoostSection({
                     <th className="py-2 pr-4 font-medium">Guest</th>
                     <th className="py-2 pr-4 font-medium">Level</th>
                     <th className="py-2 pr-4 font-medium">Billing</th>
-                    <th className="py-2 pr-4 font-medium">In line since</th>
+                    <th className="py-2 pr-4 font-medium">Since</th>
                     <th className="py-2 font-medium" />
                   </tr>
                 </thead>
