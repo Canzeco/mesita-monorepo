@@ -17,12 +17,12 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   const identity = await getIdentityCached();
   if (!identity.ok && identity.code === "google_only") redirect("/auth/signout?error=google_only");
   const places = identity.ok
-    ? identity.data.places.filter((p) => p.state === "owner").map((p) => ({ id: p.place_id, name: p.name }))
+    ? identity.data.places.filter((p) => p.state === "owner").map((p) => ({ id: p.place_id, name: p.name, photo: p.photo }))
     : [];
   const isSuperAdmin = identity.ok && identity.data.isSuperAdmin;
 
   return (
-    <BusinessShell places={places} isSuperAdmin={isSuperAdmin}>
+    <BusinessShell places={places} isSuperAdmin={isSuperAdmin} email={identity.ok ? identity.data.email : null}>
       {children}
     </BusinessShell>
   );
