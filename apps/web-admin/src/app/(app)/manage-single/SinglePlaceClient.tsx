@@ -8,14 +8,13 @@
 // place and leaves the field open: no Google call, and the field is not an
 // autocomplete (MESITA-2172). Enter is the deep search. A hit
 // OPENS the place at
-// /manage-single/<id>/profile — the place screens admin owns (MESITA-2115).
+// the place page, in the Business app since MESITA-3104.
 // Create (from a Google Place ID, or a table row) and Enrich (a held row)
 // are the writes this page makes itself. Enrich is the one Enrich the Admin
 // card runs: the whole pipeline, replacing what it finds (MESITA-2799).
 // Reviews stay a separate reload.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { AlertTriangle, Building, ExternalLink, Loader2, Play, Search } from "lucide-react";
 import {
   createPlaceFromGooglePlaceId,
@@ -27,7 +26,7 @@ import {
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
 import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/admin-ui/manage";
-import { placeTabHref } from "@/lib/place-tabs";
+import { businessPlaceHref } from "@/lib/business-url";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
 import {
@@ -66,7 +65,6 @@ export function SinglePlaceClient({
    *  Search rows and the empty query are read here. */
   find?: NameAdminConfig;
 } = {}) {
-  const router = useRouter();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"find" | "create" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -90,8 +88,15 @@ export function SinglePlaceClient({
   const lookup = useMemo(() => classifyLookup(text), [text]);
   const isBusy = busy !== null;
 
+  // A place opens in the Business app (MESITA-3104), where its whole page
+  // lives now. Unset NEXT_PUBLIC_BUSINESS_URL: say so instead of a dead push.
   function open(placeId: string) {
-    router.push(placeTabHref(placeId, "admin"));
+    const href = businessPlaceHref(placeId, "internal");
+    if (!href) {
+      setError("The Business app's address is not set (NEXT_PUBLIC_BUSINESS_URL).");
+      return;
+    }
+    window.location.assign(href);
   }
 
   async function find() {

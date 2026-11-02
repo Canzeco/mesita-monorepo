@@ -1,6 +1,6 @@
 // Enriched — an Enrich run completed on this place (MESITA-2154).
 //
-// The server states it: admin-web-search-places and admin-web-get-overview
+// The server states it: admin-web-search-places and the place read (business-web-get-place)
 // ship `enriched` from `_shared/place-state.ts` `isPlaceEnriched`, which reads
 // `places.enriched_at`. This is the console's one reader — Status on the
 // Admin tab and the Multiple Places "Enriched" fact both ask here.

@@ -170,7 +170,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
-  "admin-web-reload-place-reviews/index.ts",
+  "business-web-reload-place-reviews/index.ts",
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
   "eleven-a4-cancel-reservation/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",
@@ -201,7 +201,7 @@ const PROFILES_READ_ALLOWLIST = [
   "_shared/admin-place.ts",
   // Activity › Feedback (MESITA-3024): place names only, for the admin's list of
   // guest reports. Read-only, error checked.
-  "admin-web-list-place-reports/index.ts",
+  "_shared/place-reports-handler.ts",
   // Social v1 (MESITA-2442): the place cards behind the feed, a person and
   // Saved, through the browse view so RLS keeps unlisted places out
   // (one module since MESITA-3042).
@@ -223,7 +223,7 @@ const PROFILES_READ_ALLOWLIST = [
   // A refused Enrich start reads content_state and enriched_at to turn enriching off (MESITA-2420).
   "_shared/enrich-start.ts",
   // The Enrichment card's state: content_state and enriched_at (MESITA-2811, MESITA-2424).
-  "admin-web-get-place-enrichment/index.ts",
+  "business-web-get-place-enrichment/index.ts",
   // Premier (MESITA-2925, was Boost MESITA-1998): name, state and tier of the place a guest backs.
   "_shared/boost.ts",
   // Manage › Premier (MESITA-3011): id, name and tier of every active place.
@@ -251,7 +251,7 @@ const PLACES_READ_ALLOWLIST = [
   "_shared/admin-google-place-update.ts", // content_state gate before Google refresh (MESITA-2737)
   "_shared/reservation-places.ts",
   "admin-web-delete-place/index.ts",
-  "admin-web-set-place-listed/index.ts",
+  "_shared/place-listed-handler.ts",
   "consumer-web-create-reservation/index.ts",
 ];
 
@@ -272,7 +272,7 @@ const CONSUMER_READ_ALLOWLIST = [
   "admin-web-set-guest-standing/index.ts",
   // Single Place › Admin › Reports (MESITA-2686): first name and member
   // number of each reporting guest, error checked. Read-only.
-  "admin-web-list-place-reports/index.ts",
+  "_shared/place-reports-handler.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",

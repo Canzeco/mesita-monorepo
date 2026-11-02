@@ -1,7 +1,7 @@
 "use server";
 
 import type { ActionResult } from "@/lib/action-result";
-import type { AdminPlaceReport } from "@/components/place-manage/actions";
+import type { AdminPlaceReport } from "@/components/reports/types";
 import { efInvoke } from "@/lib/supabase-ef";
 
 export type ListFeedbackResult = ActionResult<{

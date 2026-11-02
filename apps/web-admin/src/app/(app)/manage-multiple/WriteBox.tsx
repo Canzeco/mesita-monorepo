@@ -1,10 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import Link from "next/link";
 import { Loader2, Play } from "lucide-react";
 import { formatShortDate } from "@/lib/format";
-import { placeTabHref } from "@/lib/place-tabs";
+import { businessPlaceHref } from "@/lib/business-url";
 import {
   createPlacesFromGooglePlaceIds,
   enrichPlacesAll,
@@ -300,12 +299,14 @@ function ResultList({
                   <p className="text-muted-foreground type-label">{r.detail}</p>
                 ) : null}
                 {r.href ? (
-                  <Link
+                  <a
                     href={r.href}
+                    target="_blank"
+                    rel="noopener"
                     className="type-label font-medium underline underline-offset-2"
                   >
-                    Open in Single Place →
-                  </Link>
+                    Open in Business →
+                  </a>
                 ) : null}
                 {r.error ? (
                   <p className="text-destructive type-label">{r.error}</p>
@@ -508,7 +509,7 @@ function premierRow(
         state: "refused",
         name,
         detail: r.error,
-        href: r.code === "place_archived" ? undefined : placeTabHref(found.placeId, "boost"),
+        href: r.code === "place_archived" ? undefined : businessPlaceHref(found.placeId, "premier") ?? undefined,
       };
     }
     return { state: "error", name, error: r.error };

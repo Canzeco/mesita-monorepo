@@ -1,13 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, RefreshCw, Search, Zap } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { SectionCard } from "@/components/admin-ui/config";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
-import { BoostSection } from "@/components/place-manage/sections/BoostSection";
-import { placeTabHref } from "@/lib/place-tabs";
+import { businessPlaceHref } from "@/lib/business-url";
 import { listPremier, type PremierList, type PremierRow } from "./actions";
 
 // Manage › Premier (MESITA-3011). Every active place's paid visibility on
@@ -175,13 +173,20 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
               </button>
               {open === p.id && (
                 <div className="bg-muted/30 flex flex-col gap-3 px-4 pt-1 pb-4">
-                  <Link
-                    href={placeTabHref(p.id, "boost")}
-                    className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 self-start text-xs font-semibold"
-                  >
-                    Open in Single Place <ExternalLink className="h-3 w-3" aria-hidden />
-                  </Link>
-                  <BoostSection placeId={p.id} onChanged={() => void reload()} />
+                  {/* The place's Premier card (grant, end, periods) is on its
+                      page in the Business app since MESITA-3104. */}
+                  {businessPlaceHref(p.id, "premier") ? (
+                    <a
+                      href={businessPlaceHref(p.id, "premier")!}
+                      target="_blank"
+                      rel="noopener"
+                      className="text-foreground inline-flex items-center gap-1 self-start text-sm font-semibold underline underline-offset-4"
+                    >
+                      Manage this place&apos;s Premier in Business <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                    </a>
+                  ) : (
+                    <p className="text-muted-foreground text-sm">The Business app&apos;s address is not set (NEXT_PUBLIC_BUSINESS_URL).</p>
+                  )}
                 </div>
               )}
             </Fragment>
