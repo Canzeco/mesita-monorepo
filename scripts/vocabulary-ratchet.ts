@@ -10,13 +10,11 @@ import { join, relative } from "@std/path";
 export type Violation = { file: string; line: number; token: string; excerpt: string };
 
 const DELETED_HOSTS = [
-  "business.mesita.ai",
   "check.mesita.ai",
   "validate.mesita.ai",
 ] as const;
 
 const DELETED_SLUGS = [
-  "web-business",
   "web-validate",
   "mobile-business",
 ] as const;
@@ -26,6 +24,7 @@ export const SCAN_ROOTS = [
   "apps/web-admin/src",
   "apps/web-consumer/src",
   "apps/web-landing/src",
+  "apps/web-business/src",
   "packages/place-profile/src",
   "supabase/supabase/functions",
 ] as const;
@@ -34,6 +33,7 @@ const CARD_PATHS = [
   "apps/web-admin/CLAUDE.md",
   "apps/web-consumer/CLAUDE.md",
   "apps/web-landing/CLAUDE.md",
+  "apps/web-business/CLAUDE.md",
   "supabase/CLAUDE.md",
 ] as const;
 

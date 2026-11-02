@@ -37,7 +37,7 @@
 <!-- RULES-QUICKSTART:END -->
 ## This repo — mesita-monorepo (root)
 
-- **Packages**, each its own install root (`cd` into it): the three apps (Next.js, one Vercel project each) and `packages/place-profile`, the place screen both render, use pnpm; `supabase/`, the source of truth, uses Deno and the Supabase CLI, run from there; `render/`, the Enricher's workflow, uses npm.
+- **Packages**, each its own install root (`cd` into it): the four apps (Next.js, one Vercel project each) and `packages/place-profile`, the place screen both render, use pnpm; `supabase/`, the source of truth, uses Deno and the Supabase CLI, run from there; `render/`, the Enricher's workflow, uses npm.
 - **Preview** on the PR's Vercel deployment: the Vercel bot's PR comment links it (`gh pr view <n> --comments`); deployment protection needs a share link from the Vercel tool.
 - **CI:** every PR job is a required check (`.github/required-checks.json`); one with nothing in scope reports SKIPPED, which merges. pgTAP runs only when a PR touches migrations, `supabase/supabase/tests/`, `config.toml` or `seed.sql`; main and nightly always do. Weekly, `pipeline-audit.yml` sweeps what no PR can see.
 - **Tests (MVP):** only for money, auth, data loss (live config saves, unwanted writes), legal, or a crash a build cannot catch; never for UI layout, copy, CSS classes or route lists, nor a copy of a nearby pin. CI runs the suites; run `cd apps/<app> && pnpm test` locally only for logic you changed.

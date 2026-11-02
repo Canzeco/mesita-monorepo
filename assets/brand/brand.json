@@ -188,7 +188,8 @@
     "web": [
       "web-admin",
       "web-consumer",
-      "web-landing"
+      "web-landing",
+      "web-business"
     ]
   }
 }

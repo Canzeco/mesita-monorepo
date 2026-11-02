@@ -1,6 +1,5 @@
 "use client";
 
-import { ActionStatesCard } from "./ActionStatesCard";
 import { useMemo, useState } from "react";
 import {
   Clock,
@@ -27,7 +26,7 @@ import {
   SectionCard,
   TextArea,
   TextField,
-} from "@/components/admin-ui/manage";
+} from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
 import {
@@ -695,7 +694,6 @@ export function PlaceSection({
         </div>
       </SectionCard>
 
-      <ActionStatesCard place={place} />
 
       {children}
     </div>

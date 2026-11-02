@@ -1,0 +1,73 @@
+/**
+ * The type scale, as DATA.
+ *
+ * Docs > Design writes the law in ROLES ("eyebrow", "group label", "dense
+ * meta"); the code wrote it in PIXELS. That mismatch is why 21 distinct
+ * arbitrary sizes accumulated with nothing to bind them to. This module is the
+ * binding surface: `globals.css` writes the `type-*` utilities from it, and
+ * the ESLint guard's messages name its roles. Edit both apps' copies together.
+ *
+ * THREE RULES, each learned the hard way:
+ *
+ * 1. VALUES ARE REM, NEVER PX. `text-[12px]` is frozen at 12px for every
+ *    guest; `text-xs` (0.75rem) scales with their browser font-size setting.
+ *    Snapping an off-scale size to the nearest PX freezes it the same way —
+ *    always snap to a rem token.
+ *
+ * 2. THE PREFIX IS `type-`, NEVER `text-`. web-consumer's `cn()` is
+ *    `twMerge(clsx(...))`, and tailwind-merge classifies any unrecognized
+ *    `text-<word>` as a text COLOUR, so it silently drops the loser:
+ *      twMerge("text-eyebrow", "text-white/70")  =>  "text-white/70"
+ *    The size vanishes with green typecheck, lint and tests. `type-eyebrow`
+ *    passes through untouched. web-admin has no cn(), so it would never
+ *    reproduce there — which makes it worse, not better.
+ *
+ * 3. THIS FILE STAYS PLATFORM-FREE. No CSS, no React, no imports — plain data
+ *    is what lets the two copies stay byte-identical.
+ *
+ * Widening the set is a NOTION edit first, then this file, in that order and
+ * in the same session. A role that exists only in code is drift with a nicer
+ * name. (MESITA-1220)
+ */
+
+export type TypeRole = {
+  /** Utility suffix: `type-<name>`. Must be a word Docs > Design uses. */
+  name: string;
+  /** rem, always. See rule 1. */
+  size: string;
+  weight?: string;
+  tracking?: string;
+  transform?: "uppercase";
+  /** Which Docs > Design role this encodes, for the guard's message. */
+  doc: string;
+};
+
+/** Sub-`text-xs` sizes the law needs and Tailwind's named scale does not cover. */
+export const TYPE_ROLES: readonly TypeRole[] = [
+  {
+    name: "meta",
+    size: "0.625rem", // 10px at root 16 — §D's documented FLOOR
+    doc: "§C dense meta / §D eyebrow-meta lower bound",
+  },
+  {
+    name: "label",
+    size: "0.6875rem", // 11px
+    doc: "§C group label size / §C dense meta upper bound",
+  },
+  {
+    name: "body",
+    size: "0.8125rem", // 13px
+    doc: "§C field label (manage) / §D body",
+  },
+  {
+    name: "eyebrow",
+    size: "0.75rem", // 12px
+    weight: "500",
+    tracking: "0.14em",
+    transform: "uppercase",
+    doc: "§C eyebrow / §D eyebrow-meta",
+  },
+] as const;
+
+/** Tracking on the uppercase idiom. Two values, per §C. */
+export const LEGAL_TRACKING = ["0.12em", "0.14em"] as const;

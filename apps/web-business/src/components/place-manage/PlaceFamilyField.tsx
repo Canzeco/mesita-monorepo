@@ -1,6 +1,6 @@
 "use client";
 
-import { ReadField } from "@/components/admin-ui/manage";
+import { ReadField } from "@/components/ui/manage";
 import { PlaceFamilyPicker } from "./PlaceFamilyPicker";
 import { usePlaceContext } from "./PlaceContext";
 

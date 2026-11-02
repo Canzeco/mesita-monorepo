@@ -1,13 +1,11 @@
 "use client";
 
-// The client half of the place surface in admin (MESITA-2086): owns the
-// AdminPlace state the shared sections read through PlaceContext, and the one
-// save bar. Same shape as the deleted web-business PlaceManageShell
-// (MESITA-2089) minus `PlaceNavBridge` — that bridge published the unsaved-
-// edits guard to the old business rail; admin's rail is not a place rail.
+// The client half of the place surface (MESITA-2086; moved from web-admin to
+// the Business app in MESITA-3103): owns the place state the profile editor
+// reads through PlaceContext, and the one save bar.
 //
-// Preview hides the save bar so it does not cover the phone. The draft still
-// lives in the mounted Profile form.
+// The save bar shows on Profile only. Off Profile the draft still lives in
+// the mounted (hidden) form, so leaving and coming back keeps it.
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -40,7 +38,7 @@ export function PlaceManageShell({
       setProfile={setProfile}
     >
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-      {tab === "preview" ? null : <PlaceSaveBar />}
+      {tab === "profile" ? <PlaceSaveBar /> : null}
     </PlaceProvider>
   );
 }
