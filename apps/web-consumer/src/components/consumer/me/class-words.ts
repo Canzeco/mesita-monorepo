@@ -19,20 +19,21 @@ export type ClassRowWords = {
   soon?: boolean;
 };
 
-/** The one line over the card: what a class is for. */
+/** The one line over the card: what a class is for, in plain words (Pato,
+ *  MESITA-3100: "clearer explanation"). */
 export const CLASS_LEAD =
-  "Your class sets which Rewards you can get. The higher your class, the better the Rewards.";
+  "Coming soon. There are two classes, and VIP members get better Rewards than Regular members.";
 
 export const CLASS_ROWS = {
   regular: {
     title: "Regular Class",
-    subtitle: "Every member starts here.",
+    subtitle: "Everyone on Mesita. You get the standard Rewards.",
     soon: true,
   },
   vip: {
     title: "VIP Class",
     subtitle:
-      "Through Mesita's partners, like modeling agencies and creator partnerships. Never bought.",
+      "Invite only, through our partners like modeling agencies and creators. Better Rewards. You can't buy it.",
     soon: true,
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;
