@@ -37,12 +37,13 @@ export type ShellPlace = { id: string; name: string | null; photo: string | null
 
 type Row = { key: string; label: string; icon: LucideIcon; href: string | null };
 
-/** Pato, 2026-11-02: the rail is Settings · Profile · Premier, always drawn;
- *  without a place Settings is the account's and the other two wait. */
+/** Pato, 2026-11-02: the rail is Settings · Profile · Premier, always drawn,
+ *  all three the place's ("settings is for the place, not the account";
+ *  MESITA-3114). Without a place they wait; the account is the footer. */
 function placeRows(placeId: string | null): Row[] {
   const href = (tab: PlaceTab) => (placeId ? placeTabHref(placeId, tab) : null);
   return [
-    { key: "settings", label: "Settings", icon: Settings, href: href("settings") ?? "/settings" },
+    { key: "settings", label: "Settings", icon: Settings, href: href("settings") },
     { key: "profile", label: "Profile", icon: Store, href: href("profile") },
     { key: "premier", label: "Premier", icon: BadgeCheck, href: href("premier") },
   ];
