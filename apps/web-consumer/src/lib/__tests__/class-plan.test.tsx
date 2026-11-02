@@ -63,30 +63,13 @@ describe("Class and Plan on the identity card", () => {
 });
 
 describe("the Class sheet", () => {
-  const sheet = (guestClass: "regular" | "vip") =>
-    renderToStaticMarkup(
-      <ClassSheet
-        open
-        onClose={() => {}}
-        guestClass={guestClass}
-        instagram={{ handle: "diego", followers: 5000 }}
-      />,
-    );
-
-  // VIP is joined, never bought (MESITA-3054): the only buttons a Regular
-  // guest sees are the two Joins.
+  // VIP is never bought, and Class is Soon (MESITA-3099): no button at all.
   it("never names a plan, a price or a buy button", () => {
-    const html = sheet("regular");
+    const html = renderToStaticMarkup(<ClassSheet open onClose={() => {}} />);
     const words = text(html);
     expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
     expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
-    const buttons = [...html.matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) => text(m[1]).trim());
-    expect(buttons).toEqual(["Join", "Join"]);
-    // A VIP's only button is leaving it.
-    const vipButtons = [...sheet("vip").matchAll(/<button[^>]*>([^]*?)<\/button>/g)].map((m) =>
-      text(m[1]).trim()
-    );
-    expect(vipButtons).toEqual(["Leave VIP"]);
+    expect(html).not.toMatch(/<(button|input|form)\b/);
   });
 });
 
@@ -125,13 +108,13 @@ describe("Class and Plan labels", () => {
 });
 
 // Me's Class tile opens /me/class: the sheet's body in a page (MESITA-2562).
+// Class is Soon (MESITA-3099): both rows Soon, neither marked as the guest's.
 describe("the Class page body", () => {
-  it("marks neither class when the read failed, and adds no Regular note", () => {
-    const html = renderToStaticMarkup(<ClassList guestClass={null} />);
-    expect(html).toContain('data-class-row="Regular"');
-    expect(html).toContain('data-class-row="VIP"');
+  it("tags both classes Soon and marks neither", () => {
+    const html = renderToStaticMarkup(<ClassList />);
+    expect(html.match(/data-class-row=/g)).toHaveLength(2);
+    expect(html.match(/data-class-soon/g)).toHaveLength(2);
     expect(html).not.toContain("data-class-mine");
-    expect(html).not.toContain("data-class-regular-note");
   });
 });
 

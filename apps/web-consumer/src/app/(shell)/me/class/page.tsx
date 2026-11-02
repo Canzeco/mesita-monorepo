@@ -1,9 +1,7 @@
-import { ClassFromProfile } from "./ClassFromProfile";
+import { ClassModal } from "@/components/consumer/me/ClassModal";
 
-// /me/class — the class you are in, Regular or VIP (MESITA-2562).
-// It reads the profile the shell already holds (MESITA-3014).
-export const dynamic = "force-dynamic";
-
+// /me/class — what a class is for, Regular and VIP, both Soon (MESITA-3099).
+// Nothing on it depends on the guest, so it reads nothing.
 export default function Page() {
-  return <ClassFromProfile />;
+  return <ClassModal />;
 }
