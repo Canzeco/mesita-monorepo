@@ -377,14 +377,15 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
   });
 
   // Four <a> tabs and no <button>: Pay navigates to its page like every
-  // other link. Pay is the Wallet now (MESITA-3098), so no tab is Soon.
-  it("draws four links and no button, none tagged Soon", async () => {
+  // other link, and it is the one tab tagged Soon (MESITA-3113).
+  it("draws four links and no button, Pay the one tagged Soon", async () => {
     const html = await renderNav("/search");
     const anchors = html.split("<a ").slice(1);
     expect(anchors).toHaveLength(4);
     expect(html.split("<button").slice(1)).toHaveLength(0);
-    expect(anchors.find((a) => /text-center">Pay</.test(a))).toBeDefined();
-    expect(html).not.toMatch(/>Soon</);
+    const pay = anchors.find((a) => /text-center">Pay</.test(a));
+    expect(pay).toMatch(/>Soon</);
+    expect(html.match(/>Soon</g)).toHaveLength(1);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
