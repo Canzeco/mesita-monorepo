@@ -274,6 +274,7 @@ declare
   v_charging public.place_premier_periods;
   v_pledge public.place_backings;
   v_last timestamptz;
+  v_span interval;
   v_start timestamptz;
   v_id uuid;
 begin
@@ -309,8 +310,10 @@ begin
   if public.premier_tier_rank(v_pledge.tier) <= public.premier_manual_tier(p_place_id) then
     -- Covered for longer than one interval since anything was paid (or since
     -- the pledge stood): it ends, so a dormant card is never charged later.
-    if greatest(coalesce(v_last, v_pledge.queued_at), v_pledge.queued_at)
-       + case v_pledge.billing_interval when 'year' then interval '1 year' else interval '1 month' end < now() then
+    -- (The interval is a variable: an IF condition ends at its first THEN,
+    -- so a CASE … THEN inside it would cut the condition short.)
+    v_span := case v_pledge.billing_interval when 'year' then interval '1 year' else interval '1 month' end;
+    if greatest(coalesce(v_last, v_pledge.queued_at), v_pledge.queued_at) + v_span < now() then
       update public.place_backings
          set status = 'ended', ended_reason = 'covered', ended_at = now(),
              checkout_kind = null, updated_at = now()
