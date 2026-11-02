@@ -9,7 +9,7 @@ import { PLACE_TAB_LABEL, placeTabFromPathname, placeTabHref, type PlaceTab } fr
 export function PlaceTabStrip({ placeId, tabs }: { placeId: string; tabs: readonly PlaceTab[] }) {
   const active = placeTabFromPathname(usePathname());
   return (
-    <nav aria-label="Place views" className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4   ">
+    <nav aria-label="Place views" className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
       {tabs.map((tab) => (
         <Link
           key={tab}

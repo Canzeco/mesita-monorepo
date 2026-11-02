@@ -48,7 +48,7 @@ export default async function PlacesPage() {
           <Link href="/claim" className="text-sm font-semibold underline underline-offset-4">Claim your place</Link>
         </Card>
       ) : (
-        <Card className="divide-border divide-y p-0 ">
+        <Card className="divide-border divide-y p-0 sm:p-0">
           {places.map((p) => {
             const open = p.state === "owner";
             const body = (

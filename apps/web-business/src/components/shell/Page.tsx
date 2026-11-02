@@ -12,7 +12,7 @@ export function PageHeader({
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="font-display text-2xl font-semibold tracking-tight ">{title}</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
         {sub ? <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">{sub}</p> : null}
       </div>
       {right}
@@ -21,5 +21,5 @@ export function PageHeader({
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <section className={`border-border bg-card rounded-2xl border p-5  ${className}`}>{children}</section>;
+  return <section className={`border-border bg-card rounded-2xl border p-5 sm:p-6 ${className}`}>{children}</section>;
 }

@@ -35,7 +35,7 @@ import { formatAbsoluteUtc } from "@/lib/format";
 /** The tab's masonry: one column, two from lg, three from xl, its cards
  *  never split. The tab's loading.tsx lays its cards out in it too. */
 export const ADMIN_COLUMNS_CLASS =
-  "columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid      ";
+  "columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3";
 
 export function AdminSection({ place }: { place: AdminPlace }) {
   return (
@@ -79,7 +79,7 @@ function MetaCard({ place }: { place: AdminPlace }) {
       className="border-border bg-card shadow-card group rounded-2xl border"
       open
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-5  [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
         <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
           <Fingerprint className="h-4 w-4" />
         </span>
@@ -96,7 +96,7 @@ function MetaCard({ place }: { place: AdminPlace }) {
           aria-hidden
         />
       </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5  ">
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-5 sm:px-6 sm:pb-6">
         <ReadField label="UID" boxed>
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
             <code className="min-w-0 truncate font-mono type-label">
@@ -179,7 +179,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
       className="border-border bg-card shadow-card group rounded-2xl border"
       open
     >
-      <summary className="flex cursor-pointer list-none items-center gap-3 p-5  [&::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-5 sm:p-6 [&::-webkit-details-marker]:hidden">
         <span className="bg-muted text-muted-foreground inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
           <Braces className="h-4 w-4" />
         </span>
@@ -196,7 +196,7 @@ function EmbeddingCard({ place }: { place: AdminPlace }) {
           aria-hidden
         />
       </summary>
-      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6  ">
+      <div className="border-border/60 flex flex-col gap-4 border-t px-5 pb-6 sm:px-6 sm:pb-8">
         <ReadField
           label={`Semantic Summary${summary ? ` \u00b7 ${wordCount}/${EMBEDDING_SOURCE_TEXT_MAX_WORDS} words` : ""}`}
           boxed

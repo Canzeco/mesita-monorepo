@@ -43,12 +43,12 @@ export function PlaceSaveBar() {
 
   return (
     <div
-      className="pointer-events-none sticky inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 "
+      className="pointer-events-none sticky inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 sm:pb-6"
       // The bar sits above the home indicator on a phone; without this it
       // overlaps the gesture area and the last card underneath it.
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
-      <div className="border-border bg-card shadow-elev pointer-events-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl border p-3       ">
+      <div className="border-border bg-card shadow-elev pointer-events-auto flex w-full max-w-2xl flex-col gap-2 rounded-2xl border p-3 sm:flex-row sm:items-center sm:gap-4 sm:rounded-full sm:py-2.5 sm:pr-2.5 sm:pl-5">
         <div className="flex min-w-0 flex-1 items-center gap-2.5" aria-live="polite">
           {savePending ? (
             <>

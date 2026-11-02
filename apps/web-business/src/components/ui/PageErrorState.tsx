@@ -12,7 +12,7 @@ export function PageErrorState({
 }) {
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-3xl px-4 py-10 ">
+      <div className="mx-auto max-w-3xl px-4 py-10 md:px-6">
         <div className="border-destructive/40 bg-destructive/5 rounded-2xl border p-10 text-center">
           <h2 className="font-display text-destructive text-xl font-semibold tracking-tight">
             {heading}

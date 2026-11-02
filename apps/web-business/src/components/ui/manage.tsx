@@ -54,7 +54,7 @@ export const CARD_SURFACE_CLASS =
  *  place tabs' loading.tsx, whose cards stand where these will (Pato,
  *  MESITA-2701: "the placeholders must be similar to the page you are
  *  loading, like the sizes"). */
-export const SECTION_CARD_CLASS = `${CARD_SURFACE_CLASS} p-5 `;
+export const SECTION_CARD_CLASS = `${CARD_SURFACE_CLASS} p-5 sm:p-6`;
 /** A block that has not loaded yet: the admin's one skeleton bone (grey,
  *  pulsing, rounded-lg), for every loading state the console draws. */
 export const BONE_CLASS = "bg-muted animate-pulse rounded-lg";
@@ -384,7 +384,7 @@ export function ConfirmDialog({
             {error}
           </p>
         ) : null}
-        <div className="mt-5 flex flex-col-reverse gap-2  ">
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             type="button"
             disabled={busy}
