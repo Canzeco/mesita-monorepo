@@ -7,11 +7,14 @@
 // never verifies the place and never promises views.
 //
 // Every amount and date is the server's (business-web-get-premier's quotes);
-// this file never computes money.
+// this file never computes money. Premier sells the plans; Billing shows
+// what runs and what is charged (MESITA-3166, D3): the level here is one
+// summary line and a link to Billing, whose Keep and See plans buttons come
+// back with a plan picked.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import {
   cancelPremier,
@@ -23,6 +26,7 @@ import {
 } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
+import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
 
 const PLANS: Array<{ key: BoostTier; rank: number; label: string; factor: string; blurb: string }> = [
   { key: "boost_2x", rank: 1, label: "Premier 2X", factor: "2X", blurb: "Twice the ranking priority on Home and the Map." },
@@ -60,6 +64,20 @@ function day(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+/** The level in one line (D3): the Refill days, then the subscription. */
+function summary(data: PlacePremier): string {
+  const parts: string[] = [];
+  if (data.manual) {
+    const origin = REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"];
+    parts.push(`${levelLabel(data.manual.tier)} until ${day(data.manual.ends_at)} · ${origin}`);
+  }
+  if (data.paid) {
+    parts.push(`${levelLabel(data.paid.tier)} paid ${data.paid.by_you ? "by you" : "by a guest"} · ${data.paid.renews ? "renews" : "ends"} ${day(data.paid.ends_at)}`);
+  }
+  if (data.renewing) parts.push("A renewal is being charged now");
+  return parts.length ? `${parts.join(". ")}.` : "Your place ranks like every other place.";
+}
+
 function AdTag() {
   return <span className="border-border text-muted-foreground type-label rounded-full border px-2 py-0.5 font-semibold">Ad</span>;
 }
@@ -68,17 +86,24 @@ export function PremierPanel({
   placeId,
   initial,
   loadError,
+  picked = null,
 }: {
   placeId: string;
   initial: PlacePremier | null;
   loadError: string | null;
+  /** A plan Billing sent the owner here to choose. */
+  picked?: BoostTier | null;
 }) {
   const router = useRouter();
   const [data, setData] = useState<PlacePremier | null>(initial);
-  const [interval, setBillingInterval] = useState<BoostInterval>(initial?.mine?.interval ?? "month");
+  const [interval, setBillingInterval] = useState<BoostInterval>(picked ? "month" : (initial?.mine?.interval ?? "month"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(loadError);
   const [armed, setArmed] = useState<string | null>(null);
+  const pickedRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    pickedRef.current?.scrollIntoView({ block: "center" });
+  }, []);
   const notice = data?.outcome && OUTCOME[data.outcome] ? OUTCOME[data.outcome] : null;
 
   async function reload() {
@@ -142,26 +167,17 @@ export function PremierPanel({
           <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : "Not Premier"}</p>
           {data.tier > 0 ? <AdTag /> : null}
         </div>
-        <ul className="text-muted-foreground flex flex-col gap-1 text-sm">
-          {data.manual ? <li>{levelLabel(data.manual.tier)} from Mesita until {day(data.manual.ends_at)}. Free.</li> : null}
-          {data.paid ? (
-            <li>
-              {levelLabel(data.paid.tier)} paid {data.paid.by_you ? "by you" : "by a guest"} · {data.paid.renews ? "renews" : "ends"} {day(data.paid.ends_at)}
-            </li>
-          ) : null}
-          {data.renewing ? <li>A renewal is being charged now.</li> : null}
-          {!data.manual && !data.paid ? <li>Your place ranks like every other place.</li> : null}
-        </ul>
-        {payer ? (
-          <div className="flex flex-wrap gap-2">
-            {/* The card and every charge are the Billing page (MESITA-3160). */}
-            <Link
-              href={billingHref(placeId)}
-              className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
-            >
-              Card and charges
-            </Link>
-            {data.paid?.renews ? (
+        <p className="text-muted-foreground text-sm">{summary(data)}</p>
+        <div className="flex flex-wrap gap-2">
+          {/* What runs, the schedule and every charge are Billing (MESITA-3166). */}
+          <Link
+            href={billingHref(placeId)}
+            className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
+          >
+            See Billing
+          </Link>
+          {payer ? (
+            data.paid?.renews ? (
               <button
                 type="button"
                 disabled={busy}
@@ -171,9 +187,9 @@ export function PremierPanel({
               >
                 {armed === "self" ? "Tap again to stop renewing" : "Stop renewing"}
               </button>
-            ) : null}
-          </div>
-        ) : null}
+            ) : null
+          ) : null}
+        </div>
         {someoneElsePays ? (
           <div className="flex flex-col gap-2">
             <p className="text-muted-foreground text-sm">
@@ -217,10 +233,18 @@ export function PremierPanel({
               if (!q) return null;
               const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
               const blocked = q.kind === "blocked" || q.covered;
+              // A resume for someone who never paid here is subscribing early,
+              // in the last 7 days of Refill days (MESITA-3165).
+              const resume = data.viewer === "former_payer" ? "Resume" : `Keep ${plan.factor}`;
               const action =
-                q.covered ? "Given by Mesita" : current ? "Your plan" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? "Resume" : q.kind === "change" ? "Switch" : "Unavailable";
+                q.covered ? "Given by Mesita" : current ? "Your plan" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
+              const isPicked = picked === plan.key;
               return (
-                <div key={plan.key} className="border-border flex flex-col gap-3 rounded-2xl border p-4">
+                <div
+                  key={plan.key}
+                  ref={isPicked ? pickedRef : undefined}
+                  className={`flex flex-col gap-3 rounded-2xl border p-4 ${isPicked ? "border-(--brand-pink-600) ring-1 ring-(--brand-pink-600)" : "border-border"}`}
+                >
                   <div className="flex items-center gap-2">
                     <span className="font-display text-lg font-semibold">{plan.label}</span>
                     <AdTag />

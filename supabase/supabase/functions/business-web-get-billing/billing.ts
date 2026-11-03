@@ -29,8 +29,10 @@ const ORIGIN: Record<Manual["source"], Origin> = { admin: "mesita", code: "code"
 export type BillingView = {
   /** The place's time zone; every date on the page is drawn in it (D12). */
   timezone: string;
-  /** Today's date there, YYYY-MM-DD. */
+  /** Today's date there, YYYY-MM-DD, and the instant the view was made
+   *  (the page draws its timeline from it). */
   today: string;
+  now: string;
   payer: "you" | "team" | null;
   /** The level now and until when it holds; `until` is null at 0 or while a
    *  subscription renews it. `days_left` only within 7 days. */
@@ -206,6 +208,7 @@ export function billingView(args: {
   return {
     timezone: tz,
     today: dayString(today),
+    now: new Date(now).toISOString(),
     payer,
     level,
     refill,
