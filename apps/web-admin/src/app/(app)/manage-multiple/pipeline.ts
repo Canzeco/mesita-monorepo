@@ -11,20 +11,21 @@
 // Facebook followers; Enable and Disable toggle guest visibility; Delete
 // archives (kept, gate answer 2026-11-02). The Edit box and its Manual
 // Premier buttons are gone (MESITA-3159; staff Premier left Business in
-// MESITA-3146). There is no Create + Enrich combo. Refill adds Premier
-// Refill days, 2X or 5X, or ends Mesita's (MESITA-3163).
+// MESITA-3146). There is no Create + Enrich combo. Boost (was Refill, MESITA-3163) is
+// box 3, right after Mesita Search (MESITA-3176, Pato: "Boost => Premier,
+// Plan => Premier"): Premier 2X or 5X for N days, or ends Mesita's.
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
   { n: 2, id: "mesita-search", label: "Mesita Search" },
-  { n: 3, id: "create", label: "Create" },
-  { n: 4, id: "enrich", label: "Enrich" },
-  { n: 5, id: "google-update", label: "Update Google" },
-  { n: 6, id: "reviews-update", label: "Update Reviews" },
-  { n: 7, id: "enable", label: "Enable" },
-  { n: 8, id: "disable", label: "Disable" },
-  { n: 9, id: "delete", label: "Delete" },
-  { n: 10, id: "refill", label: "Boost" },
+  { n: 3, id: "refill", label: "Boost" },
+  { n: 4, id: "create", label: "Create" },
+  { n: 5, id: "enrich", label: "Enrich" },
+  { n: 6, id: "google-update", label: "Update Google" },
+  { n: 7, id: "reviews-update", label: "Update Reviews" },
+  { n: 8, id: "enable", label: "Enable" },
+  { n: 9, id: "disable", label: "Disable" },
+  { n: 10, id: "delete", label: "Delete" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
