@@ -10,7 +10,7 @@ export const metadata = { title: "Billing" };
 // Update card's Checkout comes back here with `?boost=<session>`, which
 // business-web-get-premier settles first; its outcome is the line on top, so
 // a cancelled Checkout never reads "Your card is saved." Since MESITA-3173 it
-// also lists the plans (Mesita Business Free · Pro · Ultra), whose Checkout
+// also lists the plans (Free · Pro · Max, MESITA-3174), whose Checkout
 // returns here too; `?plan=<tier>` is the plan the Keep button picked.
 export default async function BillingPage({
   params,

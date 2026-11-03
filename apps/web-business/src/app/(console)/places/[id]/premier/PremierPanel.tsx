@@ -5,7 +5,7 @@
 // place and never promises views.
 //
 // Since MESITA-3173 Premier is not sold on its own: it comes with the Business
-// plans (Mesita Business Pro = Premier 2X, Ultra = Premier 5X), which Billing
+// plans (Pro = Premier 2X, Max = Premier 5X, MESITA-3174), which Billing
 // lists. This page is one card: the level running now, then where to get it.
 // Every amount and date is the server's (business-web-get-premier).
 
@@ -16,9 +16,10 @@ import { cancelPremier, getPremier, type PlacePremier } from "@/lib/business-api
 import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref } from "@/lib/routes";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
-import { PLAN_NAME } from "@/lib/plans";
+import { FREE_LEVEL, FREE_PLAN, PLAN_LEVEL, PLAN_NAME } from "@/lib/plans";
 
 const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
+// Free is Premier 1X: the place ranks like every other place.
 const levelLabel = (tier: number) => LABEL_BY_RANK[tier] ?? "Premier";
 
 function day(iso: string | null | undefined): string {
@@ -77,7 +78,7 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
     <div className="flex flex-col gap-4 pb-8">
       <Card className="flex flex-col p-0 sm:p-0">
         <div className="px-5 py-4 sm:px-6">
-          <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : "Not Premier"}</p>
+          <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : `${FREE_PLAN} · ${FREE_LEVEL}`}</p>
           {data.tier > 0 || data.renewing ? <p className="text-muted-foreground text-sm">{summary(data)}</p> : null}
         </div>
         {someoneElsePays ? (
@@ -96,7 +97,7 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
         ) : null}
         <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 sm:px-6">
           <p className="text-sm">
-            Comes with {PLAN_NAME.boost_2x} (2X) and {PLAN_NAME.boost_5x} (5X).
+            Comes with {PLAN_NAME.boost_2x} ({PLAN_LEVEL.boost_2x}) and {PLAN_NAME.boost_5x} ({PLAN_LEVEL.boost_5x}).
           </p>
           <Link
             href={billingHref(placeId, {})}

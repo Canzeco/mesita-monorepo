@@ -104,7 +104,7 @@ export function WhatYouPay({
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{sub.name ?? "A place"}</p>
                   <p className="text-muted-foreground text-sm">
-                    {PLAN_NAME[sub.tier as keyof typeof PLAN_NAME] ?? "Mesita Business"} · {usd(sub.amount_cents)} a {sub.interval}
+                    {PLAN_NAME[sub.tier as keyof typeof PLAN_NAME] ?? "Plan"} · {usd(sub.amount_cents)} a {sub.interval}
                     {sub.ends_at ? ` · ${sub.renews ? "renews" : "ends"} ${day(sub.ends_at)}` : ""}
                   </p>
                   {!sub.runs_place ? <p className="text-muted-foreground text-xs">You no longer run this place; you still pay for its Premier.</p> : null}
