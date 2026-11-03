@@ -18,7 +18,6 @@ import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
 import { FREE_PLAN, planName } from "@/lib/plans";
 import { REFILL_ORIGIN } from "@/lib/premier-origin";
-import { CodeRow } from "./CodeRow";
 
 type Rank = 1 | 2;
 const FACTOR: Record<number, string> = { 1: "2X", 2: "5X" };
@@ -106,7 +105,6 @@ export function BillingPanel({
 
   const { level, refill, subscription: sub, payer, card, charges, keep, moved } = billing;
   const { day, plainDay, daysAway } = dates(billing.timezone, billing.today);
-  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { timeZone: billing.timezone, hour: "numeric", minute: "2-digit" });
   const you = payer === "you";
   const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
 
@@ -230,8 +228,6 @@ export function BillingPanel({
 
       {plans}
 
-      {/* "Have a code?" is the last row of What's running (D1); with nothing
-          running it is one bare line under the plans, no card (MESITA-3177). */}
       {refill.length > 0 || sub ? (
         <Card className="flex flex-col p-0 sm:p-0">
           <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2>
@@ -246,12 +242,9 @@ export function BillingPanel({
               />
             ))}
             {subRow}
-            <CodeRow placeId={placeId} you={you} day={day} time={time} />
           </div>
         </Card>
-      ) : (
-        <CodeRow placeId={placeId} you={you} day={day} time={time} bare />
-      )}
+      ) : null}
 
       {payer || charges.length > 0 ? (
         <Card className="flex flex-col p-0 sm:p-0">

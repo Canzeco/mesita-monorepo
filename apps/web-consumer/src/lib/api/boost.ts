@@ -63,7 +63,7 @@ export type RefillDays = {
   tier: number;
   starts_at: string;
   ends_at: string;
-  source: "admin" | "code" | "purchase";
+  source: "admin" | "purchase";
 };
 
 export type PurchaseStatus =
