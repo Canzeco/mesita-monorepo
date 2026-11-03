@@ -3,7 +3,7 @@
 // MESITA-3103, Google search MESITA-3112. The Claim screen's search.
 //
 // `q`: the Name pipeline with Admin's caps (`businessNameItems`; Discovery's
-// "Admin & Business Name Pipeline" box): Google Autocomplete + Text Search,
+// "Admin & Business Searchbar Pipeline" box): Google Autocomplete + Text Search,
 // places only, Google's order, at most 20 rows. A row Mesita holds comes back
 // as that Mesita place, with its listing phone masked (so the owner knows
 // which number proves it) and the caller's own state on it; archived places
@@ -12,6 +12,11 @@
 //
 // `place_id`: that one Mesita place (the consumer app's "Is this your
 // business?" deep link).
+//
+// An empty `q` (MESITA-3147): with Discovery's Admin & Business Searchbar
+// box set to "Show results on an empty query" (`name.admin.emptyQuery`), the
+// preliminary results — Mesita places, most reviewed first, MAX_ROWS — read
+// from Mesita only: no Google call, no search budget. Off, it answers none.
 //
 // `preview_place_id` (MESITA-3138): Google's preview of one Google-only row
 // for the Add dialog — one Details read and its first photo, as the consumer
@@ -31,6 +36,8 @@ import { maskPhone } from "../_shared/place-verification.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { businessNameItems } from "../_shared/name-pipeline.ts";
 import { fetchPlacePreview, readGooglePlacesKey, stripPlacesPrefix } from "../_shared/google-places.ts";
+import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
+import { LISTED_STATES } from "../_shared/place-state.ts";
 
 type Row = {
   id: string;
@@ -119,6 +126,20 @@ serveJson("business-web-find-place", async (req) => {
   }
 
   const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";
+  if (q.length === 0) {
+    const cfg = await loadDiscoveryConfig(admin);
+    if (!cfg.name.admin.emptyQuery) return json({ ok: true, places: [] });
+    const { data, error } = await admin
+      .from("profiles")
+      .select(SELECT)
+      .in("state", [...LISTED_STATES])
+      .order("google_review_count", { ascending: false, nullsFirst: false })
+      .limit(MAX_ROWS);
+    if (error) return json({ ok: false, error: error.message }, 500);
+    const rows = (data ?? []) as Row[];
+    const mine = await myStates(admin, user.id, rows.map((r) => r.id));
+    return json({ ok: true, preliminary: true, places: rows.map((r) => mesitaRow(r, mine)) });
+  }
   if (q.length < 2) return json({ ok: true, places: [] });
 
   // A daily budget per account before any Google spend (MESITA-3123).
