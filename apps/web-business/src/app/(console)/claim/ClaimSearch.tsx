@@ -8,7 +8,10 @@
 // (business-web-create-place), then opens the same claim form. Adding a
 // place grants nothing: Mesita still reviews the claim.
 // The same field heads Places (MESITA-3126); for Mesita staff it opens any
-// place Mesita holds instead (`open`), and Google-only listings are left out.
+// place Mesita holds instead (`open`). Staff see Google-only listings too
+// (MESITA-3134, Pato: "google and mesita, like the searchbar in consumer
+// app"): their Add adds the place and opens its profile, since staff run any
+// place without a claim. Everyone else still claims what they add.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -89,12 +92,14 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
       return;
     }
     session.current = null;
-    router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
+    router.push(
+      open
+        ? `/places/${encodeURIComponent(r.data.placeId)}/profile`
+        : `/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`,
+    );
   }
 
-  // Staff open places Mesita holds; a Google-only listing is not theirs to add.
-  const shown = open && rows ? rows.filter((p) => !!p.id) : rows;
-  const empty = shown !== null && shown.length === 0 && q.trim().length >= MIN_QUERY && !busy;
+  const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -120,12 +125,12 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
       {empty ? (
         <p className="text-muted-foreground text-sm">
-          {open ? "No Mesita place by that name." : "Google doesn't know that name either. Check the spelling, or add the city."}
+          Google doesn&apos;t know that name either. Check the spelling, or add the city.
         </p>
       ) : null}
-      {shown && shown.length > 0 ? (
+      {rows && rows.length > 0 ? (
         <ul className="divide-border divide-y">
-          {shown.map((p) =>
+          {rows.map((p) =>
             p.id ? (
               <li key={p.id}>
                 <Link href={open ? `/places/${encodeURIComponent(p.id)}/profile` : `/claim/${encodeURIComponent(p.id)}`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
@@ -153,7 +158,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
                   className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
                 >
                   <Plus className="size-4" aria-hidden />
-                  {adding === p.google_place_id ? "Adding…" : "Add and claim"}
+                  {adding === p.google_place_id ? "Adding…" : open ? "Add" : "Add and claim"}
                 </button>
               </li>
             ),
