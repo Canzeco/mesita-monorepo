@@ -115,6 +115,8 @@ export type PendingRequestView = {
   consumer_id: string;
   name: string;
   role: string;
+  /** The WhatsApp number to write to (MESITA-3127); null on older requests. */
+  contact: string | null;
   note: string | null;
   created_at: string;
   phone: string | null;
@@ -159,7 +161,7 @@ export async function listPlaceOwners(
     admin.from("place_managers").select(MANAGER_COLUMNS).eq("place_id", placeId).is("revoked_at", null)
       .order("verified_at", { ascending: false }),
     admin.from("place_verification_requests")
-      .select("id, place_id, consumer_id, name, role, note, created_at")
+      .select("id, place_id, consumer_id, name, role, contact, note, created_at")
       .eq("place_id", placeId).eq("status", "pending").order("created_at", { ascending: true }),
   ]);
   if (rows.error) console.error("[place-access] place_managers:", rows.error.message);

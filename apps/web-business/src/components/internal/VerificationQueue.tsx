@@ -89,6 +89,16 @@ export function VerificationQueue({
                 {r.name}, {r.role} · asked {day(r.created_at)}
               </span>
               <Who name={null} phone={r.phone} handle={r.instagram_handle} member={r.member_number} />
+              {r.contact ? (
+                <a
+                  href={`https://wa.me/${r.contact.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-fit text-sm font-semibold underline underline-offset-4"
+                >
+                  WhatsApp {r.contact}
+                </a>
+              ) : null}
               {r.note ? <p className="text-sm">&ldquo;{r.note}&rdquo;</p> : null}
             </div>
             <input

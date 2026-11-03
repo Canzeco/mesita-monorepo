@@ -27,7 +27,7 @@ serveJson("business-web-list-verifications", async (req) => {
   } else {
     const { data, error } = await admin
       .from("place_verification_requests")
-      .select("id, place_id, consumer_id, name, role, note, created_at")
+      .select("id, place_id, consumer_id, name, role, contact, note, created_at")
       .eq("status", "pending")
       .order("created_at", { ascending: true })
       .limit(200);

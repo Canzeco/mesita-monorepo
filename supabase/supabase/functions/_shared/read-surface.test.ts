@@ -238,6 +238,8 @@ const PROFILES_READ_ALLOWLIST = [
   "business-web-get-identity/index.ts",
   "business-web-find-place/index.ts",
   "business-web-request-verification/index.ts",
+  // The claim call (MESITA-3127): the listing phone it dials, and the state.
+  "business-web-call-place-code/index.ts",
   "business-web-list-verifications/index.ts",
 ];
 

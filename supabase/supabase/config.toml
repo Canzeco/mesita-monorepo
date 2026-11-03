@@ -522,6 +522,14 @@ verify_jwt = true
 [functions.business-web-request-verification]
 verify_jwt = true
 
+# MESITA-3127: the claim call — a Twilio call to the listing phone says a
+# 6-digit code; check spends it and writes the guest in.
+[functions.business-web-call-place-code]
+verify_jwt = true
+
+[functions.business-web-check-place-code]
+verify_jwt = true
+
 [functions.business-web-get-place]
 verify_jwt = true
 

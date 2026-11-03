@@ -84,16 +84,35 @@ export async function requestVerification(input: {
   placeId: string;
   name?: string;
   role?: string;
+  contact?: string;
   note?: string;
 }): Promise<Result<ClaimOutcome>> {
   const r = await efInvoke<{ outcome: ClaimOutcome }>("business-web-request-verification", {
     place_id: input.placeId,
     name: input.name,
     role: input.role,
+    contact: input.contact,
     note: input.note,
   });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data.outcome };
+}
+
+/** The claim call (MESITA-3127): a call to the place's listing phone says a 6-digit code. */
+export async function callPlaceCode(placeId: string): Promise<Result<{ outcome: "calling" | "already_owner"; maskedPhone: string | null; minutes: number }>> {
+  const r = await efInvoke<{ outcome: "calling" | "already_owner"; masked_phone?: string | null; minutes?: number }>(
+    "business-web-call-place-code",
+    { place_id: placeId },
+  );
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { outcome: r.data.outcome, maskedPhone: r.data.masked_phone ?? null, minutes: r.data.minutes ?? 10 } };
+}
+
+/** The code the call said. `tries_left` comes back on a wrong code. */
+export async function checkPlaceCode(placeId: string, code: string): Promise<Result<"verified">> {
+  const r = await efInvoke<{ outcome: "verified" }>("business-web-check-place-code", { place_id: placeId, code });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: "verified" };
 }
 
 export async function leavePlace(placeId: string): Promise<Result<null>> {
@@ -237,6 +256,8 @@ export type PendingRequest = {
   consumer_id: string;
   name: string;
   role: string;
+  /** The WhatsApp number to write to (MESITA-3127). */
+  contact: string | null;
   note: string | null;
   created_at: string;
   phone: string | null;
