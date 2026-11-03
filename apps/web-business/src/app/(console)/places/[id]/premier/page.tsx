@@ -6,10 +6,9 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Premier" };
 
 // Premier (MESITA-3103): the place's paid visibility, run by the place. The
-// read is business-web-get-premier; with `?boost=<session>` (Stripe Checkout's
-// return, from buying or from Update card) it first settles the caller's own
-// payment. Billing (plan, card, charges) is its own page (MESITA-3160), and
-// since MESITA-3173 it also sells the plans that include Premier.
+// read is business-web-get-premier; with `?boost=<session>` (a Stripe Checkout
+// started here before MESITA-3186) it first settles the caller's own payment.
+// Billing (plans, card, charges) is its own page (MESITA-3160, MESITA-3173).
 export default async function PremierPage({
   params,
   searchParams,
