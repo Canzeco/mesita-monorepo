@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { leavePlace } from "@/lib/business-api";
+import { PLACES } from "@/lib/routes";
 
 export function LeavePlace({ placeId }: { placeId: string }) {
   const router = useRouter();
@@ -21,7 +22,7 @@ export function LeavePlace({ placeId }: { placeId: string }) {
           const r = await leavePlace(placeId);
           setBusy(false);
           if (!r.ok) return setError(r.code === "transfer_first" ? "Make an editor the owner before you leave." : r.error);
-          router.push("/places");
+          router.push(PLACES);
           router.refresh();
         }}
         className="border-border hover:bg-muted h-9 w-fit rounded-full border px-4 text-sm font-semibold disabled:opacity-60"

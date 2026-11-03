@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { findPlaces, type ClaimablePlace } from "@/lib/business-api";
 import { PageHeader } from "@/components/shell/Page";
-import { ClaimForm } from "./ClaimForm";
+import { ClaimForm } from "@/components/claim/ClaimForm";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Claim your place" };

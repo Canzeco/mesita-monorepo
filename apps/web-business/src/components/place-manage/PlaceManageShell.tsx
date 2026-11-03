@@ -12,7 +12,7 @@ import { usePathname } from "next/navigation";
 import { PlaceProvider } from "@/components/place-manage/PlaceContext";
 import { PlaceSaveBar } from "@/components/place-manage/PlaceSaveBar";
 import type { AdminPlace, ProfileRead } from "@/components/place-manage/actions";
-import { placeTabFromPathname } from "@/lib/place-tabs";
+import { placeTabFromPathname } from "@/lib/routes";
 
 export function PlaceManageShell({
   placeId,

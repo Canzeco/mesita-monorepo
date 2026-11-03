@@ -26,6 +26,7 @@ import { Card } from "@/components/shell/Page";
 import { AddPlaceDialog } from "./AddPlaceDialog";
 import { ClaimDialog } from "./ClaimDialog";
 import { INPUT_BASE } from "@/components/ui/manage";
+import { claimHref, placeTabHref } from "@/lib/routes";
 
 const MIN_QUERY = 2;
 const SEARCH_DELAY_MS = 400;
@@ -55,7 +56,7 @@ function Thumb({ photo }: { photo: string | null }) {
   return <span className="bg-muted size-12 shrink-0 rounded-xl" />;
 }
 
-export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolean; autoFocus?: boolean }) {
+export function ClaimSearch({ open = false }: { open?: boolean }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<FoundPlace[] | null>(null);
@@ -104,7 +105,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
     }
     session.current = null;
     if (open) {
-      router.push(`/places/${encodeURIComponent(r.data.placeId)}/profile`);
+      router.push(placeTabHref(r.data.placeId, "profile"));
       return;
     }
     // The new place, with its listing phone, for the claim modal.
@@ -113,7 +114,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
     setPicked(null);
     const hit = found.ok ? found.data[0] : null;
     if (hit?.id) setClaiming({ place: hit as ClaimablePlace, added: r.data.created, enriching: r.data.enriching });
-    else router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
+    else router.push(claimHref(r.data.placeId, { added: r.data.created }));
   }
 
   const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
@@ -133,7 +134,6 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
           placeholder={open ? "Search any place" : "Search for your place"}
           className={`${INPUT_BASE} h-11 px-3`}
           aria-label={open ? "Search any place" : "Search for your place"}
-          autoFocus={autoFocus}
         />
         <button type="submit" disabled={busy} className="bg-foreground text-background inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60">
           <Search className="size-4" aria-hidden /> {busy ? "Searching…" : "Search"}
@@ -151,7 +151,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
             p.id ? (
               <li key={p.id}>
                 {open ? (
-                  <Link href={`/places/${encodeURIComponent(p.id)}/profile`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
+                  <Link href={placeTabHref(p.id, "profile")} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
                     <Thumb photo={p.photo} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>

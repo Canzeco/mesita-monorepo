@@ -10,7 +10,7 @@
 import { useEffect, useRef } from "react";
 import { MapPin, X } from "lucide-react";
 import type { ClaimablePlace } from "@/lib/business-api";
-import { ClaimForm } from "./[placeId]/ClaimForm";
+import { ClaimForm } from "./ClaimForm";
 import { EnrichingTag } from "@/components/place-manage/GenerateSteps";
 
 export function ClaimDialog({

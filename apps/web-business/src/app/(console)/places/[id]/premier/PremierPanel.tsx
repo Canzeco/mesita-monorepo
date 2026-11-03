@@ -22,6 +22,7 @@ import {
   type PlacePremier,
 } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
+import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
 
 const PLANS: Array<{ key: BoostTier; rank: number; label: string; factor: string; blurb: string }> = [
   { key: "boost_2x", rank: 1, label: "Premier 2X", factor: "2X", blurb: "Twice the ranking priority on Home and the Map." },
@@ -84,7 +85,7 @@ export function PremierPanel({
     const r = await getPremier(placeId);
     if (r.ok) setData(r.data);
     else setError(r.error);
-    router.replace(`/places/${encodeURIComponent(placeId)}/premier`);
+    router.replace(placeTabHref(placeId, "premier"));
   }
 
   async function choose(tier: BoostTier) {
@@ -94,7 +95,7 @@ export function PremierPanel({
       placeId,
       tier,
       interval,
-      returnUrl: `${window.location.origin}/places/${encodeURIComponent(placeId)}/premier`,
+      returnUrl: returnUrl(placeTabHref(placeId, "premier")),
     });
     setBusy(false);
     if (!r.ok) {
@@ -155,7 +156,7 @@ export function PremierPanel({
           <div className="flex flex-wrap gap-2">
             {/* The card and every charge live in Settings › Billing (MESITA-3128, 3136). */}
             <Link
-              href={`/places/${encodeURIComponent(placeId)}/settings#billing`}
+              href={billingHref(placeId)}
               className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
             >
               Card and charges

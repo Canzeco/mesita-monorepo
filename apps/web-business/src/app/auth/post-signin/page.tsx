@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getIdentity } from "@/lib/business-api";
 import { NEXT_COOKIE, safeNextPath } from "@/lib/safe-next";
+import { PLACES, placeTabHref } from "@/lib/routes";
 
 // Where every sign-in lands (MESITA-3103). business-web-get-identity creates
 // the owner's account on a first Google sign-in, then we route:
 //   a deep link (`next`, or the cookie the Google path parked) → there;
 //   one place they run → its profile;
-//   several → the place list;
-//   none → the claim search (staff: the place list, which offers search).
+//   several, none, or staff → Places, whose search claims or opens a place.
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +33,9 @@ export default async function PostSigninPage({
   // every Business door (MESITA-3105): end it and say why.
   if (!identity.ok && identity.code === "google_only") redirect("/auth/signout?error=google_only");
   if (next) redirect(next);
-  if (!identity.ok) redirect("/places");
+  if (!identity.ok) redirect(PLACES);
   const owned = identity.data.places.filter((p) => p.state === "owner");
-  if (owned.length === 1) redirect(`/places/${encodeURIComponent(owned[0].place_id)}/profile`);
-  if (owned.length > 1 || identity.data.isSuperAdmin || identity.data.places.length > 0) redirect("/places");
-  redirect("/claim");
+  if (owned.length === 1) redirect(placeTabHref(owned[0].place_id, "profile"));
+  // Everyone else lands on Places: its search is where you claim (MESITA-3141).
+  redirect(PLACES);
 }

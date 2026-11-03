@@ -11,6 +11,7 @@ import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import { startPremier, type PlaceBilling } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
+import { placeTabHref, returnUrl } from "@/lib/routes";
 
 const PLAN_LABEL: Record<string, string> = { boost_2x: "Premier 2X", boost_5x: "Premier 5X" };
 const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
@@ -47,7 +48,7 @@ export function BillingPanel({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const premierHref = `/places/${encodeURIComponent(placeId)}/premier`;
+  const premierHref = placeTabHref(placeId, "premier");
 
   if (!billing) {
     return (
@@ -61,7 +62,7 @@ export function BillingPanel({
   async function updateCard() {
     setBusy(true);
     setError(null);
-    const r = await startPremier({ placeId, updateCard: true, returnUrl: `${window.location.origin}/places/${encodeURIComponent(placeId)}/settings` });
+    const r = await startPremier({ placeId, updateCard: true, returnUrl: returnUrl(placeTabHref(placeId, "settings")) });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     if (r.data.url) window.location.assign(r.data.url);
