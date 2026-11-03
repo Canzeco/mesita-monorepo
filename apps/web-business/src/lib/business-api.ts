@@ -408,3 +408,29 @@ export async function decideVerification(
   if (!r.ok) return fail(r);
   return { ok: true, data: null };
 }
+
+// ── Premier codes (MESITA-3167) ─────────────────────────────────────────
+
+/** A redeemed code: its Refill days, and the paid Subscription they pause. */
+export type RedeemedCode = {
+  tier: 1 | 2;
+  days: number;
+  ends_at: string | null;
+  paused: { tier: 1 | 2; until: string } | null;
+};
+
+/** Redeems a Mesita code on the place (owner or editor). A refusal is
+ *  `{ ok: false, code }` (code_unknown · code_expired · code_exhausted ·
+ *  code_used_here · paid_higher · cap_reached · rate_limited · …); a
+ *  rate_limited error carries the retry time in `error` as an ISO string. */
+export async function redeemPremierCode(placeId: string, code: string): Promise<Result<RedeemedCode>> {
+  const r = await efInvoke<RedeemedCode & { ok: true; retry_after?: string }>("business-web-redeem-premier-code", {
+    place_id: placeId,
+    code,
+  });
+  if (!r.ok) {
+    const retry = (r.data as { retry_after?: unknown } | null)?.retry_after;
+    return { ok: false, code: r.code, error: r.code === "rate_limited" && typeof retry === "string" ? retry : r.error };
+  }
+  return { ok: true, data: { tier: r.data.tier, days: r.data.days, ends_at: r.data.ends_at, paused: r.data.paused } };
+}
