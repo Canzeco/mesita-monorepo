@@ -7,6 +7,7 @@ import { SectionCard } from "@/components/admin-ui/config";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import { businessPlaceHref } from "@/lib/business-url";
 import { listPremier, type PremierList, type PremierRow } from "./actions";
+import { PremierCodes } from "./PremierCodes";
 
 // Manage › Premier (MESITA-3011). Every active place's paid visibility on
 // one page, Premier places first: the level, who pays or who granted it,
@@ -14,6 +15,7 @@ import { listPremier, type PremierList, type PremierRow } from "./actions";
 // 30 days. A row opens that place's line in place (the same BoostSection as
 // Single Place › Premier): grant a period nobody pays for, end a grant,
 // remove a pledge. Stripe is the record of money; nothing here refunds.
+// Codes (MESITA-3167) are minted, listed and revoked here too.
 
 const MARK: Record<number, string> = { 1: "2X", 2: "5X" };
 
@@ -122,6 +124,8 @@ export function PremierClient({ initial, loadError }: { initial: PremierList | n
           </div>
         )}
       </SectionCard>
+
+      {list && <PremierCodes codes={list.codes} onChanged={() => void reload()} />}
 
       <section className="border-border bg-card flex flex-col rounded-2xl border">
         <div className="border-border flex items-center gap-2 border-b px-4 py-3">

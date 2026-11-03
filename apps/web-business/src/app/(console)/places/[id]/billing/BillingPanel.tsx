@@ -17,6 +17,7 @@ import { startPremier, type PlaceBilling } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { placeTabHref, premierHref, returnUrl } from "@/lib/routes";
 import { REFILL_ORIGIN } from "@/lib/premier-origin";
+import { CodeRow } from "./CodeRow";
 
 type Rank = 1 | 2;
 const FACTOR: Record<number, string> = { 1: "2X", 2: "5X" };
@@ -101,6 +102,7 @@ export function BillingPanel({
 
   const { level, refill, subscription: sub, payer, card, charges, keep, moved } = billing;
   const { day, plainDay, daysAway } = dates(billing.timezone, billing.today);
+  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { timeZone: billing.timezone, hour: "numeric", minute: "2-digit" });
   const you = payer === "you";
   const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
 
@@ -222,23 +224,24 @@ export function BillingPanel({
         ) : null}
       </div>
 
-      {refill.length > 0 || sub ? (
-        <Card className="flex flex-col p-0 sm:p-0">
-          <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2>
-          <div className="divide-border divide-y">
-            {refill.map((r) => (
-              <Row
-                key={r.id}
-                badge={r.tier}
-                what={REFILL_ORIGIN[r.origin]}
-                when={`${r.state === "running" ? "Now" : day(r.starts_at)} – ${day(r.ends_at)}`}
-                state={r.state === "running" ? "Running" : "Next"}
-              />
-            ))}
-            {subRow}
-          </div>
-        </Card>
-      ) : null}
+      {/* "Have a code?" is the card's last row (D1); with nothing running it
+          stands alone, open, right below the status (D4; MESITA-3167). */}
+      <Card className="flex flex-col p-0 sm:p-0">
+        {refill.length > 0 || sub ? <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2> : null}
+        <div className="divide-border divide-y">
+          {refill.map((r) => (
+            <Row
+              key={r.id}
+              badge={r.tier}
+              what={REFILL_ORIGIN[r.origin]}
+              when={`${r.state === "running" ? "Now" : day(r.starts_at)} – ${day(r.ends_at)}`}
+              state={r.state === "running" ? "Running" : "Next"}
+            />
+          ))}
+          {subRow}
+          <CodeRow placeId={placeId} you={you} day={day} time={time} />
+        </div>
+      </Card>
 
       {payer || charges.length > 0 ? (
         <Card className="flex flex-col p-0 sm:p-0">

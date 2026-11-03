@@ -16,6 +16,7 @@ import {
   type TierRank,
 } from "@/lib/api/boost";
 import { businessClaimHref } from "@/lib/business-url";
+import { PremierCodeBox } from "@/components/consumer/place-detail/PremierCodeBox";
 import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -197,6 +198,10 @@ export function BoostPane({
           aria-hidden
         />
       </button>
+
+      {/* Mesita codes (MESITA-3167): free Refill days for this place; a
+          redemption reloads the tab (onRetry is the Premier read). */}
+      <PremierCodeBox placeId={place.id} onRedeemed={onRetry} />
 
       {/* Box 3: the Business app's claim page, in a new tab. */}
       {claimHref && (
