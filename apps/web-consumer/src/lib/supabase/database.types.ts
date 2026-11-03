@@ -126,6 +126,24 @@ export type Database = {
         }
         Relationships: []
       }
+      business_search_attempts: {
+        Row: {
+          account_id: string
+          at: string
+          id: number
+        }
+        Insert: {
+          account_id: string
+          at?: string
+          id?: never
+        }
+        Update: {
+          account_id?: string
+          at?: string
+          id?: never
+        }
+        Relationships: []
+      }
       catalog_membership: {
         Row: {
           enabled: boolean
@@ -261,6 +279,10 @@ export type Database = {
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_sync_attempted_at: string | null
+          instagram_sync_count: number
+          instagram_sync_day: string | null
+          instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
           phone: string | null
@@ -287,6 +309,10 @@ export type Database = {
           id: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_sync_attempted_at?: string | null
+          instagram_sync_count?: number
+          instagram_sync_day?: string | null
+          instagram_synced_at?: string | null
           instagram_verified_at?: string | null
           last_name?: string | null
           phone?: string | null
@@ -313,6 +339,10 @@ export type Database = {
           id?: string
           instagram_followers_count?: number | null
           instagram_handle?: string | null
+          instagram_sync_attempted_at?: string | null
+          instagram_sync_count?: number
+          instagram_sync_day?: string | null
+          instagram_synced_at?: string | null
           instagram_verified_at?: string | null
           last_name?: string | null
           phone?: string | null
@@ -332,6 +362,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      meta_instagram_token: {
+        Row: {
+          access_token: string
+          expires_at: string | null
+          id: boolean
+          refreshed_at: string
+        }
+        Insert: {
+          access_token: string
+          expires_at?: string | null
+          id?: boolean
+          refreshed_at?: string
+        }
+        Update: {
+          access_token?: string
+          expires_at?: string | null
+          id?: boolean
+          refreshed_at?: string
+        }
+        Relationships: []
       }
       place_activity: {
         Row: {
@@ -382,12 +433,15 @@ export type Database = {
         Row: {
           amount_cents: number
           billing_interval: string
+          checkout_kind: string | null
           consumer_id: string | null
           created_at: string
           currency: string
           ended_at: string | null
+          ended_reason: string | null
           id: string
           livemode: boolean
+          notice_dismissed_at: string | null
           pending_amount_cents: number | null
           pending_interval: string | null
           pending_tier: string | null
@@ -404,12 +458,15 @@ export type Database = {
         Insert: {
           amount_cents: number
           billing_interval: string
+          checkout_kind?: string | null
           consumer_id?: string | null
           created_at?: string
           currency?: string
           ended_at?: string | null
+          ended_reason?: string | null
           id?: string
           livemode?: boolean
+          notice_dismissed_at?: string | null
           pending_amount_cents?: number | null
           pending_interval?: string | null
           pending_tier?: string | null
@@ -426,12 +483,15 @@ export type Database = {
         Update: {
           amount_cents?: number
           billing_interval?: string
+          checkout_kind?: string | null
           consumer_id?: string | null
           created_at?: string
           currency?: string
           ended_at?: string | null
+          ended_reason?: string | null
           id?: string
           livemode?: boolean
+          notice_dismissed_at?: string | null
           pending_amount_cents?: number | null
           pending_interval?: string | null
           pending_tier?: string | null
@@ -659,6 +719,171 @@ export type Database = {
         }
         Relationships: []
       }
+      place_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string | null
+          place_id: string
+          revoked_at: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by?: string | null
+          place_id: string
+          revoked_at?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string | null
+          place_id?: string
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_invites_accepted_by_fkey"
+            columns: ["accepted_by"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_invites_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_managers: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          method: string
+          note: string | null
+          place_id: string
+          revoked_at: string | null
+          revoked_by: string | null
+          role: string
+          updated_at: string
+          verified_at: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          method: string
+          note?: string | null
+          place_id: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string
+          updated_at?: string
+          verified_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          method?: string
+          note?: string | null
+          place_id?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string
+          updated_at?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_managers_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_managers_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_manual_premier: {
+        Row: {
+          created_at: string
+          ended_by: string | null
+          ends_at: string
+          granted_by: string | null
+          id: string
+          place_id: string
+          request_id: string | null
+          source: string
+          starts_at: string
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_by?: string | null
+          ends_at: string
+          granted_by?: string | null
+          id?: string
+          place_id: string
+          request_id?: string | null
+          source?: string
+          starts_at?: string
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_by?: string | null
+          ends_at?: string
+          granted_by?: string | null
+          id?: string
+          place_id?: string
+          request_id?: string | null
+          source?: string
+          starts_at?: string
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_manual_premier_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_media_assets: {
         Row: {
           analysis_text: string | null
@@ -769,6 +994,7 @@ export type Database = {
           backing_id: string | null
           billing_interval: string
           charged_cents: number
+          covered_until: string | null
           created_at: string
           credit_cents: number
           cut_from: string | null
@@ -779,6 +1005,7 @@ export type Database = {
           livemode: boolean
           place_id: string
           price_cents: number
+          remaining_at_cover_sec: number | null
           starts_at: string
           status: string
           stripe_checkout_session_id: string | null
@@ -790,6 +1017,7 @@ export type Database = {
           backing_id?: string | null
           billing_interval: string
           charged_cents?: number
+          covered_until?: string | null
           created_at?: string
           credit_cents?: number
           cut_from?: string | null
@@ -800,6 +1028,7 @@ export type Database = {
           livemode?: boolean
           place_id: string
           price_cents?: number
+          remaining_at_cover_sec?: number | null
           starts_at: string
           status: string
           stripe_checkout_session_id?: string | null
@@ -811,6 +1040,7 @@ export type Database = {
           backing_id?: string | null
           billing_interval?: string
           charged_cents?: number
+          covered_until?: string | null
           created_at?: string
           credit_cents?: number
           cut_from?: string | null
@@ -821,6 +1051,7 @@ export type Database = {
           livemode?: boolean
           place_id?: string
           price_cents?: number
+          remaining_at_cover_sec?: number | null
           starts_at?: string
           status?: string
           stripe_checkout_session_id?: string | null
@@ -1059,6 +1290,7 @@ export type Database = {
         Row: {
           consumer_id: string
           created_at: string
+          id: string
           note: string | null
           place_id: string
           reason: string
@@ -1066,6 +1298,7 @@ export type Database = {
         Insert: {
           consumer_id: string
           created_at?: string
+          id?: string
           note?: string | null
           place_id: string
           reason: string
@@ -1073,6 +1306,7 @@ export type Database = {
         Update: {
           consumer_id?: string
           created_at?: string
+          id?: string
           note?: string | null
           place_id?: string
           reason?: string
@@ -1160,6 +1394,147 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      place_verification_codes: {
+        Row: {
+          attempts: number
+          code_hash: string
+          consumer_id: string
+          created_at: string
+          expires_at: string
+          place_id: string
+        }
+        Insert: {
+          attempts?: number
+          code_hash: string
+          consumer_id: string
+          created_at?: string
+          expires_at: string
+          place_id: string
+        }
+        Update: {
+          attempts?: number
+          code_hash?: string
+          consumer_id?: string
+          created_at?: string
+          expires_at?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_verification_codes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_verification_codes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_verification_requests: {
+        Row: {
+          consumer_id: string
+          contact: string | null
+          created_at: string
+          decided_at: string | null
+          decision_note: string | null
+          id: string
+          name: string
+          note: string | null
+          place_id: string
+          reviewer_email: string | null
+          role: string
+          status: string
+        }
+        Insert: {
+          consumer_id: string
+          contact?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          name: string
+          note?: string | null
+          place_id: string
+          reviewer_email?: string | null
+          role: string
+          status?: string
+        }
+        Update: {
+          consumer_id?: string
+          contact?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decision_note?: string | null
+          id?: string
+          name?: string
+          note?: string | null
+          place_id?: string
+          reviewer_email?: string | null
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_verification_requests_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_verification_requests_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_verification_sends: {
+        Row: {
+          channel: string
+          consumer_id: string
+          id: number
+          place_id: string
+          sent_at: string
+        }
+        Insert: {
+          channel: string
+          consumer_id: string
+          id?: never
+          place_id: string
+          sent_at?: string
+        }
+        Update: {
+          channel?: string
+          consumer_id?: string
+          id?: never
+          place_id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_verification_sends_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_verification_sends_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       places: {
         Row: {
@@ -1551,6 +1926,124 @@ export type Database = {
           },
         ]
       }
+      wallet_entries: {
+        Row: {
+          amount_cents: number
+          consumer_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          kind: string
+          livemode: boolean
+          place_id: string
+          purchase_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          consumer_id?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          kind: string
+          livemode?: boolean
+          place_id: string
+          purchase_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          kind?: string
+          livemode?: boolean
+          place_id?: string
+          purchase_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_entries_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_entries_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: true
+            referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_purchases: {
+        Row: {
+          amount_cents: number
+          consumer_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          livemode: boolean
+          paid_at: string | null
+          place_id: string
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          consumer_id?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id?: string
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_purchases_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_purchases_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       profiles: {
@@ -1659,6 +2152,10 @@ export type Database = {
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_sync_attempted_at: string | null
+          instagram_sync_count: number
+          instagram_sync_day: string | null
+          instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
           phone: string | null
@@ -1705,6 +2202,10 @@ export type Database = {
           id: string
           instagram_followers_count: number | null
           instagram_handle: string | null
+          instagram_sync_attempted_at: string | null
+          instagram_sync_count: number
+          instagram_sync_day: string | null
+          instagram_synced_at: string | null
           instagram_verified_at: string | null
           last_name: string | null
           phone: string | null
@@ -1731,6 +2232,10 @@ export type Database = {
       }
       atlas_family_slugs_valid: { Args: { slugs: string[] }; Returns: boolean }
       bump_reservation_call_counter: { Args: { pid: string }; Returns: number }
+      business_search_take: {
+        Args: { p_account_id: string; p_cap: number }
+        Returns: boolean
+      }
       close_place_enrichment_run: {
         Args: {
           p_charges?: Json
@@ -1744,6 +2249,19 @@ export type Database = {
         Returns: boolean
       }
       close_stale_place_enrichment_runs: { Args: never; Returns: number }
+      consumer_instagram_claim_scrape: {
+        Args: {
+          p_consumer_id: string
+          p_cooldown_s: number
+          p_daily_max: number
+          p_kind: string
+        }
+        Returns: Json
+      }
+      consumer_instagram_sync: {
+        Args: { p_consumer_id: string; p_followers: number; p_handle: string }
+        Returns: boolean
+      }
       consumer_instagram_verify: {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
@@ -1832,6 +2350,45 @@ export type Database = {
         Args: { fallback: string; google_types: Json; stored: string[] }
         Returns: string[]
       }
+      place_invite_accept: {
+        Args: { p_consumer_id: string; p_email: string }
+        Returns: number
+      }
+      place_take_code_try: {
+        Args: { p_consumer_id: string; p_max: number; p_place_id: string }
+        Returns: string
+      }
+      place_take_verification_send: {
+        Args: { p_channel: string; p_consumer_id: string; p_place_id: string }
+        Returns: string
+      }
+      place_transfer_owner: {
+        Args: { p_place_id: string; p_to_manager_id: string }
+        Returns: boolean
+      }
+      place_verification_approve: {
+        Args: {
+          p_consumer_id: string
+          p_days: number
+          p_method: string
+          p_note?: string
+          p_place_id: string
+          p_request_id?: string
+          p_reviewer?: string
+        }
+        Returns: string
+      }
+      premier_add_days: {
+        Args: {
+          p_by: string
+          p_days: number
+          p_place_id: string
+          p_request_id: string
+          p_source: string
+          p_tier: number
+        }
+        Returns: Json
+      }
       premier_begin_renewal: { Args: { p_place_id: string }; Returns: Json }
       premier_claim: {
         Args: {
@@ -1850,19 +2407,24 @@ export type Database = {
         }
         Returns: Json
       }
-      premier_end_grant: { Args: { p_place_id: string }; Returns: string }
-      premier_grant: {
-        Args: {
-          p_by: string
-          p_months: number
-          p_place_id: string
-          p_tier: number
-        }
-        Returns: string
+      premier_cover_paid: { Args: { p_place_id: string }; Returns: undefined }
+      premier_end_mesita_days: {
+        Args: { p_by: string; p_place_id: string }
+        Returns: Json
       }
       premier_interval_end: {
         Args: { p_extra_days: number; p_interval: string; p_start: string }
         Returns: string
+      }
+      premier_make_payer: {
+        Args: { p_backing_id: string; p_payment_method: string }
+        Returns: Json
+      }
+      premier_manual_tier: { Args: { p_place_id: string }; Returns: number }
+      premier_refill_ends: { Args: { p_place_id: string }; Returns: Json }
+      premier_restack: {
+        Args: { p_new_id: string; p_new_len: string; p_place_id: string }
+        Returns: undefined
       }
       premier_settle: {
         Args: {
@@ -1870,7 +2432,7 @@ export type Database = {
           p_payment_intent_id: string
           p_period_id: string
         }
-        Returns: string
+        Returns: Json
       }
       premier_tier_rank: { Args: { p_tier: string }; Returns: number }
       recompute_due_place_boosts: { Args: never; Returns: number }
@@ -1882,6 +2444,10 @@ export type Database = {
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
+      }
+      wallet_credit_purchase: {
+        Args: { p_payment_intent: string; p_purchase_id: string }
+        Returns: Json
       }
     }
     Enums: {
