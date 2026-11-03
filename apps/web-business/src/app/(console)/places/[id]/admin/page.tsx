@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { placeTabHref } from "@/lib/routes";
 import { getManagePlace } from "@/lib/place-view";
 import { listVerifications } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
@@ -22,10 +24,20 @@ export default async function AdminPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-4 pb-8">
       <AdminCards />
+      {/* Verification only (MESITA-3157, Pato: "a box called Verification"): the owner, editors and Revoke
+          are Settings' Who runs this place. */}
       <Card>
-        <p className="mb-3 font-semibold">Who runs this place</p>
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-semibold">Verification</p>
+            <p className="text-muted-foreground text-sm">Requests to run this place, and reports from the claim window. Approve or reject each.</p>
+          </div>
+          <Link href={placeTabHref(id, "settings")} className="text-sm font-semibold underline underline-offset-4">
+            Who runs it is in Settings
+          </Link>
+        </div>
         {queue.ok ? (
-          <VerificationQueue owners={queue.data.owners} pending={queue.data.pending} />
+          <VerificationQueue pending={queue.data.pending} />
         ) : (
           <p className="text-destructive text-sm">{queue.error}</p>
         )}
