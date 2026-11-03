@@ -25,3 +25,16 @@ Deno.test("anonymousReviews keeps stars, comment and date only", () => {
 Deno.test("anonymousReviews reads a missing list as empty", () => {
   assertEquals(anonymousReviews(null), []);
 });
+
+// Business reads them anonymously too (MESITA-3145): every line of a Business
+// door that answers `google_reviews` runs the list through anonymousReviews.
+// The one line allowed without it is the DB write (`patch: { google_reviews`).
+Deno.test("Business doors answer google_reviews only through anonymousReviews", async () => {
+  for (const door of ["business-web-get-place", "business-web-reload-place-reviews"]) {
+    const src = await Deno.readTextFile(new URL(`../${door}/index.ts`, import.meta.url));
+    const lines = src.split("\n").filter((l) => !l.trim().startsWith("//") && /google_reviews\s*:/.test(l));
+    const replies = lines.filter((l) => !l.includes("patch: { google_reviews"));
+    assertEquals(replies.length > 0, true, `${door} answers google_reviews`);
+    for (const l of replies) assertEquals(l.includes("anonymousReviews("), true, `${door}: ${l.trim()}`);
+  }
+});

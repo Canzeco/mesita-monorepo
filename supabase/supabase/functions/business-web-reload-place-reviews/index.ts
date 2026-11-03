@@ -33,6 +33,7 @@ import {
 } from "../_shared/review-sources.ts";
 import { mergeReviewFoundFlags, reviewFoundFromRow } from "../_shared/review-found.ts";
 import { loadGoogleReviewList, runPlaceSync } from "../_shared/place-sync-run.ts";
+import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 
 const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook", "sync"]);
 
@@ -104,7 +105,8 @@ serveJson("business-web-reload-place-reviews", async (req) => {
       google_review_count: numberOr(synced.patch.google_review_count, place.google_review_count),
       instagram_followers_count: numberOr(synced.patch.instagram_followers_count, place.instagram_followers_count),
       facebook_followers: numberOr(synced.patch.facebook_followers, place.facebook_followers),
-      google_reviews: synced.patch.google_reviews ?? undefined,
+      // Anonymous, as business-web-get-place answers them (MESITA-3145).
+      google_reviews: synced.patch.google_reviews === undefined ? undefined : anonymousReviews(synced.patch.google_reviews),
       source_sync: synced.patch.source_sync,
     });
   }
@@ -130,7 +132,7 @@ serveJson("business-web-reload-place-reviews", async (req) => {
       ok: true,
       source,
       ...numbers(place),
-      google_reviews: listed.list ?? [],
+      google_reviews: anonymousReviews(listed.list ?? []),
     });
   }
 

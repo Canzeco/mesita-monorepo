@@ -16,6 +16,7 @@ import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { buildPlaceOverview } from "../_shared/place-overview.ts";
+import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 
 serveJson("business-web-get-place", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -36,7 +37,9 @@ serveJson("business-web-get-place", async (req) => {
   return json({
     ok: true,
     role: access.role,
-    place: res.overview.place,
+    // Reviews are anonymous here too (MESITA-3145, as for guests, MESITA-2916):
+    // stars, comment and date; no reviewer name or photo reaches Business.
+    place: { ...res.overview.place, google_reviews: anonymousReviews(res.overview.place.google_reviews) },
     profile: res.overview.profile,
     manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at, role: access.manager.role } : null,
   });
