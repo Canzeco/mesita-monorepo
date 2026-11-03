@@ -68,7 +68,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
     if (mine !== seq.current) return; // a newer search answered first
     setBusy(false);
     if (!r.ok) setError(r.error);
-    else setRows(open ? r.data.filter((p) => !!p.id) : r.data);
+    else setRows(r.data);
   }
 
   // Search as you type, after a short pause.
@@ -92,7 +92,9 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
     router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
   }
 
-  const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
+  // Staff open places Mesita holds; a Google-only listing is not theirs to add.
+  const shown = open && rows ? rows.filter((p) => !!p.id) : rows;
+  const empty = shown !== null && shown.length === 0 && q.trim().length >= MIN_QUERY && !busy;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -121,9 +123,9 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
           {open ? "No Mesita place by that name." : "Google doesn't know that name either. Check the spelling, or add the city."}
         </p>
       ) : null}
-      {rows && rows.length > 0 ? (
+      {shown && shown.length > 0 ? (
         <ul className="divide-border divide-y">
-          {rows.map((p) =>
+          {shown.map((p) =>
             p.id ? (
               <li key={p.id}>
                 <Link href={open ? `/places/${encodeURIComponent(p.id)}/profile` : `/claim/${encodeURIComponent(p.id)}`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
