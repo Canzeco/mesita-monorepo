@@ -1,68 +1,70 @@
 "use client";
 
-// The Business app's frame (MESITA-3103; menu Pato, 2026-11-02, MESITA-3117):
+// The Business app's frame (MESITA-3103; menu Pato, 2026-11-02, MESITA-3125):
 //
 //   Logo
-//   Place     — a page you open (/places), not a dropdown
+//   Account   — the Google email and sign-out (MESITA-3123)
+//   Places    — the places you run, a page you open (/places)
+//   ──
+//   <place>   — the current place by its photo and name; opens its Preview
 //   Profile   — the current place's
 //   Reviews   — the current place's reviews, read-only (MESITA-3121)
 //   Premier   — the current place's
 //   Settings  — the current place's, the products listed at its foot
 //   Admin     — Mesita staff only (MESITA-3122)
-//   Account   — a standard row at the bottom; its page has the Google
-//               email and sign-out (MESITA-3123)
 //
-// The current place is the one in the URL, else the first you run; without
-// one, Profile and Premier wait and Settings shows the products alone.
+// Above the line is you, below it one place. The current place is the one in
+// the URL, else the first you run; without one nothing sits below the line
+// (Places leads to Claim a place) but staff still get Admin.
 // Desktop web (MESITA-3119): the side menu is the only menu at every width,
-// narrowing to icons below lg; Place wears the selected place's photo.
+// narrowing to icons below lg.
 //
 // Hiding a row is never the gate: every place door asks the server
 // (business-web-* → place-access) and a stranger gets 404.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, CircleUser, IdCard, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
+import { BadgeCheck, CircleUser, IdCard, MapPin, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { placeIdFromPathname, placeTabHref } from "@/lib/place-tabs";
 import { cn } from "@/lib/utils";
 
 export type ShellPlace = { id: string; name: string | null; photo: string | null };
 
-type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean };
+type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean; photo?: string | null };
 
-function menu(pathname: string, placeId: string | null, isSuperAdmin: boolean): Row[] {
-  const tab = (t: "profile" | "reviews" | "premier" | "settings" | "internal") => (placeId ? placeTabHref(placeId, t) : null);
-  const under = (href: string | null) => !!href && (pathname === href || pathname.startsWith(`${href}/`));
-  const settings = tab("settings") ?? "/settings";
-  return [
-    {
-      key: "place",
-      label: "Place",
-      icon: Store,
-      href: "/places",
-      active: pathname === "/places" || pathname.startsWith("/claim"),
-    },
-    { key: "profile", label: "Profile", icon: IdCard, href: tab("profile"), active: under(tab("profile")) },
-    { key: "reviews", label: "Reviews", icon: Star, href: tab("reviews"), active: under(tab("reviews")) },
-    { key: "premier", label: "Premier", icon: BadgeCheck, href: tab("premier"), active: under(tab("premier")) },
-    { key: "settings", label: "Settings", icon: Settings, href: settings, active: under(settings) || pathname === "/settings" },
-    // Mesita staff only (MESITA-3122): the place's staff page, else the claim
-    // requests and Open any place. The server refuses anyone else.
-    ...(isSuperAdmin
-      ? [{
-        key: "admin",
-        label: "Admin",
-        icon: ShieldCheck,
-        href: tab("internal") ?? "/internal",
-        active: under(tab("internal")) || pathname === "/internal",
-      }]
-      : []),
+function menu(pathname: string, placeId: string | null, place: ShellPlace | null, isSuperAdmin: boolean): { you: Row[]; place: Row[] } {
+  const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const you: Row[] = [
+    { key: "account", label: "Account", icon: CircleUser, href: "/account", active: pathname === "/account" },
+    { key: "places", label: "Places", icon: Store, href: "/places", active: pathname === "/places" || pathname.startsWith("/claim") },
   ];
+  // Mesita staff only (MESITA-3122): the place's staff page, else the claim
+  // requests and Open any place. The server refuses anyone else.
+  const admin = (href: string): Row[] =>
+    isSuperAdmin ? [{ key: "admin", label: "Admin", icon: ShieldCheck, href, active: under(href) || pathname === "/internal" }] : [];
+  if (!placeId) return { you, place: admin("/internal") };
+
+  const tab = (key: "preview" | "profile" | "reviews" | "premier" | "settings" | "internal", label: string, icon: LucideIcon): Row => {
+    const href = placeTabHref(placeId, key);
+    return { key, label, icon, href, active: under(href) };
+  };
+  return {
+    you,
+    place: [
+      { ...tab("preview", place?.name || "Place", MapPin), photo: place?.photo },
+      tab("profile", "Profile", IdCard),
+      tab("reviews", "Reviews", Star),
+      tab("premier", "Premier", BadgeCheck),
+      tab("settings", "Settings", Settings),
+      ...admin(placeTabHref(placeId, "internal")),
+    ],
+  };
 }
 
-function RailRow({ row, photo }: { row: Row; photo?: string | null }) {
+function RailRow({ row }: { row: Row }) {
   const Icon = row.icon;
+  const photo = row.photo;
   // Below lg the rail is icons only (w-16); the label returns at lg.
   const base = "flex h-10 items-center justify-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors lg:h-9 lg:justify-start";
   const glyph = photo ? (
@@ -107,7 +109,7 @@ export function BusinessShell({
   const pathname = usePathname();
   const placeId = placeIdFromPathname(pathname) ?? places[0]?.id ?? null;
   const current = places.find((p) => p.id === placeId) ?? null;
-  const rows = menu(pathname, placeId, isSuperAdmin);
+  const { you, place } = menu(pathname, placeId, current, isSuperAdmin);
 
   // Desktop web (Pato, 2026-11-02, MESITA-3119): one side menu at every
   // width, no bottom bar; below lg it narrows to an icon rail.
@@ -119,15 +121,14 @@ export function BusinessShell({
           <span className="hidden text-base font-semibold tracking-tight lg:inline">Business</span>
         </Link>
         <nav aria-label="Business" className="mt-6 flex flex-1 flex-col gap-0.5">
-          {rows.map((r) => <RailRow key={r.key} row={r} photo={r.key === "place" ? current?.photo : null} />)}
+          {you.map((r) => <RailRow key={r.key} row={r} />)}
+          {place.length > 0 && (
+            <>
+              <div role="separator" className="border-border my-2 border-t" />
+              {place.map((r) => <RailRow key={r.key} row={r} />)}
+            </>
+          )}
         </nav>
-        {/* The account is a standard row (Pato, MESITA-3123): its page holds
-            the Google email and sign-out. */}
-        <div className="border-border border-t pt-3">
-          <RailRow
-            row={{ key: "account", label: "Account", icon: CircleUser, href: "/account", active: pathname === "/account" }}
-          />
-        </div>
       </aside>
 
       <div className="pl-16 lg:pl-60">
