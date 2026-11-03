@@ -9,11 +9,11 @@ export const PLAN_NAME: Record<BoostTier, string> = {
   boost_2x: "Pro",
   boost_5x: "Max",
 };
-/** The Premier level each plan is, Free included. */
-export const FREE_LEVEL = "Premier 1X";
-export const PLAN_LEVEL: Record<BoostTier, string> = {
-  boost_2x: "Premier 2X",
-  boost_5x: "Premier 5X",
+/** The visibility each plan gives, Free included: the plan's one perk. */
+export const FREE_VISIBILITY = "1X";
+export const PLAN_VISIBILITY: Record<BoostTier, string> = {
+  boost_2x: "2X",
+  boost_5x: "5X",
 };
 const BY_RANK: Record<number, string> = { 1: PLAN_NAME.boost_2x, 2: PLAN_NAME.boost_5x };
 

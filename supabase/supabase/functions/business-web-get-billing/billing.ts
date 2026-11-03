@@ -23,8 +23,8 @@ export type Card = { brand: string; last4: string; exp_month: number; exp_year: 
 
 /** Where Refill days came from (D9): admin = given by Mesita, a code, or a
  *  guest's purchase. */
-export type Origin = "mesita" | "code" | "guest";
-const ORIGIN: Record<Manual["source"], Origin> = { admin: "mesita", code: "code", purchase: "guest" };
+export type Origin = "mesita" | "guest";
+const ORIGIN: Record<Manual["source"], Origin> = { admin: "mesita", purchase: "guest" };
 
 export type BillingView = {
   /** The place's time zone; every date on the page is drawn in it (D12). */

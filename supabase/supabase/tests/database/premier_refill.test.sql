@@ -92,9 +92,9 @@ select is(
 
 select is(
   (select array[(r ->> 'ends_at_5x')::timestamptz, (r ->> 'ends_at_2x')::timestamptz]
-     from (select premier_add_days('00000000-0000-4000-8000-000000163000', 2::smallint, 3, 'code', null, 'a4') r) x),
+     from (select premier_add_days('00000000-0000-4000-8000-000000163000', 2::smallint, 3, 'purchase', null, 'a4') r) x),
   array[now() + interval '13 days', now() + interval '48 days'],
-  'a code''s 5X queues after the first 5X and before every 2X'
+  'a bought 5X queues after the first 5X and before every 2X'
 );
 
 select is(

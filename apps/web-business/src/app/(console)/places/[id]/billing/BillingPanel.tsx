@@ -18,7 +18,6 @@ import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
 import { FREE_PLAN, planName } from "@/lib/plans";
 import { REFILL_ORIGIN } from "@/lib/premier-origin";
-import { CodeRow } from "./CodeRow";
 
 type Rank = 1 | 2;
 const FACTOR: Record<number, string> = { 1: "2X", 2: "5X" };
@@ -80,7 +79,7 @@ export function BillingPanel({
   billing: PlaceBilling | null;
   error: string | null;
   returned: CardReturn;
-  /** The Plans card (MESITA-3173), right under the status. */
+  /** The plan boxes (MESITA-3173, MESITA-3183), right under the status. */
   plans?: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
@@ -106,7 +105,6 @@ export function BillingPanel({
 
   const { level, refill, subscription: sub, payer, card, charges, keep, moved } = billing;
   const { day, plainDay, daysAway } = dates(billing.timezone, billing.today);
-  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-US", { timeZone: billing.timezone, hour: "numeric", minute: "2-digit" });
   const you = payer === "you";
   const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
 
@@ -158,8 +156,8 @@ export function BillingPanel({
       ? `Your card expires ${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}, before the next charge on ${day(sub.next_charge_at)}.`
       : null;
 
-  // One button (D1): Update card or Keep <tier>. No See plans: the Plans
-  // card is right below (MESITA-3177).
+  // One button (D1): Update card or Keep <tier>. No See plans: the plan
+  // boxes are right below (MESITA-3177).
   const buttonClass =
     "inline-flex h-10 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60 sm:w-auto";
   const button = cardLine ? (
@@ -201,7 +199,7 @@ export function BillingPanel({
         </p>
       ) : null}
 
-      {/* With nothing running the Plans card is the page (MESITA-3177): no
+      {/* With nothing running the plan boxes are the page (MESITA-3177): no
           headline repeating Free, no line, no button pointing below. */}
       {empty ? null : (
       <div className="flex flex-col gap-3 py-1">
@@ -230,8 +228,6 @@ export function BillingPanel({
 
       {plans}
 
-      {/* "Have a code?" is the last row of What's running (D1); with nothing
-          running it is one bare line under the plans, no card (MESITA-3177). */}
       {refill.length > 0 || sub ? (
         <Card className="flex flex-col p-0 sm:p-0">
           <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2>
@@ -246,12 +242,9 @@ export function BillingPanel({
               />
             ))}
             {subRow}
-            <CodeRow placeId={placeId} you={you} day={day} time={time} />
           </div>
         </Card>
-      ) : (
-        <CodeRow placeId={placeId} you={you} day={day} time={time} bare />
-      )}
+      ) : null}
 
       {payer || charges.length > 0 ? (
         <Card className="flex flex-col p-0 sm:p-0">

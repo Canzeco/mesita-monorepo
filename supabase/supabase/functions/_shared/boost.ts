@@ -186,7 +186,7 @@ export type Manual = {
   tier: number;
   starts_at: string;
   ends_at: string;
-  source: "admin" | "code" | "purchase";
+  source: "admin" | "purchase";
   granted_by: string | null;
   /** When the grant was made (Billing's moved date, MESITA-3166). */
   created_at?: string;

@@ -1,20 +1,22 @@
 "use client";
 
-// The three plans as one card of rows (MESITA-3173, Pato: "you actually buy
-// access to all the software, don't separate premier"): Free · Pro · Max,
-// Premier 1X · 2X · 5X (MESITA-3174). Pro and Max are the boost_2x / boost_5x
-// subscriptions and carry Premier 2X / 5X ranking, so the paid rows keep the
-// Ad tag (package law). They lived on the Premier page until this issue.
+// The three plans as boxes (MESITA-3173, Pato: "you actually buy access to all
+// the software, don't separate premier"; boxes MESITA-3183): Free · Pro · Max.
+// Billing and Premier draw the same boxes. Visibility is the one perk, so it is
+// each box's anchor (Pato: "make the visibility most notorious"): 1X · 2X · 5X,
+// then the tag it wears, the price, one action. Pro and Max are the boost_2x /
+// boost_5x subscriptions, so they keep the Ad tag (package law). The small print
+// keeps the claim true: Premier never promises views.
 //
 // Every amount and date is the server's (business-web-get-premier's quotes);
 // this file never computes money.
 
+import { PremierRosette } from "@mesita/place-profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostInterval, type BoostTier, type PlacePremier } from "@/lib/business-api";
-import { Card } from "@/components/shell/Page";
 import { billingHref, returnUrl } from "@/lib/routes";
-import { FREE_LEVEL, FREE_PLAN, PLAN_LEVEL, PLAN_NAME } from "@/lib/plans";
+import { FREE_PLAN, FREE_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY } from "@/lib/plans";
 
 const PLANS: Array<{ key: BoostTier; rank: number }> = [
   { key: "boost_2x", rank: 1 },
@@ -48,37 +50,67 @@ function day(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-function AdTag() {
-  return <span className="border-border text-muted-foreground type-label rounded-full border px-1.5 font-semibold">Ad</span>;
-}
+/** One plan. With no `action`, `word` says where the plan stands. */
+type Offer = {
+  key: string;
+  name: string;
+  visibility: string;
+  /** Paid: the Ad tag and the red Premier mark. */
+  premier: boolean;
+  cents: number;
+  note: string | null;
+  /** The plan the place is on, whichever interval the toggle shows. */
+  onIt: boolean;
+  picked: boolean;
+  word: string;
+  action: { label: string; run: () => void; onBlur?: () => void } | null;
+};
 
-// One quiet list (MESITA-3177): name over level, price, one outlined action;
-// the current plan is a word, not a button.
-const rowClass = "flex items-center gap-4 px-5 py-4 sm:px-6";
-const actionClass = "border-border hover:bg-muted h-9 w-24 shrink-0 rounded-full border text-sm font-semibold disabled:opacity-50";
-const currentClass = "text-muted-foreground w-24 shrink-0 text-center text-sm font-medium";
-
-function PlanName({ name, level, ad = false }: { name: string; level: string; ad?: boolean }) {
+function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: BoostInterval; busy: boolean; boxRef?: React.Ref<HTMLLIElement> }) {
   return (
-    <div className="min-w-0 flex-1">
-      <p className="font-semibold">{name}</p>
-      <p className="text-muted-foreground flex items-center gap-2 text-sm">
-        {level}
-        {ad ? <AdTag /> : null}
+    <li
+      ref={boxRef}
+      className={`flex flex-col gap-4 rounded-2xl border p-5 ${o.picked ? "bg-muted/60" : "bg-card"} ${o.onIt ? "border-foreground ring-foreground ring-1" : "border-border"}`}
+    >
+      <p className="flex items-center gap-2 text-lg font-semibold">
+        {o.name}
+        {o.premier ? <span className="border-border text-muted-foreground type-label rounded-full border px-1.5 font-semibold">Ad</span> : null}
       </p>
-    </div>
-  );
-}
-
-function Price({ cents, interval, note = null }: { cents: number; interval: BoostInterval; note?: string | null }) {
-  return (
-    <div className="shrink-0 text-right">
-      <p className="text-sm">
-        <span className="font-semibold tabular-nums">{usd(cents)}</span>
-        <span className="text-muted-foreground"> / {interval}</span>
-      </p>
-      {note ? <p className="text-muted-foreground text-xs">{note}</p> : null}
-    </div>
+      <div>
+        <p className="flex items-baseline gap-2 text-lg font-medium">
+          <span className="font-display text-6xl leading-none font-semibold tracking-tight">{o.visibility}</span>
+          visibility
+        </p>
+        {o.premier ? (
+          <p className="mt-2 flex items-center gap-1.5 text-sm">
+            <PremierRosette />
+            Premier red tag
+          </p>
+        ) : (
+          <p className="text-muted-foreground mt-2 flex min-h-5 items-center text-sm">No Premier tag</p>
+        )}
+      </div>
+      <div className="border-border mt-auto border-t pt-4">
+        <p className="text-lg">
+          <span className="font-semibold tabular-nums">{usd(o.cents)}</span>
+          <span className="text-muted-foreground text-sm"> / {interval}</span>
+        </p>
+        {o.note ? <p className="text-muted-foreground text-xs">{o.note}</p> : null}
+      </div>
+      {o.action ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={o.action.run}
+          onBlur={o.action.onBlur}
+          className="border-border hover:bg-muted h-11 w-full rounded-full border text-sm font-semibold disabled:opacity-50"
+        >
+          {o.action.label}
+        </button>
+      ) : (
+        <p className="text-muted-foreground flex h-11 items-center justify-center text-sm font-medium">{o.word}</p>
+      )}
+    </li>
   );
 }
 
@@ -86,11 +118,14 @@ export function PlansCard({
   placeId,
   initial,
   picked = null,
+  backTo,
 }: {
   placeId: string;
   initial: PlacePremier | null;
   /** A plan Billing's Keep button picked. */
   picked?: BoostTier | null;
+  /** The page Checkout returns to and a change reloads; Billing by default. */
+  backTo?: string;
 }) {
   const router = useRouter();
   const [data, setData] = useState<PlacePremier | null>(initial);
@@ -107,19 +142,21 @@ export function PlansCard({
   const quotes = data.quotes;
   const payer = data.viewer === "payer";
   const notice = data.outcome && OUTCOME[data.outcome] ? OUTCOME[data.outcome] : null;
+  const home = backTo ?? billingHref(placeId);
+  const onRank = data.paid?.tier ?? 0;
 
   async function reload() {
     const r = await getPremier(placeId);
     if (r.ok) setData(r.data);
     else setError(r.error);
-    router.replace(billingHref(placeId));
+    router.replace(home);
     router.refresh();
   }
 
   async function choose(tier: BoostTier) {
     setBusy(true);
     setError(null);
-    const r = await startPremier({ placeId, tier, interval, returnUrl: returnUrl(billingHref(placeId)) });
+    const r = await startPremier({ placeId, tier, interval, returnUrl: returnUrl(home) });
     setBusy(false);
     if (!r.ok) return setError((r.code && REFUSED[r.code]) || r.error);
     if (r.data.url) return window.location.assign(r.data.url);
@@ -137,10 +174,55 @@ export function PlansCard({
     await reload();
   }
 
+  const offers: Offer[] = [
+    {
+      key: "free",
+      name: FREE_PLAN,
+      visibility: FREE_VISIBILITY,
+      premier: false,
+      cents: 0,
+      note: null,
+      onIt: onRank === 0,
+      picked: false,
+      // On a plan someone else pays for, Free is neither current nor theirs to pick.
+      word: !data.paid ? "Current" : payer ? `From ${day(data.paid.ends_at)}` : "",
+      action:
+        payer && data.paid?.renews
+          ? { label: armed ? "Tap again" : "Switch", run: () => (armed ? void toFree() : setArmed(true)), onBlur: () => setArmed(false) }
+          : null,
+    },
+  ];
+  for (const plan of PLANS) {
+    const q = quotes[plan.key]?.[interval];
+    if (!q) continue;
+    const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
+    const blocked = q.kind === "blocked" || q.covered;
+    // A resume for someone who never paid here is subscribing early, in the
+    // last 7 days of a Boost (MESITA-3165).
+    const resume = data.viewer === "former_payer" ? "Resume" : "Keep";
+    const label =
+      q.covered ? "Given by Mesita" : current ? "Current" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
+    offers.push({
+      key: plan.key,
+      name: PLAN_NAME[plan.key],
+      visibility: PLAN_VISIBILITY[plan.key],
+      premier: true,
+      cents: q.price_cents,
+      note:
+        q.charge_cents !== q.price_cents && q.kind !== "blocked"
+          ? `${q.charge_cents > 0 ? `Now ${usd(q.charge_cents)}` : "Nothing now"}${q.renews_at ? ` · from ${day(q.renews_at)}` : ""}`
+          : null,
+      onIt: onRank === plan.rank,
+      picked: picked === plan.key,
+      word: label,
+      action: current || blocked ? null : { label, run: () => void choose(plan.key) },
+    });
+  }
+
   return (
-    <Card className="flex scroll-mt-6 flex-col p-0 sm:p-0">
-      <div id="plans" className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6">
-        <h2 className="font-semibold">Plans</h2>
+    <section id="plans" className="flex scroll-mt-6 flex-col gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-semibold">Plan</h2>
         <div className="bg-muted inline-flex rounded-full p-1 text-sm" role="radiogroup" aria-label="Billing">
           {(["month", "year"] as const).map((v) => (
             <button
@@ -156,56 +238,14 @@ export function PlansCard({
           ))}
         </div>
       </div>
-      {notice ? <p className="border-border border-t px-5 py-3 text-sm sm:px-6">{notice}</p> : null}
-      <ul className="divide-border border-border divide-y border-t">
-        <li className={rowClass}>
-          <PlanName name={FREE_PLAN} level={FREE_LEVEL} />
-          <Price cents={0} interval={interval} />
-          {payer && data.paid?.renews ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => (armed ? void toFree() : setArmed(true))}
-              onBlur={() => setArmed(false)}
-              className={actionClass}
-            >
-              {armed ? "Tap again" : "Switch"}
-            </button>
-          ) : (
-            <span className={currentClass}>{payer && data.paid ? `From ${day(data.paid.ends_at)}` : "Current"}</span>
-          )}
-        </li>
-        {PLANS.map((plan) => {
-          const q = quotes[plan.key]?.[interval];
-          if (!q) return null;
-          const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
-          const blocked = q.kind === "blocked" || q.covered;
-          // A resume for someone who never paid here is subscribing early,
-          // in the last 7 days of Refill days (MESITA-3165).
-          const resume = data.viewer === "former_payer" ? "Resume" : "Keep";
-          const action =
-            q.covered ? "Given by Mesita" : current ? "Current" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
-          const isPicked = picked === plan.key;
-          return (
-            <li key={plan.key} ref={isPicked ? pickedRef : undefined} className={`${rowClass} ${isPicked ? "bg-muted/60" : ""}`}>
-              <PlanName name={PLAN_NAME[plan.key]} level={PLAN_LEVEL[plan.key]} ad />
-              <Price cents={q.price_cents} interval={interval} note={
-                q.charge_cents !== q.price_cents && q.kind !== "blocked"
-                  ? `${q.charge_cents > 0 ? `Now ${usd(q.charge_cents)}` : "Nothing now"}${q.renews_at ? ` · from ${day(q.renews_at)}` : ""}`
-                  : null
-              } />
-              {current || blocked ? (
-                <span className={currentClass}>{action}</span>
-              ) : (
-                <button type="button" disabled={busy} onClick={() => void choose(plan.key)} className={actionClass}>
-                  {action}
-                </button>
-              )}
-            </li>
-          );
-        })}
+      {notice ? <p className="text-sm">{notice}</p> : null}
+      <ul className="grid gap-4 sm:grid-cols-3">
+        {offers.map((o) => (
+          <Box key={o.key} offer={o} interval={interval} busy={busy} boxRef={o.picked ? pickedRef : undefined} />
+        ))}
       </ul>
-      {error ? <p className="text-destructive border-border border-t px-5 py-3 text-sm sm:px-6">{error}</p> : null}
-    </Card>
+      <p className="text-muted-foreground text-sm">Visibility is ranking priority on Home and the Map. It doesn&apos;t guarantee more views.</p>
+      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+    </section>
   );
 }

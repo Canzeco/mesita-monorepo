@@ -2,7 +2,7 @@ export { PlaceProfile } from "./components/PlaceProfile";
 export { PlaceDetailBody } from "./components/PlaceDetailBody";
 export { PlaceDetailTitle } from "./components/PlaceDetailTitle";
 export { PlaceTopBar } from "./components/PlaceTopBar";
-export { PremierBadge } from "./components/PremierBadge";
+export { PremierBadge, PremierRosette } from "./components/PremierBadge";
 export {
   PREMIER_LEVELS,
   PREMIER_PLANS,
