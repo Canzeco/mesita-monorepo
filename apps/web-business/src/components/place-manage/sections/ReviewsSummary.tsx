@@ -298,7 +298,9 @@ function storedSync(raw: unknown): {
   return out;
 }
 
-type StoredReview = { author: string; quote: string; rating: number | null; date: string | null };
+// Anonymous (MESITA-3145, as the consumer app reads them, MESITA-2916): the
+// server sends only stars, comment and date; no reviewer name is drawn.
+type StoredReview = { quote: string; rating: number | null; date: string | null };
 
 function storedReviews(raw: unknown): StoredReview[] {
   if (!Array.isArray(raw)) return [];
@@ -312,12 +314,10 @@ function storedReviews(raw: unknown): StoredReview[] {
       ? row.text.trim()
       : "";
     if (!quote) continue;
-    const author = typeof row.author === "string" && row.author.trim()
-      ? row.author.trim()
-      : "Google reviewer";
     const rating = num(row.rating);
-    const date = typeof row.date === "string" && row.date.trim() ? row.date.trim() : null;
-    out.push({ author, quote, rating, date });
+    const when = typeof row.published === "string" ? row.published : row.date;
+    const date = typeof when === "string" && when.trim() ? when.trim() : null;
+    out.push({ quote, rating, date });
   }
   return out;
 }
@@ -409,7 +409,6 @@ function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
           return (
             <li key={`${sort}-${i}`} className="flex min-w-0 flex-col gap-1 py-3">
               <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <span className="text-foreground truncate font-semibold">{review.author}</span>
                 {review.rating != null ? <Stars value={review.rating} /> : null}
                 {when ? <span className="text-muted-foreground type-label">{when}</span> : null}
               </p>
