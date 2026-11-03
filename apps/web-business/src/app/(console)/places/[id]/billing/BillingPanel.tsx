@@ -158,9 +158,10 @@ export function BillingPanel({
       ? `Your card expires ${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}, before the next charge on ${day(sub.next_charge_at)}.`
       : null;
 
-  // One button (D1): Update card → Keep <tier> → See plans.
+  // One button (D1): Update card or Keep <tier>. No See plans: the Plans
+  // card is right below (MESITA-3177).
   const buttonClass =
-    "inline-flex h-11 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60 sm:w-auto";
+    "inline-flex h-10 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60 sm:w-auto";
   const button = cardLine ? (
     <button type="button" disabled={busy} onClick={() => void updateCard()} className={`bg-foreground text-background ${buttonClass}`}>
       {busy ? "Opening…" : "Update card"}
@@ -169,14 +170,7 @@ export function BillingPanel({
     <Link href={billingHref(placeId, { plan: PLAN_OF[keep.tier] })} className={`bg-foreground text-background ${buttonClass}`}>
       Keep Premier {FACTOR[keep.tier]}
     </Link>
-  ) : (
-    <Link
-      href={billingHref(placeId, { plan: sub ? PLAN_OF[sub.tier] : null })}
-      className={`${empty ? "bg-foreground text-background" : "border-border hover:bg-muted border"} ${buttonClass}`}
-    >
-      See plans
-    </Link>
-  );
+  ) : null;
 
   // ── What's running ──
   const subRow = sub ? (
@@ -207,6 +201,9 @@ export function BillingPanel({
         </p>
       ) : null}
 
+      {/* With nothing running the Plans card is the page (MESITA-3177): no
+          headline repeating Free, no line, no button pointing below. */}
+      {empty ? null : (
       <div className="flex flex-col gap-3 py-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -220,7 +217,7 @@ export function BillingPanel({
             {movedLine ? <p className="text-muted-foreground mt-1 text-sm">{movedLine}</p> : null}
             {cardLine ? <p className="mt-1 text-sm font-medium text-(--brand-pink-700)">{cardLine}</p> : null}
           </div>
-          <div className="shrink-0">{button}</div>
+          {button ? <div className="shrink-0">{button}</div> : null}
         </div>
         <Timeline billing={billing} day={day} />
         {error ? (
@@ -229,27 +226,32 @@ export function BillingPanel({
           </p>
         ) : null}
       </div>
+      )}
 
       {plans}
 
-      {/* "Have a code?" is the card's last row (D1); with nothing running it
-          stands alone, open, right below the status (D4; MESITA-3167). */}
-      <Card className="flex flex-col p-0 sm:p-0">
-        {refill.length > 0 || sub ? <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2> : null}
-        <div className="divide-border divide-y">
-          {refill.map((r) => (
-            <Row
-              key={r.id}
-              badge={r.tier}
-              what={REFILL_ORIGIN[r.origin]}
-              when={`${r.state === "running" ? "Now" : day(r.starts_at)} – ${day(r.ends_at)}`}
-              state={r.state === "running" ? "Running" : "Next"}
-            />
-          ))}
-          {subRow}
-          <CodeRow placeId={placeId} you={you} day={day} time={time} />
-        </div>
-      </Card>
+      {/* "Have a code?" is the last row of What's running (D1); with nothing
+          running it is one bare line under the plans, no card (MESITA-3177). */}
+      {refill.length > 0 || sub ? (
+        <Card className="flex flex-col p-0 sm:p-0">
+          <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2>
+          <div className="divide-border divide-y">
+            {refill.map((r) => (
+              <Row
+                key={r.id}
+                badge={r.tier}
+                what={REFILL_ORIGIN[r.origin]}
+                when={`${r.state === "running" ? "Now" : day(r.starts_at)} – ${day(r.ends_at)}`}
+                state={r.state === "running" ? "Running" : "Next"}
+              />
+            ))}
+            {subRow}
+            <CodeRow placeId={placeId} you={you} day={day} time={time} />
+          </div>
+        </Card>
+      ) : (
+        <CodeRow placeId={placeId} you={you} day={day} time={time} bare />
+      )}
 
       {payer || charges.length > 0 ? (
         <Card className="flex flex-col p-0 sm:p-0">
