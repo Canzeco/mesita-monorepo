@@ -6,7 +6,8 @@
 // the real script against throwaway git repos and a fake `supabase` CLI, and
 // pin every guard that stands between a merge and a deleted live function:
 // the 3-day wait, the folder floor, the cap, the fresh fetch before each
-// delete, whole-slug matching, and the "does not exist" tolerance.
+// delete, whole-slug matching, the "does not exist" tolerance, and the list
+// after the deletes that catches a "Deleted" slug still in the cloud.
 
 import { assert, assertEquals, assertMatch, assertStringIncludes } from "jsr:@std/assert@1";
 
@@ -38,6 +39,11 @@ case "$1 $2" in
       echo "Function $3 does not exist on the Supabase project" >&2; exit 1
     fi
     if grep -Fxq -- "$3" "$FAKE_BROKEN"; then echo "unexpected delete function status 500" >&2; exit 1; fi
+    # A sticky slug stays listed after its first delete; a stuck one after every delete.
+    if grep -Fxq -- "$3" "$FAKE_STUCK"; then :
+    elif grep -Fxq -- "$3" "$FAKE_STICKY" && ! grep -Fxq -- "$3" "$FAKE_STUCK_ONCE"; then echo "$3" >> "$FAKE_STUCK_ONCE"
+    else jq --arg s "$3" 'map(select(.slug != $s))' "$FAKE_LIST" > "$FAKE_LIST.next" && mv "$FAKE_LIST.next" "$FAKE_LIST"
+    fi
     echo "Deleted Function $3 from project $5." ;;
   *) echo "fake supabase: unexpected $*" >&2; exit 3 ;;
 esac
@@ -64,6 +70,8 @@ interface Setup {
   cloud: string[];
   gone?: string[];
   broken?: string[];
+  sticky?: string[];
+  stuck?: string[];
   shallow?: boolean;
   noFunctionsDir?: boolean;
 }
@@ -112,10 +120,14 @@ async function fixture(s: Setup): Promise<Fixture> {
     FAKE_LIST: await write("list.json", JSON.stringify(s.cloud.map((slug) => ({ slug, status: "ACTIVE" })))),
     FAKE_GONE: await write("gone.txt", (s.gone ?? []).map((g) => `${g}\n`).join("")),
     FAKE_BROKEN: await write("broken.txt", (s.broken ?? []).map((g) => `${g}\n`).join("")),
+    FAKE_STICKY: await write("sticky.txt", (s.sticky ?? []).map((g) => `${g}\n`).join("")),
+    FAKE_STUCK: await write("stuck.txt", (s.stuck ?? []).map((g) => `${g}\n`).join("")),
+    FAKE_STUCK_ONCE: await write("stuck-once.txt", ""),
     FAKE_CALLS: await write("calls.txt", ""),
     GITHUB_STEP_SUMMARY: await write("summary.md", ""),
     CLEANUP_DELETED_FILE: `${dir}/deleted.txt`,
     MAX_DELETE: "",
+    VERIFY_WAIT: "0",
   };
   return { dir, seed, work, origin, env };
 }
@@ -275,6 +287,22 @@ Deno.test("cleanup: 'does not exist' is the goal state; any other delete error s
   assertStringIncludes(stopped.output, "deleting admin-web-b failed");
   assertEquals(stopped.deletes, ["admin-web-a", "admin-web-b"]);
   assertEquals(stopped.announced, ["admin-web-a"], "a run that fails midway still announces what it deleted");
+});
+
+Deno.test("cleanup: a slug still listed after its delete is deleted again, and one that survives that fails the run", async () => {
+  const retired: Array<[string, number]> = [["admin-web-a", 5], ["admin-web-b", 5]];
+  const cloud = [...LIVE, "admin-web-a", "admin-web-b"];
+  const retried = await run(await fixture({ retired, cloud, sticky: ["admin-web-a"] }));
+  assertEquals(retried.code, 0, retried.output);
+  assertStringIncludes(retried.output, "admin-web-a is still listed after its delete; deleting it again");
+  assertEquals(retried.deletes, ["admin-web-a", "admin-web-b", "admin-web-a"]);
+  assertEquals(retried.announced, ["admin-web-a", "admin-web-b"]);
+
+  const failed = await run(await fixture({ retired, cloud, stuck: ["admin-web-b"] }));
+  assertEquals(failed.code, 1, failed.output);
+  assertStringIncludes(failed.output, "still listed after two deletes: admin-web-b.");
+  assertEquals(failed.deletes, ["admin-web-a", "admin-web-b", "admin-web-b"]);
+  assertStringIncludes(failed.summary, "cleanup refused: still listed after two deletes");
 });
 
 Deno.test("cleanup: a shallow clone refuses (deletion dates need the history)", async () => {

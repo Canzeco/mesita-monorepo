@@ -20,6 +20,8 @@
 # A cloud slug whose folder never existed on origin/main is reported, never
 # deleted: it was deployed outside a merge. Right before each delete the
 # script fetches origin/main again and skips a slug whose folder came back.
+# After the deletes it lists the cloud again: a slug still listed is deleted
+# once more, and one that survives that fails the run (MESITA-3133).
 #
 # Usage, from anywhere in the repo (needs git, jq, the supabase CLI, and
 # SUPABASE_ACCESS_TOKEN or `supabase login`):
@@ -37,6 +39,7 @@ FUNCTIONS_PATH="supabase/supabase/functions"
 GRACE_HOURS=72
 MIN_FOLDERS=30
 MAX_DELETE="${MAX_DELETE:-5}"
+VERIFY_WAIT="${VERIFY_WAIT:-10}" # seconds between the deletes and the list that checks them
 
 say() { printf 'cleanup: %s\n' "$*"; }
 
@@ -72,6 +75,12 @@ case "$MAX_DELETE" in
     exit 2
     ;;
 esac
+case "$VERIFY_WAIT" in
+  '' | *[!0-9]*)
+    echo "cleanup: VERIFY_WAIT must be a whole number, got '$VERIFY_WAIT'" >&2
+    exit 2
+    ;;
+esac
 
 for tool in git jq supabase; do
   command -v "$tool" >/dev/null || die "$tool is not on PATH"
@@ -91,11 +100,17 @@ if [ "$folder_count" -lt "$MIN_FOLDERS" ]; then
   die "origin/main has $folder_count function folders under $FUNCTIONS_PATH (floor $MIN_FOLDERS); nothing deleted. If that count is right, lower MIN_FOLDERS in this script"
 fi
 
-listing=$(cd "$root/supabase" && supabase functions list --project-ref "$PROJECT_REF" -o json) ||
-  die "supabase functions list failed"
-cloud=$(printf '%s' "$listing" | jq -r 'if type == "array" then .[].slug else error("not a list") end') ||
-  die "supabase functions list did not print a JSON list"
-cloud=$(printf '%s\n' "$cloud" | awk 'NF' | LC_ALL=C sort)
+# Prints the cloud's slugs, sorted, one per line.
+list_cloud() {
+  local listing slugs
+  listing=$(cd "$root/supabase" && supabase functions list --project-ref "$PROJECT_REF" -o json) ||
+    die "supabase functions list failed"
+  slugs=$(printf '%s' "$listing" | jq -r 'if type == "array" then .[].slug else error("not a list") end') ||
+    die "supabase functions list did not print a JSON list"
+  printf '%s\n' "$slugs" | awk 'NF' | LC_ALL=C sort
+}
+
+cloud=$(list_cloud) || exit 1
 bad=$(printf '%s\n' "$cloud" | awk 'NF && !/^[A-Za-z0-9][A-Za-z0-9_-]*$/')
 [ -z "$bad" ] || die "unexpected slug in the functions list: $bad"
 say "origin/main has $folder_count function folders; the cloud has $(printf '%s\n' "$cloud" | awk 'NF' | wc -l | tr -d ' ') functions"
@@ -137,29 +152,66 @@ if [ "$dry_run" -eq 1 ]; then
   exit 0
 fi
 
-deleted=0
-for slug in $qualifying; do
+# Deletes one slug and sets $outcome: deleted, gone (already deleted) or back
+# (its folder is on origin/main again, so it was left alone). Any other
+# failure stops the run.
+delete_one() {
+  local slug=$1 out
   git -C "$root" fetch --quiet origin main ||
     die "fetching origin/main again failed; $slug and every slug after it not deleted"
   if git -C "$root" cat-file -e "origin/main:$FUNCTIONS_PATH/$slug" 2>/dev/null; then
     say "skip $slug: its folder is back on origin/main; not deleted"
-    continue
-  fi
-  if out=$(cd "$root/supabase" && supabase functions delete "$slug" --project-ref "$PROJECT_REF" --yes 2>&1); then
-    say "deleted $slug"
-    summary "- deleted \`$slug\`"
-    if [ -n "${CLEANUP_DELETED_FILE:-}" ]; then
-      printf '%s\n' "$slug" >>"$CLEANUP_DELETED_FILE"
-    fi
-    deleted=$((deleted + 1))
+    outcome=back
+  elif out=$(cd "$root/supabase" && supabase functions delete "$slug" --project-ref "$PROJECT_REF" --yes 2>&1); then
+    outcome=deleted
   elif grep -q "does not exist" <<<"$out"; then
     # The registry can list a function whose blob is already gone; that is
     # the goal state, not a failure.
     say "$slug was already gone"
+    outcome=gone
   else
     printf '%s\n' "$out" >&2
     die "deleting $slug failed"
   fi
+}
+
+deleted=0
+attempted=""
+for slug in $qualifying; do
+  delete_one "$slug"
+  [ "$outcome" = deleted ] || continue
+  say "deleted $slug"
+  summary "- deleted \`$slug\`"
+  if [ -n "${CLEANUP_DELETED_FILE:-}" ]; then
+    printf '%s\n' "$slug" >>"$CLEANUP_DELETED_FILE"
+  fi
+  deleted=$((deleted + 1))
+  attempted="$attempted $slug"
 done
+
+# A delete can print "Deleted" and take the function offline yet leave it in
+# the list, and the next run counts it again (CLI 2.100.0, 10 of 16 in
+# MESITA-3132). A second delete clears it, so check, retry once, check again.
+if [ -n "$attempted" ]; then
+  sleep "$VERIFY_WAIT"
+  listed=$(list_cloud) || exit 1
+  retried=""
+  for slug in $attempted; do
+    grep -Fxq -- "$slug" <<<"$listed" || continue
+    say "$slug is still listed after its delete; deleting it again"
+    delete_one "$slug"
+    if [ "$outcome" = deleted ]; then retried="$retried $slug"; fi
+  done
+  if [ -n "$retried" ]; then
+    sleep "$VERIFY_WAIT"
+    listed=$(list_cloud) || exit 1
+    stuck=""
+    for slug in $retried; do
+      if grep -Fxq -- "$slug" <<<"$listed"; then stuck="$stuck $slug"; fi
+    done
+    [ -z "$stuck" ] ||
+      die "still listed after two deletes:$stuck. Delete each by hand from supabase/ (supabase functions delete <slug> --project-ref $PROJECT_REF) until supabase functions list drops it"
+  fi
+fi
 say "deleted $deleted of $count"
 summary "cleanup: deleted $deleted of $count"
