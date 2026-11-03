@@ -5,17 +5,23 @@
 // and the charges; the card is the payer's own, so Stripe is asked for it
 // only when the caller pays (brand, last 4, expiry — never more).
 //
+// MESITA-3166 (Design D1–D13): it also says what runs and what is charged
+// next — the level and until when, the Refill days as rows, the
+// subscription's state (running, paused under Refill days, waiting for its
+// first charge, charging), the Keep prompt in a run's last 7 days, the moved
+// date and the card expiring before the next charge, all dated in the place's
+// time zone. `billing.ts` decides; the page only formats.
+//
 // Body: { place_id: uuid }
-// Response: { ok: true, payer: "you" | "team" | null, plan: Plan | null, card: Card | null, charges: Charge[] }
+// Response: { ok: true, ...BillingView, plan: Plan | null, charges: Charge[] }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
-import { boostLivemode, boostStripeKey, readLine, runningPeriod, stripeClient, subscriptionOf } from "../_shared/boost.ts";
-
-type Card = { brand: string; last4: string; exp_month: number; exp_year: number };
+import { boostLivemode, boostStripeKey, readBoostPlace, readLine, runningPeriod, stripeClient, subscriptionOf } from "../_shared/boost.ts";
+import { billingView, type Card } from "./billing.ts";
 
 serveJson("business-web-get-billing", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -33,6 +39,8 @@ serveJson("business-web-get-billing", async (req) => {
   // Every period since the start: Billing lists what was ever charged.
   const line = await readLine(admin, placeId, { periodsSince: 0 });
   if (!line.ok) return json({ ok: false, error: line.error }, 500);
+  const placeRes = await readBoostPlace(admin, placeId);
+  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
 
   const sub = subscriptionOf(line.pledges);
   const running = runningPeriod(line.periods, Date.now());
@@ -65,9 +73,20 @@ serveJson("business-web-get-billing", async (req) => {
       status: p.status === "charging" ? "charging" : p.status === "declined" ? "declined" : "paid",
     }));
 
+  const view = billingView({
+    pledges: line.pledges,
+    periods: line.periods,
+    manual: line.manual,
+    timezone: placeRes.place?.timezone,
+    viewerId: user.id,
+    card,
+    now: Date.now(),
+  });
+
   return json({
     ok: true,
-    payer,
+    ...view,
+    // Builds before MESITA-3166 read `plan`; one release.
     plan: sub
       ? {
         tier: sub.tier,
@@ -76,7 +95,6 @@ serveJson("business-web-get-billing", async (req) => {
         next_charge_at: running?.backing_id === sub.id ? running.ends_at : null,
       }
       : null,
-    card,
     charges,
   });
 });
