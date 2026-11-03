@@ -7,15 +7,14 @@
 // hold yet says "Not on Mesita yet" and Add and claim adds it
 // (business-web-create-place), then opens the same claim form. Adding a
 // place grants nothing: Mesita still reviews the claim.
-// The same field heads Places (MESITA-3126); for Mesita staff it opens any
-// place Mesita holds instead (`open`). Staff see Google-only listings too
-// (MESITA-3134, Pato: "google and mesita, like the searchbar in consumer
-// app"): their Add adds the place and opens its profile, since staff run any
-// place without a claim. Everyone else still claims what they add. A
+// The same field heads Places (MESITA-3126), and it is the same for everyone,
+// Mesita staff included (Pato, MESITA-3142: "you need to verify a place
+// before you can open it"): a place Mesita holds says Claim, a Google listing
+// says Add and claim, and only a place you already run says Open. A
 // Google-only row opens Google's preview first (MESITA-3138): hero photo,
-// category, stars and address, then Add. Claim, and Add and claim once the
-// place is added, open the claim flow in a modal (MESITA-3139): a call to
-// the listing's phone with a code, or Mesita checks by hand.
+// category, stars and address. Claim, and Add and claim once the place is
+// added, open the claim flow in a modal (MESITA-3139): a call to the
+// listing's phone with a code, or Mesita checks by hand.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -56,7 +55,7 @@ function Thumb({ photo }: { photo: string | null }) {
   return <span className="bg-muted size-12 shrink-0 rounded-xl" />;
 }
 
-export function ClaimSearch({ open = false }: { open?: boolean }) {
+export function ClaimSearch() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<FoundPlace[] | null>(null);
@@ -104,10 +103,6 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
       return;
     }
     session.current = null;
-    if (open) {
-      router.push(placeTabHref(r.data.placeId, "profile"));
-      return;
-    }
     // The new place, with its listing phone, for the claim modal.
     const found = await findPlaces({ placeId: r.data.placeId });
     setAdding(null);
@@ -131,9 +126,9 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder={open ? "Search any place" : "Search for your place"}
+          placeholder="Search for your place"
           className={`${INPUT_BASE} h-11 px-3`}
-          aria-label={open ? "Search any place" : "Search for your place"}
+          aria-label="Search for your place"
         />
         <button type="submit" disabled={busy} className="bg-foreground text-background inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60">
           <Search className="size-4" aria-hidden /> {busy ? "Searching…" : "Search"}
@@ -150,7 +145,7 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
           {rows.map((p) =>
             p.id ? (
               <li key={p.id}>
-                {open ? (
+                {p.mine === "owner" ? (
                   <Link href={placeTabHref(p.id, "profile")} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
                     <Thumb photo={p.photo} />
                     <span className="min-w-0 flex-1">
@@ -170,7 +165,7 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
                       <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
                       <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
                     </span>
-                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">{p.mine === "owner" ? "Open" : "Claim"}</span>
+                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">Claim</span>
                   </button>
                 )}
               </li>
@@ -193,7 +188,7 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
                   </span>
                   <span className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold">
                     <Plus className="size-4" aria-hidden />
-                    {open ? "Add" : "Add and claim"}
+                    Add and claim
                   </span>
                 </button>
               </li>
@@ -203,7 +198,7 @@ export function ClaimSearch({ open = false }: { open?: boolean }) {
       ) : null}
       <AddPlaceDialog
         place={picked}
-        label={open ? "Add" : "Add and claim"}
+        label="Add and claim"
         adding={!!picked && adding === picked.google_place_id}
         error={addError}
         onConfirm={() => picked && void add(picked)}

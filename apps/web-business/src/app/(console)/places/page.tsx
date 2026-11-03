@@ -44,16 +44,15 @@ export default async function PlacesPage() {
         }
       />
       {/* Places (Pato, MESITA-3126): a search on top, then the places you run.
-          Owners search to claim; Mesita staff search to open any place. */}
-      <ClaimSearch open={isSuperAdmin} />
+          Everyone, staff included, claims a place before opening it
+          (MESITA-3142). */}
+      <ClaimSearch />
       {places.length === 0 ? (
-        isSuperAdmin ? null : (
         <Card className="flex flex-col items-start gap-3">
           <Store className="text-muted-foreground size-6" aria-hidden />
           <p className="font-semibold">You don&apos;t run a place on Mesita yet.</p>
-          <p className="text-muted-foreground text-sm">Search for it above and claim it. Mesita reviews every request, usually within a day.</p>
+          <p className="text-muted-foreground text-sm">Search for it above and claim it: we call the phone on its listing with a code.</p>
         </Card>
-        )
       ) : (
         <Card className="divide-border divide-y p-0 sm:p-0">
           {places.map((p) => {
