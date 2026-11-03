@@ -23,12 +23,6 @@ const STATE_COPY: Record<MyPlaceState, string> = {
 const PRIMARY = "bg-foreground text-background shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold";
 const SECONDARY = "border-border hover:bg-muted/60 shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors";
 
-function day(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 function Thumb({ photo, size = "size-12" }: { photo: string | null; size?: string }) {
   return photo ? (
     // eslint-disable-next-line @next/next/no-img-element
@@ -106,7 +100,7 @@ export function PlacesBoard({ places, isSuperAdmin }: { places: MyPlace[]; isSup
                     <p className="truncate font-medium">{p.name ?? "Unnamed place"}</p>
                     <p className="text-muted-foreground truncate text-sm">
                       {STATE_COPY[p.state]}
-                      {p.state === "owner" && day(p.expires_at) ? ` · until ${day(p.expires_at)}` : ""}
+                      
                     </p>
                     {p.state === "rejected" && p.decision_note ? (
                       <p className="text-muted-foreground mt-1 text-sm">&ldquo;{p.decision_note}&rdquo;</p>

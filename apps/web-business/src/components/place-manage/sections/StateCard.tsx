@@ -171,7 +171,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
     : owner === undefined
       ? "Reading who runs this place…"
       : owner
-        ? `Claimed and verified: ${owner.name ?? owner.email ?? "an owner"} owns it until ${new Date(owner.expires_at).toLocaleDateString()}.`
+        ? `Claimed and verified: ${owner.name ?? owner.email ?? "an owner"} owns it.`
         : "Nobody has claimed and verified this place.";
 
   const contentState =

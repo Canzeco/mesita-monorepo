@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(11);
+select plan(12);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3103'),
@@ -92,6 +92,13 @@ select is(
       and expires_at > now() and method = 'phone_match'),
   1,
   'the expired row is extended in place, not duplicated'
+);
+
+select is(
+  (select expires_at from public.place_managers
+    where consumer_id = '00000000-0000-4000-8000-0000000a3103' and revoked_at is null),
+  'infinity'::timestamptz,
+  'a verified row never expires; only a revoke ends it (MESITA-3179)'
 );
 
 select throws_ok(
