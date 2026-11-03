@@ -240,6 +240,41 @@ export async function getBilling(placeId: string): Promise<Result<PlaceBilling>>
   return { ok: true, data: { payer, plan, card, charges: charges ?? [] } };
 }
 
+// ── What you pay (MESITA-3130) ─────────────────────────────────────────
+
+/** One Premier subscription the caller pays, on any place, run or not. */
+export type MySubscription = {
+  id: string;
+  place_id: string;
+  name: string | null;
+  photo: string | null;
+  tier: BoostTier;
+  interval: BoostInterval;
+  amount_cents: number;
+  /** The end of the paid period; it renews then when `renews`. */
+  ends_at: string | null;
+  renews: boolean;
+  pending: { tier: BoostTier; interval: BoostInterval | null } | null;
+  /** Whether you still run the place (its Billing page opens for you). */
+  runs_place: boolean;
+};
+
+export async function listBilling(sessionId?: string | null): Promise<Result<{ subscriptions: MySubscription[]; outcome?: string }>> {
+  const r = await efInvoke<{ subscriptions: MySubscription[]; outcome?: string }>(
+    "business-web-list-billing",
+    sessionId ? { session_id: sessionId } : {},
+  );
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { subscriptions: r.data.subscriptions ?? [], outcome: r.data.outcome } };
+}
+
+/** Stop renewing a subscription you pay, by its id; no place access needed. */
+export async function stopMyPremier(backingId: string): Promise<Result<null>> {
+  const r = await efInvoke<{ ok: true }>("business-web-cancel-premier", { backing_id: backingId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: null };
+}
+
 export async function startPremier(input: {
   placeId: string;
   tier?: BoostTier;
