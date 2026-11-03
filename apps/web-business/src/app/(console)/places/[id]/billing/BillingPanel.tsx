@@ -79,7 +79,7 @@ export function BillingPanel({
   billing: PlaceBilling | null;
   error: string | null;
   returned: CardReturn;
-  /** The Plans card (MESITA-3173), right under the status. */
+  /** The plan boxes (MESITA-3173, MESITA-3183), right under the status. */
   plans?: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
@@ -156,8 +156,8 @@ export function BillingPanel({
       ? `Your card expires ${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}, before the next charge on ${day(sub.next_charge_at)}.`
       : null;
 
-  // One button (D1): Update card or Keep <tier>. No See plans: the Plans
-  // card is right below (MESITA-3177).
+  // One button (D1): Update card or Keep <tier>. No See plans: the plan
+  // boxes are right below (MESITA-3177).
   const buttonClass =
     "inline-flex h-10 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60 sm:w-auto";
   const button = cardLine ? (
@@ -199,7 +199,7 @@ export function BillingPanel({
         </p>
       ) : null}
 
-      {/* With nothing running the Plans card is the page (MESITA-3177): no
+      {/* With nothing running the plan boxes are the page (MESITA-3177): no
           headline repeating Free, no line, no button pointing below. */}
       {empty ? null : (
       <div className="flex flex-col gap-3 py-1">

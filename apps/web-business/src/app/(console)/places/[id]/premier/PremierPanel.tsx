@@ -5,8 +5,8 @@
 // place and never promises views.
 //
 // Two sections (MESITA-3183, Pato: "just list the three boxes. as if it was a
-// subscription"): Plan, the three plans to buy from (the same PlansCard Billing
-// lists), and below it Boost, the temporary lift Mesita gives or a guest buys.
+// subscription"): Plan, the three plans to buy from (the same boxes as Billing),
+// and below it Boost, the temporary lift Mesita gives or a guest buys.
 // The place runs at the higher of the two. Every amount and date is the
 // server's (business-web-get-premier).
 
@@ -63,7 +63,7 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
 
   return (
     <div className="flex flex-col gap-6 pb-8">
-      <PlansCard key={read} placeId={placeId} initial={data} layout="boxes" backTo={placeTabHref(placeId, "premier")} />
+      <PlansCard key={read} placeId={placeId} initial={data} backTo={placeTabHref(placeId, "premier")} />
 
       {data.renewing ? <p className="text-muted-foreground text-sm">A renewal is being charged now.</p> : null}
 
