@@ -13,15 +13,18 @@
 // app"): their Add adds the place and opens its profile, since staff run any
 // place without a claim. Everyone else still claims what they add. A
 // Google-only row opens Google's preview first (MESITA-3138): hero photo,
-// category, stars and address, then Add.
+// category, stars and address, then Add. Claim, and Add and claim once the
+// place is added, open the claim flow in a modal (MESITA-3139): a call to
+// the listing's phone with a code, or Mesita checks by hand.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Search } from "lucide-react";
-import { createPlace, findPlaces, type FoundPlace } from "@/lib/business-api";
+import { createPlace, findPlaces, type ClaimablePlace, type FoundPlace } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { AddPlaceDialog } from "./AddPlaceDialog";
+import { ClaimDialog } from "./ClaimDialog";
 import { INPUT_BASE } from "@/components/ui/manage";
 
 const MIN_QUERY = 2;
@@ -62,6 +65,8 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
   // The Google-only row whose preview dialog is open.
   const [picked, setPicked] = useState<FoundPlace | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  // The place whose claim modal is open, and whether it was just added.
+  const [claiming, setClaiming] = useState<{ place: ClaimablePlace; added: boolean } | null>(null);
   // One Google session per search run; a new run after a pick gets a new one.
   const session = useRef<string | null>(null);
   const seq = useRef(0);
@@ -98,11 +103,17 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
       return;
     }
     session.current = null;
-    router.push(
-      open
-        ? `/places/${encodeURIComponent(r.data.placeId)}/profile`
-        : `/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`,
-    );
+    if (open) {
+      router.push(`/places/${encodeURIComponent(r.data.placeId)}/profile`);
+      return;
+    }
+    // The new place, with its listing phone, for the claim modal.
+    const found = await findPlaces({ placeId: r.data.placeId });
+    setAdding(null);
+    setPicked(null);
+    const hit = found.ok ? found.data[0] : null;
+    if (hit?.id) setClaiming({ place: hit as ClaimablePlace, added: r.data.created });
+    else router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
   }
 
   const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
@@ -139,14 +150,29 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
           {rows.map((p) =>
             p.id ? (
               <li key={p.id}>
-                <Link href={open ? `/places/${encodeURIComponent(p.id)}/profile` : `/claim/${encodeURIComponent(p.id)}`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
-                  <Thumb photo={p.photo} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
-                    <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
-                  </span>
-                  <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">{open ? "Open" : "Claim"}</span>
-                </Link>
+                {open ? (
+                  <Link href={`/places/${encodeURIComponent(p.id)}/profile`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
+                    <Thumb photo={p.photo} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
+                      <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
+                    </span>
+                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">Open</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setClaiming({ place: p as ClaimablePlace, added: false })}
+                    className="hover:bg-muted/50 flex w-full items-center gap-4 px-1 py-3 text-left"
+                  >
+                    <Thumb photo={p.photo} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
+                      <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
+                    </span>
+                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">{p.mine === "owner" ? "Open" : "Claim"}</span>
+                  </button>
+                )}
               </li>
             ) : (
               <li key={p.google_place_id ?? p.name}>
@@ -183,6 +209,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
         onConfirm={() => picked && void add(picked)}
         onClose={() => setPicked(null)}
       />
+      <ClaimDialog place={claiming?.place ?? null} added={claiming?.added ?? false} onClose={() => setClaiming(null)} />
     </Card>
   );
 }
