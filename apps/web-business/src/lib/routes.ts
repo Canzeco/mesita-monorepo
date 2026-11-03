@@ -18,7 +18,7 @@ export const ACCOUNT = "/account";
 
 // Preview is a modal on Profile, Billing a section of Settings, and Future
 // split into Payments and Rewards (MESITA-3136).
-export const PLACE_TABS = ["profile", "reviews", "premier", "payments", "rewards", "settings", "admin"] as const;
+export const PLACE_TABS = ["profile", "reviews", "premier", "payments", "products", "rewards", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

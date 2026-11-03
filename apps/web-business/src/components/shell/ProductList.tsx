@@ -1,6 +1,6 @@
 import { Card } from "@/components/shell/Page";
 
-// Mesita's five place products (🦚 Main § 4; the landing's PLACE_SOLUTIONS),
+// Mesita's place products (🦚 Main § 4, the landing's PLACE_SOLUTIONS, plus Menu since MESITA-3152),
 // one card of rows. Since MESITA-3128 the place's Future page lists the ones
 // still coming (Profile and Premier have their own menu rows).
 const PRODUCTS: Array<{ name: string; body: string; live: boolean }> = [
@@ -25,13 +25,18 @@ const PRODUCTS: Array<{ name: string; body: string; live: boolean }> = [
     live: false,
   },
   {
+    name: "Mesita Menu",
+    body: "Your menu on your profile: dishes, prices and photos guests read before they come, kept in step with what you serve.",
+    live: false,
+  },
+  {
     name: "Credit Rewards",
     body: "Fund a percent back on every payment, paid as credit at your place, never cash. You set the rate and the cap; the credit brings the guest back.",
     live: false,
   },
 ];
 
-/** All five, or just the named ones (a Soon page shows its own product). */
+/** All of them, or just the named ones (a Soon page shows its own product). */
 export function ProductList({ only }: { only?: readonly string[] }) {
   const rows = only ? PRODUCTS.filter((p) => only.includes(p.name)) : PRODUCTS;
   return (

@@ -4,9 +4,9 @@
 //
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
-//   ┌ Products ──────────────────────────────────────────────┐
-//   │ Profile · Reviews · Premier · Payments Soon · Rewards Soon │
-//   └────────────────────────────────────────────────────────┘
+//   ┌ Capabilities (MESITA-3152; was Products) ─────────────────────────┐
+//   │ Profile · Reviews · Premier · Payments, Products, Rewards: Soon │
+//   └──────────────────────────────────────────────────────────────┘
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Settings (Billing inside) · Admin (staff) │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -82,6 +82,7 @@ function menu(
         tab("reviews"),
         tab("premier"),
         tab("payments"),
+        tab("products"),
         tab("rewards"),
       ],
       manage: [
@@ -183,7 +184,10 @@ export function BusinessShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const named = useShellPlace();
+  // A remembered pick (MESITA-3152) counts only while you still run it, or
+  // for Mesita staff, who open any place.
+  const stored = useShellPlace();
+  const named = stored && (isSuperAdmin || places.some((p) => p.id === stored.id)) ? stored : null;
   // The URL's place, else the last one opened this visit, else the first you run.
   const placeId = placeIdFromPathname(pathname) ?? named?.id ?? places[0]?.id ?? null;
   const mine = places.find((p) => p.id === placeId) ?? null;
@@ -198,7 +202,7 @@ export function BusinessShell({
       <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3">
         <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5">
           <PlaceSwitcher s={switcher} />
-          <Group label="Products" rows={place.products} />
+          <Group label="Capabilities" rows={place.products} />
           <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
           <div className="border-border mt-auto border-t pt-2">
