@@ -437,6 +437,7 @@ export type Database = {
           consumer_id: string | null
           created_at: string
           currency: string
+          early_start: boolean
           ended_at: string | null
           ended_reason: string | null
           id: string
@@ -462,6 +463,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency?: string
+          early_start?: boolean
           ended_at?: string | null
           ended_reason?: string | null
           id?: string
@@ -487,6 +489,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency?: string
+          early_start?: boolean
           ended_at?: string | null
           ended_reason?: string | null
           id?: string
@@ -1584,6 +1587,102 @@ export type Database = {
           },
         ]
       }
+      premier_code_attempts: {
+        Row: {
+          at: string
+          id: number
+          user_id: string
+        }
+        Insert: {
+          at?: string
+          id?: never
+          user_id: string
+        }
+        Update: {
+          at?: string
+          id?: never
+          user_id?: string
+        }
+        Relationships: []
+      }
+      premier_code_redemptions: {
+        Row: {
+          code_id: string
+          created_at: string
+          id: string
+          place_id: string
+          user_id: string | null
+        }
+        Insert: {
+          code_id: string
+          created_at?: string
+          id?: string
+          place_id: string
+          user_id?: string | null
+        }
+        Update: {
+          code_id?: string
+          created_at?: string
+          id?: string
+          place_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premier_code_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "premier_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premier_code_redemptions_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premier_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          created_by: string
+          days: number
+          expires_at: string | null
+          id: string
+          last4: string
+          max_redemptions: number
+          revoked_at: string | null
+          tier: number
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          created_by: string
+          days: number
+          expires_at?: string | null
+          id?: string
+          last4: string
+          max_redemptions: number
+          revoked_at?: string | null
+          tier: number
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          created_by?: string
+          days?: number
+          expires_at?: string | null
+          id?: string
+          last4?: string
+          max_redemptions?: number
+          revoked_at?: string | null
+          tier?: number
+        }
+        Relationships: []
+      }
       premier_customers: {
         Row: {
           consumer_id: string
@@ -1609,6 +1708,78 @@ export type Database = {
             columns: ["consumer_id"]
             isOneToOne: false
             referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      premier_refill_purchases: {
+        Row: {
+          amount_cents: number
+          consumer_id: string | null
+          created_at: string
+          currency: string
+          days: number
+          ends_at: string | null
+          id: string
+          livemode: boolean
+          paid_at: string | null
+          place_id: string
+          refusal_code: string | null
+          status: string
+          stripe_checkout_session_id: string | null
+          stripe_payment_intent_id: string | null
+          tier: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          days: number
+          ends_at?: string | null
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id: string
+          refusal_code?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tier: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          currency?: string
+          days?: number
+          ends_at?: string | null
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id?: string
+          refusal_code?: string | null
+          status?: string
+          stripe_checkout_session_id?: string | null
+          stripe_payment_intent_id?: string | null
+          tier?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "premier_refill_purchases_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "premier_refill_purchases_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2408,6 +2579,10 @@ export type Database = {
         Returns: Json
       }
       premier_cover_paid: { Args: { p_place_id: string }; Returns: undefined }
+      premier_early_window: {
+        Args: { p_place_id: string; p_tier: number }
+        Returns: boolean
+      }
       premier_end_mesita_days: {
         Args: { p_by: string; p_place_id: string }
         Returns: Json
@@ -2421,10 +2596,26 @@ export type Database = {
         Returns: Json
       }
       premier_manual_tier: { Args: { p_place_id: string }; Returns: number }
+      premier_redeem_code: {
+        Args: { p_code_hash: string; p_place_id: string; p_user_id: string }
+        Returns: Json
+      }
+      premier_refill_check: {
+        Args: { p_days: number; p_place_id: string; p_tier: number }
+        Returns: Json
+      }
       premier_refill_ends: { Args: { p_place_id: string }; Returns: Json }
+      premier_refill_settle: {
+        Args: { p_payment_intent: string; p_purchase_id: string }
+        Returns: Json
+      }
       premier_restack: {
         Args: { p_new_id: string; p_new_len: string; p_place_id: string }
         Returns: undefined
+      }
+      premier_run_end: {
+        Args: { p_place_id: string; p_tier: number }
+        Returns: string
       }
       premier_settle: {
         Args: {
