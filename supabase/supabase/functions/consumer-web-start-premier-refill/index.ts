@@ -13,7 +13,7 @@
 //                              | "cap_reached", error }  (HTTP 200)
 //         | 503 { ok: false, code: "stripe_unavailable", error }
 // `notice`: the place already runs at or above the tier ("This place is
-// already Premier Max; your days keep it Premier Max until Dec 3").
+// already Premier 5X; your days keep it Premier 5X until Dec 3").
 //
 // Stripe stays in test mode until Pato flips STRIPE_MODE and STRIPE_ALLOW_LIVE.
 

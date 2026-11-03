@@ -27,14 +27,14 @@ export function premierLevel(tier: number | null | undefined): string | null {
   return tier === 1 || tier === 2 ? PREMIER_LEVELS[tier] : null;
 }
 
-/** The plan names a guest buys (MESITA-3063): 2X is "Premier", 5X is
- *  "Premier Max". The X stays the ranking priority, `premierLevel`. */
+/** The mark a guest reads (MESITA-3174): the level, Premier 2X · Premier 5X.
+ *  The place's plan is Pro (2X) or Max (5X); Free is Premier 1X, no mark. */
 export const PREMIER_PLANS: Readonly<Record<1 | 2, string>> = {
-  1: "Premier",
-  2: "Premier Max",
+  1: "Premier 2X",
+  2: "Premier 5X",
 };
 
-/** "Premier Max", or null when the place is not Premier. */
+/** "Premier 5X", or null when the place is not Premier. */
 export function premierLabel(tier: number | null | undefined): string | null {
   return tier === 1 || tier === 2 ? PREMIER_PLANS[tier] : null;
 }

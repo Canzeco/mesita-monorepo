@@ -1,8 +1,8 @@
 "use client";
 
-// The three Business plans as one card of rows (MESITA-3173, Pato: "you
-// actually buy access to all the software, don't separate premier"): Mesita
-// Business Free · Pro · Ultra. Pro and Ultra are the boost_2x / boost_5x
+// The three plans as one card of rows (MESITA-3173, Pato: "you actually buy
+// access to all the software, don't separate premier"): Free · Pro · Max,
+// Premier 1X · 2X · 5X (MESITA-3174). Pro and Max are the boost_2x / boost_5x
 // subscriptions and carry Premier 2X / 5X ranking, so the paid rows keep the
 // Ad tag (package law). They lived on the Premier page until this issue.
 //
@@ -14,11 +14,11 @@ import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostInterval, type BoostTier, type PlacePremier } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { billingHref, returnUrl } from "@/lib/routes";
-import { FREE_PLAN, PLAN_NAME } from "@/lib/plans";
+import { FREE_LEVEL, FREE_PLAN, PLAN_LEVEL, PLAN_NAME } from "@/lib/plans";
 
-const PLANS: Array<{ key: BoostTier; rank: number; factor: string }> = [
-  { key: "boost_2x", rank: 1, factor: "2X" },
-  { key: "boost_5x", rank: 2, factor: "5X" },
+const PLANS: Array<{ key: BoostTier; rank: number }> = [
+  { key: "boost_2x", rank: 1 },
+  { key: "boost_5x", rank: 2 },
 ];
 
 const REFUSED: Record<string, string> = {
@@ -132,7 +132,10 @@ export function PlansCard({
       {notice ? <p className="border-border border-t px-5 py-3 text-sm sm:px-6">{notice}</p> : null}
       <ul className="divide-border border-border divide-y border-t">
         <li className={rowClass}>
-          <span className="min-w-0 flex-1 font-semibold">{FREE_PLAN}</span>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <span className="font-semibold">{FREE_PLAN}</span>
+            <span className="text-muted-foreground text-sm">{FREE_LEVEL}</span>
+          </div>
           <p className="text-sm">
             <span className="text-lg font-semibold">$0</span> / {interval}
           </p>
@@ -167,7 +170,7 @@ export function PlansCard({
             <li key={plan.key} ref={isPicked ? pickedRef : undefined} className={`${rowClass} ${isPicked ? "bg-muted/60" : ""}`}>
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                 <span className="font-semibold">{PLAN_NAME[plan.key]}</span>
-                <span className="text-muted-foreground text-sm">Premier {plan.factor}</span>
+                <span className="text-muted-foreground text-sm">{PLAN_LEVEL[plan.key]}</span>
                 <AdTag />
               </div>
               <div className="text-right">

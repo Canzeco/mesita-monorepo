@@ -1,7 +1,7 @@
 // Mesita Premier on the place screen (MESITA-3168; Premier MESITA-2925,
 // Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys a
-// Premier Refill pack for a place — 30 days of Premier (2X) or Premier Max
-// (5X), paid once, no renewal and no owner check. The recurring Premier
+// Premier Refill pack for a place — 30 days of Pro (Premier 2X) or Max
+// (Premier 5X), paid once, no renewal and no owner check. The recurring Premier
 // Subscription is the Business app's. Every amount, date and line here comes
 // from the server (consumer-web-get-premier-refill): this file never
 // computes money. Tier on the wire is the integer 1 = 2X, 2 = 5X.
@@ -11,20 +11,20 @@ import { invokeEF } from "./_invoke";
 
 export type TierRank = 1 | 2;
 
-/** The two packs (named MESITA-3063): each sells what the place gets, and
+/** The two packs (named Pro and Max, MESITA-3174): each sells what the place gets, and
  *  `priority` is the factor the ranking applies (Home's list and the Map).
  *  Prices come from the server. */
 export const BOOST_TIERS = [
   {
     rank: 1,
-    label: "Premier",
-    priority: "2X",
+    label: "Pro",
+    priority: "Premier 2X",
     blurb: "Moves the place up on Home and the Map",
   },
   {
     rank: 2,
-    label: "Premier Max",
-    priority: "5X",
+    label: "Max",
+    priority: "Premier 5X",
     blurb: "The biggest lift on Home and the Map",
   },
 ] as const satisfies ReadonlyArray<{
@@ -36,11 +36,11 @@ export const BOOST_TIERS = [
 
 export const BOOST_TIER_LABEL: Record<number, string | null> = {
   0: null,
-  1: "Premier",
-  2: "Premier Max",
+  1: "Premier 2X",
+  2: "Premier 5X",
 };
 
-/** A tier's plan name ("Premier Max"); a tier this build does not know
+/** A tier's level ("Premier 5X"); a tier this build does not know
  *  reads plain "Premier", never `undefined` (MESITA-3041). */
 export function tierLabel(tier: number): string {
   return BOOST_TIER_LABEL[tier] ?? "Premier";

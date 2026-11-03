@@ -30,7 +30,7 @@ import { cn, errMsg } from "@/lib/utils";
 
 // THE PREMIER TAB (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925, the
 // place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys Premier
-// days for any place — a 30-day pack of Premier (2X) or Premier Max (5X),
+// days for any place — a 30-day pack of Pro (Premier 2X) or Max (Premier 5X),
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
 //
@@ -54,7 +54,7 @@ const LEVELS: ReadonlyArray<{ rank: number; label: string; soon?: boolean }> = [
 
 /** What a pack buys, said in the sheet above the packs. */
 const PERKS = [
-  "Moves the place up on Home and the Map: 2X priority with Premier, 5X with Premier Max.",
+  "Moves the place up on Home and the Map: Premier 2X with Pro, Premier 5X with Max.",
   "A red Premier pin on the Map.",
   "Paid once for 30 days. Nothing renews; it ends on its own.",
 ];
@@ -309,7 +309,7 @@ export function BoostPane({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-base font-semibold">
-                        {t.label}
+                        {t.label} · {t.priority}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         {off && p?.code
@@ -370,8 +370,8 @@ export function BoostPane({
             )}
 
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Premier gives the place 2X ranking priority on Home and the Map,
-              Premier Max 5X. Priority moves it up the list; it doesn&apos;t
+              Pro gives the place Premier 2X ranking priority on Home and the Map,
+              Max Premier 5X. Priority moves it up the list; it doesn&apos;t
               guarantee more views. Premier places show “Ad”; Premier
               doesn&apos;t verify a place. Days you buy stack after the days
               already running. Charged once by Stripe in US dollars; card only.

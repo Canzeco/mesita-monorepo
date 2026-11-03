@@ -23,8 +23,8 @@ export type RefillTier = 1 | 2;
 export const REFILL_PACK_DAYS = 30;
 export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 15_00, 2: 150_00 };
 
-/** The plan names guests read (MESITA-3063): 2X is Premier, 5X Premier Max. */
-export const refillLabel = (tier: number): string => (tier === 2 ? "Premier Max" : "Premier");
+/** The level guests read (MESITA-3174): Pro is Premier 2X, Max Premier 5X. */
+export const refillLabel = (tier: number): string => (tier === 2 ? "Premier 5X" : "Premier 2X");
 
 export type RefillStart = { placeId: string; tier: RefillTier; returnUrl: string };
 
