@@ -4,9 +4,11 @@
 // pending request a super-admin approves or rejects in the Business app's
 // Internal page. Three requests per guest per day. Never says whether anyone
 // else runs the place. (Phone match left with phone sign-in, MESITA-3105: a
-// Google account carries no phone to compare.)
+// Google account carries no phone to compare.) The request carries a WhatsApp
+// number Mesita writes to while it checks (MESITA-3127); the other way in is
+// the claim call (business-web-call-place-code).
 //
-// Body: { place_id: uuid, name?: string, role?: string, note?: string }
+// Body: { place_id: uuid, name?: string, role?: string, contact?: string, note?: string }
 // Response: { ok: true, outcome: "pending" | "already_pending" | "already_owner" | "needs_details" }
 //         | { ok: false, code: "no_account" | "too_many_requests" | "invalid", error }
 
@@ -23,7 +25,7 @@ const REQUESTS_PER_DAY = 3;
 /** The pending request row (the place_verification_requests table, EF-only). */
 function insertRequest(
   admin: SupabaseClient,
-  row: { place_id: string; consumer_id: string; name: string; role: string; note: string | null },
+  row: { place_id: string; consumer_id: string; name: string; role: string; contact: string; note: string | null },
 ) {
   return admin.from("place_verification_requests").insert(row);
 }
@@ -72,11 +74,15 @@ serveJson("business-web-request-verification", async (req) => {
 
   const name = boundedText(bodyRes.body.name, 80);
   const role = boundedText(bodyRes.body.role, 80);
+  const contact = boundedText(bodyRes.body.contact, 40);
   const note = boundedText(bodyRes.body.note, 500);
-  if (name === undefined || role === undefined || note === undefined) {
-    return json({ ok: false, code: "invalid", error: "Name and role are 80 characters at most, the note 500" }, 400);
+  if (name === undefined || role === undefined || contact === undefined || note === undefined) {
+    return json({ ok: false, code: "invalid", error: "Name and role are 80 characters at most, the WhatsApp number 40, the note 500" }, 400);
   }
-  if (!name || !role) return json({ ok: true, outcome: "needs_details" });
+  if (!name || !role || !contact) return json({ ok: true, outcome: "needs_details" });
+  if (contact.replace(/\D/g, "").length < 7) {
+    return json({ ok: false, code: "invalid_contact", error: "Write a WhatsApp number we can reach you at" }, 400);
+  }
 
   const since = new Date(Date.now() - 86_400_000).toISOString();
   const { count, error: countErr } = await admin
@@ -89,7 +95,7 @@ serveJson("business-web-request-verification", async (req) => {
     return json({ ok: false, code: "too_many_requests", error: "You can send three requests a day. Try again tomorrow." }, 429);
   }
 
-  const { error } = await insertRequest(admin, { place_id: placeId, consumer_id: user.id, name, role, note });
+  const { error } = await insertRequest(admin, { place_id: placeId, consumer_id: user.id, name, role, contact, note });
   if (error) {
     if (error.code === "23505") return json({ ok: true, outcome: "already_pending" });
     return json({ ok: false, error: error.message }, 500);
