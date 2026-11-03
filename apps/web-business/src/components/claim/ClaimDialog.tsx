@@ -42,38 +42,39 @@ export function ClaimDialog({
         // p-0 + inner wrapper: a click on the <dialog> itself is the backdrop.
         if (e.target === e.currentTarget) dialog.current?.close();
       }}
-      className="bg-background m-auto max-h-[calc(100dvh-2rem)] w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-3xl border-0 p-0 shadow-elev backdrop:bg-black/40"
+      className="bg-card m-auto max-h-[calc(100dvh-2rem)] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto rounded-3xl border-0 p-0 shadow-elev backdrop:bg-black/30 backdrop:backdrop-blur-sm"
     >
       {place ? (
         // A fresh flow per place: no code or form carries over.
-        <div key={place.id} className="flex flex-col gap-4 p-5">
-          <div className="flex items-start gap-3">
+        <div key={place.id} className="relative flex flex-col gap-5 px-5 pt-8 pb-5 sm:px-6">
+          <button
+            type="button"
+            onClick={() => dialog.current?.close()}
+            aria-label="Close"
+            className="bg-muted/70 hover:bg-muted text-muted-foreground absolute top-4 right-4 inline-flex size-8 items-center justify-center rounded-full transition-colors"
+          >
+            <X className="size-4" aria-hidden />
+          </button>
+          {/* The place, centred like a sheet's title (MESITA-3148). */}
+          <div className="flex flex-col items-center gap-3 px-6 text-center">
             {place.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={place.photo} alt="" className="size-14 shrink-0 rounded-xl object-cover" />
+              <img src={place.photo} alt="" className="size-16 rounded-2xl object-cover shadow-sm" />
             ) : (
-              <span className="bg-muted flex size-14 shrink-0 items-center justify-center rounded-xl">
-                <MapPin className="text-muted-foreground size-5" aria-hidden />
+              <span className="bg-muted flex size-16 items-center justify-center rounded-2xl">
+                <MapPin className="text-muted-foreground size-6" aria-hidden />
               </span>
             )}
-            <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground flex items-center gap-2 text-sm">
+            <div className="flex min-w-0 flex-col items-center gap-1">
+              <p className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
                 Claim your place {enriching ? <EnrichingTag /> : null}
               </p>
-              <p className="truncate text-lg font-semibold tracking-tight">{place.name ?? "Unnamed place"}</p>
-              {place.address ? <p className="text-muted-foreground truncate text-sm">{place.address}</p> : null}
+              <h2 className="text-xl font-semibold tracking-tight">{place.name ?? "Unnamed place"}</h2>
+              {place.address ? <p className="text-muted-foreground line-clamp-2 text-sm">{place.address}</p> : null}
             </div>
-            <button
-              type="button"
-              onClick={() => dialog.current?.close()}
-              aria-label="Close"
-              className="hover:bg-muted inline-flex size-9 shrink-0 items-center justify-center rounded-full"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
           </div>
           {added ? (
-            <p className="border-border bg-card rounded-xl border px-4 py-3 text-sm">
+            <p className="text-muted-foreground text-center text-sm">
               We added {place.name ?? "your place"} to Mesita{enriching ? " and are filling in its profile from public sources" : ""}. Now prove it&apos;s yours.
             </p>
           ) : null}

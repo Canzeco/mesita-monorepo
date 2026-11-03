@@ -4,9 +4,11 @@
 // says a new 6-digit code (it replaces any earlier one). The caller types it
 // into business-web-check-place-code. 3 calls per place and 5 per guest a
 // rolling day (place_take_verification_send). Never says who runs the place.
+// While CALLS_LIVE is false (MESITA-3148) no call goes out: the code is
+// TEST_CODE and the reply says `test: true`.
 //
 // Body: { place_id: uuid }
-// Response: { ok: true, outcome: "calling", masked_phone, minutes } | { ok: true, outcome: "already_owner" }
+// Response: { ok: true, outcome: "calling", masked_phone, minutes, test } | { ok: true, outcome: "already_owner" }
 //         | { ok: false, code: "no_account" | "no_phone" | "too_many_calls" | "call_failed" | "invalid" | "not_found", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -15,7 +17,7 @@ import { ensureConsumer, requireBusinessRequest } from "../_shared/business-requ
 import { isUuid } from "../_shared/place-id.ts";
 import { isLiveManager, managerRow } from "../_shared/place-access.ts";
 import { maskPhone } from "../_shared/place-verification.ts";
-import { CODE_MINUTES, dropCode, newCode, placeCodeCall, storeCode, toE164 } from "../_shared/place-call-code.ts";
+import { CALLS_LIVE, CODE_MINUTES, dropCode, newCode, TEST_CODE, placeCodeCall, storeCode, toE164 } from "../_shared/place-call-code.ts";
 
 serveJson("business-web-call-place-code", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -61,9 +63,14 @@ serveJson("business-web-call-place-code", async (req) => {
     return json({ ok: false, code: "too_many_calls", error: "No more calls to this place today. Try tomorrow, or ask Mesita to check by hand." }, 429);
   }
 
-  const code = newCode();
+  const code = CALLS_LIVE ? newCode() : TEST_CODE;
   const { error: codeErr } = await storeCode(admin, placeId, user.id, code);
   if (codeErr) return json({ ok: false, error: codeErr.message }, 500);
+
+  if (!CALLS_LIVE) {
+    console.log(JSON.stringify({ fn: "business-web-call-place-code", place_id: placeId, outcome: "test_code" }));
+    return json({ ok: true, outcome: "calling", masked_phone: maskPhone(place.phone), minutes: CODE_MINUTES, test: true });
+  }
 
   const call = await placeCodeCall(to, code);
   if (!call.ok) {
@@ -72,5 +79,5 @@ serveJson("business-web-call-place-code", async (req) => {
     return json({ ok: false, code: "call_failed", error: "We couldn't call this place. Ask Mesita to check by hand." }, 502);
   }
   console.log(JSON.stringify({ fn: "business-web-call-place-code", place_id: placeId, outcome: "calling", call_sid: call.sid }));
-  return json({ ok: true, outcome: "calling", masked_phone: maskPhone(place.phone), minutes: CODE_MINUTES });
+  return json({ ok: true, outcome: "calling", masked_phone: maskPhone(place.phone), minutes: CODE_MINUTES, test: false });
 });
