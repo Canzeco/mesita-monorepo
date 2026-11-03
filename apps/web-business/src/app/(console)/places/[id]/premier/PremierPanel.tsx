@@ -161,7 +161,7 @@ export function PremierPanel({
       {notice ? <Card className="text-sm">{notice}</Card> : null}
 
       {/* One card of rows (MESITA-3172, Pato: "fix this shit"): what runs now,
-          then one row per plan. No boxes inside the box, no blurbs, no fine
+          then one row per plan, No Premier first. No boxes inside the box, no blurbs, no fine
           print; the page subtitle already says it is an ad. */}
       <Card className="flex flex-col p-0 sm:p-0">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
@@ -170,17 +170,6 @@ export function PremierPanel({
             {data.tier > 0 || data.renewing ? <p className="text-muted-foreground text-sm">{summary(data)}</p> : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            {payer && data.paid?.renews ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => (armed === "self" ? void stop(false) : setArmed("self"))}
-                onBlur={() => setArmed(null)}
-                className="border-border hover:bg-muted h-9 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
-              >
-                {armed === "self" ? "Tap again to stop renewing" : "Stop renewing"}
-              </button>
-            ) : null}
             {/* What runs, the schedule and every charge are Billing (MESITA-3166). */}
             <Link
               href={billingHref(placeId)}
@@ -225,6 +214,29 @@ export function PremierPanel({
               </div>
             </div>
             <ul className="divide-border border-border divide-y border-t">
+              {/* The free row first (Pato: "add Like No Premier"): choosing it
+                  is stopping your own renewal; the paid days run out. */}
+              <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
+                <span className="min-w-0 flex-1 font-semibold">No Premier</span>
+                <p className="text-sm">
+                  <span className="text-lg font-semibold">$0</span> / {interval}
+                </p>
+                {payer && data.paid?.renews ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => (armed === "self" ? void stop(false) : setArmed("self"))}
+                    onBlur={() => setArmed(null)}
+                    className="border-border hover:bg-muted h-10 w-32 rounded-full border text-sm font-semibold disabled:opacity-60"
+                  >
+                    {armed === "self" ? "Tap again" : "Switch"}
+                  </button>
+                ) : (
+                  <button type="button" disabled className="border-border h-10 w-32 rounded-full border text-sm font-semibold opacity-50">
+                    {payer && data.paid ? "From " + day(data.paid.ends_at) : "Your plan"}
+                  </button>
+                )}
+              </li>
               {PLANS.map((plan) => {
                 const q = quotes[plan.key]?.[interval];
                 if (!q) return null;
