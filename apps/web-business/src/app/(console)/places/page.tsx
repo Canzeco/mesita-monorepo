@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Plus, Store } from "lucide-react";
+import { ChevronRight, Plus, Store } from "lucide-react";
 import { getIdentityCached } from "@/lib/identity";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
 import type { MyPlaceState } from "@/lib/business-api";
+import { StaffFind } from "./StaffFind";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your places" };
@@ -26,7 +27,7 @@ export default async function PlacesPage() {
   if (!identity.ok) {
     return <PageErrorState heading="Could not load your places" message={identity.error} retryHref="/places" />;
   }
-  const { places } = identity.data;
+  const { places, isSuperAdmin } = identity.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,6 +86,20 @@ export default async function PlacesPage() {
           })}
         </Card>
       )}
+      {/* Mesita staff (MESITA-3126): Admin is a place's menu row, so without
+          a place the claim requests and Open any place start here. */}
+      {isSuperAdmin ? (
+        <>
+          <Link href="/internal" className="hover:bg-muted/50 bg-card border-border flex items-center justify-between rounded-2xl border px-5 py-4 transition">
+            <span>
+              <span className="block font-semibold">Claim requests</span>
+              <span className="text-muted-foreground block text-sm">Mesita staff: every request waiting, across places</span>
+            </span>
+            <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+          </Link>
+          <StaffFind />
+        </>
+      ) : null}
     </div>
   );
 }

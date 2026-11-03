@@ -14,8 +14,9 @@
 //   Admin     — Mesita staff only (MESITA-3122)
 //
 // Above the line is you, below it one place. The current place is the one in
-// the URL, else the first you run; without one nothing sits below the line
-// (Places leads to Claim a place) but staff still get Admin.
+// the URL, else the first you run; without one nothing sits below the line,
+// Admin included: Admin is the place's (Pato, MESITA-3126). Places leads to
+// Claim a place, and for staff to Claim requests and Open any place.
 // Desktop web (MESITA-3119): the side menu is the only menu at every width,
 // narrowing to icons below lg.
 //
@@ -39,11 +40,7 @@ function menu(pathname: string, placeId: string | null, place: ShellPlace | null
     { key: "account", label: "Account", icon: CircleUser, href: "/account", active: pathname === "/account" },
     { key: "places", label: "Places", icon: Store, href: "/places", active: pathname === "/places" || pathname.startsWith("/claim") },
   ];
-  // Mesita staff only (MESITA-3122): the place's staff page, else the claim
-  // requests and Open any place. The server refuses anyone else.
-  const admin = (href: string): Row[] =>
-    isSuperAdmin ? [{ key: "admin", label: "Admin", icon: ShieldCheck, href, active: under(href) || pathname === "/internal" }] : [];
-  if (!placeId) return { you, place: admin("/internal") };
+  if (!placeId) return { you, place: [] };
 
   const tab = (key: "preview" | "profile" | "reviews" | "premier" | "settings" | "internal", label: string, icon: LucideIcon): Row => {
     const href = placeTabHref(placeId, key);
@@ -57,7 +54,9 @@ function menu(pathname: string, placeId: string | null, place: ShellPlace | null
       tab("reviews", "Reviews", Star),
       tab("premier", "Premier", BadgeCheck),
       tab("settings", "Settings", Settings),
-      ...admin(placeTabHref(placeId, "internal")),
+      // Mesita staff only (MESITA-3122): the place's staff page. The server
+      // refuses anyone else.
+      ...(isSuperAdmin ? [tab("internal", "Admin", ShieldCheck)] : []),
     ],
   };
 }
