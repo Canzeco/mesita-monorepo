@@ -92,10 +92,11 @@ export async function previewGooglePlace(googlePlaceId: string): Promise<Result<
 }
 
 /** Adds a Google listing to Mesita (get-or-create); the id to claim. */
-export async function createPlace(googlePlaceId: string): Promise<Result<{ placeId: string; created: boolean }>> {
-  const r = await efInvoke<{ created: boolean; place: { id: string } }>("business-web-create-place", { googlePlaceId });
+export async function createPlace(googlePlaceId: string): Promise<Result<{ placeId: string; created: boolean; enriching: boolean }>> {
+  const r = await efInvoke<{ created: boolean; enriching?: boolean; place: { id: string } }>("business-web-create-place", { googlePlaceId });
   if (!r.ok) return fail(r);
-  return { ok: true, data: { placeId: r.data.place.id, created: r.data.created === true } };
+  // `enriching`: the add started Enrich (MESITA-3140).
+  return { ok: true, data: { placeId: r.data.place.id, created: r.data.created === true, enriching: r.data.enriching === true } };
 }
 
 export type ClaimOutcome = "verified" | "pending" | "already_pending" | "already_owner" | "needs_details";

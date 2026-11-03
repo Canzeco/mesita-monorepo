@@ -66,7 +66,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
   const [picked, setPicked] = useState<FoundPlace | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   // The place whose claim modal is open, and whether it was just added.
-  const [claiming, setClaiming] = useState<{ place: ClaimablePlace; added: boolean } | null>(null);
+  const [claiming, setClaiming] = useState<{ place: ClaimablePlace; added: boolean; enriching: boolean } | null>(null);
   // One Google session per search run; a new run after a pick gets a new one.
   const session = useRef<string | null>(null);
   const seq = useRef(0);
@@ -112,7 +112,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
     setAdding(null);
     setPicked(null);
     const hit = found.ok ? found.data[0] : null;
-    if (hit?.id) setClaiming({ place: hit as ClaimablePlace, added: r.data.created });
+    if (hit?.id) setClaiming({ place: hit as ClaimablePlace, added: r.data.created, enriching: r.data.enriching });
     else router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
   }
 
@@ -162,7 +162,7 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setClaiming({ place: p as ClaimablePlace, added: false })}
+                    onClick={() => setClaiming({ place: p as ClaimablePlace, added: false, enriching: false })}
                     className="hover:bg-muted/50 flex w-full items-center gap-4 px-1 py-3 text-left"
                   >
                     <Thumb photo={p.photo} />
@@ -209,7 +209,12 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
         onConfirm={() => picked && void add(picked)}
         onClose={() => setPicked(null)}
       />
-      <ClaimDialog place={claiming?.place ?? null} added={claiming?.added ?? false} onClose={() => setClaiming(null)} />
+      <ClaimDialog
+        place={claiming?.place ?? null}
+        added={claiming?.added ?? false}
+        enriching={claiming?.enriching ?? false}
+        onClose={() => setClaiming(null)}
+      />
     </Card>
   );
 }

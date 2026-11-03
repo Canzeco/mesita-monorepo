@@ -7,10 +7,12 @@
 // Details read when it opens: Google's first photo as the hero with its
 // credit, then the name, category, stars and full address. Nothing is
 // stored. A failed or photo-less read keeps a plain tile; Add never waits.
+// While Add runs, the buttons give way to the create steps (MESITA-3140).
 
 import { useEffect, useRef, useState } from "react";
 import { MapPin, Plus, Star, X } from "lucide-react";
 import { previewGooglePlace, type FoundPlace, type GooglePreview } from "@/lib/business-api";
+import { GenerateSteps } from "@/components/place-manage/GenerateSteps";
 
 export function AddPlaceDialog({
   place,
@@ -134,24 +136,30 @@ function Body({
           <p className="text-muted-foreground text-sm">Not on Mesita yet. Adding it creates its profile from Google; it grants nothing.</p>
         </div>
         {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={adding}
-            className="border-border hover:bg-muted h-10 rounded-full border px-4 text-sm font-semibold disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={adding}
-            className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-          >
-            <Plus className="size-4" aria-hidden /> {adding ? "Adding…" : label}
-          </button>
-        </div>
+        {adding ? (
+          <div className="flex h-12 items-center justify-center">
+            <GenerateSteps />
+          </div>
+        ) : (
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={adding}
+              className="border-border hover:bg-muted h-10 rounded-full border px-4 text-sm font-semibold disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={adding}
+              className="bg-foreground text-background inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
+            >
+              <Plus className="size-4" aria-hidden /> {label}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
