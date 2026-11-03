@@ -180,6 +180,10 @@ export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
         </button>
         ) : null}
       </header>
+      {/* Two columns at lg (Pato, MESITA-3144: "left column for summaries,
+          right column just for google reviews"). */}
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
+        <div className="flex min-w-0 flex-col gap-4">
       <ReviewBox
         mark="/channels/google.svg"
         tint="amber"
@@ -208,6 +212,8 @@ export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
         value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
         muted={num(place.facebook_followers) == null}
       />
+        </div>
+        <div className="min-w-0">
       <ReviewBox
         mark="/channels/google.svg"
         tint="violet"
@@ -218,6 +224,8 @@ export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
         muted={reviews.length === 0}
         extra={reviews.length > 0 ? <GoogleReviewList reviews={reviews} /> : null}
       />
+        </div>
+      </div>
     </div>
   );
 }
