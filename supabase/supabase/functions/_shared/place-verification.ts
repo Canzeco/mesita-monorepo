@@ -22,6 +22,16 @@ export function maskPhone(raw: string | null | undefined): string | null {
   return `${country}••• ••• ${tail.slice(0, 2)} ${tail.slice(2)}`;
 }
 
+/** Whose place it is, as a stranger may see it (MESITA-3155: "the email
+ *  termination of the owner"): the first letter and the domain,
+ *  `p•••@canzeco.com`. Null when there is no usable address. */
+export function maskEmail(raw: string | null | undefined): string | null {
+  const email = raw?.trim();
+  const at = email ? email.lastIndexOf("@") : -1;
+  if (!email || at < 1 || at === email.length - 1) return null;
+  return `${email[0]}•••${email.slice(at)}`;
+}
+
 /** Trimmed text within a limit, or null when blank; `undefined` for too long. */
 export function boundedText(v: unknown, max: number): string | null | undefined {
   if (v === undefined || v === null) return null;

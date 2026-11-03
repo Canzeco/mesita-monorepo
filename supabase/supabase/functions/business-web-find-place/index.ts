@@ -25,14 +25,18 @@
 //
 // Body: { q?: string, sessionToken?: string, place_id?: uuid, preview_place_id?: string }
 // Response: { ok: true, places: [{ id | null, google_place_id | null, name,
-//   address, photo, masked_phone, phone_on_listing, mine }] }
+//   address, photo, masked_phone, phone_on_listing, mine, claimed_by }] }
+//
+// `claimed_by` (MESITA-3155): when someone else holds the place's owner
+// seat, their email masked to `p•••@canzeco.com` (maskEmail), so the claim
+// modal can say so and offer Report to Mesita. Null otherwise.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { maskPhone } from "../_shared/place-verification.ts";
+import { maskEmail, maskPhone } from "../_shared/place-verification.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { businessNameItems } from "../_shared/name-pipeline.ts";
 import { fetchPlacePreview, readGooglePlacesKey, stripPlacesPrefix } from "../_shared/google-places.ts";
@@ -57,14 +61,17 @@ type Found = {
   masked_phone: string | null;
   phone_on_listing: boolean;
   mine: string | null;
+  claimed_by: string | null;
 };
+
+type States = { mine: Map<string, string>; claimed: Map<string, string> };
 
 const SELECT = "id, name, google_name, address, photos, phone";
 const MAX_ROWS = 20;
 /** Google searches one account may run in a rolling day (MESITA-3123). */
 const SEARCHES_PER_DAY = 200;
 
-function mesitaRow(r: Row, mine: Map<string, string>): Found {
+function mesitaRow(r: Row, { mine, claimed }: States): Found {
   return {
     id: r.id,
     google_place_id: null,
@@ -74,20 +81,30 @@ function mesitaRow(r: Row, mine: Map<string, string>): Found {
     masked_phone: maskPhone(r.phone),
     phone_on_listing: !!r.phone,
     mine: mine.get(r.id) ?? null,
+    claimed_by: mine.get(r.id) === "owner" ? null : (claimed.get(r.id) ?? null),
   };
 }
 
-/** The caller's own state on each place: owner, expired or a pending request. */
-async function myStates(admin: SupabaseClient, userId: string, ids: string[]): Promise<Map<string, string>> {
+/** The caller's own state on each place (owner, expired or a pending
+ *  request), and who else holds each owner seat, masked (MESITA-3155). */
+async function myStates(admin: SupabaseClient, userId: string, ids: string[]): Promise<States> {
   const mine = new Map<string, string>();
-  if (ids.length === 0) return mine;
-  const [managers, reqs] = await Promise.all([
+  const claimed = new Map<string, string>();
+  if (ids.length === 0) return { mine, claimed };
+  const [managers, reqs, owners] = await Promise.all([
     admin.from("place_managers").select(MANAGER_COLUMNS).eq("consumer_id", userId).is("revoked_at", null).in("place_id", ids),
     admin.from("place_verification_requests").select("place_id").eq("consumer_id", userId).eq("status", "pending").in("place_id", ids),
+    admin.from("place_managers").select(MANAGER_COLUMNS).eq("role", "owner").is("revoked_at", null).neq("consumer_id", userId).in("place_id", ids),
   ]);
   for (const r of (reqs.data ?? []) as Array<{ place_id: string }>) mine.set(r.place_id, "pending");
   for (const r of (managers.data ?? []) as ManagerRow[]) mine.set(r.place_id, isLiveManager(r) ? "owner" : "expired");
-  return mine;
+  const seats = ((owners.data ?? []) as ManagerRow[]).filter((r) => isLiveManager(r));
+  await Promise.all(seats.map(async (r) => {
+    const { data } = await admin.auth.admin.getUserById(r.consumer_id);
+    const masked = maskEmail(data?.user?.email);
+    if (masked) claimed.set(r.place_id, masked);
+  }));
+  return { mine, claimed };
 }
 
 serveJson("business-web-find-place", async (req) => {
@@ -102,8 +119,8 @@ serveJson("business-web-find-place", async (req) => {
     const { data, error } = await admin.from("profiles").select(SELECT).eq("id", body.place_id).in("state", ["active", "paused"]).limit(1);
     if (error) return json({ ok: false, error: error.message }, 500);
     const rows = (data ?? []) as Row[];
-    const mine = await myStates(admin, user.id, rows.map((r) => r.id));
-    return json({ ok: true, places: rows.map((r) => mesitaRow(r, mine)) });
+    const states = await myStates(admin, user.id, rows.map((r) => r.id));
+    return json({ ok: true, places: rows.map((r) => mesitaRow(r, states)) });
   }
 
   // The Add dialog's Google preview: photo, category, stars, address.
@@ -137,8 +154,8 @@ serveJson("business-web-find-place", async (req) => {
       .limit(MAX_ROWS);
     if (error) return json({ ok: false, error: error.message }, 500);
     const rows = (data ?? []) as Row[];
-    const mine = await myStates(admin, user.id, rows.map((r) => r.id));
-    return json({ ok: true, preliminary: true, places: rows.map((r) => mesitaRow(r, mine)) });
+    const states = await myStates(admin, user.id, rows.map((r) => r.id));
+    return json({ ok: true, preliminary: true, places: rows.map((r) => mesitaRow(r, states)) });
   }
   if (q.length < 2) return json({ ok: true, places: [] });
 
@@ -165,13 +182,13 @@ serveJson("business-web-find-place", async (req) => {
     if (error) return json({ ok: false, error: error.message }, 500);
     for (const r of (data ?? []) as Row[]) byId.set(r.id, r);
   }
-  const mine = await myStates(admin, user.id, [...byId.keys()]);
+  const states = await myStates(admin, user.id, [...byId.keys()]);
 
   const places: Found[] = [];
   for (const item of items) {
     if (item.mesitaId) {
       const row = byId.get(item.mesitaId);
-      if (row) places.push(mesitaRow(row, mine));
+      if (row) places.push(mesitaRow(row, states));
       continue;
     }
     if (!item.placeId) continue;
@@ -185,6 +202,7 @@ serveJson("business-web-find-place", async (req) => {
       masked_phone: null,
       phone_on_listing: false,
       mine: null,
+      claimed_by: null,
     });
   }
   return json({ ok: true, places });
