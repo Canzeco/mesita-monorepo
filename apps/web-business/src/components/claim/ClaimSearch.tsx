@@ -2,7 +2,7 @@
 
 // Claim your place (MESITA-3103; Google search + Add and claim MESITA-3112).
 // One field, searched as you type (Google's names through the Admin &
-// Business Name Pipeline, the way the consumer app's Add a place searches).
+// Business Searchbar Pipeline, the way the consumer app's Add a place searches).
 // A place Mesita holds opens its claim form; a Google listing Mesita doesn't
 // hold yet says "Not on Mesita yet" and Add and claim adds it
 // (business-web-create-place), then opens the same claim form. Adding a
@@ -14,7 +14,10 @@
 // Google-only row opens Google's preview first (MESITA-3138): hero photo,
 // category, stars and address. Claim, and Add and claim once the place is
 // added, open the claim flow in a modal (MESITA-3139): a call to the
-// listing's phone with a code, or Mesita checks by hand.
+// listing's phone with a code, or Mesita checks by hand. Before anything is
+// typed it shows preliminary results (MESITA-3147, as admin's Find opens):
+// Mesita places, most reviewed first, when Discovery's Admin & Business
+// Searchbar box has "Show results on an empty query" on.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -59,6 +62,8 @@ export function ClaimSearch() {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<FoundPlace[] | null>(null);
+  // The empty query's preliminary results, read once.
+  const [preliminary, setPreliminary] = useState<FoundPlace[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
@@ -84,6 +89,16 @@ export function ClaimSearch() {
     if (!r.ok) setError(r.error);
     else setRows(r.data);
   }
+
+  useEffect(() => {
+    let live = true;
+    void findPlaces({ q: "" }).then((r) => {
+      if (live && r.ok) setPreliminary(r.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Search as you type, after a short pause.
   useEffect(() => {
@@ -112,7 +127,10 @@ export function ClaimSearch() {
     else router.push(claimHref(r.data.placeId, { added: r.data.created }));
   }
 
-  const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
+  const typed = q.trim().length >= MIN_QUERY;
+  const empty = typed && rows !== null && rows.length === 0 && !busy;
+  // Until a search runs, the list is the preliminary results.
+  const shown = typed && rows !== null ? rows : preliminary;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -140,9 +158,12 @@ export function ClaimSearch() {
           Google doesn&apos;t know that name either. Check the spelling, or add the city.
         </p>
       ) : null}
-      {rows && rows.length > 0 ? (
+      {!typed && shown && shown.length > 0 ? (
+        <p className="type-eyebrow text-muted-foreground -mb-2">On Mesita</p>
+      ) : null}
+      {shown && shown.length > 0 && !empty ? (
         <ul className="divide-border divide-y">
-          {rows.map((p) =>
+          {shown.map((p) =>
             p.id ? (
               <li key={p.id}>
                 {p.mine === "owner" ? (
