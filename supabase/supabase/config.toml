@@ -539,6 +539,11 @@ verify_jwt = true
 [functions.business-web-get-premier]
 verify_jwt = true
 
+# MESITA-3128: a place's Billing page — its paid Premier, the payer's card
+# (Stripe, for the payer only) and every charge.
+[functions.business-web-get-billing]
+verify_jwt = true
+
 [functions.business-web-start-premier]
 verify_jwt = true
 
