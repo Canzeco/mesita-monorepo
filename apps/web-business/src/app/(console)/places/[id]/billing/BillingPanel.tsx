@@ -15,7 +15,8 @@ import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import { startPremier, type PlaceBilling } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { placeTabHref, premierHref, returnUrl } from "@/lib/routes";
+import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
+import { FREE_PLAN, planName } from "@/lib/plans";
 import { REFILL_ORIGIN } from "@/lib/premier-origin";
 import { CodeRow } from "./CodeRow";
 
@@ -73,11 +74,14 @@ export function BillingPanel({
   billing,
   error: loadError,
   returned,
+  plans,
 }: {
   placeId: string;
   billing: PlaceBilling | null;
   error: string | null;
   returned: CardReturn;
+  /** The Plans card (MESITA-3173), right under the status. */
+  plans?: React.ReactNode;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,9 +110,11 @@ export function BillingPanel({
   const you = payer === "you";
   const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
 
-  // ── Status block ──
-  let levelLine = level.tier > 0 ? `Premier ${FACTOR[level.tier]}` : "Not Premier";
-  if (level.tier > 0 && level.until) {
+  // ── Status block ── The plan is the headline; the Premier level it (or
+  // Refill days) gives is the first line under it.
+  const planLine = sub ? planName(sub.tier) : FREE_PLAN;
+  let levelLine = level.tier > 0 ? `Premier ${FACTOR[level.tier]}` : null;
+  if (levelLine && level.until) {
     const left = level.days_left;
     levelLine +=
       left === null ? ` until ${day(level.until)}` : left === 0 ? ` · ends today` : ` · ends in ${left} day${left === 1 ? "" : "s"} (${day(level.until)})`;
@@ -117,7 +123,6 @@ export function BillingPanel({
   const money: string[] = [];
   if (sub) {
     const amount = you ? ` ${usd(sub.next_charge_cents)}` : "";
-    const factor = FACTOR[sub.tier];
     if (sub.state === "charging") money.push("A charge is being taken now.");
     else if (sub.state === "paused" && sub.resumes_at && sub.next_charge_at) {
       money.push(
@@ -128,7 +133,7 @@ export function BillingPanel({
     } else if (sub.state === "waiting" && sub.next_charge_at) {
       money.push(
         sub.early_start
-          ? `Your ${factor} subscription starts when Refill days end on ${day(sub.next_charge_at)}: first charge${amount}.`
+          ? `${planName(sub.tier)} starts when Refill days end on ${day(sub.next_charge_at)}: first charge${amount}.`
           : daysAway(sub.next_charge_at) <= 0
             ? `Next charge${amount} in the next few minutes.`
             : `Next charge${amount} on ${day(sub.next_charge_at)}, when the Refill days end.`,
@@ -136,13 +141,13 @@ export function BillingPanel({
     } else if (sub.next_charge_at) money.push(`Next charge${amount} on ${day(sub.next_charge_at)}.`);
     if (!you) money.push("Paid by another member of your team.");
   } else if (keep) {
-    money.push(`Keep ${FACTOR[keep.tier]} — first charge ${usd(keep.price_cents)} on ${day(keep.ends_at)}, the day the Refill days end.`);
+    money.push(`Keep Premier ${FACTOR[keep.tier]} with ${planName(keep.tier)} — first charge ${usd(keep.price_cents)} on ${day(keep.ends_at)}, the day the Refill days end.`);
   } else if (empty) {
     money.push("Your place ranks like every other place.");
   } else {
     money.push("Nothing scheduled to charge.");
     const from = level.tier > 0 ? billing.subscribe_from[level.tier as Rank] : undefined;
-    if (from) money.push(`You can subscribe to keep ${FACTOR[level.tier]} from ${plainDay(from)}.`);
+    if (from) money.push(`You can keep Premier ${FACTOR[level.tier]} with ${planName(level.tier)} from ${plainDay(from)}.`);
   }
 
   const movedLine = moved
@@ -161,12 +166,12 @@ export function BillingPanel({
       {busy ? "Opening…" : "Update card"}
     </button>
   ) : keep ? (
-    <Link href={premierHref(placeId, PLAN_OF[keep.tier])} className={`bg-foreground text-background ${buttonClass}`}>
-      Keep {FACTOR[keep.tier]}
+    <Link href={billingHref(placeId, { plan: PLAN_OF[keep.tier] })} className={`bg-foreground text-background ${buttonClass}`}>
+      Keep Premier {FACTOR[keep.tier]}
     </Link>
   ) : (
     <Link
-      href={premierHref(placeId, sub ? PLAN_OF[sub.tier] : null)}
+      href={billingHref(placeId, { plan: sub ? PLAN_OF[sub.tier] : null })}
       className={`${empty ? "bg-foreground text-background" : "border-border hover:bg-muted border"} ${buttonClass}`}
     >
       See plans
@@ -178,7 +183,7 @@ export function BillingPanel({
     <Row
       badge={sub.tier}
       outlined
-      what={you ? `Your subscription · ${usd(sub.amount_cents)} a ${sub.interval}` : "Subscription · paid by your team"}
+      what={you ? `${planName(sub.tier)} · ${usd(sub.amount_cents)} a ${sub.interval}` : `${planName(sub.tier)} · paid by your team`}
       when=""
       state={
         sub.state === "charging"
@@ -205,7 +210,8 @@ export function BillingPanel({
       <div className="flex flex-col gap-3 py-1">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <p className="font-display text-2xl font-semibold tracking-tight">{levelLine}</p>
+            <p className="font-display text-2xl font-semibold tracking-tight">{planLine}</p>
+            {levelLine ? <p className="text-muted-foreground mt-1 text-sm">{levelLine}</p> : null}
             {money.map((line) => (
               <p key={line} className="text-muted-foreground mt-1 text-sm">
                 {line}
@@ -223,6 +229,8 @@ export function BillingPanel({
           </p>
         ) : null}
       </div>
+
+      {plans}
 
       {/* "Have a code?" is the card's last row (D1); with nothing running it
           stands alone, open, right below the status (D4; MESITA-3167). */}
@@ -280,7 +288,7 @@ export function BillingPanel({
               <div key={c.id} className="flex items-center gap-4 px-5 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    {day(c.at)} · Premier {FACTOR[c.tier] ?? ""}
+                    {day(c.at)} · {planName(c.tier)}
                   </p>
                   <p className="text-muted-foreground text-sm">
                     {day(c.starts_at)} – {day(c.ends_at)}

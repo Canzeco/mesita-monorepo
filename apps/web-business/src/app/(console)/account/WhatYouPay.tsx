@@ -13,8 +13,8 @@ import { MapPin } from "lucide-react";
 import { listBilling, startPremier, stopMyPremier, type MySubscription } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { ACCOUNT, billingHref, returnUrl } from "@/lib/routes";
+import { PLAN_NAME } from "@/lib/plans";
 
-const PLAN_LABEL: Record<string, string> = { boost_2x: "Premier 2X", boost_5x: "Premier 5X" };
 
 const OUTCOME: Record<string, string> = {
   saved: "Your card is saved.",
@@ -104,7 +104,7 @@ export function WhatYouPay({
                 <div className="min-w-0">
                   <p className="truncate font-semibold">{sub.name ?? "A place"}</p>
                   <p className="text-muted-foreground text-sm">
-                    {PLAN_LABEL[sub.tier] ?? "Premier"} · {usd(sub.amount_cents)} a {sub.interval}
+                    {PLAN_NAME[sub.tier as keyof typeof PLAN_NAME] ?? "Mesita Business"} · {usd(sub.amount_cents)} a {sub.interval}
                     {sub.ends_at ? ` · ${sub.renews ? "renews" : "ends"} ${day(sub.ends_at)}` : ""}
                   </p>
                   {!sub.runs_place ? <p className="text-muted-foreground text-xs">You no longer run this place; you still pay for its Premier.</p> : null}
