@@ -1,18 +1,31 @@
 import { assertEquals } from "jsr:@std/assert@1";
 
-const SRC = await Deno.readTextFile(
-  new URL("../admin-web-update-place-google/index.ts", import.meta.url),
-);
+const code = (src: string) =>
+  src.split("\n")
+    .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*"))
+    .join("\n");
 
-const CODE = SRC.split("\n")
-  .filter((l) => !l.trimStart().startsWith("//") && !l.trimStart().startsWith("*"))
-  .join("\n");
+const read = async (path: string) => code(await Deno.readTextFile(new URL(path, import.meta.url)));
 
-Deno.test("admin-web-update-place-google is super-admin only", () => {
-  assertEquals(CODE.includes('requireAdminRequest(req, "POST"'), true);
+// The body is shared since MESITA-3157; both doors run only it.
+const HANDLER = await read("./google-update-handler.ts");
+const DOORS = {
+  "admin-web-update-place-google": await read("../admin-web-update-place-google/index.ts"),
+  "business-web-update-place-google": await read("../business-web-update-place-google/index.ts"),
+};
+
+Deno.test("the Google update body is super-admin only", () => {
+  assertEquals(HANDLER.includes('requireAdminRequest(req, "POST"'), true);
 });
 
-Deno.test("admin-web-update-place-google delegates to shared Google update", () => {
-  assertEquals(CODE.includes("runGooglePlaceUpdate("), true);
-  assertEquals(CODE.includes("fetchGoogleBasics("), false);
+Deno.test("the Google update body delegates to the shared Google update", () => {
+  assertEquals(HANDLER.includes("runGooglePlaceUpdate("), true);
+  assertEquals(HANDLER.includes("fetchGoogleBasics("), false);
 });
+
+for (const [name, src] of Object.entries(DOORS)) {
+  Deno.test(`${name} runs only the shared, super-admin body`, () => {
+    assertEquals(src.includes(`handleGooglePlaceUpdate(req, "${name}")`), true);
+    assertEquals(src.includes("runGooglePlaceUpdate("), false);
+  });
+}

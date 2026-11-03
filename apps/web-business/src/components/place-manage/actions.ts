@@ -496,6 +496,14 @@ export async function enrichPlace(placeId: string): Promise<Result<true>> {
   return { ok: true, data: true };
 }
 
+/** Update this place's Google data (business-web-update-place-google,
+ *  MESITA-3157): factuals and a lone hero; respects pins; no Enrich. */
+export async function updatePlaceGoogle(placeId: string): Promise<Result<{ updatedAt: string | null }>> {
+  const r = await efInvoke<{ updatedAt?: string }>("business-web-update-place-google", { placeId });
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return { ok: true, data: { updatedAt: r.data.updatedAt ?? null } };
+}
+
 // ── Per-place Enricher inspector (admin-only) ────────────────────────────
 // The place's enrichment state, for the Admin tab. Super-admin gated EF.
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { Sparkles } from "lucide-react";
-import { enrichPlace } from "../actions";
+import { enrichPlace, updatePlaceGoogle } from "../actions";
 import {
   getPlaceEnrichment,
   type AdminPlace,
@@ -15,7 +15,8 @@ import { isEnriching } from "../place-header-state";
 // Enrichment — one Enrich, the whole pipeline, replacing what it finds
 // (MESITA-2799: no Overwrite switch, no Weak/Strong). This is not a scheduler
 // (Pato, 2026-08-25). The live run STATE stays in the chrome. This box only
-// queues.
+// queues. Update (MESITA-3157, Pato: "add also update button there.
+// Enrich, Update") sits beside it: Google's factuals only, pins kept.
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(null);
@@ -24,6 +25,16 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [runPending, startRun] = useTransition();
   const [runError, setRunError] = useState<string | null>(null);
   const [queued, setQueued] = useState(false);
+  const [updatePending, startUpdate] = useTransition();
+  const [updateNote, setUpdateNote] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const update = useCallback(() => {
+    setUpdateNote(null);
+    startUpdate(async () => {
+      const r = await updatePlaceGoogle(place.id);
+      setUpdateNote(r.ok ? { ok: true, text: "Updated from Google. Reload to see it." } : { ok: false, text: r.error });
+    });
+  }, [place.id]);
 
   useEffect(() => {
     let alive = true;
@@ -99,7 +110,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
             </p>
           )}
 
-          <p className="mb-2 text-sm font-semibold">Run Enrichment</p>
+          <p className="mb-2 text-sm font-semibold">Run</p>
           <div className="flex flex-wrap gap-2">
             {running && !runPending ? (
               <button
@@ -120,10 +131,21 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
                 {runPending ? "Starting…" : "Enrich"}
               </button>
             )}
+            <button
+              type="button"
+              disabled={updatePending}
+              onClick={update}
+              title="Refresh this place's Google data. Keeps pinned fields; does not Enrich."
+              className="border-border hover:bg-muted inline-flex h-10 items-center rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {updatePending ? "Updating…" : "Update"}
+            </button>
           </div>
 
           <p className="mt-2 min-h-4 type-label" aria-live="polite">
-            {runError ? (
+            {updateNote ? (
+              <span className={updateNote.ok ? "text-muted-foreground" : "text-destructive"}>{updateNote.text}</span>
+            ) : runError ? (
               <span className="text-destructive">{runError}</span>
             ) : queued ? (
               <span className="text-muted-foreground">Started.</span>

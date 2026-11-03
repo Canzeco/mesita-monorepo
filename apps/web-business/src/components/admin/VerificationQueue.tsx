@@ -1,15 +1,15 @@
 "use client";
 
-// Owners and "I run this place" requests, for Mesita staff (MESITA-3103).
-// Approve writes the owner row and closes the request in one call; Reject
-// keeps a note the guest sees; Revoke ends an owner's access.
+// "I run this place" requests, for Mesita staff (MESITA-3103), reports from
+// the claim window included (MESITA-3155). Approve writes the owner row and
+// closes the request in one call; Reject keeps a note the guest sees. The
+// owner and editors (and Revoke) live in Settings' Who runs this place
+// (MESITA-3157).
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { decideVerification, type OwnerView, type PendingRequest } from "@/lib/business-api";
+import { decideVerification, type PendingRequest } from "@/lib/business-api";
 import { INPUT_BASE } from "@/components/ui/manage";
-
-const METHOD: Record<string, string> = { phone_match: "Phone on listing", phone_code: "Code to listing phone", review: "Reviewed" };
 
 function day(iso: string): string {
   const d = new Date(iso);
@@ -24,9 +24,9 @@ function Who({ name, phone, handle, member }: { name: string | null; phone: stri
   );
 }
 
-// One place's owners and claim requests, on its Admin page (MESITA-3143:
+// One place's claim requests, on its Admin page (MESITA-3143:
 // Admin is only a place's; there is no cross-place queue).
-export function VerificationQueue({ owners, pending }: { owners: OwnerView[]; pending: PendingRequest[] }) {
+export function VerificationQueue({ pending }: { pending: PendingRequest[] }) {
   const router = useRouter();
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
@@ -44,29 +44,6 @@ export function VerificationQueue({ owners, pending }: { owners: OwnerView[]; pe
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <p className="type-eyebrow text-muted-foreground">Owners</p>
-        {owners.length === 0 ? <p className="text-muted-foreground text-sm">Nobody runs this place on Mesita yet.</p> : null}
-        {owners.map((o) => (
-          <div key={o.id} className="border-border flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3">
-            <div className="flex min-w-0 flex-col">
-              <span className="font-medium">
-                {METHOD[o.method] ?? o.method} · {o.live ? `until ${day(o.expires_at)}` : `expired ${day(o.expires_at)}`}
-              </span>
-              <Who name={o.name} phone={o.phone} handle={o.instagram_handle} member={o.member_number} />
-            </div>
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => void act(o.id, () => decideVerification({ managerId: o.id, decision: "revoke" }))}
-              className="border-border hover:bg-muted h-9 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
-            >
-              Revoke
-            </button>
-          </div>
-        ))}
-      </div>
-      <div className="flex flex-col gap-2">
-        <p className="type-eyebrow text-muted-foreground">Requests</p>
         {pending.length === 0 ? <p className="text-muted-foreground text-sm">No requests waiting.</p> : null}
         {pending.map((r) => (
           <div key={r.id} className="border-border flex flex-col gap-3 rounded-xl border px-4 py-3">

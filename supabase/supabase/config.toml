@@ -571,3 +571,6 @@ verify_jwt = true
 
 [functions.business-web-enrich-place]
 verify_jwt = true
+
+[functions.business-web-update-place-google]
+verify_jwt = true
