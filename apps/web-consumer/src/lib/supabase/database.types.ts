@@ -795,7 +795,7 @@ export type Database = {
         Insert: {
           consumer_id: string
           created_at?: string
-          expires_at: string
+          expires_at?: string
           id?: string
           method: string
           note?: string | null
@@ -1586,102 +1586,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      premier_code_attempts: {
-        Row: {
-          at: string
-          id: number
-          user_id: string
-        }
-        Insert: {
-          at?: string
-          id?: never
-          user_id: string
-        }
-        Update: {
-          at?: string
-          id?: never
-          user_id?: string
-        }
-        Relationships: []
-      }
-      premier_code_redemptions: {
-        Row: {
-          code_id: string
-          created_at: string
-          id: string
-          place_id: string
-          user_id: string | null
-        }
-        Insert: {
-          code_id: string
-          created_at?: string
-          id?: string
-          place_id: string
-          user_id?: string | null
-        }
-        Update: {
-          code_id?: string
-          created_at?: string
-          id?: string
-          place_id?: string
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "premier_code_redemptions_code_id_fkey"
-            columns: ["code_id"]
-            isOneToOne: false
-            referencedRelation: "premier_codes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "premier_code_redemptions_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      premier_codes: {
-        Row: {
-          code_hash: string
-          created_at: string
-          created_by: string
-          days: number
-          expires_at: string | null
-          id: string
-          last4: string
-          max_redemptions: number
-          revoked_at: string | null
-          tier: number
-        }
-        Insert: {
-          code_hash: string
-          created_at?: string
-          created_by: string
-          days: number
-          expires_at?: string | null
-          id?: string
-          last4: string
-          max_redemptions: number
-          revoked_at?: string | null
-          tier: number
-        }
-        Update: {
-          code_hash?: string
-          created_at?: string
-          created_by?: string
-          days?: number
-          expires_at?: string | null
-          id?: string
-          last4?: string
-          max_redemptions?: number
-          revoked_at?: string | null
-          tier?: number
-        }
-        Relationships: []
       }
       premier_customers: {
         Row: {
@@ -2596,10 +2500,6 @@ export type Database = {
         Returns: Json
       }
       premier_manual_tier: { Args: { p_place_id: string }; Returns: number }
-      premier_redeem_code: {
-        Args: { p_code_hash: string; p_place_id: string; p_user_id: string }
-        Returns: Json
-      }
       premier_refill_check: {
         Args: { p_days: number; p_place_id: string; p_tier: number }
         Returns: Json
