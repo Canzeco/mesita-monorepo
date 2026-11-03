@@ -13,11 +13,6 @@ const METHOD: Record<string, string> = {
   review: "Mesita reviewed your request",
 };
 
-function day(iso: string): string {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
-}
-
 // The place's settings only: Place (with Leave) and Team (MESITA-3171, Pato:
 // "use standard names for the boxes. short"). Billing moved to
 // Premier and your email and sign-out live in Account alone (MESITA-3154:
@@ -40,7 +35,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
             <>
               <dt className="text-muted-foreground">{manage.manager.role === "editor" ? "You edit it" : "You own it"}</dt>
               <dd>
-                Until {day(manage.manager.expires_at)}, because {METHOD[manage.manager.method] ?? "you were verified"}.
+                Because {METHOD[manage.manager.method] ?? "you were verified"}.
               </dd>
             </>
           ) : (

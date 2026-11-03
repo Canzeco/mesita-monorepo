@@ -68,8 +68,7 @@ function Person({ m, children }: { m: TeamMember; children?: React.ReactNode }) 
           {m.role === "owner" ? <Crown className="text-muted-foreground size-3.5" aria-label="Owner" /> : null}
         </p>
         <p className="text-muted-foreground truncate text-xs">
-          {m.email && m.email !== label ? `${m.email} · ` : ""}
-          {m.live ? `until ${day(m.expires_at)}` : "verification ended"}
+          {[m.email && m.email !== label ? m.email : null, m.live ? null : "verification ended"].filter(Boolean).join(" · ")}
         </p>
       </div>
       {children}

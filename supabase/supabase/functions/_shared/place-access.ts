@@ -5,7 +5,7 @@
 //   owner       the caller's live place_managers row for this place has
 //               role owner (one per place, MESITA-3120): team, Premier money
 //   editor      a live row with role editor: profile; sees Premier
-//   (live = revoked_at null, expires_at in the future)
+//   (live = revoked_at null; expires_at is 'infinity' since MESITA-3179)
 //
 // Anyone else gets 404, never 403: whether a place exists, or who runs it,
 // is not something a stranger learns from this door.
@@ -30,12 +30,16 @@ export type ManagerRow = {
 
 export const MANAGER_COLUMNS = "id, place_id, consumer_id, method, role, verified_at, expires_at, revoked_at";
 
-/** A row grants the place only while it is not revoked and not expired. Pure. */
+/** A row grants the place until it is revoked. Since MESITA-3179 every row
+ *  is written with expires_at 'infinity' (PostgREST returns the string
+ *  "infinity", which Date.parse reads as NaN), so infinity is live; an older
+ *  finite date still ends the row. Pure. */
 export function isLiveManager(
   row: Pick<ManagerRow, "revoked_at" | "expires_at"> | null | undefined,
   now: number = Date.now(),
 ): boolean {
   if (!row || row.revoked_at) return false;
+  if (row.expires_at === "infinity") return true;
   const ends = Date.parse(row.expires_at);
   return Number.isFinite(ends) && ends > now;
 }

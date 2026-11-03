@@ -14,6 +14,9 @@ Deno.test("a row grants the place only while live", () => {
   assertEquals(isLiveManager({ revoked_at: null, expires_at: "2027-11-01T00:00:00Z" }, now), true);
   assertEquals(isLiveManager({ revoked_at: null, expires_at: "2026-10-01T00:00:00Z" }, now), false);
   assertEquals(isLiveManager({ revoked_at: "2026-10-31T00:00:00Z", expires_at: "2027-11-01T00:00:00Z" }, now), false);
+  // MESITA-3179: ownership never expires; the DB writes 'infinity' and only a revoke ends it.
+  assertEquals(isLiveManager({ revoked_at: null, expires_at: "infinity" }, now), true);
+  assertEquals(isLiveManager({ revoked_at: "2026-10-31T00:00:00Z", expires_at: "infinity" }, now), false);
   assertEquals(isLiveManager(null, now), false);
 });
 
