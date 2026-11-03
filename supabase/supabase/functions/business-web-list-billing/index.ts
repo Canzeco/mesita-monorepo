@@ -79,8 +79,8 @@ serveJson("business-web-list-billing", async (req) => {
 
   const names = new Map<string, { name: string | null; photo: string | null }>();
   if (placeIds.length) {
-    const { data, error } = await admin.from("places").select("id, name, photos").in("id", placeIds);
-    if (error) return json({ ok: false, error: `places_read: ${error.message}` }, 500);
+    const { data, error } = await admin.from("profiles").select("id, name, photos").in("id", placeIds);
+    if (error) return json({ ok: false, error: `profiles_read: ${error.message}` }, 500);
     for (const row of (data ?? []) as Array<{ id: string; name: string | null; photos: string[] | null }>) {
       names.set(row.id, { name: row.name, photo: row.photos?.[0] ?? null });
     }
