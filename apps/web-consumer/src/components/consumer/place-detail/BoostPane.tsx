@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, ChevronRight, Loader2 } from "lucide-react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { PremierRosette } from "@mesita/place-profile";
+import { BadgeCheck, Loader2 } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -15,13 +15,11 @@ import {
   type RefillDays,
   type TierRank,
 } from "@/lib/api/boost";
-import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ERROR_BOX_CLASS,
   PRIMARY_BUTTON_CLASS,
-  SHEET_BODY_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -32,20 +30,16 @@ import { cn, errMsg } from "@/lib/utils";
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
 //
-// One card of two rows (MESITA-3187, Pato: "this UI must be far simpler"): what
-// lifts the place now, and "Buy a Boost", which opens a sheet with the perks, the
-// two packs and ONE pay button. "Is this your business?" is in the place's ⋯
-// menu. Every amount, date and line is the server's
-// (consumer-web-get-premier-refill); nothing here computes money. Premier is
-// paid ranking priority: it never verifies the place and never promises
-// views.
+// It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
+// explain current level and what to do"): the place's current visibility, then
+// the two Boosts on the tab, each one button away from Checkout. "Is this your
+// business?" is in the place's ⋯ menu. Every amount, date and line is the
+// server's (consumer-web-get-premier-refill); nothing here computes money.
+// Premier is paid ranking priority: it never verifies the place and never
+// promises views.
 
-/** What a pack buys, said in the sheet above the packs. */
-const PERKS = [
-  "Moves the place up on Home and the Map: Premier 2X or Premier 5X.",
-  "A red Premier pin on the Map.",
-  "Paid once for 30 days. Nothing renews; it ends on its own.",
-];
+/** A Premier level as visibility: 0 is where every place starts. */
+const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
 
 const ORIGIN: Record<RefillDays["source"], string> = {
   admin: "by Mesita",
@@ -66,32 +60,25 @@ export function BoostPane({
   onRetry: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [picked, setPicked] = useState<TierRank | null>(null);
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const [starting, setStarting] = useState<TierRank | null>(null);
+  const [startError, setStartError] = useState<{ tier: TierRank; text: string } | null>(null);
 
-  const status = statusLines(boost);
   const packs = boost?.packs ?? [];
-  const forSale = packs.filter((p) => p.available);
-  const pack = packs.find((p) => p.tier === picked) ?? null;
-  const returnUrl = () =>
-    `${window.location.origin}${window.location.pathname}`;
 
-  async function start() {
-    if (!pack || starting) return;
-    setStarting(true);
+  async function start(tier: TierRank) {
+    if (starting) return;
+    setStarting(tier);
     setStartError(null);
     try {
       const res = await apiStartRefill(getSupabase(), {
         placeId: place.id,
-        tier: pack.tier,
-        returnUrl: returnUrl(),
+        tier,
+        returnUrl: `${window.location.origin}${window.location.pathname}`,
       });
       window.location.assign(res.url);
     } catch (err) {
-      setStartError(refusal(err, "Couldn't open checkout. Try again."));
-      setStarting(false);
+      setStartError({ tier, text: refusal(err, "Couldn't open checkout. Try again.") });
+      setStarting(null);
     }
   }
 
@@ -101,185 +88,79 @@ export function BoostPane({
         Premier
       </h2>
 
-      <div className="border-border bg-card divide-border divide-y rounded-2xl border">
-        <div className="flex min-h-16 flex-col justify-center px-4 py-3" aria-live="polite">
-          <p className="font-semibold">{loading ? "Loading…" : status.head}</p>
-          {!loading &&
-            status.sub.map((line) => (
-              <p key={line} className="text-muted-foreground text-sm">
-                {line}
-              </p>
-            ))}
+      <div className="border-border bg-card rounded-2xl border p-4" aria-live="polite">
+        <p className="text-muted-foreground text-sm">Current level</p>
+        <p className="text-2xl font-semibold tracking-tight">
+          {loading ? "…" : `${VISIBILITY[boost?.level ?? 0] ?? "1X"} visibility`}
+        </p>
+        {!loading &&
+          statusLines(boost).map((line) => (
+            <p key={line} className="text-muted-foreground text-sm">
+              {line}
+            </p>
+          ))}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div>
+          <h3 className="font-semibold">Boost this place</h3>
+          <p className="text-muted-foreground text-sm">
+            Move it up on Home and the Map for 30 days. Paid once, nothing renews.
+          </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          disabled={loading}
-          className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left disabled:opacity-60"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Buy a Boost</span>
-            <span className="text-muted-foreground block text-sm">
-              {packLine(boost, forSale.length > 0)}
-            </span>
-          </span>
-          <ChevronRight
-            className="text-muted-foreground h-5 w-5 shrink-0"
-            aria-hidden
-          />
-        </button>
+
+        {BOOST_TIERS.map((t) => {
+          const p = packs.find((x) => x.tier === t.rank);
+          const off = !loading && !!p && !p.available;
+          return (
+            <div key={t.rank} className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
+              <div>
+                <p className="text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]} visibility</p>
+                <p className="mt-1 flex items-center gap-1.5">
+                  <PremierRosette />
+                  Premier red tag
+                </p>
+              </div>
+              {p?.notice ? <p className="text-muted-foreground text-sm">{p.notice}.</p> : null}
+              {startError?.tier === t.rank ? <p className={ERROR_BOX_CLASS}>{startError.text}</p> : null}
+              {off ? (
+                <p className="text-muted-foreground text-sm">
+                  {(p.code && START_REFUSED[p.code]) ?? "Not for sale here now."}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void start(t.rank)}
+                  disabled={loading || !p || starting !== null || !boost?.signed_in}
+                  className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
+                >
+                  {starting === t.rank && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  {starting === t.rank ? "Opening…" : p ? `Boost for ${money(p.price_cents)}` : "Boost"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        {boost && !boost.signed_in && (
+          <p className="text-muted-foreground text-sm">Sign in to boost this place.</p>
+        )}
+
+        <p className="text-muted-foreground text-sm">
+          Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places
+          show “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by
+          Stripe in US dollars; card only.
+        </p>
       </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
           Couldn&apos;t load this place&apos;s Premier.{" "}
-          <button
-            type="button"
-            onClick={onRetry}
-            className="font-semibold underline"
-          >
+          <button type="button" onClick={onRetry} className="font-semibold underline">
             Try again
           </button>
         </div>
       )}
-
-      <LocalSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        ariaLabel="Buy a Boost"
-      >
-        <div className={SHEET_BODY_CLASS}>
-          <h2 className={SHEET_TITLE_CLASS}>Mesita Premier</h2>
-          <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-            Buy 30 days that move {place.name} up for every guest.
-          </p>
-          <ul className="mt-4 flex flex-col gap-2 text-sm">
-            {PERKS.map((perk) => (
-              <li key={perk} className="flex items-start gap-2">
-                <BadgeCheck
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                  style={{ color: MAP_PREMIER_PIN_COLOR }}
-                  aria-hidden
-                />
-                <span className="leading-relaxed">{perk}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-4 flex flex-col gap-3">
-            <h3 className="type-eyebrow text-muted-foreground">
-              Boost this place
-            </h3>
-            <div
-              className="flex flex-col gap-2"
-              role="radiogroup"
-              aria-label="Premier pack"
-            >
-              {BOOST_TIERS.map((t) => {
-                const p = packs.find((x) => x.tier === t.rank);
-                const on = picked === t.rank;
-                const off = !p?.available;
-                return (
-                  <button
-                    key={t.rank}
-                    type="button"
-                    role="radio"
-                    aria-checked={on}
-                    disabled={off}
-                    onClick={() => {
-                      setPicked(t.rank);
-                      setStartError(null);
-                    }}
-                    className={cn(
-                      "flex min-h-16 items-center gap-3 rounded-xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60",
-                      on
-                        ? "border-foreground ring-foreground ring-1"
-                        : "border-border hover:bg-muted",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                        on ? "border-foreground" : "border-border",
-                      )}
-                      aria-hidden
-                    >
-                      {on && (
-                        <span className="bg-foreground h-2.5 w-2.5 rounded-full" />
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-base font-semibold">
-                        {t.label}
-                      </span>
-                      <span className="text-muted-foreground block text-xs">
-                        {off && p?.code
-                          ? (START_REFUSED[p.code] ?? "Not for sale here now.")
-                          : t.blurb}
-                      </span>
-                    </span>
-                    {p && (
-                      <span className="text-sm font-semibold whitespace-nowrap">
-                        {money(p.price_cents)}
-                        <span className="text-muted-foreground font-normal">
-                          {" "}
-                          · {p.days} days
-                        </span>
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {boost && !boost.signed_in && (
-              <p className="text-muted-foreground text-xs">
-                Sign in to make this place Premier.
-              </p>
-            )}
-
-            {pack && (
-              <div className="flex flex-col gap-2">
-                {pack.notice && (
-                  <p
-                    className="bg-muted rounded-xl px-3 py-2 text-sm leading-relaxed"
-                    aria-live="polite"
-                  >
-                    {pack.notice}.
-                  </p>
-                )}
-                {startError && <p className={ERROR_BOX_CLASS}>{startError}</p>}
-                <button
-                  type="button"
-                  onClick={() => void start()}
-                  disabled={starting || !boost?.signed_in}
-                  className={cn(
-                    PRIMARY_BUTTON_CLASS,
-                    "inline-flex items-center justify-center gap-2",
-                  )}
-                >
-                  {starting && (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                  )}
-                  {starting ? "Opening…" : `Pay ${money(pack.price_cents)}`}
-                </button>
-                <p className="text-muted-foreground text-xs leading-relaxed">
-                  {money(pack.price_cents)} once for {pack.days} days of{" "}
-                  {tierLabel(pack.tier)}. Nothing renews.
-                </p>
-              </div>
-            )}
-
-            <p className="text-muted-foreground text-xs leading-relaxed">
-              A Boost gives the place Premier 2X or 5X ranking priority on Home
-              and the Map. Priority moves it up the list; it doesn&apos;t
-              guarantee more views. Premier places show “Ad”; Premier
-              doesn&apos;t verify a place. A Boost you buy runs after the
-              days already running. Charged once by Stripe in US dollars; card only.
-            </p>
-          </div>
-        </div>
-      </LocalSheet>
     </section>
   );
 }
@@ -291,12 +172,9 @@ function refusal(err: unknown, fallback: string): string {
   return errMsg(err, fallback);
 }
 
-/** The status: what lifts the place now first, then what runs after it. */
-function statusLines(boost: PlaceBoost | null): {
-  head: string;
-  sub: string[];
-} {
-  if (!boost || boost.level === 0) return { head: "Not Premier", sub: [] };
+/** What runs the place's level now, highest first, then what runs after it. */
+function statusLines(boost: PlaceBoost | null): string[] {
+  if (!boost || boost.level === 0) return ["Not Premier. Every place starts here."];
   const lines: Array<{ tier: number; text: string }> = [];
   // Refill days, one line per tier: 5X runs first, then 2X.
   for (const tier of [2, 1]) {
@@ -312,29 +190,11 @@ function statusLines(boost: PlaceBoost | null): {
       text: `Boost ${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
     });
   }
-  const s = boost.subscription;
-  if (s) {
-    lines.push({
-      tier: s.tier,
-      text: `${tierLabel(s.tier)} · the place's plan`,
-    });
+  const sub = boost.subscription;
+  if (sub) {
+    lines.push({ tier: sub.tier, text: `${tierLabel(sub.tier)} · the place's plan` });
   }
-  lines.sort((a, b) => b.tier - a.tier);
-  if (lines.length === 0) return { head: `${tierLabel(boost.level)}`, sub: [] };
-  return { head: lines[0].text, sub: lines.slice(1).map((l) => l.text) };
-}
-
-/** The buy box's one line: the lowest price, or why nothing is for sale. */
-function packLine(boost: PlaceBoost | null, anyForSale: boolean): string {
-  if (!boost) return "Packs and prices";
-  if (!anyForSale) {
-    const code = boost.packs.find((p) => p.code)?.code;
-    return (code && START_REFUSED[code]) ?? "Not for sale here now";
-  }
-  const prices = boost.packs
-    .filter((p) => p.available)
-    .map((p) => p.price_cents);
-  return `From ${money(Math.min(...prices))} · 30 days`;
+  return lines.sort((x, y) => y.tier - x.tier).map((l) => l.text);
 }
 
 /** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
