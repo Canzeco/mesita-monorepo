@@ -275,6 +275,18 @@ Deno.test("confirm: resume saves a card and makes the pledge the subscription; n
   assertEquals(log, ["rpc.premier_make_payer", "place_backings.update"]);
 });
 
+// MESITA-3165: subscribing early outside the last 7 days of Refill days (more
+// days were added while the Checkout was open) never stands.
+Deno.test("confirm: an early start the window no longer allows ends `covered`, its card detached, never the subscription", async () => {
+  const { admin, log } = fakeAdmin({
+    "rpc.premier_make_payer": [{ data: { result: "covered" }, error: null }],
+  });
+  const { stripe, calls } = fakeStripe({ "GET checkout/sessions/cs_1": setupSession("resume") });
+  assertEquals(await confirmPledge(admin, stripe, { ...BUY, checkout_kind: "resume" }, false), "covered");
+  assertEquals(calls, ["GET checkout/sessions/cs_1", "POST payment_methods/pm_new/detach"]);
+  assertEquals(log, ["rpc.premier_make_payer", "place_backings.update"]);
+});
+
 Deno.test("confirm: update card swaps the subscription's card and detaches the old one", async () => {
   const { admin, log } = fakeAdmin({});
   const { stripe, calls } = fakeStripe({ "GET checkout/sessions/cs_1": setupSession("update_card") });

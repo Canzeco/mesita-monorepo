@@ -125,7 +125,16 @@ export async function readPremier(
       : null,
     ended_notice: user ? endedNotice(line.pledges, line.periods, running, user.id, now) : null,
     quotes: user && viewer
-      ? quotes({ running, charging, viewer, subscription, now, manualTier: manual?.tier ?? 0 })
+      ? quotes({
+        running,
+        charging,
+        viewer,
+        subscription,
+        now,
+        manualTier: manual?.tier ?? 0,
+        manual: line.manual,
+        timeZone: placeRes.place?.timezone,
+      })
       : null,
     ...(outcome === undefined ? {} : { outcome }),
     // Builds before MESITA-3092 read these; one release.
@@ -222,6 +231,8 @@ export async function startPremier(
         subscription,
         now,
         manualTier: runningManual(line.manual, now)?.tier ?? 0,
+        manual: line.manual,
+        timeZone: place.timezone,
       });
       if (q.covered) return refuse("covered_by_mesita", "Mesita already gives this place this level or more");
       if (q.blocked_by === "taken") return refuse("premier_taken", "Someone else pays for Premier here");

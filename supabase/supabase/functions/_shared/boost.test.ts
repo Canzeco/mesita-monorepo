@@ -12,9 +12,11 @@ import {
   chargeOutcome,
   creditCents,
   extraDays,
+  inEarlyWindow,
   intervalEnd,
   canResume,
   isAllowedReturnUrl,
+  type Manual,
   parseBoostStart,
   PREMIER_TIERS,
   type Period,
@@ -22,6 +24,7 @@ import {
   pledgeCheckoutParams,
   quote,
   renewalChargeParams,
+  runEndAtOrAbove,
   staleChargeAction,
   StripeError,
   viewerOf,
@@ -375,4 +378,61 @@ Deno.test("quote: Manual 2X leaves only 5X for sale; Manual 5X leaves nothing", 
     assertEquals(quote({ ...base, tier, manualTier: 2 }).covered, true, tier);
   }
   assertEquals(quote({ ...base, tier: "boost_2x" }).covered, false, "no Manual: everything for sale");
+});
+
+// MESITA-3165 (Design D7/D11): in the last 7 days of the run of Refill days
+// at or above a level, that level may be subscribed to early: a card saved
+// now, first charged the day the days end.
+function refill(id: string, tier: number, fromDay: number, toDay: number): Manual {
+  return {
+    id,
+    place_id: "place",
+    tier,
+    starts_at: new Date(T0 + fromDay * DAY).toISOString(),
+    ends_at: new Date(T0 + toDay * DAY).toISOString(),
+    source: "admin",
+    granted_by: null,
+  };
+}
+
+Deno.test("runEndAtOrAbove: the back-to-back run at or above the tier; a gap, a lower tier or a zero-length row stops it", () => {
+  const rows = [refill("a", 2, -1, 3), refill("b", 1, 3, 10), refill("z", 2, 10, 10), refill("c", 2, 12, 20)];
+  assertEquals(runEndAtOrAbove(rows, 2, T0), new Date(T0 + 3 * DAY).toISOString(), "5X: only the 5X row; 2X is below");
+  assertEquals(runEndAtOrAbove(rows, 1, T0), new Date(T0 + 10 * DAY).toISOString(), "2X: 5X then 2X; the gap at day 10 stops it");
+  assertEquals(runEndAtOrAbove([refill("q", 2, 1, 5)], 2, T0), null, "nothing runs now");
+  assertEquals(runEndAtOrAbove([], 1, T0), null);
+});
+
+Deno.test("quote: subscribe early in the last 7 days of the Refill run; day 8 is still covered", () => {
+  const base = { interval: "month" as const, running: null, charging: false, viewer: "stranger" as const, subscription: null, now: T0, manualTier: 1 };
+  const day7 = quote({ ...base, tier: "boost_2x", manual: [refill("a", 1, -3, 7)] });
+  assertEquals(
+    [day7.kind, day7.checkout, day7.covered, day7.charge_cents, day7.renews_at],
+    ["resume", "setup", false, 0, new Date(T0 + 7 * DAY).toISOString()],
+  );
+  const day8 = quote({ ...base, tier: "boost_2x", manual: [refill("a", 1, -3, 8)] });
+  assertEquals([day8.kind, day8.covered, day8.checkout], ["blocked", true, "none"]);
+  // The run counts every back-to-back row at or above the level.
+  const chained = quote({ ...base, manualTier: 2, tier: "boost_2x", manual: [refill("a", 2, -1, 3), refill("b", 1, 3, 9)] });
+  assertEquals(chained.covered, true, "5X then 2X runs 9 days: too early");
+  // Not without the rows, nor where someone pays or a charge is in flight.
+  assertEquals(quote({ ...base, tier: "boost_2x" }).covered, true, "no rows passed: covered as before");
+  const rows = [refill("a", 1, -3, 7)];
+  assertEquals(quote({ ...base, tier: "boost_2x", manual: rows, charging: true }).covered, true);
+  assertEquals(quote({ ...base, tier: "boost_2x", manual: rows, subscription: pledge({ id: "s" }) }).covered, true);
+  assertEquals(quote({ ...base, tier: "boost_2x", manual: rows, running: period({ id: "p" }) }).covered, true);
+  // Above the Refill level the quote is the plain paid one.
+  assertEquals(quote({ ...base, tier: "boost_5x", manual: rows }).checkout, "payment");
+});
+
+Deno.test("inEarlyWindow: calendar days in the place's time zone; an unknown zone reads UTC", () => {
+  // Now = 2026-11-01 00:00 UTC = Oct 31 18:00 in Mexico City (UTC-6).
+  const end = new Date(T0 + 7 * DAY + 3 * 3600_000).toISOString(); // Nov 8 03:00 UTC = Nov 7 21:00 there
+  assertEquals(inEarlyWindow(end, T0, "UTC"), true, "Nov 1 → Nov 8: 7 days");
+  assertEquals(inEarlyWindow(end, T0, "America/Mexico_City"), true, "Oct 31 → Nov 7: 7 days");
+  const later = new Date(T0 + 7 * DAY + 7 * 3600_000).toISOString(); // Nov 8 07:00 UTC = Nov 8 01:00 there
+  assertEquals(inEarlyWindow(later, T0, "America/Mexico_City"), false, "Oct 31 → Nov 8: 8 days there");
+  assertEquals(inEarlyWindow(later, T0, "UTC"), true);
+  assertEquals(inEarlyWindow(later, T0, "Not/AZone"), true, "unknown zone → UTC");
+  assertEquals(inEarlyWindow(later, T0, null), true);
 });
