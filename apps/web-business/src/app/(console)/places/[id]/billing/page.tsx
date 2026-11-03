@@ -1,5 +1,6 @@
 import { getBilling, getPremier } from "@/lib/business-api";
 import { BillingPanel, type CardReturn } from "./BillingPanel";
+import { PlansCard } from "@/components/billing/PlansCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Billing" };
@@ -8,26 +9,30 @@ export const metadata = { title: "Billing" };
 // runs, what it costs and every charge (business-web-get-billing, MESITA-3166).
 // Update card's Checkout comes back here with `?boost=<session>`, which
 // business-web-get-premier settles first; its outcome is the line on top, so
-// a cancelled Checkout never reads "Your card is saved."
+// a cancelled Checkout never reads "Your card is saved." Since MESITA-3173 it
+// also lists the plans (Mesita Business Free · Pro · Ultra), whose Checkout
+// returns here too; `?plan=<tier>` is the plan the Keep button picked.
 export default async function BillingPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ boost?: string }>;
+  searchParams: Promise<{ boost?: string; plan?: string }>;
 }) {
   const { id } = await params;
-  const { boost } = await searchParams;
-  let returned: CardReturn = null;
-  if (boost) {
-    const settled = await getPremier(id, boost);
-    const outcome = settled.ok ? settled.data.outcome : "pending";
-    returned = outcome === "saved" ? "saved" : outcome === "pending" ? "pending" : "unchanged";
-  }
+  const { boost, plan } = await searchParams;
+  const picked = plan === "boost_2x" || plan === "boost_5x" ? plan : null;
+  // Settle the Checkout first (buying or Update card), then read Billing.
+  const premier = await getPremier(id, boost ?? null);
+  const outcome = premier.ok ? premier.data.outcome : null;
+  // A bought plan's outcome is the Plans card's line; only a card return is here.
+  const returned: CardReturn = boost && outcome === "saved" ? "saved" : null;
   const billing = await getBilling(id);
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} returned={returned} />
+      <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} returned={returned}
+        plans={<PlansCard placeId={id} initial={premier.ok ? premier.data : null} picked={picked} />}
+      />
     </div>
   );
 }

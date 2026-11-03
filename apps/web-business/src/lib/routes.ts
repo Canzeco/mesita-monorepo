@@ -25,16 +25,12 @@ export function placeTabHref(placeId: string, tab: PlaceTab): string {
   return `/places/${encodeURIComponent(placeId)}/${tab}`;
 }
 
-/** A place's Billing page (MESITA-3160; under Premier in MESITA-3154, in
- *  Settings before). */
-export function billingHref(placeId: string): string {
-  return placeTabHref(placeId, "billing");
-}
-
-/** A place's Premier page, optionally with one plan picked (Billing's Keep
- *  and See plans, MESITA-3166). */
-export function premierHref(placeId: string, plan?: "boost_2x" | "boost_5x" | null): string {
-  return `${placeTabHref(placeId, "premier")}${plan ? `?plan=${plan}` : ""}`;
+/** A place's Billing page (MESITA-3160), optionally scrolled to its plans
+ *  with one picked (MESITA-3173: the plans moved here from Premier). */
+export function billingHref(placeId: string, plans?: { plan?: "boost_2x" | "boost_5x" | null }): string {
+  const base = placeTabHref(placeId, "billing");
+  if (!plans) return base;
+  return `${base}${plans.plan ? `?plan=${plans.plan}` : ""}#plans`;
 }
 
 /** Claim one place; `added` says Mesita just added it from Google. */
