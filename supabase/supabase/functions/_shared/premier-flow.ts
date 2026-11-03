@@ -1,8 +1,8 @@
-// Premier, the flows behind both of its doors (MESITA-3103): the guest's
-// (consumer-web-{get,start,cancel}-premier, web-consumer) and the place's
-// (business-web-{get,start,cancel}-premier, web-business). The bodies were
-// the consumer EFs'; they moved here unchanged so both actors run one
-// implementation of every money path. Each returns the Response its EF sends.
+// Premier Subscription, the flows behind its doors (MESITA-3103):
+// business-web-{get,start,cancel}-premier, web-business. The bodies were the
+// consumer EFs'; the guest's doors retired with MESITA-3168 (a guest buys
+// Refill days instead, _shared/premier-purchase.ts). Each returns the
+// Response its EF sends.
 //
 // The place adds one thing the guest cannot do: whoever runs the place may
 // stop a subscription a guest pays (`stopPremierAsPlace`, ended reason
@@ -52,7 +52,7 @@ const NOTICE_REASONS: ReadonlySet<EndedReason> = new Set(["declined", "stopped_b
 const NOTICE_MS = 30 * 86_400_000;
 
 
-/** consumer-web-get-premier's read, for any caller (null = signed out). */
+/** business-web-get-premier's read, for any caller (null = signed out). */
 export async function readPremier(
   env: EFEnv,
   user: { id: string } | null,
@@ -107,7 +107,7 @@ export async function readPremier(
   return json({
     ok: true,
     tier: placeRes.place?.boost_tier ?? 0,
-    manual: manual ? { tier: manual.tier, ends_at: manual.ends_at } : null,
+    manual: manual ? { tier: manual.tier, ends_at: manual.ends_at, source: manual.source } : null,
     paid,
     renewing: charging,
     viewer,
@@ -125,7 +125,16 @@ export async function readPremier(
       : null,
     ended_notice: user ? endedNotice(line.pledges, line.periods, running, user.id, now) : null,
     quotes: user && viewer
-      ? quotes({ running, charging, viewer, subscription, now, manualTier: manual?.tier ?? 0 })
+      ? quotes({
+        running,
+        charging,
+        viewer,
+        subscription,
+        now,
+        manualTier: manual?.tier ?? 0,
+        manual: line.manual,
+        timeZone: placeRes.place?.timezone,
+      })
       : null,
     ...(outcome === undefined ? {} : { outcome }),
     // Builds before MESITA-3092 read these; one release.
@@ -154,7 +163,7 @@ function endedNotice(pledges: Pledge[], periods: Period[], running: Period | nul
   };
 }
 
-/** consumer-web-start-premier's flow: a Checkout for this caller, or a
+/** business-web-start-premier's flow: a Checkout for this caller, or a
  *  change that needs none. */
 export async function startPremier(
   env: EFEnv,
@@ -190,7 +199,7 @@ export async function startPremier(
         try {
           await stripe("POST", `checkout/sessions/${encodeURIComponent(mine.stripe_checkout_session_id)}/expire`);
         } catch (err) {
-          console.error("[consumer-web-start-premier] expire_previous", mine.id, String(err));
+          console.error("[premier-start] expire_previous", mine.id, String(err));
         }
         const fresh = await readPledge(admin, mine.id);
         if (fresh) await confirmPledge(admin, stripe, fresh, livemode);
@@ -222,6 +231,8 @@ export async function startPremier(
         subscription,
         now,
         manualTier: runningManual(line.manual, now)?.tier ?? 0,
+        manual: line.manual,
+        timeZone: place.timezone,
       });
       if (q.covered) return refuse("covered_by_mesita", "Mesita already gives this place this level or more");
       if (q.blocked_by === "taken") return refuse("premier_taken", "Someone else pays for Premier here");
@@ -330,12 +341,12 @@ export async function startPremier(
         .update({ stripe_checkout_session_id: sessionId, updated_at: new Date().toISOString() })
         .eq("id", pledge.id);
       if (!error) return json({ ok: true, url: session.url });
-      console.error(`[consumer-web-start-premier] session_write attempt ${attempt + 1}:`, error.message);
+      console.error(`[premier-start] session_write attempt ${attempt + 1}:`, error.message);
     }
     try {
       await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`);
     } catch (err) {
-      console.error("[consumer-web-start-premier] expire_failed", JSON.stringify({ backing_id: pledge.id, session_id: sessionId, error: String(err) }));
+      console.error("[premier-start] expire_failed", JSON.stringify({ backing_id: pledge.id, session_id: sessionId, error: String(err) }));
     }
     if (inserted) await admin.from("place_backings").delete().eq("id", pledge.id).eq("status", "open");
     else await admin.from("place_backings").update({ checkout_kind: null, updated_at: new Date().toISOString() }).eq("id", pledge.id);
@@ -346,7 +357,7 @@ export async function startPremier(
   }
 }
 
-/** consumer-web-cancel-premier's flow: the caller stops renewing their own
+/** business-web-cancel-premier's flow: the caller stops renewing their own
  *  subscription (or abandons their open Checkout). */
 export async function cancelPremier(
   env: EFEnv,

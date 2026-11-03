@@ -1,12 +1,12 @@
 // Supabase Edge Function — business-web-get-premier
 //
-// MESITA-3103. The place's Premier as its Business page shows it: the same
-// read as the guest's Premier tab (`_shared/premier-flow.ts` readPremier),
+// MESITA-3103. The place's Premier as its Business page shows it
+// (`_shared/premier-flow.ts` readPremier, the guest's read until MESITA-3168),
 // for whoever runs the place or a super-admin. With `session_id` (Checkout's
 // return) it first settles the caller's own pledge.
 //
 // Body: { place_id: uuid, session_id?: string }
-// Response: consumer-web-get-premier's body + { role }
+// Response: readPremier's body + { role }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";

@@ -1,0 +1,50 @@
+// A one-off Checkout `payment` and what Stripe says about it — shared by the
+// Wallet (wallet_purchases, MESITA-3097) and Premier Refill packs
+// (premier_refill_purchases, MESITA-3168). Neither has a webhook: each reads
+// its own purchase's session back from Stripe and trusts only that.
+
+import type { StripeCall } from "./boost.ts";
+
+export type SessionVerdict =
+  | { kind: "paid"; paymentIntent: string | null }
+  | { kind: "pending" }
+  | { kind: "expired" }
+  | { kind: "mismatch" };
+
+/** What a Checkout session says about a purchase. Only `paid` credits; an
+ *  open session is left alone; an expired one ends the purchase. A session
+ *  whose metadata names another purchase is never trusted, nor (when the
+ *  caller says what it expects) one whose amount, currency or mode differ. */
+export function classifySession(
+  session: Record<string, unknown>,
+  purchaseId: string,
+  expect?: { amountCents: number; currency: string; livemode: boolean },
+): SessionVerdict {
+  const meta = (session.metadata ?? {}) as Record<string, string>;
+  if (meta.purchase_id !== purchaseId) return { kind: "mismatch" };
+  if (
+    expect && (
+      session.amount_total !== expect.amountCents ||
+      String(session.currency ?? "").toLowerCase() !== expect.currency ||
+      session.livemode !== expect.livemode
+    )
+  ) return { kind: "mismatch" };
+  if (session.payment_status === "paid") {
+    const pi = session.payment_intent;
+    const id = typeof pi === "string" ? pi : (pi && typeof pi === "object" ? String((pi as { id?: unknown }).id ?? "") : "");
+    return { kind: "paid", paymentIntent: id || null };
+  }
+  if (session.status === "expired") return { kind: "expired" };
+  return { kind: "pending" };
+}
+
+/** Reads a purchase's own session from Stripe and classifies it. */
+export async function readCheckoutSession(
+  stripe: StripeCall,
+  sessionId: string,
+  purchaseId: string,
+  expect?: { amountCents: number; currency: string; livemode: boolean },
+): Promise<SessionVerdict> {
+  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`);
+  return classifySession(session, purchaseId, expect);
+}

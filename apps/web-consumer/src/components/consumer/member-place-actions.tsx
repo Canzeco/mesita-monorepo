@@ -22,12 +22,7 @@ import {
   isMesitaPlaceId,
   type PlaceActivity,
 } from "@/lib/api/activity";
-import {
-  apiGetBoost,
-  tierLabel,
-  shortDate,
-  type PlaceBoost,
-} from "@/lib/api/boost";
+import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
@@ -135,7 +130,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       loading={boost.loading}
       failed={boost.failed}
       onRetry={boost.reload}
-      onChanged={boost.reload}
     />
   ) : (
     <BoostUnavailable />
@@ -195,55 +189,23 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   };
 }
 
-// Premier (MESITA-3092): the place's one subscription and the guest's part
-// in it. Checkout returns with `?boost=<session>`: settle it, say what
-// happened only from the server's outcome, and drop the parameter so a
-// reload does not settle twice. A payment still confirming is asked again
-// for up to 20 seconds.
+// Premier (MESITA-3168): the place's level and the guest's Refill packs.
+// Checkout returns with `?refill=<session>`: settle it, say what happened
+// only from the server's line, and drop the parameter so a reload does not
+// settle twice. A payment still confirming is asked again for up to 20
+// seconds.
 const CONFIRM_POLL_MS = 2_500;
 const CONFIRM_POLL_FOR_MS = 20_000;
 
 function sayCheckoutOutcome(data: PlaceBoost) {
-  const p = data.paid;
-  switch (data.outcome) {
-    case "confirmed":
-      toast.success(
-        p
-          ? `${tierLabel(p.tier)} is on. Renews ${shortDate(p.ends_at)}.`
-          : "Premier is on.",
-      );
-      return;
-    case "saved":
-      toast.success(
-        p
-          ? `Card saved. It will be charged on ${shortDate(p.ends_at)}.`
-          : "Card saved.",
-      );
-      return;
-    case "lost":
-      toast(
-        "Someone started Premier here a moment ago. Your card was not charged.",
-      );
-      return;
-    case "declined":
-      toast("Your card was declined. Nothing was charged.");
-      return;
-    case "covered":
-      toast(
-        "Mesita already gives this place that level. Your card was not charged.",
-      );
-      return;
-    case "expired":
-      toast("Checkout cancelled. Nothing was charged.");
-      return;
-    case "pending":
-      toast(
-        "Still confirming. We'll update this tab; you won't be charged twice.",
-      );
-      return;
-    default:
-      return;
-  }
+  const p = data.purchase;
+  if (!p) return;
+  if (p.status === "granted") toast.success(`${p.line}.`);
+  else if (p.status === "open")
+    toast(
+      "Still confirming. We'll update this tab; you won't be charged twice.",
+    );
+  else toast(`${p.line}.`);
 }
 
 const boostKey = (placeId: string) => `boost:${placeId}`;
@@ -280,9 +242,9 @@ function usePlaceBoost(placeId: string): {
     if (!mesita) return;
     let cancelled = false;
     const params = new URLSearchParams(window.location.search);
-    const session = params.get("boost") ?? undefined;
+    const session = params.get("refill") ?? undefined;
     if (session) {
-      params.delete("boost");
+      params.delete("refill");
       const q = params.toString();
       window.history.replaceState(
         window.history.state,
@@ -297,7 +259,7 @@ function usePlaceBoost(placeId: string): {
         if (
           session &&
           !cancelled &&
-          data.outcome === "pending" &&
+          data.purchase?.status === "open" &&
           Date.now() - startedAt < CONFIRM_POLL_FOR_MS
         ) {
           return new Promise<PlaceBoost>((resolve, reject) => {

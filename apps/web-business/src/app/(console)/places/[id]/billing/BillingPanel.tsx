@@ -1,55 +1,85 @@
 "use client";
 
 // Billing, as the place sees it (MESITA-3128; its own page under Manage since
-// MESITA-3160, Pato: "in manage do add the billing section"; under Premier in
-// MESITA-3154, in Settings from MESITA-3136). The plan and the charges are
-// the team's; the card is the payer's own, so only the payer sees it and can
-// replace it (Stripe Checkout in setup mode, back to this page). Every amount
-// and date is the server's.
+// MESITA-3160). Since MESITA-3166 (Design D1–D13) it answers three things in
+// order: the status block (the level and until when, a timeline of what runs,
+// one money line, one button), one card "What's running" (each block of
+// Refill days and the subscription as rows) and one card "Payment" (the
+// payer's card, then every charge). Premier sells the plans; Billing shows the
+// schedule and the money. Every amount, date and state is the server's
+// (business-web-get-billing); this file only formats, in the place's time
+// zone.
 
 import Link from "next/link";
 import { useState } from "react";
 import { CreditCard } from "lucide-react";
 import { startPremier, type PlaceBilling } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { placeTabHref, returnUrl } from "@/lib/routes";
+import { placeTabHref, premierHref, returnUrl } from "@/lib/routes";
+import { REFILL_ORIGIN } from "@/lib/premier-origin";
 
-const PLAN_LABEL: Record<string, string> = { boost_2x: "Premier 2X", boost_5x: "Premier 5X" };
-const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
+type Rank = 1 | 2;
+const FACTOR: Record<number, string> = { 1: "2X", 2: "5X" };
+const PLAN_OF: Record<Rank, "boost_2x" | "boost_5x"> = { 1: "boost_2x", 2: "boost_5x" };
 const STATUS: Record<PlaceBilling["charges"][number]["status"], string> = {
   paid: "Paid",
   declined: "Declined",
   charging: "Charging",
+};
+const DAY_MS = 86_400_000;
+
+/** What Stripe's return from Update card did (page.tsx reads it). */
+export type CardReturn = "saved" | "pending" | "unchanged" | null;
+const RETURN_LINE: Record<Exclude<CardReturn, null>, string> = {
+  saved: "Your card is saved.",
+  pending: "Confirming your card…",
+  unchanged: "Card not changed.",
 };
 
 function usd(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: cents % 100 === 0 ? 0 : 2 });
 }
 
-function day(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
 function brand(b: string): string {
   return b === "amex" ? "American Express" : b.charAt(0).toUpperCase() + b.slice(1);
+}
+
+/** Dates in the place's time zone ("Dec 3", with the year when it is not
+ *  this year's), and how many calendar days away they are there. */
+function dates(tz: string, today: string) {
+  const year = today.slice(0, 4);
+  const local = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+  const day = (iso: string | null | undefined) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-US", {
+      timeZone: tz,
+      month: "short",
+      day: "numeric",
+      ...(local(iso).slice(0, 4) === year ? {} : { year: "numeric" }),
+    });
+  };
+  /** A YYYY-MM-DD date (already in the place's time zone). */
+  const plainDay = (ymd: string) =>
+    new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "short", day: "numeric", ...(ymd.slice(0, 4) === year ? {} : { year: "numeric" }) });
+  const daysAway = (iso: string) => Math.round((Date.parse(local(iso)) - Date.parse(today)) / DAY_MS);
+  return { day, plainDay, daysAway };
 }
 
 export function BillingPanel({
   placeId,
   billing,
   error: loadError,
-  saved,
+  returned,
 }: {
   placeId: string;
   billing: PlaceBilling | null;
   error: string | null;
-  saved: boolean;
+  returned: CardReturn;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const premierHref = placeTabHref(placeId, "premier");
 
   if (!billing) {
     return (
@@ -69,84 +99,188 @@ export function BillingPanel({
     if (r.data.url) window.location.assign(r.data.url);
   }
 
-  const { plan, card, payer, charges } = billing;
+  const { level, refill, subscription: sub, payer, card, charges, keep, moved } = billing;
+  const { day, plainDay, daysAway } = dates(billing.timezone, billing.today);
+  const you = payer === "you";
+  const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
+
+  // ── Status block ──
+  let levelLine = level.tier > 0 ? `Premier ${FACTOR[level.tier]}` : "Not Premier";
+  if (level.tier > 0 && level.until) {
+    const left = level.days_left;
+    levelLine +=
+      left === null ? ` until ${day(level.until)}` : left === 0 ? ` · ends today` : ` · ends in ${left} day${left === 1 ? "" : "s"} (${day(level.until)})`;
+  }
+
+  const money: string[] = [];
+  if (sub) {
+    const amount = you ? ` ${usd(sub.next_charge_cents)}` : "";
+    const factor = FACTOR[sub.tier];
+    if (sub.state === "charging") money.push("A charge is being taken now.");
+    else if (sub.state === "paused" && sub.resumes_at && sub.next_charge_at) {
+      money.push(
+        daysAway(sub.resumes_at) === daysAway(sub.next_charge_at)
+          ? `Paused while Refill days run — resumes and charges${amount} on ${day(sub.next_charge_at)}.`
+          : `Paused while Refill days run — resumes ${day(sub.resumes_at)}, next charge${amount} on ${day(sub.next_charge_at)}.`,
+      );
+    } else if (sub.state === "waiting" && sub.next_charge_at) {
+      money.push(
+        sub.early_start
+          ? `Your ${factor} subscription starts when Refill days end on ${day(sub.next_charge_at)}: first charge${amount}.`
+          : daysAway(sub.next_charge_at) <= 0
+            ? `Next charge${amount} in the next few minutes.`
+            : `Next charge${amount} on ${day(sub.next_charge_at)}, when the Refill days end.`,
+      );
+    } else if (sub.next_charge_at) money.push(`Next charge${amount} on ${day(sub.next_charge_at)}.`);
+    if (!you) money.push("Paid by another member of your team.");
+  } else if (keep) {
+    money.push(`Keep ${FACTOR[keep.tier]} — first charge ${usd(keep.price_cents)} on ${day(keep.ends_at)}, the day the Refill days end.`);
+  } else if (empty) {
+    money.push("Your place ranks like every other place.");
+  } else {
+    money.push("Nothing scheduled to charge.");
+    const from = level.tier > 0 ? billing.subscribe_from[level.tier as Rank] : undefined;
+    if (from) money.push(`You can subscribe to keep ${FACTOR[level.tier]} from ${plainDay(from)}.`);
+  }
+
+  const movedLine = moved
+    ? `Moved from ${day(moved.from)} to ${day(moved.to)} by ${moved.days} day${moved.days === 1 ? "" : "s"} · ${REFILL_ORIGIN[moved.origin]} on ${day(moved.granted_at)}.`
+    : null;
+  const cardLine =
+    billing.card_expires_before_charge && card && sub?.next_charge_at
+      ? `Your card expires ${String(card.exp_month).padStart(2, "0")}/${String(card.exp_year).slice(-2)}, before the next charge on ${day(sub.next_charge_at)}.`
+      : null;
+
+  // One button (D1): Update card → Keep <tier> → See plans.
+  const buttonClass =
+    "inline-flex h-11 w-full items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60 sm:w-auto";
+  const button = cardLine ? (
+    <button type="button" disabled={busy} onClick={() => void updateCard()} className={`bg-foreground text-background ${buttonClass}`}>
+      {busy ? "Opening…" : "Update card"}
+    </button>
+  ) : keep ? (
+    <Link href={premierHref(placeId, PLAN_OF[keep.tier])} className={`bg-foreground text-background ${buttonClass}`}>
+      Keep {FACTOR[keep.tier]}
+    </Link>
+  ) : (
+    <Link
+      href={premierHref(placeId, sub ? PLAN_OF[sub.tier] : null)}
+      className={`${empty ? "bg-foreground text-background" : "border-border hover:bg-muted border"} ${buttonClass}`}
+    >
+      See plans
+    </Link>
+  );
+
+  // ── What's running ──
+  const subRow = sub ? (
+    <Row
+      badge={sub.tier}
+      outlined
+      what={you ? `Your subscription · ${usd(sub.amount_cents)} a ${sub.interval}` : "Subscription · paid by your team"}
+      when=""
+      state={
+        sub.state === "charging"
+          ? "Charging"
+          : sub.state === "paused" && sub.resumes_at
+            ? `Paused until ${day(sub.resumes_at)}`
+            : sub.state === "waiting" && sub.next_charge_at
+              ? `Starts ${day(sub.next_charge_at)}`
+              : sub.next_charge_at
+                ? `Renews ${day(sub.next_charge_at)}`
+                : "Running"
+      }
+    />
+  ) : null;
 
   return (
     <section id="billing" className="flex scroll-mt-6 flex-col gap-4">
-      <h2 className="text-lg font-semibold tracking-tight">Billing</h2>
-      {saved ? <Card className="text-sm">Your card is saved.</Card> : null}
+      {returned ? (
+        <p role="status" className="border-border bg-card rounded-xl border px-4 py-3 text-sm">
+          {RETURN_LINE[returned]}
+        </p>
+      ) : null}
 
-      <Card className="flex flex-col gap-1">
-        <p className="text-muted-foreground text-sm">Plan</p>
-        {plan ? (
-          <>
-            <p className="font-semibold">
-              {PLAN_LABEL[plan.tier] ?? "Premier"} · {usd(plan.amount_cents)} a {plan.interval}
-            </p>
-            <p className="text-muted-foreground text-sm">
-              {plan.next_charge_at ? `Next charge ${day(plan.next_charge_at)}.` : "No charge scheduled."}{" "}
-              <Link href={premierHref} className="text-foreground font-semibold underline underline-offset-4">Change or stop in Premier</Link>
-            </p>
-          </>
-        ) : (
-          <p className="text-sm">
-            No paid plan.{" "}
-            <Link href={premierHref} className="font-semibold underline underline-offset-4">See Premier</Link>
+      <div className="flex flex-col gap-3 py-1">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="font-display text-2xl font-semibold tracking-tight">{levelLine}</p>
+            {money.map((line) => (
+              <p key={line} className="text-muted-foreground mt-1 text-sm">
+                {line}
+              </p>
+            ))}
+            {movedLine ? <p className="text-muted-foreground mt-1 text-sm">{movedLine}</p> : null}
+            {cardLine ? <p className="mt-1 text-sm font-medium text-(--brand-pink-700)">{cardLine}</p> : null}
+          </div>
+          <div className="shrink-0">{button}</div>
+        </div>
+        <Timeline billing={billing} day={day} />
+        {error ? (
+          <p className="text-destructive text-sm" aria-live="polite">
+            {error}
           </p>
-        )}
-      </Card>
+        ) : null}
+      </div>
 
-      <Card className="flex flex-col items-start gap-3">
-        <p className="text-muted-foreground text-sm">Card</p>
-        {payer === "you" ? (
-          <>
-            <div className="flex items-center gap-3">
-              <CreditCard className="text-muted-foreground size-5" aria-hidden />
-              {card ? (
-                <span className="font-semibold">
-                  {brand(card.brand)} •••• {card.last4}
-                  <span className="text-muted-foreground ml-2 text-sm font-normal">
-                    expires {String(card.exp_month).padStart(2, "0")}/{String(card.exp_year).slice(-2)}
-                  </span>
-                </span>
-              ) : (
-                <span className="text-sm">Your card on file</span>
-              )}
-            </div>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void updateCard()}
-              className="border-border hover:bg-muted h-9 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
-            >
-              {busy ? "Opening…" : "Update card"}
-            </button>
-          </>
-        ) : payer === "team" ? (
-          <p className="text-sm">Paid by another member of your team. Only they see and change the card.</p>
-        ) : (
-          <p className="text-sm">
-            No card saved. Your card is saved when you start Premier.{" "}
-            <Link href={premierHref} className="font-semibold underline underline-offset-4">Start Premier</Link>
-          </p>
-        )}
-        {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      </Card>
+      {refill.length > 0 || sub ? (
+        <Card className="flex flex-col p-0 sm:p-0">
+          <h2 className="px-5 pt-4 pb-2 font-semibold">What&apos;s running</h2>
+          <div className="divide-border divide-y">
+            {refill.map((r) => (
+              <Row
+                key={r.id}
+                badge={r.tier}
+                what={REFILL_ORIGIN[r.origin]}
+                when={`${r.state === "running" ? "Now" : day(r.starts_at)} – ${day(r.ends_at)}`}
+                state={r.state === "running" ? "Running" : "Next"}
+              />
+            ))}
+            {subRow}
+          </div>
+        </Card>
+      ) : null}
 
-      <section className="flex flex-col gap-3">
-        <h3 className="font-semibold">Charges</h3>
-        {charges.length === 0 ? (
-          <Card className="text-muted-foreground text-sm">Nothing charged yet.</Card>
-        ) : (
-          <Card className="divide-border divide-y p-0 sm:p-0">
+      {payer || charges.length > 0 ? (
+        <Card className="flex flex-col p-0 sm:p-0">
+          <h2 className="px-5 pt-4 pb-2 font-semibold">Payment</h2>
+          <div className="divide-border divide-y">
+            {you ? (
+              <div className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <CreditCard className="text-muted-foreground size-5 shrink-0" aria-hidden />
+                  {card ? (
+                    <span className="font-medium">
+                      {brand(card.brand)} •••• {card.last4}
+                      <span className="text-muted-foreground ml-2 text-sm font-normal">
+                        expires {String(card.exp_month).padStart(2, "0")}/{String(card.exp_year).slice(-2)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-sm">Your card on file</span>
+                  )}
+                </div>
+                {cardLine ? null : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void updateCard()}
+                    className="border-border hover:bg-muted h-11 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+                  >
+                    {busy ? "Opening…" : "Update card"}
+                  </button>
+                )}
+              </div>
+            ) : payer === "team" ? (
+              <p className="px-5 py-3 text-sm">Paid by another member of your team. Only they see and change the card.</p>
+            ) : null}
             {charges.map((c) => (
               <div key={c.id} className="flex items-center gap-4 px-5 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">
-                    {LABEL_BY_RANK[c.tier] ?? "Premier"} · {c.interval === "year" ? "a year" : "a month"}
+                    {day(c.at)} · Premier {FACTOR[c.tier] ?? ""}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {day(c.at)} · covers {day(c.starts_at)} to {day(c.ends_at)}
+                    {day(c.starts_at)} – {day(c.ends_at)}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
@@ -155,9 +289,93 @@ export function BillingPanel({
                 </div>
               </div>
             ))}
-          </Card>
-        )}
-      </section>
+          </div>
+        </Card>
+      ) : null}
     </section>
+  );
+}
+
+/** A tier mark: 5X solid pink, 2X pale pink; a subscription outlined. */
+function TierBadge({ tier, outlined }: { tier: number; outlined?: boolean }) {
+  const look = outlined
+    ? "border-foreground border bg-transparent text-foreground"
+    : tier === 2
+      ? "bg-(--brand-pink-600) text-white"
+      : "bg-(--brand-pink-100) text-(--brand-pink-800)";
+  return <span className={`type-label inline-flex h-6 min-w-9 items-center justify-center rounded-full px-2 font-semibold ${look}`}>{FACTOR[tier]}</span>;
+}
+
+function Row({ badge, outlined, what, when, state }: { badge: number; outlined?: boolean; what: string; when: string; state: string }) {
+  return (
+    <div className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <TierBadge tier={badge} outlined={outlined} />
+        <span className="min-w-0 truncate font-medium">{what}</span>
+      </div>
+      <div className="text-muted-foreground flex items-center justify-between gap-4 text-sm sm:justify-end">
+        {when ? <span className="tabular-nums">{when}</span> : null}
+        <span className="text-foreground font-medium">{state}</span>
+      </div>
+    </div>
+  );
+}
+
+/** The schedule as one bar from now (D1): 5X, 2X, then the subscription
+ *  outlined. The same facts are the rows below, so the bar is hidden from
+ *  screen readers. */
+function Timeline({ billing, day }: { billing: PlaceBilling; day: (iso: string | null | undefined) => string }) {
+  const now = Date.parse(billing.now);
+  type Seg = { from: number; to: number; kind: "5x" | "2x" | "sub" };
+  const segs: Seg[] = billing.refill.map((r) => ({
+    from: Math.max(now, Date.parse(r.starts_at)),
+    to: Date.parse(r.ends_at),
+    kind: r.tier === 2 ? "5x" : "2x",
+  }));
+  const sub = billing.subscription;
+  if (sub?.next_charge_at) {
+    const charge = Date.parse(sub.next_charge_at);
+    if (sub.state === "paused" && sub.resumes_at) segs.push({ from: Date.parse(sub.resumes_at), to: charge, kind: "sub" });
+    else if (sub.state === "running") segs.push({ from: now, to: charge, kind: "sub" });
+  }
+  const live = segs.filter((s) => s.to > s.from);
+  if (live.length === 0) return null;
+  const end = Math.max(...live.map((s) => s.to));
+  // Waiting for a first charge: an open tail after the Refill days.
+  const tail = sub && sub.state === "waiting" ? (end - now) * 0.12 : 0;
+  const span = end + tail - now;
+  const pct = (t: number) => `${(((t - now) / span) * 100).toFixed(2)}%`;
+  const joins = [...new Set(live.map((s) => s.to))].sort((a, b) => a - b);
+  const shown: number[] = [];
+  for (const t of joins) if (!shown.length || (t - shown[shown.length - 1]) / span > 0.18) shown.push(t);
+  const look: Record<Seg["kind"], string> = {
+    "5x": "bg-(--brand-pink-500)",
+    "2x": "bg-(--brand-pink-200)",
+    sub: "border-foreground border bg-transparent",
+  };
+  return (
+    <div aria-hidden className="flex flex-col gap-1">
+      <div className="bg-muted relative h-3 w-full overflow-hidden rounded-full">
+        {live.map((s, i) => (
+          <span
+            key={i}
+            className={`absolute inset-y-0 rounded-full ${look[s.kind]}`}
+            style={{ left: pct(s.from), width: `calc(${pct(s.to)} - ${pct(s.from)})` }}
+          />
+        ))}
+        {tail ? (
+          <span className="border-foreground absolute inset-y-0 right-0 rounded-full border border-dashed" style={{ left: pct(end) }} />
+        ) : null}
+        <span className="bg-foreground absolute inset-y-0 left-0 w-0.5" />
+      </div>
+      <div className="text-muted-foreground relative h-4 text-xs">
+        <span className="absolute left-0">Now</span>
+        {shown.map((t) => (
+          <span key={t} className="absolute -translate-x-full whitespace-nowrap" style={{ left: pct(t) }}>
+            {day(new Date(t).toISOString())}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -259,27 +259,24 @@ verify_jwt = true
 verify_jwt = true
 
 # Premier (MESITA-3092; Boost MESITA-2789, Spotlight MESITA-1998): one Paid
-# subscription per place (its one ready pledge); a declined renewal ends it.
-# place_premier_periods holds the paid stretches; places.boost_tier follows
-# them and Premier Refill days. No webhook: supabase-cron-sync-premier polls
-# Stripe every 5 minutes. admin-web-get-place-premier is Single Place › Premier
-# (read); admin-web-grant-place-premier is Manage Multiple › Refill (refill,
+# subscription per place (its one ready pledge, sold by the Business app); a
+# declined renewal ends it. place_premier_periods holds the paid stretches;
+# places.boost_tier follows them and Premier Refill days. No webhook:
+# supabase-cron-sync-premier polls Stripe every 5 minutes.
+# admin-web-get-place-premier is Single Place › Premier (read);
+# admin-web-grant-place-premier is Manage Multiple › Refill (refill,
 # end_mesita_days, MESITA-3163) and removes a pledge.
-[functions.consumer-web-start-premier]
+# MESITA-3168: a guest buys a 30-day Refill pack (start = Checkout, get = the
+# Premier tab's read, settling on return); the guest Subscription's four
+# consumer-web-* Premier doors retired.
+[functions.consumer-web-start-premier-refill]
 verify_jwt = true
 
-[functions.consumer-web-get-premier]
-verify_jwt = true
-
-[functions.consumer-web-cancel-premier]
+[functions.consumer-web-get-premier-refill]
 verify_jwt = true
 
 # MESITA-3167: a guest redeems a Premier code on a place (Refill days).
 [functions.consumer-web-redeem-premier-code]
-verify_jwt = true
-
-# MESITA-3092: the guest hides the notice of their ended subscription.
-[functions.consumer-web-dismiss-premier-notice]
 verify_jwt = true
 
 [functions.consumer-web-start-prepay]

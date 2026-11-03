@@ -1,39 +1,33 @@
-// Mesita Premier (MESITA-3092; Premier MESITA-2925, Boost MESITA-2789,
-// Spotlight MESITA-1998): a place has at most ONE Paid subscription. Anyone
-// signed in buys it when none runs; the guest who pays changes the plan,
-// updates the card, stops renewing or resumes. A declined renewal ends it.
-// Mesita's Manual Premier (MESITA-3091) is apart: levels it already gives
-// are not for sale. Every amount and date here comes from the server
-// (consumer-web-get-premier's `quotes`): this file never computes money. The
-// wire keeps its Boost names (the EFs, the `boost_*` tiers).
+// Mesita Premier on the place screen (MESITA-3168; Premier MESITA-2925,
+// Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys a
+// Premier Refill pack for a place — 30 days of Premier (2X) or Premier Max
+// (5X), paid once, no renewal and no owner check. The recurring Premier
+// Subscription is the Business app's. Every amount, date and line here comes
+// from the server (consumer-web-get-premier-refill): this file never
+// computes money. Tier on the wire is the integer 1 = 2X, 2 = 5X.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type BoostTier = "boost_2x" | "boost_5x";
-export type BoostInterval = "month" | "year";
 export type TierRank = 1 | 2;
 
-/** The two plans (10X retired, MESITA-3041; named MESITA-3063): each sells
- *  what the place gets, and `priority` is the factor the ranking applies
- *  (Home's list and the Map). Prices come from the server's quotes. */
+/** The two packs (named MESITA-3063): each sells what the place gets, and
+ *  `priority` is the factor the ranking applies (Home's list and the Map).
+ *  Prices come from the server. */
 export const BOOST_TIERS = [
   {
-    key: "boost_2x",
     rank: 1,
     label: "Premier",
     priority: "2X",
     blurb: "Moves the place up on Home and the Map",
   },
   {
-    key: "boost_5x",
     rank: 2,
     label: "Premier Max",
     priority: "5X",
     blurb: "The biggest lift on Home and the Map",
   },
 ] as const satisfies ReadonlyArray<{
-  key: BoostTier;
   rank: TierRank;
   label: string;
   priority: string;
@@ -52,83 +46,56 @@ export function tierLabel(tier: number): string {
   return BOOST_TIER_LABEL[tier] ?? "Premier";
 }
 
-export type BoostQuote = {
+export type RefillPack = {
+  tier: TierRank;
+  days: number;
   price_cents: number;
-  charge_cents: number;
-  credit_cents: number;
-  extra_days: number;
-  new_ends_at: string | null;
-  /** When the new terms are first charged, when they wait for the running
-   *  period's end (a change down, or a resume). */
-  renews_at: string | null;
-  kind: "buy" | "change" | "resume" | "blocked";
-  blocked_by: "taken" | "charging" | null;
-  checkout: "payment" | "setup" | "none";
-  /** Mesita's Manual Premier already gives this level or more: not for
-   *  sale (MESITA-3091). */
-  covered: boolean;
+  currency: string;
+  /** False when the place can't take this pack now (`code` says why). */
+  available: boolean;
+  code?: string;
+  /** The place already runs at or above this tier: buying keeps it there. */
+  notice?: string;
 };
 
-/** Who the guest is to this place's Premier. */
-export type PremierViewer = "payer" | "former_payer" | "stranger";
-
-export type MyPledge = {
-  id: string;
+/** Refill days running or queued: who gave them (Mesita, a code, a guest). */
+export type RefillDays = {
   tier: number;
-  interval: BoostInterval;
-  /** ready = the place's subscription (you pay); open = a Checkout. */
-  status: "open" | "ready";
-  pending: number | null;
-  has_card: boolean;
-  checkout: "buy" | "change" | "resume" | "update_card" | null;
+  starts_at: string;
+  ends_at: string;
+  source: "admin" | "code" | "purchase";
 };
 
-export type EndedNotice = {
-  reason: "declined" | "stopped_by_place" | "taken_over" | "covered";
-  at: string;
-  runs_until: string | null;
-  refund_cents: number;
-};
+export type PurchaseStatus =
+  "open" | "expired" | "paid" | "granted" | "refunded" | "refund_needed";
 
-/** What a Checkout came to (consumer-web-get-premier with `session_id`). */
-export type BoostOutcome =
-  | "confirmed"
-  | "saved"
-  | "lost"
-  | "declined"
-  | "covered"
-  | "pending"
-  | "expired"
-  | "none";
+/** What a Checkout came to (consumer-web-get-premier-refill with
+ *  `session_id`), with the server's one line for the guest. */
+export type RefillPurchase = {
+  status: PurchaseStatus;
+  line: string;
+  tier: number;
+  ends_at: string | null;
+};
 
 export type PlaceBoost = {
-  tier: 0 | 1 | 2 | 3;
-  /** Manual Premier: Mesita's free lift running now (MESITA-3091). */
-  manual: { tier: number; ends_at: string } | null;
-  /** The Paid period running now. */
-  paid: {
-    tier: number;
-    ends_at: string;
-    renews: boolean;
-    by_you: boolean;
-  } | null;
-  renewing: boolean;
-  viewer: PremierViewer | null;
-  can_resume: boolean;
-  mine: MyPledge | null;
-  ended_notice: EndedNotice | null;
-  quotes: Record<BoostTier, Record<BoostInterval, BoostQuote>> | null;
-  outcome?: BoostOutcome;
+  level: 0 | 1 | 2;
+  signed_in: boolean;
+  refill: RefillDays[];
+  /** The place's own Subscription period running now (Business app). */
+  subscription: { tier: number; ends_at: string } | null;
+  packs: RefillPack[];
+  purchase?: RefillPurchase | null;
 };
 
-/** What a refused start means, in one line (the server's `code`). */
+/** What a refused pack means, in one line (the server's `code`). */
 export const START_REFUSED: Record<string, string> = {
-  covered_by_mesita:
-    "Mesita already gives this place that level. Your card was not charged.",
-  premier_taken: "Someone else pays for Premier here.",
-  charging: "A renewal is being charged. Try again in a few minutes.",
-  not_payer: "Only the guest who pays can update the card.",
-  lost: "Premier changed while you were choosing. Look again.",
+  not_found: "This place isn't on Mesita yet.",
+  archived: "This place is closed on Mesita.",
+  unlisted: "This place is hidden on Mesita right now.",
+  paid_higher: "This place's own plan is already higher.",
+  cap_reached: "This place has a year of Premier days queued already.",
+  stripe_unavailable: "Payments are not available right now.",
 };
 
 export async function apiGetBoost(
@@ -136,68 +103,27 @@ export async function apiGetBoost(
   placeId: string,
   sessionId?: string,
 ): Promise<PlaceBoost> {
-  return await invokeEF<PlaceBoost>(client, "consumer-web-get-premier", {
+  return await invokeEF<PlaceBoost>(client, "consumer-web-get-premier-refill", {
     place_id: placeId,
     ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
 
-/** Buys, changes or resumes the place's Premier, or (`updateCard`) replaces
- *  the payer's card. Resolves to the Checkout page to send the guest to, or
- *  null when nothing needed Checkout. A refusal throws an EFError whose
- *  `code` is a START_REFUSED key. */
-export async function apiStartBoost(
+/** Opens Checkout for a pack. Resolves to the Checkout page to send the
+ *  guest to. A refusal throws an EFError whose `code` is a START_REFUSED
+ *  key. */
+export async function apiStartRefill(
   client: SupabaseClient,
-  input:
-    | {
-        placeId: string;
-        tier: BoostTier;
-        interval: BoostInterval;
-        returnUrl: string;
-      }
-    | { placeId: string; updateCard: true; returnUrl: string },
-): Promise<{ url: string | null; outcome?: "updated" | "confirmed" }> {
-  return await invokeEF<{
-    url: string | null;
-    outcome?: "updated" | "confirmed";
-  }>(
+  input: { placeId: string; tier: TierRank; returnUrl: string },
+): Promise<{ url: string; notice?: string }> {
+  return await invokeEF<{ url: string; notice?: string }>(
     client,
-    "consumer-web-start-premier",
-    "updateCard" in input
-      ? {
-          place_id: input.placeId,
-          kind: "update_card",
-          return_url: input.returnUrl,
-        }
-      : {
-          place_id: input.placeId,
-          tier: input.tier,
-          interval: input.interval,
-          return_url: input.returnUrl,
-        },
-  );
-}
-
-/** Stops renewing: the period already paid runs out, nothing more is
- *  charged, the saved card is removed. */
-export async function apiCancelBoost(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<void> {
-  await invokeEF<Record<string, never>>(client, "consumer-web-cancel-premier", {
-    place_id: placeId,
-  });
-}
-
-/** Hides the notice of the guest's ended subscription on this place. */
-export async function apiDismissPremierNotice(
-  client: SupabaseClient,
-  placeId: string,
-): Promise<void> {
-  await invokeEF<Record<string, never>>(
-    client,
-    "consumer-web-dismiss-premier-notice",
-    { place_id: placeId },
+    "consumer-web-start-premier-refill",
+    {
+      place_id: input.placeId,
+      tier: input.tier,
+      return_url: input.returnUrl,
+    },
   );
 }
 
