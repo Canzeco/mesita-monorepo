@@ -71,6 +71,26 @@ export async function findPlaces(input: { q?: string; placeId?: string; sessionT
   return { ok: true, data: r.data.places ?? [] };
 }
 
+/** Google's preview of a listing Mesita doesn't hold (MESITA-3138): read
+ *  once when the Add dialog opens, never stored. `photoUrl` is Google's own
+ *  short-lived link; `photoAuthor` is the credit Google requires. */
+export type GooglePreview = {
+  name: string;
+  address: string | null;
+  category: string | null;
+  rating: number | null;
+  reviewCount: number | null;
+  photoUrl: string | null;
+  photoAuthor: string | null;
+  mapsUrl: string | null;
+};
+
+export async function previewGooglePlace(googlePlaceId: string): Promise<Result<GooglePreview>> {
+  const r = await efInvoke<{ preview: GooglePreview }>("business-web-find-place", { preview_place_id: googlePlaceId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.preview };
+}
+
 /** Adds a Google listing to Mesita (get-or-create); the id to claim. */
 export async function createPlace(googlePlaceId: string): Promise<Result<{ placeId: string; created: boolean }>> {
   const r = await efInvoke<{ created: boolean; place: { id: string } }>("business-web-create-place", { googlePlaceId });

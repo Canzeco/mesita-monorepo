@@ -13,7 +13,12 @@
 // `place_id`: that one Mesita place (the consumer app's "Is this your
 // business?" deep link).
 //
-// Body: { q?: string, sessionToken?: string, place_id?: uuid }
+// `preview_place_id` (MESITA-3138): Google's preview of one Google-only row
+// for the Add dialog — one Details read and its first photo, as the consumer
+// Generate dialog does (MESITA-2941). Nothing is stored; it takes a slot of
+// the same daily budget.
+//
+// Body: { q?: string, sessionToken?: string, place_id?: uuid, preview_place_id?: string }
 // Response: { ok: true, places: [{ id | null, google_place_id | null, name,
 //   address, photo, masked_phone, phone_on_listing, mine }] }
 
@@ -25,6 +30,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { maskPhone } from "../_shared/place-verification.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { businessNameItems } from "../_shared/name-pipeline.ts";
+import { fetchPlacePreview, readGooglePlacesKey, stripPlacesPrefix } from "../_shared/google-places.ts";
 
 type Row = {
   id: string;
@@ -82,7 +88,7 @@ serveJson("business-web-find-place", async (req) => {
   if (ctx instanceof Response) return ctx;
   const { env, admin, user } = ctx;
 
-  const body = await readJsonOr<{ q?: unknown; sessionToken?: unknown; place_id?: unknown }>(req, {});
+  const body = await readJsonOr<{ q?: unknown; sessionToken?: unknown; place_id?: unknown; preview_place_id?: unknown }>(req, {});
 
   // The deep link: one Mesita place by id.
   if (isUuid(body.place_id)) {
@@ -91,6 +97,25 @@ serveJson("business-web-find-place", async (req) => {
     const rows = (data ?? []) as Row[];
     const mine = await myStates(admin, user.id, rows.map((r) => r.id));
     return json({ ok: true, places: rows.map((r) => mesitaRow(r, mine)) });
+  }
+
+  // The Add dialog's Google preview: photo, category, stars, address.
+  const previewId = typeof body.preview_place_id === "string" ? stripPlacesPrefix(body.preview_place_id.trim()).slice(0, 200) : "";
+  if (previewId) {
+    const take = await admin.rpc("business_search_take", { p_account_id: user.id, p_cap: SEARCHES_PER_DAY });
+    if (take.error) return json({ ok: false, error: `search_budget: ${take.error.message}` }, 500);
+    if (take.data !== true) {
+      return json({ ok: false, code: "search_budget", error: "You've searched a lot today. Try again tomorrow." }, 429);
+    }
+    const keyRes = readGooglePlacesKey();
+    if (!keyRes.ok) return keyRes.response;
+    const res = await fetchPlacePreview(previewId, keyRes.key);
+    if (!res.ok) {
+      return res.reason === "not_found"
+        ? json({ ok: false, code: "preview_not_found", error: "Couldn't find that place on Google." }, 404)
+        : json({ ok: false, code: "google_unreachable", error: "Couldn't load that place right now." }, 502);
+    }
+    return json({ ok: true, preview: res.preview });
   }
 
   const q = typeof body.q === "string" ? body.q.trim().slice(0, 80) : "";

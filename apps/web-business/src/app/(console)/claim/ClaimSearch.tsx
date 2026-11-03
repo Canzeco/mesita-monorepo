@@ -11,7 +11,9 @@
 // place Mesita holds instead (`open`). Staff see Google-only listings too
 // (MESITA-3134, Pato: "google and mesita, like the searchbar in consumer
 // app"): their Add adds the place and opens its profile, since staff run any
-// place without a claim. Everyone else still claims what they add.
+// place without a claim. Everyone else still claims what they add. A
+// Google-only row opens Google's preview first (MESITA-3138): hero photo,
+// category, stars and address, then Add.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -19,6 +21,7 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Search } from "lucide-react";
 import { createPlace, findPlaces, type FoundPlace } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
+import { AddPlaceDialog } from "./AddPlaceDialog";
 import { INPUT_BASE } from "@/components/ui/manage";
 
 const MIN_QUERY = 2;
@@ -56,6 +59,9 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
+  // The Google-only row whose preview dialog is open.
+  const [picked, setPicked] = useState<FoundPlace | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   // One Google session per search run; a new run after a pick gets a new one.
   const session = useRef<string | null>(null);
   const seq = useRef(0);
@@ -84,11 +90,11 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
   async function add(p: FoundPlace) {
     if (!p.google_place_id || adding) return;
     setAdding(p.google_place_id);
-    setError(null);
+    setAddError(null);
     const r = await createPlace(p.google_place_id);
     if (!r.ok) {
       setAdding(null);
-      setError((r.code && CREATE_ERRORS[r.code]) || r.error);
+      setAddError((r.code && CREATE_ERRORS[r.code]) || r.error);
       return;
     }
     session.current = null;
@@ -143,28 +149,40 @@ export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolea
                 </Link>
               </li>
             ) : (
-              <li key={p.google_place_id ?? p.name} className="flex items-center gap-4 px-1 py-3">
-                <Thumb photo={null} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
-                  <span className="text-muted-foreground block truncate text-sm">
-                    Not on Mesita yet{p.address ? ` · ${p.address}` : ""}
-                  </span>
-                </span>
+              <li key={p.google_place_id ?? p.name}>
                 <button
                   type="button"
-                  onClick={() => void add(p)}
-                  disabled={adding !== null}
-                  className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
+                  onClick={() => {
+                    setAddError(null);
+                    setPicked(p);
+                  }}
+                  className="hover:bg-muted/50 flex w-full items-center gap-4 px-1 py-3 text-left"
                 >
-                  <Plus className="size-4" aria-hidden />
-                  {adding === p.google_place_id ? "Adding…" : open ? "Add" : "Add and claim"}
+                  <Thumb photo={null} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
+                    <span className="text-muted-foreground block truncate text-sm">
+                      Not on Mesita yet{p.address ? ` · ${p.address}` : ""}
+                    </span>
+                  </span>
+                  <span className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold">
+                    <Plus className="size-4" aria-hidden />
+                    {open ? "Add" : "Add and claim"}
+                  </span>
                 </button>
               </li>
             ),
           )}
         </ul>
       ) : null}
+      <AddPlaceDialog
+        place={picked}
+        label={open ? "Add" : "Add and claim"}
+        adding={!!picked && adding === picked.google_place_id}
+        error={addError}
+        onConfirm={() => picked && void add(picked)}
+        onClose={() => setPicked(null)}
+      />
     </Card>
   );
 }
