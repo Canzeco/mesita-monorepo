@@ -544,6 +544,11 @@ verify_jwt = true
 [functions.business-web-get-billing]
 verify_jwt = true
 
+# MESITA-3130: what the caller pays on every place (Account › What you pay),
+# read by consumer_id only, so a payer who lost the place still sees it.
+[functions.business-web-list-billing]
+verify_jwt = true
+
 [functions.business-web-start-premier]
 verify_jwt = true
 
