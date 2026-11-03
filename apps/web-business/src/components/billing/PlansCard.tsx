@@ -4,7 +4,8 @@
 // the software, don't separate premier"; boxes MESITA-3183): Free · Pro · Max.
 // Billing and Premier draw the same boxes. Visibility is the one perk, so it is
 // each box's anchor (Pato: "make the visibility most notorious"): 1X · 2X · 5X,
-// then the tag it wears, the price, one action. Pro and Max are the boost_2x /
+// then the tag it wears, the price, one action. Two sizes only (Pato: "don't use
+// lots of different sizes"): that headline, the rest body. Pro and Max are the boost_2x /
 // boost_5x subscriptions, so they keep the Ad tag (package law). The small print
 // keeps the claim true: Premier never promises views.
 //
@@ -72,30 +73,27 @@ function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: Boo
       ref={boxRef}
       className={`flex flex-col gap-4 rounded-2xl border p-5 ${o.picked ? "bg-muted/60" : "bg-card"} ${o.onIt ? "border-foreground ring-foreground ring-1" : "border-border"}`}
     >
-      <p className="flex items-center gap-2 text-lg font-semibold">
+      <p className="flex items-center gap-2 font-semibold">
         {o.name}
         {o.premier ? <span className="border-border text-muted-foreground type-label rounded-full border px-1.5 font-semibold">Ad</span> : null}
       </p>
       <div>
-        <p className="flex items-baseline gap-2 text-lg font-medium">
-          <span className="font-display text-6xl leading-none font-semibold tracking-tight">{o.visibility}</span>
-          visibility
-        </p>
+        <p className="font-display text-2xl font-semibold tracking-tight">{o.visibility} visibility</p>
         {o.premier ? (
-          <p className="mt-2 flex items-center gap-1.5 text-sm">
+          <p className="mt-1 flex items-center gap-1.5">
             <PremierRosette />
             Premier red tag
           </p>
         ) : (
-          <p className="text-muted-foreground mt-2 flex min-h-5 items-center text-sm">No Premier tag</p>
+          <p className="text-muted-foreground mt-1 flex min-h-6 items-center">No Premier tag</p>
         )}
       </div>
       <div className="border-border mt-auto border-t pt-4">
-        <p className="text-lg">
+        <p>
           <span className="font-semibold tabular-nums">{usd(o.cents)}</span>
-          <span className="text-muted-foreground text-sm"> / {interval}</span>
+          <span className="text-muted-foreground"> / {interval}</span>
         </p>
-        {o.note ? <p className="text-muted-foreground text-xs">{o.note}</p> : null}
+        {o.note ? <p className="text-muted-foreground">{o.note}</p> : null}
       </div>
       {o.action ? (
         <button
@@ -103,12 +101,12 @@ function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: Boo
           disabled={busy}
           onClick={o.action.run}
           onBlur={o.action.onBlur}
-          className="border-border hover:bg-muted h-11 w-full rounded-full border text-sm font-semibold disabled:opacity-50"
+          className="border-border hover:bg-muted h-11 w-full rounded-full border font-semibold disabled:opacity-50"
         >
           {o.action.label}
         </button>
       ) : (
-        <p className="text-muted-foreground flex h-11 items-center justify-center text-sm font-medium">{o.word}</p>
+        <p className="text-muted-foreground flex h-11 items-center justify-center font-medium">{o.word}</p>
       )}
     </li>
   );
