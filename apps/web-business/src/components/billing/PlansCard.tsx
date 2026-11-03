@@ -49,11 +49,38 @@ function day(iso: string | null | undefined): string {
 }
 
 function AdTag() {
-  return <span className="border-border text-muted-foreground type-label rounded-full border px-2 py-0.5 font-semibold">Ad</span>;
+  return <span className="border-border text-muted-foreground type-label rounded-full border px-1.5 font-semibold">Ad</span>;
 }
 
-const rowClass = "flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6";
-const buttonClass = "h-10 w-32 rounded-full text-sm font-semibold disabled:opacity-50";
+// One quiet list (MESITA-3177): name over level, price, one outlined action;
+// the current plan is a word, not a button.
+const rowClass = "flex items-center gap-4 px-5 py-4 sm:px-6";
+const actionClass = "border-border hover:bg-muted h-9 w-24 shrink-0 rounded-full border text-sm font-semibold disabled:opacity-50";
+const currentClass = "text-muted-foreground w-24 shrink-0 text-center text-sm font-medium";
+
+function PlanName({ name, level, ad = false }: { name: string; level: string; ad?: boolean }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="font-semibold">{name}</p>
+      <p className="text-muted-foreground flex items-center gap-2 text-sm">
+        {level}
+        {ad ? <AdTag /> : null}
+      </p>
+    </div>
+  );
+}
+
+function Price({ cents, interval, note = null }: { cents: number; interval: BoostInterval; note?: string | null }) {
+  return (
+    <div className="shrink-0 text-right">
+      <p className="text-sm">
+        <span className="font-semibold tabular-nums">{usd(cents)}</span>
+        <span className="text-muted-foreground"> / {interval}</span>
+      </p>
+      {note ? <p className="text-muted-foreground text-xs">{note}</p> : null}
+    </div>
+  );
+}
 
 export function PlansCard({
   placeId,
@@ -112,7 +139,7 @@ export function PlansCard({
 
   return (
     <Card className="flex scroll-mt-6 flex-col p-0 sm:p-0">
-      <div id="plans" className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+      <div id="plans" className="flex items-center justify-between gap-3 px-5 py-3 sm:px-6">
         <h2 className="font-semibold">Plans</h2>
         <div className="bg-muted inline-flex rounded-full p-1 text-sm" role="radiogroup" aria-label="Billing">
           {(["month", "year"] as const).map((v) => (
@@ -132,27 +159,20 @@ export function PlansCard({
       {notice ? <p className="border-border border-t px-5 py-3 text-sm sm:px-6">{notice}</p> : null}
       <ul className="divide-border border-border divide-y border-t">
         <li className={rowClass}>
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <span className="font-semibold">{FREE_PLAN}</span>
-            <span className="text-muted-foreground text-sm">{FREE_LEVEL}</span>
-          </div>
-          <p className="text-sm">
-            <span className="text-lg font-semibold">$0</span> / {interval}
-          </p>
+          <PlanName name={FREE_PLAN} level={FREE_LEVEL} />
+          <Price cents={0} interval={interval} />
           {payer && data.paid?.renews ? (
             <button
               type="button"
               disabled={busy}
               onClick={() => (armed ? void toFree() : setArmed(true))}
               onBlur={() => setArmed(false)}
-              className={`border-border hover:bg-muted border ${buttonClass}`}
+              className={actionClass}
             >
               {armed ? "Tap again" : "Switch"}
             </button>
           ) : (
-            <button type="button" disabled className={`border-border border ${buttonClass}`}>
-              {payer && data.paid ? `From ${day(data.paid.ends_at)}` : "Your plan"}
-            </button>
+            <span className={currentClass}>{payer && data.paid ? `From ${day(data.paid.ends_at)}` : "Current"}</span>
           )}
         </li>
         {PLANS.map((plan) => {
@@ -164,34 +184,23 @@ export function PlansCard({
           // in the last 7 days of Refill days (MESITA-3165).
           const resume = data.viewer === "former_payer" ? "Resume" : "Keep";
           const action =
-            q.covered ? "Given by Mesita" : current ? "Your plan" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
+            q.covered ? "Given by Mesita" : current ? "Current" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
           const isPicked = picked === plan.key;
           return (
             <li key={plan.key} ref={isPicked ? pickedRef : undefined} className={`${rowClass} ${isPicked ? "bg-muted/60" : ""}`}>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <span className="font-semibold">{PLAN_NAME[plan.key]}</span>
-                <span className="text-muted-foreground text-sm">{PLAN_LEVEL[plan.key]}</span>
-                <AdTag />
-              </div>
-              <div className="text-right">
-                <p className="text-sm">
-                  <span className="text-lg font-semibold">{usd(q.price_cents)}</span> / {interval}
-                </p>
-                {q.charge_cents !== q.price_cents && q.kind !== "blocked" ? (
-                  <p className="text-muted-foreground text-xs">
-                    {q.charge_cents > 0 ? `Now ${usd(q.charge_cents)}` : "Nothing now"}
-                    {q.renews_at ? ` · from ${day(q.renews_at)}` : ""}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                disabled={busy || blocked || current}
-                onClick={() => void choose(plan.key)}
-                className={`bg-foreground text-background ${buttonClass}`}
-              >
-                {action}
-              </button>
+              <PlanName name={PLAN_NAME[plan.key]} level={PLAN_LEVEL[plan.key]} ad />
+              <Price cents={q.price_cents} interval={interval} note={
+                q.charge_cents !== q.price_cents && q.kind !== "blocked"
+                  ? `${q.charge_cents > 0 ? `Now ${usd(q.charge_cents)}` : "Nothing now"}${q.renews_at ? ` · from ${day(q.renews_at)}` : ""}`
+                  : null
+              } />
+              {current || blocked ? (
+                <span className={currentClass}>{action}</span>
+              ) : (
+                <button type="button" disabled={busy} onClick={() => void choose(plan.key)} className={actionClass}>
+                  {action}
+                </button>
+              )}
             </li>
           );
         })}

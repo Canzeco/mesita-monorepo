@@ -23,6 +23,7 @@ export function CodeRow({
   you,
   day,
   time,
+  bare = false,
 }: {
   placeId: string;
   /** The caller pays the place's subscription ("Your 2X subscription…"). */
@@ -31,6 +32,8 @@ export function CodeRow({
   day: (iso: string | null | undefined) => string;
   /** A clock time in the place's time zone ("4:05 PM"). */
   time: (iso: string) => string;
+  /** One line under the plans, no card (MESITA-3177). */
+  bare?: boolean;
 }) {
   const router = useRouter();
   const [code, setCode] = useState("");
@@ -72,7 +75,7 @@ export function CodeRow({
   }
 
   return (
-    <div className="flex flex-col gap-2 px-5 py-3">
+    <div className={bare ? "flex flex-col gap-2 px-1" : "flex flex-col gap-2 px-5 py-3"}>
       <form
         className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4"
         onSubmit={(e) => {
@@ -80,7 +83,7 @@ export function CodeRow({
           void redeem();
         }}
       >
-        <label htmlFor="billing-code" className="font-medium sm:flex-1">
+        <label htmlFor="billing-code" className={bare ? "text-muted-foreground text-sm" : "font-medium sm:flex-1"}>
           Have a code?
         </label>
         <div className="flex gap-2">
@@ -93,18 +96,18 @@ export function CodeRow({
             autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
-            className="border-border bg-background h-11 w-full min-w-0 rounded-full border px-4 font-mono tracking-widest uppercase sm:w-44"
+            className="border-border bg-background h-9 w-full min-w-0 rounded-full border px-4 font-mono text-sm tracking-widest uppercase sm:w-36"
           />
           <button
             type="submit"
             disabled={busy || code.replace("-", "").length !== 8}
-            className="border-border hover:bg-muted h-11 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+            className="border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
           >
             {busy ? "Checking…" : "Redeem"}
           </button>
         </div>
       </form>
-      <div aria-live="polite" className={lines && !lines.ok ? "text-destructive text-sm" : "text-sm"}>
+      <div aria-live="polite" className={`empty:hidden ${lines && !lines.ok ? "text-destructive text-sm" : "text-sm"}`}>
         {lines?.text.map((t) => (
           <p key={t}>{t}</p>
         ))}
