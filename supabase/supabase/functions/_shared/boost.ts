@@ -176,14 +176,15 @@ export type Period = {
 export const PERIOD_COLUMNS =
   "id, place_id, backing_id, granted_by, tier, billing_interval, starts_at, ends_at, price_cents, credit_cents, extra_days, charged_cents, stripe_payment_intent_id, stripe_checkout_session_id, status, created_at, remaining_at_cover_sec, covered_until";
 
-/** Manual Premier: Mesita's free lift of a place (MESITA-3091). */
+/** Premier Refill (was Manual Premier, MESITA-3091 / MESITA-3163): prepaid
+ *  days lifting a place. */
 export type Manual = {
   id: string;
   place_id: string;
   tier: number;
   starts_at: string;
   ends_at: string;
-  source: "admin" | "code";
+  source: "admin" | "code" | "purchase";
   granted_by: string | null;
 };
 
@@ -205,6 +206,44 @@ export function runningManual(rows: Manual[], now: number): Manual | null {
   return rows
     .filter((m) => ms(m.starts_at) <= now && ms(m.ends_at) > now)
     .sort((a, b) => ms(b.starts_at) - ms(a.starts_at))[0] ?? null;
+}
+
+/** When the back-to-back run of Refill days at or above `tier` ends, or null
+ *  when none of them runs at `now`. Zero-length rows (ended while queued)
+ *  never count. Twin of SQL premier_run_end (MESITA-3165). */
+export function runEndAtOrAbove(rows: Manual[], tier: number, now: number): string | null {
+  const chain = rows
+    .filter((m) => m.tier >= tier && ms(m.ends_at) > now && ms(m.ends_at) > ms(m.starts_at))
+    .sort((a, b) => ms(a.starts_at) - ms(b.starts_at));
+  let cursor = now;
+  for (const m of chain) {
+    if (ms(m.starts_at) > cursor) break;
+    cursor = Math.max(cursor, ms(m.ends_at));
+  }
+  return cursor > now ? new Date(cursor).toISOString() : null;
+}
+
+/** Subscribe early: the last days of a Refill run in which its level may be
+ *  subscribed to, first charged when the run ends (Design D7, MESITA-3165). */
+export const EARLY_START_DAYS = 7;
+
+/** The calendar day of `t` in `timeZone` (UTC when missing or unknown), as a
+ *  day number. */
+function localDay(t: number, timeZone: string | null | undefined): number {
+  let text: string;
+  try {
+    text = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || "UTC", year: "numeric", month: "2-digit", day: "2-digit" })
+      .format(t);
+  } catch {
+    text = new Date(t).toISOString().slice(0, 10);
+  }
+  return Math.round(Date.parse(`${text}T00:00:00Z`) / 86_400_000);
+}
+
+/** The run ends within EARLY_START_DAYS calendar days in the place's time
+ *  zone (twin of SQL premier_early_window). */
+export function inEarlyWindow(runEnd: string, now: number, timeZone: string | null | undefined): boolean {
+  return localDay(ms(runEnd), timeZone) - localDay(now, timeZone) <= EARLY_START_DAYS;
 }
 
 /** A charge in flight; it holds the tier for up to an hour after it starts. */
@@ -316,6 +355,9 @@ export function quote(args: {
   now: number;
   /** The running Manual Premier level (0 none, 1 2X, 2 5X). */
   manualTier?: number;
+  /** The place's Refill rows and time zone, for subscribing early. */
+  manual?: Manual[];
+  timeZone?: string | null;
 }): Quote {
   const { tier, interval, running, charging, viewer, subscription, now, manualTier = 0 } = args;
   const price = boostAmountCents(tier, interval);
@@ -323,8 +365,14 @@ export function quote(args: {
   const nothing = { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, renews_at: null };
 
   // Manual Premier already gives this level or more: paying would change
-  // nothing, so it is not for sale (MESITA-3091).
+  // nothing, so it is not for sale (MESITA-3091). In the run's last 7 days a
+  // place nobody pays for may subscribe early: the card is saved now and
+  // first charged when the days end (MESITA-3165; premier_make_payer decides).
   if (rank <= manualTier) {
+    const runEnd = args.manual ? runEndAtOrAbove(args.manual, rank, now) : null;
+    if (runEnd && !subscription && !running && !charging && inEarlyWindow(runEnd, now, args.timeZone)) {
+      return { ...nothing, renews_at: runEnd, kind: "resume", blocked_by: null, checkout: "setup", covered: false };
+    }
     return { ...nothing, kind: "blocked", blocked_by: null, checkout: "none", covered: true };
   }
   // One subscription per place: nobody else buys while one stands or a paid
@@ -768,13 +816,14 @@ async function applyChange(admin: SupabaseClient, stripe: StripeCall, pledge: Pl
 
 /** The one path to `ready` (premier_make_payer): this pledge becomes the
  *  place's subscription; any other ready pledge there ended `taken_over` and
- *  its card is detached. `charging`: another charge is in flight, ask again. */
+ *  its card is detached. `charging`: another charge is in flight, ask again.
+ *  `covered`: an early start outside the last 7 days of the Refill days. */
 async function makePayer(
   admin: SupabaseClient,
   stripe: StripeCall,
   pledge: Pledge,
   paymentMethod: string | null,
-): Promise<"ready" | "charging" | "ended"> {
+): Promise<"ready" | "charging" | "covered" | "ended"> {
   const { data, error } = await admin.rpc("premier_make_payer", {
     p_backing_id: pledge.id,
     p_payment_method: paymentMethod,
@@ -788,6 +837,7 @@ async function makePayer(
     return "ready";
   }
   if (r.result === "charging") return "charging";
+  if (r.result === "covered") return "covered";
   return "ended";
 }
 
@@ -1002,6 +1052,10 @@ export async function confirmPledge(
   if (kind === "resume") {
     const r = await makePayer(admin, stripe, pledge, pm);
     if (r === "charging") return "pending";
+    if (r === "covered") {
+      await endPledge(admin, stripe, pledge, "covered", pm);
+      return "covered";
+    }
     if (r === "ended") {
       await detachCard(stripe, pm);
       return "none";
@@ -1324,12 +1378,15 @@ export async function readBoostPlace(
   admin: SupabaseClient,
   placeId: string,
 ): Promise<
-  | { ok: true; place: { id: string; name: string | null; state: string | null; boost_tier: number } | null }
+  | {
+    ok: true;
+    place: { id: string; name: string | null; state: string | null; boost_tier: number; timezone: string | null } | null;
+  }
   | { ok: false; error: string }
 > {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, name, state, boost_tier")
+    .select("id, name, state, boost_tier, timezone")
     .eq("id", placeId)
     .maybeSingle();
   if (error) return { ok: false, error: `place_read: ${error.message}` };
