@@ -40,8 +40,8 @@ export default async function PlaceLayout({
             {manage.role === "superadmin" ? (
               <span className="border-border bg-card type-label rounded-full border px-2.5 py-0.5 font-semibold">Mesita staff</span>
             ) : null}
-            <PreviewButton />
           </div>
+          <PreviewButton />
         </div>
         <PlaceScroll>{children}</PlaceScroll>
       </div>
