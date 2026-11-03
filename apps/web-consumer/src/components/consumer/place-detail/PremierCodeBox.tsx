@@ -78,7 +78,7 @@ export function PremierCodeBox({
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold">Have a code?</span>
           <span className="text-muted-foreground block text-xs">
-            A Mesita code gives this place free Premier days.
+            A Mesita code gives this place a free Boost.
           </span>
         </span>
       </div>

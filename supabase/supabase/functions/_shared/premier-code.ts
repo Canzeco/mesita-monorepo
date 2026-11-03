@@ -82,10 +82,10 @@ export const REDEEM_REFUSED: Record<string, string> = {
   code_used_here: "This code was already used on this place.",
   paid_higher: "A 5X subscription already ranks this place higher. The code was not used.",
   rate_limited: "Too many tries. Try again later.",
-  cap_reached: "This place already has a year of days queued.",
-  not_found: "This place can't take Premier days.",
-  archived: "This place can't take Premier days.",
-  unlisted: "This place can't take Premier days.",
+  cap_reached: "This place already has a year of Boost queued.",
+  not_found: "This place can't take a Boost.",
+  archived: "This place can't take a Boost.",
+  unlisted: "This place can't take a Boost.",
 };
 
 /** The EF reply for a redemption result. Pure. */

@@ -21,9 +21,9 @@ export const CODE_REFUSED: Record<string, string> = {
   paid_higher:
     "A 5X subscription already ranks this place higher. The code was not used.",
   cap_reached: "This place already has a year of days queued.",
-  not_found: "This place can't take Premier days.",
-  archived: "This place can't take Premier days.",
-  unlisted: "This place can't take Premier days.",
+  not_found: "This place can't take a Boost.",
+  archived: "This place can't take a Boost.",
+  unlisted: "This place can't take a Boost.",
   codes_off: "Codes aren't available right now.",
 };
 

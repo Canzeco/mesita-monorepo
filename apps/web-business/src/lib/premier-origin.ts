@@ -1,4 +1,4 @@
-// Where a place's Refill days came from, in the words Billing and Premier
+// Where a place's Boost came from (Refill until MESITA-3175), in the words Billing and Premier
 // both use (MESITA-3166, Design D9). Never a guest's name.
 
 export type RefillOrigin = "mesita" | "code" | "guest";
