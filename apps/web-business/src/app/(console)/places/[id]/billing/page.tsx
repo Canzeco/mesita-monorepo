@@ -1,13 +1,8 @@
-import { getBilling, getPremier } from "@/lib/business-api";
-import { BillingPanel } from "./BillingPanel";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Billing" };
-
-// A place's Billing (Pato, MESITA-3128: "here the cards are saved"): its paid
-// Premier, the card on it and every charge (business-web-get-billing). Update
-// card's Checkout comes back here with `?boost=<session>`, which
-// business-web-get-premier settles before the read.
+// Billing is a section of Settings since MESITA-3136 (Pato: "for the moment
+// billing inside settings"). Old links, and a Checkout return carrying
+// `?boost=<session>`, land there with the session kept.
 export default async function BillingPage({
   params,
   searchParams,
@@ -17,7 +12,5 @@ export default async function BillingPage({
 }) {
   const { id } = await params;
   const { boost } = await searchParams;
-  if (boost) await getPremier(id, boost);
-  const res = await getBilling(id);
-  return <BillingPanel placeId={id} billing={res.ok ? res.data : null} error={res.ok ? null : res.error} saved={!!boost} />;
+  redirect(`/places/${encodeURIComponent(id)}/settings${boost ? `?boost=${encodeURIComponent(boost)}` : ""}#billing`);
 }

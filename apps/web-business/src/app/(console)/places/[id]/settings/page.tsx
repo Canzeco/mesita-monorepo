@@ -5,6 +5,8 @@ import { LeavePlace } from "./LeavePlace";
 import { AccountCard } from "@/components/shell/AccountCard";
 import { TeamCard } from "@/components/team/TeamCard";
 import { getIdentityCached } from "@/lib/identity";
+import { getBilling, getPremier } from "@/lib/business-api";
+import { BillingPanel } from "./BillingPanel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -20,9 +22,20 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
+// Billing lives here (MESITA-3136): the place's paid Premier, the card on it
+// and every charge (business-web-get-billing). Update card's Checkout comes
+// back with `?boost=<session>`, which business-web-get-premier settles first.
+export default async function PlaceSettingsPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ boost?: string }>;
+}) {
   const { id } = await params;
-  const [manage, identity] = await Promise.all([getManagePlace(id), getIdentityCached()]);
+  const { boost } = await searchParams;
+  if (boost) await getPremier(id, boost);
+  const [manage, identity, billing] = await Promise.all([getManagePlace(id), getIdentityCached(), getBilling(id)]);
   if (!manage) notFound();
 
   return (
@@ -51,6 +64,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
         {manage.role !== "superadmin" ? <LeavePlace placeId={id} /> : null}
       </Card>
       <TeamCard placeId={id} />
+      <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} saved={!!boost} />
       <AccountCard email={identity.ok ? identity.data.email : null} />
     </div>
   );

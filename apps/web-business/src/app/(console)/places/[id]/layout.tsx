@@ -1,13 +1,15 @@
 // One place in the Business app (MESITA-3103). This file is the seam: it
 // asks the server for the place ONCE (business-web-get-place, which lets in
 // whoever runs the place and Mesita staff, and 404s everyone else), mounts
-// the editor's shell, and draws the place's strip of views.
+// the editor's shell, and names the place in the side menu. The side menu is
+// the place's only navigation (MESITA-3136: no tab row); Profile carries
+// the Preview button.
 import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
-import { tabsFor } from "@/lib/place-tabs";
 import { PlaceManageShell } from "@/components/place-manage/PlaceManageShell";
 import { PlaceScroll } from "@/components/place-manage/PlaceScroll";
-import { PlaceTabStrip } from "@/components/shell/PlaceTabStrip";
+import { PreviewButton } from "@/components/place-manage/PreviewButton";
+import { ShellPlaceName } from "@/lib/shell-place";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,7 @@ export default async function PlaceLayout({
 
   return (
     <PlaceManageShell placeId={id} initialPlace={manage.place} initialProfile={manage.profile}>
+      <ShellPlaceName id={id} name={manage.place.name ?? null} photo={manage.place.photos?.[0] ?? null} />
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="flex shrink-0 flex-col gap-4">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -33,8 +36,8 @@ export default async function PlaceLayout({
             {manage.role === "superadmin" ? (
               <span className="border-border bg-card type-label rounded-full border px-2.5 py-0.5 font-semibold">Mesita staff</span>
             ) : null}
+            <PreviewButton />
           </div>
-          <PlaceTabStrip placeId={id} tabs={tabsFor(manage.role)} />
         </div>
         <PlaceScroll>{children}</PlaceScroll>
       </div>

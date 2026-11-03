@@ -1,13 +1,12 @@
 "use client";
 
 // The place as guests see it (MESITA-3103), the same phone admin's Preview
-// draws: packages/place-profile over the saved row.
+// draws: packages/place-profile over the saved row. Since MESITA-3136 it
+// opens in a modal from Profile's Preview button.
 
 import { Component, type ReactNode } from "react";
-import Link from "next/link";
 import { PlaceProfile } from "@mesita/place-profile";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
-import { placeTabHref } from "@/lib/place-tabs";
 import { memberPreviewDetail } from "./member-preview";
 
 export function PlacePreview() {
@@ -24,16 +23,7 @@ export function PlacePreview() {
         </p>
       )}
       {isDirty ? (
-        <p className="text-muted-foreground shrink-0 text-sm">
-          Showing the saved profile. Unsaved edits stay on{" "}
-          <Link
-            href={placeTabHref(place.id, "profile")}
-            className="text-foreground font-medium underline"
-          >
-            Profile
-          </Link>{" "}
-          until you Save.
-        </p>
+        <p className="text-muted-foreground shrink-0 text-sm">Showing the saved profile. Your unsaved edits show here once you Save.</p>
       ) : null}
       <PreviewBoundary name={place.name}>
         <MemberPhone

@@ -112,7 +112,7 @@ export function WhatYouPay({
               <div className="flex flex-wrap gap-2">
                 {sub.runs_place ? (
                   <Link
-                    href={`/places/${encodeURIComponent(sub.place_id)}/billing`}
+                    href={`/places/${encodeURIComponent(sub.place_id)}/settings#billing`}
                     className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
                   >
                     Open Billing
