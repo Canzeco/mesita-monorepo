@@ -25,9 +25,9 @@ export function placeTabHref(placeId: string, tab: PlaceTab): string {
   return `/places/${encodeURIComponent(placeId)}/${tab}`;
 }
 
-/** The Billing section of a place's Settings (MESITA-3136). */
+/** The Billing section under a place's Premier (MESITA-3154; Settings before). */
 export function billingHref(placeId: string): string {
-  return `${placeTabHref(placeId, "settings")}#billing`;
+  return `${placeTabHref(placeId, "premier")}#billing`;
 }
 
 /** Claim one place; `added` says Mesita just added it from Google. */

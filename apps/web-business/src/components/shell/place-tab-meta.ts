@@ -8,10 +8,10 @@ import type { PlaceTab } from "@/lib/routes";
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon; sub: string; soon?: boolean }> = {
   profile: { label: "Profile", icon: MapPinned, sub: "What guests read about your place." },
   reviews: { label: "Reviews", icon: Star, sub: "What guests say on Google, Instagram and Facebook." },
-  premier: { label: "Premier", icon: BadgeCheck, sub: "Rank higher on Home and the Map. Marked as an ad." },
+  premier: { label: "Premier", icon: BadgeCheck, sub: "Rank higher on Home and the Map, marked as an ad. Your card and charges are here too." },
   payments: { label: "Payments", icon: CreditCard, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   products: { label: "Products", icon: UtensilsCrossed, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   rewards: { label: "Rewards", icon: Gift, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
-  settings: { label: "Settings", icon: Settings, sub: "Who runs this place, and what you pay for it." },
+  settings: { label: "Settings", icon: Settings, sub: "Who runs this place and its team." },
   admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only: who runs this place and its requests." },
 };

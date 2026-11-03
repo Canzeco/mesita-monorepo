@@ -31,7 +31,7 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/claim", destination: "/places" },
   // One place: its index, and the views that folded (MESITA-3136).
   { source: "/places/:id", destination: "/places/:id/profile" },
-  { source: "/places/:id/billing", destination: "/places/:id/settings" },
+  { source: "/places/:id/billing", destination: "/places/:id/premier" },
   { source: "/places/:id/future", destination: "/places/:id/payments" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
   // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its
