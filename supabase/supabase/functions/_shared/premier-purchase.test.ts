@@ -81,9 +81,9 @@ const PAID_SESSION = {
   livemode: false,
 };
 
-Deno.test("packs: 30 days, 2X $15 and 5X $150, card only, USD", () => {
+Deno.test("packs: 30 days, 2X $10 and 5X $100, card only, USD", () => {
   assertEquals(REFILL_PACK_DAYS, 30);
-  assertEquals(REFILL_PACK_CENTS, { 1: 1500, 2: 15000 });
+  assertEquals(REFILL_PACK_CENTS, { 1: 1000, 2: 10000 });
   const p = refillCheckoutParams({
     customer: "cus_1",
     purchaseId: "u1",
@@ -96,7 +96,7 @@ Deno.test("packs: 30 days, 2X $15 and 5X $150, card only, USD", () => {
   }) as Record<string, unknown> & { line_items: Array<{ price_data: { unit_amount: number; currency: string } }> };
   assertEquals(p.mode, "payment");
   assertEquals(p.payment_method_types, ["card"]);
-  assertEquals(p.line_items[0].price_data.unit_amount, 1500);
+  assertEquals(p.line_items[0].price_data.unit_amount, 1000);
   assertEquals(p.line_items[0].price_data.currency, "usd");
   assertEquals(p.success_url, "https://consumer.mesita.ai/place/x?refill={CHECKOUT_SESSION_ID}");
 });

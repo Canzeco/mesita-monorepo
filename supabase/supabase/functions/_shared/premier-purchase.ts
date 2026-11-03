@@ -21,7 +21,7 @@ export type RefillTier = 1 | 2;
 /** One pack per tier: 30 days. Above the Subscription's $10 / $100 a month,
  *  so subscribing stays the better deal (CEO D3). A price change is a PR. */
 export const REFILL_PACK_DAYS = 30;
-export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 15_00, 2: 150_00 };
+export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 10_00, 2: 100_00 };
 
 /** The level guests read (MESITA-3174): Pro is Premier 2X, Max Premier 5X. */
 export const refillLabel = (tier: number): string => (tier === 2 ? "Premier 5X" : "Premier 2X");
