@@ -154,7 +154,7 @@ export function PremierPanel({
         </ul>
         {payer ? (
           <div className="flex flex-wrap gap-2">
-            {/* The card and every charge sit under the plans, #billing (MESITA-3154). */}
+            {/* The card and every charge are the Billing page (MESITA-3160). */}
             <Link
               href={billingHref(placeId)}
               className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
