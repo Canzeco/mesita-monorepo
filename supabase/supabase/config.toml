@@ -294,9 +294,6 @@ verify_jwt = true
 [functions.supabase-edgefunc-start-smoke-enrich]
 verify_jwt = true
 
-[functions.business-web-get-place-premier]
-verify_jwt = true
-
 [functions.admin-web-grant-place-premier]
 verify_jwt = true
 
@@ -567,9 +564,6 @@ verify_jwt = true
 # MESITA-3104: the rest of the place page moved to web-business; these four
 # share their bodies with the admin list pages (_shared/*-handler.ts).
 [functions.business-web-set-place-listed]
-verify_jwt = true
-
-[functions.business-web-grant-place-premier]
 verify_jwt = true
 
 [functions.business-web-list-place-reports]
