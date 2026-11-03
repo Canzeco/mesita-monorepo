@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: { default: "Mesita Business", template: "%s · Mesita Business" },
+  title: { default: "Mesita", template: "%s · Mesita" },
   description: "Run your place's Mesita profile and Premier.",
   robots: { index: false, follow: false },
 };

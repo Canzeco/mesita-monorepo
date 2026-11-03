@@ -2,6 +2,7 @@
 
 // The Business app's frame (MESITA-3103; menu Pato, 2026-11-02, MESITA-3136):
 //
+//   Mesita    — on top: the word, as the consumer app draws it (MESITA-3153)
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Capabilities (MESITA-3152; was Products) ─────────────────────────┐
@@ -12,7 +13,6 @@
 //   └─────────────────────────────────────────┘
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
-//   Logo      — under Account (MESITA-3151)
 //
 // The place's pages sit in two labelled groups (Pato: "if you use boxes it's
 // clearer to understand"). No colour (Pato, MESITA-3148, reversing
@@ -33,6 +33,7 @@
 // (business-web-* → place-access) and a stranger gets 404.
 
 import Link from "next/link";
+import { Outfit } from "next/font/google";
 import { usePathname } from "next/navigation";
 import { ChevronsUpDown, CircleUser, Store, type LucideIcon } from "lucide-react";
 import { PLACE_TAB_META } from "./place-tab-meta";
@@ -40,6 +41,9 @@ import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
 import { useShellPlace } from "@/lib/shell-place";
 import { cn } from "@/lib/utils";
+
+// The consumer app's wordmark face (web-consumer ModeTabs).
+const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
@@ -105,21 +109,21 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
       aria-label={s.hasPlace ? `${s.name}, switch place` : "Places"}
       aria-current={s.active ? "page" : undefined}
       className={cn(
-        "border-border flex items-center justify-center gap-2.5 rounded-xl border p-1.5 shadow-xs transition-colors lg:justify-start lg:px-2 lg:py-2",
+        "border-border flex h-12 items-center justify-center gap-3 rounded-lg border px-1.5 shadow-xs transition-colors lg:justify-start lg:px-2.5",
         s.active ? "bg-muted" : "bg-card hover:bg-muted/60",
       )}
     >
       {s.photo ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={s.photo} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
+        <img src={s.photo} alt="" className="size-7 shrink-0 rounded-md object-cover" />
       ) : (
-        <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
+        <span className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-md">
           <Store className="size-4" aria-hidden />
         </span>
       )}
       <span className="hidden min-w-0 flex-1 flex-col lg:flex">
-        <span className="truncate text-sm font-semibold">{s.name}</span>
-        <span className="text-muted-foreground truncate text-xs">{s.role ?? "Places"}</span>
+        <span className="truncate text-sm leading-tight font-semibold">{s.name}</span>
+        <span className="text-muted-foreground truncate text-xs leading-tight">{s.role ?? "Places"}</span>
       </span>
       <ChevronsUpDown className="text-muted-foreground hidden size-4 shrink-0 lg:block" aria-hidden />
     </Link>
@@ -130,17 +134,24 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
 function Group({ label, rows }: { label: string; rows: Row[] }) {
   return (
     <div role="group" aria-label={label} className="mt-5 flex flex-col gap-0.5">
-      <p className="text-muted-foreground hidden px-2.5 pb-1 text-xs font-semibold lg:block">{label}</p>
+      <p className="text-muted-foreground hidden h-7 items-center px-3 text-xs font-semibold lg:flex">{label}</p>
       {rows.map((r) => <RailRow key={r.key} row={r} />)}
     </div>
   );
 }
 
+/** Every menu row is one size (Pato, MESITA-3153: "standardized on
+ *  sizes"): 40px tall, the same inset as the labels and the switcher, a
+ *  20px icon slot. */
+const ROW = "flex h-10 items-center justify-center gap-3 rounded-lg px-1.5 text-sm transition-colors lg:justify-start lg:px-3";
+
 function RailRow({ row }: { row: Row }) {
   const Icon = row.icon;
   const inner = (
     <>
-      <Icon className={cn("size-4 shrink-0", row.active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
+      <span className="flex w-5 shrink-0 justify-center">
+        <Icon className={cn("size-4", row.active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
+      </span>
       <span className="hidden min-w-0 flex-1 truncate lg:inline">{row.label}</span>
       {row.soon ? <span className="type-label bg-muted text-muted-foreground hidden shrink-0 rounded-full px-2 py-0.5 font-semibold lg:inline">Soon</span> : null}
     </>
@@ -150,7 +161,7 @@ function RailRow({ row }: { row: Row }) {
       <span
         aria-disabled
         title={`${row.label}: choose a place first`}
-        className="text-foreground flex h-10 cursor-default items-center justify-center gap-3 rounded-lg px-2.5 text-sm opacity-40 lg:h-9 lg:justify-start"
+        className={cn(ROW, "text-foreground cursor-default opacity-40")}
       >
         {inner}
       </span>
@@ -164,7 +175,7 @@ function RailRow({ row }: { row: Row }) {
       aria-current={row.active ? "page" : undefined}
       // Below lg the rail is icons only (w-16); the label returns at lg.
       className={cn(
-        "flex h-10 items-center justify-center gap-3 rounded-lg px-2.5 text-sm transition-colors lg:h-9 lg:justify-start",
+        ROW,
         row.active ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60 hover:text-foreground",
       )}
     >
@@ -200,6 +211,16 @@ export function BusinessShell({
   return (
     <div className="min-h-dvh">
       <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3">
+        {/* The name on top (Pato, MESITA-3153, reversing MESITA-3151: "just
+            say Mesita like in the consumer app"): the word "Mesita" in
+            Outfit, as the consumer app's header draws it; the bare mark
+            below lg. */}
+        <Link href={PLACES} title="Mesita" className="mb-5 flex h-10 items-center justify-center lg:justify-start lg:px-3">
+          <MesitaMark className="size-6 shrink-0 text-(--brand-pink) lg:hidden" />
+          <span className={cn(wordmarkFont.className, "text-foreground hidden text-2xl leading-none tracking-[-0.03em] select-none lg:inline")}>
+            Mesita
+          </span>
+        </Link>
         <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5">
           <PlaceSwitcher s={switcher} />
           <Group label="Capabilities" rows={place.products} />
@@ -207,11 +228,6 @@ export function BusinessShell({
           {/* Account sits at the foot (Pato, MESITA-3136). */}
           <div className="border-border mt-auto border-t pt-2">
             <RailRow row={account} />
-            {/* The mark sits at the foot, under Account (Pato, MESITA-3151). */}
-            <Link href={PLACES} title="Mesita Business" className="text-muted-foreground mt-3 flex items-center justify-center gap-2 pb-1 lg:justify-start lg:px-2.5">
-              <MesitaMark className="size-4 shrink-0" />
-              <span className="hidden text-xs font-semibold tracking-tight lg:inline">Mesita Business</span>
-            </Link>
           </div>
         </nav>
       </aside>

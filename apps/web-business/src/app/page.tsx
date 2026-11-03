@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 
 const ERROR_COPY: Record<string, string> = {
   oauth_failed: "Google sign-in failed. Try again.",
-  google_only: "Mesita Business signs in with a Google account. Sign in with Google to continue.",
+  google_only: "Mesita for places signs in with a Google account. Sign in with Google to continue.",
 };
 
 export default async function SignInPage({
@@ -44,7 +44,7 @@ export default async function SignInPage({
         <div className="flex flex-col gap-3">
           <MesitaLogo className="h-7 w-auto" />
           <div>
-            <h1 className="font-display text-2xl font-semibold tracking-tight">Mesita Business</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight">Mesita</h1>
             <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
               Edit your place&apos;s Mesita profile and run its Premier. Sign in with your Google account.
             </p>
