@@ -9,7 +9,7 @@
 //   │ Profile · Reviews · Premier · Payments, Products, Rewards: Soon │
 //   └──────────────────────────────────────────────────────────────┘
 //   ┌ Manage ─────────────────────────────────┐
-//   │ Settings (Billing inside) · Admin (staff) │  Admin: MESITA-3122
+//   │ Settings · Admin (staff)               │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
 //   …
 //   Account   — at the foot: email, sign-out, What you pay

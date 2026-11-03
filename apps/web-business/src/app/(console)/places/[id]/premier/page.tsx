@@ -1,4 +1,5 @@
-import { getPremier } from "@/lib/business-api";
+import { getBilling, getPremier } from "@/lib/business-api";
+import { BillingPanel } from "./BillingPanel";
 import { PremierPanel } from "./PremierPanel";
 import { getManagePlace } from "@/lib/place-view";
 
@@ -7,7 +8,8 @@ export const metadata = { title: "Premier" };
 
 // Premier (MESITA-3103): the place's paid visibility, run by the place. The
 // read is business-web-get-premier; with `?boost=<session>` (Stripe Checkout's
-// return) it first settles the caller's own payment.
+// return, from buying or from Update card) it first settles the caller's own
+// payment. Billing (plan, card, charges) sits under the plans (MESITA-3154).
 export default async function PremierPage({
   params,
   searchParams,
@@ -18,6 +20,8 @@ export default async function PremierPage({
   const { id } = await params;
   const { boost } = await searchParams;
   const [res, manage] = await Promise.all([getPremier(id, boost ?? null), getManagePlace(id)]);
+  // After the settle above, so a new charge shows.
+  const billing = await getBilling(id);
   return (
     <div className="flex flex-col gap-4">
       {manage?.role === "editor" ? (
@@ -26,6 +30,7 @@ export default async function PremierPage({
         </p>
       ) : null}
       <PremierPanel placeId={id} initial={res.ok ? res.data : null} loadError={res.ok ? null : res.error} />
+      <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} saved={!!boost} />
     </div>
   );
 }

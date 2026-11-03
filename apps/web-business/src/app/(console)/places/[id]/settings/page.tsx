@@ -2,11 +2,7 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
-import { AccountCard } from "@/components/shell/AccountCard";
 import { TeamCard } from "@/components/team/TeamCard";
-import { getIdentityCached } from "@/lib/identity";
-import { getBilling, getPremier } from "@/lib/business-api";
-import { BillingPanel } from "./BillingPanel";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -22,20 +18,12 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-// Billing lives here (MESITA-3136): the place's paid Premier, the card on it
-// and every charge (business-web-get-billing). Update card's Checkout comes
-// back with `?boost=<session>`, which business-web-get-premier settles first.
-export default async function PlaceSettingsPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ boost?: string }>;
-}) {
+// The place's settings only: who runs it, its team, Leave. Billing moved to
+// Premier and your email and sign-out live in Account alone (MESITA-3154:
+// "account must not be redundant").
+export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { boost } = await searchParams;
-  if (boost) await getPremier(id, boost);
-  const [manage, identity, billing] = await Promise.all([getManagePlace(id), getIdentityCached(), getBilling(id)]);
+  const manage = await getManagePlace(id);
   if (!manage) notFound();
 
   return (
@@ -64,8 +52,6 @@ export default async function PlaceSettingsPage({
         {manage.role !== "superadmin" ? <LeavePlace placeId={id} /> : null}
       </Card>
       <TeamCard placeId={id} />
-      <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} saved={!!boost} />
-      <AccountCard email={identity.ok ? identity.data.email : null} />
     </div>
   );
 }

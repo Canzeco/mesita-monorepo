@@ -1,7 +1,8 @@
 "use client";
 
-// Billing, as the place sees it (MESITA-3128; a section of Settings since
-// MESITA-3136, Pato: "for the moment billing inside settings"). The plan and the charges are
+// Billing, as the place sees it (MESITA-3128; under Premier's plans since
+// MESITA-3154, Pato: "for the moment move billing to premier to simplify
+// UI"; it was in Settings from MESITA-3136). The plan and the charges are
 // the team's; the card is the payer's own, so only the payer sees it and can
 // replace it (Stripe Checkout in setup mode, back to this page). Every amount
 // and date is the server's.
@@ -62,7 +63,7 @@ export function BillingPanel({
   async function updateCard() {
     setBusy(true);
     setError(null);
-    const r = await startPremier({ placeId, updateCard: true, returnUrl: returnUrl(placeTabHref(placeId, "settings")) });
+    const r = await startPremier({ placeId, updateCard: true, returnUrl: returnUrl(placeTabHref(placeId, "premier")) });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     if (r.data.url) window.location.assign(r.data.url);
