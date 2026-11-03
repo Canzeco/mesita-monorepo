@@ -5,6 +5,7 @@
 // server decides who may see or change a place, never these wrappers.
 
 import { efInvoke } from "@/lib/supabase-ef";
+import type { RefillOrigin } from "@/lib/premier-origin";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string; code?: string | null };
 
@@ -215,7 +216,7 @@ export type PremierQuote = {
 export type PlacePremier = {
   role: "owner" | "superadmin";
   tier: number;
-  manual: { tier: number; ends_at: string } | null;
+  manual: { tier: number; ends_at: string; source?: string } | null;
   paid: { tier: number; ends_at: string; renews: boolean; by_you: boolean } | null;
   renewing: boolean;
   viewer: "payer" | "former_payer" | "stranger" | null;
@@ -242,14 +243,40 @@ export async function getPremier(placeId: string, sessionId?: string | null): Pr
   return { ok: true, data: r.data };
 }
 
-// ── Billing (MESITA-3128) ───────────────────────────────────────────────
+// ── Billing (MESITA-3128; what runs and what is charged next, MESITA-3166) ──
+
+type Rank = 1 | 2;
 
 export type PlaceBilling = {
+  /** The place's time zone and today's date there; every date is drawn in it. */
+  timezone: string;
+  today: string;
+  /** When the server made this view; the timeline starts here. */
+  now: string;
   /** Who pays the place's Premier: you, someone else on the team, or nobody. */
   payer: "you" | "team" | null;
-  plan: { tier: BoostTier; interval: BoostInterval; amount_cents: number; next_charge_at: string | null } | null;
+  /** The level now; `until` is null at 0 or while a subscription renews it;
+   *  `days_left` only within 7 days. */
+  level: { tier: 0 | Rank; until: string | null; days_left: number | null };
+  /** Running and queued Refill days, in run order. */
+  refill: Array<{ id: string; tier: Rank; origin: RefillOrigin; starts_at: string; ends_at: string; state: "running" | "next" }>;
+  subscription: {
+    tier: Rank;
+    interval: BoostInterval;
+    amount_cents: number;
+    state: "running" | "paused" | "waiting" | "charging";
+    next_charge_at: string | null;
+    next_charge_cents: number;
+    resumes_at: string | null;
+    early_start: boolean;
+  } | null;
+  moved: { from: string; to: string; days: number; origin: RefillOrigin; granted_at: string } | null;
+  keep: { tier: Rank; ends_at: string; price_cents: number } | null;
+  /** YYYY-MM-DD in the place's time zone, per tier. */
+  subscribe_from: Partial<Record<Rank, string>>;
   /** The payer's own card; only ever sent to the payer. */
   card: { brand: string; last4: string; exp_month: number; exp_year: number } | null;
+  card_expires_before_charge: boolean;
   charges: Array<{
     id: string;
     at: string;
@@ -265,8 +292,14 @@ export type PlaceBilling = {
 export async function getBilling(placeId: string): Promise<Result<PlaceBilling>> {
   const r = await efInvoke<PlaceBilling & { ok: true }>("business-web-get-billing", { place_id: placeId });
   if (!r.ok) return fail(r);
-  const { payer, plan, card, charges } = r.data;
-  return { ok: true, data: { payer, plan, card, charges: charges ?? [] } };
+  const data = r.data;
+  // The EF before MESITA-3166 (live until its redeploy, ~5 min after the
+  // app): no schedule to draw, so say so rather than draw half a page.
+  if (!data.level || !data.timezone) return { ok: false, error: "Billing is updating. Try again in a few minutes." };
+  return {
+    ok: true,
+    data: { ...data, refill: data.refill ?? [], subscribe_from: data.subscribe_from ?? {}, charges: data.charges ?? [] },
+  };
 }
 
 // ── What you pay (MESITA-3130) ─────────────────────────────────────────
