@@ -134,6 +134,12 @@ export function ClaimSearch() {
 
   return (
     <Card className="flex flex-col gap-4">
+      {/* Say what to type (Pato, MESITA-3149): the search finds places by
+          their Google name, not by what the owner calls them. */}
+      <div className="flex flex-col gap-1">
+        <h2 className="text-base font-semibold tracking-tight">Find your place</h2>
+        <p className="text-muted-foreground text-sm">Type its name as it appears on Google Maps. Add the city if the name is common.</p>
+      </div>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -144,7 +150,7 @@ export function ClaimSearch() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search for your place"
+          placeholder="The name on Google Maps, e.g. Cuerno Calzada"
           className={`${INPUT_BASE} h-11 px-3`}
           aria-label="Search for your place"
         />
