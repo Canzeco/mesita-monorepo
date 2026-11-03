@@ -6,8 +6,8 @@
 //
 // Since MESITA-3173 Premier is not sold on its own: it comes with the Business
 // plans (Pro = Premier 2X, Max = Premier 5X, MESITA-3174), which Billing
-// lists. This page is one card: the level running now, then Plan and Boost,
-// the two things that set it (MESITA-3176, MESITA-3178).
+// lists. This page is one card: the level and its meter, then Plan and Boost,
+// the two things that set it, each ending in the level it gives (MESITA-3182).
 // Every amount and date is the server's (business-web-get-premier).
 
 import Link from "next/link";
@@ -17,11 +17,17 @@ import { cancelPremier, getPremier, type PlacePremier } from "@/lib/business-api
 import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref } from "@/lib/routes";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
-import { FREE_LEVEL, FREE_PLAN, planName } from "@/lib/plans";
+import { FREE_PLAN, PLAN_NAME, planName } from "@/lib/plans";
 
-const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
-// Free is Premier 1X: the place ranks like every other place.
-const levelLabel = (tier: number) => LABEL_BY_RANK[tier] ?? "Premier";
+// The meter's steps: the plan that gives each level. Free is 1X, where every
+// place ranks. Red is Consumer's Premier level meter (MAP_PREMIER_PIN_COLOR).
+const STEPS = [
+  { rank: 0, factor: "1X", plan: FREE_PLAN },
+  { rank: 1, factor: "2X", plan: PLAN_NAME.boost_2x },
+  { rank: 2, factor: "5X", plan: PLAN_NAME.boost_5x },
+];
+const PREMIER_RED = "#ff2357";
+const factor = (tier: number) => STEPS.find((s) => s.rank === tier)?.factor ?? "1X";
 
 function day(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -30,21 +36,23 @@ function day(iso: string | null | undefined): string {
 }
 
 /** Plan → Premier and Boost → Premier (MESITA-3176, Pato: "Boost => Premier,
- *  Plan => Premier"): the place ranks at the higher of the two. Each row is
- *  its source's name, then its level and dates in one quiet line (MESITA-3178). */
-function sources(data: PlacePremier): Array<{ name: string; value: string; detail: string | null }> {
+ *  Plan => Premier"): each row ends in the level it gives, and the place runs
+ *  at the higher of the two (MESITA-3182). */
+function sources(data: PlacePremier): Array<{ name: string; value: string; detail: string | null; level: string | null }> {
   const plan = data.paid
     ? {
         value: planName(data.paid.tier),
-        detail: `${levelLabel(data.paid.tier)} · ${data.paid.by_you ? "" : "paid by a guest · "}${data.paid.renews ? "renews" : "ends"} ${day(data.paid.ends_at)}`,
+        detail: `${data.paid.by_you ? "" : "Paid by a guest · "}${data.paid.renews ? "Renews" : "Ends"} ${day(data.paid.ends_at)}`,
+        level: factor(data.paid.tier),
       }
-    : { value: FREE_PLAN, detail: FREE_LEVEL };
+    : { value: FREE_PLAN, detail: null, level: "1X" };
   const boost = data.manual
     ? {
-        value: levelLabel(data.manual.tier),
-        detail: `until ${day(data.manual.ends_at)} · ${REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"]}`,
+        value: REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"],
+        detail: `Until ${day(data.manual.ends_at)}`,
+        level: factor(data.manual.tier),
       }
-    : { value: "None", detail: null };
+    : { value: "None", detail: null, level: null };
   return [
     { name: "Plan", ...plan },
     { name: "Boost", ...boost },
@@ -85,31 +93,49 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      {/* One card (MESITA-3178): the level the place runs at, then where it
-          comes from, Plan and Boost, one row each. Plans live on Billing. */}
+      {/* One card: the level and where it sits on the meter, then what sets it.
+          The page title already says Premier, so the headline is the number. */}
       <Card className="flex flex-col p-0 sm:p-0">
-        <div className="px-5 py-5 sm:px-6">
-          <p className="font-display text-2xl font-semibold tracking-tight">{data.tier > 0 ? levelLabel(data.tier) : FREE_LEVEL}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {data.renewing ? "A renewal is being charged now." : "Your place ranks at the higher of its plan and a Boost."}
-          </p>
+        <div className="flex flex-col gap-5 px-5 py-6 sm:flex-row sm:items-center sm:gap-10 sm:px-6">
+          <p className="font-display w-20 shrink-0 text-5xl leading-none font-semibold tracking-tight">{factor(data.tier)}</p>
+          <ol className="grid min-w-0 flex-1 grid-cols-3 gap-1.5" aria-label={`Level ${factor(data.tier)} of 1X, 2X and 5X`}>
+            {STEPS.map((step) => {
+              const reached = data.tier >= step.rank;
+              return (
+                <li key={step.rank} className="flex min-w-0 flex-col gap-2" aria-current={data.tier === step.rank ? "step" : undefined}>
+                  <span
+                    className={`h-2 rounded-full ${reached && data.tier > 0 ? "" : reached ? "bg-foreground" : "bg-muted"}`}
+                    style={reached && data.tier > 0 ? { backgroundColor: PREMIER_RED } : undefined}
+                  />
+                  <span className={`truncate text-sm ${data.tier === step.rank ? "font-semibold" : "text-muted-foreground"}`}>
+                    {step.factor} · {step.plan}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
         </div>
+        {data.renewing ? <p className="text-muted-foreground border-border border-t px-5 py-3 text-sm sm:px-6">A renewal is being charged now.</p> : null}
         <ul className="divide-border border-border divide-y border-t">
           {sources(data).map((row) => (
-            <li key={row.name} className="flex items-center gap-4 px-5 py-4 sm:px-6">
-              <span className="text-muted-foreground w-14 shrink-0 text-sm">{row.name}</span>
-              <div className="min-w-0 flex-1">
-                <p className={row.detail ? "font-semibold" : "text-muted-foreground"}>{row.value}</p>
-                {row.detail ? <p className="text-muted-foreground text-sm">{row.detail}</p> : null}
-              </div>
-              {row.name === "Plan" ? (
-                <Link
-                  href={billingHref(placeId, {})}
-                  className="border-border hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-sm font-semibold"
-                >
-                  Change
-                </Link>
-              ) : null}
+            <li key={row.name} className="flex min-h-16 items-center gap-4 px-5 py-3 text-sm sm:px-6">
+              <span className="text-muted-foreground w-14 shrink-0">{row.name}</span>
+              <p className="min-w-0 flex-1">
+                <span className={row.level ? "font-semibold" : "text-muted-foreground"}>{row.value}</span>
+                {row.detail ? <span className="text-muted-foreground"> · {row.detail}</span> : null}
+              </p>
+              {row.level ? <span className="shrink-0 font-semibold tabular-nums">{row.level}</span> : null}
+              {/* The same slot on both rows, so the levels line up in one column. */}
+              <span className="flex w-24 shrink-0 justify-end">
+                {row.name === "Plan" ? (
+                  <Link
+                    href={billingHref(placeId, {})}
+                    className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 font-semibold"
+                  >
+                    Change
+                  </Link>
+                ) : null}
+              </span>
             </li>
           ))}
           {someoneElsePays ? (
