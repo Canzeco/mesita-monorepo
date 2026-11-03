@@ -156,18 +156,10 @@ export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="bg-violet-500/10 text-violet-600 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-            <Star className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="font-display text-base font-semibold tracking-tight">Reviews</h2>
-            <p className="text-muted-foreground mt-0.5 max-w-2xl text-xs leading-relaxed">
-              {syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}
-            </p>
-          </div>
-        </div>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        {/* The page title (PlaceTabTitle, MESITA-3151) names Reviews; this
+            line says how fresh it is. */}
+        <p className="text-muted-foreground min-w-0 text-sm">{syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}</p>
         {canSync ? (
         <button
           type="button"

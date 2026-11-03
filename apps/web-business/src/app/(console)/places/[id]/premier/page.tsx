@@ -21,7 +21,7 @@ export default async function PremierPage({
   return (
     <div className="flex flex-col gap-4">
       {manage?.role === "editor" ? (
-        <p className="border-border bg-muted/50 max-w-3xl rounded-xl border px-4 py-3 text-sm">
+        <p className="border-border bg-muted/50 rounded-xl border px-4 py-3 text-sm">
           You are an editor here. Only the place&apos;s owner can buy, change or stop Premier.
         </p>
       ) : null}

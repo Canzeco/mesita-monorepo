@@ -16,7 +16,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const { boost } = await searchParams;
   const [identity, billing] = await Promise.all([getIdentityCached(), listBilling(boost ?? null)]);
   return (
-    <div className="flex max-w-3xl flex-col gap-6 pb-8">
+    <div className="flex flex-col gap-6 pb-8">
       <PageHeader title="Account" />
       <AccountCard email={identity.ok ? identity.data.email : null} />
       <WhatYouPay

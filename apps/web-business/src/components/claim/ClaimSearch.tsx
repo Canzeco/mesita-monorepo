@@ -134,11 +134,12 @@ export function ClaimSearch() {
 
   return (
     <Card className="flex flex-col gap-4">
-      {/* Say what to type (Pato, MESITA-3149): the search finds places by
-          their Google name, not by what the owner calls them. */}
+      {/* All (Pato, MESITA-3151: places you don't manage, in one word). Say
+          what to type (MESITA-3149): the search finds places by their Google
+          name, not by what the owner calls them. */}
       <div className="flex flex-col gap-1">
-        <h2 className="text-base font-semibold tracking-tight">Find your place</h2>
-        <p className="text-muted-foreground text-sm">Type its name as it appears on Google Maps. Add the city if the name is common.</p>
+        <h2 className="text-lg font-semibold tracking-tight">All</h2>
+        <p className="text-muted-foreground text-sm">Every place on Mesita and Google. Type its name as it appears on Google Maps; add the city if it&apos;s common.</p>
       </div>
       <form
         onSubmit={(e) => {

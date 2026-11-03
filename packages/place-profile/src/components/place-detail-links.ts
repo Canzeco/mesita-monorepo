@@ -44,7 +44,7 @@ export const CHANNEL_DEFS = [
 export const RESERVATION_DEFS = [
   {
     key: "opentable_url",
-    label: "Reservar",
+    label: "OpenTable",
     Icon: CalendarCheck,
     logo: "/channels/opentable.svg",
   },
@@ -52,8 +52,10 @@ export const RESERVATION_DEFS = [
   {
     key: "uber_eats_url",
     // decision: Pato — real Uber Eats Simple Icons mark (green stacked
-    // wordmark), not the fake green app-square with "eats" lettering.
-    label: "Pedir",
+    // wordmark), not the fake green app-square with "eats" lettering. The
+    // label is the brand, not a verb (Pato, MESITA-3151: "say Uber Eats,
+    // don't say pedir").
+    label: "Uber Eats",
     Icon: Bike,
     logo: "/channels/ubereats-mark.svg",
   },
