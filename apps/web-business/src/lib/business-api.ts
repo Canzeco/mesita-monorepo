@@ -293,6 +293,9 @@ export async function getBilling(placeId: string): Promise<Result<PlaceBilling>>
   const r = await efInvoke<PlaceBilling & { ok: true }>("business-web-get-billing", { place_id: placeId });
   if (!r.ok) return fail(r);
   const data = r.data;
+  // The EF before MESITA-3166 (live until its redeploy, ~5 min after the
+  // app): no schedule to draw, so say so rather than draw half a page.
+  if (!data.level || !data.timezone) return { ok: false, error: "Billing is updating. Try again in a few minutes." };
   return {
     ok: true,
     data: { ...data, refill: data.refill ?? [], subscribe_from: data.subscribe_from ?? {}, charges: data.charges ?? [] },
