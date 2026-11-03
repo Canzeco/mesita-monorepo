@@ -28,12 +28,12 @@ function day(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** The level in one line (D3): the Refill days, then the subscription. */
+/** The level in one line (D3): the Boost, then the plan (MESITA-3175). */
 function summary(data: PlacePremier): string {
   const parts: string[] = [];
   if (data.manual) {
     const origin = REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"];
-    parts.push(`${levelLabel(data.manual.tier)} until ${day(data.manual.ends_at)} · ${origin}`);
+    parts.push(`Boost ${levelLabel(data.manual.tier)} until ${day(data.manual.ends_at)} · ${origin}`);
   }
   if (data.paid) {
     parts.push(`${levelLabel(data.paid.tier)} with ${data.paid.by_you ? "your plan" : "a guest's payment"} · ${data.paid.renews ? "renews" : "ends"} ${day(data.paid.ends_at)}`);

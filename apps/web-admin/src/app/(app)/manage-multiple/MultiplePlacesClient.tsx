@@ -204,7 +204,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[9].id}
         tint="amber"
         title={PIPELINE_STEPS[9].label}
-        blurb="Premier Refill days, 2X or 5X. 5X days run first, then 2X. A place paying for a higher Subscription is refused. End Mesita days ends only the days added here."
+        blurb="Boost places: Premier 2X or 5X for a number of days, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
       >
         <RefillBox id={PIPELINE_STEPS[9].id} text={sharedIds} onTextChange={setSharedIds} />
       </Step>

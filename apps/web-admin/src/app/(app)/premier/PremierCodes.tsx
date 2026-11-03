@@ -106,7 +106,7 @@ export function PremierCodes({
     <SectionCard
       icon={<Ticket className="h-4 w-4" />}
       title="Codes"
-      subtitle="A code gives a place Premier Refill days for free: 2X or 5X, for a number of days. It never takes a percentage off. Each place redeems a code once."
+      subtitle="A code gives a place a free Boost: Premier 2X or 5X, for a number of days. It never takes a percentage off. Each place redeems a code once."
     >
       <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-3">

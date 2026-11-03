@@ -29,14 +29,14 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 
 // THE PREMIER TAB (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925, the
-// place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys Premier
-// days for any place — a 30-day pack of Pro (Premier 2X) or Max (Premier 5X),
+// place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys a Boost
+// for any place (MESITA-3175) — 30 days of Premier 2X or Premier 5X,
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
 //
 // Three boxes: the place's Premier level on a 0–3 meter (level 3 reads
 // "Soon": the database allows 0–2, MESITA-3041) with what lifts it now;
-// "Buy Premier days", one row that opens a sheet with the perks, the two
+// "Buy a Boost", one row that opens a sheet with the perks, the two
 // packs and ONE pay button; and "Is this your business?", the Business app's
 // claim page. Every amount, date and line is the server's
 // (consumer-web-get-premier-refill); nothing here computes money. Premier is
@@ -47,14 +47,14 @@ import { cn, errMsg } from "@/lib/utils";
 const LEVELS: ReadonlyArray<{ rank: number; label: string; soon?: boolean }> = [
   ...BOOST_TIERS.map((t) => ({
     rank: t.rank,
-    label: `${t.label} · ${t.priority}`,
+    label: t.priority,
   })),
   { rank: 3, label: "Soon", soon: true },
 ];
 
 /** What a pack buys, said in the sheet above the packs. */
 const PERKS = [
-  "Moves the place up on Home and the Map: Premier 2X with Pro, Premier 5X with Max.",
+  "Moves the place up on Home and the Map: Premier 2X or Premier 5X.",
   "A red Premier pin on the Map.",
   "Paid once for 30 days. Nothing renews; it ends on its own.",
 ];
@@ -187,7 +187,7 @@ export function BoostPane({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-base font-semibold">
-            Buy Premier days
+            Buy a Boost
           </span>
           <span className="text-muted-foreground block text-xs">
             {packLine(boost, forSale.length > 0)}
@@ -245,7 +245,7 @@ export function BoostPane({
       <LocalSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        ariaLabel="Buy Premier days"
+        ariaLabel="Buy a Boost"
       >
         <div className={SHEET_BODY_CLASS}>
           <h2 className={SHEET_TITLE_CLASS}>Mesita Premier</h2>
@@ -267,7 +267,7 @@ export function BoostPane({
 
           <div className="mt-4 flex flex-col gap-3">
             <h3 className="type-eyebrow text-muted-foreground">
-              Make it Premier
+              Boost this place
             </h3>
             <div
               className="flex flex-col gap-2"
@@ -309,7 +309,7 @@ export function BoostPane({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-base font-semibold">
-                        {t.label} · {t.priority}
+                        {t.label}
                       </span>
                       <span className="text-muted-foreground block text-xs">
                         {off && p?.code
@@ -370,11 +370,11 @@ export function BoostPane({
             )}
 
             <p className="text-muted-foreground text-xs leading-relaxed">
-              Pro gives the place Premier 2X ranking priority on Home and the Map,
-              Max Premier 5X. Priority moves it up the list; it doesn&apos;t
+              A Boost gives the place Premier 2X or 5X ranking priority on Home
+              and the Map. Priority moves it up the list; it doesn&apos;t
               guarantee more views. Premier places show “Ad”; Premier
-              doesn&apos;t verify a place. Days you buy stack after the days
-              already running. Charged once by Stripe in US dollars; card only.
+              doesn&apos;t verify a place. A Boost you buy runs after the
+              days already running. Charged once by Stripe in US dollars; card only.
             </p>
           </div>
         </div>
@@ -408,7 +408,7 @@ function statusLines(boost: PlaceBoost | null): {
     const sources = [...new Set(rows.map((r) => ORIGIN[r.source]))];
     lines.push({
       tier,
-      text: `${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
+      text: `Boost ${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
     });
   }
   const s = boost.subscription;

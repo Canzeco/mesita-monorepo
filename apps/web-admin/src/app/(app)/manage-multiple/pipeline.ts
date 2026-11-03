@@ -24,7 +24,7 @@ export const PIPELINE_STEPS = [
   { n: 7, id: "enable", label: "Enable" },
   { n: 8, id: "disable", label: "Disable" },
   { n: 9, id: "delete", label: "Delete" },
-  { n: 10, id: "refill", label: "Refill" },
+  { n: 10, id: "refill", label: "Boost" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];

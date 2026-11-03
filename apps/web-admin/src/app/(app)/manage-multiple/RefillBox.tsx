@@ -117,7 +117,7 @@ export function RefillBox({
 
   function pressEnd() {
     const n = placeIds.length;
-    if (!window.confirm(`End Mesita days on ${n} place${n === 1 ? "" : "s"}? Code and bought days stay.`)) return;
+    if (!window.confirm(`End Mesita Boost on ${n} place${n === 1 ? "" : "s"}? Code and bought Boosts stay.`)) return;
     setLines({});
     void send({ action: "end" }, [...placeIds]);
   }
@@ -175,14 +175,14 @@ export function RefillBox({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <BoxButton
-            label="Refill"
+            label="Boost"
             primary
             busy={running === "refill"}
             disabled={busy || placeIds.length === 0 || !daysOk}
             onClick={pressRefill}
           />
           <BoxButton
-            label="End Mesita days"
+            label="End Mesita Boost"
             busy={running === "end"}
             disabled={busy || placeIds.length === 0}
             onClick={pressEnd}
