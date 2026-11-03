@@ -277,6 +277,8 @@ export type PlaceBilling = {
   /** The payer's own card; only ever sent to the payer. */
   card: { brand: string; last4: string; exp_month: number; exp_year: number } | null;
   card_expires_before_charge: boolean;
+  /** The caller's own saved cards at Stripe (MESITA-3185). */
+  cards: Array<{ id: string; brand: string; last4: string; exp_month: number; exp_year: number; in_use: boolean }>;
   charges: Array<{
     id: string;
     at: string;
@@ -286,6 +288,8 @@ export type PlaceBilling = {
     ends_at: string;
     amount_cents: number;
     status: "paid" | "declined" | "charging";
+    /** Stripe's receipt page; only for a charge the caller paid. */
+    receipt_url?: string | null;
   }>;
 };
 
@@ -298,7 +302,7 @@ export async function getBilling(placeId: string): Promise<Result<PlaceBilling>>
   if (!data.level || !data.timezone) return { ok: false, error: "Billing is updating. Try again in a few minutes." };
   return {
     ok: true,
-    data: { ...data, refill: data.refill ?? [], subscribe_from: data.subscribe_from ?? {}, charges: data.charges ?? [] },
+    data: { ...data, refill: data.refill ?? [], subscribe_from: data.subscribe_from ?? {}, cards: data.cards ?? [], charges: data.charges ?? [] },
   };
 }
 

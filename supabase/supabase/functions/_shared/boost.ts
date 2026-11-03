@@ -1313,7 +1313,7 @@ export async function readPeriod(admin: SupabaseClient, id: string): Promise<Per
   return (data as Period | null) ?? null;
 }
 
-async function readCustomer(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<string | null> {
+export async function readCustomer(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<string | null> {
   const { data, error } = await admin
     .from("premier_customers")
     .select("stripe_customer")

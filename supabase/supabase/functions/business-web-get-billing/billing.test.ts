@@ -4,7 +4,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { Manual, Period, Pledge } from "../_shared/boost.ts";
-import { billingView, type Card } from "./billing.ts";
+import { billingView, type Card, receiptsByIntent, savedCards } from "./billing.ts";
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-11-03T15:00:00Z");
@@ -260,4 +260,28 @@ Deno.test("billing: dates are counted in the place's time zone (D12, F3)", () =>
   assertEquals(mx.subscribe_from, { 2: "2026-11-03", 1: "2026-11-03" });
   // No time zone stored: UTC.
   assertEquals(view({ manual, now, timezone: null }).timezone, "UTC");
+});
+
+// MESITA-3185: what Billing shows from Stripe. Money: the wrong "In use" card or
+// a declined try's receipt would misstate what was charged.
+Deno.test("saved cards: the plan's card first and marked, nothing but brand, last 4 and expiry", () => {
+  const cards = savedCards([
+    { id: "pm_old", card: { brand: "amex", last4: "0005", exp_month: 1, exp_year: 2030, fingerprint: "secret" } },
+    { id: "pm_x", card: { brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028 } },
+    { id: "pm_no_card" },
+  ], "pm_x");
+  assertEquals(cards, [
+    { id: "pm_x", brand: "visa", last4: "4242", exp_month: 12, exp_year: 2028, in_use: true },
+    { id: "pm_old", brand: "amex", last4: "0005", exp_month: 1, exp_year: 2030, in_use: false },
+  ]);
+  assertEquals(savedCards(undefined, null), []);
+});
+
+Deno.test("receipts: only a paid charge gives its intent a receipt", () => {
+  const receipts = receiptsByIntent([
+    { payment_intent: "pi_a", paid: true, receipt_url: "https://pay.stripe.com/a" },
+    { payment_intent: "pi_a", paid: false, receipt_url: "https://pay.stripe.com/declined" },
+    { payment_intent: "pi_b", paid: false, receipt_url: "https://pay.stripe.com/b" },
+  ]);
+  assertEquals([...receipts], [["pi_a", "https://pay.stripe.com/a"]]);
 });

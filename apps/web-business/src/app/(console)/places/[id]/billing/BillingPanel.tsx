@@ -5,8 +5,8 @@
 // order: the status block (the level and until when, a timeline of what runs,
 // one money line, one button), one card "What's running" (each block of
 // Refill days and the subscription as rows) and one card "Payment" (the
-// payer's card, then every charge). Premier sells the plans; Billing shows the
-// schedule and the money. Every amount, date and state is the server's
+// caller's saved cards, then every charge with Stripe's receipt). Premier sells
+// the plans; Billing shows the schedule and the money. Every amount, date and state is the server's
 // (business-web-get-billing); this file only formats, in the place's time
 // zone.
 
@@ -103,7 +103,7 @@ export function BillingPanel({
     if (r.data.url) window.location.assign(r.data.url);
   }
 
-  const { level, refill, subscription: sub, payer, card, charges, keep, moved } = billing;
+  const { level, refill, subscription: sub, payer, card, cards, charges, keep, moved } = billing;
   const { day, plainDay, daysAway } = dates(billing.timezone, billing.today);
   const you = payer === "you";
   const empty = level.tier === 0 && refill.length === 0 && !sub && charges.length === 0;
@@ -191,6 +191,9 @@ export function BillingPanel({
     />
   ) : null;
 
+  // The card read can fail apart from the list; the plan's card still shows.
+  const shownCards = cards.length > 0 ? cards : card ? [{ ...card, id: "plan", in_use: true }] : [];
+
   return (
     <section id="billing" className="flex scroll-mt-6 flex-col gap-4">
       {returned ? (
@@ -246,58 +249,70 @@ export function BillingPanel({
         </Card>
       ) : null}
 
-      {payer || charges.length > 0 ? (
-        <Card className="flex flex-col p-0 sm:p-0">
-          <h2 className="px-5 pt-4 pb-2 font-semibold">Payment</h2>
-          <div className="divide-border divide-y">
-            {you ? (
-              <div className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <CreditCard className="text-muted-foreground size-5 shrink-0" aria-hidden />
-                  {card ? (
-                    <span className="font-medium">
-                      {brand(card.brand)} •••• {card.last4}
-                      <span className="text-muted-foreground ml-2 text-sm font-normal">
-                        expires {String(card.exp_month).padStart(2, "0")}/{String(card.exp_year).slice(-2)}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-sm">Your card on file</span>
-                  )}
-                </div>
-                {cardLine ? null : (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void updateCard()}
-                    className="border-border hover:bg-muted h-11 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
-                  >
-                    {busy ? "Opening…" : "Update card"}
-                  </button>
-                )}
+      {/* Always here (MESITA-3185): what Stripe holds for the caller, read-only.
+          Update card is for the payer, unless the expiry warning above has it. */}
+      <Card className="flex flex-col p-0 sm:p-0">
+        <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-2">
+          <h2 className="font-semibold">Payment</h2>
+          {you && !cardLine ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void updateCard()}
+              className="border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+            >
+              {busy ? "Opening…" : "Update card"}
+            </button>
+          ) : null}
+        </div>
+        <div className="divide-border divide-y">
+          {payer === "team" ? (
+            <p className="px-5 py-3 text-sm">Paid by another member of your team. Only they see and change the card.</p>
+          ) : null}
+          {shownCards.map((c) => (
+            <div key={c.id} className="flex items-center gap-3 px-5 py-3">
+              <CreditCard className="text-muted-foreground size-5 shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 font-medium">
+                {brand(c.brand)} •••• {c.last4}
+                <span className="text-muted-foreground ml-2 text-sm font-normal">
+                  expires {String(c.exp_month).padStart(2, "0")}/{String(c.exp_year).slice(-2)}
+                </span>
+              </span>
+              {c.in_use ? <span className="text-muted-foreground shrink-0 text-sm">In use</span> : null}
+            </div>
+          ))}
+          {shownCards.length === 0 ? (
+            <p className="text-muted-foreground px-5 py-3 text-sm">{you ? "Your card on file" : "No saved card. You add one when you choose a plan."}</p>
+          ) : null}
+          {charges.map((c) => (
+            <div key={c.id} className="flex items-center gap-4 px-5 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">
+                  {day(c.at)} · {planName(c.tier)}
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  {day(c.starts_at)} – {day(c.ends_at)}
+                </p>
               </div>
-            ) : payer === "team" ? (
-              <p className="px-5 py-3 text-sm">Paid by another member of your team. Only they see and change the card.</p>
-            ) : null}
-            {charges.map((c) => (
-              <div key={c.id} className="flex items-center gap-4 px-5 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium">
-                    {day(c.at)} · {planName(c.tier)}
-                  </p>
-                  <p className="text-muted-foreground text-sm">
-                    {day(c.starts_at)} – {day(c.ends_at)}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <p className="font-semibold tabular-nums">{usd(c.amount_cents)}</p>
-                  <p className={c.status === "declined" ? "text-destructive text-sm" : "text-muted-foreground text-sm"}>{STATUS[c.status]}</p>
-                </div>
+              <div className="shrink-0 text-right">
+                <p className="font-semibold tabular-nums">{usd(c.amount_cents)}</p>
+                <p className={c.status === "declined" ? "text-destructive text-sm" : "text-muted-foreground text-sm"}>{STATUS[c.status]}</p>
               </div>
-            ))}
-          </div>
-        </Card>
-      ) : null}
+              {c.receipt_url ? (
+                <a
+                  href={c.receipt_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-border hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-sm font-semibold"
+                >
+                  Receipt
+                </a>
+              ) : null}
+            </div>
+          ))}
+          {charges.length === 0 ? <p className="text-muted-foreground px-5 py-3 text-sm">No charges yet.</p> : null}
+        </div>
+      </Card>
     </section>
   );
 }

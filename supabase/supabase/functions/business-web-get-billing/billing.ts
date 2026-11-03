@@ -220,3 +220,39 @@ export function billingView(args: {
     card_expires_before_charge: cardExpires,
   };
 }
+
+/** A card saved on the caller's own Stripe customer (MESITA-3185). */
+export type SavedCard = Card & { id: string; in_use: boolean };
+
+/** Stripe's card payment methods as Billing lists them: brand, last 4 and
+ *  expiry, never more. The one this place's plan charges comes first. */
+export function savedCards(methods: unknown, inUseId: string | null | undefined): SavedCard[] {
+  const rows = Array.isArray(methods) ? (methods as Array<{ id?: unknown; card?: Partial<Card> }>) : [];
+  const cards: SavedCard[] = [];
+  for (const m of rows) {
+    if (typeof m.id !== "string" || !m.card?.last4) continue;
+    cards.push({
+      id: m.id,
+      brand: String(m.card.brand ?? "card"),
+      last4: m.card.last4,
+      exp_month: Number(m.card.exp_month),
+      exp_year: Number(m.card.exp_year),
+      in_use: m.id === inUseId,
+    });
+  }
+  return cards.sort((a, b) => Number(b.in_use) - Number(a.in_use));
+}
+
+/** Payment intent → Stripe's receipt page, from a customer's charges. Only a
+ *  paid charge has a receipt worth opening: a declined try on the same intent
+ *  never replaces it. */
+export function receiptsByIntent(charges: unknown): Map<string, string> {
+  const rows = Array.isArray(charges) ? (charges as Array<{ payment_intent?: unknown; paid?: unknown; receipt_url?: unknown }>) : [];
+  const out = new Map<string, string>();
+  for (const c of rows) {
+    if (c.paid === true && typeof c.payment_intent === "string" && typeof c.receipt_url === "string") {
+      out.set(c.payment_intent, c.receipt_url);
+    }
+  }
+  return out;
+}
