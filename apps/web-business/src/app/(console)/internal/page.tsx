@@ -3,7 +3,6 @@ import { getIdentityCached } from "@/lib/identity";
 import { listVerifications } from "@/lib/business-api";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { VerificationQueue } from "@/components/internal/VerificationQueue";
-import { StaffFind } from "../places/StaffFind";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
@@ -16,7 +15,7 @@ export default async function InternalQueuePage() {
   const queue = await listVerifications();
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <PageHeader title="Admin" sub="Mesita staff only. Pick a place to see its own Admin page." />
+      <PageHeader title="Admin" sub="Mesita staff only. Open a place from Places to see its own Admin page." />
       <h2 className="text-lg font-semibold tracking-tight">Claim requests</h2>
       <p className="text-muted-foreground -mt-4 text-sm">People asking to run a place. Approve to give them its profile and Premier for a year.</p>
       <Card>
@@ -26,7 +25,6 @@ export default async function InternalQueuePage() {
           <p className="text-destructive text-sm">{queue.error}</p>
         )}
       </Card>
-      <StaffFind />
     </div>
   );
 }

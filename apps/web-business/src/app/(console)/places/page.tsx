@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Plus, Store } from "lucide-react";
+import { Store } from "lucide-react";
 import { getIdentityCached } from "@/lib/identity";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
 import type { MyPlaceState } from "@/lib/business-api";
+import { ClaimSearch } from "../claim/ClaimSearch";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your places" };
@@ -26,7 +27,7 @@ export default async function PlacesPage() {
   if (!identity.ok) {
     return <PageErrorState heading="Could not load your places" message={identity.error} retryHref="/places" />;
   }
-  const { places } = identity.data;
+  const { places, isSuperAdmin } = identity.data;
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,18 +35,24 @@ export default async function PlacesPage() {
         title="Your places"
         sub="The places you run on Mesita. Each one has its profile, its Premier and its settings."
         right={
-          <Link href="/claim" className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold">
-            <Plus className="size-4" aria-hidden /> Claim a place
-          </Link>
+          isSuperAdmin ? (
+            <Link href="/internal" className="border-border inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold">
+              Claim requests
+            </Link>
+          ) : undefined
         }
       />
+      {/* Places (Pato, MESITA-3126): a search on top, then the places you run.
+          Owners search to claim; Mesita staff search to open any place. */}
+      <ClaimSearch open={isSuperAdmin} />
       {places.length === 0 ? (
+        isSuperAdmin ? null : (
         <Card className="flex flex-col items-start gap-3">
           <Store className="text-muted-foreground size-6" aria-hidden />
           <p className="font-semibold">You don&apos;t run a place on Mesita yet.</p>
-          <p className="text-muted-foreground text-sm">Find your place and claim it. Mesita reviews every request, usually within a day.</p>
-          <Link href="/claim" className="text-sm font-semibold underline underline-offset-4">Claim your place</Link>
+          <p className="text-muted-foreground text-sm">Search for it above and claim it. Mesita reviews every request, usually within a day.</p>
         </Card>
+        )
       ) : (
         <Card className="divide-border divide-y p-0 sm:p-0">
           {places.map((p) => {

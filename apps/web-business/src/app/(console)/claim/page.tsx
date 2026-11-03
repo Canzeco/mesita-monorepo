@@ -10,7 +10,7 @@ export default function ClaimPage() {
         title="Claim your place"
         sub="Find your place on Mesita and tell us who you are there. Mesita reviews every request, usually within a day."
       />
-      <ClaimSearch />
+      <ClaimSearch autoFocus />
     </div>
   );
 }

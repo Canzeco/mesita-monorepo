@@ -7,6 +7,8 @@
 // hold yet says "Not on Mesita yet" and Add and claim adds it
 // (business-web-create-place), then opens the same claim form. Adding a
 // place grants nothing: Mesita still reviews the claim.
+// The same field heads Places (MESITA-3126); for Mesita staff it opens any
+// place Mesita holds instead (`open`), and Google-only listings are left out.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,7 +46,7 @@ function Thumb({ photo }: { photo: string | null }) {
   return <span className="bg-muted size-12 shrink-0 rounded-xl" />;
 }
 
-export function ClaimSearch() {
+export function ClaimSearch({ open = false, autoFocus = false }: { open?: boolean; autoFocus?: boolean }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [rows, setRows] = useState<FoundPlace[] | null>(null);
@@ -90,7 +92,9 @@ export function ClaimSearch() {
     router.push(`/claim/${encodeURIComponent(r.data.placeId)}${r.data.created ? "?added=1" : ""}`);
   }
 
-  const empty = rows !== null && rows.length === 0 && q.trim().length >= MIN_QUERY && !busy;
+  // Staff open places Mesita holds; a Google-only listing is not theirs to add.
+  const shown = open && rows ? rows.filter((p) => !!p.id) : rows;
+  const empty = shown !== null && shown.length === 0 && q.trim().length >= MIN_QUERY && !busy;
 
   return (
     <Card className="flex flex-col gap-4">
@@ -104,10 +108,10 @@ export function ClaimSearch() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Your place's name"
+          placeholder={open ? "Search any place" : "Search for your place"}
           className={`${INPUT_BASE} h-11 px-3`}
-          aria-label="Your place's name"
-          autoFocus
+          aria-label={open ? "Search any place" : "Search for your place"}
+          autoFocus={autoFocus}
         />
         <button type="submit" disabled={busy} className="bg-foreground text-background inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60">
           <Search className="size-4" aria-hidden /> {busy ? "Searching…" : "Search"}
@@ -115,20 +119,22 @@ export function ClaimSearch() {
       </form>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
       {empty ? (
-        <p className="text-muted-foreground text-sm">Google doesn&apos;t know that name either. Check the spelling, or add the city.</p>
+        <p className="text-muted-foreground text-sm">
+          {open ? "No Mesita place by that name." : "Google doesn't know that name either. Check the spelling, or add the city."}
+        </p>
       ) : null}
-      {rows && rows.length > 0 ? (
+      {shown && shown.length > 0 ? (
         <ul className="divide-border divide-y">
-          {rows.map((p) =>
+          {shown.map((p) =>
             p.id ? (
               <li key={p.id}>
-                <Link href={`/claim/${encodeURIComponent(p.id)}`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
+                <Link href={open ? `/places/${encodeURIComponent(p.id)}/profile` : `/claim/${encodeURIComponent(p.id)}`} className="hover:bg-muted/50 flex items-center gap-4 px-1 py-3">
                   <Thumb photo={p.photo} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
                     <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
                   </span>
-                  <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">Claim</span>
+                  <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">{open ? "Open" : "Claim"}</span>
                 </Link>
               </li>
             ) : (
