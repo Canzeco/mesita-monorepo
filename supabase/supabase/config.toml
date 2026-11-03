@@ -274,6 +274,10 @@ verify_jwt = true
 [functions.consumer-web-cancel-premier]
 verify_jwt = true
 
+# MESITA-3167: a guest redeems a Premier code on a place (Refill days).
+[functions.consumer-web-redeem-premier-code]
+verify_jwt = true
+
 # MESITA-3092: the guest hides the notice of their ended subscription.
 [functions.consumer-web-dismiss-premier-notice]
 verify_jwt = true
@@ -300,6 +304,10 @@ verify_jwt = true
 
 # Manage › Premier (MESITA-3011): every place's Premier standing, read.
 [functions.admin-web-list-premier]
+verify_jwt = true
+
+# MESITA-3167: Manage › Premier mints and revokes 100% Premier codes.
+[functions.admin-web-create-premier-code]
 verify_jwt = true
 
 [functions.consumer-web-list-activity]
@@ -554,6 +562,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.business-web-cancel-premier]
+verify_jwt = true
+
+# MESITA-3167: the place's owner or editor redeems a Premier code (Billing).
+[functions.business-web-redeem-premier-code]
 verify_jwt = true
 
 [functions.business-web-list-verifications]

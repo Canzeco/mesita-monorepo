@@ -8,9 +8,13 @@
 // plus the totals and which Stripe universe the money runs in. One place's
 // full line and the grant / end / remove writes stay on
 // admin-web-get-place-premier and admin-web-grant-place-premier.
+// MESITA-3167: also every Premier code (newest first) with its uses; minting
+// and revoking are admin-web-create-premier-code.
 //
 // Body:     {}
-// Response: { ok: true, stripe: "test" | "live" | "off", totals, places: PremierRow[] }
+// Response: { ok: true, stripe: "test" | "live" | "off", totals, places: PremierRow[], codes: CodeRow[] }
+//           CodeRow = { id, last4, tier, days, max_redemptions, redeemed, expires_at, revoked_at,
+//                       created_by, created_at }
 // Auth:     caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -33,6 +37,7 @@ import {
 } from "../_shared/boost.ts";
 
 const PLACE_LIMIT = 1000;
+const CODE_LIMIT = 500;
 const DAY_MS = 86_400_000;
 
 serveJson("admin-web-list-premier", async (req) => {
@@ -43,7 +48,7 @@ serveJson("admin-web-list-premier", async (req) => {
   const now = Date.now();
   const since = new Date(now - 30 * DAY_MS).toISOString();
   const nowIso = new Date(now).toISOString();
-  const [placesRes, pledgesRes, periodsRes, manualRes] = await Promise.all([
+  const [placesRes, pledgesRes, periodsRes, manualRes, codesRes, usesRes] = await Promise.all([
     admin.from("profiles").select("id, name, boost_tier").eq("state", "active").order("name").limit(PLACE_LIMIT),
     admin.from("place_backings").select(PLEDGE_COLUMNS).in("status", ["open", "ready"]).limit(5000),
     admin
@@ -52,11 +57,19 @@ serveJson("admin-web-list-premier", async (req) => {
       .or(`ends_at.gte.${nowIso},created_at.gte.${since},status.eq.charging`)
       .limit(5000),
     admin.from("place_manual_premier").select(MANUAL_COLUMNS).gt("ends_at", nowIso).limit(5000),
+    admin
+      .from("premier_codes")
+      .select("id, last4, tier, days, max_redemptions, expires_at, revoked_at, created_by, created_at")
+      .order("created_at", { ascending: false })
+      .limit(CODE_LIMIT),
+    admin.from("premier_code_redemptions").select("code_id").limit(50000),
   ]);
   if (placesRes.error) return json({ ok: false, error: `places_read: ${placesRes.error.message}` }, 500);
   if (pledgesRes.error) return json({ ok: false, error: `pledges_read: ${pledgesRes.error.message}` }, 500);
   if (periodsRes.error) return json({ ok: false, error: `periods_read: ${periodsRes.error.message}` }, 500);
   if (manualRes.error) return json({ ok: false, error: `manual_read: ${manualRes.error.message}` }, 500);
+  if (codesRes.error) return json({ ok: false, error: `codes_read: ${codesRes.error.message}` }, 500);
+  if (usesRes.error) return json({ ok: false, error: `code_uses_read: ${usesRes.error.message}` }, 500);
 
   const pledgesBy = group((pledgesRes.data ?? []) as Pledge[]);
   const periodsBy = group((periodsRes.data ?? []) as Period[]);
@@ -87,6 +100,10 @@ serveJson("admin-web-list-premier", async (req) => {
     };
   });
 
+  const uses = new Map<string, number>();
+  for (const u of (usesRes.data ?? []) as { code_id: string }[]) uses.set(u.code_id, (uses.get(u.code_id) ?? 0) + 1);
+  const codes = ((codesRes.data ?? []) as { id: string }[]).map((c) => ({ ...c, redeemed: uses.get(c.id) ?? 0 }));
+
   const stripe = boostStripeKey() ? (boostLivemode() ? "live" : "test") : "off";
   return json({
     ok: true,
@@ -98,6 +115,7 @@ serveJson("admin-web-list-premier", async (req) => {
       charged_30d_cents: places.reduce((sum, p) => sum + p.charged_30d_cents, 0),
     },
     places,
+    codes,
   });
 });
 
