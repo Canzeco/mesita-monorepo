@@ -1,7 +1,6 @@
 import { getPremier } from "@/lib/business-api";
 import { PremierPanel } from "./PremierPanel";
 import { getManagePlace } from "@/lib/place-view";
-import { BoostSection } from "@/components/place-manage/sections/BoostSection";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Premier" };
@@ -27,14 +26,6 @@ export default async function PremierPage({
         </p>
       ) : null}
       <PremierPanel placeId={id} initial={res.ok ? res.data : null} loadError={res.ok ? null : res.error} />
-      {/* Mesita staff: Manual Premier (grant, end), every period and what it
-          charged — the card that was web-admin's Single Place › Premier
-          (MESITA-3104). Its doors refuse anyone not in super_admins. */}
-      {manage?.role === "superadmin" ? (
-        <div className="max-w-3xl">
-          <BoostSection placeId={id} />
-        </div>
-      ) : null}
     </div>
   );
 }
