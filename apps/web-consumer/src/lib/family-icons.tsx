@@ -31,7 +31,6 @@ import {
   Pizza,
   Salad,
   Shrimp,
-  Soup,
   Star,
   Users,
   Utensils,
@@ -83,38 +82,61 @@ export const Taco = drawnIcon("Taco", [
   "M6 12c1-1.5 2-.5 3-1.5s2 .5 3-1 2 .5 3-1 2 .5 3 1",
 ]);
 
-/** The flag of Mexico: three bands and the eagle's round emblem in the
- *  middle one, Mexican's 🇲🇽. Not a chili (Pato, MESITA-3108). */
-const MexicanFlag = drawnIcon("MexicanFlag", [
-  "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
+/** A one-country cuisine wears its country's flag (Pato, MESITA-3108 for
+ *  Mexican, MESITA-3129 for the rest: "same style across all icons"). Every
+ *  flag shares this outline and is told apart by what is inside it. */
+const FLAG_OUTLINE =
+  "M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z";
+
+function flagIcon(name: string, inside: readonly string[]) {
+  return drawnIcon(name, [FLAG_OUTLINE, ...inside]);
+}
+
+/** Three bands and the eagle's round emblem in the middle one: 🇲🇽. */
+const MexicanFlag = flagIcon("MexicanFlag", [
   "M9 5v14",
   "M15 5v14",
   "M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0",
 ]);
 
-/** Spaghetti wound on a fork over its bowl: Italian's 🍝. */
-const Pasta = drawnIcon("Pasta", [
-  "M4 15h16c0 3.3-3.6 6-8 6s-8-2.7-8-6Z",
-  "M12 9.5V3",
-  "M10 2.5v2.5a2 2 0 0 0 4 0V2.5",
-  "M8.5 9.5c0-.8 1.6-1.5 3.5-1.5s3.5.7 3.5 1.5-1.6 1.5-3.5 1.5-3.5-.7-3.5-1.5Z",
-  "M9 11c-.6 1.2.4 2.8-.2 4",
-  "M15 11c.6 1.2-.4 2.8.2 4",
+/** Three bands, no emblem: 🇮🇹. */
+const ItalianFlag = flagIcon("ItalianFlag", ["M9 5v14", "M15 5v14"]);
+
+/** The disc: 🇯🇵. */
+const JapaneseFlag = flagIcon("JapaneseFlag", [
+  "M9 12a3 3 0 1 0 6 0 3 3 0 1 0-6 0",
 ]);
 
-/** A rice triangle in its nori band: Japanese. */
-const Onigiri = drawnIcon("Onigiri", [
-  "M10.3 4.6 3.8 15.9C2.6 18 4 20.5 6.4 20.5h11.2c2.4 0 3.8-2.5 2.6-4.6L13.7 4.6a2 2 0 0 0-3.4 0Z",
-  "M9 20.5V15h6v5.5",
+/** The great star at the hoist: 🇨🇳. */
+const ChineseFlag = flagIcon("ChineseFlag", [
+  "M8.5 7.5 9.35 9.83 11.83 9.92 9.88 11.45 10.56 13.83 8.5 12.45 6.44 13.83 7.12 11.45 5.17 9.92 7.65 9.83Z",
 ]);
 
-/** The folded takeout pail and its wire handle: Chinese's 🥡. */
-const TakeoutBox = drawnIcon("TakeoutBox", [
-  "M5.5 10h13L17 21H7Z",
-  "M5.5 10 8 5.5h8l2.5 4.5",
-  "M8 5.5 10 10",
-  "M16 5.5 14 10",
-  "M8.5 5.5C8.5 3.5 10 2 12 2s3.5 1.5 3.5 3.5",
+/** Three stripes and the wheel in the middle one: 🇮🇳. */
+const IndianFlag = flagIcon("IndianFlag", [
+  "M3 9.7h18",
+  "M3 14.3h18",
+  "M10.8 12a1.2 1.2 0 1 0 2.4 0 1.2 1.2 0 1 0-2.4 0",
+]);
+
+/** The ring of stars, eight so they stay apart at chip size: 🇪🇺. */
+const EuropeanFlag = flagIcon("EuropeanFlag", [
+  "M16 12h.01",
+  "M14.83 14.83h.01",
+  "M12 16h.01",
+  "M9.17 14.83h.01",
+  "M8 12h.01",
+  "M9.17 9.17h.01",
+  "M12 8h.01",
+  "M14.83 9.17h.01",
+]);
+
+/** The canton and the stripes: 🇺🇸. */
+const AmericanFlag = flagIcon("AmericanFlag", [
+  "M11 5v7",
+  "M11 8.5h10",
+  "M3 12h18",
+  "M3 15.5h18",
 ]);
 
 /** A bowl and its chopsticks: Asian. */
@@ -133,21 +155,6 @@ const Kebab = drawnIcon("Kebab", [
   "M10.8 17.4 6.6 13.2 4.2 15.6 8.4 19.8Z",
   "M15.3 12.9 11.1 8.7 8.7 11.1 12.9 15.3Z",
   "M19.8 8.4 15.6 4.2 13.2 6.6 17.4 10.8Z",
-]);
-
-/** European's 🥨: one rope, its ends crossed onto the belly. */
-const Pretzel = drawnIcon("Pretzel", [
-  "M15.5 18 12 12.5C10.5 10 10 5 7 5 4.5 5 3 7 3 10c0 5.5 4 10.5 9 10.5s9-5 9-10.5c0-3-1.5-5-4-5-3 0-3.5 5-5 7.5L8.5 18",
-]);
-
-/** A carton of fries: American's 🍟. */
-const Fries = drawnIcon("Fries", [
-  "M5.5 10.5 7 21h10l1.5-10.5",
-  "M5.5 10.5c4 2.5 9 2.5 13 0",
-  "M8 11.5 7 4",
-  "M10.5 12V3",
-  "M13.5 12V3",
-  "M16 11.5 17 4",
 ]);
 
 /** A grown-up and a child: Family. Social's Users is two equals. */
@@ -205,8 +212,8 @@ export const FALLBACK_FAMILY_ICON: LineIcon = Utensils;
  *  chip, MESITA-2502; Home's row, MESITA-2516), Home's Social and Saved by
  *  their chip keys; families by their family key. Each mark names the thing
  *  a guest goes there for, as its emoji does (MESITA-2953: a grape for
- *  Italian, a flag for American, wind for Hookah and a TV for Sports did
- *  not). */
+ *  Italian, wind for Hookah and a TV for Sports did not). A one-country
+ *  cuisine is the exception: it wears its flag (MESITA-3129). */
 export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   // Top (MESITA-2534) wears a star (Pato, MESITA-2557: fire "feels like
   // trending"); before that fire, a trending-up arrow, a grid of everything.
@@ -227,14 +234,14 @@ export const FAMILY_ICONS: Readonly<Record<string, LineIcon>> = {
   mexican: MexicanFlag,
   steak: Beef,
   seafood: Shrimp,
-  italian: Pasta,
-  japanese: Onigiri,
-  chinese: TakeoutBox,
+  italian: ItalianFlag,
+  japanese: JapaneseFlag,
+  chinese: ChineseFlag,
   asian: NoodleBowl,
-  indian: Soup,
+  indian: IndianFlag,
   arabic: Kebab,
-  european: Pretzel,
-  american: Fries,
+  european: EuropeanFlag,
+  american: AmericanFlag,
   dinner: UtensilsCrossed,
   fancy: HandPlatter,
   family: ParentAndChild,
