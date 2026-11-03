@@ -1,4 +1,4 @@
-import { Layers, MapPinPlus, Pencil, RefreshCw } from "lucide-react";
+import { Layers, MapPinPlus, RefreshCw } from "lucide-react";
 
 // Two sidebar entries since MESITA-2083 — "Creating" and "Enriching" (were
 // Creation and Enrichment until MESITA-2800, one -ing verb per row) — over
@@ -30,9 +30,5 @@ export const UPDATING_PARENT = {
   Icon: RefreshCw,
 } as const;
 
-// Editing (MESITA-2796): what an admin's hand edit on Single Place writes.
-export const EDITING_PARENT = {
-  href: "/enricher-config/editing",
-  label: "Editing",
-  Icon: Pencil,
-} as const;
+// Editing (MESITA-2796) is gone (MESITA-3162, Pato: "there is no editing
+// anymore"); /enricher-config/editing falls to [...slug] and lands on Creation.
