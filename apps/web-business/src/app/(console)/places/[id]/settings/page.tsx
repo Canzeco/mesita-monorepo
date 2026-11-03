@@ -39,7 +39,7 @@ export default async function PlaceSettingsPage({
   if (!manage) notFound();
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4 pb-8">
+    <div className="flex flex-col gap-4 pb-8">
       <Card className="flex flex-col gap-3">
         <p className="font-semibold">This place</p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">

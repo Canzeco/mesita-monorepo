@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { PlaceManageShell } from "@/components/place-manage/PlaceManageShell";
 import { PlaceScroll } from "@/components/place-manage/PlaceScroll";
+import { PlaceTabTitle } from "@/components/shell/PlaceTabTitle";
 import { PreviewButton } from "@/components/place-manage/PreviewButton";
 import { ShellPlaceName } from "@/lib/shell-place";
 import { EnrichingTag } from "@/components/place-manage/GenerateSteps";
@@ -41,6 +42,7 @@ export default async function PlaceLayout({
               <span className="border-border bg-card type-label rounded-full border px-2.5 py-0.5 font-semibold">Mesita staff</span>
             ) : null}
           </div>
+          <PlaceTabTitle />
           <PreviewButton />
         </div>
         <PlaceScroll>{children}</PlaceScroll>

@@ -8,7 +8,7 @@ import { ClaimSearch } from "@/components/claim/ClaimSearch";
 import { PLACES, claimHref, placeTabHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Your places" };
+export const metadata = { title: "Places" };
 
 const STATE_COPY: Record<MyPlaceState, string> = {
   owner: "You run this place",
@@ -32,59 +32,62 @@ export default async function PlacesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Your places"
-        sub="The places you run on Mesita. Each one has its profile, its Premier and its settings."
-      />
-      {/* Places (Pato, MESITA-3126): a search on top, then the places you run.
-          Everyone, staff included, claims a place before opening it
-          (MESITA-3142). */}
-      <ClaimSearch />
-      {places.length === 0 ? (
-        <Card className="flex flex-col items-start gap-3">
-          <Store className="text-muted-foreground size-6" aria-hidden />
-          <p className="font-semibold">You don&apos;t run a place on Mesita yet.</p>
-          <p className="text-muted-foreground text-sm">Search for it above and claim it: we call the phone on its listing with a code.</p>
-        </Card>
-      ) : (
-        <Card className="divide-border divide-y p-0 sm:p-0">
-          {places.map((p) => {
-            const open = p.state === "owner";
-            const body = (
-              <div className="flex items-center gap-4 px-5 py-4">
-                {p.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.photo} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <span className="bg-muted size-12 shrink-0 rounded-xl" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{p.name ?? "Unnamed place"}</p>
-                  <p className="text-muted-foreground text-sm">
-                    {STATE_COPY[p.state]}
-                    {p.state === "owner" && day(p.expires_at) ? ` · until ${day(p.expires_at)}` : ""}
-                  </p>
-                  {p.state === "rejected" && p.decision_note ? (
-                    <p className="text-muted-foreground mt-1 text-sm">&ldquo;{p.decision_note}&rdquo;</p>
+      <PageHeader title="Places" sub="Yours are the places you run on Mesita. All is every other place: find yours and claim it." />
+      {/* Two columns (Pato, MESITA-3151: "places you manage vs places you
+          don't manage, but in one word"): Yours, then All, the search
+          (MESITA-3126). Everyone, staff included, claims a place before
+          opening it (MESITA-3142). */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Card className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold tracking-tight">Yours</h2>
+            <p className="text-muted-foreground text-sm">The places you run. Each has its profile, its Premier and its settings.</p>
+          </div>
+          {places.length === 0 ? (
+            <div className="bg-muted/50 flex flex-col items-center gap-2 rounded-2xl px-5 py-8 text-center">
+              <Store className="text-muted-foreground size-6" aria-hidden />
+              <p className="font-semibold">You don&apos;t run a place on Mesita yet.</p>
+              <p className="text-muted-foreground max-w-xs text-sm">Find it under All and claim it.</p>
+            </div>
+          ) : (
+            <ul className="divide-border divide-y">
+              {places.map((p) => (
+                <li key={p.place_id} className="flex items-center gap-4 px-1 py-3">
+                  {p.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.photo} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
+                  ) : (
+                    <span className="bg-muted size-12 shrink-0 rounded-xl" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">{p.name ?? "Unnamed place"}</p>
+                    <p className="text-muted-foreground truncate text-sm">
+                      {STATE_COPY[p.state]}
+                      {p.state === "owner" && day(p.expires_at) ? ` · until ${day(p.expires_at)}` : ""}
+                    </p>
+                    {p.state === "rejected" && p.decision_note ? (
+                      <p className="text-muted-foreground mt-1 text-sm">&ldquo;{p.decision_note}&rdquo;</p>
+                    ) : null}
+                  </div>
+                  {p.state === "owner" ? (
+                    <Link
+                      href={placeTabHref(p.place_id, "profile")}
+                      className="bg-foreground text-background shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold"
+                    >
+                      Open
+                    </Link>
+                  ) : p.state === "expired" || p.state === "rejected" ? (
+                    <Link href={claimHref(p.place_id)} className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">
+                      Claim again
+                    </Link>
                   ) : null}
-                </div>
-                {p.state === "expired" || p.state === "rejected" ? (
-                  <Link href={claimHref(p.place_id)} className="text-sm font-semibold underline underline-offset-4">
-                    Claim again
-                  </Link>
-                ) : null}
-              </div>
-            );
-            return open ? (
-              <Link key={p.place_id} href={placeTabHref(p.place_id, "profile")} className="hover:bg-muted/50 block transition">
-                {body}
-              </Link>
-            ) : (
-              <div key={p.place_id}>{body}</div>
-            );
-          })}
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
-      )}
+        <ClaimSearch />
+      </div>
     </div>
   );
 }

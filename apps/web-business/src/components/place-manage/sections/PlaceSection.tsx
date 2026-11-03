@@ -87,10 +87,10 @@ function verifiedAction(key: string, value: string): string | null {
   try {
     const url = new URL(raw);
     if (key === "uber_eats_url" && url.hostname.includes("ubereats.com") && url.pathname.includes("/store/")) {
-      return "Pedir";
+      return "Uber Eats";
     }
     if (key === "opentable_url" && url.hostname.includes("opentable.") && url.pathname.startsWith("/r/")) {
-      return "Reservar";
+      return "OpenTable";
     }
   } catch {
     return null;

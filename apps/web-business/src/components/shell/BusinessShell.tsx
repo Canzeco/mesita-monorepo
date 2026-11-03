@@ -2,7 +2,6 @@
 
 // The Business app's frame (MESITA-3103; menu Pato, 2026-11-02, MESITA-3136):
 //
-//   Logo
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Products ──────────────────────────────────────────────┐
@@ -13,6 +12,7 @@
 //   └─────────────────────────────────────────┘
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
+//   Logo      — under Account (MESITA-3151)
 //
 // The place's pages sit in two labelled groups (Pato: "if you use boxes it's
 // clearer to understand"). No colour (Pato, MESITA-3148, reversing
@@ -34,7 +34,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, ChevronsUpDown, CircleUser, CreditCard, Gift, MapPinned, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
+import { ChevronsUpDown, CircleUser, Store, type LucideIcon } from "lucide-react";
+import { PLACE_TAB_META } from "./place-tab-meta";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
 import { useShellPlace } from "@/lib/shell-place";
@@ -67,7 +68,8 @@ function menu(
     role: placeId ? role : null,
     hasPlace: !!placeId,
   };
-  const tab = (key: PlaceTab, label: string, icon: LucideIcon, soon = false): Row => {
+  const tab = (key: PlaceTab): Row => {
+    const { label, icon, soon } = PLACE_TAB_META[key];
     const href = placeId ? placeTabHref(placeId, key) : null;
     return { key, label, icon, href, active: href ? under(href) : false, soon };
   };
@@ -76,17 +78,17 @@ function menu(
     switcher,
     place: {
       products: [
-        tab("profile", "Profile", MapPinned),
-        tab("reviews", "Reviews", Star),
-        tab("premier", "Premier", BadgeCheck),
-        tab("payments", "Payments", CreditCard, true),
-        tab("rewards", "Rewards", Gift, true),
+        tab("profile"),
+        tab("reviews"),
+        tab("premier"),
+        tab("payments"),
+        tab("rewards"),
       ],
       manage: [
-        tab("settings", "Settings", Settings),
+        tab("settings"),
         // Mesita staff only (MESITA-3122): the place's staff page. The server
         // refuses anyone else.
-        ...(isSuperAdmin ? [tab("admin", "Admin", ShieldCheck)] : []),
+        ...(isSuperAdmin ? [tab("admin")] : []),
       ],
     },
   };
@@ -194,17 +196,18 @@ export function BusinessShell({
   return (
     <div className="min-h-dvh">
       <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3">
-        <Link href={PLACES} title="Mesita Business" className="flex items-center justify-center gap-2 lg:justify-start lg:px-2.5">
-          <MesitaMark className="size-6 shrink-0 text-(--brand-pink)" />
-          <span className="hidden text-base font-semibold tracking-tight lg:inline">Business</span>
-        </Link>
-        <nav aria-label="Business" className="mt-6 flex flex-1 flex-col gap-0.5">
+        <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5">
           <PlaceSwitcher s={switcher} />
           <Group label="Products" rows={place.products} />
           <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
           <div className="border-border mt-auto border-t pt-2">
             <RailRow row={account} />
+            {/* The mark sits at the foot, under Account (Pato, MESITA-3151). */}
+            <Link href={PLACES} title="Mesita Business" className="text-muted-foreground mt-3 flex items-center justify-center gap-2 pb-1 lg:justify-start lg:px-2.5">
+              <MesitaMark className="size-4 shrink-0" />
+              <span className="hidden text-xs font-semibold tracking-tight lg:inline">Mesita Business</span>
+            </Link>
           </div>
         </nav>
       </aside>

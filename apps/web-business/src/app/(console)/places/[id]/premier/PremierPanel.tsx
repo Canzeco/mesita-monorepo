@@ -133,7 +133,7 @@ export function PremierPanel({
   const quotes = data.quotes;
 
   return (
-    <div className="flex max-w-3xl flex-col gap-4 pb-8">
+    <div className="flex flex-col gap-4 pb-8">
       {notice ? <Card className="text-sm">{notice}</Card> : null}
 
       <Card className="flex flex-col gap-3">
