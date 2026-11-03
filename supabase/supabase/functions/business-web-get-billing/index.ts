@@ -12,16 +12,29 @@
 // date and the card expiring before the next charge, all dated in the place's
 // time zone. `billing.ts` decides; the page only formats.
 //
+// MESITA-3185: also what Stripe already holds for the caller, read-only: their
+// saved cards and the receipt of each charge they paid. A failed read leaves
+// the page working without them.
+//
 // Body: { place_id: uuid }
-// Response: { ok: true, ...BillingView, plan: Plan | null, charges: Charge[] }
+// Response: { ok: true, ...BillingView, plan: Plan | null, cards: SavedCard[], charges: Charge[] }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
-import { boostLivemode, boostStripeKey, readBoostPlace, readLine, runningPeriod, stripeClient, subscriptionOf } from "../_shared/boost.ts";
-import { billingView, type Card } from "./billing.ts";
+import {
+  boostLivemode,
+  boostStripeKey,
+  readBoostPlace,
+  readCustomer,
+  readLine,
+  runningPeriod,
+  stripeClient,
+  subscriptionOf,
+} from "../_shared/boost.ts";
+import { billingView, type Card, receiptsByIntent, type SavedCard, savedCards } from "./billing.ts";
 
 serveJson("business-web-get-billing", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -60,6 +73,26 @@ serveJson("business-web-get-billing", async (req) => {
     }
   }
 
+  let cards: SavedCard[] = [];
+  let receipts = new Map<string, string>();
+  if (key) {
+    try {
+      const customer = await readCustomer(admin, user.id, boostLivemode());
+      if (customer) {
+        const stripe = stripeClient(key);
+        const id = encodeURIComponent(customer);
+        const [methods, paid] = await Promise.all([
+          stripe("GET", `customers/${id}/payment_methods`, { type: "card", limit: 20 }),
+          stripe("GET", "charges", { customer, limit: 100 }),
+        ]);
+        cards = savedCards(methods.data, payer === "you" ? sub?.stripe_payment_method_id : null);
+        receipts = receiptsByIntent(paid.data);
+      }
+    } catch (err) {
+      console.error("[business-web-get-billing] saved cards and receipts:", String(err));
+    }
+  }
+
   const charges = line.periods
     .filter((p) => p.backing_id && (p.charged_cents > 0 || p.status === "declined" || p.status === "charging"))
     .map((p) => ({
@@ -71,6 +104,7 @@ serveJson("business-web-get-billing", async (req) => {
       ends_at: p.ends_at,
       amount_cents: p.charged_cents,
       status: p.status === "charging" ? "charging" : p.status === "declined" ? "declined" : "paid",
+      receipt_url: (p.stripe_payment_intent_id && receipts.get(p.stripe_payment_intent_id)) || null,
     }));
 
   const view = billingView({
@@ -95,6 +129,7 @@ serveJson("business-web-get-billing", async (req) => {
         next_charge_at: running?.backing_id === sub.id ? running.ends_at : null,
       }
       : null,
+    cards,
     charges,
   });
 });
