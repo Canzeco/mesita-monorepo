@@ -331,12 +331,11 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// The bar is Home · Search · Pay (Soon) · Me (Pato, MESITA-2076: "BOTTOM BAR
-// MUST ONLY BE. Home. Search. Pay(Soon). Me."), and Pay is a LINK like the
-// other three — its page is the Soon state. Two things
-// MESITA-1119 cared about are unchanged below: no class stamped into Me, and
-// no Agents tab.
-describe("the bar is Home · Search · Pay (Soon) · Me", () => {
+// The bar is Home · Search · Pay · Me (Pato, MESITA-2076), and Pay is a LINK
+// like the other three — its page is the Soon state, the tab wears no tag
+// (MESITA-3124). Two things MESITA-1119 cared about are unchanged below: no
+// class stamped into Me, and no Agents tab.
+describe("the bar is Home · Search · Pay · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -377,15 +376,11 @@ describe("the bar is Home · Search · Pay (Soon) · Me", () => {
   });
 
   // Four <a> tabs and no <button>: Pay navigates to its page like every
-  // other link, and it is the one tab tagged Soon (MESITA-3113).
-  it("draws four links and no button, Pay the one tagged Soon", async () => {
+  // other link.
+  it("draws four links and no button", async () => {
     const html = await renderNav("/search");
-    const anchors = html.split("<a ").slice(1);
-    expect(anchors).toHaveLength(4);
+    expect(html.split("<a ").slice(1)).toHaveLength(4);
     expect(html.split("<button").slice(1)).toHaveLength(0);
-    const pay = anchors.find((a) => /text-center">Pay</.test(a));
-    expect(pay).toMatch(/>Soon</);
-    expect(html.match(/>Soon</g)).toHaveLength(1);
   });
 
   it("does not stamp class into Me and does not add an Agents tab", async () => {
