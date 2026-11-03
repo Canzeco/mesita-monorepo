@@ -20,8 +20,13 @@
 // CREATED ≠ OWNED: this writes no place_managers row. The owner goes on to
 // the claim form and Mesita reviews the request as for any place.
 //
+// ENRICH ON ADD (MESITA-3140, as a guest's first view after Generate,
+// MESITA-2952): a fresh create counts the adder as the place's first request
+// (`applyPlaceRequest`), so with "Enrich after N views" at 1 the same Render
+// run starts and the place wears Enriching. A failed count never fails the add.
+//
 // Body: { googlePlaceId: string }
-// Response: { ok: true, created: boolean, place: { id, ... } }
+// Response: { ok: true, created: boolean, enriching?: boolean, place: { id, ... } }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
@@ -36,6 +41,7 @@ import { consumeConsumerCreateQuota } from "../_shared/create-quota.ts";
 import { type PlaceOpenRecord, recordPlaceOpen } from "../_shared/place-open-events.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
+import { applyPlaceRequest } from "../_shared/place-requests.ts";
 
 const CALLER = "business-web-create-place";
 
@@ -94,5 +100,12 @@ serveJson("business-web-create-place", async (req) => {
   }
 
   await log({ outcome: "created", placeId: idOf(created.place) });
-  return json({ ok: true, created: true, place: created.place }, 201);
+  let enriching = false;
+  const placeId = idOf(created.place);
+  if (placeId && consumer.consumerId) {
+    const counted = await applyPlaceRequest(admin, { consumerId: consumer.consumerId, placeId, callerName: CALLER });
+    if (counted.ok) enriching = counted.enriching;
+    else console.error(`[${CALLER}] the add did not count toward Enrich: ${counted.error}`);
+  }
+  return json({ ok: true, created: true, enriching, place: created.place }, 201);
 });
