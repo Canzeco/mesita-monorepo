@@ -10,7 +10,7 @@
 //   │ Profile · Reviews · Premier · Payments, Products, Rewards: Soon │
 //   └──────────────────────────────────────────────────────────────┘
 //   ┌ Manage ─────────────────────────────────┐
-//   │ Settings · Admin (staff)               │  Admin: MESITA-3122
+//   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
@@ -91,6 +91,8 @@ function menu(
         tab("rewards"),
       ],
       manage: [
+        // Billing first in Manage (Pato, MESITA-3160: "Billing, Settings").
+        tab("billing"),
         tab("settings"),
         // Mesita staff only (MESITA-3122): the place's staff page. The server
         // refuses anyone else.

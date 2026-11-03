@@ -15,8 +15,8 @@ function packageAlias(name: string): string {
 }
 
 // Old addresses, each in one hop (MESITA-3141). 307s: the console moves fast,
-// so nothing here is cached as permanent. The query string rides along, so a
-// Stripe return to /places/<id>/billing?boost=… still settles on Settings.
+// so nothing here is cached as permanent. The query string rides along.
+// /places/<id>/billing is a page again (MESITA-3160).
 // /places/<id>/preview stays: web-admin links it.
 const REDIRECTS: Array<{ source: string; destination: string }> = [
   // The phone's More page and Products left with the menu (MESITA-3117, 3128).
@@ -31,7 +31,6 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/claim", destination: "/places" },
   // One place: its index, and the views that folded (MESITA-3136).
   { source: "/places/:id", destination: "/places/:id/profile" },
-  { source: "/places/:id/billing", destination: "/places/:id/premier" },
   { source: "/places/:id/future", destination: "/places/:id/payments" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
   // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its

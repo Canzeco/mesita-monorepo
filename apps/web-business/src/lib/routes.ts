@@ -18,16 +18,17 @@ export const ACCOUNT = "/account";
 
 // Preview is a modal on Profile, Billing a section of Settings, and Future
 // split into Payments and Rewards (MESITA-3136).
-export const PLACE_TABS = ["profile", "reviews", "premier", "payments", "products", "rewards", "settings", "admin"] as const;
+export const PLACE_TABS = ["profile", "reviews", "premier", "payments", "products", "rewards", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   return `/places/${encodeURIComponent(placeId)}/${tab}`;
 }
 
-/** The Billing section under a place's Premier (MESITA-3154; Settings before). */
+/** A place's Billing page (MESITA-3160; under Premier in MESITA-3154, in
+ *  Settings before). */
 export function billingHref(placeId: string): string {
-  return `${placeTabHref(placeId, "premier")}#billing`;
+  return placeTabHref(placeId, "billing");
 }
 
 /** Claim one place; `added` says Mesita just added it from Google. */
