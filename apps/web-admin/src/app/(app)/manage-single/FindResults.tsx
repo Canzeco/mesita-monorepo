@@ -401,7 +401,7 @@ function NameCell({
     FOCUS_RING_CLASS;
   if (row.held && row.mesitaId) {
     return (
-      <PlaceDoor id={id} href={businessPlaceHref(row.mesitaId, "internal")} className={name}>
+      <PlaceDoor id={id} href={businessPlaceHref(row.mesitaId, "admin")} className={name}>
         {row.name}
       </PlaceDoor>
     );

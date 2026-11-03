@@ -91,7 +91,7 @@ export function SinglePlaceClient({
   // A place opens in the Business app (MESITA-3104), where its whole page
   // lives now. Unset NEXT_PUBLIC_BUSINESS_URL: say so instead of a dead push.
   function open(placeId: string) {
-    const href = businessPlaceHref(placeId, "internal");
+    const href = businessPlaceHref(placeId, "admin");
     if (!href) {
       setError("The Business app's address is not set (NEXT_PUBLIC_BUSINESS_URL).");
       return;

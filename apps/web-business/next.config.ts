@@ -34,6 +34,12 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/places/:id/billing", destination: "/places/:id/settings" },
   { source: "/places/:id/future", destination: "/places/:id/payments" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
+  // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its
+  // only admin, and only at the place level"): the cross-place Claim
+  // requests page is gone.
+  { source: "/internal", destination: "/places" },
+  { source: "/admin", destination: "/places" },
+  { source: "/places/:id/internal", destination: "/places/:id/admin" },
 ];
 
 const nextConfig: NextConfig = {

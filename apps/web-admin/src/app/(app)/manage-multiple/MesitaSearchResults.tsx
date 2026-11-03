@@ -54,7 +54,7 @@ export function MesitaSearchResults({ rows }: { rows: Row[] }) {
                         {/* The name is the door to the place page, in the
                             Business app since MESITA-3104. */}
                         <PlaceDoor
-                          href={businessPlaceHref(hit.id, "internal")}
+                          href={businessPlaceHref(hit.id, "admin")}
                           className="block truncate font-medium underline-offset-4 hover:underline"
                         >
                           {hit.name || hit.google_name}

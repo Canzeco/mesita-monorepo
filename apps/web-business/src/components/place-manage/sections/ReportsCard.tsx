@@ -59,7 +59,7 @@ export function ReportsCard({ place }: { place: AdminPlace }) {
       ) : (
         <ul className="mt-3 flex flex-col">
           {reports.map((r) => (
-            <ReportRow key={r.id} report={r} showPlace={false} />
+            <ReportRow key={r.id} report={r} />
           ))}
         </ul>
       )}

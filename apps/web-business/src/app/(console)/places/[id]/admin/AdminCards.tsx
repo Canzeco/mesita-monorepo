@@ -7,7 +7,7 @@ import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 // Admin (MESITA-3104): State (Disable), Profile Stats, Actions (reservations,
 // prepayments), Reviews States, Reports, Enrichment (Enrich), Vectors and
 // Metadata. It reads the live place so a write here shows at once.
-export function InternalCards() {
+export function AdminCards() {
   const { place } = usePlaceContext();
   return <AdminSection place={place} />;
 }
