@@ -107,7 +107,7 @@ export async function readPremier(
   return json({
     ok: true,
     tier: placeRes.place?.boost_tier ?? 0,
-    manual: manual ? { tier: manual.tier, ends_at: manual.ends_at } : null,
+    manual: manual ? { tier: manual.tier, ends_at: manual.ends_at, source: manual.source } : null,
     paid,
     renewing: charging,
     viewer,

@@ -12,7 +12,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon;
   payments: { label: "Payments", icon: CreditCard, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   products: { label: "Products", icon: UtensilsCrossed, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   rewards: { label: "Rewards", icon: Gift, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
-  billing: { label: "Billing", icon: Receipt, sub: "The plan, the card on it and every charge." },
+  billing: { label: "Billing", icon: Receipt, sub: "What's running, what it costs and every charge." },
   settings: { label: "Settings", icon: Settings, sub: "Who runs this place and its team." },
   admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only: who runs this place and its requests." },
 };

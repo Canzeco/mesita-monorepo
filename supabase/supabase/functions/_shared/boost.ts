@@ -144,10 +144,12 @@ export type Pledge = {
   ended_reason: EndedReason | null;
   checkout_kind: CheckoutKind | null;
   notice_dismissed_at: string | null;
+  /** Subscribed early, first charged when the Refill days end (MESITA-3165). */
+  early_start?: boolean;
 };
 
 export const PLEDGE_COLUMNS =
-  "id, place_id, consumer_id, tier, billing_interval, amount_cents, status, queued_at, stripe_payment_method_id, stripe_checkout_session_id, pending_tier, pending_interval, pending_amount_cents, quoted_period_id, quoted_credit_cents, livemode, created_at, ended_at, ended_reason, checkout_kind, notice_dismissed_at";
+  "id, place_id, consumer_id, tier, billing_interval, amount_cents, status, queued_at, stripe_payment_method_id, stripe_checkout_session_id, pending_tier, pending_interval, pending_amount_cents, quoted_period_id, quoted_credit_cents, livemode, created_at, ended_at, ended_reason, checkout_kind, notice_dismissed_at, early_start";
 
 export type PeriodStatus = "charging" | "paid" | "declined" | "replaced" | "ended";
 
@@ -186,9 +188,11 @@ export type Manual = {
   ends_at: string;
   source: "admin" | "code" | "purchase";
   granted_by: string | null;
+  /** When the grant was made (Billing's moved date, MESITA-3166). */
+  created_at?: string;
 };
 
-export const MANUAL_COLUMNS = "id, place_id, tier, starts_at, ends_at, source, granted_by";
+export const MANUAL_COLUMNS = "id, place_id, tier, starts_at, ends_at, source, granted_by, created_at";
 
 // ── The subscription, in pure functions ───────────────────────────────────
 
@@ -229,7 +233,7 @@ export const EARLY_START_DAYS = 7;
 
 /** The calendar day of `t` in `timeZone` (UTC when missing or unknown), as a
  *  day number. */
-function localDay(t: number, timeZone: string | null | undefined): number {
+export function localDay(t: number, timeZone: string | null | undefined): number {
   let text: string;
   try {
     text = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone || "UTC", year: "numeric", month: "2-digit", day: "2-digit" })

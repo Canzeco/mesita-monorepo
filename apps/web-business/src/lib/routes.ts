@@ -31,6 +31,12 @@ export function billingHref(placeId: string): string {
   return placeTabHref(placeId, "billing");
 }
 
+/** A place's Premier page, optionally with one plan picked (Billing's Keep
+ *  and See plans, MESITA-3166). */
+export function premierHref(placeId: string, plan?: "boost_2x" | "boost_5x" | null): string {
+  return `${placeTabHref(placeId, "premier")}${plan ? `?plan=${plan}` : ""}`;
+}
+
 /** Claim one place; `added` says Mesita just added it from Google. */
 export function claimHref(placeId: string, opts: { added?: boolean } = {}): string {
   return `/claim/${encodeURIComponent(placeId)}${opts.added ? "?added=1" : ""}`;
