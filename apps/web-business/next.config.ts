@@ -14,8 +14,33 @@ function packageAlias(name: string): string {
   return `./${relative}`;
 }
 
+// Old addresses, each in one hop (MESITA-3141). 307s: the console moves fast,
+// so nothing here is cached as permanent. The query string rides along, so a
+// Stripe return to /places/<id>/billing?boost=… still settles on Settings.
+// /places/<id>/preview stays: web-admin links it.
+const REDIRECTS: Array<{ source: string; destination: string }> = [
+  // The phone's More page and Products left with the menu (MESITA-3117, 3128).
+  { source: "/more", destination: "/places" },
+  { source: "/products", destination: "/places" },
+  // Settings, Payments, Prepayments and Rewards are a place's (MESITA-3120, 3136).
+  { source: "/settings", destination: "/places" },
+  { source: "/payments", destination: "/places" },
+  { source: "/prepayments", destination: "/places" },
+  { source: "/rewards", destination: "/places" },
+  // The claim search is the head of Places (MESITA-3126); /claim/<id> stays.
+  { source: "/claim", destination: "/places" },
+  // One place: its index, and the views that folded (MESITA-3136).
+  { source: "/places/:id", destination: "/places/:id/profile" },
+  { source: "/places/:id/billing", destination: "/places/:id/settings" },
+  { source: "/places/:id/future", destination: "/places/:id/payments" },
+  { source: "/places/:id/preview", destination: "/places/:id/profile" },
+];
+
 const nextConfig: NextConfig = {
   agentRules: false,
+  async redirects() {
+    return REDIRECTS.map((r) => ({ ...r, permanent: false }));
+  },
   transpilePackages: ["@mesita/place-profile"],
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],

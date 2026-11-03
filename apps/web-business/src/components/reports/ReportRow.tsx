@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { AdminPlaceReport } from "@/components/place-manage/actions";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { reportReasonLabel } from "@/lib/report-reasons";
+import { placeTabHref } from "@/lib/routes";
 
 // ONE GUEST REPORT, read-only (MESITA-3024). Activity › Feedback and Single
 // Place › Admin › Reports draw the same row:
@@ -28,7 +29,7 @@ export function ReportRow({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {showPlace ? (
           <Link
-            href={`/places/${report.place_id}/internal`}
+            href={placeTabHref(report.place_id, "internal")}
             className="focus-visible:ring-ring rounded text-sm font-semibold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {report.place_name}

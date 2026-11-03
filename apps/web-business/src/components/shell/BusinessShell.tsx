@@ -36,7 +36,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BadgeCheck, ChevronsUpDown, CircleUser, CreditCard, Gift, IdCard, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
-import { placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/place-tabs";
+import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
 import { useShellPlace } from "@/lib/shell-place";
 import { cn } from "@/lib/utils";
 
@@ -66,11 +66,11 @@ function menu(
   isSuperAdmin: boolean,
 ): { account: Row; switcher: Switcher; place: PlaceMenu } {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const account: Row = { key: "account", label: "Account", icon: CircleUser, tone: "you", href: "/account", active: pathname === "/account" };
+  const account: Row = { key: "account", label: "Account", icon: CircleUser, tone: "you", href: ACCOUNT, active: pathname === ACCOUNT };
   const role = place?.role === "owner" ? "Owner" : place?.role === "editor" ? "Editor" : isSuperAdmin ? "Mesita staff" : null;
   const switcher: Switcher = {
-    href: "/places",
-    active: pathname === "/places" || pathname.startsWith("/claim"),
+    href: PLACES,
+    active: pathname === PLACES || pathname.startsWith("/claim/"),
     name: placeId ? place?.name || "Place" : "Choose a place",
     photo: placeId ? (place?.photo ?? null) : null,
     role: placeId ? role : null,
@@ -205,7 +205,7 @@ export function BusinessShell({
   return (
     <div className="min-h-dvh">
       <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3">
-        <Link href="/places" title="Mesita Business" className="flex items-center justify-center gap-2 lg:justify-start lg:px-2.5">
+        <Link href={PLACES} title="Mesita Business" className="flex items-center justify-center gap-2 lg:justify-start lg:px-2.5">
           <MesitaMark className="size-6 shrink-0 text-(--brand-pink)" />
           <span className="hidden text-base font-semibold tracking-tight lg:inline">Business</span>
         </Link>

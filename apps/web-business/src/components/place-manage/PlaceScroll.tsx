@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { ProfileTab } from "@/components/place-manage/ProfileTab";
-import { placeTabFromPathname } from "@/lib/place-tabs";
+import { placeTabFromPathname } from "@/lib/routes";
 
 // The profile editor stays mounted on every tab. Leaving /profile used to
 // unmount it, and the section cleanup wiped the draft. Off Profile the form

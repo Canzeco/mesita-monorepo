@@ -15,6 +15,7 @@ import { CheckCircle2, Clock, Phone } from "lucide-react";
 import { callPlaceCode, checkPlaceCode, requestVerification, type ClaimOutcome, type ClaimablePlace } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { INPUT_BASE } from "@/components/ui/manage";
+import { PLACES, placeTabHref } from "@/lib/routes";
 
 const ERROR_COPY: Record<string, string> = {
   too_many_requests: "You can send three requests a day. Try again tomorrow.",
@@ -45,7 +46,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
         <p className="font-semibold">You run this place on Mesita.</p>
         <p className="text-muted-foreground text-sm">Its profile, reviews, Premier and settings are yours to manage.</p>
         <Link
-          href={`/places/${encodeURIComponent(place.id)}/profile`}
+          href={placeTabHref(place.id, "profile")}
           className="bg-foreground text-background inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold"
         >
           Open the profile
@@ -62,7 +63,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
         <p className="text-muted-foreground text-sm">
           We&apos;ll write to you on WhatsApp, usually within a day. The place shows up under Places once it&apos;s approved.
         </p>
-        <Link href="/places" className="text-sm font-semibold underline underline-offset-4">Places</Link>
+        <Link href={PLACES} className="text-sm font-semibold underline underline-offset-4">Places</Link>
       </Card>
     );
   }

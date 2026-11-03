@@ -4,7 +4,8 @@ import { getIdentityCached } from "@/lib/identity";
 import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
 import type { MyPlaceState } from "@/lib/business-api";
-import { ClaimSearch } from "../claim/ClaimSearch";
+import { ClaimSearch } from "@/components/claim/ClaimSearch";
+import { PLACES, REQUESTS, claimHref, placeTabHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your places" };
@@ -25,7 +26,7 @@ function day(iso: string | null): string | null {
 export default async function PlacesPage() {
   const identity = await getIdentityCached();
   if (!identity.ok) {
-    return <PageErrorState heading="Could not load your places" message={identity.error} retryHref="/places" />;
+    return <PageErrorState heading="Could not load your places" message={identity.error} retryHref={PLACES} />;
   }
   const { places, isSuperAdmin } = identity.data;
 
@@ -36,7 +37,7 @@ export default async function PlacesPage() {
         sub="The places you run on Mesita. Each one has its profile, its Premier and its settings."
         right={
           isSuperAdmin ? (
-            <Link href="/internal" className="border-border inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold">
+            <Link href={REQUESTS} className="border-border inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold">
               Claim requests
             </Link>
           ) : undefined
@@ -76,14 +77,14 @@ export default async function PlacesPage() {
                   ) : null}
                 </div>
                 {p.state === "expired" || p.state === "rejected" ? (
-                  <Link href={`/claim/${encodeURIComponent(p.place_id)}`} className="text-sm font-semibold underline underline-offset-4">
+                  <Link href={claimHref(p.place_id)} className="text-sm font-semibold underline underline-offset-4">
                     Claim again
                   </Link>
                 ) : null}
               </div>
             );
             return open ? (
-              <Link key={p.place_id} href={`/places/${encodeURIComponent(p.place_id)}/profile`} className="hover:bg-muted/50 block transition">
+              <Link key={p.place_id} href={placeTabHref(p.place_id, "profile")} className="hover:bg-muted/50 block transition">
                 {body}
               </Link>
             ) : (

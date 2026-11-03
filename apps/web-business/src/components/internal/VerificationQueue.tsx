@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { decideVerification, type OwnerView, type PendingRequest } from "@/lib/business-api";
 import { INPUT_BASE } from "@/components/ui/manage";
+import { placeTabHref } from "@/lib/routes";
 
 const METHOD: Record<string, string> = { phone_match: "Phone on listing", phone_code: "Code to listing phone", review: "Reviewed" };
 
@@ -81,7 +82,7 @@ export function VerificationQueue({
           <div key={r.id} className="border-border flex flex-col gap-3 rounded-xl border px-4 py-3">
             <div className="flex min-w-0 flex-col gap-0.5">
               {showPlace ? (
-                <Link href={`/places/${encodeURIComponent(r.place_id)}/internal`} className="font-semibold underline underline-offset-4">
+                <Link href={placeTabHref(r.place_id, "internal")} className="font-semibold underline underline-offset-4">
                   {r.place_name ?? "Unnamed place"}
                 </Link>
               ) : null}

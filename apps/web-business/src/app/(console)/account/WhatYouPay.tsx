@@ -12,6 +12,7 @@ import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { listBilling, startPremier, stopMyPremier, type MySubscription } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
+import { ACCOUNT, billingHref, returnUrl } from "@/lib/routes";
 
 const PLAN_LABEL: Record<string, string> = { boost_2x: "Premier 2X", boost_5x: "Premier 5X" };
 
@@ -51,13 +52,13 @@ export function WhatYouPay({
     const r = await listBilling();
     if (r.ok) setSubs(r.data.subscriptions);
     else setError(r.error);
-    router.replace("/account");
+    router.replace(ACCOUNT);
   }
 
   async function updateCard(sub: MySubscription) {
     setBusy(sub.id);
     setError(null);
-    const r = await startPremier({ placeId: sub.place_id, updateCard: true, returnUrl: `${window.location.origin}/account` });
+    const r = await startPremier({ placeId: sub.place_id, updateCard: true, returnUrl: returnUrl(ACCOUNT) });
     setBusy(null);
     if (!r.ok) return setError(r.error);
     if (r.data.url) window.location.assign(r.data.url);
@@ -112,7 +113,7 @@ export function WhatYouPay({
               <div className="flex flex-wrap gap-2">
                 {sub.runs_place ? (
                   <Link
-                    href={`/places/${encodeURIComponent(sub.place_id)}/settings#billing`}
+                    href={billingHref(sub.place_id)}
                     className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
                   >
                     Open Billing

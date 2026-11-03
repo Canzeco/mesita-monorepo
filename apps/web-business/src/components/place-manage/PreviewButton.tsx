@@ -7,7 +7,7 @@
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Eye, X } from "lucide-react";
-import { placeTabFromPathname } from "@/lib/place-tabs";
+import { placeTabFromPathname } from "@/lib/routes";
 import { PlacePreview } from "./PlacePreview";
 
 export function PreviewButton() {
