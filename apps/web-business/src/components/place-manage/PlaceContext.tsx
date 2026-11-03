@@ -13,6 +13,7 @@ import {
   type SetStateAction,
 } from "react";
 import { mergeReviewFoundFlags } from "@/lib/review-found";
+import { setUnsavedEdits } from "@/lib/unsaved-edits";
 import { updatePlace, type AdminPlace, type ProfileRead } from "./actions";
 import {
   dirtyDialogNavBody,
@@ -254,6 +255,12 @@ export function PlaceProvider({
   }, []);
 
   // Sync history trap to dirty flips (pushState is an external system).
+  // DeploymentWatcher never reloads over these drafts (MESITA-3181).
+  useEffect(() => {
+    setUnsavedEdits(isDirty);
+    return () => setUnsavedEdits(false);
+  }, [isDirty]);
+
   useEffect(() => {
     isDirtyRef.current = isDirty;
     if (isDirty) applyHistory({ type: "dirty-on" });

@@ -8,14 +8,15 @@ import { readSupabaseEnv } from "./env";
 // page-data collection.
 //
 // Routing rules:
-//   - `/` (the auth surface) and `/auth/*` (callback) are always public.
+//   - `/` (the auth surface), `/auth/*` (callback) and `/api/version` (the
+//     build's sha, nothing else) are always public.
 //   - Everything else requires a Supabase session; signed-out visitors
 //     bounce to /?next=<path> so a deep link (the consumer app's "Is this
 //     your business?") survives sign-in. The (console) layout
 //     is the wall; the business-web-* EFs decide every place.
 
 const PUBLIC_PATHS = (path: string) =>
-  path === "/" || path.startsWith("/auth/");
+  path === "/" || path.startsWith("/auth/") || path === "/api/version";
 
 export async function updateSupabaseSession(request: NextRequest) {
   const { url, publishableKey } = readSupabaseEnv();

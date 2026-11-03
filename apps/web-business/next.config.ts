@@ -41,8 +41,15 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/places/:id/internal", destination: "/places/:id/admin" },
 ];
 
+// This build's identity, baked into the client bundle; DeploymentWatcher
+// compares it with the live /api/version (MESITA-3181).
+const buildSha = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.NEXT_PUBLIC_BUILD_SHA ?? "dev";
+
 const nextConfig: NextConfig = {
   agentRules: false,
+  env: {
+    NEXT_PUBLIC_BUILD_SHA: buildSha,
+  },
   async redirects() {
     return REDIRECTS.map((r) => ({ ...r, permanent: false }));
   },

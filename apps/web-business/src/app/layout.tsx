@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import { DeploymentWatcher } from "@/components/shell/DeploymentWatcher";
 import "./globals.css";
 
 const inter = Inter({
@@ -33,7 +34,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
-      <body className="bg-background text-foreground min-h-full">{children}</body>
+      <body className="bg-background text-foreground min-h-full">
+        {children}
+        <DeploymentWatcher />
+      </body>
     </html>
   );
 }
