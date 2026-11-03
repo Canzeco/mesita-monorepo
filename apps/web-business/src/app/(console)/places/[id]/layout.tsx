@@ -10,6 +10,8 @@ import { PlaceManageShell } from "@/components/place-manage/PlaceManageShell";
 import { PlaceScroll } from "@/components/place-manage/PlaceScroll";
 import { PreviewButton } from "@/components/place-manage/PreviewButton";
 import { ShellPlaceName } from "@/lib/shell-place";
+import { EnrichingTag } from "@/components/place-manage/GenerateSteps";
+import { enrichmentView } from "@/lib/place-enriched";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,8 @@ export default async function PlaceLayout({
             <h1 title={manage.place.name} className="min-w-0 truncate font-sans text-xl font-semibold tracking-tight sm:text-2xl">
               {manage.place.name}
             </h1>
+            {/* Mesita is filling in the profile (MESITA-3140). */}
+            {enrichmentView(manage.place).enriching ? <EnrichingTag /> : null}
             {manage.role === "superadmin" ? (
               <span className="border-border bg-card type-label rounded-full border px-2.5 py-0.5 font-semibold">Mesita staff</span>
             ) : null}

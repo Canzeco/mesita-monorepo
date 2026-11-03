@@ -11,8 +11,20 @@ import { useEffect, useRef } from "react";
 import { MapPin, X } from "lucide-react";
 import type { ClaimablePlace } from "@/lib/business-api";
 import { ClaimForm } from "./[placeId]/ClaimForm";
+import { EnrichingTag } from "@/components/place-manage/GenerateSteps";
 
-export function ClaimDialog({ place, added, onClose }: { place: ClaimablePlace | null; added: boolean; onClose: () => void }) {
+export function ClaimDialog({
+  place,
+  added,
+  enriching,
+  onClose,
+}: {
+  place: ClaimablePlace | null;
+  added: boolean;
+  /** The add started Enrich (MESITA-3140). */
+  enriching: boolean;
+  onClose: () => void;
+}) {
   const dialog = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
@@ -45,7 +57,9 @@ export function ClaimDialog({ place, added, onClose }: { place: ClaimablePlace |
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-muted-foreground text-sm">Claim your place</p>
+              <p className="text-muted-foreground flex items-center gap-2 text-sm">
+                Claim your place {enriching ? <EnrichingTag /> : null}
+              </p>
               <p className="truncate text-lg font-semibold tracking-tight">{place.name ?? "Unnamed place"}</p>
               {place.address ? <p className="text-muted-foreground truncate text-sm">{place.address}</p> : null}
             </div>
@@ -60,7 +74,7 @@ export function ClaimDialog({ place, added, onClose }: { place: ClaimablePlace |
           </div>
           {added ? (
             <p className="border-border bg-card rounded-xl border px-4 py-3 text-sm">
-              We added {place.name ?? "your place"} to Mesita. Now prove it&apos;s yours.
+              We added {place.name ?? "your place"} to Mesita{enriching ? " and are filling in its profile from public sources" : ""}. Now prove it&apos;s yours.
             </p>
           ) : null}
           <ClaimForm place={place} />
