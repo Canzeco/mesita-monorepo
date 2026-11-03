@@ -153,9 +153,9 @@ export function PremierPanel({
         </ul>
         {payer ? (
           <div className="flex flex-wrap gap-2">
-            {/* The card and every charge live on Billing (MESITA-3128). */}
+            {/* The card and every charge live in Settings › Billing (MESITA-3128, 3136). */}
             <Link
-              href={`/places/${encodeURIComponent(placeId)}/billing`}
+              href={`/places/${encodeURIComponent(placeId)}/settings#billing`}
               className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
             >
               Card and charges
