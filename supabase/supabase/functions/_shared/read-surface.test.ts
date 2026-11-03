@@ -241,6 +241,8 @@ const PROFILES_READ_ALLOWLIST = [
   // The claim call (MESITA-3127): the listing phone it dials, and the state.
   "business-web-call-place-code/index.ts",
   "business-web-list-verifications/index.ts",
+  // What you pay (MESITA-3130): the name and photo of each place the caller pays Premier for.
+  "business-web-list-billing/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {

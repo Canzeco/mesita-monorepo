@@ -5,6 +5,10 @@
 // caller's own card through Stripe Checkout. The caller needs a consumers row
 // (a phone sign-in): Premier's payer is a guest account.
 //
+// `kind: "update_card"` is the payer's own card (MESITA-3130): it asks for no
+// place access, since startPremier refuses anyone but the payer (`not_payer`),
+// so a payer who no longer runs the place can still replace their card.
+//
 // Body: consumer-web-start-premier's body
 // Response: consumer-web-start-premier's response, or code `no_payer_account`
 
@@ -27,10 +31,12 @@ serveJson("business-web-start-premier", async (req) => {
     return json({ ok: false, ...(parsed.code ? { code: parsed.code } : {}), error: parsed.error }, 400);
   }
 
-  const access = await requirePlaceAccess(admin, user, parsed.start.placeId);
-  if (access instanceof Response) return access;
-  // Premier money is the owner's (MESITA-3120): editors see it, never buy or stop it.
-  if (!canManage(access.role)) return ownerOnly();
+  if (!parsed.start.updateCard) {
+    const access = await requirePlaceAccess(admin, user, parsed.start.placeId);
+    if (access instanceof Response) return access;
+    // Premier money is the owner's (MESITA-3120): editors see it, never buy or stop it.
+    if (!canManage(access.role)) return ownerOnly();
+  }
 
   const consumer = await ensureConsumer(admin, user);
   if (!consumer.ok) return json({ ok: false, error: consumer.error, code: consumer.code ?? null }, consumer.status);
