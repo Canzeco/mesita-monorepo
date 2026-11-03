@@ -1,0 +1,149 @@
+// Supabase Edge Function — consumer-web-get-premier-refill
+//
+// MESITA-3168: a place's Premier as the place screen's Premier tab shows it —
+// its level, the Refill days running and queued (who gave them: Mesita, a
+// code, a guest), the Subscription period running, and the two Refill packs
+// with what each would do now (`available`, `code`, `notice`). For a
+// signed-in guest it first settles their own open purchases on this place
+// with Stripe (paid → days added, expired → closed); with `session_id`
+// (Checkout's return, `?refill=`) it says what happened to that purchase.
+// Signed out, it is the read alone.
+//
+// Body: { place_id: uuid, session_id?: string }
+// Response: { ok: true, level: 0 | 1 | 2, signed_in: boolean,
+//             refill: [{ tier, starts_at, ends_at, source: "admin" | "code" | "purchase" }],
+//             subscription: { tier, ends_at } | null,
+//             packs: [{ tier, days, price_cents, currency, available, code?, notice? }],
+//             purchase?: { status, line, tier, ends_at } | null }
+// purchase.status: open · expired · paid · granted · refunded · refund_needed.
+
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
+import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { boostLivemode, boostStripeKey, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { isUuid } from "../_shared/place-id.ts";
+import {
+  checkRefill,
+  PURCHASE_COLUMNS,
+  purchaseLine,
+  REFILL_PACK_CENTS,
+  REFILL_PACK_DAYS,
+  type RefillPurchase,
+  refillNotice,
+  type RefillTier,
+  settleRefillPurchase,
+} from "../_shared/premier-purchase.ts";
+
+serveJson("consumer-web-get-premier-refill", async (req) => {
+  if (req.method === "OPTIONS") return corsPreflight();
+  const methodReject = rejectUnlessMethods(req, "POST");
+  if (methodReject) return methodReject;
+
+  const envRes = readEFEnv();
+  if (!envRes.ok) return envRes.response;
+  const { user } = await getOptionalAuthedUser(req, envRes.env);
+
+  const bodyRes = await readJson<Record<string, unknown>>(req);
+  if (!bodyRes.ok) return bodyRes.response;
+  const placeId = bodyRes.body.place_id;
+  if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+  const sessionId = typeof bodyRes.body.session_id === "string" ? bodyRes.body.session_id : null;
+
+  const admin = adminClient(envRes.env);
+  const livemode = boostLivemode();
+
+  // ── The guest's own purchases here, settled first ───────────────────────
+  let purchase: { status: string; line: string; tier: number; ends_at: string | null } | null | undefined;
+  if (user) {
+    const { data: mine, error: mineErr } = await admin
+      .from("premier_refill_purchases")
+      .select(PURCHASE_COLUMNS)
+      .eq("consumer_id", user.id)
+      .eq("place_id", placeId)
+      .eq("livemode", livemode)
+      .in("status", ["open", "paid"])
+      .order("created_at", { ascending: true })
+      .limit(5);
+    if (mineErr) return json({ ok: false, error: `purchases: ${mineErr.message}` }, 500);
+    const key = boostStripeKey();
+    if (key && (mine ?? []).length > 0) {
+      const stripe = stripeClient(key);
+      const now = Date.now();
+      for (const p of (mine ?? []) as RefillPurchase[]) {
+        try {
+          await settleRefillPurchase(admin, stripe, p, now);
+        } catch (err) {
+          // The guest sees the purchase as it stands; the next read or the
+          // cron sweep settles it.
+          console.error("[consumer-web-get-premier-refill] settle", p.id, String(err));
+        }
+      }
+    }
+    if (sessionId) {
+      const { data: back, error: backErr } = await admin
+        .from("premier_refill_purchases")
+        .select(PURCHASE_COLUMNS)
+        .eq("consumer_id", user.id)
+        .eq("place_id", placeId)
+        .eq("stripe_checkout_session_id", sessionId)
+        .maybeSingle();
+      if (backErr) return json({ ok: false, error: `purchase: ${backErr.message}` }, 500);
+      const p = back as RefillPurchase | null;
+      purchase = p ? { status: p.status, line: purchaseLine(p), tier: p.tier, ends_at: p.ends_at } : null;
+    }
+  }
+
+  // ── The place's Premier now ─────────────────────────────────────────────
+  const nowIso = new Date().toISOString();
+  const [checks, rowsRes, periodRes] = await Promise.all([
+    Promise.all(([1, 2] as RefillTier[]).map((t) => checkRefill(admin, placeId, t))),
+    admin
+      .from("place_manual_premier")
+      .select("tier, starts_at, ends_at, source")
+      .eq("place_id", placeId)
+      .gt("ends_at", nowIso)
+      .order("starts_at", { ascending: true })
+      .limit(50),
+    admin
+      .from("place_premier_periods")
+      .select("tier, starts_at, ends_at")
+      .eq("place_id", placeId)
+      .eq("status", "paid")
+      .lte("starts_at", nowIso)
+      .gt("ends_at", nowIso)
+      .order("starts_at", { ascending: false })
+      .limit(1),
+  ]);
+  if (rowsRes.error) return json({ ok: false, error: `refill: ${rowsRes.error.message}` }, 500);
+  if (periodRes.error) return json({ ok: false, error: `subscription: ${periodRes.error.message}` }, 500);
+  if (checks[0].result !== "ok" && checks[0].code === "not_found") {
+    return json({ ok: false, code: "not_found", error: "This place isn't on Mesita yet." }, 404);
+  }
+
+  // A zero-length row is an ended grant kept for replay: never shown.
+  const refill = ((rowsRes.data ?? []) as Array<{ tier: number; starts_at: string; ends_at: string; source: string }>)
+    .filter((r) => r.ends_at > r.starts_at);
+  const period = ((periodRes.data ?? []) as Array<{ tier: number; ends_at: string }>)[0] ?? null;
+
+  return json({
+    ok: true,
+    level: checks[0].level,
+    signed_in: user != null,
+    refill,
+    subscription: period ? { tier: period.tier, ends_at: period.ends_at } : null,
+    packs: ([1, 2] as RefillTier[]).map((tier, i) => {
+      const c = checks[i];
+      const notice = refillNotice(c, tier);
+      return {
+        tier,
+        days: REFILL_PACK_DAYS,
+        price_cents: REFILL_PACK_CENTS[tier],
+        currency: PREMIER_CURRENCY,
+        available: c.result === "ok",
+        ...(c.result === "ok" ? {} : { code: c.code }),
+        ...(notice ? { notice } : {}),
+      };
+    }),
+    ...(purchase === undefined ? {} : { purchase }),
+  });
+});

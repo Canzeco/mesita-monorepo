@@ -11,7 +11,10 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isAllowedReturnUrl, type StripeCall } from "./boost.ts";
+import { readCheckoutSession } from "./checkout-session.ts";
 import { isUuid } from "./place-id.ts";
+
+export { classifySession } from "./checkout-session.ts";
 
 /** Checkout stays open this long (Stripe's minimum is 30 minutes). */
 export const WALLET_CHECKOUT_TTL_SEC = 31 * 60;
@@ -97,24 +100,6 @@ export function prepayCheckoutParams(args: {
 
 export type SettleOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch";
 
-/** What a Checkout session says about a purchase. Only `paid` credits; an
- *  open session is left alone; an expired one ends the purchase. A session
- *  whose metadata names another purchase is never trusted. */
-export function classifySession(
-  session: Record<string, unknown>,
-  purchaseId: string,
-): { kind: "paid"; paymentIntent: string | null } | { kind: "pending" } | { kind: "expired" } | { kind: "mismatch" } {
-  const meta = (session.metadata ?? {}) as Record<string, string>;
-  if (meta.purchase_id !== purchaseId) return { kind: "mismatch" };
-  if (session.payment_status === "paid") {
-    const pi = session.payment_intent;
-    const id = typeof pi === "string" ? pi : (pi && typeof pi === "object" ? String((pi as { id?: unknown }).id ?? "") : "");
-    return { kind: "paid", paymentIntent: id || null };
-  }
-  if (session.status === "expired") return { kind: "expired" };
-  return { kind: "pending" };
-}
-
 export type OpenPurchase = { id: string; stripe_checkout_session_id: string | null; created_at: string };
 
 /** Settles one open purchase against Stripe. Idempotent: the RPC credits once. */
@@ -134,8 +119,7 @@ export async function settlePurchase(
     }
     return "pending";
   }
-  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`);
-  const c = classifySession(session, purchase.id);
+  const c = await readCheckoutSession(stripe, sessionId, purchase.id);
   if (c.kind === "mismatch") {
     console.error("[wallet] session_mismatch", JSON.stringify({ purchase_id: purchase.id, session_id: sessionId }));
     return "mismatch";

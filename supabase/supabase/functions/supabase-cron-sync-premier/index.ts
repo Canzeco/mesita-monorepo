@@ -2,13 +2,17 @@
 //
 // MESITA-2995 / MESITA-3092: keeps Premier periods true to Stripe. pg_cron
 // calls it every 5 minutes (job `sync-premier`):
-//   1. Checkouts a guest never came back from are settled through the same
-//      confirmPledge as consumer-web-get-premier (a paid one starts its period);
+//   1. Checkouts a payer never came back from are settled through the same
+//      confirmPledge as business-web-get-premier (a paid one starts its period);
 //   2. charges in flight are settled (held payments captured, renewals asked
 //      again with the same key; past 24 h cancelled and declined);
 //   3. every place's subscription whose period ended is renewed: one charge
 //      to the payer's card; a decline ends the subscription (R6);
-//   4. tiers are recomputed (also its own pg_cron job, recompute-premier).
+//   4. Refill packs a guest bought and never came back for (MESITA-3168) are
+//      settled through the same settleRefillPurchase as
+//      consumer-web-get-premier-refill: paid → days added, expired → closed,
+//      refused → refunded in TEST or left refund_needed;
+//   5. tiers are recomputed (also its own pg_cron job, recompute-premier).
 //
 // There is no Stripe webhook: the EF name is the ACL and no caller prefix is
 // Stripe's (Rules §2), so Mesita polls.
@@ -32,6 +36,7 @@ import {
   settleCharging,
   stripeClient,
 } from "../_shared/boost.ts";
+import { PURCHASE_COLUMNS, type RefillPurchase, settleRefillPurchase } from "../_shared/premier-purchase.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
@@ -55,7 +60,7 @@ serveJson("supabase-cron-sync-premier", async (req) => {
   if (!key) return json({ ok: true, skipped: "no_stripe_key" });
   const stripe = stripeClient(key);
   const livemode = boostLivemode();
-  const counts = { checkouts: 0, settled: 0, renewed: 0, failed: 0 };
+  const counts = { checkouts: 0, settled: 0, renewed: 0, refills: 0, failed: 0 };
 
   // 1. Checkouts left behind.
   const older = new Date(Date.now() - CHECKOUT_GRACE_MS).toISOString();
@@ -115,7 +120,27 @@ serveJson("supabase-cron-sync-premier", async (req) => {
     }
   }
 
-  // 4. Tiers follow time.
+  // 4. Refill packs left behind.
+  const { data: packs, error: packErr } = await admin
+    .from("premier_refill_purchases")
+    .select(PURCHASE_COLUMNS)
+    .in("status", ["open", "paid"])
+    .eq("livemode", livemode)
+    .lt("created_at", older)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (packErr) return json({ ok: false, error: `refills_read: ${packErr.message}` }, 500);
+  const sweptAt = Date.now();
+  for (const purchase of (packs ?? []) as RefillPurchase[]) {
+    try {
+      if ((await settleRefillPurchase(admin, stripe, purchase, sweptAt)) !== purchase.status) counts.refills++;
+    } catch (err) {
+      counts.failed++;
+      console.error("[supabase-cron-sync-premier] refill", purchase.id, err);
+    }
+  }
+
+  // 5. Tiers follow time.
   const { error: recErr } = await admin.rpc("recompute_due_place_boosts");
   if (recErr) console.error("[supabase-cron-sync-premier] recompute", recErr.message);
 
