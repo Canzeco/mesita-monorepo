@@ -3,7 +3,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { WalletPage } from "@/components/consumer/wallet/WalletPage";
 
 // Pay — the Soon state again (Pato, 2026-11-02: "Pay must be as Soon";
-// MESITA-3113). The bar's tab wears the Soon tag.
+// MESITA-3113). The bar's tab wears no tag (MESITA-3124).
 //
 // MONEY: a Mesita Prepay checkout (MESITA-3098) still returns here with
 // `?prepay=<session>`, and the Wallet's read is what credits that payment,

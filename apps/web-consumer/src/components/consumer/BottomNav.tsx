@@ -29,7 +29,7 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 // renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
 // Share tab, MESITA-2566 gave it its own page):
 //
-//   Home · Search · Pay (Soon) · Me
+//   Home · Search · Pay · Me
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
@@ -37,9 +37,11 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 //   plus BAR_HREFS in (shell)/layout.tsx.
 //
 //   PAY IS SOON AGAIN (Pato, 2026-11-02: "Pay must be as Soon"; MESITA-3113).
-//   It was the Wallet for a day (MESITA-3098); the tab wears the Soon tag
-//   again and /pay is the Soon page. A Mesita Prepay checkout still returns
-//   to /pay?prepay=… and sees the Wallet, since that read credits it.
+//   It was the Wallet for a day (MESITA-3098); /pay is the Soon page again.
+//   The tab wears NO tag (Pato, MESITA-3124: "soon remove shit"): the page
+//   says Soon, the bar only names the destination. A Mesita Prepay checkout
+//   still returns to /pay?prepay=… and sees the Wallet, since that read
+//   credits it.
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's
@@ -67,10 +69,6 @@ type Item = {
    * Order is irrelevant; matching is `startsWith` over the whole list.
    */
   matchPrefixes: readonly string[];
-  // The destination is not built yet. The tab still navigates — its page is
-  // the Soon state — and wears a "Soon" tag (Pato's own spelling, "Pay(Soon)",
-  // overrides the MESITA-383 no-pill rule for this one tab).
-  soon?: boolean;
 };
 
 const ITEMS: Item[] = [
@@ -93,7 +91,6 @@ const ITEMS: Item[] = [
     Icon: QrCode,
     label: "Pay",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
-    soon: true,
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -152,7 +149,6 @@ export function BottomNav() {
           const active = pending
             ? pending === item.href
             : item.matchPrefixes.some((p) => pathname.startsWith(p));
-          const soon = item.soon;
           const className = cn(
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
             active
@@ -183,17 +179,9 @@ export function BottomNav() {
                   />
                 ) : (
                   <Icon
-                    className={cn("h-5 w-5", soon && !active && "opacity-60")}
+                    className="h-5 w-5"
                     strokeWidth={active ? 2.25 : 1.75}
                   />
-                )}
-                {/* The tag is a quiet grey chip, sentence case, cut from the
-                    glyph by a card-colour ring: the solid-ink uppercase pill
-                    out-shouted every label in the bar (Pato, MESITA-2079). */}
-                {soon && (
-                  <span className="bg-muted text-muted-foreground ring-card type-meta absolute -top-0.5 left-[calc(100%-8px)] flex h-4 items-center rounded-full px-1.5 leading-none font-semibold whitespace-nowrap ring-2">
-                    Soon
-                  </span>
                 )}
               </span>
               <span className="w-full truncate text-center">{label}</span>
