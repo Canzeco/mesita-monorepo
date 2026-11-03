@@ -7,14 +7,17 @@
 //   Places    — the places you run, a page you open (/places)
 //   ──
 //   <place>   — its photo, name and Owner/Editor/Mesita staff; opens Profile
-//     Profile · Reviews · Premier · Future   the products
-//     Settings                              the place's, Billing inside
+//   ┌ Products ─────────────────────────┐
+//   │ Profile · Reviews · Premier · Future │
+//   └───────────────────────────────────┘
+//   ┌ Manage ───────────────────────────┐
+//   │ Settings (Billing inside) · Admin │  Admin: Mesita staff only (MESITA-3122)
+//   └───────────────────────────────────┘
 //
-//     Admin   — Mesita staff only (MESITA-3122), set apart
-//
-// The place's pages hang under it. Colour tells the groups apart (Pato:
-// "group with colors for better understanding"): you in blue, the products
-// in red, Settings and Admin in grey. There is no tab row on the page: the
+// The place's pages sit in two labelled boxes (Pato: "if you use boxes it's
+// clearer to understand"), and colour tells the groups apart ("group with
+// colors for better understanding"): you in blue, the products in red,
+// Manage in grey. There is no tab row on the page: the
 // menu is the only navigation ("don't make the horizontal menu, it's
 // redundant"); Preview is a button on Profile.
 //
@@ -50,8 +53,8 @@ type Row = { key: string; label: string; icon: LucideIcon; tone: Tone; href: str
 
 type PlaceMenu = {
   header: { href: string; active: boolean; name: string; photo: string | null; role: string | null };
-  rows: Row[];
-  admin: Row | null;
+  products: Row[];
+  manage: Row[];
 };
 
 function menu(
@@ -76,16 +79,18 @@ function menu(
     you,
     place: {
       header: { href: placeTabHref(placeId, "profile"), active: false, name: place?.name || "Place", photo: place?.photo ?? null, role },
-      rows: [
+      products: [
         tab("profile", "Profile", IdCard, "product"),
         tab("reviews", "Reviews", Star, "product"),
         tab("premier", "Premier", BadgeCheck, "product"),
         tab("future", "Future", Sparkles, "product"),
-        tab("settings", "Settings", Settings, "system"),
       ],
-      // Mesita staff only (MESITA-3122): the place's staff page. The server
-      // refuses anyone else.
-      admin: isSuperAdmin ? tab("internal", "Admin", ShieldCheck, "system") : null,
+      manage: [
+        tab("settings", "Settings", Settings, "system"),
+        // Mesita staff only (MESITA-3122): the place's staff page. The server
+        // refuses anyone else.
+        ...(isSuperAdmin ? [tab("internal", "Admin", ShieldCheck, "system")] : []),
+      ],
     },
   };
 }
@@ -118,6 +123,16 @@ function PlaceHeader({ header }: { header: PlaceMenu["header"] }) {
 
 const Line = () => <div role="separator" className="border-border my-2 border-t" />;
 
+/** A labelled box of rows; below lg only the rows' icons show. */
+function Group({ label, rows }: { label: string; rows: Row[] }) {
+  return (
+    <div role="group" aria-label={label} className="border-border bg-muted/40 mt-2 flex flex-col gap-0.5 rounded-xl border p-1">
+      <p className="type-label text-muted-foreground hidden px-1.5 pt-1 pb-0.5 font-semibold tracking-[0.12em] uppercase lg:block">{label}</p>
+      {rows.map((r) => <RailRow key={r.key} row={r} />)}
+    </div>
+  );
+}
+
 function RailRow({ row }: { row: Row }) {
   const Icon = row.icon;
   return (
@@ -129,7 +144,7 @@ function RailRow({ row }: { row: Row }) {
       // Below lg the rail is icons only (w-16); the label returns at lg.
       className={cn(
         "flex h-10 items-center justify-center gap-2.5 rounded-lg px-1.5 text-sm transition-colors lg:h-9 lg:justify-start",
-        row.active ? "bg-muted text-foreground font-semibold" : "text-foreground/75 hover:bg-muted/60 hover:text-foreground",
+        row.active ? "bg-card text-foreground font-semibold shadow-sm" : "text-foreground/75 hover:bg-muted/60 hover:text-foreground",
       )}
     >
       <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", TONE[row.tone])}>
@@ -173,15 +188,8 @@ export function BusinessShell({
             <>
               <Line />
               <PlaceHeader header={place.header} />
-              {/* The place's pages hang under it: an indent and a guide line at lg. */}
-              <div className="flex flex-col gap-0.5 lg:border-border lg:mt-0.5 lg:ml-[1.4rem] lg:border-l lg:pl-2">
-                {place.rows.map((r) => <RailRow key={r.key} row={r} />)}
-                {place.admin ? (
-                  <div className="mt-3">
-                    <RailRow row={place.admin} />
-                  </div>
-                ) : null}
-              </div>
+              <Group label="Products" rows={place.products} />
+              <Group label="Manage" rows={place.manage} />
             </>
           ) : null}
         </nav>
