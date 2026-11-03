@@ -1,16 +1,12 @@
 "use client";
 
-import { Fragment, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { Loader2, Play } from "lucide-react";
-import { formatShortDate } from "@/lib/format";
-import { businessPlaceHref } from "@/lib/business-url";
 import {
   createPlacesFromGooglePlaceIds,
   enrichPlacesAll,
   searchPlacesByGoogleIds,
-  setPlacesPremier,
   writePlaces,
-  type PremierSet,
 } from "./actions";
 import { parseGooglePlaceIds } from "./google-place-ids";
 import type { CrenupAction } from "./pipeline";
@@ -24,8 +20,6 @@ type Row = {
   error?: string;
   placeId?: string;
   alreadyExisted?: boolean;
-  /** A refused Premier row's door to Single Place › Premier (MESITA-3090). */
-  href?: string;
 };
 
 type Found = { placeId: string; name: string; listed: boolean };
@@ -65,24 +59,8 @@ const BUTTONS: Record<
   unlist: { label: "Disable", variant: "secondary" },
   delete: { label: "Delete", variant: "destructive" },
   "google-update": { label: "Update Google", variant: "primary" },
-  "premier-2x": { label: "Premier 2X", variant: "secondary" },
-  "premier-5x": { label: "Premier 5X", variant: "secondary" },
-  "premier-off": { label: "End Premier", variant: "secondary" },
+  "reviews-update": { label: "Update Reviews", variant: "primary" },
 };
-
-// Premier (MESITA-3090): the tier each button sets. 0 ends the operator grant.
-type PremierAction = "premier-2x" | "premier-5x" | "premier-off";
-const PREMIER_TIER: Record<PremierAction, 0 | 1 | 2> = {
-  "premier-2x": 1,
-  "premier-5x": 2,
-  "premier-off": 0,
-};
-const PREMIER_LABEL: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
-const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-
-function isPremier(action: CrenupAction): action is PremierAction {
-  return action in PREMIER_TIER;
-}
 
 export function WriteBox({
   id,
@@ -99,9 +77,6 @@ export function WriteBox({
   const [results, setResults] = useState<Record<string, Row>>({});
   const [running, setRunning] = useState<CrenupAction | null>(null);
   const [lastRun, setLastRun] = useState<CrenupAction | null>(null);
-  // Premier length for a bulk grant: 12 months unless the operator picks
-  // fewer (MESITA-3090).
-  const [months, setMonths] = useState(12);
   const busy = running !== null;
 
   const done = placeIds.filter((id) => {
@@ -116,7 +91,6 @@ export function WriteBox({
     return s === "ok" || s === "existed";
   }).length;
   const failed = placeIds.filter((id) => results[id]?.state === "error").length;
-  const refused = placeIds.filter((id) => results[id]?.state === "refused").length;
 
   async function run(action: CrenupAction) {
     if (busy || placeIds.length === 0) return;
@@ -140,17 +114,9 @@ export function WriteBox({
     const ids = [...placeIds];
     try {
       if (action === "create") await runCreate(ids, setResults);
-      else if (isPremier(action)) {
-        await runPremier(ids, PREMIER_TIER[action], PREMIER_TIER[action] === 0 ? null : months, setResults);
-      } else await runOnMesita(ids, action, setResults);
+      else await runOnMesita(ids, action, setResults);
     } catch (err) {
-      // A Premier run is safe to repeat: set lands every place on the same
-      // tier however many times it runs.
-      const error = isPremier(action)
-        ? "Didn't finish — run again (setting Premier twice is safe)"
-        : err instanceof Error
-          ? err.message
-          : "Unexpected error";
+      const error = err instanceof Error ? err.message : "Unexpected error";
       setResults(
         Object.fromEntries(ids.map((id) => [id, { state: "error" as const, error }])),
       );
@@ -164,9 +130,7 @@ export function WriteBox({
   }
 
   const summary =
-    lastRun && isPremier(lastRun)
-      ? premierSummary(lastRun, { set: created, already: existed, refused, failed })
-      : lastRun === "create"
+    lastRun === "create"
       ? `${created} created · ${existed} already on Mesita · ${failed} failed`
       : lastRun === "enrich"
         ? `${enriching} enriching · ${failed} failed`
@@ -174,7 +138,7 @@ export function WriteBox({
           ? `${written} enabled · ${failed} failed`
           : lastRun === "unlist"
             ? `${written} disabled · ${failed} failed`
-            : lastRun === "google-update"
+            : lastRun === "google-update" || lastRun === "reviews-update"
               ? `${written} refreshed · ${failed} failed`
               : `${written} deleted · ${failed} failed`;
 
@@ -191,56 +155,16 @@ export function WriteBox({
 
       <div>
         <div className="flex flex-wrap items-center gap-2">
-          {actions.map((action, i) => {
-            const button = (
-              <ActionButton
-                key={action}
-                label={BUTTONS[action].label}
-                variant={BUTTONS[action].variant}
-                busy={running === action}
-                disabled={busy || placeIds.length === 0}
-                onClick={() => void run(action)}
-              />
-            );
-            if (!isPremier(action)) return button;
-            // The Premier buttons and their length wrap as one group, so
-            // the picker never lands apart from the buttons it sets.
-            if (i > 0 && isPremier(actions[i - 1])) return null;
-            const group = actions.slice(i).filter(isPremier);
-            return (
-              <div key="premier" className="inline-flex flex-nowrap items-center gap-2">
-                {group.map((a) => (
-                  <Fragment key={a}>
-                    {a === "premier-off" ? (
-                      <label className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
-                        for
-                        <select
-                          aria-label="Premier length"
-                          value={months}
-                          disabled={busy}
-                          onChange={(e) => setMonths(Number(e.target.value))}
-                          className="border-border text-foreground h-10 rounded-full border bg-transparent px-3 text-sm font-medium disabled:opacity-50"
-                        >
-                          {MONTHS.map((m) => (
-                            <option key={m} value={m}>
-                              {m === 1 ? "1 month" : `${m} months`}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-                    <ActionButton
-                      label={BUTTONS[a].label}
-                      variant={BUTTONS[a].variant}
-                      busy={running === a}
-                      disabled={busy || placeIds.length === 0}
-                      onClick={() => void run(a)}
-                    />
-                  </Fragment>
-                ))}
-              </div>
-            );
-          })}
+          {actions.map((action) => (
+            <ActionButton
+              key={action}
+              label={BUTTONS[action].label}
+              variant={BUTTONS[action].variant}
+              busy={running === action}
+              disabled={busy || placeIds.length === 0}
+              onClick={() => void run(action)}
+            />
+          ))}
           {done > 0 ? (
             <span className="text-muted-foreground text-xs">{summary}</span>
           ) : null}
@@ -251,15 +175,6 @@ export function WriteBox({
               className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
             >
               Copy failed IDs
-            </button>
-          ) : null}
-          {refused > 0 && !running ? (
-            <button
-              type="button"
-              onClick={() => copyIds("refused")}
-              className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-2"
-            >
-              Copy refused IDs
             </button>
           ) : null}
         </div>
@@ -297,16 +212,6 @@ function ResultList({
                 )}
                 {r.detail ? (
                   <p className="text-muted-foreground type-label">{r.detail}</p>
-                ) : null}
-                {r.href ? (
-                  <a
-                    href={r.href}
-                    target="_blank"
-                    rel="noopener"
-                    className="type-label font-medium underline underline-offset-2"
-                  >
-                    Open in Business →
-                  </a>
                 ) : null}
                 {r.error ? (
                   <p className="text-destructive type-label">{r.error}</p>
@@ -402,7 +307,7 @@ async function runCreate(
 // found. Enrich starts its chunks of 50 at once; Render queues them.
 async function runOnMesita(
   googleIds: string[],
-  action: Exclude<CrenupAction, "create" | PremierAction>,
+  action: Exclude<CrenupAction, "create">,
   setResults: Dispatch<SetStateAction<Record<string, Row>>>,
 ): Promise<void> {
   setResults(
@@ -440,101 +345,19 @@ async function runOnMesita(
   );
 }
 
-function doneRow(found: Found, action: Exclude<CrenupAction, "create" | PremierAction>): Row {
+function doneRow(found: Found, action: Exclude<CrenupAction, "create">): Row {
   if (action === "enrich") {
     return { state: "enriching", name: found.name, detail: "Enrich started" };
   }
   const detail =
     action === "google-update"
       ? "Google data refreshed"
-      : action === "delete"
+      : action === "reviews-update"
+        ? "Reviews and followers refreshed"
+        : action === "delete"
         ? "Archived"
         : action === "list"
           ? "Enabled"
           : "Disabled";
   return { state: "ok", name: found.name, detail };
-}
-
-// Premier 2X · Premier 5X · End Premier (MESITA-3090): one lookup, then one
-// batch that moves every found place's Manual Premier to the tier
-// (MESITA-3091: it never touches what a guest pays). A refusal (archived)
-// leaves the place unchanged and shows amber, not as a failure.
-async function runPremier(
-  googleIds: string[],
-  tier: 0 | 1 | 2,
-  months: number | null,
-  setResults: Dispatch<SetStateAction<Record<string, Row>>>,
-): Promise<void> {
-  setResults(
-    Object.fromEntries(googleIds.map((id) => [id, { state: "running" as const }])),
-  );
-  const lookup = await resolveMesitaIds(googleIds);
-  if (!lookup.ok) {
-    setResults(
-      Object.fromEntries(
-        googleIds.map((id) => [id, { state: "error" as const, error: lookup.error }]),
-      ),
-    );
-    return;
-  }
-  const placeIds = googleIds
-    .map((id) => lookup.found.get(id)?.placeId)
-    .filter((id): id is string => Boolean(id));
-  const set = placeIds.length === 0 ? {} : await setPlacesPremier(placeIds, tier, months);
-  setResults(
-    Object.fromEntries(
-      googleIds.map((googleId): [string, Row] => {
-        const found = lookup.found.get(googleId);
-        if (!found) {
-          return [googleId, { state: "error", error: "Not on Mesita — create it in the Create box first" }];
-        }
-        return [googleId, premierRow(found, tier, set[found.placeId])];
-      }),
-    ),
-  );
-}
-
-const REFUSED_CODES = new Set(["place_archived"]);
-
-function premierRow(
-  found: Found,
-  tier: 0 | 1 | 2,
-  r: { ok: true; data: PremierSet } | { ok: false; error: string; code?: string | null } | undefined,
-): Row {
-  const name = found.name;
-  if (!r) return { state: "error", name, error: "No result" };
-  if (!r.ok) {
-    if (r.code && REFUSED_CODES.has(r.code)) {
-      return {
-        state: "refused",
-        name,
-        detail: r.error,
-        href: r.code === "place_archived" ? undefined : businessPlaceHref(found.placeId, "premier") ?? undefined,
-      };
-    }
-    return { state: "error", name, error: r.error };
-  }
-  const { result, ends_at, previous_tier, previous_ends_at } = r.data;
-  if (result === "already") return { state: "existed", name, detail: "Already not Premier" };
-  if (result === "ended") return { state: "ok", name, detail: "Not Premier" };
-  const label = PREMIER_LABEL[tier];
-  const until = ends_at ? ` · until ${formatShortDate(ends_at)}` : "";
-  const head =
-    previous_tier && previous_tier !== tier ? `${PREMIER_LABEL[previous_tier]} → ${label.slice(8)}` : label;
-  const was =
-    previous_tier === tier && previous_ends_at ? ` (was ${formatShortDate(previous_ends_at)})` : "";
-  return {
-    state: "ok",
-    name,
-    detail: `${head}${until}${was}${found.listed ? "" : " · disabled"}`,
-  };
-}
-
-function premierSummary(
-  action: PremierAction,
-  n: { set: number; already: number; refused: number; failed: number },
-): string {
-  const tail = ` · ${n.refused} refused · ${n.failed} failed`;
-  if (action === "premier-off") return `${n.set} ended · ${n.already} already not Premier${tail}`;
-  return `${n.set} set to ${PREMIER_LABEL[PREMIER_TIER[action]]} · ${n.already} already${tail}`;
 }

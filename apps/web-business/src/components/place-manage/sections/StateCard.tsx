@@ -7,8 +7,8 @@
 //
 // Enriching and Enriched are the only enrichment states. A live run is
 // enriching; the one finished write is enriched. Premier is the paid tier
-// (`places.boost_tier`), read-only here. Disabled is the one operator write
-// in this box.
+// (`places.boost_tier`), read-only here. Disabled is read-only too: Enable
+// and Disable are buttons in Special actions (MESITA-3159).
 //
 // Partnership States (Partnered · Rewards · Mesita Pay · Mesita Credits) went
 // with the MVP First Stage cut (MESITA-2115): nothing commercial is live.
@@ -49,18 +49,15 @@
 // `business_state` below mirror the schema exactly — one word, one meaning.
 
 import { useEffect, useState } from "react";
-import { CircleCheck, Loader2 } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import {
   getPlaceEnrichment,
-  setPlaceListed,
   type AdminPlace,
   type PlaceEnrichmentState,
 } from "../actions";
 import { isEnriching, listedFromState } from "../place-header-state";
 import { isEnrichedPlace } from "@/lib/place-enriched";
-import { ConfirmDialog, SectionCard } from "@/components/ui/manage";
-import { usePlaceContext } from "../PlaceContext";
-import { ErrorNote } from "@/components/ErrorNote";
+import { SectionCard } from "@/components/ui/manage";
 import { getTeam, type TeamMember } from "@/lib/business-api";
 import { premierTierChip, stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
@@ -261,7 +258,6 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={disabled === true}
           chip={stateBoolChip(disabled)}
           detail={disabledDetail}
-          action={<ListedToggle place={place} listed={listed} />}
         />
       </div>
     </SectionCard>
@@ -301,80 +297,5 @@ export function StateRow({
         {chip}
       </span>
     </div>
-  );
-}
-
-
-/**
- * Disabled writes places.state through admin-web-set-place-listed.
- * Disabling is confirmed rather than immediate: the consumer RLS policy
- * gates every guest read on this one value.
- */
-function ListedToggle({
-  place,
-  listed,
-}: {
-  place: AdminPlace;
-  listed: boolean | "unknown";
-}) {
-  const { setPlace } = usePlaceContext();
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState(false);
-
-  // An unknown Listed value means an older overview payload, not a "no".
-  // Offering a toggle there would let one click write a state derived from a
-  // fact we admit we could not read.
-  if (listed === "unknown") return null;
-
-  const apply = (next: boolean) => {
-    setError(null);
-    setPending(true);
-    void setPlaceListed(place.id, next).then((r) => {
-      setPending(false);
-      setConfirming(false);
-      if (!r.ok) {
-        setError(r.error);
-        return;
-      }
-      setPlace(r.data);
-    });
-  };
-
-  return (
-    <>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => (listed ? setConfirming(true) : apply(true))}
-        className={
-          "inline-flex h-9 items-center gap-2 rounded-full border px-4 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-50 " +
-          (listed
-            ? "border-border/70 text-foreground/70 hover:bg-muted hover:text-foreground"
-            : "border-transparent bg-pink-gradient text-white shadow-save hover:brightness-105")
-        }
-      >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-        {listed ? "Disable" : "Enable"}
-      </button>
-      {error ? <ErrorNote message={error} /> : null}
-
-      <ConfirmDialog
-        open={confirming}
-        title="Disable this place?"
-        danger
-        busy={pending}
-        confirmLabel="Disable"
-        body={
-          <p>
-            Guests stop finding {place.name} everywhere at once — browse,
-            search, and any link already shared. Tickets and
-            history are untouched, and you can enable it again whenever you want.
-          </p>
-        }
-        onConfirm={() => apply(false)}
-        onCancel={() => setConfirming(false)}
-      />
-    </>
   );
 }

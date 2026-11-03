@@ -277,6 +277,17 @@ export async function enrichPlace(placeId: string): Promise<Result<true>> {
 
 // ── Update (Google factuals; the hero while the gallery is one photo, MESITA-2794) ──
 
+/** Update Reviews for one place (admin-web-update-place-reviews,
+ *  MESITA-3159): Google stars, the Apify review list, Instagram and Facebook
+ *  followers. */
+export async function updatePlaceReviews(placeId: string): Promise<Result<true>> {
+  const id = placeId.trim();
+  if (!id) return { ok: false, error: "Missing placeId" };
+  const r = await efInvoke<{ lastSyncedAt?: string }>("admin-web-update-place-reviews", { placeId: id });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, data: true };
+}
+
 export async function updatePlaceGoogle(placeId: string): Promise<Result<true>> {
   const id = placeId.trim();
   if (!id) return { ok: false, error: "Missing placeId" };
@@ -445,18 +456,20 @@ export async function createPlacesFromGooglePlaceIds(
   return Object.fromEntries(rows);
 }
 
-/** Enable, Disable, Delete or Update Google every place at once. Keyed by
- *  the Mesita place id. */
+/** Enable, Disable, Delete, Update Google or Update Reviews every place at
+ *  once. Keyed by the Mesita place id. */
 export async function writePlaces(
   placeIds: string[],
-  action: "list" | "unlist" | "delete" | "google-update",
+  action: "list" | "unlist" | "delete" | "google-update" | "reviews-update",
 ): Promise<Record<string, Result<true>>> {
   const rows = await Promise.all(
     placeIds.map(async (id) => {
       const call =
         action === "google-update"
           ? updatePlaceGoogle(id)
-          : action === "delete"
+          : action === "reviews-update"
+            ? updatePlaceReviews(id)
+            : action === "delete"
             ? deletePlace(id)
             : setPlaceListed(id, action === "list");
       const r = await call.catch(
@@ -488,48 +501,3 @@ export async function enrichPlacesAll(
   return Object.fromEntries(rows.flat());
 }
 
-// ── Premier (MESITA-3090) ────────────────────────────────────────────────
-// Edit box › Premier 2X · Premier 5X · End Premier. One call per place
-// through admin-web-grant-place-premier action "set", all at once like
-// writePlaces. Sets Manual Premier only (MESITA-3091). A refusal (archived)
-// comes back as a failed Result whose `code` names it.
-
-export type PremierSet = {
-  result: "granted" | "ended" | "already";
-  ends_at: string | null;
-  previous_tier: number | null;
-  previous_ends_at: string | null;
-};
-
-/** Move every place to `tier` (0 none · 1 2X · 2 5X) for `months` (1..12;
- *  null for tier 0). Keyed by the Mesita place id. */
-export async function setPlacesPremier(
-  placeIds: string[],
-  tier: 0 | 1 | 2,
-  months: number | null,
-): Promise<Record<string, Result<PremierSet>>> {
-  const rows = await Promise.all(
-    placeIds.map(async (id) => {
-      const r: Result<PremierSet> = await efInvoke<PremierSet & { ok: true }>(
-        "admin-web-grant-place-premier",
-        { placeId: id, action: "set", tier, months },
-      )
-        .then((res): Result<PremierSet> =>
-          res.ok
-            ? {
-                ok: true,
-                data: {
-                  result: res.data.result,
-                  ends_at: res.data.ends_at ?? null,
-                  previous_tier: res.data.previous_tier ?? null,
-                  previous_ends_at: res.data.previous_ends_at ?? null,
-                },
-              }
-            : { ok: false, error: res.error, code: res.code },
-        )
-        .catch((err: unknown): Result<PremierSet> => ({ ok: false, error: thrown(err) }));
-      return [id, r] as const;
-    }),
-  );
-  return Object.fromEntries(rows);
-}

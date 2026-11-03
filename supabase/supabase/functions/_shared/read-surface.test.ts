@@ -171,6 +171,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
   "business-web-reload-place-reviews/index.ts",
+  "_shared/reviews-update.ts", // Update Reviews' links read: google_place_id, instagram_url, facebook_url (MESITA-3159)
   "consumer-web-create-reservation/index.ts", // reservations_enabled gate before the insert (MESITA-2156)
   "eleven-a4-cancel-reservation/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",

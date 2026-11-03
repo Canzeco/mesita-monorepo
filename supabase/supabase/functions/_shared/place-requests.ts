@@ -17,6 +17,8 @@
 // each NEW view that lands it on a multiple of "Update every N views"
 // (updateEveryViews: 10, 20, 30…) asks the caller to run Google Update
 // (`updateDue`). Never on the view that just started Enrich, never mid-run.
+// UPDATE REVIEWS EVERY N VIEWS (MESITA-3159) is the same rule on
+// reviewsUpdateEveryViews (`reviewsUpdateDue`), for Update Reviews.
 
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { loadEnrichmentConfig } from "./enrichment-config.ts";
@@ -133,7 +135,7 @@ export async function applyPlaceRequest(
     callerName: string;
   },
 ): Promise<
-  | { ok: true; state: PlaceRequestState; enriching: boolean; updateDue: boolean }
+  | { ok: true; state: PlaceRequestState; enriching: boolean; updateDue: boolean; reviewsUpdateDue: boolean }
   | { ok: false; status: number; error: string; code?: string }
 > {
   const { data: place, error: placeErr } = await admin
@@ -213,6 +215,14 @@ export async function applyPlaceRequest(
     enrichmentTriggered,
   });
 
+  const reviewsUpdateDue = !claimedElsewhere && shouldTriggerViewUpdate({
+    inserted,
+    requestCount: count,
+    everyViews: config.reviewsUpdateEveryViews,
+    contentState,
+    enrichmentTriggered,
+  });
+
   return {
     ok: true,
     state: placeRequestState({
@@ -225,5 +235,6 @@ export async function applyPlaceRequest(
     }),
     enriching: enrichmentTriggered || claimedElsewhere || isPlaceEnriching(contentState),
     updateDue,
+    reviewsUpdateDue,
   };
 }

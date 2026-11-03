@@ -22,17 +22,16 @@ export default async function AdminPage({ params }: { params: Promise<{ id: stri
   const queue = await listVerifications(id);
 
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <AdminCards />
-      {/* Verification only (MESITA-3157, Pato: "a box called Verification"): the owner, editors and Revoke
-          are Settings' Who runs this place. */}
-      <Card>
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="font-semibold">Verification</p>
-            <p className="text-muted-foreground text-sm">Requests to run this place, and reports from the claim window. Approve or reject each.</p>
-          </div>
-          <Link href={placeTabHref(id, "settings")} className="text-sm font-semibold underline underline-offset-4">
+    // One masonry, three columns at xl (Pato, MESITA-3159: "keep the three
+    // columns"): Verification is a card among the others.
+    <AdminCards>
+      {/* Verification only (MESITA-3157, Pato: "a box called Verification"):
+          the owner, editors and Revoke are Settings' Who runs this place. */}
+      <Card className="flex flex-col gap-4">
+        <div>
+          <p className="font-semibold">Verification</p>
+          <p className="text-muted-foreground text-sm">Requests to run this place, and reports from the claim window. Approve or reject each.</p>
+          <Link href={placeTabHref(id, "settings")} className="mt-1 inline-block text-sm font-semibold underline underline-offset-4">
             Who runs it is in Settings
           </Link>
         </div>
@@ -42,6 +41,6 @@ export default async function AdminPage({ params }: { params: Promise<{ id: stri
           <p className="text-destructive text-sm">{queue.error}</p>
         )}
       </Card>
-    </div>
+    </AdminCards>
   );
 }

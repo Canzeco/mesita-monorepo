@@ -66,6 +66,7 @@ type Body = {
   discoverUbereatsN?: number;
   requestThreshold?: number;
   updateEveryViews?: number;
+  reviewsUpdateEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;
@@ -272,6 +273,15 @@ export async function writeEnricherSection(
       return jsonError(`updateEveryViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
     }
     next.updateEveryViews = n;
+    blobTouched = true;
+  }
+
+  if (body.reviewsUpdateEveryViews !== undefined) {
+    const n = intInRange(body.reviewsUpdateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX);
+    if (n === null) {
+      return jsonError(`reviewsUpdateEveryViews must be an integer 0-${UPDATE_EVERY_VIEWS_MAX}`, 400);
+    }
+    next.reviewsUpdateEveryViews = n;
     blobTouched = true;
   }
 

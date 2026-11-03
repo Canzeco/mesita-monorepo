@@ -35,6 +35,7 @@ Deno.test("normalizeEnrichmentConfig: live-shaped blob round-trips", () => {
     enrichDiscoverUbereatsN: 3,
     enrichRequestThreshold: 5,
     updateEveryViews: 20,
+    reviewsUpdateEveryViews: 50,
     enrichCreateOnOpenConsumer: true,
     enrichCreateOnOpenAdmin: false,
     enrichConsumerCreatesPerDay: 250,
