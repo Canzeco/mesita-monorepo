@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-start-premier
 //
-// MESITA-3103. Whoever runs the place buys or changes its Premier: the same
-// flow as the guest's (`_shared/premier-flow.ts` startPremier), billed to the
+// MESITA-3103. Whoever runs the place buys or changes its Premier
+// (`_shared/premier-flow.ts` startPremier), billed to the
 // caller's own card through Stripe Checkout. The caller needs a consumers row
 // (a phone sign-in): Premier's payer is a guest account.
 //
@@ -9,8 +9,8 @@
 // place access, since startPremier refuses anyone but the payer (`not_payer`),
 // so a payer who no longer runs the place can still replace their card.
 //
-// Body: consumer-web-start-premier's body
-// Response: consumer-web-start-premier's response, or code `no_payer_account`
+// Body: parseBoostStart's body (`_shared/boost.ts`)
+// Response: startPremier's response, or code `no_payer_account`
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
