@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { MultiplePlacesClient } from "./MultiplePlacesClient";
+import { PremierNow } from "./PremierNow";
 
 // The whole tool, one page. Five boxes: two read, Create, Enrich and Update
 // write. Spend estimates are on Configurations › Creation and Enrichment —
@@ -11,5 +13,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export default function ManageMultiplePlacesPage() {
-  return <MultiplePlacesClient />;
+  return (
+    <MultiplePlacesClient
+      premierNow={
+        <Suspense fallback={null}>
+          <PremierNow />
+        </Suspense>
+      }
+    />
+  );
 }
