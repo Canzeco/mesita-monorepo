@@ -18,7 +18,6 @@ import { GUESTS_PARENT } from "@/app/(app)/guests/nav";
 import { FEEDBACK_PARENT } from "@/app/(app)/feedback/nav";
 import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
 import { SINGLE_PLACE_PARENT } from "@/app/(app)/manage-single/nav";
-import { PREMIER_PARENT } from "@/app/(app)/premier/nav";
 import { FAMILIES_PARENT } from "@/app/(app)/families/nav";
 import {
   CREATION_PARENT,
@@ -74,7 +73,6 @@ export const MANAGE_NAV: NavItem[] = [
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
   SINGLE_PLACE_PARENT,
-  PREMIER_PARENT,
 ];
 
 // Configurations — six rows. Models, then Atlas (the Mesita Families,

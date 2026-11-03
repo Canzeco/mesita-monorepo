@@ -12,15 +12,15 @@
 // archives (kept, gate answer 2026-11-02). The Edit box and its Manual
 // Premier buttons are gone (MESITA-3159; staff Premier left Business in
 // MESITA-3146). There is no Create + Enrich combo. Boost (was Refill, MESITA-3163) is
-// box 3, right after Mesita Search (MESITA-3176, Pato: "Boost => Premier,
-// Plan => Premier"): Premier 2X or 5X for N days, or ends Mesita's.
+// box 5, right after Enrich (MESITA-3188, Pato: "enrich, boost, update, update"):
+// Premier 2X or 5X for N days, or ends Mesita's; it also lists who is Premier now.
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
   { n: 2, id: "mesita-search", label: "Mesita Search" },
-  { n: 3, id: "refill", label: "Boost" },
-  { n: 4, id: "create", label: "Create" },
-  { n: 5, id: "enrich", label: "Enrich" },
+  { n: 3, id: "create", label: "Create" },
+  { n: 4, id: "enrich", label: "Enrich" },
+  { n: 5, id: "refill", label: "Boost" },
   { n: 6, id: "google-update", label: "Update Google" },
   { n: 7, id: "reviews-update", label: "Update Reviews" },
   { n: 8, id: "enable", label: "Enable" },

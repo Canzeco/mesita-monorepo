@@ -49,7 +49,7 @@ function Step({
   );
 }
 
-export function MultiplePlacesClient() {
+export function MultiplePlacesClient({ premierNow }: { premierNow?: React.ReactNode }) {
   const [sharedIds, setSharedIds] = useState("");
 
   function jump(id: string) {
@@ -97,23 +97,28 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[2].n}
         id={PIPELINE_STEPS[2].id}
-        tint="amber"
+        tint="emerald"
         title={PIPELINE_STEPS[2].label}
-        blurb="Boost → Premier, Plan → Premier: a place ranks at the higher of the two. A Boost is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
+        blurb="Mints each Google Place ID as a Mesita place, every ID at once. One already on Mesita is skipped."
       >
-        <RefillBox id={PIPELINE_STEPS[2].id} text={sharedIds} onTextChange={setSharedIds} />
+        <WriteBox
+          id={PIPELINE_STEPS[2].id}
+          actions={WRITE_BOX_ACTIONS.create}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
       </Step>
 
       <Step
         n={PIPELINE_STEPS[3].n}
         id={PIPELINE_STEPS[3].id}
-        tint="emerald"
+        tint="amber"
         title={PIPELINE_STEPS[3].label}
-        blurb="Mints each Google Place ID as a Mesita place, every ID at once. One already on Mesita is skipped."
+        blurb="The only way a place becomes Enriched. Starts one Render run for the list."
       >
         <WriteBox
           id={PIPELINE_STEPS[3].id}
-          actions={WRITE_BOX_ACTIONS.create}
+          actions={WRITE_BOX_ACTIONS.enrich}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -124,14 +129,10 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[4].id}
         tint="amber"
         title={PIPELINE_STEPS[4].label}
-        blurb="The only way a place becomes Enriched. Starts one Render run for the list."
+        blurb="Boost → Premier, Plan → Premier: a place ranks at the higher of the two. A Boost is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
       >
-        <WriteBox
-          id={PIPELINE_STEPS[4].id}
-          actions={WRITE_BOX_ACTIONS.enrich}
-          text={sharedIds}
-          onTextChange={setSharedIds}
-        />
+        <RefillBox id={PIPELINE_STEPS[4].id} text={sharedIds} onTextChange={setSharedIds} />
+        {premierNow}
       </Step>
 
       <Step
