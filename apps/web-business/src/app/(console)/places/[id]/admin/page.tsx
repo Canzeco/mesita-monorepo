@@ -24,13 +24,13 @@ export default async function AdminPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-4 pb-8">
       <AdminCards />
-      {/* Claim requests only (MESITA-3157): the owner, editors and Revoke
+      {/* Verification only (MESITA-3157, Pato: "a box called Verification"): the owner, editors and Revoke
           are Settings' Who runs this place. */}
       <Card>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-semibold">Claim requests</p>
-            <p className="text-muted-foreground text-sm">People asking to run this place, and reports from the claim window.</p>
+            <p className="font-semibold">Verification</p>
+            <p className="text-muted-foreground text-sm">Requests to run this place, and reports from the claim window. Approve or reject each.</p>
           </div>
           <Link href={placeTabHref(id, "settings")} className="text-sm font-semibold underline underline-offset-4">
             Who runs it is in Settings
