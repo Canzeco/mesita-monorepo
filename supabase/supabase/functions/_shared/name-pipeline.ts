@@ -276,16 +276,26 @@ const ADMIN_NAME_SHAPE: NamePipelineShape = {
 };
 
 /**
- * Business Name: Business › Claim your place (MESITA-3112). Admin's caps and
- * order (Discovery shows one "Admin & Business Name Pipeline" box), places
- * only; returns rows, since the claim screen joins each Mesita row to the
- * caller's own state on it.
+ * Business Name: Business › Places and Claim your place (MESITA-3112).
+ * Admin's caps and order (Discovery shows one "Admin & Business Name
+ * Pipeline" box), places only; returns rows, since the claim screen joins
+ * each Mesita row to the caller's own state on it. It runs Deep, so the box
+ * binds both of Deep's queries (MESITA-3135; before, Deep kept the guest
+ * bar's caps): Autocomplete `admin.autoCount`, Text Search `admin.textCount`.
  */
+const BUSINESS_NAME_SHAPE: NamePipelineShape = {
+  ...ADMIN_NAME_SHAPE,
+  name: (cfg) => ({
+    ...ADMIN_NAME_SHAPE.name(cfg),
+    deep: { autoCount: cfg.name.admin.autoCount, googleCount: cfg.name.admin.textCount },
+  }),
+};
+
 export function businessNameItems(
   env: EFEnv,
   args: NamePipelineArgs,
 ): ReturnType<typeof nameLaneItems> {
-  return nameLaneItems(env, "business-web-find-place", args, ADMIN_NAME_SHAPE);
+  return nameLaneItems(env, "business-web-find-place", args, BUSINESS_NAME_SHAPE);
 }
 
 /**

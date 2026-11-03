@@ -62,6 +62,9 @@ Deno.test("the admin EF asks for Word by Admin's caps; the lane returns idleSec"
   assertEquals(consumerEf.includes("runAdminNamePipeline"), false);
   assertEquals(lane.includes("idleSec: cfg.name.idleSec"), true);
   assertEquals(lane.includes("cfg.name.admin.autoCount"), true);
+  // Business runs Deep: the Admin & Business box binds both of its queries (MESITA-3135).
+  assertEquals(lane.includes("deep: { autoCount: cfg.name.admin.autoCount, googleCount: cfg.name.admin.textCount }"), true);
+  assertEquals(lane.includes('"business-web-find-place", args, BUSINESS_NAME_SHAPE'), true);
 });
 
 Deno.test("an old blob with no Area params reads the defaults (MESITA-2327, MESITA-2347)", () => {
