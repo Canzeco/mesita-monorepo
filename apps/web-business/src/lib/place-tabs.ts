@@ -1,7 +1,7 @@
 // A place's views in the Business app (MESITA-3103) — names, labels, hrefs.
 // Client-safe: no server imports.
 
-export const PLACE_TABS = ["profile", "reviews", "preview", "premier", "settings", "internal"] as const;
+export const PLACE_TABS = ["profile", "reviews", "preview", "premier", "future", "billing", "settings", "internal"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
@@ -9,6 +9,8 @@ export const PLACE_TAB_LABEL: Record<PlaceTab, string> = {
   reviews: "Reviews",
   preview: "Preview",
   premier: "Premier",
+  future: "Future",
+  billing: "Billing",
   settings: "Settings",
   internal: "Admin",
 };

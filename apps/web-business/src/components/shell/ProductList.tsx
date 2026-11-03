@@ -1,8 +1,8 @@
 import { Card } from "@/components/shell/Page";
 
 // Mesita's five place products (🦚 Main § 4; the landing's PLACE_SOLUTIONS),
-// one card of rows, at the foot of Settings (Pato, 2026-11-02, MESITA-3117:
-// "Settings (I will list products here at the bottom)").
+// one card of rows. Since MESITA-3128 the place's Future page lists the ones
+// still coming (Profile and Premier have their own menu rows).
 const PRODUCTS: Array<{ name: string; body: string; live: boolean }> = [
   {
     name: "Mesita Profile",
@@ -31,12 +31,13 @@ const PRODUCTS: Array<{ name: string; body: string; live: boolean }> = [
   },
 ];
 
-export function ProductList() {
+export function ProductList({ soonOnly = false }: { soonOnly?: boolean }) {
+  const rows = soonOnly ? PRODUCTS.filter((p) => !p.live) : PRODUCTS;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">Products</h2>
+      {soonOnly ? null : <h2 className="text-lg font-semibold tracking-tight">Products</h2>}
       <Card className="divide-border divide-y p-0 sm:p-0">
-        {PRODUCTS.map((p) => (
+        {rows.map((p) => (
           <div key={p.name} className="flex items-start gap-4 px-5 py-4">
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{p.name}</p>
