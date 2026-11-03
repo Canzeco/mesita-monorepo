@@ -1,6 +1,7 @@
-// Manual Premier: grant, end, set; remove one pledge — the body behind admin-web-grant-place-premier (web-admin lists) and business-web-grant-place-premier
-// (web-business, the place page), MESITA-3104. Both doors open with
-// requireAdminRequest (super_admins); the EF name is the caller.
+// Manual Premier: grant, end, set; remove one pledge — the body behind
+// admin-web-grant-place-premier (web-admin's Premier lists). It opens with
+// requireAdminRequest (super_admins); the EF name is the caller. Business no
+// longer shows Manual Premier (MESITA-3146).
 
 import { json, readJson, readPlaceIdAlias } from "./http.ts";
 import { requireAdminRequest } from "./auth.ts";
