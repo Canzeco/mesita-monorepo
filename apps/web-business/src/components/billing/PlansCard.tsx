@@ -2,11 +2,12 @@
 
 // The three plans as boxes (MESITA-3173, Pato: "you actually buy access to all
 // the software, don't separate premier"; boxes MESITA-3183): Free · Pro · Max.
-// Billing and Premier draw the same boxes. Visibility is the one perk, so it is
+// They live on Billing only (MESITA-3186). Visibility is the one perk, so it is
 // each box's anchor (Pato: "make the visibility most notorious"): 1X · 2X · 5X,
 // then the tag it wears, the price, one action. Two sizes only (Pato: "don't use
 // lots of different sizes"): that headline, the rest body. Pro and Max are the boost_2x /
-// boost_5x subscriptions, so they keep the Ad tag (package law). The small print
+// boost_5x subscriptions; guests see them marked Ad (package law), the boxes
+// carry no Ad pill (Pato, MESITA-3186: "remove ad icon there"). The small print
 // keeps the claim true: Premier never promises views.
 //
 // Every amount and date is the server's (business-web-get-premier's quotes);
@@ -56,7 +57,7 @@ type Offer = {
   key: string;
   name: string;
   visibility: string;
-  /** Paid: the Ad tag and the red Premier mark. */
+  /** Paid: the red Premier mark. */
   premier: boolean;
   cents: number;
   note: string | null;
@@ -73,10 +74,7 @@ function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: Boo
       ref={boxRef}
       className={`flex flex-col gap-4 rounded-2xl border p-5 ${o.picked ? "bg-muted/60" : "bg-card"} ${o.onIt ? "border-foreground ring-foreground ring-1" : "border-border"}`}
     >
-      <p className="flex items-center gap-2 font-semibold">
-        {o.name}
-        {o.premier ? <span className="border-border text-muted-foreground type-label rounded-full border px-1.5 font-semibold">Ad</span> : null}
-      </p>
+      <p className="font-semibold">{o.name}</p>
       <div>
         <p className="font-display text-2xl font-semibold tracking-tight">{o.visibility} visibility</p>
         {o.premier ? (
@@ -116,14 +114,11 @@ export function PlansCard({
   placeId,
   initial,
   picked = null,
-  backTo,
 }: {
   placeId: string;
   initial: PlacePremier | null;
   /** A plan Billing's Keep button picked. */
   picked?: BoostTier | null;
-  /** The page Checkout returns to and a change reloads; Billing by default. */
-  backTo?: string;
 }) {
   const router = useRouter();
   const [data, setData] = useState<PlacePremier | null>(initial);
@@ -140,7 +135,7 @@ export function PlansCard({
   const quotes = data.quotes;
   const payer = data.viewer === "payer";
   const notice = data.outcome && OUTCOME[data.outcome] ? OUTCOME[data.outcome] : null;
-  const home = backTo ?? billingHref(placeId);
+  const home = billingHref(placeId);
   const onRank = data.paid?.tier ?? 0;
 
   async function reload() {
