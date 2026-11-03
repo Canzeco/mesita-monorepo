@@ -191,9 +191,11 @@ export function ClaimSearch() {
                     <Thumb photo={p.photo} />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium">{p.name ?? "Unnamed place"}</span>
-                      <span className="text-muted-foreground block truncate text-sm">{p.mine ? MINE_COPY[p.mine] : (p.address ?? "")}</span>
+                      <span className="text-muted-foreground block truncate text-sm">
+                        {p.mine ? MINE_COPY[p.mine] : p.claimed_by ? `Claimed by ${p.claimed_by}` : (p.address ?? "")}
+                      </span>
                     </span>
-                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">Claim</span>
+                    <span className="border-border shrink-0 rounded-full border px-3 py-1.5 text-sm font-semibold">{p.claimed_by && !p.mine ? "Claimed" : "Claim"}</span>
                   </button>
                 )}
               </li>

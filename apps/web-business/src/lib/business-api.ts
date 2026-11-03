@@ -56,6 +56,8 @@ export type FoundPlace = {
   masked_phone: string | null;
   phone_on_listing: boolean;
   mine: "owner" | "expired" | "pending" | null;
+  /** Someone else holds the owner seat: their email, masked (`p•••@canzeco.com`, MESITA-3155). */
+  claimed_by?: string | null;
 };
 
 /** A Mesita place, the only kind the claim form takes. */

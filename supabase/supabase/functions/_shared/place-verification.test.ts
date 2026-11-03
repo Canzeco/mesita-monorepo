@@ -1,6 +1,6 @@
 // Who runs a place (MESITA-3103): the phone proof and the access rule.
 import { assertEquals } from "jsr:@std/assert@1";
-import { boundedText, maskPhone } from "./place-verification.ts";
+import { boundedText, maskEmail, maskPhone } from "./place-verification.ts";
 import { isLiveManager } from "./place-access.ts";
 
 Deno.test("the listing phone is masked before any proof", () => {
@@ -22,4 +22,14 @@ Deno.test("request text is trimmed and bounded", () => {
   assertEquals(boundedText("", 80), null);
   assertEquals(boundedText("x".repeat(81), 80), undefined);
   assertEquals(boundedText(4, 80), undefined);
+});
+
+// MESITA-3155: the owner's email a stranger sees on a claimed place.
+Deno.test("the owner's email keeps only its first letter and its domain", () => {
+  assertEquals(maskEmail("pato@canzeco.com"), "p•••@canzeco.com");
+  assertEquals(maskEmail("  Ana.Lopez@gmail.com "), "A•••@gmail.com");
+  assertEquals(maskEmail(null), null);
+  assertEquals(maskEmail("@canzeco.com"), null);
+  assertEquals(maskEmail("pato@"), null);
+  assertEquals(maskEmail("not-an-email"), null);
 });

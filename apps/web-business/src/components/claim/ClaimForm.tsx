@@ -6,6 +6,9 @@
 //      place at once (business-web-call-place-code → -check-place-code).
 //      Calls are off for now (MESITA-3148): the server answers `test` and the
 //      code is 123456, which the code step says.
+//   A place someone else already owns (MESITA-3155) shows neither: it says
+//   whose it is (their email, masked) and offers Report to Mesita, the hand
+//   check below with the note filled in.
 //   2. Mesita checks by hand — always offered, the only way without a phone:
 //      name, role and a WhatsApp number Mesita writes to; a super-admin
 //      approves it on the place's Admin page.
@@ -17,7 +20,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Clock, FlaskConical, Phone, type LucideIcon } from "lucide-react";
+import { CheckCircle2, Clock, FlaskConical, Phone, ShieldAlert, type LucideIcon } from "lucide-react";
 import { callPlaceCode, checkPlaceCode, requestVerification, type ClaimOutcome, type ClaimablePlace } from "@/lib/business-api";
 import { INPUT_BASE } from "@/components/ui/manage";
 import { PLACES, placeTabHref } from "@/lib/routes";
@@ -28,6 +31,7 @@ const ERROR_COPY: Record<string, string> = {
   too_many_calls: "No more calls to this place today. Try tomorrow, or ask Mesita to check by hand.",
   call_failed: "We couldn't call this place. Ask Mesita to check by hand.",
   no_phone: "This place has no phone on its listing. Ask Mesita to check by hand.",
+  claimed: "Someone else already runs this place on Mesita. If that's wrong, report it to Mesita.",
 };
 
 /** Seconds before "Call again" wakes up, so a ringing phone isn't called twice. */
@@ -38,16 +42,18 @@ const PRIMARY =
   "bg-foreground text-background inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50";
 const QUIET_LINK = "text-muted-foreground hover:text-foreground text-sm transition-colors";
 
-type Mode = "call" | "code" | "manual";
+type Mode = "claimed" | "call" | "code" | "manual";
+
+const REPORT_NOTE = "Someone else claimed this place on Mesita, but I run it. Please check.";
 
 /** The grey panel each step sits in. */
-function Panel({ icon: Icon, tone = "muted", title, children }: { icon: LucideIcon; tone?: "muted" | "done"; title: string; children: React.ReactNode }) {
+function Panel({ icon: Icon, tone = "muted", title, children }: { icon: LucideIcon; tone?: "muted" | "done" | "warn"; title: string; children: React.ReactNode }) {
   return (
     <section className="bg-muted/50 flex flex-col items-center gap-4 rounded-2xl px-5 py-6 text-center sm:px-8">
       <span
         className={cn(
           "flex size-12 items-center justify-center rounded-full",
-          tone === "done" ? "bg-emerald-500/10 text-emerald-600" : "bg-card text-foreground shadow-sm",
+          tone === "done" ? "bg-emerald-500/10 text-emerald-600" : tone === "warn" ? "bg-amber-500/10 text-amber-600" : "bg-card text-foreground shadow-sm",
         )}
       >
         <Icon className="size-5" aria-hidden />
@@ -64,7 +70,9 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
   const [outcome, setOutcome] = useState<ClaimOutcome | null>(
     place.mine === "owner" ? "already_owner" : place.mine === "pending" ? "already_pending" : null,
   );
-  const [mode, setMode] = useState<Mode>(canCall ? "call" : "manual");
+  const claimedBy = place.mine ? null : (place.claimed_by ?? null);
+  const [mode, setMode] = useState<Mode>(claimedBy ? "claimed" : canCall ? "call" : "manual");
+  const [note, setNote] = useState("");
   const [test, setTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -98,7 +106,10 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
     setError(null);
     const r = await callPlaceCode(place.id);
     setBusy(false);
-    if (!r.ok) return show(r.code, r.error);
+    if (!r.ok) {
+      if (r.code === "claimed") setMode("claimed");
+      return show(r.code, r.error);
+    }
     if (r.data.outcome === "already_owner") {
       setOutcome("already_owner");
       router.refresh();
@@ -110,6 +121,32 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
 
   return (
     <div className="flex flex-col gap-3">
+      {mode === "claimed" ? (
+        <Panel icon={ShieldAlert} tone="warn" title="Already claimed">
+          <p className="text-muted-foreground max-w-xs text-sm">
+            {claimedBy ? (
+              <>
+                This place is run on Mesita by <span className="text-foreground font-medium">{claimedBy}</span>.
+              </>
+            ) : (
+              "Someone else already runs this place on Mesita."
+            )}{" "}
+            If that isn&apos;t you or your team, tell us and a person at Mesita checks.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              setNote(REPORT_NOTE);
+              setMode("manual");
+            }}
+            className={PRIMARY}
+          >
+            Report to Mesita
+          </button>
+        </Panel>
+      ) : null}
+
       {mode === "call" ? (
         <Panel icon={Phone} title="Get a call at the place">
           <p className="text-muted-foreground max-w-xs text-sm">
@@ -136,7 +173,8 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
 
       {mode === "manual" ? (
         <ManualStep
-          canCall={canCall}
+          canCall={canCall && !claimedBy}
+          initialNote={note}
           onBack={() => {
             setError(null);
             setMode("call");
@@ -148,7 +186,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
 
       {error ? <p className="text-destructive text-center text-sm">{error}</p> : null}
 
-      {mode !== "manual" ? (
+      {mode === "call" || mode === "code" ? (
         <button
           type="button"
           onClick={() => {
@@ -291,11 +329,13 @@ function CodeStep({
 function ManualStep({
   placeId,
   canCall,
+  initialNote,
   onBack,
   onSent,
 }: {
   placeId: string;
   canCall: boolean;
+  initialNote: string;
   onBack: () => void;
   onSent: (o: ClaimOutcome) => void;
 }) {
@@ -303,7 +343,7 @@ function ManualStep({
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [contact, setContact] = useState("");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(initialNote);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ready = !!name.trim() && !!role.trim() && contact.replace(/\D/g, "").length >= 7;

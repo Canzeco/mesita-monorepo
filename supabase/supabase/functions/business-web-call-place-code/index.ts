@@ -3,19 +3,20 @@
 // MESITA-3127. "Call the place": a Twilio call to the place's listing phone
 // says a new 6-digit code (it replaces any earlier one). The caller types it
 // into business-web-check-place-code. 3 calls per place and 5 per guest a
-// rolling day (place_take_verification_send). Never says who runs the place.
+// rolling day (place_take_verification_send). Refuses `claimed` while
+// someone else holds the owner seat (MESITA-3155).
 // While CALLS_LIVE is false (MESITA-3148) no call goes out: the code is
 // TEST_CODE and the reply says `test: true`.
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, outcome: "calling", masked_phone, minutes, test } | { ok: true, outcome: "already_owner" }
-//         | { ok: false, code: "no_account" | "no_phone" | "too_many_calls" | "call_failed" | "invalid" | "not_found", error }
+//         | { ok: false, code: "no_account" | "no_phone" | "claimed" | "too_many_calls" | "call_failed" | "invalid" | "not_found", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { isLiveManager, managerRow } from "../_shared/place-access.ts";
+import { isLiveManager, MANAGER_COLUMNS, managerRow, type ManagerRow } from "../_shared/place-access.ts";
 import { maskPhone } from "../_shared/place-verification.ts";
 import { CALLS_LIVE, CODE_MINUTES, dropCode, newCode, TEST_CODE, placeCodeCall, storeCode, toE164 } from "../_shared/place-call-code.ts";
 
@@ -51,6 +52,20 @@ serveJson("business-web-call-place-code", async (req) => {
     if (isLiveManager(await managerRow(admin, placeId, user.id))) return json({ ok: true, outcome: "already_owner" });
   } catch (err) {
     return json({ ok: false, error: String(err) }, 500);
+  }
+
+  // Someone else holds the owner seat (MESITA-3155): no code, no call. The
+  // claim modal shows their masked email and offers Report to Mesita.
+  const { data: seats, error: seatErr } = await admin
+    .from("place_managers")
+    .select(MANAGER_COLUMNS)
+    .eq("place_id", placeId)
+    .eq("role", "owner")
+    .is("revoked_at", null)
+    .neq("consumer_id", user.id);
+  if (seatErr) return json({ ok: false, error: seatErr.message }, 500);
+  if (((seats ?? []) as ManagerRow[]).some((r) => isLiveManager(r))) {
+    return json({ ok: false, code: "claimed", error: "Someone else already runs this place on Mesita. If that's wrong, report it to Mesita." }, 409);
   }
 
   const { data: slot, error: slotErr } = await admin.rpc("place_take_verification_send", {
