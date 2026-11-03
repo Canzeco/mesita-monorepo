@@ -120,13 +120,19 @@ export async function requestVerification(input: {
 }
 
 /** The claim call (MESITA-3127): a call to the place's listing phone says a 6-digit code. */
-export async function callPlaceCode(placeId: string): Promise<Result<{ outcome: "calling" | "already_owner"; maskedPhone: string | null; minutes: number }>> {
-  const r = await efInvoke<{ outcome: "calling" | "already_owner"; masked_phone?: string | null; minutes?: number }>(
+/** `test`: calls are off (MESITA-3148) and the code is 123456. */
+export async function callPlaceCode(
+  placeId: string,
+): Promise<Result<{ outcome: "calling" | "already_owner"; maskedPhone: string | null; minutes: number; test: boolean }>> {
+  const r = await efInvoke<{ outcome: "calling" | "already_owner"; masked_phone?: string | null; minutes?: number; test?: boolean }>(
     "business-web-call-place-code",
     { place_id: placeId },
   );
   if (!r.ok) return fail(r);
-  return { ok: true, data: { outcome: r.data.outcome, maskedPhone: r.data.masked_phone ?? null, minutes: r.data.minutes ?? 10 } };
+  return {
+    ok: true,
+    data: { outcome: r.data.outcome, maskedPhone: r.data.masked_phone ?? null, minutes: r.data.minutes ?? 10, test: r.data.test === true },
+  };
 }
 
 /** The code the call said. `tries_left` comes back on a wrong code. */

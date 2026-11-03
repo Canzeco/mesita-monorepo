@@ -4,18 +4,24 @@
 //   1. Get a call at the place — when the listing has a phone. A Twilio call
 //      to that phone says a 6-digit code; the right code makes you run the
 //      place at once (business-web-call-place-code → -check-place-code).
+//      Calls are off for now (MESITA-3148): the server answers `test` and the
+//      code is 123456, which the code step says.
 //   2. Mesita checks by hand — always offered, the only way without a phone:
 //      name, role and a WhatsApp number Mesita writes to; a super-admin
 //      approves it on the place's Admin page.
+//
+// One quiet grey panel (Pato, MESITA-3148: "better UI in that modal"): a
+// round icon, a title, one line, one full-width button; the hand check is a
+// plain link under it.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, Phone } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Clock, FlaskConical, Phone, type LucideIcon } from "lucide-react";
 import { callPlaceCode, checkPlaceCode, requestVerification, type ClaimOutcome, type ClaimablePlace } from "@/lib/business-api";
-import { Card } from "@/components/shell/Page";
 import { INPUT_BASE } from "@/components/ui/manage";
 import { PLACES, placeTabHref } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 const ERROR_COPY: Record<string, string> = {
   too_many_requests: "You can send three requests a day. Try again tomorrow.",
@@ -26,8 +32,31 @@ const ERROR_COPY: Record<string, string> = {
 
 /** Seconds before "Call again" wakes up, so a ringing phone isn't called twice. */
 const RECALL_SECONDS = 30;
+const CODE_LENGTH = 6;
+
+const PRIMARY =
+  "bg-foreground text-background inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50";
+const QUIET_LINK = "text-muted-foreground hover:text-foreground text-sm transition-colors";
 
 type Mode = "call" | "code" | "manual";
+
+/** The grey panel each step sits in. */
+function Panel({ icon: Icon, tone = "muted", title, children }: { icon: LucideIcon; tone?: "muted" | "done"; title: string; children: React.ReactNode }) {
+  return (
+    <section className="bg-muted/50 flex flex-col items-center gap-4 rounded-2xl px-5 py-6 text-center sm:px-8">
+      <span
+        className={cn(
+          "flex size-12 items-center justify-center rounded-full",
+          tone === "done" ? "bg-emerald-500/10 text-emerald-600" : "bg-card text-foreground shadow-sm",
+        )}
+      >
+        <Icon className="size-5" aria-hidden />
+      </span>
+      <h3 className="text-base font-semibold tracking-tight">{title}</h3>
+      {children}
+    </section>
+  );
+}
 
 export function ClaimForm({ place }: { place: ClaimablePlace }) {
   const router = useRouter();
@@ -36,35 +65,29 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
     place.mine === "owner" ? "already_owner" : place.mine === "pending" ? "already_pending" : null,
   );
   const [mode, setMode] = useState<Mode>(canCall ? "call" : "manual");
+  const [test, setTest] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (outcome === "verified" || outcome === "already_owner") {
     return (
-      <Card className="flex flex-col items-start gap-3">
-        <CheckCircle2 className="size-6 text-emerald-600" aria-hidden />
-        <p className="font-semibold">You run this place on Mesita.</p>
-        <p className="text-muted-foreground text-sm">Its profile, reviews, Premier and settings are yours to manage.</p>
-        <Link
-          href={placeTabHref(place.id, "profile")}
-          className="bg-foreground text-background inline-flex h-10 items-center rounded-full px-4 text-sm font-semibold"
-        >
+      <Panel icon={CheckCircle2} tone="done" title="You run this place on Mesita">
+        <p className="text-muted-foreground max-w-xs text-sm">Its profile, reviews, Premier and settings are yours to manage.</p>
+        <Link href={placeTabHref(place.id, "profile")} className={PRIMARY}>
           Open the profile
         </Link>
-      </Card>
+      </Panel>
     );
   }
 
   if (outcome === "pending" || outcome === "already_pending") {
     return (
-      <Card className="flex flex-col items-start gap-3">
-        <Clock className="text-muted-foreground size-6" aria-hidden />
-        <p className="font-semibold">Mesita is checking your claim.</p>
-        <p className="text-muted-foreground text-sm">
+      <Panel icon={Clock} title="Mesita is checking your claim">
+        <p className="text-muted-foreground max-w-xs text-sm">
           We&apos;ll write to you on WhatsApp, usually within a day. The place shows up under Places once it&apos;s approved.
         </p>
-        <Link href={PLACES} className="text-sm font-semibold underline underline-offset-4">Places</Link>
-      </Card>
+        <Link href={PLACES} className={QUIET_LINK}>Back to Places</Link>
+      </Panel>
     );
   }
 
@@ -81,32 +104,27 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
       router.refresh();
       return;
     }
+    setTest(r.data.test);
     setMode("code");
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       {mode === "call" ? (
-        <Card className="flex flex-col items-start gap-3">
-          <Phone className="text-muted-foreground size-6" aria-hidden />
-          <p className="font-semibold">Get a call at the place</p>
-          <p className="text-muted-foreground text-sm">
+        <Panel icon={Phone} title="Get a call at the place">
+          <p className="text-muted-foreground max-w-xs text-sm">
             We&apos;ll call {place.masked_phone ?? "the phone on its listing"} and say a 6-digit code. Be at the place to answer.
           </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void call()}
-            className="bg-foreground text-background inline-flex h-11 items-center gap-2 rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-          >
+          <button type="button" disabled={busy} onClick={() => void call()} className={PRIMARY}>
             {busy ? "Calling…" : "Call the place"}
           </button>
-        </Card>
+        </Panel>
       ) : null}
 
       {mode === "code" ? (
-        <CodeCard
+        <CodeStep
           place={place}
+          test={test}
           onVerified={() => {
             setOutcome("verified");
             router.refresh();
@@ -117,7 +135,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
       ) : null}
 
       {mode === "manual" ? (
-        <ManualCard
+        <ManualStep
           canCall={canCall}
           onBack={() => {
             setError(null);
@@ -128,7 +146,7 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
         />
       ) : null}
 
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p className="text-destructive text-center text-sm">{error}</p> : null}
 
       {mode !== "manual" ? (
         <button
@@ -137,22 +155,64 @@ export function ClaimForm({ place }: { place: ClaimablePlace }) {
             setError(null);
             setMode("manual");
           }}
-          className="text-muted-foreground w-fit text-sm underline underline-offset-4"
+          className={cn(QUIET_LINK, "mx-auto py-1")}
         >
-          Can&apos;t answer that phone? Ask Mesita to check by hand
+          Can&apos;t answer that phone? <span className="text-foreground font-medium">Ask Mesita to check</span>
         </button>
       ) : null}
     </div>
   );
 }
 
-function CodeCard({
+/** Six boxes over one real input, so paste and one-time-code autofill work. */
+function CodeBoxes({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled: boolean }) {
+  const input = useRef<HTMLInputElement | null>(null);
+  const [focused, setFocused] = useState(true);
+  return (
+    <div className="relative mx-auto w-full max-w-xs" onClick={() => input.current?.focus()}>
+      <input
+        ref={input}
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        disabled={disabled}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        autoFocus
+        aria-label="6-digit code"
+        maxLength={CODE_LENGTH}
+        className="absolute inset-0 z-10 h-full w-full cursor-text opacity-0"
+      />
+      <div className="grid grid-cols-6 gap-2" aria-hidden>
+        {Array.from({ length: CODE_LENGTH }, (_, i) => {
+          const current = focused && (i === value.length || (i === CODE_LENGTH - 1 && value.length === CODE_LENGTH));
+          return (
+            <span
+              key={i}
+              className={cn(
+                "bg-card flex aspect-[4/5] items-center justify-center rounded-xl font-mono text-2xl font-semibold shadow-sm ring-1 transition",
+                current ? "ring-foreground/40" : "ring-border",
+              )}
+            >
+              {value[i] ?? ""}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CodeStep({
   place,
+  test,
   onVerified,
   onCallAgain,
   calling,
 }: {
   place: ClaimablePlace;
+  test: boolean;
   onVerified: () => void;
   onCallAgain: () => void;
   calling: boolean;
@@ -180,59 +240,55 @@ function CodeCard({
   }
 
   return (
-    <Card className="flex flex-col items-start gap-3">
-      <Phone className="text-muted-foreground size-6" aria-hidden />
-      <p className="font-semibold">Answer the call and type the code</p>
-      <p className="text-muted-foreground text-sm">
-        We&apos;re calling {place.masked_phone ?? "the place"}. The call says six digits twice. The code works for 10 minutes.
-      </p>
+    <Panel icon={test ? FlaskConical : Phone} title={test ? "Type the test code" : "Answer and type the code"}>
+      {test ? (
+        <p className="text-muted-foreground max-w-xs text-sm">
+          Calls are off while we test. Type <span className="text-foreground font-mono font-semibold">123456</span>.
+        </p>
+      ) : (
+        <p className="text-muted-foreground max-w-xs text-sm">
+          We&apos;re calling {place.masked_phone ?? "the place"}. The call says six digits twice; they work for 10 minutes.
+        </p>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (code.length === 6) void check(code);
+          if (code.length === CODE_LENGTH) void check(code);
         }}
-        className="flex w-full flex-col gap-3 sm:flex-row"
+        className="flex w-full flex-col gap-4"
       >
-        <input
+        <CodeBoxes
           value={code}
-          onChange={(e) => {
-            const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+          disabled={busy}
+          onChange={(v) => {
             setCode(v);
-            if (v.length === 6 && !busy) void check(v);
+            if (v.length === CODE_LENGTH && !busy) void check(v);
           }}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoFocus
-          aria-label="6-digit code"
-          placeholder="••••••"
-          className={`${INPUT_BASE} h-12 px-4 text-center font-mono text-2xl tracking-[0.4em] sm:max-w-56`}
         />
-        <button
-          type="submit"
-          disabled={busy || code.length !== 6}
-          className="bg-foreground text-background inline-flex h-12 shrink-0 items-center justify-center rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-        >
+        {error ? <p className="text-destructive text-sm">{error}</p> : null}
+        <button type="submit" disabled={busy || code.length !== CODE_LENGTH} className={PRIMARY}>
           {busy ? "Checking…" : "Confirm"}
         </button>
       </form>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      <button
-        type="button"
-        disabled={wait > 0 || calling}
-        onClick={() => {
-          setError(null);
-          setWait(RECALL_SECONDS);
-          onCallAgain();
-        }}
-        className="text-sm font-semibold underline underline-offset-4 disabled:no-underline disabled:opacity-50"
-      >
-        {calling ? "Calling…" : wait > 0 ? `Didn't get it? Call again in ${wait}s` : "Didn't get it? Call again"}
-      </button>
-    </Card>
+      {test ? null : (
+        <button
+          type="button"
+          disabled={wait > 0 || calling}
+          onClick={() => {
+            setError(null);
+            setWait(RECALL_SECONDS);
+            onCallAgain();
+          }}
+          className={cn(QUIET_LINK, "disabled:opacity-50")}
+        >
+          {calling ? "Calling…" : wait > 0 ? `Call again in ${wait}s` : "Didn't get it? Call again"}
+        </button>
+      )}
+    </Panel>
   );
 }
 
-function ManualCard({
+function ManualStep({
   placeId,
   canCall,
   onBack,
@@ -265,22 +321,25 @@ function ManualCard({
     if (r.data === "already_owner") router.refresh();
   }
 
+  const field = `${INPUT_BASE} bg-card h-11 px-3`;
   return (
-    <Card className="flex flex-col gap-3">
-      <p className="font-semibold">Mesita checks by hand</p>
-      <p className="text-muted-foreground text-sm">
-        {canCall ? "" : "This place has no phone on its listing, so a person at Mesita checks. "}
-        We&apos;ll write to you on WhatsApp to confirm, usually within a day.
-      </p>
-      <label className="flex flex-col gap-1 text-sm">
+    <section className="bg-muted/50 flex flex-col gap-4 rounded-2xl px-5 py-6 sm:px-6">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-base font-semibold tracking-tight">Mesita checks by hand</h3>
+        <p className="text-muted-foreground text-sm">
+          {canCall ? "" : "This place has no phone on its listing, so a person at Mesita checks. "}
+          We&apos;ll write to you on WhatsApp to confirm, usually within a day.
+        </p>
+      </div>
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
         Your name
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" className={`${INPUT_BASE} h-10 px-3`} />
+        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} autoComplete="name" className={field} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
         Your role at the place
-        <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={80} placeholder="Owner, chef, director…" className={`${INPUT_BASE} h-10 px-3`} />
+        <input value={role} onChange={(e) => setRole(e.target.value)} maxLength={80} placeholder="Owner, chef, director…" className={field} />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
         Your WhatsApp number
         <input
           value={contact}
@@ -290,29 +349,29 @@ function ManualCard({
           inputMode="tel"
           autoComplete="tel"
           placeholder="+52 55 1234 5678"
-          className={`${INPUT_BASE} h-10 px-3`}
+          className={field}
         />
       </label>
-      <label className="flex flex-col gap-1 text-sm">
-        Anything that helps us check (optional)
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={3} placeholder="Your website, your Instagram…" className={`${INPUT_BASE} px-3 py-2`} />
+      <label className="flex flex-col gap-1.5 text-sm font-medium">
+        Anything that helps us check <span className="text-muted-foreground -mt-1 font-normal">Optional</span>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="Your website, your Instagram…"
+          className={`${INPUT_BASE} bg-card px-3 py-2`}
+        />
       </label>
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
-      <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          disabled={busy || !ready}
-          onClick={() => void send()}
-          className="bg-foreground text-background inline-flex h-11 w-fit items-center rounded-full px-5 text-sm font-semibold disabled:opacity-60"
-        >
-          {busy ? "Sending…" : "Send to Mesita"}
+      <button type="button" disabled={busy || !ready} onClick={() => void send()} className={PRIMARY}>
+        {busy ? "Sending…" : "Send to Mesita"}
+      </button>
+      {canCall ? (
+        <button type="button" onClick={onBack} className={cn(QUIET_LINK, "mx-auto")}>
+          Get a call at the place instead
         </button>
-        {canCall ? (
-          <button type="button" onClick={onBack} className="text-muted-foreground text-sm underline underline-offset-4">
-            Get a call at the place instead
-          </button>
-        ) : null}
-      </div>
-    </Card>
+      ) : null}
+    </section>
   );
 }

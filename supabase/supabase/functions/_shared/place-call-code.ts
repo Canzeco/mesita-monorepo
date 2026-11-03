@@ -11,6 +11,12 @@ export const CODE_MINUTES = 10;
 /** Wrong tries before the code is spent. */
 export const CODE_TRIES = 5;
 
+/** Calls are off for now (Pato, MESITA-3148: "don't make call and just accept
+ *  code 123456"): Call the place stores TEST_CODE and dials no one. Flip to
+ *  true to call places again. */
+export const CALLS_LIVE = false;
+export const TEST_CODE = "123456";
+
 /** Six random digits, leading zeros kept. */
 export function newCode(): string {
   const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;

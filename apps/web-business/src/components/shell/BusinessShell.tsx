@@ -14,10 +14,10 @@
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
 //
-// The place's pages sit in two labelled boxes (Pato: "if you use boxes it's
-// clearer to understand"), and colour tells the groups apart ("group with
-// colors for better understanding"): you in blue, the products in red,
-// Manage in grey. There is no tab row on the page: the menu is the only
+// The place's pages sit in two labelled groups (Pato: "if you use boxes it's
+// clearer to understand"). No colour (Pato, MESITA-3148, reversing
+// MESITA-3144: "red and blue look bad… minimalist… think Apple"): grey
+// labels, monochrome icons, the open page a soft grey pill. There is no tab row on the page: the menu is the only
 // navigation ("don't make the horizontal menu, it's redundant"); Preview is
 // a button on Profile.
 //
@@ -42,25 +42,8 @@ import { cn } from "@/lib/utils";
 
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
-/** A group's colour: the icon sits in a small tinted box, and its section
- *  wears the same hue, lighter (Pato, MESITA-3144: "different background
- *  colors to suggest different sections"). */
-type Tone = "you" | "product" | "system";
-
-const SECTION: Record<Tone, { box: string; label: string }> = {
-  you: { box: "border-blue-500/15 bg-blue-500/[0.06]", label: "text-blue-700" },
-  product: { box: "border-red-500/15 bg-red-500/[0.05]", label: "text-red-700" },
-  system: { box: "border-border bg-muted/70", label: "text-muted-foreground" },
-};
-
-const TONE: Record<Tone, string> = {
-  you: "bg-blue-500/10 text-blue-600",
-  product: "bg-red-500/10 text-red-600",
-  system: "bg-muted text-muted-foreground",
-};
-
 /** `href` null: there is no place yet, so the row is drawn greyed, not a link. */
-type Row = { key: string; label: string; icon: LucideIcon; tone: Tone; href: string | null; active: boolean; soon?: boolean };
+type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean; soon?: boolean };
 
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
@@ -74,7 +57,7 @@ function menu(
   isSuperAdmin: boolean,
 ): { account: Row; switcher: Switcher; place: PlaceMenu } {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const account: Row = { key: "account", label: "Account", icon: CircleUser, tone: "you", href: ACCOUNT, active: pathname === ACCOUNT };
+  const account: Row = { key: "account", label: "Account", icon: CircleUser, href: ACCOUNT, active: pathname === ACCOUNT };
   const role = place?.role === "owner" ? "Owner" : place?.role === "editor" ? "Editor" : isSuperAdmin ? "Mesita staff" : null;
   const switcher: Switcher = {
     href: PLACES,
@@ -84,26 +67,26 @@ function menu(
     role: placeId ? role : null,
     hasPlace: !!placeId,
   };
-  const tab = (key: PlaceTab, label: string, icon: LucideIcon, tone: Tone, soon = false): Row => {
+  const tab = (key: PlaceTab, label: string, icon: LucideIcon, soon = false): Row => {
     const href = placeId ? placeTabHref(placeId, key) : null;
-    return { key, label, icon, tone, href, active: href ? under(href) : false, soon };
+    return { key, label, icon, href, active: href ? under(href) : false, soon };
   };
   return {
     account,
     switcher,
     place: {
       products: [
-        tab("profile", "Profile", MapPinned, "product"),
-        tab("reviews", "Reviews", Star, "product"),
-        tab("premier", "Premier", BadgeCheck, "product"),
-        tab("payments", "Payments", CreditCard, "product", true),
-        tab("rewards", "Rewards", Gift, "product", true),
+        tab("profile", "Profile", MapPinned),
+        tab("reviews", "Reviews", Star),
+        tab("premier", "Premier", BadgeCheck),
+        tab("payments", "Payments", CreditCard, true),
+        tab("rewards", "Rewards", Gift, true),
       ],
       manage: [
-        tab("settings", "Settings", Settings, "system"),
+        tab("settings", "Settings", Settings),
         // Mesita staff only (MESITA-3122): the place's staff page. The server
         // refuses anyone else.
-        ...(isSuperAdmin ? [tab("admin", "Admin", ShieldCheck, "system")] : []),
+        ...(isSuperAdmin ? [tab("admin", "Admin", ShieldCheck)] : []),
       ],
     },
   };
@@ -119,17 +102,15 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
       aria-label={s.hasPlace ? `${s.name}, switch place` : "Places"}
       aria-current={s.active ? "page" : undefined}
       className={cn(
-        "flex items-center justify-center gap-2.5 rounded-xl p-1.5 transition-colors lg:justify-start lg:px-2 lg:py-2",
-        SECTION.you.box,
-        "border",
-        s.active ? "ring-2 ring-blue-500/25" : "hover:bg-blue-500/10",
+        "border-border flex items-center justify-center gap-2.5 rounded-xl border p-1.5 shadow-xs transition-colors lg:justify-start lg:px-2 lg:py-2",
+        s.active ? "bg-muted" : "bg-card hover:bg-muted/60",
       )}
     >
       {s.photo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={s.photo} alt="" className="size-8 shrink-0 rounded-lg object-cover" />
       ) : (
-        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", TONE.you)}>
+        <span className="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-lg">
           <Store className="size-4" aria-hidden />
         </span>
       )}
@@ -142,11 +123,11 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
   );
 }
 
-/** A labelled box of rows; below lg only the rows' icons show. */
-function Group({ label, rows, tone }: { label: string; rows: Row[]; tone: Tone }) {
+/** A labelled group of rows; below lg only the rows' icons show. */
+function Group({ label, rows }: { label: string; rows: Row[] }) {
   return (
-    <div role="group" aria-label={label} className={cn("mt-2 flex flex-col gap-0.5 rounded-xl border p-1", SECTION[tone].box)}>
-      <p className={cn("type-label hidden px-1.5 pt-1 pb-0.5 font-semibold tracking-[0.12em] uppercase lg:block", SECTION[tone].label)}>{label}</p>
+    <div role="group" aria-label={label} className="mt-5 flex flex-col gap-0.5">
+      <p className="text-muted-foreground hidden px-2.5 pb-1 text-xs font-semibold lg:block">{label}</p>
       {rows.map((r) => <RailRow key={r.key} row={r} />)}
     </div>
   );
@@ -156,9 +137,7 @@ function RailRow({ row }: { row: Row }) {
   const Icon = row.icon;
   const inner = (
     <>
-      <span className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", TONE[row.tone])}>
-        <Icon className="size-3.5" aria-hidden />
-      </span>
+      <Icon className={cn("size-4 shrink-0", row.active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
       <span className="hidden min-w-0 flex-1 truncate lg:inline">{row.label}</span>
       {row.soon ? <span className="type-label bg-muted text-muted-foreground hidden shrink-0 rounded-full px-2 py-0.5 font-semibold lg:inline">Soon</span> : null}
     </>
@@ -168,7 +147,7 @@ function RailRow({ row }: { row: Row }) {
       <span
         aria-disabled
         title={`${row.label}: choose a place first`}
-        className="text-foreground/75 flex h-10 cursor-default items-center justify-center gap-2.5 rounded-lg px-1.5 text-sm opacity-45 lg:h-9 lg:justify-start"
+        className="text-foreground flex h-10 cursor-default items-center justify-center gap-3 rounded-lg px-2.5 text-sm opacity-40 lg:h-9 lg:justify-start"
       >
         {inner}
       </span>
@@ -182,8 +161,8 @@ function RailRow({ row }: { row: Row }) {
       aria-current={row.active ? "page" : undefined}
       // Below lg the rail is icons only (w-16); the label returns at lg.
       className={cn(
-        "flex h-10 items-center justify-center gap-2.5 rounded-lg px-1.5 text-sm transition-colors lg:h-9 lg:justify-start",
-        row.active ? "bg-card text-foreground font-semibold shadow-sm" : "text-foreground/75 hover:bg-card/70 hover:text-foreground",
+        "flex h-10 items-center justify-center gap-3 rounded-lg px-2.5 text-sm transition-colors lg:h-9 lg:justify-start",
+        row.active ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60 hover:text-foreground",
       )}
     >
       {inner}
@@ -221,8 +200,8 @@ export function BusinessShell({
         </Link>
         <nav aria-label="Business" className="mt-6 flex flex-1 flex-col gap-0.5">
           <PlaceSwitcher s={switcher} />
-          <Group label="Products" rows={place.products} tone="product" />
-          <Group label="Manage" rows={place.manage} tone="system" />
+          <Group label="Products" rows={place.products} />
+          <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
           <div className="border-border mt-auto border-t pt-2">
             <RailRow row={account} />
