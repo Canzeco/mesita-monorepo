@@ -3,7 +3,7 @@
 // Profile States — the facts of a place (Pato, 2026-10-13, MESITA-2176;
 // Selected died and Boost became Premier in MESITA-2925):
 //
-//   Created · Pulsing · Enriching · Enriched · Premier · Disabled
+//   Created · Pulsing · Enriching · Enriched · Owned · Premier · Disabled
 //
 // Enriching and Enriched are the only enrichment states. A live run is
 // enriching; the one finished write is enriched. Premier is the paid tier
@@ -20,6 +20,9 @@
 //
 //   Created    google_place_id present (identity spine)
 //   Pulsing    Google pulse — Google OPERATIONAL (not Crenup 1. Pulse)
+//   Owned      the whole claim done (Pato, MESITA-3158: "you either have
+//              it all or you don't"): a live owner seat — claimed,
+//              verified, unexpired, unrevoked. Read from business-web-get-team.
 //   Disabled   places.state is not active — the operator's off switch
 //   Enriching  a run is in flight (`content_state = generating`).
 //   Enriched   the one write landed — `enriched_at` set (MESITA-2154).
@@ -58,6 +61,7 @@ import { isEnrichedPlace } from "@/lib/place-enriched";
 import { ConfirmDialog, SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 import { ErrorNote } from "@/components/ErrorNote";
+import { getTeam, type TeamMember } from "@/lib/business-api";
 import { premierTierChip, stateBoolChip } from "@/lib/state-vocabulary";
 // States box (Pato, 2026-08-25): bools. Enriching and Enriched are the two
 // enrichment states. Chips never repeat the row name.
@@ -149,6 +153,30 @@ export function StateCard({ place }: { place: AdminPlace }) {
     };
   }, [place.id]);
 
+  // Owned (MESITA-3158): a live owner seat. Undefined while reading, null on
+  // a failed read (shown as unknown, never as a false no).
+  const [owner, setOwner] = useState<TeamMember | null | undefined>(undefined);
+  const [ownerUnknown, setOwnerUnknown] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    getTeam(place.id).then((r) => {
+      if (!alive) return;
+      if (!r.ok) return setOwnerUnknown(true);
+      setOwner(r.data.members.find((m) => m.role === "owner" && m.live) ?? null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [place.id]);
+  const owned: boolean | "unknown" = ownerUnknown || owner === undefined ? "unknown" : owner !== null;
+  const ownedDetail = ownerUnknown
+    ? "Couldn't read who runs this place."
+    : owner === undefined
+      ? "Reading who runs this place…"
+      : owner
+        ? `Claimed and verified: ${owner.name ?? owner.email ?? "an owner"} owns it until ${new Date(owner.expires_at).toLocaleDateString()}.`
+        : "Nobody has claimed and verified this place.";
+
   const contentState =
     typeof place.content_state === "string" ? place.content_state : null;
   const enriching = isEnriching(
@@ -215,6 +243,12 @@ export function StateCard({ place }: { place: AdminPlace }) {
           on={enriched === true}
           chip={stateBoolChip(enriched)}
           detail={enrichedDetail}
+        />
+        <StateRow
+          name="Owned"
+          on={owned === true}
+          chip={stateBoolChip(owner === undefined && !ownerUnknown ? "loading" : owned)}
+          detail={ownedDetail}
         />
         <StateRow
           name="Premier"
