@@ -36,7 +36,7 @@
 import Link from "next/link";
 import { Outfit } from "next/font/google";
 import { usePathname } from "next/navigation";
-import { ChevronsUpDown, CircleUser, Store, type LucideIcon } from "lucide-react";
+import { CircleUser, Store, type LucideIcon } from "lucide-react";
 import { PLACE_TAB_META } from "./place-tab-meta";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
@@ -128,7 +128,6 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
         <span className="truncate text-sm leading-tight font-semibold">{s.name}</span>
         <span className="text-muted-foreground truncate text-xs leading-tight">{s.role ?? "Places"}</span>
       </span>
-      <ChevronsUpDown className="text-muted-foreground hidden size-4 shrink-0 lg:block" aria-hidden />
     </Link>
   );
 }
