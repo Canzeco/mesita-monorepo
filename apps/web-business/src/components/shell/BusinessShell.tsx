@@ -3,6 +3,7 @@
 // The Business app's frame (MESITA-3103; menu Pato, 2026-11-02, MESITA-3136):
 //
 //   Mesita    — on top: the word, as the consumer app draws it (MESITA-3153)
+//   Place
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Capabilities (MESITA-3152; was Products) ─────────────────────────┐
@@ -130,11 +131,16 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
   );
 }
 
+/** A group's title; one style for Place, Capabilities and Manage. */
+function GroupLabel({ label }: { label: string }) {
+  return <p className="text-muted-foreground hidden h-7 items-center px-3 text-xs font-semibold lg:flex">{label}</p>;
+}
+
 /** A labelled group of rows; below lg only the rows' icons show. */
 function Group({ label, rows }: { label: string; rows: Row[] }) {
   return (
     <div role="group" aria-label={label} className="mt-5 flex flex-col gap-0.5">
-      <p className="text-muted-foreground hidden h-7 items-center px-3 text-xs font-semibold lg:flex">{label}</p>
+      <GroupLabel label={label} />
       {rows.map((r) => <RailRow key={r.key} row={r} />)}
     </div>
   );
@@ -222,7 +228,12 @@ export function BusinessShell({
           </span>
         </Link>
         <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5">
-          <PlaceSwitcher s={switcher} />
+          {/* "Place" over the switcher, as Capabilities and Manage over
+              theirs (Pato, MESITA-3156: "just to keep symmetry"). */}
+          <div role="group" aria-label="Place" className="flex flex-col gap-0.5">
+            <GroupLabel label="Place" />
+            <PlaceSwitcher s={switcher} />
+          </div>
           <Group label="Capabilities" rows={place.products} />
           <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
