@@ -501,3 +501,44 @@ export async function enrichPlacesAll(
   return Object.fromEntries(rows.flat());
 }
 
+
+// ── Premier Refill (Manage Multiple › Refill, MESITA-3163) ──────────────
+// One call for the whole box: admin-web-grant-place-premier resolves the
+// Google Place IDs and runs every place in-region, one line per ID.
+
+export type RefillLine = {
+  googlePlaceId: string;
+  placeId: string | null;
+  result: "ok" | "refused" | "unknown";
+  code?: string;
+  replayed?: boolean;
+  ends_at_2x?: string | null;
+  ends_at_5x?: string | null;
+  ended_days?: number;
+};
+
+/** Add `days` of 2X (tier 1) or 5X (tier 2) to every place. The same
+ *  requestId again is answered replayed and adds nothing. */
+export async function refillPlaces(input: {
+  googlePlaceIds: string[];
+  tier: 1 | 2;
+  days: number;
+  requestId: string;
+}): Promise<Result<RefillLine[]>> {
+  const r = await efInvoke<{ lines: RefillLine[] }>("admin-web-grant-place-premier", {
+    action: "refill",
+    ...input,
+  });
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return { ok: true, data: r.data.lines ?? [] };
+}
+
+/** End every place's admin Refill days; code and bought days stay. */
+export async function endMesitaDays(googlePlaceIds: string[]): Promise<Result<RefillLine[]>> {
+  const r = await efInvoke<{ lines: RefillLine[] }>("admin-web-grant-place-premier", {
+    action: "end_mesita_days",
+    googlePlaceIds,
+  });
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return { ok: true, data: r.data.lines ?? [] };
+}

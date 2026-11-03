@@ -1,4 +1,4 @@
-// Multiple Places — one box per job. Two read, seven write.
+// Multiple Places — one box per job. Two read, eight write.
 // The sticky rail and the cards both read from here so a surface cannot
 // appear on one and vanish from the other.
 //
@@ -11,7 +11,8 @@
 // Facebook followers; Enable and Disable toggle guest visibility; Delete
 // archives (kept, gate answer 2026-11-02). The Edit box and its Manual
 // Premier buttons are gone (MESITA-3159; staff Premier left Business in
-// MESITA-3146). There is no Create + Enrich combo.
+// MESITA-3146). There is no Create + Enrich combo. Refill adds Premier
+// Refill days, 2X or 5X, or ends Mesita's (MESITA-3163).
 
 export const PIPELINE_STEPS = [
   { n: 1, id: "google-search", label: "Google Search" },
@@ -23,6 +24,7 @@ export const PIPELINE_STEPS = [
   { n: 7, id: "enable", label: "Enable" },
   { n: 8, id: "disable", label: "Disable" },
   { n: 9, id: "delete", label: "Delete" },
+  { n: 10, id: "refill", label: "Refill" },
 ] as const;
 
 export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
