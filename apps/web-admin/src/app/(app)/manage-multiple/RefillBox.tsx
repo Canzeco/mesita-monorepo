@@ -7,7 +7,8 @@ import { parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
 import { StateIcon } from "./StateIcon";
 
-// Manage Multiple › Refill (MESITA-3163): Premier Refill days, 2X or 5X,
+// Manage Multiple › Boost (MESITA-3163; Boost since MESITA-3175, box 3 since
+// MESITA-3176): a Boost of Premier 2X or 5X for N days,
 // for every pasted Google Place ID. 5X days run before 2X days; a place
 // whose paid Subscription is higher is refused. One call for the box; a
 // line the reply does not carry reads unknown, and Retry unfinished resends
@@ -135,7 +136,7 @@ export function RefillBox({
 
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <span className="text-sm font-medium">Tier</span>
+          <span className="text-sm font-medium">Premier</span>
           <div className="border-border mt-2 inline-flex rounded-full border p-0.5">
             {([1, 2] as const).map((t) => (
               <button
@@ -148,7 +149,7 @@ export function RefillBox({
                   tier === t ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t === 1 ? "2X" : "5X"}
+                {t === 1 ? "Premier 2X" : "Premier 5X"}
               </button>
             ))}
           </div>

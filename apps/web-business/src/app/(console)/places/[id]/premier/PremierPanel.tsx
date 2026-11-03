@@ -6,7 +6,8 @@
 //
 // Since MESITA-3173 Premier is not sold on its own: it comes with the Business
 // plans (Pro = Premier 2X, Max = Premier 5X, MESITA-3174), which Billing
-// lists. This page is one card: the level running now, then where to get it.
+// lists. This page is one card: the level running now, Plan → Premier and
+// Boost → Premier (MESITA-3176), then where to get it.
 // Every amount and date is the server's (business-web-get-premier).
 
 import Link from "next/link";
@@ -16,7 +17,7 @@ import { cancelPremier, getPremier, type PlacePremier } from "@/lib/business-api
 import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref } from "@/lib/routes";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
-import { FREE_LEVEL, FREE_PLAN, PLAN_LEVEL, PLAN_NAME } from "@/lib/plans";
+import { FREE_LEVEL, FREE_PLAN, PLAN_LEVEL, PLAN_NAME, planName } from "@/lib/plans";
 
 const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
 // Free is Premier 1X: the place ranks like every other place.
@@ -28,18 +29,19 @@ function day(iso: string | null | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** The level in one line (D3): the Boost, then the plan (MESITA-3175). */
-function summary(data: PlacePremier): string {
-  const parts: string[] = [];
-  if (data.manual) {
-    const origin = REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"];
-    parts.push(`Boost ${levelLabel(data.manual.tier)} until ${day(data.manual.ends_at)} · ${origin}`);
-  }
-  if (data.paid) {
-    parts.push(`${levelLabel(data.paid.tier)} with ${data.paid.by_you ? "your plan" : "a guest's payment"} · ${data.paid.renews ? "renews" : "ends"} ${day(data.paid.ends_at)}`);
-  }
-  if (data.renewing) parts.push("A renewal is being charged now");
-  return `${parts.join(". ")}.`;
+/** Plan → Premier and Boost → Premier (MESITA-3176, Pato: "Boost => Premier,
+ *  Plan => Premier"): the place ranks at the higher of the two. */
+function sources(data: PlacePremier): Array<{ name: string; value: string }> {
+  const plan = data.paid
+    ? `${planName(data.paid.tier)} → ${levelLabel(data.paid.tier)} · ${data.paid.by_you ? "" : "paid by a guest · "}${data.paid.renews ? "renews" : "ends"} ${day(data.paid.ends_at)}`
+    : `${FREE_PLAN} → ${FREE_LEVEL}`;
+  const boost = data.manual
+    ? `${levelLabel(data.manual.tier)} until ${day(data.manual.ends_at)} · ${REFILL_ORIGIN[ORIGIN_OF_SOURCE[data.manual.source ?? "admin"] ?? "mesita"]}`
+    : "None";
+  return [
+    { name: "Plan", value: plan },
+    { name: "Boost", value: boost },
+  ];
 }
 
 export function PremierPanel({ placeId, initial, loadError }: { placeId: string; initial: PlacePremier | null; loadError: string | null }) {
@@ -78,9 +80,17 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
     <div className="flex flex-col gap-4 pb-8">
       <Card className="flex flex-col p-0 sm:p-0">
         <div className="px-5 py-4 sm:px-6">
-          <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : `${FREE_PLAN} · ${FREE_LEVEL}`}</p>
-          {data.tier > 0 || data.renewing ? <p className="text-muted-foreground text-sm">{summary(data)}</p> : null}
+          <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : FREE_LEVEL}</p>
+          {data.renewing ? <p className="text-muted-foreground text-sm">A renewal is being charged now.</p> : null}
         </div>
+        <ul className="divide-border border-border divide-y border-t">
+          {sources(data).map((row) => (
+            <li key={row.name} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 py-3 sm:px-6">
+              <span className="w-16 shrink-0 text-sm font-semibold">{row.name}</span>
+              <span className="text-muted-foreground min-w-0 flex-1 text-sm">{row.value}</span>
+            </li>
+          ))}
+        </ul>
         {someoneElsePays ? (
           <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 sm:px-6">
             <p className="text-muted-foreground text-sm">A guest pays for this Premier.</p>

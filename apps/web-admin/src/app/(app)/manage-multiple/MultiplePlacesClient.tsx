@@ -97,28 +97,23 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[2].n}
         id={PIPELINE_STEPS[2].id}
-        tint="emerald"
+        tint="amber"
         title={PIPELINE_STEPS[2].label}
-        blurb="Mints each Google Place ID as a Mesita place, every ID at once. One already on Mesita is skipped."
+        blurb="Boost → Premier, Plan → Premier: a place ranks at the higher of the two. A Boost is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
       >
-        <WriteBox
-          id={PIPELINE_STEPS[2].id}
-          actions={WRITE_BOX_ACTIONS.create}
-          text={sharedIds}
-          onTextChange={setSharedIds}
-        />
+        <RefillBox id={PIPELINE_STEPS[2].id} text={sharedIds} onTextChange={setSharedIds} />
       </Step>
 
       <Step
         n={PIPELINE_STEPS[3].n}
         id={PIPELINE_STEPS[3].id}
-        tint="amber"
+        tint="emerald"
         title={PIPELINE_STEPS[3].label}
-        blurb="The only way a place becomes Enriched. Starts one Render run for the list."
+        blurb="Mints each Google Place ID as a Mesita place, every ID at once. One already on Mesita is skipped."
       >
         <WriteBox
           id={PIPELINE_STEPS[3].id}
-          actions={WRITE_BOX_ACTIONS.enrich}
+          actions={WRITE_BOX_ACTIONS.create}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -127,13 +122,13 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[4].n}
         id={PIPELINE_STEPS[4].id}
-        tint="sky"
+        tint="amber"
         title={PIPELINE_STEPS[4].label}
-        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. Also runs by itself every N views."
+        blurb="The only way a place becomes Enriched. Starts one Render run for the list."
       >
         <WriteBox
           id={PIPELINE_STEPS[4].id}
-          actions={WRITE_BOX_ACTIONS["google-update"]}
+          actions={WRITE_BOX_ACTIONS.enrich}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -142,13 +137,13 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[5].n}
         id={PIPELINE_STEPS[5].id}
-        tint="violet"
+        tint="sky"
         title={PIPELINE_STEPS[5].label}
-        blurb="Google stars, up to 100 Google reviews (Apify), Instagram and Facebook followers. Also runs by itself every N views, less often: each run is a paid scrape."
+        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. Also runs by itself every N views."
       >
         <WriteBox
           id={PIPELINE_STEPS[5].id}
-          actions={WRITE_BOX_ACTIONS["reviews-update"]}
+          actions={WRITE_BOX_ACTIONS["google-update"]}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -157,13 +152,13 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[6].n}
         id={PIPELINE_STEPS[6].id}
-        tint="emerald"
+        tint="violet"
         title={PIPELINE_STEPS[6].label}
-        blurb="Guests can find each place again, everywhere."
+        blurb="Google stars, up to 100 Google reviews (Apify), Instagram and Facebook followers. Also runs by itself every N views, less often: each run is a paid scrape."
       >
         <WriteBox
           id={PIPELINE_STEPS[6].id}
-          actions={WRITE_BOX_ACTIONS.enable}
+          actions={WRITE_BOX_ACTIONS["reviews-update"]}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -172,13 +167,13 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[7].n}
         id={PIPELINE_STEPS[7].id}
-        tint="slate"
+        tint="emerald"
         title={PIPELINE_STEPS[7].label}
-        blurb="Hides each place from every guest surface at once. Nothing is deleted; Enable brings it back."
+        blurb="Guests can find each place again, everywhere."
       >
         <WriteBox
           id={PIPELINE_STEPS[7].id}
-          actions={WRITE_BOX_ACTIONS.disable}
+          actions={WRITE_BOX_ACTIONS.enable}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -187,13 +182,13 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[8].n}
         id={PIPELINE_STEPS[8].id}
-        tint="rose"
+        tint="slate"
         title={PIPELINE_STEPS[8].label}
-        blurb="Archives each place. No Undo in this console."
+        blurb="Hides each place from every guest surface at once. Nothing is deleted; Enable brings it back."
       >
         <WriteBox
           id={PIPELINE_STEPS[8].id}
-          actions={WRITE_BOX_ACTIONS.delete}
+          actions={WRITE_BOX_ACTIONS.disable}
           text={sharedIds}
           onTextChange={setSharedIds}
         />
@@ -202,11 +197,16 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[9].n}
         id={PIPELINE_STEPS[9].id}
-        tint="amber"
+        tint="rose"
         title={PIPELINE_STEPS[9].label}
-        blurb="Boost places: Premier 2X or 5X for a number of days, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
+        blurb="Archives each place. No Undo in this console."
       >
-        <RefillBox id={PIPELINE_STEPS[9].id} text={sharedIds} onTextChange={setSharedIds} />
+        <WriteBox
+          id={PIPELINE_STEPS[9].id}
+          actions={WRITE_BOX_ACTIONS.delete}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
       </Step>
     </div>
   );
