@@ -7,5 +7,5 @@
 - **Edge Functions:** `business-web-*` only, through the `Result`-style `src/lib/supabase-ef.ts`.
 - **The whole place page lives here** (`components/place-manage/`, moved from web-admin); staff also get Reviews and Internal. Admin only links here.
 - **Google accounts only**, owners and staff; every Business door refuses any other session (`google_only`).
-- **Premier is advertising:** every plan is tagged Ad; it never verifies a place. Money is computed by the server.
+- **Premier is advertising:** guests see every paid level marked Ad; it never verifies a place. Money is computed by the server.
 - **Light theme, semantic tokens.** Payments, Prepayments and Rewards are Coming soon pages with no forms.
