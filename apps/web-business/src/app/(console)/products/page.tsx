@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Products live at the foot of Settings (MESITA-3117).
+// Products became each place's Future page (MESITA-3128); a place lives under Places.
 export default function Page() {
-  redirect("/settings");
+  redirect("/places");
 }

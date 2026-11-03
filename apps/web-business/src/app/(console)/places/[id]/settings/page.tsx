@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
-import { ProductList } from "@/components/shell/ProductList";
 import { AccountCard } from "@/components/shell/AccountCard";
 import { TeamCard } from "@/components/team/TeamCard";
 import { getIdentityCached } from "@/lib/identity";
@@ -53,7 +52,6 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
       </Card>
       <TeamCard placeId={id} />
       <AccountCard email={identity.ok ? identity.data.email : null} />
-      <ProductList />
     </div>
   );
 }

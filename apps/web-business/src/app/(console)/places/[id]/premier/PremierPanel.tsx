@@ -9,6 +9,7 @@
 // Every amount and date is the server's (business-web-get-premier's quotes);
 // this file never computes money.
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { BadgeCheck } from "lucide-react";
@@ -107,15 +108,6 @@ export function PremierPanel({
     await reload();
   }
 
-  async function updateCard() {
-    setBusy(true);
-    setError(null);
-    const r = await startPremier({ placeId, updateCard: true, returnUrl: `${window.location.origin}/places/${encodeURIComponent(placeId)}/premier` });
-    setBusy(false);
-    if (!r.ok) return setError((r.code && REFUSED[r.code]) || r.error);
-    if (r.data.url) window.location.assign(r.data.url);
-  }
-
   async function stop(asPlace: boolean) {
     setBusy(true);
     setError(null);
@@ -161,9 +153,13 @@ export function PremierPanel({
         </ul>
         {payer ? (
           <div className="flex flex-wrap gap-2">
-            <button type="button" disabled={busy} onClick={() => void updateCard()} className="border-border hover:bg-muted h-9 rounded-full border px-4 text-sm font-semibold disabled:opacity-60">
-              Update card
-            </button>
+            {/* The card and every charge live on Billing (MESITA-3128). */}
+            <Link
+              href={`/places/${encodeURIComponent(placeId)}/billing`}
+              className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
+            >
+              Card and charges
+            </Link>
             {data.paid?.renews ? (
               <button
                 type="button"

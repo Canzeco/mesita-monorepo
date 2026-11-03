@@ -213,6 +213,33 @@ export async function getPremier(placeId: string, sessionId?: string | null): Pr
   return { ok: true, data: r.data };
 }
 
+// ── Billing (MESITA-3128) ───────────────────────────────────────────────
+
+export type PlaceBilling = {
+  /** Who pays the place's Premier: you, someone else on the team, or nobody. */
+  payer: "you" | "team" | null;
+  plan: { tier: BoostTier; interval: BoostInterval; amount_cents: number; next_charge_at: string | null } | null;
+  /** The payer's own card; only ever sent to the payer. */
+  card: { brand: string; last4: string; exp_month: number; exp_year: number } | null;
+  charges: Array<{
+    id: string;
+    at: string;
+    tier: number;
+    interval: BoostInterval;
+    starts_at: string;
+    ends_at: string;
+    amount_cents: number;
+    status: "paid" | "declined" | "charging";
+  }>;
+};
+
+export async function getBilling(placeId: string): Promise<Result<PlaceBilling>> {
+  const r = await efInvoke<PlaceBilling & { ok: true }>("business-web-get-billing", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  const { payer, plan, card, charges } = r.data;
+  return { ok: true, data: { payer, plan, card, charges: charges ?? [] } };
+}
+
 export async function startPremier(input: {
   placeId: string;
   tier?: BoostTier;
