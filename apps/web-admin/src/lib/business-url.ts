@@ -11,7 +11,7 @@ export function businessBaseUrl(): string | null {
 
 /** The place page lives in the Business app (MESITA-3104): staff open
  *  Reviews, Preview, Premier and Internal there. */
-export type BusinessPlaceView = "profile" | "reviews" | "preview" | "premier" | "settings" | "internal";
+export type BusinessPlaceView = "profile" | "reviews" | "preview" | "premier" | "settings" | "admin";
 
 /** A Business app place view, or null when the app's address is not set. */
 export function businessPlaceHref(placeId: string, view: BusinessPlaceView): string | null {

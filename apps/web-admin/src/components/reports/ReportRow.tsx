@@ -29,7 +29,7 @@ export function ReportRow({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {showPlace ? (
           <PlaceDoor
-            href={businessPlaceHref(report.place_id, "internal")}
+            href={businessPlaceHref(report.place_id, "admin")}
             className="focus-visible:ring-ring rounded text-sm font-semibold underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
           >
             {report.place_name}

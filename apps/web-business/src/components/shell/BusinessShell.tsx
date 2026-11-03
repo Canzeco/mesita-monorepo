@@ -95,7 +95,7 @@ function menu(
         tab("settings", "Settings", Settings, "system"),
         // Mesita staff only (MESITA-3122): the place's staff page. The server
         // refuses anyone else.
-        ...(isSuperAdmin ? [tab("internal", "Admin", ShieldCheck, "system")] : []),
+        ...(isSuperAdmin ? [tab("admin", "Admin", ShieldCheck, "system")] : []),
       ],
     },
   };

@@ -5,7 +5,7 @@ import { PageHeader, Card } from "@/components/shell/Page";
 import { PageErrorState } from "@/components/ui/PageErrorState";
 import type { MyPlaceState } from "@/lib/business-api";
 import { ClaimSearch } from "@/components/claim/ClaimSearch";
-import { PLACES, REQUESTS, claimHref, placeTabHref } from "@/lib/routes";
+import { PLACES, claimHref, placeTabHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Your places" };
@@ -28,20 +28,13 @@ export default async function PlacesPage() {
   if (!identity.ok) {
     return <PageErrorState heading="Could not load your places" message={identity.error} retryHref={PLACES} />;
   }
-  const { places, isSuperAdmin } = identity.data;
+  const { places } = identity.data;
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Your places"
         sub="The places you run on Mesita. Each one has its profile, its Premier and its settings."
-        right={
-          isSuperAdmin ? (
-            <Link href={REQUESTS} className="border-border inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold">
-              Claim requests
-            </Link>
-          ) : undefined
-        }
       />
       {/* Places (Pato, MESITA-3126): a search on top, then the places you run.
           Everyone, staff included, claims a place before opening it

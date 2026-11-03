@@ -2,8 +2,8 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { listVerifications } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { VerificationQueue } from "@/components/internal/VerificationQueue";
-import { InternalCards } from "./InternalCards";
+import { VerificationQueue } from "@/components/admin/VerificationQueue";
+import { AdminCards } from "./AdminCards";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Admin" };
@@ -13,7 +13,7 @@ export const metadata = { title: "Admin" };
 // super-admin, and every door these cards write through is a
 // business-web-* EF that refuses anyone else. This page also 404s for an
 // owner so the view is never drawn empty.
-export default async function InternalPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AdminPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const manage = await getManagePlace(id);
   if (!manage || manage.role !== "superadmin") notFound();
@@ -21,11 +21,11 @@ export default async function InternalPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="flex flex-col gap-4 pb-8">
-      <InternalCards />
+      <AdminCards />
       <Card>
         <p className="mb-3 font-semibold">Who runs this place</p>
         {queue.ok ? (
-          <VerificationQueue owners={queue.data.owners} pending={queue.data.pending} showPlace={false} />
+          <VerificationQueue owners={queue.data.owners} pending={queue.data.pending} />
         ) : (
           <p className="text-destructive text-sm">{queue.error}</p>
         )}

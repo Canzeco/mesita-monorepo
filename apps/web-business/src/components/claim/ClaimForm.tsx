@@ -6,7 +6,7 @@
 //      place at once (business-web-call-place-code → -check-place-code).
 //   2. Mesita checks by hand — always offered, the only way without a phone:
 //      name, role and a WhatsApp number Mesita writes to; a super-admin
-//      approves it on Claim requests.
+//      approves it on the place's Admin page.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
