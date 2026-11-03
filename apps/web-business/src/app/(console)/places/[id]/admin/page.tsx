@@ -26,7 +26,7 @@ export default async function AdminPage({ params }: { params: Promise<{ id: stri
     // columns"): Verification is a card among the others.
     <AdminCards>
       {/* Verification only (MESITA-3157, Pato: "a box called Verification"):
-          the owner, editors and Revoke are Settings' Who runs this place. */}
+          the owner, editors and Revoke are Settings' Team. */}
       <Card className="flex flex-col gap-4">
         <div>
           <p className="font-semibold">Verification</p>

@@ -1,6 +1,6 @@
 "use client";
 
-// Who runs this place (MESITA-3120; Settings' one box for it since
+// Team (MESITA-3120; Settings' one box for it since
 // MESITA-3157, Pato: "who runs this place is in settings… with a more
 // friendly UI. One place can only have one owner, and multiple editors").
 // One owner and its editors, per place (no organization layer). Everyone on
@@ -128,7 +128,7 @@ export function TeamCard({ placeId }: { placeId: string }) {
   return (
     <Card className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h2 className="text-lg font-semibold tracking-tight">Who runs this place</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Team</h2>
         <p className="text-muted-foreground text-sm">
           One owner and any number of editors. Editors change the profile; the owner also runs Premier and the team.
         </p>

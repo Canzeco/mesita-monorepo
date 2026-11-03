@@ -18,7 +18,8 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
 
-// The place's settings only: who runs it, its team, Leave. Billing moved to
+// The place's settings only: Place (with Leave) and Team (MESITA-3171, Pato:
+// "use standard names for the boxes. short"). Billing moved to
 // Premier and your email and sign-out live in Account alone (MESITA-3154:
 // "account must not be redundant").
 export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,7 +30,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
   return (
     <div className="flex flex-col gap-4 pb-8">
       <Card className="flex flex-col gap-3">
-        <p className="font-semibold">This place</p>
+        <p className="font-semibold">Place</p>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Name</dt>
           <dd>{manage.place.name}</dd>
