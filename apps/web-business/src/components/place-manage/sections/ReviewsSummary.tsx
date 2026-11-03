@@ -1,15 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { RefreshCw, Star } from "lucide-react";
-import { reloadPlaceReviews } from "../actions";
+import { Star } from "lucide-react";
 import { SectionCard, type Tint } from "@/components/ui/manage";
-import { mergeReviewFoundFlags } from "@/lib/review-found";
 import { usePlaceContext } from "../PlaceContext";
 
-// Reviews. One Sync in the header updates the four boxes from saved links.
-// Save on Profile does not call this. Found flags are not profile fields.
-// The four boxes are separate cards (Pato, MESITA-2261). Sync stays above them.
+// Reviews: the four boxes, read-only. Update Reviews refills them when the
+// Instagram or Facebook link changes on Profile, every N views, or from
+// Admin › Special actions (MESITA-3161: the Sync button is gone). Found flags
+// are not profile fields. The four boxes are separate cards (MESITA-2261).
 // Google Reviews lists every stored review, sortable, 10 a page (MESITA-2832).
 
 type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
@@ -84,74 +83,21 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-/** `canSync`: Mesita staff (Sync calls paid scrapers). The team reads the
- *  boxes without it (MESITA-3121); Google's id is staff-only, so a box with
- *  data reads as synced and an empty one as never synced. */
-export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
-  const { place, setPlace } = usePlaceContext();
-  const [syncing, setSyncing] = useState(false);
-  const [syncedAt, setSyncedAt] = useState<string | null>(null);
-  const [failures, setFailures] = useState<string[]>([]);
-  const [sourceErrors, setSourceErrors] = useState<Record<string, string>>({});
-  const [box, setBox] = useState<Record<string, BoxState>>({});
-
-  async function sync() {
-    setSyncing(true);
-    setFailures([]);
-    setSourceErrors({});
-    setBox({
-      google: place.google_place_id?.trim() ? "syncing" : "no-link",
-      instagram: place.instagram_url?.trim() ? "syncing" : "no-link",
-      facebook: place.facebook_url?.trim() ? "syncing" : "no-link",
-      google_reviews: place.google_place_id?.trim() ? "syncing" : "no-link",
-    });
-    const r = await reloadPlaceReviews(place.id, "sync");
-    setSyncing(false);
-    if (!r.ok) {
-      setFailures(["Sync"]);
-      if (r.error?.trim()) setSourceErrors({ Sync: r.error.trim() });
-      setBox((current) => boxesAfterFailedSync(current));
-      return;
-    }
-    const sources = r.data.sources ?? [];
-    const next: Record<string, BoxState> = {};
-    const failed: string[] = [];
-    const errors: Record<string, string> = {};
-    for (const row of sources) {
-      next[row.source] = row.status === "no_link"
-        ? "no-link"
-        : row.status === "error"
-        ? "error"
-        : "synced";
-      if (row.status === "error") {
-        failed.push(row.source);
-        if (row.error?.trim()) errors[row.source] = row.error.trim();
-      }
-    }
-    setBox(next);
-    setFailures(failed);
-    setSourceErrors(errors);
-    setSyncedAt(r.data.lastSyncedAt ?? new Date().toISOString());
-    setPlace((current) => ({
-      ...current,
-      google_stars_overall: r.data.google_stars_overall,
-      google_review_count: r.data.google_review_count,
-      instagram_followers_count: r.data.instagram_followers_count,
-      facebook_followers: r.data.facebook_followers,
-      ...mergeReviewFoundFlags(current, r.data),
-      google_reviews: r.data.google_reviews ?? current.google_reviews,
-      source_sync: r.data.source_sync ?? current.source_sync,
-    }));
-  }
-
+/** No Sync button (Pato, MESITA-3161): Update Reviews runs when the
+ *  Instagram or Facebook link changes, every N views, or from Admin ›
+ *  Special actions; this page only reads. `staff`: Google's id is
+ *  staff-only, so for the team a box with data reads as synced and an empty
+ *  one as never synced. */
+export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
+  const { place } = usePlaceContext();
   const stored = storedSync(place.source_sync);
-  const errors = { ...stored.errors, ...sourceErrors };
-  const hasGoogle = canSync ? !!place.google_place_id?.trim() : true;
-  const googleState = box.google ?? reviewBoxState(hasGoogle, stored.google);
-  const igState = box.instagram ?? reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
-  const fbState = box.facebook ?? reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
-  const reviewsState = box.google_reviews ?? reviewBoxState(hasGoogle, stored.google_reviews);
-  const shownAt = syncedAt ?? stored.lastSyncedAt;
+  const errors = stored.errors;
+  const hasGoogle = staff ? !!place.google_place_id?.trim() : true;
+  const googleState = reviewBoxState(hasGoogle, stored.google);
+  const igState = reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
+  const fbState = reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
+  const reviewsState = reviewBoxState(hasGoogle, stored.google_reviews);
+  const shownAt = stored.lastSyncedAt;
   const reviews = storedReviews(place.google_reviews);
 
   return (
@@ -159,18 +105,7 @@ export function ReviewsSummary({ canSync = true }: { canSync?: boolean } = {}) {
       <header className="flex flex-wrap items-center justify-between gap-3">
         {/* The page title (PlaceTabTitle, MESITA-3151) names Reviews; this
             line says how fresh it is. */}
-        <p className="text-muted-foreground min-w-0 text-sm">{syncSubtitle({ syncedAt: shownAt, failures, syncing, errors })}</p>
-        {canSync ? (
-        <button
-          type="button"
-          onClick={() => void sync()}
-          disabled={syncing}
-          className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold disabled:opacity-50"
-        >
-          <RefreshCw className={"h-3.5 w-3.5 " + (syncing ? "animate-spin" : "")} />
-          Sync
-        </button>
-        ) : null}
+        <p className="text-muted-foreground min-w-0 text-sm">{syncSubtitle({ syncedAt: shownAt, failures: [], syncing: false, errors })}</p>
       </header>
       {/* Two columns at lg (Pato, MESITA-3144: "left column for summaries,
           right column just for google reviews"). */}

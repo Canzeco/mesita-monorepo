@@ -14,5 +14,5 @@ export default async function ReviewsPage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const manage = await getManagePlace(id);
   if (!manage) notFound();
-  return <ReviewsSummary canSync={manage.role === "superadmin"} />;
+  return <ReviewsSummary staff={manage.role === "superadmin"} />;
 }
