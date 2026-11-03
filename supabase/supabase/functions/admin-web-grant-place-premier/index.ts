@@ -1,24 +1,25 @@
 // Supabase Edge Function — admin-web-grant-place-premier
 //
-// MESITA-2995: Single Place › Premier, the operator's writes. Grants are
-// Manual Premier (MESITA-3091: place_manual_premier, apart from what guests
-// pay; the place's level is the higher of the two).
-//   grant         Manual Premier, nothing charged (tier 1..2, 1..12 months);
-//                 refused while Manual Premier is running.
-//   end           ends the running Manual Premier now.
-//   remove_pledge ends one pledge (`left`, its card detached); a payer's
-//                 paid period runs out and nothing renews it. Never refunds.
-//   set           MESITA-3090, Multiple Places › Edit: move the place's Manual
-//                 Premier to tier 0 (End Premier), 1 (2X) or 2 (5X) in one
-//                 transaction (premier_set_grant). Refused, nothing written,
-//                 only for an archived or unknown place; it never touches a
-//                 guest's pledge or period. Errors map in _shared/premier-set.ts.
+// MESITA-3163: Premier Refill from Manage Multiple › Refill, and the
+// operator's pledge removal. Refill days live in place_manual_premier,
+// apart from the paid Subscription; the place's level is the higher of the
+// two. Days are written only by premier_add_days / premier_end_mesita_days.
+//   refill          adds `days` of 2X (tier 1) or 5X (tier 2) to every place,
+//                   5X before 2X; one line per Google Place ID. A resent
+//                   requestId is answered replayed and adds nothing.
+//   end_mesita_days ends every place's admin Refill days (code and bought
+//                   days stay); one line per Google Place ID with ended_days.
+//   remove_pledge   ends one pledge (`left`, its card detached); a payer's
+//                   paid period runs out and nothing renews it. Never refunds.
 //
-// Body:     { placeId | projectId, action: "grant", tier: 1|2, months?: 1..12 }
-//         | { placeId | projectId, action: "end" }
+// Body:     { action: "refill", googlePlaceIds: string[1..500], tier: 1|2, days: 1..366, requestId }
+//         | { action: "end_mesita_days", googlePlaceIds: string[1..500] }
 //         | { placeId | projectId, action: "remove_pledge", backingId: uuid }
-//         | { placeId | projectId, action: "set", tier: 0|1|2, months: 1..12 | null }
-// Response: { ok: true }  (set: { ok, result, ends_at, previous_tier, previous_ends_at })
+// Response: { ok: true, lines: [{ googlePlaceId, placeId, result: ok|refused|unknown,
+//             code?, replayed?, ends_at_2x?, ends_at_5x?, ended_days? }] }  (remove_pledge: { ok: true })
+// Line codes: not_found · archived · unlisted · paid_higher · cap_reached.
+// 400 { ok: false, code, error }: ids_invalid · too_many_ids · tier_invalid · days_invalid ·
+//     request_id_invalid. 500 carries request_id.
 // Auth:     caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
