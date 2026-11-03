@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, ChevronRight, Loader2, Rocket, Store } from "lucide-react";
+import { BadgeCheck, ChevronRight, Loader2 } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import {
@@ -15,7 +15,6 @@ import {
   type RefillDays,
   type TierRank,
 } from "@/lib/api/boost";
-import { businessClaimHref } from "@/lib/business-url";
 import { MAP_PREMIER_PIN_COLOR } from "@/lib/map-defaults";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -33,23 +32,13 @@ import { cn, errMsg } from "@/lib/utils";
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
 //
-// Three boxes: the place's Premier level on a 0–3 meter (level 3 reads
-// "Soon": the database allows 0–2, MESITA-3041) with what lifts it now;
-// "Buy a Boost", one row that opens a sheet with the perks, the two
-// packs and ONE pay button; and "Is this your business?", the Business app's
-// claim page. Every amount, date and line is the server's
+// One card of two rows (MESITA-3187, Pato: "this UI must be far simpler"): what
+// lifts the place now, and "Buy a Boost", which opens a sheet with the perks, the
+// two packs and ONE pay button. "Is this your business?" is in the place's ⋯
+// menu. Every amount, date and line is the server's
 // (consumer-web-get-premier-refill); nothing here computes money. Premier is
 // paid ranking priority: it never verifies the place and never promises
 // views.
-
-/** The level meter's three steps above 0: the two packs, then "Soon". */
-const LEVELS: ReadonlyArray<{ rank: number; label: string; soon?: boolean }> = [
-  ...BOOST_TIERS.map((t) => ({
-    rank: t.rank,
-    label: t.priority,
-  })),
-  { rank: 3, label: "Soon", soon: true },
-];
 
 /** What a pack buys, said in the sheet above the packs. */
 const PERKS = [
@@ -82,13 +71,10 @@ export function BoostPane({
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState<string | null>(null);
 
-  const level = boost?.level ?? 0;
-  const live = level > 0;
   const status = statusLines(boost);
   const packs = boost?.packs ?? [];
   const forSale = packs.filter((p) => p.available);
   const pack = packs.find((p) => p.tier === picked) ?? null;
-  const claimHref = businessClaimHref(place.id);
   const returnUrl = () =>
     `${window.location.origin}${window.location.pathname}`;
 
@@ -115,113 +101,34 @@ export function BoostPane({
         Premier
       </h2>
 
-      {/* Box 1: the level, 0–3. */}
-      <div
-        className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4"
-        aria-live="polite"
-      >
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="type-eyebrow text-muted-foreground">Premier level</h3>
-          <span className="text-sm font-semibold">
-            {loading ? "…" : level}
-            <span className="text-muted-foreground font-normal"> / 3</span>
-          </span>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5" aria-hidden>
-          {LEVELS.map((l) => (
-            <div key={l.rank} className="flex flex-col gap-1">
-              <span
-                className={cn(
-                  "h-2 rounded-full",
-                  !loading && level >= l.rank
-                    ? ""
-                    : l.soon
-                      ? "border-border border border-dashed"
-                      : "bg-muted",
-                )}
-                style={
-                  !loading && level >= l.rank
-                    ? { backgroundColor: MAP_PREMIER_PIN_COLOR }
-                    : undefined
-                }
-              />
-              <span className="text-muted-foreground type-label">
-                {l.label}
-              </span>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm">
-          <span className="block font-semibold">
-            {loading ? "Loading…" : status.head}
-          </span>
+      <div className="border-border bg-card divide-border divide-y rounded-2xl border">
+        <div className="flex min-h-16 flex-col justify-center px-4 py-3" aria-live="polite">
+          <p className="font-semibold">{loading ? "Loading…" : status.head}</p>
           {!loading &&
-            (status.sub.length > 0 ? (
-              status.sub.map((line) => (
-                <span
-                  key={line}
-                  className="text-muted-foreground block text-xs"
-                >
-                  {line}
-                </span>
-              ))
-            ) : !live ? (
-              <span className="text-muted-foreground block text-xs">
-                Premier moves a place up on Home and the Map.
-              </span>
-            ) : null)}
-        </p>
-      </div>
-
-      {/* Box 2: buy days; the sheet holds the packs and the button. */}
-      <button
-        type="button"
-        onClick={() => setSheetOpen(true)}
-        disabled={loading}
-        className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border px-4 py-3 text-left transition active:scale-[0.99] disabled:opacity-60"
-      >
-        <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-          <Rocket className="h-5 w-5" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-base font-semibold">
-            Buy a Boost
-          </span>
-          <span className="text-muted-foreground block text-xs">
-            {packLine(boost, forSale.length > 0)}
-          </span>
-        </span>
-        <ChevronRight
-          className="text-muted-foreground h-5 w-5 shrink-0"
-          aria-hidden
-        />
-      </button>
-
-      {/* Box 3: the Business app's claim page, in a new tab. */}
-      {claimHref && (
-        <a
-          href={claimHref}
-          target="_blank"
-          rel="noopener"
-          className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border px-4 py-3 transition active:scale-[0.99]"
+            status.sub.map((line) => (
+              <p key={line} className="text-muted-foreground text-sm">
+                {line}
+              </p>
+            ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          disabled={loading}
+          className="flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left disabled:opacity-60"
         >
-          <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-            <Store className="h-5 w-5" aria-hidden />
-          </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold">
-              Is this your business?
-            </span>
-            <span className="text-muted-foreground block text-xs">
-              Claim it on Mesita Business to manage its page.
+            <span className="block font-semibold">Buy a Boost</span>
+            <span className="text-muted-foreground block text-sm">
+              {packLine(boost, forSale.length > 0)}
             </span>
           </span>
           <ChevronRight
             className="text-muted-foreground h-5 w-5 shrink-0"
             aria-hidden
           />
-        </a>
-      )}
+        </button>
+      </div>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
@@ -427,7 +334,7 @@ function packLine(boost: PlaceBoost | null, anyForSale: boolean): string {
   const prices = boost.packs
     .filter((p) => p.available)
     .map((p) => p.price_cents);
-  return `From ${money(Math.min(...prices))} · 30 days of 2X or 5X priority`;
+  return `From ${money(Math.min(...prices))} · 30 days`;
 }
 
 /** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
