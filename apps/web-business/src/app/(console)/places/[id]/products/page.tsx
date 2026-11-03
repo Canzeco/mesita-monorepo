@@ -1,13 +1,13 @@
-import { ProductList } from "@/components/shell/ProductList";
+import { SoonCard } from "@/components/shell/SoonCard";
 
 export const metadata = { title: "Products" };
 
-// Products (Pato, MESITA-3152: "add also menu as soon"): the place's menu,
-// not on yet, so the page says what it will be and holds no form.
+// Products is not on yet: the box says Soon and explains nothing
+// (MESITA-3171).
 export default function ProductsPage() {
   return (
     <div className="flex flex-col gap-3 pb-8">
-      <ProductList only={["Mesita Menu"]} />
+      <SoonCard />
     </div>
   );
 }

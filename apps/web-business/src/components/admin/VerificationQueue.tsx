@@ -3,7 +3,7 @@
 // "I run this place" requests, for Mesita staff (MESITA-3103), reports from
 // the claim window included (MESITA-3155). Approve writes the owner row and
 // closes the request in one call; Reject keeps a note the guest sees. The
-// owner and editors (and Revoke) live in Settings' Who runs this place
+// owner and editors (and Revoke) live in Settings' Team
 // (MESITA-3157).
 
 import { useRouter } from "next/navigation";

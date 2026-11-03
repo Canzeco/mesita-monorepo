@@ -1,13 +1,13 @@
-import { ProductList } from "@/components/shell/ProductList";
+import { SoonCard } from "@/components/shell/SoonCard";
 
 export const metadata = { title: "Payments" };
 
-// Payments (Pato, MESITA-3136: "Payments (Soon)"): not on yet, so the page
-// says what it will be and holds no form.
+// Payments is not on yet: the box says Soon and explains nothing
+// (MESITA-3171).
 export default function PaymentsPage() {
   return (
     <div className="flex flex-col gap-3 pb-8">
-      <ProductList only={["Digital Payments"]} />
+      <SoonCard />
     </div>
   );
 }

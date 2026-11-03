@@ -13,6 +13,6 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon;
   products: { label: "Products", icon: UtensilsCrossed, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   rewards: { label: "Rewards", icon: Gift, sub: "Coming to Mesita for your place. Nothing here is on yet.", soon: true },
   billing: { label: "Billing", icon: Receipt, sub: "What's running, what it costs and every charge." },
-  settings: { label: "Settings", icon: Settings, sub: "Who runs this place and its team." },
-  admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only: who runs this place and its requests." },
+  settings: { label: "Settings", icon: Settings, sub: "Place and team." },
+  admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only." },
 };
