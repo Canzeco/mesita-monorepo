@@ -31,11 +31,12 @@ const PRODUCTS: Array<{ name: string; body: string; live: boolean }> = [
   },
 ];
 
-export function ProductList({ soonOnly = false }: { soonOnly?: boolean }) {
-  const rows = soonOnly ? PRODUCTS.filter((p) => !p.live) : PRODUCTS;
+/** All five, or just the named ones (a Soon page shows its own product). */
+export function ProductList({ only }: { only?: readonly string[] }) {
+  const rows = only ? PRODUCTS.filter((p) => only.includes(p.name)) : PRODUCTS;
   return (
     <section className="flex flex-col gap-3">
-      {soonOnly ? null : <h2 className="text-lg font-semibold tracking-tight">Products</h2>}
+      {only ? null : <h2 className="text-lg font-semibold tracking-tight">Products</h2>}
       <Card className="divide-border divide-y p-0 sm:p-0">
         {rows.map((p) => (
           <div key={p.name} className="flex items-start gap-4 px-5 py-4">
