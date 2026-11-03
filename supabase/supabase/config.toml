@@ -261,9 +261,10 @@ verify_jwt = true
 # Premier (MESITA-3092; Boost MESITA-2789, Spotlight MESITA-1998): one Paid
 # subscription per place (its one ready pledge); a declined renewal ends it.
 # place_premier_periods holds the paid stretches; places.boost_tier follows
-# them and Manual Premier. No webhook: supabase-cron-sync-premier polls
+# them and Premier Refill days. No webhook: supabase-cron-sync-premier polls
 # Stripe every 5 minutes. admin-web-get-place-premier is Single Place › Premier
-# (read); admin-web-grant-place-premier grants, ends a grant, removes a pledge.
+# (read); admin-web-grant-place-premier is Manage Multiple › Refill (refill,
+# end_mesita_days, MESITA-3163) and removes a pledge.
 [functions.consumer-web-start-premier]
 verify_jwt = true
 

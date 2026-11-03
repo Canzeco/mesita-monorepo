@@ -9,6 +9,7 @@ import { SectionCard, type Tint } from "@/components/admin-ui/manage";
 import { SearchTab } from "./SearchTab";
 import { MesitaSearchTab } from "./MesitaSearchTab";
 import { WriteBox } from "./WriteBox";
+import { RefillBox } from "./RefillBox";
 import { LEGACY_HASHES, PIPELINE_STEPS, WRITE_BOX_ACTIONS } from "./pipeline";
 import { PipelineNav } from "./PipelineNav";
 
@@ -196,6 +197,16 @@ export function MultiplePlacesClient() {
           text={sharedIds}
           onTextChange={setSharedIds}
         />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[9].n}
+        id={PIPELINE_STEPS[9].id}
+        tint="amber"
+        title={PIPELINE_STEPS[9].label}
+        blurb="Premier Refill days, 2X or 5X. 5X days run first, then 2X. A place paying for a higher Subscription is refused. End Mesita days ends only the days added here."
+      >
+        <RefillBox id={PIPELINE_STEPS[9].id} text={sharedIds} onTextChange={setSharedIds} />
       </Step>
     </div>
   );
