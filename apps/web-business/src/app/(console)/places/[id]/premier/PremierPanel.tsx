@@ -9,13 +9,12 @@
 // Every amount and date is the server's (business-web-get-premier's quotes);
 // this file never computes money. Premier sells the plans; Billing shows
 // what runs and what is charged (MESITA-3166, D3): the level here is one
-// summary line and a link to Billing, whose Keep and See plans buttons come
-// back with a plan picked.
+// row and a link to Billing, whose Keep and See plans buttons come back with
+// a plan picked. One card of rows since MESITA-3172.
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck } from "lucide-react";
 import {
   cancelPremier,
   getPremier,
@@ -28,9 +27,9 @@ import { Card } from "@/components/shell/Page";
 import { billingHref, placeTabHref, returnUrl } from "@/lib/routes";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
 
-const PLANS: Array<{ key: BoostTier; rank: number; label: string; factor: string; blurb: string }> = [
-  { key: "boost_2x", rank: 1, label: "Premier 2X", factor: "2X", blurb: "Twice the ranking priority on Home and the Map." },
-  { key: "boost_5x", rank: 2, label: "Premier 5X", factor: "5X", blurb: "Five times the ranking priority on Home and the Map." },
+const PLANS: Array<{ key: BoostTier; rank: number; label: string; factor: string }> = [
+  { key: "boost_2x", rank: 1, label: "Premier 2X", factor: "2X" },
+  { key: "boost_5x", rank: 2, label: "Premier 5X", factor: "5X" },
 ];
 const LABEL_BY_RANK: Record<number, string> = { 1: "Premier 2X", 2: "Premier 5X" };
 const levelLabel = (tier: number) => LABEL_BY_RANK[tier] ?? "Premier";
@@ -100,7 +99,7 @@ export function PremierPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(loadError);
   const [armed, setArmed] = useState<string | null>(null);
-  const pickedRef = useRef<HTMLDivElement | null>(null);
+  const pickedRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => {
     pickedRef.current?.scrollIntoView({ block: "center" });
   }, []);
@@ -161,23 +160,17 @@ export function PremierPanel({
     <div className="flex flex-col gap-4 pb-8">
       {notice ? <Card className="text-sm">{notice}</Card> : null}
 
-      <Card className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <BadgeCheck className="size-5 text-(--brand-pink-text)" aria-hidden />
-          <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : "Not Premier"}</p>
-          {data.tier > 0 ? <AdTag /> : null}
-        </div>
-        <p className="text-muted-foreground text-sm">{summary(data)}</p>
-        <div className="flex flex-wrap gap-2">
-          {/* What runs, the schedule and every charge are Billing (MESITA-3166). */}
-          <Link
-            href={billingHref(placeId)}
-            className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
-          >
-            See Billing
-          </Link>
-          {payer ? (
-            data.paid?.renews ? (
+      {/* One card of rows (MESITA-3172, Pato: "fix this shit"): what runs now,
+          then one row per plan. No boxes inside the box, no blurbs, no fine
+          print; the page subtitle already says it is an ad. */}
+      <Card className="flex flex-col p-0 sm:p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="font-semibold">{data.tier > 0 ? levelLabel(data.tier) : "Not Premier"}</p>
+            {data.tier > 0 || data.renewing ? <p className="text-muted-foreground text-sm">{summary(data)}</p> : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {payer && data.paid?.renews ? (
               <button
                 type="button"
                 disabled={busy}
@@ -187,100 +180,100 @@ export function PremierPanel({
               >
                 {armed === "self" ? "Tap again to stop renewing" : "Stop renewing"}
               </button>
-            ) : null
-          ) : null}
+            ) : null}
+            {/* What runs, the schedule and every charge are Billing (MESITA-3166). */}
+            <Link
+              href={billingHref(placeId)}
+              className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
+            >
+              Billing
+            </Link>
+          </div>
         </div>
         {someoneElsePays ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-muted-foreground text-sm">
-              A guest pays for this place&apos;s Premier. You run the place, so you may stop it: the paid days run out, it does not renew, and the guest is told why.
-            </p>
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 sm:px-6">
+            <p className="text-muted-foreground text-sm">A guest pays for this Premier.</p>
             <button
               type="button"
               disabled={busy}
               onClick={() => (armed === "place" ? void stop(true) : setArmed("place"))}
               onBlur={() => setArmed(null)}
-              className="border-border hover:bg-muted h-9 w-fit rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+              className="border-border hover:bg-muted h-9 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
             >
-              {armed === "place" ? "Tap again to stop the guest's Premier" : "Stop this subscription"}
+              {armed === "place" ? "Tap again to stop it" : "Stop it"}
             </button>
           </div>
         ) : null}
+
+        {quotes ? (
+          <>
+            <div className="border-border flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 sm:px-6">
+              <p className="font-semibold">Plans</p>
+              <div className="bg-muted inline-flex rounded-full p-1 text-sm" role="radiogroup" aria-label="Billing">
+                {(["month", "year"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={interval === v}
+                    onClick={() => setBillingInterval(v)}
+                    className={"rounded-full px-3 py-1 font-medium " + (interval === v ? "bg-card shadow-sm" : "text-muted-foreground")}
+                  >
+                    {v === "month" ? "Monthly" : "Yearly"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ul className="divide-border border-border divide-y border-t">
+              {PLANS.map((plan) => {
+                const q = quotes[plan.key]?.[interval];
+                if (!q) return null;
+                const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
+                const blocked = q.kind === "blocked" || q.covered;
+                // A resume for someone who never paid here is subscribing early,
+                // in the last 7 days of Refill days (MESITA-3165).
+                const resume = data.viewer === "former_payer" ? "Resume" : `Keep ${plan.factor}`;
+                const action =
+                  q.covered ? "Given by Mesita" : current ? "Your plan" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
+                const isPicked = picked === plan.key;
+                return (
+                  <li
+                    key={plan.key}
+                    ref={isPicked ? pickedRef : undefined}
+                    className={`flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6 ${isPicked ? "bg-muted/60" : ""}`}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <span className="font-semibold">{plan.label}</span>
+                      <AdTag />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm">
+                        <span className="text-lg font-semibold">{usd(q.price_cents)}</span> / {interval}
+                      </p>
+                      {q.charge_cents !== q.price_cents && q.kind !== "blocked" ? (
+                        <p className="text-muted-foreground text-xs">
+                          {q.charge_cents > 0 ? `Now ${usd(q.charge_cents)}` : "Nothing now"}
+                          {q.renews_at ? ` · from ${day(q.renews_at)}` : ""}
+                        </p>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={busy || blocked || current}
+                      onClick={() => void choose(plan.key)}
+                      className="bg-foreground text-background h-10 w-32 rounded-full text-sm font-semibold disabled:opacity-50"
+                    >
+                      {action}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ) : null}
       </Card>
 
-      {quotes ? (
-        <Card className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold">Plans</p>
-            <div className="bg-muted inline-flex rounded-full p-1 text-sm" role="radiogroup" aria-label="Billing">
-              {(["month", "year"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  role="radio"
-                  aria-checked={interval === v}
-                  onClick={() => setBillingInterval(v)}
-                  className={"rounded-full px-3 py-1 font-medium " + (interval === v ? "bg-card shadow-sm" : "text-muted-foreground")}
-                >
-                  {v === "month" ? "Monthly" : "Yearly (10 months)"}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {PLANS.map((plan) => {
-              const q = quotes[plan.key]?.[interval];
-              if (!q) return null;
-              const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
-              const blocked = q.kind === "blocked" || q.covered;
-              // A resume for someone who never paid here is subscribing early,
-              // in the last 7 days of Refill days (MESITA-3165).
-              const resume = data.viewer === "former_payer" ? "Resume" : `Keep ${plan.factor}`;
-              const action =
-                q.covered ? "Given by Mesita" : current ? "Your plan" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";
-              const isPicked = picked === plan.key;
-              return (
-                <div
-                  key={plan.key}
-                  ref={isPicked ? pickedRef : undefined}
-                  className={`flex flex-col gap-3 rounded-2xl border p-4 ${isPicked ? "border-(--brand-pink-600) ring-1 ring-(--brand-pink-600)" : "border-border"}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-lg font-semibold">{plan.label}</span>
-                    <AdTag />
-                  </div>
-                  <p className="text-muted-foreground text-sm">{plan.blurb}</p>
-                  <p className="text-sm">
-                    <span className="text-2xl font-semibold">{usd(q.price_cents)}</span> / {interval}
-                  </p>
-                  {q.charge_cents !== q.price_cents && q.kind !== "blocked" ? (
-                    <p className="text-muted-foreground text-sm">
-                      {q.charge_cents > 0 ? `Charged now: ${usd(q.charge_cents)}` : "Nothing charged now"}
-                      {q.renews_at ? ` · from ${day(q.renews_at)}` : ""}
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    disabled={busy || blocked || current}
-                    onClick={() => void choose(plan.key)}
-                    className="bg-foreground text-background mt-auto h-10 rounded-full text-sm font-semibold disabled:opacity-50"
-                  >
-                    {action}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      ) : null}
-
       {error ? <p className="text-destructive text-sm">{error}</p> : null}
-
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        Premier is paid advertising. A Premier place ranks higher on Home and the Map and is marked &ldquo;Ad&rdquo;. It never
-        verifies a place, never changes its reviews and never promises a number of views. One subscription per place, billed by
-        Stripe in US dollars; a declined renewal ends it.
-      </p>
     </div>
   );
 }
