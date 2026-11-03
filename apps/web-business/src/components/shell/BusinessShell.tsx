@@ -34,7 +34,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BadgeCheck, ChevronsUpDown, CircleUser, CreditCard, Gift, IdCard, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
+import { BadgeCheck, ChevronsUpDown, CircleUser, CreditCard, Gift, MapPinned, Settings, ShieldCheck, Star, Store, type LucideIcon } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
 import { useShellPlace } from "@/lib/shell-place";
@@ -42,8 +42,16 @@ import { cn } from "@/lib/utils";
 
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
-/** A group's colour: the icon sits in a small tinted box. */
+/** A group's colour: the icon sits in a small tinted box, and its section
+ *  wears the same hue, lighter (Pato, MESITA-3144: "different background
+ *  colors to suggest different sections"). */
 type Tone = "you" | "product" | "system";
+
+const SECTION: Record<Tone, { box: string; label: string }> = {
+  you: { box: "border-blue-500/15 bg-blue-500/[0.06]", label: "text-blue-700" },
+  product: { box: "border-red-500/15 bg-red-500/[0.05]", label: "text-red-700" },
+  system: { box: "border-border bg-muted/70", label: "text-muted-foreground" },
+};
 
 const TONE: Record<Tone, string> = {
   you: "bg-blue-500/10 text-blue-600",
@@ -85,7 +93,7 @@ function menu(
     switcher,
     place: {
       products: [
-        tab("profile", "Profile", IdCard, "product"),
+        tab("profile", "Profile", MapPinned, "product"),
         tab("reviews", "Reviews", Star, "product"),
         tab("premier", "Premier", BadgeCheck, "product"),
         tab("payments", "Payments", CreditCard, "product", true),
@@ -112,7 +120,9 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
       aria-current={s.active ? "page" : undefined}
       className={cn(
         "flex items-center justify-center gap-2.5 rounded-xl p-1.5 transition-colors lg:justify-start lg:px-2 lg:py-2",
-        s.active ? "bg-muted" : "hover:bg-muted/60",
+        SECTION.you.box,
+        "border",
+        s.active ? "ring-2 ring-blue-500/25" : "hover:bg-blue-500/10",
       )}
     >
       {s.photo ? (
@@ -133,10 +143,10 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
 }
 
 /** A labelled box of rows; below lg only the rows' icons show. */
-function Group({ label, rows }: { label: string; rows: Row[] }) {
+function Group({ label, rows, tone }: { label: string; rows: Row[]; tone: Tone }) {
   return (
-    <div role="group" aria-label={label} className="border-border bg-muted/40 mt-2 flex flex-col gap-0.5 rounded-xl border p-1">
-      <p className="type-label text-muted-foreground hidden px-1.5 pt-1 pb-0.5 font-semibold tracking-[0.12em] uppercase lg:block">{label}</p>
+    <div role="group" aria-label={label} className={cn("mt-2 flex flex-col gap-0.5 rounded-xl border p-1", SECTION[tone].box)}>
+      <p className={cn("type-label hidden px-1.5 pt-1 pb-0.5 font-semibold tracking-[0.12em] uppercase lg:block", SECTION[tone].label)}>{label}</p>
       {rows.map((r) => <RailRow key={r.key} row={r} />)}
     </div>
   );
@@ -173,7 +183,7 @@ function RailRow({ row }: { row: Row }) {
       // Below lg the rail is icons only (w-16); the label returns at lg.
       className={cn(
         "flex h-10 items-center justify-center gap-2.5 rounded-lg px-1.5 text-sm transition-colors lg:h-9 lg:justify-start",
-        row.active ? "bg-card text-foreground font-semibold shadow-sm" : "text-foreground/75 hover:bg-muted/60 hover:text-foreground",
+        row.active ? "bg-card text-foreground font-semibold shadow-sm" : "text-foreground/75 hover:bg-card/70 hover:text-foreground",
       )}
     >
       {inner}
@@ -211,8 +221,8 @@ export function BusinessShell({
         </Link>
         <nav aria-label="Business" className="mt-6 flex flex-1 flex-col gap-0.5">
           <PlaceSwitcher s={switcher} />
-          <Group label="Products" rows={place.products} />
-          <Group label="Manage" rows={place.manage} />
+          <Group label="Products" rows={place.products} tone="product" />
+          <Group label="Manage" rows={place.manage} tone="system" />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
           <div className="border-border mt-auto border-t pt-2">
             <RailRow row={account} />
