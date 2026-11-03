@@ -4,6 +4,7 @@ import { Braces, ChevronDown, Fingerprint } from "lucide-react";
 import { type AdminPlace } from "../actions";
 import { CopyIdButton, ReadField } from "@/components/ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
+import { SpecialActionsCard } from "./SpecialActionsCard";
 import { StateCard } from "./StateCard";
 import { ProfileStatsCard } from "./ProfileStatsCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
@@ -26,22 +27,28 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         newest first: reason, note, when, guest
 //                         (MESITA-2686). Read-only.
 // Then the rest:
-//   Enrichment  queues the full Enricher process
+//   Special actions  Enrich · Update Google · Update Reviews · Enable ·
+//                    Disable, the five staff writes (MESITA-3159)
+//   Enrichment  the last run's state, read-only
 //   Vectors / Metadata (UID & audit). The SERP Summary box went with the
 //   enrichment stage path (MESITA-2424): Render never stored the summary.
-// Who runs the place and the requests waiting are the Owners section of this
-// page (VerificationQueue), MESITA-3103.
+// Verification (claim requests, MESITA-3157) is a card in the same columns;
+// who runs the place is Settings'.
 
 /** The tab's masonry: one column, two from lg, three from xl, its cards
  *  never split. The tab's loading.tsx lays its cards out in it too. */
 export const ADMIN_COLUMNS_CLASS =
   "columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5 xl:columns-3";
 
-export function AdminSection({ place }: { place: AdminPlace }) {
+/** `children`: cards the page adds to the same masonry (Verification,
+ *  MESITA-3159: "keep the three columns"). */
+export function AdminSection({ place, children }: { place: AdminPlace; children?: React.ReactNode }) {
   return (
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
+      {/* Enrich · Update Google · Update Reviews · Enable · Disable (MESITA-3159). */}
+      <SpecialActionsCard place={place} />
       {/* Reservations and Prepayments are Mesita's switches; they left the
           profile editor when it moved to the Business app (MESITA-3103). */}
       <ActionStatesCard place={place} />
@@ -51,6 +58,7 @@ export function AdminSection({ place }: { place: AdminPlace }) {
       <ReportsCard key={`reports-${place.id}`} place={place} />
       {/* key remounts the loader when the operator switches places. */}
       <EnrichmentCard key={`enrich-${place.id}`} place={place} />
+      {children}
       <EmbeddingCard place={place} />
       <MetaCard place={place} />
     </div>

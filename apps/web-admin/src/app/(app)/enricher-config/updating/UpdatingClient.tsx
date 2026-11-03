@@ -10,18 +10,23 @@ import { CrenupSaveBar } from "../CrenupSaveBar";
 // UPDATE EVERY N VIEWS (Pato, MESITA-2997: "every 10 visits, 20, 30 we
 // update the place"). The same view count as "Enrich after N views" — each
 // guest counts once per place — keeps going after Enrich, and every multiple
-// of N runs Google Update. 0 turns it off.
+// of N runs Google Update. 0 turns it off. Update Reviews (MESITA-3159) has
+// its own N on the same count, far larger: each run is an Apify scrape.
 export function UpdatingClient({
   initialEveryViews,
+  initialReviewsEveryViews,
   initialUpdatedAt,
   loadError,
 }: {
   initialEveryViews: number;
+  initialReviewsEveryViews: number;
   initialUpdatedAt: string | null;
   loadError: string | null;
 }) {
   const [everyViews, setEveryViews] = useState(initialEveryViews);
   const [saved, setSaved] = useState(initialEveryViews);
+  const [reviewsEvery, setReviewsEvery] = useState(initialReviewsEveryViews);
+  const [reviewsSaved, setReviewsSaved] = useState(initialReviewsEveryViews);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [error, setError] = useState<string | null>(loadError);
   const [ok, setOk] = useState(false);
@@ -30,7 +35,7 @@ export function UpdatingClient({
 
   function save() {
     startTransition(async () => {
-      const r = await updateAtlasConfig({ updateEveryViews: everyViews });
+      const r = await updateAtlasConfig({ updateEveryViews: everyViews, reviewsUpdateEveryViews: reviewsEvery });
       if (!r.ok) {
         setError(r.error);
         setOk(false);
@@ -38,6 +43,8 @@ export function UpdatingClient({
       }
       setSaved(r.data.updateEveryViews);
       setEveryViews(r.data.updateEveryViews);
+      setReviewsSaved(r.data.reviewsUpdateEveryViews);
+      setReviewsEvery(r.data.reviewsUpdateEveryViews);
       setUpdatedAt(r.data.updatedAt);
       setError(null);
       setOk(true);
@@ -46,7 +53,7 @@ export function UpdatingClient({
 
   return (
     <>
-      <SectionCard icon={<RefreshCw className="text-secondary h-4 w-4" />} title="Update on views">
+      <SectionCard icon={<RefreshCw className="text-secondary h-4 w-4" />} title="Update Google on views">
         <div className="mt-4">
           <Fields>
             <NumberField
@@ -71,15 +78,40 @@ export function UpdatingClient({
           </p>
         </div>
       </SectionCard>
+      <SectionCard icon={<RefreshCw className="text-secondary h-4 w-4" />} title="Update Reviews on views">
+        <div className="mt-4">
+          <Fields>
+            <NumberField
+              label="Update Reviews every N views"
+              value={reviewsEvery}
+              min={0}
+              max={1000}
+              onChange={(v) => {
+                setReviewsEvery(v);
+                setOk(false);
+              }}
+              disabled={pending || !!blocked}
+            />
+          </Fields>
+          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            On the same count (
+            {reviewsEvery > 0 ? `${reviewsEvery}, ${reviewsEvery * 2}, ${reviewsEvery * 3}…` : "off"}
+            ), the place&apos;s Google stars, up to 100 Google reviews and its Instagram and
+            Facebook followers refresh by themselves. Keep it well above Update Google: each run
+            is a paid Apify scrape. 0 turns it off.
+          </p>
+        </div>
+      </SectionCard>
       <CrenupSaveBar
         blocked={blocked}
-        dirty={everyViews !== saved}
+        dirty={everyViews !== saved || reviewsEvery !== reviewsSaved}
         ok={ok}
         pending={pending}
         settingsStamp={updatedAt}
         error={error}
         onDiscard={() => {
           setEveryViews(saved);
+          setReviewsEvery(reviewsSaved);
           setError(null);
         }}
         onSave={save}

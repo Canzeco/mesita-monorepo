@@ -47,6 +47,7 @@ import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
 import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
+import { runReviewsUpdate } from "../_shared/reviews-update.ts";
 import { runInBackground } from "../_shared/background.ts";
 
 type Body = {
@@ -128,6 +129,18 @@ serveJson("consumer-web-track-activity", async (req) => {
             if (!r.ok) {
               console.error(
                 `[consumer-web-track-activity] the view's Update did not run: ${r.error}`,
+              );
+            }
+          }),
+        );
+      }
+      // Update Reviews every N views (MESITA-3159), rarer than Google's.
+      if (counted.reviewsUpdateDue) {
+        runInBackground(
+          runReviewsUpdate(admin, placeId).then((r) => {
+            if (!r.ok) {
+              console.error(
+                `[consumer-web-track-activity] the view's Update Reviews did not run: ${r.error}`,
               );
             }
           }),

@@ -61,6 +61,8 @@ type AtlasConfigResponse = {
   enrichDiscoverUbereatsN: number;
   enrichRequestThreshold: number;
   updateEveryViews: number;
+  /** Update Reviews every N views (MESITA-3159); 0 = off. */
+  reviewsUpdateEveryViews: number;
   enrichCreateOnOpenConsumer: boolean;
   enrichCreateOnOpenAdmin: boolean;
   enrichConsumerCreatesPerDay: number;
@@ -106,6 +108,7 @@ export async function updateAtlasConfig(patch: {
   discoverUbereatsN?: number;
   requestThreshold?: number;
   updateEveryViews?: number;
+  reviewsUpdateEveryViews?: number;
   createOnOpenConsumer?: boolean;
   createOnOpenAdmin?: boolean;
   consumerCreatesPerDay?: number;

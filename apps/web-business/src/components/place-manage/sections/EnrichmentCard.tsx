@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
-import { enrichPlace, updatePlaceGoogle } from "../actions";
 import {
   getPlaceEnrichment,
   type AdminPlace,
@@ -12,29 +11,16 @@ import { SectionCard, Spinner } from "@/components/ui/manage";
 import { formatAbsoluteUtc } from "@/lib/format";
 import { isEnriching } from "../place-header-state";
 
-// Enrichment — one Enrich, the whole pipeline, replacing what it finds
-// (MESITA-2799: no Overwrite switch, no Weak/Strong). This is not a scheduler
-// (Pato, 2026-08-25). The live run STATE stays in the chrome. This box only
-// queues. Update (MESITA-3157, Pato: "add also update button there.
-// Enrich, Update") sits beside it: Google's factuals only, pins kept.
+// Enrichment — the last run's state: one Enrich, the whole pipeline,
+// replacing what it finds (MESITA-2799: no Overwrite switch, no Weak/Strong).
+// This is not a scheduler (Pato, 2026-08-25). The buttons live in Special
+// actions since MESITA-3159 (Enrich, Update Google, Update Reviews, Enable,
+// Disable); this box only reads.
 
 export function EnrichmentCard({ place }: { place: AdminPlace }) {
   const [enrichState, setEnrichState] = useState<PlaceEnrichmentState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [runPending, startRun] = useTransition();
-  const [runError, setRunError] = useState<string | null>(null);
-  const [queued, setQueued] = useState(false);
-  const [updatePending, startUpdate] = useTransition();
-  const [updateNote, setUpdateNote] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const update = useCallback(() => {
-    setUpdateNote(null);
-    startUpdate(async () => {
-      const r = await updatePlaceGoogle(place.id);
-      setUpdateNote(r.ok ? { ok: true, text: "Updated from Google. Reload to see it." } : { ok: false, text: r.error });
-    });
-  }, [place.id]);
 
   useEffect(() => {
     let alive = true;
@@ -65,24 +51,6 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
     ? "Enriched"
     : "Never enriched";
 
-  const run = useCallback(() => {
-    if (alreadyEnriched && !window.confirm("This place is already enriched. Run Enrich again?")) return;
-    setRunError(null);
-    setQueued(false);
-    startRun(async () => {
-      const r = await enrichPlace(place.id);
-      if (!r.ok) {
-        setRunError(r.error);
-        return;
-      }
-      setQueued(true);
-      setEnrichState((prev) => ({
-        content_state: "generating",
-        last_enriched_at: prev?.last_enriched_at ?? null,
-      }));
-    });
-  }, [alreadyEnriched, place.id]);
-
   return (
     <SectionCard
       icon={<Sparkles className="h-4 w-4" />}
@@ -96,63 +64,18 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
       ) : (
         <div className="mt-5">
           {loadError ? (
-            <p className="text-destructive mb-3 text-xs leading-relaxed">
+            <p className="text-destructive text-xs leading-relaxed">
               Couldn&apos;t load the last run: {loadError}
             </p>
           ) : (
-            <p className="text-muted-foreground mb-4 text-xs leading-relaxed">
+            <p className="text-muted-foreground text-xs leading-relaxed">
               State: {status}. Last run{" "}
               {enrichState?.last_enriched_at
                 ? formatAbsoluteUtc(enrichState.last_enriched_at)
                 : "never"}
-              . Enrich runs links,
-              reviews, photos, and presentation synthesis, and replaces what it finds.
+              . Enrich runs links, reviews, photos, and presentation synthesis, and replaces what it finds. Run it from Special actions.
             </p>
           )}
-
-          <p className="mb-2 text-sm font-semibold">Run</p>
-          <div className="flex flex-wrap gap-2">
-            {running && !runPending ? (
-              <button
-                type="button"
-                disabled
-                aria-busy="true"
-                className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Enriching…
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={runPending || running}
-                onClick={run}
-                className="bg-foreground text-paper inline-flex h-10 items-center rounded-full px-5 text-sm font-semibold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {runPending ? "Starting…" : "Enrich"}
-              </button>
-            )}
-            <button
-              type="button"
-              disabled={updatePending}
-              onClick={update}
-              title="Refresh this place's Google data. Keeps pinned fields; does not Enrich."
-              className="border-border hover:bg-muted inline-flex h-10 items-center rounded-full border px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {updatePending ? "Updating…" : "Update"}
-            </button>
-          </div>
-
-          <p className="mt-2 min-h-4 type-label" aria-live="polite">
-            {updateNote ? (
-              <span className={updateNote.ok ? "text-muted-foreground" : "text-destructive"}>{updateNote.text}</span>
-            ) : runError ? (
-              <span className="text-destructive">{runError}</span>
-            ) : queued ? (
-              <span className="text-muted-foreground">Started.</span>
-            ) : running ? (
-              <span className="text-muted-foreground">Enrichment is running.</span>
-            ) : null}
-          </p>
         </div>
       )}
     </SectionCard>

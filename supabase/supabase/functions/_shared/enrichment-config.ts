@@ -65,6 +65,13 @@ export type EnrichmentConfig = {
    */
   updateEveryViews: number;
   /**
+   * UPDATE REVIEWS EVERY N VIEWS (MESITA-3159): the same count runs Update
+   * Reviews (Google stars, the Apify review list, Instagram and Facebook
+   * followers) on each multiple of N. Far rarer than Google Update: each run
+   * is a paid Apify scrape. 0 turns it off.
+   */
+  reviewsUpdateEveryViews: number;
+  /**
    * CREATE ON OPEN (MESITA-2298): opening a Google-only result's full
    * profile is the one thing that mints a Mesita Place — one switch per app.
    * Off, the consumer app's open answers 403 `create_on_open_off` and the
@@ -106,6 +113,7 @@ export const DEFAULT_ENRICHMENT_CONFIG: EnrichmentConfig = {
   enrichDiscoverUbereatsN: 2,
   enrichRequestThreshold: 10, // MESITA-2653: Pato, "set it to 10"
   updateEveryViews: 10, // MESITA-2997: Pato, "every 10 visits"
+  reviewsUpdateEveryViews: 50, // MESITA-3159: rarer than Google Update (Apify cost)
   enrichCreateOnOpenConsumer: true,
   enrichCreateOnOpenAdmin: true,
   enrichConsumerCreatesPerDay: 1000,
@@ -164,6 +172,7 @@ export function normalizeEnrichmentConfig(raw: unknown): EnrichmentConfig {
     enrichDiscoverUbereatsN: intIn(r.enrichDiscoverUbereatsN, 0, 10, d.enrichDiscoverUbereatsN),
     enrichRequestThreshold: intIn(r.enrichRequestThreshold, 1, 100, d.enrichRequestThreshold),
     updateEveryViews: intIn(r.updateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.updateEveryViews),
+    reviewsUpdateEveryViews: intIn(r.reviewsUpdateEveryViews, 0, UPDATE_EVERY_VIEWS_MAX, d.reviewsUpdateEveryViews),
     enrichCreateOnOpenConsumer: r.enrichCreateOnOpenConsumer !== false,
     enrichCreateOnOpenAdmin: r.enrichCreateOnOpenAdmin !== false,
     enrichConsumerCreatesPerDay: intIn(

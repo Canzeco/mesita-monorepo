@@ -128,7 +128,7 @@ export function MultiplePlacesClient() {
         id={PIPELINE_STEPS[4].id}
         tint="sky"
         title={PIPELINE_STEPS[4].label}
-        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. One place ID per run."
+        blurb="Google facts, and the gallery's hero while the gallery is one photo. Never Mesita presentation. Also runs by itself every N views."
       >
         <WriteBox
           id={PIPELINE_STEPS[4].id}
@@ -141,13 +141,58 @@ export function MultiplePlacesClient() {
       <Step
         n={PIPELINE_STEPS[5].n}
         id={PIPELINE_STEPS[5].id}
-        tint="rose"
+        tint="violet"
         title={PIPELINE_STEPS[5].label}
-        blurb="Writes to places already on Mesita. Enable and Disable toggle guest visibility. Only the Enrich box sets Enriched. Delete archives, no Undo here."
+        blurb="Google stars, up to 100 Google reviews (Apify), Instagram and Facebook followers. Also runs by itself every N views, less often: each run is a paid scrape."
       >
         <WriteBox
           id={PIPELINE_STEPS[5].id}
-          actions={WRITE_BOX_ACTIONS.edit}
+          actions={WRITE_BOX_ACTIONS["reviews-update"]}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[6].n}
+        id={PIPELINE_STEPS[6].id}
+        tint="emerald"
+        title={PIPELINE_STEPS[6].label}
+        blurb="Guests can find each place again, everywhere."
+      >
+        <WriteBox
+          id={PIPELINE_STEPS[6].id}
+          actions={WRITE_BOX_ACTIONS.enable}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[7].n}
+        id={PIPELINE_STEPS[7].id}
+        tint="slate"
+        title={PIPELINE_STEPS[7].label}
+        blurb="Hides each place from every guest surface at once. Nothing is deleted; Enable brings it back."
+      >
+        <WriteBox
+          id={PIPELINE_STEPS[7].id}
+          actions={WRITE_BOX_ACTIONS.disable}
+          text={sharedIds}
+          onTextChange={setSharedIds}
+        />
+      </Step>
+
+      <Step
+        n={PIPELINE_STEPS[8].n}
+        id={PIPELINE_STEPS[8].id}
+        tint="rose"
+        title={PIPELINE_STEPS[8].label}
+        blurb="Archives each place. No Undo in this console."
+      >
+        <WriteBox
+          id={PIPELINE_STEPS[8].id}
+          actions={WRITE_BOX_ACTIONS.delete}
           text={sharedIds}
           onTextChange={setSharedIds}
         />

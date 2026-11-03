@@ -32,7 +32,8 @@ import {
   type ReviewVerify,
 } from "../_shared/review-sources.ts";
 import { mergeReviewFoundFlags, reviewFoundFromRow } from "../_shared/review-found.ts";
-import { loadGoogleReviewList, runPlaceSync } from "../_shared/place-sync-run.ts";
+import { loadGoogleReviewList } from "../_shared/place-sync-run.ts";
+import { runReviewsUpdate } from "../_shared/reviews-update.ts";
 import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
 
 const SOURCES = new Set(["google", "google_reviews", "instagram", "facebook", "sync"]);
@@ -80,18 +81,10 @@ serveJson("business-web-reload-place-reviews", async (req) => {
   const place = data as PlaceRow;
 
   if (source === "sync") {
-    const synced = await runPlaceSync({
-      googlePlaceId: place.google_place_id,
-      instagramUrl: place.instagram_url,
-      facebookUrl: place.facebook_url,
-    });
-    const written = await writePlace(admin, {
-      table: "place_profiles",
-      mode: "update",
-      id: placeId,
-      patch: synced.patch,
-    });
-    if (!written.ok) return json({ ok: false, error: written.error }, 500);
+    // Update Reviews (MESITA-3159): one body with admin and the view trigger.
+    const updated = await runReviewsUpdate(admin, placeId);
+    if (!updated.ok) return json({ ok: false, error: updated.error }, updated.status);
+    const { synced } = updated;
     return json({
       ok: true,
       source: "sync",

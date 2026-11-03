@@ -18,13 +18,20 @@ export default async function UpdatingConfigPage() {
             alone. Update never writes Mesita presentation, categories or action states.
           </p>
           <p>
-            Update runs by itself every N views (below), from Manage Multiple › Update, or per
-            place through <code>admin-web-update-place-google</code>. Enrich rebuilds the gallery
-            and writes the full presentation.
+            Update Google runs by itself every N views (below), from Manage Multiple › Update
+            Google, or per place from its Admin page. Enrich rebuilds the gallery and writes the
+            full presentation.
+          </p>
+          <p>
+            <strong className="text-foreground">Update Reviews</strong> refreshes Google&apos;s
+            stars, up to 100 Google reviews (Apify), and the Instagram and Facebook follower
+            counts. It runs every N views too, far less often (each run is a paid scrape), from
+            Manage Multiple › Update Reviews, or per place from its Admin page.
           </p>
         </div>
         <UpdatingClient
           initialEveryViews={settings.ok ? settings.data.updateEveryViews ?? 10 : 10}
+          initialReviewsEveryViews={settings.ok ? settings.data.reviewsUpdateEveryViews ?? 50 : 50}
           initialUpdatedAt={settings.ok ? settings.data.updatedAt : null}
           loadError={settings.ok ? null : settings.error}
         />

@@ -42,22 +42,18 @@ describe("Multiple Places renders six boxes (MESITA-2096, MESITA-2739)", () => {
     expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
-  it("puts Create, Enrich, Update Google and Edit actions in their own boxes", () => {
+  it("puts each write action in its own box (MESITA-3159: no Edit box)", () => {
     expect(buttons(box("create"))).toEqual(["Create"]);
     expect(buttons(box("enrich"))).toEqual(["Enrich"]);
     expect(buttons(box("google-update"))).toEqual(["Update Google"]);
-    expect(buttons(box("edit"))).toEqual([
-      "Enable",
-      "Disable",
-      "Premier 2X",
-      "Premier 5X",
-      "End Premier",
-      "Delete",
-    ]);
+    expect(buttons(box("reviews-update"))).toEqual(["Update Reviews"]);
+    expect(buttons(box("enable"))).toEqual(["Enable"]);
+    expect(buttons(box("disable"))).toEqual(["Disable"]);
+    expect(buttons(box("delete"))).toEqual(["Delete"]);
   });
 
   it("gives every write box its own Google Place ID field", () => {
-    for (const id of ["create", "enrich", "google-update", "edit"]) {
+    for (const id of ["create", "enrich", "google-update", "reviews-update", "enable", "disable", "delete"]) {
       expect(box(id)).toContain(`id="${id}-place-ids"`);
     }
   });

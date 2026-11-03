@@ -393,6 +393,9 @@ verify_jwt = true
 [functions.admin-web-update-place-google]
 verify_jwt = true
 
+[functions.admin-web-update-place-reviews]
+verify_jwt = true
+
 [functions.business-web-get-place-enrichment]
 verify_jwt = true
 
