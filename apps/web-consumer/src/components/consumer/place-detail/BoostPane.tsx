@@ -31,8 +31,9 @@ import { cn, errMsg } from "@/lib/utils";
 // Business app's.
 //
 // It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
-// explain current level and what to do"): the place's current visibility, then
-// the two Boosts on the tab, each one button away from Checkout. "Is this your
+// explain current level and what to do"; layout MESITA-3193, version B of his
+// board): one card with the place's current visibility, two tiles and one button
+// that says what you pay, straight to Checkout. "Is this your
 // business?" is in the place's ⋯ menu. Every amount, date and line is the
 // server's (consumer-web-get-premier-refill); nothing here computes money.
 // Premier is paid ranking priority: it never verifies the place and never
@@ -60,98 +61,121 @@ export function BoostPane({
   onRetry: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [starting, setStarting] = useState<TierRank | null>(null);
-  const [startError, setStartError] = useState<{ tier: TierRank; text: string } | null>(null);
+  const [chosen, setChosen] = useState<TierRank | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
 
   const packs = boost?.packs ?? [];
+  const forSale = packs.filter((p) => p.available);
+  // The tile the guest tapped, or the first the place can take.
+  const pack = forSale.find((p) => p.tier === chosen) ?? forSale[0] ?? null;
+  const refused = packs.find((p) => !p.available && p.code);
+  const reason = refused?.code ? (START_REFUSED[refused.code] ?? "Not for sale here now.") : null;
 
-  async function start(tier: TierRank) {
-    if (starting) return;
-    setStarting(tier);
+  async function start() {
+    if (!pack || starting) return;
+    setStarting(true);
     setStartError(null);
     try {
       const res = await apiStartRefill(getSupabase(), {
         placeId: place.id,
-        tier,
+        tier: pack.tier,
         returnUrl: `${window.location.origin}${window.location.pathname}`,
       });
       window.location.assign(res.url);
     } catch (err) {
-      setStartError({ tier, text: refusal(err, "Couldn't open checkout. Try again.") });
-      setStarting(null);
+      setStartError(refusal(err, "Couldn't open checkout. Try again."));
+      setStarting(false);
     }
   }
 
   return (
-    <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
+    <section className="flex flex-col gap-3 py-2" aria-labelledby="boost-title">
       <h2 id="boost-title" className="sr-only">
         Business
       </h2>
 
-      <div className="border-border bg-card rounded-2xl border p-4" aria-live="polite">
-        <p className="text-muted-foreground text-sm">Current level</p>
-        <p className="text-2xl font-semibold tracking-tight">
-          {loading ? "…" : `${VISIBILITY[boost?.level ?? 0] ?? "1X"} visibility`}
-        </p>
-        {!loading &&
-          statusLines(boost).map((line) => (
-            <p key={line} className="text-muted-foreground text-sm">
-              {line}
-            </p>
-          ))}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        <div>
-          <h3 className="font-semibold">Boost this place</h3>
-          <p className="text-muted-foreground text-sm">
-            Move it up on Home and the Map for 30 days. Paid once, nothing renews.
+      <div className="border-border bg-card rounded-2xl border p-4">
+        <div aria-live="polite">
+          <p className="text-muted-foreground text-sm">Current level</p>
+          <p className="text-2xl font-semibold tracking-tight">
+            {loading ? "…" : `${VISIBILITY[boost?.level ?? 0] ?? "1X"} visibility`}
           </p>
+          {!loading &&
+            statusLines(boost).map((line) => (
+              <p key={line} className="text-muted-foreground text-sm">
+                {line}
+              </p>
+            ))}
         </div>
 
-        {BOOST_TIERS.map((t) => {
-          const p = packs.find((x) => x.tier === t.rank);
-          const off = !loading && !!p && !p.available;
-          return (
-            <div key={t.rank} className="border-border bg-card flex flex-col gap-3 rounded-2xl border p-4">
-              <div>
-                <p className="text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]} visibility</p>
-                <p className="mt-1 flex items-center gap-1.5">
-                  <PremierRosette />
-                  Premier red tag
-                </p>
-              </div>
-              {p?.notice ? <p className="text-muted-foreground text-sm">{p.notice}.</p> : null}
-              {startError?.tier === t.rank ? <p className={ERROR_BOX_CLASS}>{startError.text}</p> : null}
-              {off ? (
-                <p className="text-muted-foreground text-sm">
-                  {(p.code && START_REFUSED[p.code]) ?? "Not for sale here now."}
-                </p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => void start(t.rank)}
-                  disabled={loading || !p || starting !== null || !boost?.signed_in}
-                  className={cn(PRIMARY_BUTTON_CLASS, "inline-flex items-center justify-center gap-2")}
-                >
-                  {starting === t.rank && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                  {starting === t.rank ? "Opening…" : p ? `Boost for ${money(p.price_cents)}` : "Boost"}
-                </button>
-              )}
-            </div>
-          );
-        })}
+        <hr className="border-border my-4" />
 
-        {boost && !boost.signed_in && (
-          <p className="text-muted-foreground text-sm">Sign in to boost this place.</p>
-        )}
+        <p className="font-semibold">Boost it for 30 days</p>
+        <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Boost">
+          {BOOST_TIERS.map((t) => {
+            const p = packs.find((x) => x.tier === t.rank);
+            const on = pack?.tier === t.rank;
+            return (
+              <button
+                key={t.rank}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={loading || !p?.available}
+                onClick={() => {
+                  setChosen(t.rank);
+                  setStartError(null);
+                }}
+                className={cn(
+                  "bg-card flex min-h-11 flex-col items-start rounded-xl border px-3.5 py-3 text-left disabled:opacity-50",
+                  on ? "border-destructive ring-destructive ring-1" : "border-border",
+                )}
+              >
+                <span className="text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</span>
+                <span className="text-muted-foreground text-sm">{p ? money(p.price_cents) : "…"}</span>
+              </button>
+            );
+          })}
+        </div>
 
-        <p className="text-muted-foreground text-sm">
-          Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places
-          show “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by
-          Stripe in US dollars; card only.
+        <p className="mt-3 flex items-center gap-1.5">
+          <PremierRosette />
+          Premier red tag
         </p>
+
+        {pack?.notice ? <p className="text-muted-foreground mt-3 text-sm">{pack.notice}.</p> : null}
+        {startError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{startError}</p> : null}
+        {reason ? <p className="text-muted-foreground mt-3 text-sm">{reason}</p> : null}
+
+        {loading || pack ? (
+          <button
+            type="button"
+            onClick={() => void start()}
+            disabled={loading || starting || !boost?.signed_in}
+            className={cn(
+              PRIMARY_BUTTON_CLASS,
+              "bg-destructive text-destructive-foreground mt-3",
+            )}
+          >
+            {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+            {starting
+              ? "Opening…"
+              : pack
+                ? `Boost to ${VISIBILITY[pack.tier]} for ${money(pack.price_cents)}`
+                : "Boost"}
+          </button>
+        ) : null}
+        {boost && !boost.signed_in ? (
+          <p className="text-muted-foreground mt-2 text-sm">Sign in to boost this place.</p>
+        ) : null}
       </div>
+
+      <p className="text-muted-foreground text-sm">
+        Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places show
+        “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by Stripe in
+        US dollars; nothing renews.
+      </p>
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
@@ -174,7 +198,7 @@ function refusal(err: unknown, fallback: string): string {
 
 /** What runs the place's level now, highest first, then what runs after it. */
 function statusLines(boost: PlaceBoost | null): string[] {
-  if (!boost || boost.level === 0) return ["Not Premier. Every place starts here."];
+  if (!boost || boost.level === 0) return [];
   const lines: Array<{ tier: number; text: string }> = [];
   // Refill days, one line per tier: 5X runs first, then 2X.
   for (const tier of [2, 1]) {
