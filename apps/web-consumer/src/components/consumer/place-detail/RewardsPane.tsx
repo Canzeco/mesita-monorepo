@@ -2,9 +2,11 @@
 
 import { Fragment, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   apiCreateVisitCode,
   apiGetPlaceRewards,
+  visitLink,
   type PlaceReward,
   type PlaceRewards,
   type RewardKind,
@@ -17,8 +19,8 @@ import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
 // THE REWARDS TAB'S BODY (MESITA-3202). What this place offers and which are
-// this guest's. The guest taps for a code and shows it to staff, who log the
-// visit in Mesita Business. A discount the place gives on today's bill: no
+// this guest's. The guest taps for a QR and shows it to staff, who close the
+// visit at visit.mesita.ai. A discount the place gives on today's bill: no
 // money moves through Mesita. Who qualifies and every number is the server's.
 
 const NAME: Record<RewardKind, string> = {
@@ -163,9 +165,9 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       </ul>
       <div className="border-border border-t p-4">
         {code ? (
-          <div className="text-center" aria-live="polite">
-            <p className="text-3xl font-semibold tracking-[0.2em] tabular-nums">{code.code}</p>
-            <p className="text-muted-foreground mt-1 text-sm">Show this to staff. It works until {endsAt(code.expires_at)}.</p>
+          <div className="flex flex-col items-center text-center" aria-live="polite">
+            <QRCodeSVG value={visitLink(place.id, code.code)} size={224} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
+            <p className="text-muted-foreground mt-4 text-sm">Show this to staff. It works until {endsAt(code.expires_at)}.</p>
           </div>
         ) : usable ? (
           <button

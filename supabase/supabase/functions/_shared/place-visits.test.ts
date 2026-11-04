@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
-import { hashPlaceCode, hashVisitCode, isBillCents, newVisitCode, readVisitCode } from "./place-visits.ts";
+import { hashPlaceCode, hashVisitCode, isBillCents, newVisitCode, readPlaceCode, readVisitCode } from "./place-visits.ts";
 
 Deno.test("a code hash is bound to its place", async () => {
   const a = await hashVisitCode("place-a", "123456");
@@ -7,12 +7,20 @@ Deno.test("a code hash is bound to its place", async () => {
   assertNotEquals(a, await hashVisitCode("place-b", "123456"));
 });
 
-Deno.test("a typed code is six digits, spaces aside", () => {
-  assertEquals(readVisitCode(" 123 456 "), "123456");
-  assertEquals(readVisitCode("12345"), null);
-  assertEquals(readVisitCode("12345a"), null);
+Deno.test("a place code is six digits, spaces aside", () => {
+  assertEquals(readPlaceCode(" 123 456 "), "123456");
+  assertEquals(readPlaceCode("12345"), null);
+  assertEquals(readPlaceCode("12345a"), null);
+  assertEquals(readPlaceCode(123456), null);
+});
+
+Deno.test("a QR's secret is 128 random bits, and six digits no longer pass for one", () => {
+  const code = newVisitCode();
+  assertEquals(readVisitCode(code), code);
+  assertNotEquals(code, newVisitCode());
+  assertEquals(readVisitCode("123456"), null);
+  assertEquals(readVisitCode(code.toUpperCase() + "0"), null);
   assertEquals(readVisitCode(123456), null);
-  assertEquals(/^\d{6}$/.test(newVisitCode()), true);
 });
 
 Deno.test("a bill is whole cents, above zero, within the table's limit", () => {

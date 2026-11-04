@@ -10,7 +10,7 @@ export const AGENT_TIMEOUT_MS = 45_000;
 
 type FetchImpl = typeof fetch;
 
-export type AgentAnswer = { answer: Record<string, unknown>; hitUrls: string[] };
+export type AgentAnswer = { answer: Record<string, unknown> };
 
 export async function callAgent(opts: {
   apiKey: string;
@@ -59,20 +59,16 @@ export async function callAgent(opts: {
 
 export function agentResult(payload: unknown): AgentAnswer {
   const output = payload && typeof payload === "object"
-    ? (payload as { output?: { type?: string; content?: { text?: string; annotations?: { url?: unknown }[] }[] }[] }).output
+    ? (payload as { output?: { type?: string; content?: { text?: string }[] }[] }).output
     : undefined;
   let text = "";
-  const hitUrls: string[] = [];
   for (const item of output ?? []) {
     if (item?.type !== "message" || !Array.isArray(item.content)) continue;
     for (const part of item.content) {
       if (typeof part?.text === "string") text += part.text;
-      for (const note of part?.annotations ?? []) {
-        if (note && typeof note.url === "string") hitUrls.push(note.url);
-      }
     }
   }
-  return { answer: parseJsonObject(text) ?? {}, hitUrls };
+  return { answer: parseJsonObject(text) ?? {} };
 }
 
 export function parseJsonObject(text: string): Record<string, unknown> | null {

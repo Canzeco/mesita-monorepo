@@ -35,19 +35,26 @@ export const RESOLVER_INSTRUCTIONS =
   "to check them. For each requested field, return the one candidate that really is this " +
   "place's own channel, or null. Check the name, the city and the kind of business; a " +
   "similar name in another city or country, or a different business, is null. " +
-  "A candidate linked from the place's own website is the strongest evidence, and the " +
+  "A candidate linked from the website Google lists is the strongest evidence, and the " +
   "same handle on the website and another channel wins. That holds only when the site is " +
   "the place's or its brand's: a mall, group, magazine or directory page links its own " +
-  "accounts, and a group page may list one account per branch, so take the one for this " +
-  "city. Prefer this location's own account over a parent group or a branch elsewhere. " +
-  "When this location has none (a branch of a chain or franchise, a kiosk, a counter " +
-  "inside a campus, mall, hospital or airport), the brand's main account IS this place's " +
-  "channel, this country's first. Between several official accounts of the same place, " +
-  "take the current one with the most followers. website_url is the place's or brand's " +
-  "own site, never an article, review, ranking, guide, directory, aggregator or delivery " +
-  "page. instagram_url and facebook_url are profiles or pages, never a post or a video. " +
+  "accounts, a site found by search may be another business with a similar name, and a " +
+  "group page may list one account per branch, so take the one for this city. A candidate " +
+  "marked as the account behind a post is whoever posted it: its title and description " +
+  "describe the post, so it counts only if the account's own name is this place. Prefer " +
+  "this location's own account over a parent group or a branch elsewhere. When this " +
+  "location has none (a branch of a chain or franchise, a kiosk, a counter inside a " +
+  "campus, mall, hospital or airport), the brand's main account IS this place's channel, " +
+  "this country's first. Between several official accounts of the same place, take the " +
+  "current one with the most followers. website_url is the place's or brand's own site, " +
+  "never an article, review, ranking, guide, directory, aggregator or delivery page. " +
+  "When the message says Google already lists a link for a field, return null to keep it, " +
+  "unless it is one of those, another business or a parent group's page and a candidate " +
+  "is this place's own. " +
+  "instagram_url and facebook_url are profiles or pages, never a post or a video. " +
   "opentable_url and uber_eats_url must be this place's page, or its brand's in this " +
-  "city. Return null only when no candidate is this place or its brand. Output ONLY " +
+  "city. For a field Google does not list, return null only when no candidate is this " +
+  "place or its brand. Output ONLY " +
   "strict JSON matching the schema. Never fabricate a URL.";
 
 // The per-place message. Pure and exported so crenup-prompts.ts can render the
@@ -55,7 +62,14 @@ export const RESOLVER_INSTRUCTIONS =
 // The Enricher on Render sends this same text (resolverInput in
 // render/src/links.ts), pinned by render/src/twins.test.ts.
 export function buildResolverInput(
-  place: { name: string; city: string | null; category: string | null; brand: string | null; context: string },
+  place: {
+    name: string;
+    city: string | null;
+    category: string | null;
+    brand: string | null;
+    context: string;
+    listed?: Partial<Record<ChannelField, string>>;
+  },
   candidates: Partial<Record<ChannelField, string[]>>,
 ): string {
   const where = place.city?.trim() ? ` in ${place.city.trim()}` : "";
@@ -64,8 +78,10 @@ export function buildResolverInput(
     `${field} candidates:\n${(lines ?? []).join("\n")}`
   ).join("\n");
   const context = place.context.trim();
+  const listed = Object.entries(place.listed ?? {}).map(([field, url]) => `- ${field}: ${url}`).join("\n");
   return `Review and select the official channels for the place "${place.name}"${where}${kind}.\n\n` +
     (context ? `Background on the place (soft web context — never the source of a URL):\n${context.slice(0, 600)}\n\n` : "") +
+    (listed ? `Google already lists these, and they stay when you return null:\n${listed}\n\n` : "") +
     (place.brand
       ? `This place is a location of the "${place.brand}" brand. If it has no account of its own, ` +
         `the brand's account is the answer, preferring this country's.\n\n`
