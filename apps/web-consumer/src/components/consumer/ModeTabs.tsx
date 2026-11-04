@@ -18,8 +18,9 @@
 // the word "Mesita" in Outfit, a geometric sans with a one-storey a,
 // bold and tight. The flame, the table M and a molcajete were each rejected
 // (MESITA-2473, MESITA-2476, MESITA-2480).
-// Home draws it from app/(shell)/(discovery)/home/layout.tsx; Search
-// has its own header (SearchHeader: locate · bar · Ask AI, then family
+// Home draws it from app/(shell)/(discovery)/home/layout.tsx and the Reward tab
+// from app/(shell)/pay/page.tsx (MESITA-3214, Pato: "same header resuded in home
+// and in pay"); Search has its own header (SearchHeader: locate · bar · Ask AI, then family
 // chips), so Home's never paints over the map (MESITA-1616). It was
 // DiscoverModeNav.
 

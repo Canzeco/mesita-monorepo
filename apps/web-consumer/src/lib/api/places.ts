@@ -347,12 +347,14 @@ function cleanPlace(place: Place): Place {
  * reads the rest by id as the guest scrolls. No `offset` is sent, so an EF
  * from before MESITA-3057 answers its best 1000 and the pool is complete.
  * `familyKeys` is a family row's question (MESITA-2438). None = every
- * family. No `prefer`.
+ * family. No `prefer`. `nearest` sorts by distance alone (the Reward tab,
+ * MESITA-3214).
  */
 export async function apiListAreaPool(
   client: SupabaseClient,
   origin: AreaOrigin | null,
   familyKeys: readonly string[] = [],
+  opts: { nearest?: boolean } = {},
 ): Promise<AreaPool> {
   const data = await invokeEF<{
     places?: Place[];
@@ -362,6 +364,7 @@ export async function apiListAreaPool(
   }>(client, "consumer-web-list-catalog", {
     unified: true,
     ids: true,
+    ...(opts.nearest ? { nearest: true } : {}),
     ...(familyKeys.length > 0 ? { familyKeys: [...familyKeys] } : {}),
     // The point only scores: the Catalog has no radius (MESITA-2909).
     ...(origin ? { lat: origin.lat, lng: origin.lng, google: true } : {}),

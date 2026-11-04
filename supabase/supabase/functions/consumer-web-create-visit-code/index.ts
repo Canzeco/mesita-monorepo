@@ -5,9 +5,13 @@
 // last one. The code is never stored in the clear. A closed account's code is
 // refused where it is used (place_visit_check, place_visit_create).
 //
+// MESITA-3214: the Reward tab's QR, at every Mesita place. For the moment every
+// place counts as offering rewards (Pato: "assume all palces offer rewards"), so
+// a place with none on still issues a code. It switches nothing on: at the till
+// that guest gets only the rewards the place has on, so none there.
+//
 // Body: { place_id: uuid }
 // Response: { ok: true, code: "123456", expires_at }
-//         | { ok: false, code: "no_rewards", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -32,15 +36,6 @@ serveJson("consumer-web-create-visit-code", async (req) => {
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
   const admin = adminClient(envRes.env);
-  const { data: rewards, error: rewardsErr } = await admin.rpc("place_rewards_for_guest", {
-    p_place_id: placeId,
-    p_consumer_id: userId,
-  });
-  if (rewardsErr) return json({ ok: false, error: rewardsErr.message }, 500);
-  if (!(rewards ?? []).length) {
-    return json({ ok: false, code: "no_rewards", error: "This place has no rewards right now." }, 409);
-  }
-
   const expiresAt = new Date(Date.now() + VISIT_CODE_MINUTES * 60_000).toISOString();
   for (let draw = 0; draw < VISIT_CODE_DRAWS; draw++) {
     const code = newVisitCode();
