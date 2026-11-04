@@ -7,6 +7,7 @@ import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
 import { cn, formatDistanceKm } from "../../lib/format";
+import { toAmPm } from "../../lib/place-time";
 import { PLACE_REWARD_COUPON_CLASS } from "../../lib/ui";
 
 import { profileChannelStats } from "./channel-stats";
@@ -71,10 +72,14 @@ export function ProfileSummary({
       priceLevel: place.price_level,
       currency: place.currency,
     }) ?? null;
-  // Open or Closed, never until when (Pato, MESITA-3229: "just open or closed,
-  // to save space"). Unknown hours draw nothing.
-  const stateValue =
+  // Open or Closed, and until when (Pato, MESITA-3246: "open or closed and until
+  // x am or pm"). The cards keep the bare word (MESITA-3229). Unknown hours draw
+  // nothing; a state with no next time is the bare word.
+  const untilAt = place.open_now ? place.closes_at : place.opens_at;
+  const stateWord =
     place.open_now === true ? "Open" : place.open_now === false ? "Closed" : null;
+  const stateValue =
+    stateWord && untilAt ? `${stateWord} until ${toAmPm(untilAt)}` : stateWord;
   const isOpen = place.open_now === true;
 
   return (
@@ -127,6 +132,13 @@ export function ProfileSummary({
         aria-label="About this place"
         data-profile-facts
       >
+        {/* The reward is the first tag (Pato, MESITA-3246). */}
+        {actions?.rewardLabel && (
+          <li className={PLACE_REWARD_COUPON_CLASS}>
+            <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            {actions.rewardLabel}
+          </li>
+        )}
         {creating ? (
           <RunningFact label="Creating" tone="blue" />
         ) : place.is_enriching ? (
@@ -141,12 +153,6 @@ export function ProfileSummary({
           </ProfileFact>
         )}
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
-        {actions?.rewardLabel && (
-          <li className={PLACE_REWARD_COUPON_CLASS}>
-            <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-            {actions.rewardLabel}
-          </li>
-        )}
         {stateValue && (
           <ProfileFact icon={Clock} strong={isOpen}>
             {stateValue}

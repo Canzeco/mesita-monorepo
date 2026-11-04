@@ -202,10 +202,10 @@
   --fact-star: oklch(0.828 0.189 84.429);
   /* The $$ on a card (MESITA-2673): green-700, ~5:1 on white at 14px. */
   --fact-price: oklch(0.527 0.154 150.069);
-  /* The discount (MESITA-3241, Pato: "green colors looks like shit here use
-     red"): red-700 on red-50, the one fact with a fill. */
-  --fact-reward: oklch(0.505 0.213 27.518);
-  --fact-reward-bg: oklch(0.971 0.013 17.38);
+  /* The discount (MESITA-3246, Pato: "that red looks like a warning not like a
+     coupon … maybe pink background with white font"): pink-600, ~4.5:1 with
+     white, the coupon's fill and the discount's words on a white page. */
+  --fact-reward: oklch(0.592 0.249 0.584);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -260,7 +260,6 @@
   --color-fact-star: var(--fact-star);
   --color-fact-price: var(--fact-price);
   --color-fact-reward: var(--fact-reward);
-  --color-fact-reward-bg: var(--fact-reward-bg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

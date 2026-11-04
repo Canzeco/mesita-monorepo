@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPinOff, QrCode, X } from "lucide-react";
-import { SizedImg } from "@mesita/place-profile";
-import { cardFacts } from "@/components/consumer/place-card";
+import { MapPinOff, QrCode, Ticket, X } from "lucide-react";
+import { PremierBadge, SizedImg } from "@mesita/place-profile";
+import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
+import { cn } from "@/lib/utils";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
@@ -227,9 +228,7 @@ export function RewardPlaces() {
 }
 
 function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number; onOpen: () => void }) {
-  const facts = cardFacts(place);
   const photo = place.photos?.[0];
-  const line = [facts.kind, facts.distance].filter(Boolean).join(" · ");
   return (
     <button
       type="button"
@@ -246,10 +245,18 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">{place.name}</span>
-        {line ? <span className="text-muted-foreground block truncate text-xs">{line}</span> : null}
+        {/* The name, its Premier mark, the reward: nothing else (Pato, MESITA-3246). */}
+        <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+          <span className="truncate">{place.name}</span>
+          <PremierBadge tier={place.boost_tier} compact ad />
+        </span>
         {/* "Up to": Story counts, and staff check it at the till (MESITA-3217). */}
-        {percent ? <span className="text-fact-reward mt-0.5 block truncate text-xs font-semibold">Up to {percent}% OFF for you</span> : null}
+        {percent ? (
+          <span className={cn(PLACE_REWARD_COUPON_CLASS, "mt-1 font-semibold")}>
+            <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            Up to {percent}% OFF for you
+          </span>
+        ) : null}
       </span>
       <QrCode className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
     </button>

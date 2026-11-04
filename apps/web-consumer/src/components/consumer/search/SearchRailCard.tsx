@@ -12,7 +12,7 @@ import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
   CardActions,
-  CouponTag,
+  CouponRow,
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
@@ -42,6 +42,19 @@ import {
  *  same size on every page. */
 export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
 
+/** A card with a discount: the same card under a 32px strip (Pato, MESITA-3246:
+ *  "put on top … so some are going to be a bit taller"). The rail aligns to its
+ *  foot, so only the strips stand up. */
+const RAIL_CARD_WITH_COUPON_HEIGHT_CLASS = "h-[10.375rem]";
+
+/** The photo and text row: the card's 132px inner height, explicit so the square
+ *  photo's h-full holds with a strip above it. */
+const RAIL_CARD_ROW = "flex h-[8.25rem] shrink-0 items-stretch";
+
+/** The discount as the card's top edge, its dashed line a ticket's tear. */
+const RAIL_CARD_COUPON =
+  "border-paper/70 shrink-0 rounded-none border-b border-dashed outline-none";
+
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift
  *  from the loaded one. */
@@ -70,13 +83,19 @@ function RailRowSkeleton({ bar }: { bar: string }) {
  *  sits, so nothing moves when the cards land. */
 export function RailCardSkeleton() {
   return (
-    <div aria-hidden className={cn(RAIL_CARD_FRAME, RAIL_CARD_HEIGHT_CLASS)}>
-      <div className="absolute inset-0 flex items-stretch">
-        <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
-        <div className={RAIL_CARD_TEXT}>
-          <RailRowSkeleton bar="h-4 w-3/4" />
-          <RailRowSkeleton bar="h-3.5 w-1/2" />
-          <RailRowSkeleton bar="h-3.5 w-3/5" />
+    <div
+      aria-hidden
+      className={cn(RAIL_CARD_FRAME, RAIL_CARD_WITH_COUPON_HEIGHT_CLASS)}
+    >
+      <div className="absolute inset-0 flex flex-col">
+        <Skeleton className="h-8 shrink-0 rounded-none" />
+        <div className={RAIL_CARD_ROW}>
+          <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
+          <div className={RAIL_CARD_TEXT}>
+            <RailRowSkeleton bar="h-4 w-3/4" />
+            <RailRowSkeleton bar="h-3.5 w-1/2" />
+            <RailRowSkeleton bar="h-3.5 w-3/5" />
+          </div>
         </div>
       </div>
       <div className={cn(CARD_ACTIONS_ROW, RAIL_CARD_ACTIONS)}>
@@ -129,7 +148,7 @@ export function RailCard({
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        RAIL_CARD_HEIGHT_CLASS,
+        facts.off ? RAIL_CARD_WITH_COUPON_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
@@ -140,50 +159,52 @@ export function RailCard({
         // a card the guest taps is the deliberate open, Google-only included
         // (the opening screen creates, never this tap).
         onClick={onOpen}
-        className="focus-visible:ring-primary absolute inset-0 flex items-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
+        className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
+        <CouponRow facts={facts} className={RAIL_CARD_COUPON} />
+        <div className={RAIL_CARD_ROW}>
+          {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card
             height; width matches so the box is always 1:1. */}
-        <div className="bg-muted relative aspect-square h-full w-auto shrink-0 overflow-hidden">
-          {photo ? (
-            <SizedImage
-              src={photo}
-              size="card"
-              alt={place.name}
-              fill
-              sizes="140px"
-              className="border-0 object-cover outline-none"
-            />
-          ) : (
-            // The Home tile's no-photo face: the light fill and the
-            // category's emoji (MESITA-2664, MESITA-2667).
-            <span
-              className="text-muted-foreground absolute inset-0 flex items-center justify-center"
-              data-placeholder={placeholder.kind}
-              aria-hidden
-            >
-              {placeholder.kind === "emoji" ? (
-                <span className="text-5xl leading-none select-none">
-                  {placeholder.emoji}
-                </span>
-              ) : (
-                <span className="font-display text-3xl font-bold tracking-tight">
-                  {placeholder.text}
-                </span>
-              )}
-            </span>
-          )}
-          {photoOverlay}
-          <CouponTag facts={facts} />
-        </div>
-        <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
-          <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
-            <span className="truncate">{place.name}</span>
-            <PremierBadge tier={place.boost_tier} compact ad />
-          </p>
-          <PriceKindRow facts={facts} />
-          <StarsOpenRow facts={facts} withDistance={withDistance} />
+          <div className="bg-muted relative aspect-square h-full w-auto shrink-0 overflow-hidden">
+            {photo ? (
+              <SizedImage
+                src={photo}
+                size="card"
+                alt={place.name}
+                fill
+                sizes="140px"
+                className="border-0 object-cover outline-none"
+              />
+            ) : (
+              // The Home tile's no-photo face: the light fill and the
+              // category's emoji (MESITA-2664, MESITA-2667).
+              <span
+                className="text-muted-foreground absolute inset-0 flex items-center justify-center"
+                data-placeholder={placeholder.kind}
+                aria-hidden
+              >
+                {placeholder.kind === "emoji" ? (
+                  <span className="text-5xl leading-none select-none">
+                    {placeholder.emoji}
+                  </span>
+                ) : (
+                  <span className="font-display text-3xl font-bold tracking-tight">
+                    {placeholder.text}
+                  </span>
+                )}
+              </span>
+            )}
+            {photoOverlay}
+          </div>
+          <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
+            <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
+              <span className="truncate">{place.name}</span>
+              <PremierBadge tier={place.boost_tier} compact ad />
+            </p>
+            <PriceKindRow facts={facts} />
+            <StarsOpenRow facts={facts} withDistance={withDistance} />
+          </div>
         </div>
       </button>
       {/* Under the text column (RAIL_CARD_ACTIONS). */}
