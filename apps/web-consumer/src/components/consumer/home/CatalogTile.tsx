@@ -164,15 +164,15 @@ export function CatalogTile({
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
   //
-  // ONE SQUARE, PHOTO 50%, CONTENT 50% (Pato, MESITA-3229: "maybe a bit more
-  // space in the info"; 60/40 and 55/45 cannot hold the four rows on a small
-  // phone), every tile, a Google-only card too (MESITA-2663): name; $$ ·
-  // category · stars; Open or Closed · distance; then Save and Share side by
-  // side (32px, 44px hit area), then the coupon. 20px lines and a 2px gap. The
+  // THE PHOTO ABOUT 60%, THE TEXT THE REST (Pato, MESITA-3233: "return to 60%
+  // image and 40% text or whatever"), every tile, a Google-only card too
+  // (MESITA-2663): name; $$ · category · stars; Open or Closed · distance; then
+  // Save and Share side by side (32px, 44px hit area), then the coupon. 20px
+  // lines and a 2px gap. The
   // photo is fully
   // shown and centred, nothing over it (MESITA-2369); the band under it is
   // plain white (MESITA-2658: the reflection went). The split went 45/55
-  // (MESITA-2652), 66/34 (MESITA-2654) and 60/40 (MESITA-2655) before this. The
+  // (MESITA-2652), 66/34 (MESITA-2654) and 50/50 (MESITA-3229) on the way. The
   // boxes are catalog-tile-classes.ts, shared with the tile's loading
   // silhouette (MESITA-2701).
   return (
@@ -183,7 +183,7 @@ export function CatalogTile({
         onOpen={onOpenGoogle}
         onTap={onOpen}
         label={place.name}
-        className="focus-visible:ring-primary absolute inset-0 block outline-none focus-visible:ring-2 focus-visible:ring-inset"
+        className="focus-visible:ring-primary block outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
         <div className={cn("bg-muted", TILE_PHOTO)}>
           {media()}
@@ -198,8 +198,8 @@ export function CatalogTile({
               and spaces"): the place screen's own (packages/place-profile
               ui.ts). Inter everywhere, two sizes only: the name 16px
               semibold ink (PLACE_TITLE_CLASS); every other row 14px regular
-              on a 20px line, full ink (place-card.tsx). TILE_TEXT centres
-              the rows in what Save and Share leave. The mark follows the
+              on a 20px line, full ink (place-card.tsx). TILE_TEXT leaves
+              room for Save and Share. The mark follows the
               name. */}
           <div
             className={cn(

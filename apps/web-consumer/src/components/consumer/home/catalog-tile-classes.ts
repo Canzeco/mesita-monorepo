@@ -4,35 +4,33 @@
 // read these strings, so the loading tile cannot drift from the loaded one.
 // Layout only: each caller adds its own fill (the photo's grey, the ink).
 
-/** EVERY TILE IS SQUARE (MESITA-2652), rounded-2xl, edged by a shadow,
- *  not a line (Pato, MESITA-2838: "I don't like the borders of the items
- *  here in home"; the MESITA-2661 grey hairline). The shadow is
- *  shadow-tile, only BELOW the tile and dark (Pato, MESITA-3065: "places
- *  must have maybe a stronger shadow"; MESITA-3068: "the shadow just below
- *  not on the sides"; MESITA-3074: "stronger"): its negative spread keeps
- *  it off the sides, its drop puts it underneath. */
+/** The tile takes the height of its photo and its text (Pato, MESITA-3233:
+ *  "return to 60% image and 40% text or whatever"; square from MESITA-2652 until
+ *  the coupon needed a row under the buttons). rounded-2xl, edged by a shadow,
+ *  not a line (Pato, MESITA-2838: "I don't like the borders of the items here in
+ *  home"). The shadow is shadow-tile, only BELOW the tile and dark (Pato,
+ *  MESITA-3065, MESITA-3068, MESITA-3074): its negative spread keeps it off the
+ *  sides, its drop puts it underneath. */
 export const TILE_FRAME =
-  "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl shadow-tile";
+  "relative isolate min-w-0 overflow-hidden rounded-2xl shadow-tile";
 
-/** The photo, the top 50% (Pato, MESITA-3229: "maybe a bit more space in the
- *  info"). It carries the radius itself, as the band does:
- *  a child layer can escape the parent's rounded clip (MESITA-2429). */
-export const TILE_PHOTO =
-  "absolute inset-x-0 top-0 h-[50%] overflow-hidden rounded-t-2xl";
+/** The photo: three fifths of the tile's width tall, so a tile with no coupon is
+ *  a 60/40 square at 330px and never clips its text on a narrower phone. It
+ *  carries the radius itself, as the band does: a child layer can escape the
+ *  parent's rounded clip (MESITA-2429). */
+export const TILE_PHOTO = "relative aspect-[5/3] overflow-hidden rounded-t-2xl";
 
-/** The bottom 50%, a plain white band (MESITA-2658: no reflection). */
-export const TILE_BAND =
-  "bg-paper absolute inset-x-0 bottom-0 h-[50%] overflow-hidden rounded-b-2xl";
+/** The plain white band under the photo (MESITA-2658: no reflection). */
+export const TILE_BAND = "bg-paper overflow-hidden rounded-b-2xl";
 
-/** The band's three 20px rows, 2px apart, 12px side padding, centred in
- *  what Save · Share leave: pb-11 is the 32px row and its 12px foot, so the
- *  gap over the name and the gap over the buttons match (MESITA-2645). */
-export const TILE_TEXT =
-  "relative flex h-full flex-col justify-center gap-0.5 px-3 pb-11";
+/** The band's three 20px rows, 2px apart, 12px from the photo and the sides.
+ *  pb-14 is the 32px row, its 12px foot and 12px over the buttons (Pato,
+ *  MESITA-2645: equal margins). */
+export const TILE_TEXT = "relative flex flex-col gap-0.5 px-3 pt-3 pb-14";
 
-/** The text's foot on a tile with a discount: pb-[4.75rem] is the 24px coupon,
- *  its 8px gap, the 32px row and its 12px foot (MESITA-3233). */
-export const TILE_TEXT_WITH_COUPON = "pb-[4.75rem]";
+/** The text's foot on a tile with a discount: pb-[5.5rem] adds the 24px coupon
+ *  and its 8px gap (MESITA-3233). */
+export const TILE_TEXT_WITH_COUPON = "pb-[5.5rem]";
 
 /** Save · Share, 12px from the tile's sides AND its foot (MESITA-2668: "its
  *  not the same vertical margin as horizontal margin"). */

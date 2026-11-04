@@ -20,14 +20,14 @@ import {
 // places land. CatalogRails is its one caller: while the browser answers
 // for the location and while the pool is in flight.
 
-/** One square tile per row (MESITA-2367), 6px of room above, left and right
+/** One tile per row (MESITA-2367), 6px of room above, left and right
  *  and between tiles — one space size (Pato, MESITA-2370). The list and its
  *  skeleton read this one string, so their gaps cannot drift. */
 export const PLACES_LIST =
   "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
 
 /** CatalogTile's silhouette, from its own boxes (catalog-tile-classes.ts):
- *  the hairlined square, the photo's top 50%, the white band's 50% with its
+ *  the frame, the photo, the white band with its
  *  rows (the 16px name, the two 14px rows), Save · Share as two 32px blocks
  *  where CardActions sits, and the 24px coupon under them. */
 function CatalogTileSkeleton() {
@@ -60,7 +60,7 @@ function CatalogTileSkeleton() {
   );
 }
 
-/** Three tiles: more than the pane shows, since each tile is as tall as the
+/** Three tiles: more than the pane shows, since each tile is about as tall as the
  *  column is wide. Locating and loading draw the same three, so the hand-off
  *  between them never jumps. */
 const TILES = 3;

@@ -12,7 +12,7 @@ import dynamic from "next/dynamic";
 //   ━━━━━━━━━━━━━━━━━                       and read here.
 //   ┌──────────┬──────────────────────┐
 //   │▌▦ All    │                      │
-//   │ ○ Coffee │     square tile      │
+//   │ ○ Coffee │        tile          │
 //   │ ○ …   ↕  │                      │
 //
 // Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
