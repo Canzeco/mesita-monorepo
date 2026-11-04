@@ -5,7 +5,7 @@
 // bits, ten minutes, one use. Spends nothing.
 //
 // Body: { place_id: uuid, code: "<32 hex>" }
-// Response: { ok: true, place_name, currency, code_set, guest_name,
+// Response: { ok: true, place_name, currency, code_set, guest_name, bill_cents,
 //             rewards: [{ kind, percent, cap_cents }] }
 //         | { ok: false, code: "bad_code", error }
 
@@ -45,6 +45,7 @@ serveJson("visit-web-get-visit", async (req) => {
     currency: data.currency,
     code_set: data.code_set,
     guest_name: data.guest_name ?? "Guest",
+    bill_cents: data.bill_cents ?? null,
     rewards: data.rewards,
   });
 });

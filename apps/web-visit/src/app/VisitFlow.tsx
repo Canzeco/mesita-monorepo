@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { money, readAmount } from "@/lib/amount";
+import { amountText, money, readAmount } from "@/lib/amount";
 import { closeVisit, getVisit, type ClosedVisit, type Visit } from "@/lib/visit-api";
 
 // Pato, MESITA-3240: "you scan, and you click received and you input the actual
-// amount and the digits." The amount is the full bill: the server takes the
-// rewards off it and this page then says what the guest pays. Nothing is worked
-// out here, so no second copy of the money rules exists.
+// amount and the digits." MESITA-3245: "guest enters bill, then busienss just
+// correct if wrong", so the amount arrives filled in with the guest's bill. It is
+// the full bill: the server takes the rewards off it and this page then says what
+// the guest pays. Nothing is worked out here, so no second copy of the money rules
+// exists.
 
 const REWARD_NAME: Record<string, string> = {
   welcome_visit: "Welcome Visit",
@@ -87,6 +89,11 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
     <main>
       <h1>{visit.place_name}</h1>
       <p>{visit.guest_name}</p>
+      {visit.bill_cents != null ? (
+        <p>
+          <strong>Bill {money(visit.bill_cents, visit.currency)}</strong>
+        </p>
+      ) : null}
       {visit.rewards.length > 0 ? (
         <ul>
           {visit.rewards.map((r) => (
@@ -113,7 +120,13 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
       )}
       {cap != null ? <p>At most {money(cap, visit.currency)} off a bill.</p> : null}
       {received ? (
-        <CloseForm placeId={placeId} code={code} rewardKinds={rewardKinds} onClosed={setClosed} />
+        <CloseForm
+          placeId={placeId}
+          code={code}
+          guestBillCents={visit.bill_cents}
+          rewardKinds={rewardKinds}
+          onClosed={setClosed}
+        />
       ) : (
         <button type="button" onClick={() => setReceived(true)}>
           Received
@@ -126,15 +139,17 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
 function CloseForm({
   placeId,
   code,
+  guestBillCents,
   rewardKinds,
   onClosed,
 }: {
   placeId: string;
   code: string;
+  guestBillCents: number | null;
   rewardKinds: string[];
   onClosed: (closed: ClosedVisit) => void;
 }) {
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(guestBillCents != null ? amountText(guestBillCents) : "");
   const [placeCode, setPlaceCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -160,11 +175,11 @@ function CloseForm({
   return (
     <form onSubmit={(e) => void submit(e)}>
       <label className="field">
-        <span>Amount, the full bill before the discount</span>
+        <span>Full bill, before the discount. Correct it if it&apos;s wrong.</span>
         <input
           inputMode="decimal"
           autoComplete="off"
-          autoFocus
+          autoFocus={guestBillCents == null}
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
@@ -175,6 +190,7 @@ function CloseForm({
           className="secret"
           inputMode="numeric"
           autoComplete="off"
+          autoFocus={guestBillCents != null}
           maxLength={6}
           value={placeCode}
           onChange={(e) => setPlaceCode(e.target.value.replace(/\D/g, ""))}
