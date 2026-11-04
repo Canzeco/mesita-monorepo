@@ -7,7 +7,7 @@
 // Each is yes or no, read from place_profiles. Stars, snippets and follower
 // counts stay on the Reviews tab as display. They are not states.
 
-import { Star } from "lucide-react";
+import { StarIcon } from "@phosphor-icons/react/dist/ssr";
 import type { AdminPlace } from "../actions";
 import { SectionCard } from "@/components/ui/manage";
 import { REVIEW_STATE_FACTS, stateBoolChip } from "@/lib/state-vocabulary";
@@ -31,8 +31,7 @@ const DETAIL: Record<(typeof REVIEW_STATE_FACTS)[number]["key"], readonly [strin
 export function ReviewsStateCard({ place }: { place: AdminPlace }) {
   return (
     <SectionCard
-      icon={<Star className="h-4 w-4" />}
-      tint="violet"
+      icon={<StarIcon size={20} />}
       title="Reviews States"
     >
       <div className="mt-5 flex flex-col">

@@ -6,7 +6,8 @@
 
 import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Eye, X } from "lucide-react";
+import { EyeIcon } from "@phosphor-icons/react/dist/ssr";
+import { X } from "lucide-react";
 import { placeTabFromPathname } from "@/lib/routes";
 import { PlacePreview } from "./PlacePreview";
 import { Card } from "@/components/shell/Page";
@@ -23,8 +24,8 @@ export function PreviewButton() {
           "must not be hidden at top right, but maybe the first box with the
           button"). */}
       <Card className="flex flex-wrap items-center gap-4 sm:p-5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-600">
-          <Eye className="size-5" aria-hidden />
+        <span className="bg-muted text-foreground flex size-10 shrink-0 items-center justify-center rounded-xl">
+          <EyeIcon size={20} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
           <p className="font-semibold">See your profile as guests do</p>
@@ -38,7 +39,7 @@ export function PreviewButton() {
           }}
           className="bg-foreground text-background inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold"
         >
-          <Eye className="size-4" aria-hidden /> Preview
+          <EyeIcon size={16} aria-hidden /> Preview
         </button>
       </Card>
       <dialog

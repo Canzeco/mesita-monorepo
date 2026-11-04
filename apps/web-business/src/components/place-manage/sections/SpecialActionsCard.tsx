@@ -22,7 +22,8 @@
 // States and Enrichment.
 
 import { useState } from "react";
-import { Loader2, Zap } from "lucide-react";
+import { LightningIcon } from "@phosphor-icons/react/dist/ssr";
+import { Loader2 } from "lucide-react";
 import { boostPlace, enrichPlace, reloadPlaceReviews, setPlaceListed, updatePlaceGoogle, type AdminPlace, type BoostLine } from "../actions";
 import { isEnriching, listedFromState } from "../place-header-state";
 import { isEnrichedPlace } from "@/lib/place-enriched";
@@ -155,7 +156,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
   }
 
   return (
-    <SectionCard icon={<Zap className="h-4 w-4" />} tint="amber" title="Special actions" subtitle="What Mesita runs on this place.">
+    <SectionCard icon={<LightningIcon size={20} />} title="Special actions" subtitle="What Mesita runs on this place.">
       <div className="mt-5 flex flex-col">
         <Row name="Enrich" detail="The whole Enricher run: links, reviews, photos and the presentation. Replaces what it finds." note={noteFor("enrich")}>
           <button

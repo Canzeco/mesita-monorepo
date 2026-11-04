@@ -49,7 +49,7 @@
 // `business_state` below mirror the schema exactly — one word, one meaning.
 
 import { useEffect, useState } from "react";
-import { CircleCheck } from "lucide-react";
+import { CheckCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import {
   getPlaceEnrichment,
   type AdminPlace,
@@ -212,8 +212,7 @@ export function StateCard({ place }: { place: AdminPlace }) {
 
   return (
     <SectionCard
-      icon={<CircleCheck className="h-4 w-4" />}
-      tint="emerald"
+      icon={<CheckCircleIcon size={20} />}
       title="Profile States"
     >
       <div className="mt-5 flex flex-col">

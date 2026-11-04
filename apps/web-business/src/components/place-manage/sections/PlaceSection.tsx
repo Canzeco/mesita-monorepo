@@ -1,13 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Clock,
-  Globe,
-  MapPin,
-  Store,
-  type LucideIcon,
-} from "lucide-react";
+import { ClockIcon, GlobeIcon, MapPinIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
+import { Globe, type LucideIcon } from "lucide-react";
 import {
   type AdminPlace,
   type PlaceFieldLimits,
@@ -415,8 +410,7 @@ export function PlaceSection({
           except Actions, which ProfileTab adds here for staff (MESITA-3205);
           Team on Controls; the reputation rail on Activity. */}
       <SectionCard
-        icon={<Store className="h-4 w-4" />}
-        tint="rose"
+        icon={<StorefrontIcon size={20} />}
         title="Basics"
         subtitle="What this place is."
       >
@@ -486,8 +480,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<MapPin className="h-4 w-4" />}
-        tint="sky"
+        icon={<MapPinIcon size={20} />}
         title="Location"
         subtitle="Where it is."
       >
@@ -520,8 +513,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Clock className="h-4 w-4" />}
-        tint="amber"
+        icon={<ClockIcon size={20} />}
         title="Hours"
         subtitle="When it opens."
       >
@@ -606,8 +598,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Globe className="h-4 w-4" />}
-        tint="indigo"
+        icon={<GlobeIcon size={20} />}
         title="Links"
       >
         {/* One column, one list — links and contacts are all just channels;
