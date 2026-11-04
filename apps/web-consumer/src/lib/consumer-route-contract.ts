@@ -75,6 +75,9 @@ export const CONSUMER_ROUTES = {
     // (MESITA-2561), and before that the bar's /saved.
     favorites: "/me/favorites",
     reservations: "/me/reservations",
+    // The guest's history of visits (MESITA-3264). A Second Stage page of the same
+    // name was retired in MESITA-2087 and this address 308'd to Me until now.
+    visits: "/me/visits",
   },
   // Every address that shipped to production and no longer renders a page.
   // Each one has a next.config.ts redirect (route-structure T4 proves the
@@ -139,7 +142,6 @@ export const CONSUMER_ROUTES = {
     meClassInvite: "/me/class/invite",
     meDiamond: "/me/diamond",
     meDiamondInvite: "/me/diamond/invite",
-    meVisits: "/me/visits",
     meSettingsMetrics: "/me/settings/metrics",
     mePassport: "/me/passport",
     // Support's page (MESITA-2169). Terms and privacy live on Settings.

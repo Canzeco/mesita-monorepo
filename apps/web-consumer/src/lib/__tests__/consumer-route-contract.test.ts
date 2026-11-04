@@ -126,6 +126,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         // were Saved's two tabs (MESITA-2521, MESITA-2561).
         favorites: "/me/favorites",
         reservations: "/me/reservations",
+        visits: "/me/visits",
       },
       legacy: {
         profile: "/profile",
@@ -166,7 +167,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meClassInvite: "/me/class/invite",
         meDiamond: "/me/diamond",
         meDiamondInvite: "/me/diamond/invite",
-        meVisits: "/me/visits",
         meSettingsMetrics: "/me/settings/metrics",
         mePassport: "/me/passport",
         meHelp: "/me/help",
@@ -408,7 +408,6 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       { source: "/me/class/invite", destination: "/me", permanent: true },
       { source: "/me/diamond/invite", destination: "/me", permanent: true },
       { source: "/me/diamond", destination: "/me", permanent: true },
-      { source: "/me/visits", destination: "/me", permanent: true },
       {
         source: "/me/settings/metrics",
         destination: "/me/settings",
