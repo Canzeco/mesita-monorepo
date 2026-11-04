@@ -1412,6 +1412,39 @@ export type Database = {
           },
         ]
       }
+      place_shares: {
+        Row: {
+          consumer_id: string
+          place_id: string
+          shared_at: string
+        }
+        Insert: {
+          consumer_id: string
+          place_id: string
+          shared_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          place_id?: string
+          shared_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_shares_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_shares_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_tags: {
         Row: {
           created_at: string
@@ -1631,7 +1664,7 @@ export type Database = {
           payment_method: string
           place_id: string
           request_id: string
-          reward_kind: string | null
+          reward_kinds: string[]
           reward_percent: number | null
           total_cents: number
           voided_at: string | null
@@ -1648,7 +1681,7 @@ export type Database = {
           payment_method: string
           place_id: string
           request_id: string
-          reward_kind?: string | null
+          reward_kinds?: string[]
           reward_percent?: number | null
           total_cents: number
           voided_at?: string | null
@@ -1665,7 +1698,7 @@ export type Database = {
           payment_method?: string
           place_id?: string
           request_id?: string
-          reward_kind?: string | null
+          reward_kinds?: string[]
           reward_percent?: number | null
           total_cents?: number
           voided_at?: string | null
@@ -2643,7 +2676,7 @@ export type Database = {
           p_payment_method: string
           p_place_id: string
           p_request_id: string
-          p_reward_kind: string
+          p_reward_kinds: string[]
         }
         Returns: Json
       }
