@@ -1,9 +1,12 @@
 // Supabase Edge Function — consumer-web-create-visit-code
 //
-// MESITA-3202: the place screen's Rewards tab, Show my code. Six digits a guest
-// shows staff: this place only, ten minutes, one use. Asking again replaces the
-// last one. The code is never stored in the clear. A closed account's code is
-// refused where it is used (place_visit_check, place_visit_create).
+// MESITA-3202: the place screen's Rewards tab, Show my code. What a guest's QR
+// holds: this place only, ten minutes, one use. Asking again replaces the last
+// one. The code is never stored in the clear. A closed account's code is refused
+// where it is used (place_visit_check, place_visit_close).
+//
+// MESITA-3240: a long secret, not six digits. The QR links to visit.mesita.ai and
+// nobody types it. The six digits people type are the place's.
 //
 // MESITA-3214: the Reward tab's QR, at every Mesita place. For the moment every
 // place counts as offering rewards (Pato: "assume all palces offer rewards"), so
@@ -11,7 +14,7 @@
 // that guest gets only the rewards the place has on, so none there.
 //
 // Body: { place_id: uuid }
-// Response: { ok: true, code: "123456", expires_at }
+// Response: { ok: true, code: "<32 hex>", expires_at }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";

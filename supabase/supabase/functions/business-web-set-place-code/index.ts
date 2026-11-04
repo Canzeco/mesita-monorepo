@@ -1,7 +1,7 @@
 // Supabase Edge Function — business-web-set-place-code
 //
-// MESITA-3226: Business › Rewards, the place code: six digits that will close a
-// visit at visit.mesita.ai. Only the hash is stored, so it is never shown again
+// MESITA-3226: Business › Rewards, the place code: six digits that close a visit
+// at visit.mesita.ai. Only the hash is stored, so it is never shown again
 // and a forgotten one is replaced. The owner and Mesita staff only.
 //
 // Body: { place_id: uuid, code: "123456" }
@@ -12,7 +12,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { hashPlaceCode, readVisitCode } from "../_shared/place-visits.ts";
+import { hashPlaceCode, readPlaceCode } from "../_shared/place-visits.ts";
 
 serveJson("business-web-set-place-code", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -23,7 +23,7 @@ serveJson("business-web-set-place-code", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  const code = readVisitCode(bodyRes.body.code);
+  const code = readPlaceCode(bodyRes.body.code);
   if (!code) return json({ ok: false, code: "invalid", error: "The code is six digits" }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);

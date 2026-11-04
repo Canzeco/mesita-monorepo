@@ -38,6 +38,8 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
   consumer: ["web-consumer"],
   // MESITA-3103: the place's own console is back, on real data.
   business: ["web-business"],
+  // MESITA-3240: visit.mesita.ai closes a visit, with no sign-in.
+  visit: ["web-visit"],
   // MESITA-2090 (MVP First Stage) retired the other three actors with every
   // function they owned: `business` (web-business, mobile-business — its two
   // functions admin's Single Place still called were renamed admin-web-*),
