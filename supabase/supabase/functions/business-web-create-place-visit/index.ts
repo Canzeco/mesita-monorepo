@@ -6,7 +6,7 @@
 //
 // Body: { place_id: uuid, code: "123456", bill_cents: integer,
 //         payment_method: cash|card|transfer|other,
-//         reward_kind: welcome_visit|returning_visit|instagram_story|vip_class|null,
+//         reward_kinds: [welcome_visit|returning_visit|instagram_story|vip_class],
 //         request_id: uuid }
 // Response: { ok: true, replayed: boolean, visit }
 //         | { ok: false, code: bad_code|reward_off|not_eligible, error }
@@ -16,12 +16,12 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { hashVisitCode, isBillCents, isPaymentMethod, isRewardKind, readVisitCode } from "../_shared/place-visits.ts";
+import { hashVisitCode, isBillCents, isPaymentMethod, readRewardKinds, readVisitCode } from "../_shared/place-visits.ts";
 
 const REFUSED: Record<string, string> = {
   bad_code: "That code isn't valid here anymore. Ask the guest for a new one.",
-  reward_off: "This place doesn't offer that reward right now.",
-  not_eligible: "This guest can't use that reward.",
+  reward_off: "This place doesn't offer one of those rewards right now.",
+  not_eligible: "This guest can't use one of those rewards.",
 };
 
 serveJson("business-web-create-place-visit", async (req) => {
@@ -31,7 +31,7 @@ serveJson("business-web-create-place-visit", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const { place_id: placeId, bill_cents: billCents, payment_method: method, reward_kind: rewardKind, request_id: requestId } =
+  const { place_id: placeId, bill_cents: billCents, payment_method: method, request_id: requestId } =
     bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   if (!isUuid(requestId)) return json({ ok: false, error: "request_id must be a uuid" }, 400);
@@ -39,9 +39,8 @@ serveJson("business-web-create-place-visit", async (req) => {
   if (!code) return json({ ok: false, code: "bad_code", error: "The code is six digits" }, 400);
   if (!isBillCents(billCents)) return json({ ok: false, code: "bad_bill", error: "Enter the bill's amount" }, 400);
   if (!isPaymentMethod(method)) return json({ ok: false, code: "bad_method", error: "Choose how it was paid" }, 400);
-  if (rewardKind !== null && !isRewardKind(rewardKind)) {
-    return json({ ok: false, code: "reward_off", error: REFUSED.reward_off }, 400);
-  }
+  const rewardKinds = readRewardKinds(bodyRes.body.reward_kinds);
+  if (!rewardKinds) return json({ ok: false, code: "reward_off", error: REFUSED.reward_off }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
@@ -51,7 +50,7 @@ serveJson("business-web-create-place-visit", async (req) => {
     p_code_hash: await hashVisitCode(placeId, code),
     p_bill_cents: billCents,
     p_payment_method: method,
-    p_reward_kind: rewardKind,
+    p_reward_kinds: rewardKinds,
     p_request_id: requestId,
     p_created_by: user.id,
   });

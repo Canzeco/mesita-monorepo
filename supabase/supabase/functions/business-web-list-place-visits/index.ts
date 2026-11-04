@@ -7,7 +7,7 @@
 // Body: { place_id: uuid, before?: ISO timestamp }
 // Response: { ok: true, can_void: boolean, timezone: string | null,
 //             visits: [{ id, guest_name, member_number, bill_cents, currency,
-//                        payment_method, reward_kind, reward_percent,
+//                        payment_method, reward_kinds, reward_percent,
 //                        discount_cents, total_cents, created_at, voided_at }],
 //             next: ISO timestamp | null }
 
@@ -41,7 +41,7 @@ serveJson("business-web-list-place-visits", async (req) => {
 
   let query = admin.from("place_visits")
     .select(
-      "id, bill_cents, currency, payment_method, reward_kind, reward_percent, discount_cents, total_cents, created_at, voided_at, consumers(first_name, code, deleted_at)",
+      "id, bill_cents, currency, payment_method, reward_kinds, reward_percent, discount_cents, total_cents, created_at, voided_at, consumers(first_name, code, deleted_at)",
     )
     .eq("place_id", placeId)
     .order("created_at", { ascending: false })

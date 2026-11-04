@@ -1,10 +1,11 @@
--- MESITA-3202 — Visits and Rewards: the discount, who qualifies, and the code.
+-- MESITA-3202, MESITA-3210 — Visits and Rewards: the discount, who qualifies,
+-- that rewards add up, and the code.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(25);
+select plan(30);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -26,7 +27,8 @@ create function pg_temp.issue(guest text, code text) returns boolean language sq
   select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', guest::uuid, code, now() + interval '10 minutes')
 $$;
 create function pg_temp.visit(code text, bill integer, reward text, req text) returns jsonb language sql as $$
-  select public.place_visit_create('00000000-0000-4000-8000-000000003202', code, bill, 'cash', reward, req::uuid,
+  select public.place_visit_create('00000000-0000-4000-8000-000000003202', code, bill, 'cash',
+    case when reward is null then '{}'::text[] else string_to_array(reward, ',') end, req::uuid,
     '00000000-0000-4000-8000-0000000a3202')
 $$;
 
@@ -44,7 +46,7 @@ select ok(
     and not has_table_privilege('anon', 'public.place_rewards', 'SELECT')
     and not has_table_privilege('authenticated', 'public.place_visit_codes', 'SELECT')
     and not has_function_privilege('authenticated',
-      'public.place_visit_create(uuid, text, integer, text, text, uuid, uuid)', 'EXECUTE')
+      'public.place_visit_create(uuid, text, integer, text, text[], uuid, uuid)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.place_rewards_for_guest(uuid, uuid)', 'EXECUTE'),
   'client roles hold nothing on visits or their functions'
 );
@@ -139,6 +141,38 @@ select is(
   '{"cents": 20000, "enabled": true}'::jsonb,
   'the page reads the cap and its amount from the server'
 );
+
+-- ━━━ They add up ━━━
+
+update public.place_rewards set cap = false where place_id = '00000000-0000-4000-8000-000000003202';
+update public.consumers set guest_class = 'vip' where id = '00000000-0000-4000-8000-0000000a3202';
+update public.place_rewards set vip_class = true where place_id = '00000000-0000-4000-8000-000000003202';
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a5');
+select is(
+  pg_temp.visit('hash-a5', 100000, 'returning_visit,instagram_story,vip_class', '00000000-0000-4000-8000-00000000a008')#>>'{visit,discount_cents}', '50000',
+  'Returning, Story and VIP add up to 50%'
+);
+select is(
+  (select array_to_string(reward_kinds, ',') from public.place_visits where request_id = '00000000-0000-4000-8000-00000000a008'),
+  'returning_visit,instagram_story,vip_class',
+  'the visit keeps each reward it used'
+);
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a6');
+select is(
+  pg_temp.visit('hash-a6', 100000, 'welcome_visit,returning_visit', '00000000-0000-4000-8000-00000000a009')->>'outcome', 'not_eligible',
+  'Welcome and Returning never meet on one visit'
+);
+select is(
+  pg_temp.visit('hash-a6', 100000, 'instagram_story,made_up', '00000000-0000-4000-8000-00000000a010')->>'outcome', 'reward_off',
+  'a reward nobody knows is refused'
+);
+update public.place_rewards set cap = true where place_id = '00000000-0000-4000-8000-000000003202';
+select is(
+  pg_temp.visit('hash-a6', 100000, 'returning_visit,instagram_story', '00000000-0000-4000-8000-00000000a011')#>>'{visit,discount_cents}', '20000',
+  'the Cap limits the total, not each reward'
+);
+update public.consumers set guest_class = 'regular' where id = '00000000-0000-4000-8000-0000000a3202';
+update public.place_rewards set vip_class = false, cap = false where place_id = '00000000-0000-4000-8000-000000003202';
 
 -- ━━━ Voiding ━━━
 

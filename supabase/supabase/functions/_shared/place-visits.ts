@@ -17,6 +17,12 @@ export function isRewardKind(v: unknown): v is RewardKind {
   return typeof v === "string" && (REWARD_KINDS as readonly string[]).includes(v);
 }
 
+/** A list of rewards: known kinds, or null. Who qualifies is the server's. */
+export function readRewardKinds(v: unknown): RewardKind[] | null {
+  if (!Array.isArray(v) || v.length > REWARD_KINDS.length || !v.every(isRewardKind)) return null;
+  return v;
+}
+
 export function isPaymentMethod(v: unknown): v is PaymentMethod {
   return typeof v === "string" && (PAYMENT_METHODS as readonly string[]).includes(v);
 }

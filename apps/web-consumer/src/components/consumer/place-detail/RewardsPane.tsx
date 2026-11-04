@@ -29,14 +29,14 @@ const NAME: Record<RewardKind, string> = {
 const LINE: Record<RewardKind, string> = {
   welcome_visit: "Your first visit here.",
   returning_visit: "Every visit after your first.",
-  instagram_story: "Post a story about this place and show it to staff.",
+  instagram_story: "Post a story about this place and show it to staff. You need more than 1,000 Instagram followers and a public profile.",
   vip_class: "For VIP guests.",
 };
 
-/** Whole pesos when there are no centavos. */
-function capLine(cents: number | null): string {
+/** The Cap is in pesos, on the whole bill, whatever adds up (MESITA-3210). */
+function capLine(cents: number | null | undefined): string {
   if (cents == null) return "";
-  return ` Up to $${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}.`;
+  return ` At most $${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} MXN off a bill.`;
 }
 
 function endsAt(iso: string): string {
@@ -124,7 +124,6 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
               <p className="font-semibold">{NAME[r.kind]}</p>
               <p className="text-muted-foreground text-sm">
                 {LINE[r.kind]}
-                {capLine(r.cap_cents)}
               </p>
             </div>
             <p className="shrink-0 font-semibold tabular-nums">{r.percent}% off</p>
@@ -152,7 +151,10 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
           </p>
         )}
         {codeError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{codeError}</p> : null}
-        <p className="text-muted-foreground mt-3 text-sm">One per visit. The place takes it off today&apos;s bill.</p>
+        <p className="text-muted-foreground mt-3 text-sm">
+          The ones you qualify for add up, and the place takes them off today&apos;s bill.
+          {capLine(data.rewards[0]?.cap_cents)}
+        </p>
       </div>
     </section>
   );
