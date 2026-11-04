@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(55);
+select plan(57);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -282,9 +282,18 @@ $$;
 
 select is(
   public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-c'),
-  '{"outcome": "ok", "guest_name": "Caro", "place_name": "Visit Probe", "currency": "MXN", "code_set": true,
+  '{"outcome": "ok", "guest_name": "Caro", "bill_cents": null, "place_name": "Visit Probe", "currency": "MXN", "code_set": true,
     "rewards": [{"kind": "welcome_visit", "percent": 20, "cap_cents": null}]}'::jsonb,
   'the page gets a first name and only the rewards this guest can use, never a member number'
+);
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-billed', now() + interval '10 minutes', 125000);
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-billed')->>'bill_cents', '125000',
+  'the bill the guest typed reaches the page (MESITA-3245)'
+);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-billed', 'pc-right', 120000, '{}', '00000000-0000-4000-8000-00000000c0b1')#>>'{visit,bill_cents}', '120000',
+  'the amount the place confirms is the one logged, not what the guest typed'
 );
 select is(
   public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-nope'),

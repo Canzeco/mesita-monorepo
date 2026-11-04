@@ -7,6 +7,11 @@ export function readAmount(text: string): number | null {
   return cents > 0 ? cents : null;
 }
 
+/** Whole cents as the input shows them: "1250" or "1250.50". */
+export function amountText(cents: number): string {
+  return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
+}
+
 /** "$200 MXN": the code always shows, as in Mesita Business. */
 export function money(cents: number, currency: string): string {
   const amount = (cents / 100).toLocaleString("en-US", {

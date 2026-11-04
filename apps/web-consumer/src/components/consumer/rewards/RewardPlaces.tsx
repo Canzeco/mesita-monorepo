@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { MapPinOff, QrCode, X } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { cardFacts } from "@/components/consumer/place-card";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
@@ -17,7 +16,7 @@ import {
   type AreaPool,
   type Place,
 } from "@/lib/api/places";
-import { apiCreateVisitCode, apiListRewardPercents, visitLink, type VisitCode } from "@/lib/api/rewards";
+import { apiListRewardPercents } from "@/lib/api/rewards";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { mockRewardPercent } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -28,7 +27,7 @@ import {
   useUserLocationError,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
-import { errMsg } from "@/lib/utils";
+import { VisitQr } from "./VisitQr";
 
 // THE REWARD TAB (Pato, MESITA-3214: "a list of all the places … sorted by
 // location. no searchbar … when you click the shit, the QR its actually open").
@@ -45,8 +44,6 @@ import { errMsg } from "@/lib/utils";
 // from, so this tab asks for it. Home's Monterrey fallback does not apply here.
 
 const PAGE = 20;
-/** h-56 and w-56, the QR's bone and its slot. */
-const QR_SIZE = 224;
 /** Social's band (SocialFeed.tsx). divide-y draws only between direct children. */
 const ROWS_BAND = "divide-border border-border bg-card divide-y border-y";
 
@@ -259,47 +256,8 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
   );
 }
 
-function endsAt(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
-/** The guest's code for this place: ten minutes, one use (MESITA-3202). The QR
- *  links to visit.mesita.ai (MESITA-3240), and nobody types the code. A new code
- *  replaces the old one when it ends, so what's on screen always works. */
+/** A tap on a place: the guest's bill, then their QR for it (MESITA-3245). */
 function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
-  const supabase = useBrowserSupabase();
-  const [code, setCode] = useState<VisitCode | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    apiCreateVisitCode(supabase, place.id).then(
-      (next) => {
-        if (!live) return;
-        setCode(next);
-        setError(null);
-      },
-      (err) => {
-        if (!live) return;
-        setCode(null);
-        setError(errMsg(err, "Couldn't make a code. Try again."));
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [supabase, place.id, attempt]);
-
-  useEffect(() => {
-    if (!code) return;
-    const timer = setTimeout(
-      () => setAttempt((n) => n + 1),
-      Math.max(0, new Date(code.expires_at).getTime() - Date.now()),
-    );
-    return () => clearTimeout(timer);
-  }, [code]);
-
   return (
     <div className="relative flex flex-col items-center p-6 text-center">
       <button
@@ -311,32 +269,9 @@ function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
         <X className="h-5 w-5" aria-hidden />
       </button>
       <p className="w-full truncate px-8 font-semibold">{place.name}</p>
-      <div className="mt-4 flex min-h-56 items-center justify-center">
-        {code ? (
-          <QRCodeSVG value={visitLink(place.id, code.code)} size={QR_SIZE} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
-        ) : error ? (
-          <div>
-            <p className="text-sm">{error}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setError(null);
-                setAttempt((n) => n + 1);
-              }}
-              className="text-muted-foreground mt-1 min-h-11 text-sm underline"
-            >
-              Try again
-            </button>
-          </div>
-        ) : (
-          <Skeleton className="h-56 w-56 rounded-xl" />
-        )}
+      <div className="mt-4 w-full">
+        <VisitQr placeId={place.id} />
       </div>
-      {code ? (
-        <p aria-live="polite" className="text-muted-foreground mt-4 text-sm">
-          Show this to staff. It works until {endsAt(code.expires_at)}.
-        </p>
-      ) : null}
     </div>
   );
 }

@@ -1,25 +1,20 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
+import { VisitQr } from "@/components/consumer/rewards/VisitQr";
 import {
-  apiCreateVisitCode,
   apiGetPlaceRewards,
-  visitLink,
   type PlaceReward,
   type PlaceRewards,
   type RewardKind,
-  type VisitCode,
 } from "@/lib/api/rewards";
 import { MOCK_REWARDS } from "@/lib/mock-rewards";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
-import { cn, errMsg } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 // THE REWARDS TAB'S BODY (MESITA-3202). What this place offers and which are
-// this guest's. The guest taps for a QR and shows it to staff, who close the
+// this guest's. The guest enters the bill and shows the QR to staff, who close the
 // visit at visit.mesita.ai. A discount the place gives on today's bill: no
 // money moves through Mesita. Who qualifies and every number is the server's.
 
@@ -49,10 +44,6 @@ function capLine(cents: number | null | undefined): string {
   return ` At most $${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} MXN off a bill.`;
 }
 
-function endsAt(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
 export function RewardsPane({ place }: { place: PlaceDetail }) {
   // Memoized, unlike the lazy getter: the effect below depends on it, and a new
   // value every render would fetch forever (MESITA-3207).
@@ -60,9 +51,6 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [code, setCode] = useState<VisitCode | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [codeError, setCodeError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -78,18 +66,6 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       live = false;
     };
   }, [supabase, place.id, attempt]);
-
-  async function showCode() {
-    setAsking(true);
-    setCodeError(null);
-    try {
-      setCode(await apiCreateVisitCode(supabase, place.id));
-    } catch (err) {
-      setCodeError(errMsg(err, "Couldn't make a code. Try again."));
-    } finally {
-      setAsking(false);
-    }
-  }
 
   if (failed && !data) {
     return (
@@ -164,26 +140,13 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
         ))}
       </ul>
       <div className="border-border border-t p-4">
-        {code ? (
-          <div className="flex flex-col items-center text-center" aria-live="polite">
-            <QRCodeSVG value={visitLink(place.id, code.code)} size={224} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
-            <p className="text-muted-foreground mt-4 text-sm">Show this to staff. It works until {endsAt(code.expires_at)}.</p>
-          </div>
-        ) : usable ? (
-          <button
-            type="button"
-            onClick={() => void showCode()}
-            disabled={asking}
-            className={cn(PRIMARY_BUTTON_CLASS, "h-11 w-full")}
-          >
-            {asking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Show my code"}
-          </button>
+        {usable ? (
+          <VisitQr placeId={place.id} />
         ) : (
           <p className="text-muted-foreground text-sm">
             {data.signed_in ? "None of these apply to you right now." : "Sign in to use a reward."}
           </p>
         )}
-        {codeError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{codeError}</p> : null}
         <p className="text-muted-foreground mt-3 text-sm">
           The ones you qualify for add up, and the place takes them off today&apos;s bill.
           {capLine(rewards[0]?.cap_cents)}

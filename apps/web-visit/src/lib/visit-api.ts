@@ -8,6 +8,8 @@ export type Visit = {
   currency: string;
   code_set: boolean;
   guest_name: string;
+  /** What the guest typed (MESITA-3245). The place corrects it if it is wrong. */
+  bill_cents: number | null;
   rewards: VisitReward[];
 };
 
