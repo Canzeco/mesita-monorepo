@@ -13,7 +13,6 @@ export default async function ReservationsConfigPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Operations · Reservations"
         title="Reservations Config"
         description="The voice agent books tables by phone. Keep it on the test number until a real run."
       />

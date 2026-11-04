@@ -1,4 +1,4 @@
-import { Layers, MapPinPlus, RefreshCw } from "lucide-react";
+import { StackIcon, MapPinPlusIcon, ArrowsClockwiseIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Two sidebar entries since MESITA-2083 — "Creating" and "Enriching" (were
 // Creation and Enrichment until MESITA-2800, one -ing verb per row) — over
@@ -15,19 +15,19 @@ import { Layers, MapPinPlus, RefreshCw } from "lucide-react";
 export const CREATION_PARENT = {
   href: "/enricher-config/creation",
   label: "Creating",
-  Icon: MapPinPlus,
+  Icon: MapPinPlusIcon,
 } as const;
 
 export const ENRICHMENT_PARENT = {
   href: "/enricher-config/enrichment",
   label: "Enriching",
-  Icon: Layers,
+  Icon: StackIcon,
 } as const;
 
 export const UPDATING_PARENT = {
   href: "/enricher-config/updating",
   label: "Updating",
-  Icon: RefreshCw,
+  Icon: ArrowsClockwiseIcon,
 } as const;
 
 // Editing (MESITA-2796) is gone (MESITA-3162, Pato: "there is no editing

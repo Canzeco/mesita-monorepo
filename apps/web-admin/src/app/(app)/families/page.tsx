@@ -9,15 +9,16 @@ export default async function FamiliesPage() {
   return (
     <PageContainer>
       <PageHeader
-        eyebrow="Operations · Atlas"
         title="Atlas"
         description="The thirty-seven Mesita Families, Google's categories split into enabled and not enabled on Mesita, and the Mesita Tags. A place's families are inferred by the Description step, one to seven, or set by hand on Single Place › Basics. Places are not listed."
       />
-      {map.ok ? (
-        <FamiliesExplorer map={map} />
-      ) : (
-        <p className="text-destructive mt-8 text-sm">{map.error}</p>
-      )}
+      <div className="mt-6 sm:mt-8">
+        {map.ok ? (
+          <FamiliesExplorer map={map} />
+        ) : (
+          <p className="text-destructive text-sm">{map.error}</p>
+        )}
+      </div>
     </PageContainer>
   );
 }

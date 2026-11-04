@@ -68,9 +68,8 @@ function Card({
 
 export default function BrandPage() {
   return (
-    <PageContainer size="5xl">
+    <PageContainer>
       <PageHeader
-        eyebrow="Reference"
         title="Brand"
         description="The Mesita brand as it actually ships. Every swatch and logo on this page is rendered from the generated tokens and components, so if this page looks wrong, the product looks wrong. Edit assets/brand/brand.json, then run `deno task sync-brand`."
       />

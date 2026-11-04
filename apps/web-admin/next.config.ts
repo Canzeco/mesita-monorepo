@@ -46,10 +46,14 @@ const nextConfig: NextConfig = {
       "/filters-config/catalog",
       "/filters-config/chat",
     ];
-    return retired.flatMap((source) => [
-      { source, destination: "/filters-config", permanent: false },
-      { source: `${source}/:path*`, destination: "/filters-config", permanent: false },
-    ]);
+    return [
+      // The empty landing page is gone (MESITA-3261); old bookmarks still land.
+      { source: "/central", destination: "/manage-multiple", permanent: false },
+      ...retired.flatMap((source) => [
+        { source, destination: "/filters-config", permanent: false },
+        { source: `${source}/:path*`, destination: "/filters-config", permanent: false },
+      ]),
+    ];
   },
 };
 

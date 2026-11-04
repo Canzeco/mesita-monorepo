@@ -16,7 +16,6 @@ export default async function DiscoveryPage() {
   };
   return (
     <ConfigPageLayout
-      eyebrow="Product · Discovery"
       title="Discovery"
       description="Four sources, five pipelines, three signals, two gates. Every Discovery control is on this page; family membership lives on Atlas."
     >

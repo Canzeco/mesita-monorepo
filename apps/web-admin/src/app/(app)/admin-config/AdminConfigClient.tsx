@@ -17,9 +17,8 @@ export function AdminConfigClient({
   loadError: string | null;
 }) {
   return (
-    <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Manage · Admins"
         title="Admins"
         description="Manage who has admin access. Super-admins only."
       />

@@ -1,29 +1,23 @@
-type PageSize = "3xl" | "5xl" | "6xl" | "full";
+// A page's body column and its header band (MESITA-3261, from web-business's
+// shell/Page.tsx). Both sit in this file because the band's negative margins
+// undo exactly the padding the column sets.
 
-const MAX_WIDTH: Record<PageSize, string> = {
-  "3xl": "max-w-3xl",
-  "5xl": "max-w-5xl",
-  "6xl": "max-w-6xl",
-  // The main pane, edge to edge inside the page padding (MESITA-2177).
-  full: "max-w-none",
-};
+/** The white band across the whole pane. Exported for the loading screen. */
+export const PAGE_BAND_CLASS =
+  "border-border bg-card -mx-4 -mt-6 flex flex-wrap items-center justify-between gap-3 border-b px-4 py-5 sm:-mx-6 sm:-mt-8 sm:px-6 lg:-mx-8 lg:px-8";
 
-// Shared page wrapper — responsive horizontal padding and vertical rhythm
-// for every authenticated admin surface.
+// Every authenticated admin surface. Full width of the pane, as in Business.
 export function PageContainer({
   children,
-  size = "6xl",
   className = "",
 }: {
   children: React.ReactNode;
-  size?: PageSize;
   className?: string;
 }) {
   return (
     <div
       className={
-        "mx-auto w-full px-4 pt-8 pb-10 sm:px-6 sm:pt-12 sm:pb-14 lg:px-8 " +
-        MAX_WIDTH[size] +
+        "w-full px-4 pt-6 pb-10 sm:px-6 sm:pt-8 sm:pb-14 lg:px-8" +
         (className ? ` ${className}` : "")
       }
     >
@@ -32,30 +26,24 @@ export function PageContainer({
   );
 }
 
+// No bottom margin, unlike Business: admin pages set their own gap under the
+// header (`mt-6 sm:mt-8`, or `gap-6 sm:gap-8` on the container).
 export function PageHeader({
-  eyebrow,
   title,
   description,
+  right,
 }: {
-  eyebrow?: string;
   title: string;
   description?: string;
+  right?: React.ReactNode;
 }) {
   return (
-    <header>
-      {eyebrow && (
-        <p className="text-muted-foreground type-eyebrow">
-          {eyebrow}
-        </p>
-      )}
-      <h1 className="font-display mt-2 text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-        {title}
-      </h1>
-      {description && (
-        <p className="text-muted-foreground mt-3 max-w-3xl text-sm leading-relaxed">
-          {description}
-        </p>
-      )}
+    <header className={PAGE_BAND_CLASS}>
+      <div className="min-w-0">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">{title}</h1>
+        {description ? <p className="text-muted-foreground mt-0.5 text-sm">{description}</p> : null}
+      </div>
+      {right}
     </header>
   );
 }

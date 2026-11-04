@@ -46,7 +46,7 @@ export async function CrenupPage({ view }: { view: CrenupView }) {
   const settings = await getAtlasSettings();
 
   return (
-    <ConfigPageLayout eyebrow={`Operations · ${TITLE[view]}`} title={TITLE[view]}>
+    <ConfigPageLayout title={TITLE[view]}>
     <CrenupClient
       view={view}
       initialSettings={

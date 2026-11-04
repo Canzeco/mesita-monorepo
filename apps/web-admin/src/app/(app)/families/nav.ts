@@ -1,4 +1,4 @@
-import { Map } from "lucide-react";
+import { MapTrifoldIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Configurations › Atlas — the Mesita Families, Google's categories split
 // into enabled and not enabled on Mesita, and every tag (MESITA-2891). Not a
@@ -6,5 +6,5 @@ import { Map } from "lucide-react";
 export const FAMILIES_PARENT = {
   href: "/families",
   label: "Atlas",
-  Icon: Map,
+  Icon: MapTrifoldIcon,
 } as const;

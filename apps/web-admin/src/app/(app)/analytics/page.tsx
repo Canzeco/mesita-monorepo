@@ -8,7 +8,6 @@ export default async function AnalyticsPage() {
   const initial = await getActivitySummary();
   return (
     <ConfigPageLayout
-      eyebrow="Activity · Analytics"
       title="Analytics"
       description="Configure on Configurations; watch outcomes here."
     >

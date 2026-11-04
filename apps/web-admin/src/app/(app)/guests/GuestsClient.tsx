@@ -97,9 +97,8 @@ export function GuestsClient({
 }) {
   const [partners, setPartners] = useState<VipPartner[]>(initialPartners);
   return (
-    <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Manage · Guests"
         title="Guests"
         description="Set each guest's Class and Plan. They are separate: VIP comes from a partner and is never sold; the plan is Free or Pro. Both show on the guest's card in the app."
       />

@@ -1,4 +1,4 @@
-import { CalendarCheck } from "lucide-react";
+import { CalendarCheckIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Reservations Config — a single page since the Playground was retired
 // (2026-07-27): the Reservationist knobs (test number, channel policy) plus the
@@ -7,5 +7,5 @@ import { CalendarCheck } from "lucide-react";
 export const RESERVATIONS_PARENT = {
   href: "/reservations-config",
   label: "Reservations",
-  Icon: CalendarCheck,
+  Icon: CalendarCheckIcon,
 } as const;

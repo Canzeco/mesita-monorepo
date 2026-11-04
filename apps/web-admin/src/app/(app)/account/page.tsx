@@ -15,13 +15,12 @@ export default async function AccountPage() {
   if (!user) redirect("/");
 
   return (
-    <PageContainer size="3xl">
+    <PageContainer>
       <PageHeader
-        eyebrow="Admin"
         title="Account"
         description="Signed-in operator for this admin console."
       />
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         <SectionCard
           icon={<UserRound className="text-muted-foreground h-4 w-4" />}
           title="Session"

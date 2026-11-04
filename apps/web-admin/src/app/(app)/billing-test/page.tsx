@@ -15,7 +15,6 @@ export default async function BillingTestPage() {
   const apify = await getApifyUsage(30);
   return (
     <ConfigPageLayout
-      eyebrow="Testing · Vendors"
       title="Billing Test"
       description="One card per paid API, probed in isolation: is the key configured, does the vendor still accept it, and what is left on the balance. Mesita's pipelines fan out across several vendors at once and the Firecrawl leg fails silently, so a single degraded run can't tell you who went dark — this can."
     >

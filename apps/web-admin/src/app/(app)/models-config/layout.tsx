@@ -8,7 +8,6 @@ export default function ModelsConfigLayout({
 }) {
   return (
     <ConfigPageLayout
-      eyebrow="Operations · Models"
       title="Models"
       description="The AI model behind each job Mesita runs. A change applies from the next run."
     >

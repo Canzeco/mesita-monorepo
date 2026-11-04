@@ -1,29 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { Sidebar } from "@/components/Sidebar";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
+import { MULTIPLE_PLACES_PARENT } from "@/app/(app)/manage-multiple/nav";
+import { AdminWordmark, Sidebar } from "@/components/Sidebar";
 
 type AppShellProps = {
   children: React.ReactNode;
-  /** Read from the cookie by the server layout, so the rail paints correctly first frame. */
-  defaultCollapsed?: boolean;
 };
 
 // Admin shell wrapper: desktop renders the Sidebar in a static column,
 // mobile/tablet (< lg) collapses it into a slide-in drawer triggered from a
 // topbar hamburger. Drawer closes on link navigation (onNavigate passed
-// to Sidebar), backdrop click, the close button, or Esc.
-//
-// Two independent pieces of state, easy to confuse: `open` is the mobile
-// drawer, `collapsed` is the desktop rail's icon-only width. The drawer never
-// collapses — at that size the whole rail is already hidden by default.
-export function AppShell({ children, defaultCollapsed = false }: AppShellProps) {
+// to Sidebar), backdrop click, the close button, or Esc. Below lg the closed
+// drawer is `inert`, so Tab skips it; opening moves focus in, closing returns
+// it to the hamburger.
+export function AppShell({ children }: AppShellProps) {
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   // Lock body scroll while drawer is open, and close on Esc.
   useEffect(() => {
@@ -34,21 +30,17 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
       if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
+    // preventScroll: the frame must never scroll (see below).
+    panelRef.current?.querySelector("a")?.focus({ preventScroll: true });
+    const hamburger = hamburgerRef.current;
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      hamburger?.focus({ preventScroll: true });
     };
   }, [open]);
 
   const close = () => setOpen(false);
-
-  const toggleCollapsed = () => {
-    const next = !collapsed;
-    setCollapsed(next);
-    // A year-long cookie rather than localStorage: the server layout reads it
-    // during render, so a reload comes back at the width you left it.
-    document.cookie = `${SIDEBAR_COLLAPSED_COOKIE}=${next ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`;
-  };
 
   // THE FRAME IS PINNED, NOT MEASURED. `fixed inset-0` resolves against the
   // layout viewport — the same box `html { height: 100% }` uses — and
@@ -65,16 +57,8 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
   return (
     <div className="fixed inset-0 flex overflow-clip">
       {/* Desktop sidebar — visible lg+. The column owns the width; the rail fills it. */}
-      <div
-        className={
-          "hidden shrink-0 transition-[width] duration-200 ease-out lg:flex " +
-          (collapsed ? "w-16" : "w-60")
-        }
-      >
-        <Sidebar
-          collapsed={collapsed}
-          onToggleCollapse={toggleCollapsed}
-        />
+      <div className="hidden w-60 shrink-0 lg:flex">
+        <Sidebar />
       </div>
 
       {/* Mobile / tablet drawer */}
@@ -84,6 +68,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
           (open ? "pointer-events-auto" : "pointer-events-none")
         }
         aria-hidden={!open}
+        inert={!open}
       >
         <div
           className={
@@ -93,6 +78,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
           onClick={close}
         />
         <div
+          ref={panelRef}
           className={
             // w-60 matches the expanded rail — at w-64 the rail underfilled the
             // panel and the close button floated off its edge.
@@ -120,6 +106,7 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
         {/* Mobile / tablet topbar — hidden lg+ */}
         <header className="border-border bg-card/95 supports-[backdrop-filter]:bg-card/75 sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b px-4 py-2.5 backdrop-blur lg:hidden">
           <button
+            ref={hamburgerRef}
             type="button"
             onClick={() => setOpen(true)}
             aria-label="Open menu"
@@ -128,17 +115,8 @@ export function AppShell({ children, defaultCollapsed = false }: AppShellProps) 
           >
             <Menu className="h-4 w-4" />
           </button>
-          <Link
-            href="/central"
-            className="inline-flex items-center gap-2 truncate"
-          >
-            <MesitaLogo
-              variant="horizontal"
-              className="text-primary h-5 w-auto"
-            />
-            <span className="text-muted-foreground type-meta font-medium tracking-[0.14em] uppercase">
-              admin
-            </span>
+          <Link href={MULTIPLE_PLACES_PARENT.href} title="Mesita Admin" className="min-w-0 truncate">
+            <AdminWordmark />
           </Link>
         </header>
 

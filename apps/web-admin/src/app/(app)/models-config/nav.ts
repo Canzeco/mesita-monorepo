@@ -1,7 +1,7 @@
-import { Cpu } from "lucide-react";
+import { CpuIcon } from "@phosphor-icons/react/dist/ssr";
 
 export const MODELS_PARENT = {
   href: "/models-config",
   label: "Models",
-  Icon: Cpu,
+  Icon: CpuIcon,
 } as const;

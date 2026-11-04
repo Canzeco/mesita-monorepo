@@ -28,9 +28,8 @@ export default async function ManageSinglePlacePage() {
     ? settings.data.enrichCreateOnOpenAdmin !== false
     : true;
   return (
-    <PageContainer size="full" className="pb-16 sm:pb-24">
+    <PageContainer className="pb-16 sm:pb-24">
       <PageHeader
-        eyebrow="Manage · Single Place"
         title="Single Place"
         description="Every place Mesita holds. Press Enter to search."
       />
