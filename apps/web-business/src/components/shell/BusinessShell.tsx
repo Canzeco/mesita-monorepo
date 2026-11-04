@@ -6,9 +6,9 @@
 //   Place
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
-//   ┌ Capabilities (MESITA-3152; was Products) ─────────────────────────┐
-//   │ Profile · Reviews · Premier · Payments, Products, Rewards: Soon │
-//   └──────────────────────────────────────────────────────────────┘
+//   ┌ Capabilities (MESITA-3152; was Products) ────┐
+//   │ Profile · Reviews · Premier · Soon           │  Soon: MESITA-3197, the
+//   └──────────────────────────────────────────────┘  one page about what is not on yet
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -49,7 +49,7 @@ const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
 /** `href` null: there is no place yet, so the row is drawn greyed, not a link. */
-type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean; soon?: boolean };
+type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean };
 
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
@@ -74,9 +74,9 @@ function menu(
     hasPlace: !!placeId,
   };
   const tab = (key: PlaceTab): Row => {
-    const { label, icon, soon } = PLACE_TAB_META[key];
+    const { label, icon } = PLACE_TAB_META[key];
     const href = placeId ? placeTabHref(placeId, key) : null;
-    return { key, label, icon, href, active: href ? under(href) : false, soon };
+    return { key, label, icon, href, active: href ? under(href) : false };
   };
   return {
     account,
@@ -86,9 +86,8 @@ function menu(
         tab("profile"),
         tab("reviews"),
         tab("premier"),
-        tab("payments"),
-        tab("products"),
-        tab("rewards"),
+        // Last: what is not on yet, as one page (MESITA-3197).
+        tab("soon"),
       ],
       manage: [
         // Billing first in Manage (Pato, MESITA-3160: "Billing, Settings").
@@ -160,7 +159,6 @@ function RailRow({ row }: { row: Row }) {
         <Icon className={cn("size-4", row.active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
       </span>
       <span className="hidden min-w-0 flex-1 truncate lg:inline">{row.label}</span>
-      {row.soon ? <span className="type-label bg-muted text-muted-foreground hidden shrink-0 rounded-full px-2 py-0.5 font-semibold lg:inline">Soon</span> : null}
     </>
   );
   if (!row.href) {
