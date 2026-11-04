@@ -22,19 +22,12 @@ export const metadata = { title: "All" };
 
 // Every product, current and future (MESITA-3238, Pato: "call that page (All)
 // ... mention current and future and divide"; a catalog since MESITA-3237, was
-// Soon, MESITA-3197). A current tile is the rail's row, same name and icon, and
-// opens its page. A future tile is copy only: no links, forms, dates or sign-up,
+// Soon, MESITA-3197). A current tile is a Capabilities row of the rail, same name
+// and icon, and opens its page; Views and Visits stay out as Operations (Pato,
+// MESITA-3243). A future tile is copy only: no links, forms, dates or sign-up,
 // so it has no hover. One card of rows on a phone; tiles from `sm`, four across
 // only from `2xl`, where "Reservations Management" still fits one line.
 const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
-  {
-    tab: "views",
-    line: "How many guests opened your place, saved it and shared it. See the last 30 days and a log of who did what.",
-  },
-  {
-    tab: "visits",
-    line: "Every guest who walked in, newest first, with the bill and how it was paid. It's a record of your own till: no money moves through Mesita.",
-  },
   {
     tab: "profile",
     line: "What guests read about your place: basics, hours, location and links. Edit it here and preview it the way guests see it.",
