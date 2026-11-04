@@ -616,3 +616,7 @@ verify_jwt = true
 
 [functions.consumer-web-track-place-share]
 verify_jwt = true
+
+# MESITA-3217: the Reward tab's "Up to N% off for you".
+[functions.consumer-web-list-reward-percents]
+verify_jwt = true
