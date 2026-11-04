@@ -72,20 +72,6 @@ export function requestCountChip(requestCount: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** Profile stat count from overview `profile_stats`. */
-export function profileStatFromRow(value: unknown): number | "unknown" {
-  if (value == null || value === "") return "unknown";
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < 0) return "unknown";
-  return Math.trunc(n);
-}
-
-/** Chip for Viewed / Saved: `0` · `1` · `12` · … or `?`. */
-export function profileStatCountChip(value: unknown): string {
-  const n = profileStatFromRow(value);
-  return n === "unknown" ? "?" : String(n);
-}
-
 /** The five profile states, in the order the Profile States box prints them.
  *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
  *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
@@ -97,14 +83,6 @@ export const GENERAL_STATE_FACTS = [
   { key: "enriched", label: "Enriched" },
   { key: "disabled", label: "Disabled" },
 ] as const;
-
-/** Profile Stats — unique member counts, read-only (MESITA-2735). */
-export const PROFILE_STATS_FACTS = [
-  { key: "viewed", label: "Viewed" },
-  { key: "saved", label: "Saved" },
-] as const;
-
-export type ProfileStatKey = (typeof PROFILE_STATS_FACTS)[number]["key"];
 
 /** Premier tier chip (MESITA-2925, was Boost — MESITA-2809): Premier is a
  *  tier, not a yes/no — `places.boost_tier` 0 · 1 · 2 · 3 reads

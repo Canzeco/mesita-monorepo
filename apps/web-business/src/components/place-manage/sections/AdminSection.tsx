@@ -29,8 +29,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Vectors / Metadata (UID & audit). The SERP Summary box went with the
 //   enrichment stage path (MESITA-2424): Render never stored the summary.
 // Verification (claim requests, MESITA-3157) is a card in the same columns;
-// who runs the place is Settings'. Actions lives on Profile, for staff, and
-// Profile Stats on Visits, for the place's whole team (MESITA-3205).
+// who runs the place is Settings'. Actions lives on Profile, for staff
+// (MESITA-3205); the place's view and like counts are on Views (MESITA-3222).
 
 /** The tab's masonry: one column, two from lg, three from xl, its cards
  *  never split. The tab's loading.tsx lays its cards out in it too. */
