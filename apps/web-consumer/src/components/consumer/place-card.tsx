@@ -136,26 +136,48 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
 
 /** The discount under Save and Share, as wide as the two, its words centred
  *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
- *  but only if it has reward"). Display only: a tap falls through to the card's
- *  own link beneath it. */
+ *  but only if it has reward"), as tall as they are (MESITA-3241). Display only:
+ *  a tap falls through to the card's own link beneath it. */
 export function CouponRow({ facts }: { facts: CardFacts }) {
   if (!facts.off) return null;
   return (
     <p
       className={cn(
         PLACE_REWARD_COUPON_CLASS,
-        "pointer-events-none flex h-6 w-full justify-center rounded-lg font-sans",
+        CARD_BUTTON_BOX,
+        "pointer-events-none flex w-full justify-center font-sans font-semibold",
       )}
     >
-      <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+      <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       {facts.off}
     </p>
   );
 }
 
-/** Search card row two (MESITA-2674): $$ (green) · category. No coupon: the
- *  rail's fixed height has no fourth row, and "30% OFF" alone would hide its
- *  limit (MESITA-3229). */
+/** The coupon on the Search card's photo (Pato, MESITA-3241: "somehow add coupon
+ *  tag here too"): the rail's fixed height has no fourth row and the whole line
+ *  does not fit the text column on a phone, so the percent and its limit take
+ *  two lines in the corner. Display only: a tap opens the card. */
+export function CouponTag({ facts }: { facts: CardFacts }) {
+  if (!facts.off) return null;
+  const [percent, limit] = facts.off.split(", ");
+  return (
+    <span
+      className={cn(
+        PLACE_REWARD_COUPON_CLASS,
+        "pointer-events-none absolute top-1.5 left-1.5 h-auto flex-col items-start gap-0 py-0.5 font-sans leading-4 font-semibold",
+      )}
+    >
+      <span className="inline-flex items-center gap-1">
+        <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+        {percent}
+      </span>
+      {limit ? <span className="font-medium">{limit}</span> : null}
+    </span>
+  );
+}
+
+/** Search card row two (MESITA-2674): $$ (green) · category. */
 export function PriceKindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kind && !facts.price) return null;
   return (
