@@ -148,7 +148,14 @@ function fakeAdmin(enriching: Set<string>) {
         }
         if (table === "place_profiles") {
           return {
-            data: q.ids.map((id) => ({ id, google_place_id: `ChIJ-${id}`, name: id, updated_at: null })),
+            data: q.ids.map((id) => ({
+              id,
+              google_place_id: `ChIJ-${id}`,
+              name: id,
+              instagram_url: " https://www.instagram.com/saved ",
+              facebook_url: "  ",
+              updated_at: null,
+            })),
             error: null,
           };
         }
@@ -209,6 +216,23 @@ Deno.test("a list skips the places already enriching and starts the rest", async
   assertEquals(writes, ["place-1", "place-3"]);
   const jobs = bodies[0].input[0] as { placeId: string }[];
   assertEquals(jobs.map((job) => job.placeId), ["place-1", "place-3"]);
+});
+
+// Without them Sync reads no link and turns a real account's Found off (MESITA-3251).
+Deno.test("the job carries the saved links, so a run that finds none still checks them", async () => {
+  const { admin } = fakeAdmin(new Set());
+  const bodies: { input: unknown[] }[] = [];
+  await startEnrichment(admin, {
+    placeIds: ["place-1"],
+    env: ENV,
+    fetchImpl: ((_url: string, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Promise.resolve(new Response("{}"));
+    }) as unknown as typeof fetch,
+  });
+  const job = bodies[0].input[0] as Record<string, unknown>;
+  assertEquals(job.savedInstagramUrl, "https://www.instagram.com/saved");
+  assertEquals(job.savedFacebookUrl, null);
 });
 
 Deno.test("splitClaims keeps the order the places were asked in", () => {

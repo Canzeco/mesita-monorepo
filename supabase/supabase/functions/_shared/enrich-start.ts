@@ -17,7 +17,8 @@
 // has no database key. So do the Scout's and the Resolver's
 // instructions and the Scout's per-place message, built here from the same
 // constants and builder admin Enrichment renders, so what an operator reads is
-// what the vendor receives.
+// what the vendor receives. The saved Instagram and Facebook links ride too: a
+// run that finds none keeps them, so Sync and Images still read them.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { RESOLVER_INSTRUCTIONS } from "./enrich-channel-discovery.ts";
@@ -61,6 +62,9 @@ export type EnrichJob = {
   baseUpdatedAt?: string | null;
   /** The Scout's message for this place. Render runs the Scout with it. */
   scoutInput?: string;
+  /** The links the place holds now. Sync and Images read them when the run finds none. */
+  savedInstagramUrl?: string | null;
+  savedFacebookUrl?: string | null;
 };
 
 type KnobSource = Pick<
@@ -195,7 +199,7 @@ export async function startEnrichment(
   }
   const { data: places, error: placeErr } = await admin
     .from("place_profiles")
-    .select(["id", "google_place_id", ...SAVED_KEYS].join(", "))
+    .select(["id", "google_place_id", "instagram_url", "facebook_url", ...SAVED_KEYS].join(", "))
     .in("id", placeIds);
   if (placeErr) return { ok: false, status: 500, error: `places: ${placeErr.message}` };
   const rows = new Map((places ?? []).map((row) => {
@@ -253,6 +257,8 @@ export async function startEnrichment(
       knobs,
       baseUpdatedAt: updatedAt.get(id) ?? null,
       ...(scoutInput ? { scoutInput } : {}),
+      savedInstagramUrl: text(row.instagram_url) || null,
+      savedFacebookUrl: text(row.facebook_url) || null,
     };
   });
   const run = enrichmentRun(jobs);

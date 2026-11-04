@@ -58,6 +58,9 @@ export type EnrichJob = {
   /** The Scout's message for this place, built by the Edge Function. A job
    *  without one skips step 2. */
   scoutInput?: string;
+  /** The links the place holds now. Sync and Images read them when the run finds none. */
+  savedInstagramUrl?: string | null;
+  savedFacebookUrl?: string | null;
 };
 // There is one Enrich (MESITA-2799): every job runs the whole ladder and
 // replaces what it finds. A job from an older caller may still carry `depth`
@@ -166,10 +169,10 @@ export async function buildEnrichment(
   for (const [key, url] of Object.entries(links) as [LinkField, string][]) {
     spine.patch[key] = url;
   }
+  const accounts = accountsAfterRun(spine.patch, job);
   Object.assign(spine.patch, await timed("social+reviews", () => fetchDraftSync({
     googlePlaceId,
-    instagramUrl: stringField(spine.patch.instagram_url),
-    facebookUrl: stringField(spine.patch.facebook_url),
+    ...accounts,
   }), (sync) => {
     const reviews = (sync as Record<string, unknown>).google_reviews;
     return `${Array.isArray(reviews) ? reviews.length : 0}reviews`;
@@ -177,10 +180,9 @@ export async function buildEnrichment(
 
   const openaiKey = process.env.OPENAI_KEY?.trim() ?? "";
   const images = imageKnobs(knobs);
-  const instagramUrl = stringField(spine.patch.instagram_url);
   const photos = await timed("images", async () => {
     const posts = await fetchInstagramPosts({
-      instagramUrl,
+      instagramUrl: accounts.instagramUrl,
       depth: knobs.gatherInstagramDepth ?? 10,
       apifyKey: process.env.APIFY_KEY,
     });
@@ -261,6 +263,19 @@ function addressPart(details: GooglePlace, types: string[]) {
 
 function stringField(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** The accounts the place ends this run with: what the run writes, else the
+ *  saved link, which stays. Sync and Images read these (MESITA-3251); the commit
+ *  writes only what the run found, so a saved link is not rewritten. */
+export function accountsAfterRun(
+  patch: Record<string, unknown>,
+  job: Pick<EnrichJob, "savedInstagramUrl" | "savedFacebookUrl">,
+): { instagramUrl: string | null; facebookUrl: string | null } {
+  return {
+    instagramUrl: stringField(patch.instagram_url) ?? stringField(job.savedInstagramUrl),
+    facebookUrl: stringField(patch.facebook_url) ?? stringField(job.savedFacebookUrl),
+  };
 }
 
 function factsWithLinks(facts: string, links: Partial<Record<LinkField, string>>): string {
