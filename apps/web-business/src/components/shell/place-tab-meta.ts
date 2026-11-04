@@ -12,8 +12,13 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon;
   reviews: { label: "Reviews", icon: Star, sub: "What guests say on Google, Instagram and Facebook." },
   premier: { label: "Premier", icon: BadgeCheck, sub: "Rank higher on Home and the Map. Marked as an ad." },
   rewards: { label: "Rewards", icon: Gift, sub: "Discounts guests get on today's bill. Your place gives them." },
-  // The one page about what is not on yet (MESITA-3197): copy only.
-  soon: { label: "Soon", icon: Sparkles, sub: "What comes next for your place." },
+  // The one page about what is not on yet (MESITA-3197): copy only. The line
+  // is about Mesita, not the page (Pato, MESITA-3237).
+  soon: {
+    label: "Soon",
+    icon: Sparkles,
+    sub: "Mesita is the ultimate marketing, financial and operations software for independent restaurants, taking your whole restaurant digital.",
+  },
   billing: { label: "Billing", icon: Receipt, sub: "What's running, what it costs and every charge." },
   settings: { label: "Settings", icon: Settings, sub: "Place and team." },
   admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only." },

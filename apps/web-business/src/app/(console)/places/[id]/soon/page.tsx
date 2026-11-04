@@ -1,58 +1,102 @@
-import { Card } from "@/components/shell/Page";
+import {
+  Banknote,
+  BookOpen,
+  Calculator,
+  CalendarCheck,
+  CreditCard,
+  Globe,
+  type LucideIcon,
+  Megaphone,
+  MessageCircle,
+  Monitor,
+  ShoppingBag,
+  Wallet,
+} from "lucide-react";
 
 export const metadata = { title: "Soon" };
 
-// The one page about what is not on yet (MESITA-3197, Pato: "in capabilities
-// create a page called soon and there write everything inside, like all the
-// brainstorm"). One card of rows in launch order, each a name and one plain
-// line, as Settings and Team draw theirs (MESITA-3196). Copy only: no forms,
-// no dates, no sign-up. When a product ships, its row leaves and it becomes
-// its own page; the lines mirror Main §3, §4 and §13.
-const ROW = "flex min-h-14 items-center gap-3 px-5 py-3 text-sm sm:px-6";
-
-const SOON: Array<{ name: string; line: string }> = [
+// The one page about what is not on yet (MESITA-3197), now a catalog of the
+// software products to come (MESITA-3237, Pato: "like a catalog of software
+// products"), in his order. Copy only: no links, forms, dates or sign-up, so a
+// tile has no hover. One card of rows on a phone; tiles from `sm`, four across
+// only from `2xl`, where "Reservations Management" still fits one line.
+const SOON: Array<{ name: string; line: string; icon: LucideIcon }> = [
   {
-    name: "Products",
-    line: "What you sell, on your page for guests to see.",
+    name: "Digital Menu",
+    line: "Your menu, built by AI from a photo, file or website, and approved by you. Every order source sells from it, and guests can browse it from a QR code.",
+    icon: BookOpen,
   },
   {
-    name: "Payments",
-    line: "The guest pays the bill from their phone into your own Stripe account. Card, Apple Pay and Google Pay.",
+    name: "Express Website",
+    line: "A website on your own domain, made from your Mesita profile with the same menu, hours and photos. Change it by asking, with ordering and reservation buttons already connected.",
+    icon: Globe,
   },
   {
-    name: "Prepayments",
-    line: "Guests buy your meals ahead at a bonus you set, gift them or send them. You get the money when they buy.",
+    name: "Digital Payments",
+    line: "Guests pay from their phone into your own Stripe account, by card, Apple Pay or Google Pay. Staff can also show a QR code for a bill, no account needed.",
+    icon: CreditCard,
   },
   {
-    name: "Credits",
-    line: "Rewards paid as credit for the next visit instead of a discount today.",
+    name: "Credit Prepayments",
+    line: "Guests buy credit ahead at a bonus you set, gift it or send it, and spend it only with you. One balance tracks every purchase, gift and redemption.",
+    icon: Wallet,
   },
   {
-    name: "Reservations",
-    line: "Mesita's agent phones you and books the table for the guest.",
+    name: "Mesita Capital",
+    line: "Cash upfront, by selling future credit at your restaurant to Mesita at a discount. Guests redeem that credit over time, so the funding brings visits with it.",
+    icon: Banknote,
   },
   {
-    name: "Mesita Business on the phone",
-    line: "This console as an app.",
+    name: "Marketing Agent",
+    line: "Creates your photos, videos and posts, publishes them on your social media and runs your paid ads on Instagram, Facebook and Google. You approve everything from one queue.",
+    icon: Megaphone,
+  },
+  {
+    name: "Answering Agent",
+    line: "Answers phone, WhatsApp and text with your current hours and menu. Turns questions into orders and bookings while your staff focus on service.",
+    icon: MessageCircle,
+  },
+  {
+    name: "Orders Management",
+    line: "Every order in one queue, from Uber Eats, Rappi, DiDi Food, your website and Mesita. Manage status, prep time and sold-out items in one place.",
+    icon: ShoppingBag,
+  },
+  {
+    name: "Reservations Management",
+    line: "Every booking in one calendar, from Mesita, your website, your agents and outside booking systems. Manage availability, confirmations and changes from this console.",
+    icon: CalendarCheck,
+  },
+  {
+    name: "Mesita Terminal",
+    line: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, and staff see the result on the right ticket.",
+    icon: Calculator,
+  },
+  {
+    name: "Mesita POS",
+    line: "Take orders, track the kitchen and close bills on a point of sale connected to your menu. Counter, table and online sales share the same guest and payment records.",
+    icon: Monitor,
   },
 ];
 
 export default function SoonPage() {
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <Card className="flex flex-col p-0 sm:p-0">
-        <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Soon</h2>
-        <ul className="divide-border divide-y">
-          {SOON.map((s) => (
-            <li key={s.name} className={ROW}>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{s.name}</p>
-                <p className="text-muted-foreground">{s.line}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </Card>
+    <div className="pb-8">
+      <ul className="border-border bg-card divide-border divide-y overflow-hidden rounded-2xl border sm:grid sm:grid-cols-2 sm:gap-4 sm:divide-y-0 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent xl:grid-cols-3 2xl:grid-cols-4">
+        {SOON.map(({ name, line, icon: Icon }) => (
+          <li
+            key={name}
+            className="sm:border-border sm:bg-card flex gap-3 px-4 py-3.5 sm:flex-col sm:gap-4 sm:rounded-2xl sm:border sm:p-6"
+          >
+            <span className="bg-muted grid size-10 shrink-0 place-items-center rounded-xl sm:size-11">
+              <Icon className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold sm:text-base">{name}</p>
+              <p className="text-muted-foreground mt-0.5 text-sm">{line}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
