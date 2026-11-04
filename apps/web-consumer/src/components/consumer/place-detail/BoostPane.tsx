@@ -26,14 +26,14 @@ import {
 import { cn, errMsg } from "@/lib/utils";
 
 // THE PREMIER TAB (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925, the
-// place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys a Boost
+// place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys an Upgrade
 // for any place (MESITA-3175) — 30 days of Premier 2X or Premier 5X,
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
 //
 // It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
 // explain current level and what to do"; MESITA-3194: "like two products"): one
-// big box with the place's current visibility and the two Boosts, each with its
+// big box with the place's current visibility and the two Upgrades, each with its
 // own Buy button straight to Checkout; below it, one box to manage the place in
 // the Business app (its claim door: an owner lands on the place, anyone else can
 // claim it). Every amount, date and line is the
@@ -109,7 +109,7 @@ export function BoostPane({
 
         <hr className="border-border my-4" />
 
-        <p className="font-semibold">Boost it for 30 days</p>
+        <p className="font-semibold">Upgrade it for 30 days</p>
         <p className="mt-1 flex items-center gap-1.5 text-sm">
           <PremierRosette />
           With the Premier red tag
@@ -151,12 +151,12 @@ export function BoostPane({
         ))}
         {startError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{startError}</p> : null}
         {boost && !boost.signed_in ? (
-          <p className="text-muted-foreground mt-3 text-sm">Sign in to boost this place.</p>
+          <p className="text-muted-foreground mt-3 text-sm">Sign in to upgrade this place.</p>
         ) : null}
 
         <p className="text-muted-foreground mt-3 text-sm">
-          Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places
-          show “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by
+          Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Upgraded places
+          show “Ad”, and an Upgrade doesn&apos;t verify a place. It runs after any days already running. Charged once by
           Stripe in US dollars; nothing renews.
         </p>
       </div>
@@ -210,7 +210,7 @@ function statusLines(boost: PlaceBoost | null): string[] {
     const sources = [...new Set(rows.map((r) => ORIGIN[r.source]))];
     lines.push({
       tier,
-      text: `Boost ${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
+      text: `Upgrade ${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
     });
   }
   const sub = boost.subscription;

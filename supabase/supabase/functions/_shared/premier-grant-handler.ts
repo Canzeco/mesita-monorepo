@@ -36,7 +36,7 @@ export async function handleGrantPlacePremier(req: Request, source: string): Pro
       return json({ ok: true, lines });
     } catch (err) {
       console.error(`[${source}] ${parsed.action}`, requestId, err);
-      return json({ ok: false, code: "refill_failed", error: "Couldn't run Boost. Retry unfinished resends it.", request_id: requestId }, 500);
+      return json({ ok: false, code: "refill_failed", error: "Couldn't run Upgrade. Retry unfinished resends it.", request_id: requestId }, 500);
     }
   }
 

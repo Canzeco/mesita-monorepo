@@ -191,7 +191,7 @@ export function PlansCard({
     const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
     const blocked = q.kind === "blocked" || q.covered;
     // A resume for someone who never paid here is subscribing early, in the
-    // last 7 days of a Boost (MESITA-3165).
+    // last 7 days of an Upgrade (MESITA-3165).
     const resume = data.viewer === "former_payer" ? "Resume" : "Keep";
     const label =
       q.covered ? "Given by Mesita" : current ? "Current" : q.kind === "buy" ? "Choose" : q.kind === "resume" ? resume : q.kind === "change" ? "Switch" : "Unavailable";

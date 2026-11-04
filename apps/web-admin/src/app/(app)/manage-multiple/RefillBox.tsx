@@ -7,8 +7,8 @@ import { parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
 import { StateIcon } from "./StateIcon";
 
-// Manage Multiple › Boost (MESITA-3163; Boost since MESITA-3175, box 5 since
-// MESITA-3188): a Boost of Premier 2X or 5X for N days,
+// Manage Multiple › Upgrade (MESITA-3163; Boost since MESITA-3175, Upgrade since MESITA-3199, box 5 since
+// MESITA-3188): an Upgrade of Premier 2X or 5X for N days,
 // for every pasted Google Place ID. 5X days run before 2X days; a place
 // whose paid Subscription is higher is refused. One call for the box; a
 // line the reply does not carry reads unknown, and Retry unfinished resends
@@ -118,7 +118,7 @@ export function RefillBox({
 
   function pressEnd() {
     const n = placeIds.length;
-    if (!window.confirm(`End Mesita Boost on ${n} place${n === 1 ? "" : "s"}? Bought Boosts stay.`)) return;
+    if (!window.confirm(`End Mesita Upgrade on ${n} place${n === 1 ? "" : "s"}? Bought Upgrades stay.`)) return;
     setLines({});
     void send({ action: "end" }, [...placeIds]);
   }
@@ -176,14 +176,14 @@ export function RefillBox({
       <div>
         <div className="flex flex-wrap items-center gap-2">
           <BoxButton
-            label="Boost"
+            label="Upgrade"
             primary
             busy={running === "refill"}
             disabled={busy || placeIds.length === 0 || !daysOk}
             onClick={pressRefill}
           />
           <BoxButton
-            label="End Mesita Boost"
+            label="End Mesita Upgrade"
             busy={running === "end"}
             disabled={busy || placeIds.length === 0}
             onClick={pressEnd}
@@ -200,7 +200,7 @@ export function RefillBox({
           ) : null}
           {lastRun && !busy && Object.keys(lines).length > 0 ? (
             <span className="text-muted-foreground text-xs">
-              {okCount} {lastRun.action === "end" ? "ended" : "boosted"} · {refusedCount} refused · {unknownCount} unknown
+              {okCount} {lastRun.action === "end" ? "ended" : "upgraded"} · {refusedCount} refused · {unknownCount} unknown
             </span>
           ) : null}
         </div>

@@ -14,9 +14,9 @@
 //                   every N views, far less often
 //   Enable/Disable  guest visibility, places.state (business-web-set-place-listed);
 //                   Disable is confirmed
-//   Boost           Premier 2X or 5X for N days, given by Mesita, or End
-//                   Mesita's Boost (business-web-boost-place, MESITA-3180);
-//                   the place ranks at the higher of its plan and a Boost
+//   Upgrade         Premier 2X or 5X for N days, given by Mesita, or End
+//                   Mesita's Upgrade (business-web-boost-place, MESITA-3180);
+//                   the place ranks at the higher of its plan and an Upgrade
 //
 // The states these change are drawn read-only in Profile States, Reviews
 // States and Enrichment.
@@ -43,10 +43,10 @@ const BOOST_REFUSED: Record<string, string> = {
   archived: "Archived: not boosted.",
   unlisted: "Disabled: enable it first.",
   paid_higher: "Its paid plan is already higher.",
-  cap_reached: "Over a year of Boost is queued.",
+  cap_reached: "Over a year of Upgrades is queued.",
 };
 
-/** What a Boost line says: the level and until when, or why it was refused. */
+/** What an Upgrade line says: the level and until when, or why it was refused. */
 function boostText(line: BoostLine, ended: boolean): Note["text"] {
   if (line.result === "refused") return BOOST_REFUSED[line.code ?? ""] ?? line.code ?? "Refused.";
   if (line.result !== "ok") return "No answer. Try again.";
@@ -54,8 +54,8 @@ function boostText(line: BoostLine, ended: boolean): Note["text"] {
   const ends = [day(line.ends_at_5x) ? `5X until ${day(line.ends_at_5x)}` : null, day(line.ends_at_2x) ? `2X until ${day(line.ends_at_2x)}` : null]
     .filter(Boolean)
     .join(" · ");
-  if (ended) return `Ended ${line.ended_days ?? 0} day${line.ended_days === 1 ? "" : "s"} of Mesita Boost.${ends ? ` ${ends} left.` : ""}`;
-  return `${line.replayed ? "Already added. " : "Boosted. "}${ends}`.trim();
+  if (ended) return `Ended ${line.ended_days ?? 0} day${line.ended_days === 1 ? "" : "s"} of Mesita Upgrade.${ends ? ` ${ends} left.` : ""}`;
+  return `${line.replayed ? "Already added. " : "Upgraded. "}${ends}`.trim();
 }
 
 function Row({
@@ -68,7 +68,7 @@ function Row({
   name: string;
   detail: string;
   note: Note | null;
-  /** Controls under the text instead of beside it (Boost's four, MESITA-3180). */
+  /** Controls under the text instead of beside it (Upgrade's four, MESITA-3180). */
   stacked?: boolean;
   children: React.ReactNode;
 }) {
@@ -128,7 +128,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
   function boost(ended: boolean) {
     if (!hasGoogle) return;
     const key: Key = ended ? "end" : "boost";
-    if (ended && !window.confirm("End the Boost Mesita gave this place? Code and bought Boosts stay.")) return;
+    if (ended && !window.confirm("End the Upgrade Mesita gave this place? Bought Upgrades stay.")) return;
     setBusy(key);
     setNote(null);
     void boostPlace(
@@ -171,8 +171,8 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
           </button>
         </Row>
         <Row
-          name="Boost"
-          detail="Premier 2X or 5X for a number of days, given by Mesita, never a plan. The place ranks at the higher of its plan and a Boost."
+          name="Upgrade"
+          detail="Premier 2X or 5X for a number of days, given by Mesita, never a plan. The place ranks at the higher of its plan and an Upgrade."
           note={noteFor("boost") ?? noteFor("end")}
           stacked
         >
@@ -210,7 +210,7 @@ export function SpecialActionsCard({ place }: { place: AdminPlace }) {
             className="border-border bg-background h-9 w-16 shrink-0 rounded-full border px-3 text-center text-xs tabular-nums outline-none disabled:opacity-40"
           />
           <button type="button" disabled={busy !== null || !hasGoogle || !daysOk} onClick={() => boost(false)} className={QUIET}>
-            {label("boost", "Boost", "Boosting…")}
+            {label("boost", "Upgrade", "Upgrading…")}
           </button>
           <button type="button" disabled={busy !== null || !hasGoogle} onClick={() => boost(true)} className={QUIET}>
             {label("end", "End", "Ending…")}

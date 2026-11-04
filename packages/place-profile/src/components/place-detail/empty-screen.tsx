@@ -25,7 +25,7 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
 export const NO_BOOST: PlaceEmptyScreenProps = {
   icon: BadgeCheck,
   title: "Business",
-  line: "Guests Boost this place from the Mesita app: Premier 2X or 5X for 30 days.",
+  line: "Guests upgrade this place from the Mesita app: Premier 2X or 5X for 30 days.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products
