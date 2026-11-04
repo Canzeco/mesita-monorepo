@@ -20,6 +20,7 @@ import {
 } from "@/lib/api/places";
 import { apiCreateVisitCode, apiListRewardPercents, type VisitCode } from "@/lib/api/rewards";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
+import { mockRewardPercent } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
   LOCATION_HELP,
@@ -185,7 +186,7 @@ export function RewardPlaces() {
             {i > 0 && <RowDivider />}
             <RewardRow
               place={place}
-              percent={percents[place.id]}
+              percent={percents[place.id] ?? mockRewardPercent(place.id)}
               onOpen={() => setQr((cur) => ({ place, opened: (cur?.opened ?? 0) + 1, open: true }))}
             />
           </li>
