@@ -10,7 +10,7 @@ import {
   type VisitCode,
 } from "@/lib/api/rewards";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
@@ -44,7 +44,9 @@ function endsAt(iso: string): string {
 }
 
 export function RewardsPane({ place }: { place: PlaceDetail }) {
-  const getSupabase = useLazyBrowserSupabase();
+  // Memoized, unlike the lazy getter: the effect below depends on it, and a new
+  // value every render would fetch forever (MESITA-3207).
+  const supabase = useBrowserSupabase();
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -54,7 +56,7 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
 
   useEffect(() => {
     let live = true;
-    apiGetPlaceRewards(getSupabase(), place.id).then(
+    apiGetPlaceRewards(supabase, place.id).then(
       (rewards) => {
         if (live) setData(rewards);
       },
@@ -65,13 +67,13 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
     return () => {
       live = false;
     };
-  }, [getSupabase, place.id, attempt]);
+  }, [supabase, place.id, attempt]);
 
   async function showCode() {
     setAsking(true);
     setCodeError(null);
     try {
-      setCode(await apiCreateVisitCode(getSupabase(), place.id));
+      setCode(await apiCreateVisitCode(supabase, place.id));
     } catch (err) {
       setCodeError(errMsg(err, "Couldn't make a code. Try again."));
     } finally {
