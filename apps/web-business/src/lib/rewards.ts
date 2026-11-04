@@ -6,7 +6,7 @@ import type { PaymentMethod, RewardKind } from "@/lib/business-api";
 export const REWARD_COPY: Record<RewardKind, { name: string; line: string }> = {
   welcome_visit: { name: "Welcome Visit", line: "A guest's first visit to your place." },
   returning_visit: { name: "Returning Visit", line: "Every visit after the first." },
-  instagram_story: { name: "Instagram Story", line: "A guest posts a story about your place. Check it on their phone." },
+  instagram_story: { name: "Instagram Story", line: "A guest posts a story about your place. Only with more than 1,000 Instagram followers and a public profile. Check it on their phone." },
   vip_class: { name: "VIP Class", line: "Guests Mesita marks as VIP." },
 };
 
@@ -24,11 +24,13 @@ export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   other: "Other",
 };
 
+/** "$200 MXN": the code always shows (Pato, MESITA-3210: "mention the currency"). */
 export function money(cents: number, currency: string): string {
-  return (cents / 100).toLocaleString("en-US", {
+  const amount = (cents / 100).toLocaleString("en-US", {
     style: "currency",
     currency,
     currencyDisplay: "narrowSymbol",
     maximumFractionDigits: cents % 100 === 0 ? 0 : 2,
   });
+  return `${amount} ${currency}`;
 }

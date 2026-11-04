@@ -454,7 +454,7 @@ export type PlaceVisit = {
   bill_cents: number;
   currency: string;
   payment_method: PaymentMethod;
-  reward_kind: RewardKind | null;
+  reward_kinds: RewardKind[];
   reward_percent: number | null;
   discount_cents: number;
   total_cents: number;
@@ -464,14 +464,14 @@ export type PlaceVisit = {
 
 export async function createPlaceVisit(
   placeId: string,
-  visit: { code: string; billCents: number; method: PaymentMethod; rewardKind: RewardKind | null; requestId: string },
+  visit: { code: string; billCents: number; method: PaymentMethod; rewardKinds: RewardKind[]; requestId: string },
 ): Promise<Result<Omit<PlaceVisit, "guest_name" | "member_number">>> {
   const r = await efInvoke<{ visit: Omit<PlaceVisit, "guest_name" | "member_number"> }>("business-web-create-place-visit", {
     place_id: placeId,
     code: visit.code,
     bill_cents: visit.billCents,
     payment_method: visit.method,
-    reward_kind: visit.rewardKind,
+    reward_kinds: visit.rewardKinds,
     request_id: visit.requestId,
   });
   if (!r.ok) return fail(r);

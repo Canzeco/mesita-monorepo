@@ -13,7 +13,7 @@ import { money, REWARD_COPY } from "@/lib/rewards";
 
 const ROW = "flex min-h-14 items-center gap-3 px-5 py-3 text-sm sm:px-6";
 
-function Row({
+function Reward({
   name,
   line,
   on,
@@ -27,13 +27,13 @@ function Row({
   onClick: () => void;
 }) {
   return (
-    <li className={ROW}>
+    <>
       <div className="min-w-0 flex-1">
         <p className="font-medium">{name}</p>
         <p className="text-muted-foreground">{line}</p>
       </div>
       <Switch on={on} pending={pending} onClick={onClick} label={`${name}: ${on ? "on" : "off"}`} />
-    </li>
+    </>
   );
 }
 
@@ -52,32 +52,47 @@ export function RewardsCard({ placeId, initial, canEdit }: { placeId: string; in
   }
 
   const capAmount = money(state.cap.cents, "MXN");
+  const [welcome, returning, story, vip] = (["welcome_visit", "returning_visit", "instagram_story", "vip_class"] as const).map(
+    (kind) => state.rewards.find((r) => r.kind === kind) ?? { kind, percent: 0, enabled: false },
+  );
+  const props = (r: PlaceRewards["rewards"][number]) => ({
+    name: `${REWARD_COPY[r.kind].name} · ${r.percent}%`,
+    line: REWARD_COPY[r.kind].line,
+    on: r.enabled,
+    pending: !canEdit || busy !== null,
+    onClick: () => void flip(r.kind, !r.enabled),
+  });
   return (
     <>
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">
-          {state.rewards.map((r) => (
-            <Row
-              key={r.kind}
-              name={`${REWARD_COPY[r.kind].name} · ${r.percent}%`}
-              line={REWARD_COPY[r.kind].line}
-              on={r.enabled}
-              pending={!canEdit || busy !== null}
-              onClick={() => void flip(r.kind, !r.enabled)}
-            />
+          {/* This OR that (Pato, MESITA-3210): a visit is a first one or a later one. */}
+          <li className={ROW}>
+            <Reward {...props(welcome)} />
+            <span className="text-muted-foreground shrink-0 px-2 font-medium">or</span>
+            <Reward {...props(returning)} />
+          </li>
+          {[story, vip].map((r) => (
+            <li key={r.kind} className={ROW}>
+              <Reward {...props(r)} />
+            </li>
           ))}
-          <Row
-            name={`Cap · ${capAmount}`}
-            line={`No discount goes over ${capAmount} on one bill.`}
-            on={state.cap.enabled}
-            pending={!canEdit || busy !== null}
-            onClick={() => void flip("cap", !state.cap.enabled)}
-          />
+          <li className={ROW}>
+            <Reward
+              name={`Cap · ${capAmount}`}
+              line={`No bill gets more than ${capAmount} off, however many rewards add up.`}
+              on={state.cap.enabled}
+              pending={!canEdit || busy !== null}
+              onClick={() => void flip("cap", !state.cap.enabled)}
+            />
+          </li>
         </ul>
       </Card>
       {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
       {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change rewards.</p> : null}
-      <p className="text-muted-foreground text-sm">One reward per visit. Guests show a code and you log it in Visits.</p>
+      <p className="text-muted-foreground text-sm">
+        Welcome or Returning, plus Story, plus VIP Class: they add up on one bill. Guests show a code and you enter it below.
+      </p>
     </>
   );
 }
