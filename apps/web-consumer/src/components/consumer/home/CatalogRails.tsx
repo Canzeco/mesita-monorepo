@@ -510,7 +510,7 @@ export function CatalogRails() {
       <div className="flex min-h-0 flex-1">
         {tab === "places" ? categories : null}
         <div
-          className="bg-card scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
         >
           {inner}

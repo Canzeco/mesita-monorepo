@@ -34,7 +34,7 @@ export function useSocialHasNew(enabled: boolean): boolean {
         supabase,
         from ? { lat: from.lat, lng: from.lng } : null,
       )
-        .then((items) => {
+        .then(({ items }) => {
           if (!cancelled) setNewestAt(items[0]?.at ?? null);
         })
         // A missed check just leaves the dot as it was.
