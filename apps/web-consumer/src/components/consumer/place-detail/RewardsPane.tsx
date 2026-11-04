@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import Link from "next/link";
 import { capLine, RewardList } from "@/components/consumer/rewards/RewardList";
-import { VisitFlow } from "@/components/consumer/rewards/VisitFlow";
+import { seedRewardPlace } from "@/components/consumer/rewards/reward-place-seed";
 import { apiGetPlaceRewards, type PlaceRewards } from "@/lib/api/rewards";
+import { rewardStepPath } from "@/lib/consumer-route-contract";
 import { MOCK_REWARDS } from "@/lib/mock-rewards";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 
 // THE REWARDS TAB'S BODY (MESITA-3202). What this place offers and which are
-// this guest's. "Use my reward" opens the steps (VisitFlow), and staff close the
-// visit at visit.mesita.ai. A discount the place gives on today's bill: no
-// money moves through Mesita. Who qualifies and every number is the server's.
+// this guest's. "Use my reward" goes to Pay and opens the steps there (Pato,
+// MESITA-3254: "never fucking ask bill there"), and staff close the visit at
+// visit.mesita.ai. A discount the place gives on today's bill: no money moves
+// through Mesita. Who qualifies and every number is the server's.
 
 export function RewardsPane({ place }: { place: PlaceDetail }) {
   // Memoized, unlike the lazy getter: the effect below depends on it, and a new
@@ -22,8 +24,6 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [visit, setVisit] = useState({ opened: 0, open: false });
-  const closeVisit = () => setVisit((n) => ({ ...n, open: false }));
 
   useEffect(() => {
     let live = true;
@@ -81,9 +81,13 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       <RewardList rewards={rewards} signedIn={data.signed_in} />
       <div className="border-border border-t p-4">
         {usable ? (
-          <button type="button" onClick={() => setVisit((n) => ({ opened: n.opened + 1, open: true }))} className={PRIMARY_BUTTON_CLASS}>
+          <Link
+            href={rewardStepPath(place.id)}
+            onClick={() => seedRewardPlace(place.id, place.name, place.photos?.[0])}
+            className={PRIMARY_BUTTON_CLASS}
+          >
             Use my reward
-          </button>
+          </Link>
         ) : (
           <p className="text-muted-foreground text-sm">
             {data.signed_in ? "None of these apply to you right now." : "Sign in to use a reward."}
@@ -94,11 +98,6 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
           {capLine(rewards[0]?.cap_cents)}
         </p>
       </div>
-      <LocalSheet open={visit.open} onClose={closeVisit} ariaLabel={`Use your reward at ${place.name}`}>
-        {visit.opened > 0 ? (
-          <VisitFlow key={visit.opened} placeId={place.id} placeName={place.name} photo={place.photos?.[0]} onClose={closeVisit} />
-        ) : null}
-      </LocalSheet>
     </section>
   );
 }

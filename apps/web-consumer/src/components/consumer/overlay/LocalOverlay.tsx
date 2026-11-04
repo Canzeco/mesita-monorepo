@@ -195,16 +195,21 @@ function CardPortal({ children }: { children: React.ReactNode }) {
 export const SEMI_MODAL_PANEL_CLASS =
   "border-border bg-popover shadow-elev relative flex h-[88%] max-h-[88%] min-h-0 flex-col overflow-hidden rounded-t-3xl border-t";
 
+const FULL_SCREEN_PANEL_CLASS = "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
+
 export function LocalSheet({
   open,
   onClose,
   children,
   ariaLabel,
+  fullScreen = false,
 }: {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;
   ariaLabel: string;
+  /** The whole card, not the semi-modal (using a reward, MESITA-3254). */
+  fullScreen?: boolean;
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
@@ -239,14 +244,14 @@ export function LocalSheet({
           ref={panelRef}
           tabIndex={-1}
           className={cn(
-            SEMI_MODAL_PANEL_CLASS,
+            fullScreen ? FULL_SCREEN_PANEL_CLASS : SEMI_MODAL_PANEL_CLASS,
             "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
             shown ? "translate-y-0" : "translate-y-full",
           )}
         >
-          <div className={SHEET_GRABBER_CLASS} />
+          {fullScreen ? null : <div className={SHEET_GRABBER_CLASS} />}
           {children}
         </div>
       </div>

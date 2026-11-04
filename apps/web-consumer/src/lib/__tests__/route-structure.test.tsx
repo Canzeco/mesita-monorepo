@@ -841,17 +841,18 @@ describe("T7 — every former url still resolves after the move", () => {
 
 // ── T9 — Pay is one page ────────────────────────────────────────────────────
 //
-// Pay is ONE page, the Soon state, and the Second Stage route trees are
-// deleted, not emptied. A change that grows Pay a child or brings a tree
-// back has to delete these lines to do it, which is the review moment.
-describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
-  it("(shell)/pay is a page with no subdirectories", () => {
+// Pay is a list plus the reward steps (MESITA-3254), and the Second Stage route
+// trees are deleted, not emptied. A change that grows Pay another child or brings
+// a tree back has to delete these lines to do it, which is the review moment.
+describe("T9 — Pay holds only the reward steps, and the Second Stage trees are gone", () => {
+  it("(shell)/pay is a page with only [id]/[step] under it", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
     const children = readdirSync(pay).filter((e) =>
       statSync(join(pay, e)).isDirectory(),
     );
-    expect(children).toEqual([]);
+    expect(children).toEqual(["[id]"]);
+    expect(readdirSync(join(pay, "[id]")).sort()).toEqual(["[step]", "layout.tsx"]);
   });
 
   it("no Second Stage route tree exists", () => {
