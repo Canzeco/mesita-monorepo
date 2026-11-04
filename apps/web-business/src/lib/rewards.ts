@@ -4,11 +4,17 @@
 import type { PaymentMethod, RewardKind } from "@/lib/business-api";
 
 export const REWARD_COPY: Record<RewardKind, { name: string; line: string }> = {
-  welcome_visit: { name: "Welcome Visit", line: "A guest's first visit to your place." },
+  welcome_visit: { name: "Welcome Visit", line: "A guest's first visit." },
   returning_visit: { name: "Returning Visit", line: "Every visit after the first." },
-  instagram_story: { name: "Instagram Story", line: "A guest posts a story about your place. Only with 1,000 or more Instagram followers, which Mesita checks. Look at the story and that the profile is public on their phone." },
+  instagram_story: { name: "Instagram Story", line: "A guest with 1,000+ followers posts about your place. Staff check the story and that the profile is public." },
   vip_class: { name: "VIP Class", line: "Guests Mesita marks as VIP." },
 };
+
+/** The most one bill can add up to: a visit is a first one or a later one, plus Story, plus VIP (MESITA-3210). */
+export function mostPercent(rewards: { kind: RewardKind; percent: number; enabled: boolean }[]): number {
+  const percent = (kind: RewardKind) => rewards.find((r) => r.kind === kind && r.enabled)?.percent ?? 0;
+  return Math.max(percent("welcome_visit"), percent("returning_visit")) + percent("instagram_story") + percent("vip_class");
+}
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   cash: "Cash",

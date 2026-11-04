@@ -130,7 +130,7 @@ export function Switch({
       aria-pressed={on}
       aria-label={label}
       className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-50 ${
-        on ? "bg-foreground" : "bg-muted"
+        on ? "bg-foreground" : "bg-foreground/25"
       }`}
     >
       <span

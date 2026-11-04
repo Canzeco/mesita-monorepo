@@ -42,14 +42,15 @@ export function PlaceCode({ placeId, initialSet, canEdit }: { placeId: string; i
     <>
       <Card className="flex flex-col p-0 sm:p-0">
         <div className={ROW}>
-          <div className="min-w-0 flex-1">
+          {/* The minimum is what lets the box wrap under the text on a phone. */}
+          <div className="min-w-56 flex-1">
             <p className="font-medium">Place code</p>
             <p className="text-muted-foreground">
               {saved
                 ? "Saved. It won't be shown again."
                 : isSet
                   ? "Set. It won't be shown again; type six new digits to replace it."
-                  : "Six digits your people type at visit.mesita.ai to close a visit."}
+                  : "Not set. Six digits your staff type at visit.mesita.ai to close a visit."}
             </p>
           </div>
           {canEdit ? (
