@@ -110,6 +110,7 @@ import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
 import {
   apiListActivityFeed,
   apiMemberHistory,
+  apiMemberHistoryCards,
   isMesitaPlaceId,
   type ActivityFeedItem,
   type ActivityKind,
@@ -455,7 +456,7 @@ export function cardHref(
 const cardKey = (e: CardEvent) => `${e.placeId}|${e.kind}|${e.at}`;
 
 /** What survives leaving Home for a place and coming back (MESITA-3026):
- *  the last feed, each opened card's history, and each card's mounted tiles
+ *  the last feed, each opened card's history, and each card's fetched pages
  *  and scroll. In memory only, for this tab's life; every one is refetched
  *  behind what it repaints. */
 let lastFeed: ActivityFeedItem[] | null = null;
@@ -463,7 +464,7 @@ const MEMORY_CARDS = 20;
 const historyMemory = new Map<string, MemberHistory>();
 const cardMemory = new Map<
   string,
-  { shown: Partial<Record<HistoryTab, number>>; scrollTop: number }
+  { filled: ReadonlyMap<string, Place | null>; scrollTop: number }
 >();
 /** The card this tab pushed, so its close is a back, not a second entry. */
 let pushedCard: string | null = null;
@@ -480,7 +481,7 @@ function remember<V>(map: Map<string, V>, key: string, value: V) {
 function cardMemoryOf(key: string) {
   let mem = cardMemory.get(key);
   if (!mem) {
-    mem = { shown: {}, scrollTop: 0 };
+    mem = { filled: new Map(), scrollTop: 0 };
     remember(cardMemory, key, mem);
   }
   return mem;
@@ -506,7 +507,7 @@ function useMemberHistory(event: CardEvent | null): MemberHistory | null {
   useEffect(() => {
     if (!event || !key) return;
     let cancelled = false;
-    apiMemberHistory(supabase, event)
+    apiMemberHistory(supabase, event, HISTORY_BATCH)
       .then((history) => {
         remember(historyMemory, key, history);
         if (!cancelled) setLoaded({ key, history });
@@ -760,15 +761,16 @@ const HISTORY_TABS: {
  *  server's list is newest first already, so the first event of a place sets
  *  its slot. */
 export type HistoryTile = { place: Place; at: string };
+type HistoryEntry = { placeId: string; at: string };
 
-export function historyTiles(
+function historyEntries(
   items: MemberHistoryItem[],
   tab: HistoryTab,
-): HistoryTile[] {
-  const byPlace = new Map<string, HistoryTile>();
+): HistoryEntry[] {
+  const byPlace = new Map<string, HistoryEntry>();
   for (const it of items) {
     if (it.kind !== tab || byPlace.has(it.placeId)) continue;
-    byPlace.set(it.placeId, { place: it.place, at: it.at });
+    byPlace.set(it.placeId, { placeId: it.placeId, at: it.at });
   }
   return [...byPlace.values()];
 }
@@ -777,13 +779,16 @@ export function historyTiles(
  *  edge across the card, Instagram's profile grid. */
 const HISTORY_GRID_CLASS = "grid grid-cols-3 gap-0.5";
 
-/** Tiles mounted at a time (MESITA-3025, Pato: "you can load the full list,
- *  but as you scroll load the images"): the whole history arrives at once,
- *  but the grid mounts four rows, then four more each time its foot comes
- *  within HISTORY_AHEAD of the view, so a long history never builds
- *  hundreds of tiles and photos at open. */
+/** Place cards fetched at a time (MESITA-3212, Pato: "use loading pagination
+ *  too when loading profiles"; MESITA-3025 fetched them all and paged only the
+ *  tiles): the card opens with its member, every event, and four rows of each
+ *  tab, then four more rows come from the server each time the grid's foot is
+ *  within HISTORY_AHEAD of the view, Home's own order-then-fill. */
 const HISTORY_BATCH = 12;
 const HISTORY_AHEAD = "600px";
+/** Failed page reads in a row before the grid stops asking until reopened. */
+const HISTORY_FILL_TRIES = 3;
+const HISTORY_FILL_RETRY_MS = 2000;
 
 /** The card's history (MESITA-2854, Pato: "this ui to scroll profile events
  *  is shit"): Instagram's profile, a tab strip over a grid, not a list. The
@@ -806,39 +811,78 @@ function HistoryList({
   onTab: (tab: HistoryTab) => void;
   memoryKey: string;
 }) {
-  // How many tiles were mounted on each tab, remembered so back from a place
-  // finds the grid as long as it was left (MESITA-3026).
-  const [shownBy, setShownBy] = useState<Partial<Record<HistoryTab, number>>>(
-    () => ({ ...cardMemoryOf(memoryKey).shown }),
-  );
-  const shown = shownBy[tab] ?? HISTORY_BATCH;
+  const supabase = useBrowserSupabase();
+  // The cards fetched after the first page, null for a place no longer
+  // listed, remembered so back from a place finds the grid as long as it was
+  // left (MESITA-3026).
+  const [filled, setFilled] = useState(() => cardMemoryOf(memoryKey).filled);
+  const [round, setRound] = useState(0);
+  const [gaveUp, setGaveUp] = useState(false);
+  const filling = useRef(false);
+  const fails = useRef(0);
   const footRef = useRef<HTMLDivElement>(null);
   const current = HISTORY_TABS.find((t) => t.tab === tab) ?? HISTORY_TABS[0];
-  const tiles = items ? historyTiles(items, tab) : null;
-  const more = tiles != null && shown < tiles.length;
-  // The foot of the grid nearing the view mounts the next batch. Observed
-  // anew after each batch, so a foot still in view asks again at once.
+  const entries = items ? historyEntries(items, tab) : null;
+  const known = new Map<string, Place | null>(filled);
+  for (const it of items ?? []) if (it.place) known.set(it.placeId, it.place);
+  // Tiles run in order up to the first place whose card has not been asked
+  // for, so a page never lands above a gap.
+  const tiles: HistoryTile[] = [];
+  let reached = 0;
+  for (const entry of entries ?? []) {
+    const place = known.get(entry.placeId);
+    if (place === undefined) break;
+    if (place) tiles.push({ place, at: entry.at });
+    reached += 1;
+  }
+  const nextIds = (entries ?? [])
+    .slice(reached)
+    .filter((e) => !known.has(e.placeId))
+    .slice(0, HISTORY_BATCH)
+    .map((e) => e.placeId);
+  const more = nextIds.length > 0 && !gaveUp;
+  const nextKey = nextIds.join();
+  // The foot of the grid nearing the view fetches the next page. Observed
+  // anew after each page, so a foot still in view asks again at once.
   useEffect(() => {
     const el = footRef.current;
-    if (!more || !el) return;
+    if (!nextKey || gaveUp || !el) return;
+    const ids = nextKey.split(",");
+    const settle = () => {
+      filling.current = false;
+      setRound((n) => n + 1);
+    };
     const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setShownBy((by) => {
-            const next = {
-              ...by,
-              [tab]: (by[tab] ?? HISTORY_BATCH) + HISTORY_BATCH,
-            };
-            cardMemoryOf(memoryKey).shown = next;
-            return next;
+      (seen) => {
+        if (!seen.some((e) => e.isIntersecting) || filling.current) return;
+        filling.current = true;
+        apiMemberHistoryCards(supabase, ids)
+          .then((places) => {
+            fails.current = 0;
+            setFilled((cur) => {
+              const next = new Map(cur);
+              for (const id of ids) next.set(id, null);
+              for (const p of places) next.set(p.id, p);
+              cardMemoryOf(memoryKey).filled = next;
+              return next;
+            });
+            settle();
+          })
+          .catch((err) => {
+            console.warn(
+              "social_member_history_page_failed",
+              errMsg(err, "consumer-web-get-person failed"),
+            );
+            fails.current += 1;
+            if (fails.current >= HISTORY_FILL_TRIES) setGaveUp(true);
+            setTimeout(settle, HISTORY_FILL_RETRY_MS);
           });
-        }
       },
       { rootMargin: `${HISTORY_AHEAD} 0px` },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [more, shown, tab, memoryKey]);
+  }, [nextKey, round, gaveUp, memoryKey, supabase]);
   return (
     <>
       <div
@@ -878,7 +922,7 @@ function HistoryList({
           );
         })}
       </div>
-      {tiles == null ? (
+      {entries == null ? (
         // The grid's own tiles, empty (Pato, MESITA-2701: "the placeholders
         // must be similar to the page you are loading, like the sizes").
         <div
@@ -890,7 +934,7 @@ function HistoryList({
             <Skeleton key={i} className="aspect-square w-full rounded-none" />
           ))}
         </div>
-      ) : tiles.length === 0 ? (
+      ) : tiles.length === 0 && !more ? (
         <p
           className="text-muted-foreground mt-3 px-5 text-center text-sm"
           data-social-history-empty
@@ -905,7 +949,7 @@ function HistoryList({
             className={HISTORY_GRID_CLASS}
             data-social-history={tab}
           >
-            {tiles.slice(0, shown).map((tile) => (
+            {tiles.map((tile) => (
               <li key={tile.place.id}>
                 <HistoryTileLink tile={tile} tab={tab} />
               </li>
