@@ -45,6 +45,13 @@ export function readPlaceCode(v: unknown): string | null {
   return /^\d{6}$/.test(code) ? code : null;
 }
 
+/** A member code as stored, 1234-5678, or null. Staff may type it without the dash. */
+export function readMemberCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const digits = v.replace(/[\s-]/g, "");
+  return /^\d{8}$/.test(digits) ? `${digits.slice(0, 4)}-${digits.slice(4)}` : null;
+}
+
 /** The secret in a guest's QR link, or null. */
 export function readVisitCode(v: unknown): string | null {
   return typeof v === "string" && /^[0-9a-f]{32}$/.test(v) ? v : null;

@@ -19,6 +19,7 @@ import {
   type VisitResult,
 } from "@/lib/api/rewards";
 import { REWARD_STEPS, rewardStepPath, type RewardStep } from "@/lib/consumer-route-contract";
+import { useServerProfile } from "@/lib/identity-context";
 import { MOCK_FIRST_VISIT } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -178,6 +179,7 @@ function VisitCodeQr({
   onChangeBill: () => void;
 }) {
   const supabase = useBrowserSupabase();
+  const memberCode = useServerProfile()?.code;
   const [code, setCode] = useState<VisitCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -237,6 +239,12 @@ function VisitCodeQr({
           <Skeleton className="h-60 w-60 rounded-xl" />
         )}
       </div>
+      {/* Staff type this at visit.mesita.ai when the QR won't scan (MESITA-3262). */}
+      {code && memberCode ? (
+        <p className="text-muted-foreground mt-2 text-sm">
+          Won&apos;t scan? Member code <span className="text-foreground font-semibold">{memberCode}</span>
+        </p>
+      ) : null}
       <div className="mt-4 w-full">
         <BillSummary billCents={billCents} rewards={summary} />
       </div>
