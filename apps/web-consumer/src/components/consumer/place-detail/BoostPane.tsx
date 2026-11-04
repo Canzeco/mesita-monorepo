@@ -2,17 +2,18 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, ChevronRight, CreditCard, Loader2, Mail, Rocket, type LucideIcon } from "lucide-react";
+import { BadgeCheck, ChevronRight, Loader2, Mail } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
-  tierLabel,
+  suitePlanName,
   BOOST_TIERS,
   money,
   shortDate,
   START_REFUSED,
   type PlaceBoost,
   type RefillDays,
+  type RefillPack,
   type TierRank,
 } from "@/lib/api/boost";
 import { businessClaimHref } from "@/lib/business-url";
@@ -21,51 +22,41 @@ import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
   ERROR_BOX_CLASS,
+  INFO_BOX_CLASS,
   PRIMARY_BUTTON_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE UPGRADE SHEET'S BODY (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925;
-// the place's fourth tab from MESITA-2861 until the sheet, MESITA-3201, see
-// BoostSheet). Pato, 2026-11-03: a guest buys an Upgrade
-// for any place (MESITA-3175) — 3 months of Premier 2X or Premier 5X (MESITA-3203),
-// paid once, no renewal, no owner check. The recurring Subscription is the
-// Business app's.
+// THE UPGRADE SHEET'S BODY (MESITA-3168; Premier MESITA-2925; the place's fourth
+// tab from MESITA-2861 until the sheet, MESITA-3201, see BoostSheet). A guest buys
+// an Upgrade for any place (MESITA-3175): 3 months of Premier 2X or Premier 5X
+// (MESITA-3203), paid once, no renewal, no owner check. The recurring Subscription
+// is the Business app's.
 //
-// It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
-// explain current level and what to do"), in three boxes with one job each (Pato
-// picked them, MESITA-3230: "more modular design"). Buy: the three levels side by
-// side (MESITA-3203), so where the place is and where it can go are one look; 2X
-// and 5X each have a Buy button straight to Checkout. The facts: what it is and
-// how it charges (Pato cut the "Ad" and no-guarantee lines: "its just to move
-// shit to the top"). The owner: claim the place, or that it has an owner and who
-// to write to, or that it is yours. It never names the owner. Every amount, date
-// and line is the server's (consumer-web-get-premier-refill); nothing here
-// computes money. Premier is paid ranking priority: it never verifies the place.
+// It reads top to bottom (MESITA-3257, Pato picked the rows and every line): who
+// it's for, one spot for messages, one card with a row per plan in Business ›
+// Billing's words (Mesita Suite Free, Pro, Max; the perk is Premier: visibility
+// and the red tag), the terms, then the owner. Buy and Now share one slot, and a
+// reason a plan can't be bought stays in that plan's row. Every amount, date and
+// refusal is the server's (consumer-web-get-premier-refill); nothing here computes
+// money. Premier is paid ranking priority: it never verifies the place.
 
 /** A Premier level as visibility: 0 is where every place starts. */
 const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
 
 const BOX_CLASS = "border-border bg-card overflow-hidden rounded-2xl border";
+const ROW_CLASS = "flex items-center gap-3 p-3";
+/** One width for Buy and Now, so the column reads as one edge. */
+const SLOT_CLASS = "w-[76px] shrink-0";
 
-/** What a guest should know before paying. */
-const FACTS: ReadonlyArray<{ Icon: LucideIcon; title: string; detail: string }> = [
-  {
-    Icon: Rocket,
-    title: "3 months of Mesita Pro or Mesita Max",
-    detail: "Pro is Premier 2X, Max is Premier 5X. The place moves up in Mesita.",
-  },
-  {
-    Icon: CreditCard,
-    title: "Charged once by Stripe",
-    detail: "In US dollars. Nothing renews. Starts after any days already running.",
-  },
-];
+/** What a guest should know before paying. The last two sentences are Billing's. */
+const TERMS =
+  "3 months. Charged once by Stripe, in US dollars. Nothing renews. Starts after any days already running. Visibility is ranking priority on Home and the Map. It doesn't guarantee more views.";
 
 const ORIGIN: Record<RefillDays["source"], string> = {
-  admin: "by Mesita",
-  purchase: "bought by a guest",
+  admin: "Added by Mesita",
+  purchase: "Bought by a guest",
 };
 
 export function BoostPane({
@@ -86,13 +77,9 @@ export function BoostPane({
   const [startError, setStartError] = useState<string | null>(null);
 
   const packs = boost?.packs ?? [];
-  const level = loading ? null : (boost?.level ?? 0);
-  const lines = [
-    ...packs.filter((p) => p.available && p.notice).map((p) => `${p.notice}.`),
-    ...packs
-      .filter((p) => !p.available)
-      .map((p) => (p.code && START_REFUSED[p.code]) ?? "Not for sale here now."),
-  ];
+  const level = loading || !boost ? null : boost.level;
+  const messages = loading ? [] : statusLines(boost);
+  if (boost && !boost.signed_in) messages.push("Sign in to upgrade this place.");
 
   async function start(tier: TierRank) {
     if (starting) return;
@@ -113,93 +100,98 @@ export function BoostPane({
 
   return (
     <section className="mt-5 flex flex-col gap-3" aria-labelledby="boost-title">
-      <div className={BOX_CLASS}>
-        <div className="border-border border-b p-3" aria-live="polite">
-          <p className="font-semibold">Visibility for 3 months</p>
-          {!loading &&
-            statusLines(boost).map((line) => (
-              <p key={line} className="text-muted-foreground text-sm">
-                {line}
-              </p>
-            ))}
-        </div>
-        <div className="divide-border grid grid-cols-3 divide-x">
-          <div className="flex min-w-0 flex-col p-3">
-            <span className="h-5" />
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[0]}</p>
-            <p className="text-sm font-semibold">Free</p>
-            <p className="text-muted-foreground text-sm tabular-nums">$0 USD</p>
-            {level === 0 ? (
-              <span className="bg-muted text-muted-foreground mt-3 flex h-11 items-center justify-center rounded-lg text-sm font-semibold">
-                Now
-              </span>
-            ) : null}
-          </div>
-          {BOOST_TIERS.map((t) => {
-            const p = packs.find((x) => x.tier === t.rank);
-            const off = !loading && !!p && !p.available;
-            return (
-              <div key={t.rank} className="flex min-w-0 flex-col p-3">
-                <span className="flex h-5 items-center gap-1.5">
-                  <PremierRosette />
-                  {level === t.rank ? <span className="text-muted-foreground text-sm">Now</span> : null}
-                </span>
-                <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</p>
-                <p className="text-sm font-semibold">{t.plan}</p>
-                <p className="text-muted-foreground text-sm tabular-nums">{p ? `${money(p.price_cents)} USD` : "…"}</p>
-                <button
-                  type="button"
-                  onClick={() => void start(t.rank)}
-                  disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                  aria-label={p ? `Buy 3 months of Mesita ${t.plan}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
-                  className={cn(
-                    PRIMARY_BUTTON_CLASS,
-                    "mt-3 h-11",
-                    off ? "bg-muted text-muted-foreground" : "bg-destructive text-destructive-foreground",
-                  )}
-                >
-                  {starting === t.rank ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Buy"}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <p className="text-muted-foreground text-sm">
+        Move this place up on Mesita. Anyone can buy this for it.
+      </p>
 
-      {[...new Set(lines)].map((line) => (
-        <p key={line} className="text-muted-foreground text-sm">
-          {line}
-        </p>
-      ))}
-      {startError ? <p className={ERROR_BOX_CLASS}>{startError}</p> : null}
-      {boost && !boost.signed_in ? (
-        <p className="text-muted-foreground text-sm">Sign in to upgrade this place.</p>
-      ) : null}
-
-      <div className={cn(BOX_CLASS, "divide-border divide-y")}>
-        {FACTS.map(({ Icon, title, detail }) => (
-          <div key={title} className="flex gap-3 p-3">
-            <Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
-            <p className="min-w-0 text-sm">
-              <span className="block font-semibold">{title}</span>
-              <span className="text-muted-foreground block">{detail}</span>
-            </p>
+      <div className="flex flex-col gap-2 empty:hidden" aria-live="polite">
+        {failed && (
+          <div className={cn(ERROR_BOX_CLASS, "text-sm")} role="alert">
+            Couldn&apos;t load the plans for this place.{" "}
+            <button type="button" onClick={onRetry} className="font-semibold underline">
+              Try again
+            </button>
           </div>
+        )}
+        {startError ? <p className={cn(ERROR_BOX_CLASS, "text-sm")}>{startError}</p> : null}
+        {messages.map((line) => (
+          <p key={line} className={cn(INFO_BOX_CLASS, "text-foreground text-sm")}>
+            {line}
+          </p>
         ))}
       </div>
 
-      {boost ? <OwnerBox place={place} owner={boost.owner ?? "none"} /> : null}
-
-      {failed && (
-        <div className={ERROR_BOX_CLASS} role="alert">
-          Couldn&apos;t load this place&apos;s Premier.{" "}
-          <button type="button" onClick={onRetry} className="font-semibold underline">
-            Try again
-          </button>
+      <div className={cn(BOX_CLASS, "divide-border divide-y")}>
+        <div className={ROW_CLASS}>
+          <div className="min-w-0 flex-1 text-sm">
+            <p className="font-semibold">{suitePlanName(0)}</p>
+            <p className="text-muted-foreground">{VISIBILITY[0]} visibility</p>
+            <p className="text-muted-foreground tabular-nums">$0 USD</p>
+          </div>
+          {level === 0 ? (
+            <span
+              className={cn(
+                SLOT_CLASS,
+                "bg-muted text-muted-foreground flex h-11 items-center justify-center rounded-lg text-sm font-semibold",
+              )}
+            >
+              Now
+            </span>
+          ) : null}
         </div>
-      )}
+        {BOOST_TIERS.map((t) => {
+          const p = packs.find((x) => x.tier === t.rank);
+          const off = !loading && !!p && !p.available;
+          const reason = loading ? null : packReason(p);
+          const name = suitePlanName(t.rank);
+          return (
+            <div key={t.rank} className={ROW_CLASS}>
+              <div className="min-w-0 flex-1 text-sm">
+                <p className="font-semibold">{name}</p>
+                <p className="text-muted-foreground flex items-center gap-1.5">
+                  <PremierRosette />
+                  <span className="min-w-0">{VISIBILITY[t.rank]} visibility, Premier red tag</span>
+                </p>
+                <p className="text-muted-foreground tabular-nums">
+                  {p ? (
+                    `${money(p.price_cents)} USD for 3 months`
+                  ) : (
+                    <span className="bg-muted inline-block h-3.5 w-24 rounded align-middle" />
+                  )}
+                </p>
+                {reason ? <p className="text-foreground mt-1">{reason}</p> : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => void start(t.rank)}
+                disabled={loading || !p || off || starting !== null || !boost?.signed_in}
+                aria-label={p ? `Buy 3 months of ${name}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
+                className={cn(
+                  PRIMARY_BUTTON_CLASS,
+                  SLOT_CLASS,
+                  "h-11",
+                  off && "bg-muted text-muted-foreground",
+                )}
+              >
+                {starting === t.rank ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Buy"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-muted-foreground text-sm">{TERMS}</p>
+
+      {boost ? <OwnerBox place={place} owner={boost.owner ?? "none"} /> : null}
     </section>
   );
+}
+
+/** Why this plan can't be bought, or what buying it will do: the server's words. */
+function packReason(p: RefillPack | undefined): string | null {
+  if (!p) return null;
+  if (!p.available) return (p.code && START_REFUSED[p.code]) ?? "Not for sale here now.";
+  return p.notice ? `${p.notice}.` : null;
 }
 
 /** Who runs the place (Pato, MESITA-3203: "a box to claim ownership, and if
@@ -263,12 +255,12 @@ function statusLines(boost: PlaceBoost | null): string[] {
     const sources = [...new Set(rows.map((r) => ORIGIN[r.source]))];
     lines.push({
       tier,
-      text: `Upgrade ${tierLabel(tier)} · ${sources.join(", ")} · until ${shortDate(ends)}`,
+      text: `${suitePlanName(tier)} until ${shortDate(ends)}. ${sources.join(". ")}.`,
     });
   }
   const sub = boost.subscription;
   if (sub) {
-    lines.push({ tier: sub.tier, text: `${tierLabel(sub.tier)} · the place's plan` });
+    lines.push({ tier: sub.tier, text: `${suitePlanName(sub.tier)} is this place's plan.` });
   }
   return lines.sort((x, y) => y.tier - x.tier).map((l) => l.text);
 }
