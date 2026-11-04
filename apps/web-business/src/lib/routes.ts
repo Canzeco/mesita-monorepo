@@ -20,7 +20,7 @@ export const ACCOUNT = "/account";
 // Preview is a modal on Profile (MESITA-3136). Soon is the one page about
 // what is not on yet (MESITA-3197): Payments and Products folded into it.
 // Visits and Rewards work since MESITA-3202.
-export const PLACE_TABS = ["insights", "visits", "profile", "reviews", "premier", "rewards", "soon", "billing", "settings", "admin"] as const;
+export const PLACE_TABS = ["views", "visits", "profile", "reviews", "premier", "rewards", "soon", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

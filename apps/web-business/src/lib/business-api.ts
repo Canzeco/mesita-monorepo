@@ -492,12 +492,12 @@ export async function voidPlaceVisit(placeId: string, visitId: string): Promise<
   return { ok: true, data: { voided_at: r.data.voided_at } };
 }
 
-// ── Insights (MESITA-3206) ───────────────────────
+// ── Views (MESITA-3206) ──────────────────────────
 
-export type PlaceInsights = { views: number; likes: number; shares: number };
+export type PlaceViews = { views: number; likes: number; shares: number };
 
-export async function getPlaceInsights(placeId: string): Promise<Result<PlaceInsights>> {
-  const r = await efInvoke<PlaceInsights>("business-web-get-place-insights", { place_id: placeId });
+export async function getPlaceViews(placeId: string): Promise<Result<PlaceViews>> {
+  const r = await efInvoke<PlaceViews>("business-web-get-place-views", { place_id: placeId });
   if (!r.ok) return fail(r);
   return { ok: true, data: { views: r.data.views, likes: r.data.likes, shares: r.data.shares } };
 }

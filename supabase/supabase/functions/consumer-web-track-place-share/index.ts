@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-track-place-share
 //
 // MESITA-3206: a signed-in guest shared a place or copied its link. One row per
-// guest per place; a repeat only moves shared_at. Business Insights counts them.
+// guest per place; a repeat only moves shared_at. Business Views counts them.
 //
 // Body: { place_id: uuid }
 // Response: { ok: true }

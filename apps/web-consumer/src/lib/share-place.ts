@@ -120,7 +120,7 @@ export async function shareOrCopy(
   return "failed";
 }
 
-/** Count a share for the place's Insights (MESITA-3206). In the background and
+/** Count a share for the place's Views page (MESITA-3206). In the background and
  *  silent: a share that could not be counted is still a share. */
 function countShare(placeId: string): void {
   try {

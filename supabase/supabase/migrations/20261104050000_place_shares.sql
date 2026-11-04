@@ -1,4 +1,4 @@
--- MESITA-3206 — Insights counts shares (Pato, 2026-11-03: "how many times someone
+-- MESITA-3206 — Business Views counts shares (Pato, 2026-11-03: "how many times someone
 -- viewed and liked your profile and if they shared the profile").
 --
 -- One row per guest × place, like views and likes in place_activity: the count
@@ -15,7 +15,7 @@ create table public.place_shares (
 );
 
 comment on table public.place_shares is
-  'MESITA-3206: a guest shared this place. One row per guest per place; Business Insights counts them. EF-only.';
+  'MESITA-3206: a guest shared this place. One row per guest per place; Business Views counts them. EF-only.';
 
 create index place_shares_place_idx on public.place_shares (place_id);
 

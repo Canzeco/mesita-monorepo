@@ -1,6 +1,6 @@
-// Supabase Edge Function — business-web-get-place-insights
+// Supabase Edge Function — business-web-get-place-views
 //
-// MESITA-3206: Business › Insights. How many signed-in guests viewed, liked and
+// MESITA-3206: Business › Views. How many signed-in guests viewed, liked and
 // shared this place. Each is people, not taps. A failed count is an error here,
 // never a false 0: an owner reads these numbers as fact.
 //
@@ -13,7 +13,7 @@ import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
-serveJson("business-web-get-place-insights", async (req) => {
+serveJson("business-web-get-place-views", async (req) => {
   const ctx = await requireBusinessRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;

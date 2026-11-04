@@ -1,4 +1,4 @@
-// A guest shared a place (MESITA-3206): Business Insights counts it. Only a
+// A guest shared a place (MESITA-3206): Business Views counts it. Only a
 // Mesita place has a row to count against, so a Google-only card is skipped.
 
 import type { SupabaseClient } from "@supabase/supabase-js";

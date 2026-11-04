@@ -607,8 +607,8 @@ verify_jwt = true
 [functions.consumer-web-create-visit-code]
 verify_jwt = true
 
-# MESITA-3206: Business Insights, and the share it counts.
-[functions.business-web-get-place-insights]
+# MESITA-3206: Business Views, and the share it counts.
+[functions.business-web-get-place-views]
 verify_jwt = true
 
 [functions.consumer-web-track-place-share]
