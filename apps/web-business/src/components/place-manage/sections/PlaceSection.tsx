@@ -405,7 +405,7 @@ export function PlaceSection({ place }: { place: AdminPlace }) {
           Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin,
-          except Actions, which ProfileTab adds here for staff (MESITA-3205);
+          Actions on Settings (MESITA-3236);
           Team on Controls; the reputation rail on Activity. */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}
