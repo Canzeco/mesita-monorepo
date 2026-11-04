@@ -254,13 +254,14 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
         {percent ? (
           <span className={cn(PLACE_REWARD_COUPON_CLASS, "mt-1 font-semibold")}>
             <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            Up to {percent}% OFF for you
+            <span className="truncate">Up to {percent}% OFF for you</span>
           </span>
         ) : null}
       </span>
-      {/* The QR is the point of this list (Pato, MESITA-3249: "must be more visible"). */}
-      <span className="bg-foreground text-paper flex h-11 w-11 shrink-0 items-center justify-center rounded-lg">
-        <QrCode className="h-6 w-6" aria-hidden />
+      {/* The QR is the point of this list, in a box that mirrors the photo (Pato,
+          MESITA-3249: "must be more visible"; "keep symmetry in image and in QR"). */}
+      <span className="bg-foreground text-paper flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
+        <QrCode className="h-8 w-8" aria-hidden />
       </span>
     </button>
   );
@@ -298,7 +299,7 @@ function RewardSkeletonRow() {
         </span>
         <Skeleton className="mt-1 h-8 w-4/5 rounded-lg" />
       </span>
-      <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
     </div>
   );
 }
