@@ -4,6 +4,7 @@ import {
   fetchGooglePlace,
   fetchTimezone,
   profileFromGoogle,
+  type GooglePlace,
 } from "./google-spine.ts";
 import { embedSummary, embeddingFields, writtenSubject } from "./embedding.ts";
 import {
@@ -129,7 +130,7 @@ export async function buildEnrichment(
     if (timezone) spine.patch.timezone = timezone;
   }
   const name = typeof spine.patch.google_name === "string" ? spine.patch.google_name : "";
-  const city = typeof spine.patch.city === "string" ? spine.patch.city : null;
+  const city = addressPart(details, ["locality", "administrative_area_level_2"])?.longText?.trim() || null;
   const knobs = job.knobs ?? {};
   const counts = linkCounts({
     website_url: knobs.discoverWebsiteN,
@@ -149,7 +150,7 @@ export async function buildEnrichment(
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
-    country: countryOf(details),
+    country: addressPart(details, ["country"])?.shortText?.trim() || null,
     category: details.primaryType ?? null,
     google: Object.fromEntries(LINK_FIELDS.map((field) => [field, stringField(spine.patch[field])])),
     // Every link is looked for again; one the Resolver keeps replaces the saved one.
@@ -249,8 +250,13 @@ function countOr(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
-function countryOf(details: { addressComponents?: { types?: string[]; shortText?: string }[] }): string | null {
-  return details.addressComponents?.find((row) => row.types?.includes("country"))?.shortText?.trim() || null;
+// Google's address parts, in the same order _shared/enrich-google-basics.ts reads them.
+function addressPart(details: GooglePlace, types: string[]) {
+  for (const type of types) {
+    const part = details.addressComponents?.find((row) => row.types?.includes(type));
+    if (part) return part;
+  }
+  return null;
 }
 
 function stringField(value: unknown): string | null {

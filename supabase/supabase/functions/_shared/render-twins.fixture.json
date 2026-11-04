@@ -575,14 +575,17 @@
         "city": "Puerto Vallarta",
         "category": "night_club",
         "brand": "strana",
-        "context": "A nightclub."
+        "context": "A nightclub.",
+        "listed": {
+          "website_url": "https://grupoalme.mx/strana"
+        }
       },
       "candidates": {
         "instagram_url": [
           "- https://www.instagram.com/x [linked from https://x.mx] — \"X\""
         ]
       },
-      "expected": "Review and select the official channels for the place \"Strana\" in Puerto Vallarta (category: night_club).\n\nBackground on the place (soft web context — never the source of a URL):\nA nightclub.\n\nThis place is a location of the \"strana\" brand. If it has no account of its own, the brand's account is the answer, preferring this country's.\n\nCandidate URLs, each with its page title, description and origin when known:\ninstagram_url candidates:\n- https://www.instagram.com/x [linked from https://x.mx] — \"X\"\n\nReturn strict JSON. Each value is one URL from that field's list, or null. Never invent a URL."
+      "expected": "Review and select the official channels for the place \"Strana\" in Puerto Vallarta (category: night_club).\n\nBackground on the place (soft web context — never the source of a URL):\nA nightclub.\n\nGoogle already lists these, and they stay when you return null:\n- website_url: https://grupoalme.mx/strana\n\nThis place is a location of the \"strana\" brand. If it has no account of its own, the brand's account is the answer, preferring this country's.\n\nCandidate URLs, each with its page title, description and origin when known:\ninstagram_url candidates:\n- https://www.instagram.com/x [linked from https://x.mx] — \"X\"\n\nReturn strict JSON. Each value is one URL from that field's list, or null. Never invent a URL."
     },
     {
       "place": {
