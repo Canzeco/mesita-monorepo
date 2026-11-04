@@ -10,6 +10,7 @@ import {
   MoneyIcon,
   MonitorIcon,
   ShoppingBagIcon,
+  UsersThreeIcon,
   WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
@@ -91,6 +92,11 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
     name: "Reservations Management",
     line: "One calendar for every booking, labeled by source: Mesita members, your website and agents, and outside booking systems, synced so tables aren't double-booked. Manage availability, confirmations, reminders, changes and cancellations, with every booking tied to its guest.",
     icon: CalendarCheckIcon,
+  },
+  {
+    name: "Mesita CRM",
+    line: "One record per guest, built from every booking, order, visit and redemption, with history, notes, tags and preferences so staff recognize who's at the door. Message guests on WhatsApp, SMS and email from that record, with every message logged.",
+    icon: UsersThreeIcon,
   },
   {
     name: "Mesita Terminal",
