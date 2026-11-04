@@ -11,16 +11,16 @@
 //
 // Old addresses (the phone's More, Products, top-level Payments/Rewards/
 // Settings, a place's Billing, Future and Preview, "internal" for admin
-// (MESITA-3143), and a place's Payments and Products, now rows on Soon
-// (MESITA-3197)) redirect in one hop from next.config.ts `redirects()`.
+// (MESITA-3143), and a place's Payments, Products and Soon, now All
+// (MESITA-3238)) redirect in one hop from next.config.ts `redirects()`.
 
 export const PLACES = "/places";
 export const ACCOUNT = "/account";
 
-// Preview is a modal on Profile (MESITA-3136). Soon is the one page about
-// what is not on yet (MESITA-3197): Payments and Products folded into it.
+// Preview is a modal on Profile (MESITA-3136). All is the one page listing
+// every product, current and future (MESITA-3238; was Soon, MESITA-3197).
 // Visits and Rewards work since MESITA-3202.
-export const PLACE_TABS = ["views", "visits", "profile", "reviews", "premier", "rewards", "soon", "billing", "settings", "admin"] as const;
+export const PLACE_TABS = ["views", "visits", "profile", "reviews", "premier", "rewards", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

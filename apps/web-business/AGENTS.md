@@ -8,4 +8,4 @@
 - **The whole place page lives here** (`components/place-manage/`, moved from web-admin); staff also get Reviews and Internal. Admin only links here.
 - **Google accounts only**, owners and staff; every Business door refuses any other session (`google_only`).
 - **Premier is advertising:** guests see every paid level marked Ad; it never verifies a place. Money is computed by the server.
-- **Light theme, semantic tokens.** Soon lists what is not on yet: copy only.
+- **Light theme, semantic tokens.** All lists every product, current and future; future ones are copy only.

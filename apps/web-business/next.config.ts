@@ -31,10 +31,11 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/claim", destination: "/places" },
   // One place: its index, and the views that folded (MESITA-3136).
   { source: "/places/:id", destination: "/places/:id/profile" },
-  // Future, Payments and Products are rows on Soon (MESITA-3197).
-  { source: "/places/:id/future", destination: "/places/:id/soon" },
-  { source: "/places/:id/payments", destination: "/places/:id/soon" },
-  { source: "/places/:id/products", destination: "/places/:id/soon" },
+  // Future, Payments, Products and Soon are All (MESITA-3238).
+  { source: "/places/:id/future", destination: "/places/:id/all" },
+  { source: "/places/:id/payments", destination: "/places/:id/all" },
+  { source: "/places/:id/products", destination: "/places/:id/all" },
+  { source: "/places/:id/soon", destination: "/places/:id/all" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
   // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its
   // only admin, and only at the place level"): the cross-place Claim
