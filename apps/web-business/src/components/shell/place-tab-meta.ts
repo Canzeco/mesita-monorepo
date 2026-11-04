@@ -1,6 +1,6 @@
 // Each place page's name, icon and one line (MESITA-3151: "standardize
-// design across pages"). The side menu and the page title read the same
-// entry, so a page is drawn with the mark its menu row wears.
+// design across pages"). The side menu and the page header read the same
+// entry.
 
 import { BadgeCheck, Eye, Footprints, Gift, Receipt, MapPinned, Settings, ShieldCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
 import type { PlaceTab } from "@/lib/routes";
