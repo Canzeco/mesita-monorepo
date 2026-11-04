@@ -226,11 +226,6 @@ export function VisitFlow({
     if (step !== "bill" && billMissing) router.replace(rewardStepPath(placeId));
   }, [router, placeId, step, billMissing]);
 
-  // Each step is a server hop, so the next ones are ready before the tap.
-  useEffect(() => {
-    for (const id of REWARD_STEPS) router.prefetch(rewardStepPath(placeId, id));
-  }, [router, placeId]);
-
   const go = (id: RewardStep) => router.push(rewardStepPath(placeId, id));
 
   // Real rewards where a place has them on, else the mock (MESITA-3218).
