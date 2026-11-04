@@ -135,23 +135,7 @@ export function SearchHeader({
           // same"): the screen top, between row one's controls, and bar to
           // chips (this row's pt-1 + the scroller's py-2) are all 12px, the
           // side gutter; chip to chip stays 8px.
-          <div className="flex min-w-0 items-center gap-2 pt-1 pl-3 [&>*]:pointer-events-auto">
-            {/* Top, the filters circle, then the families (Pato, MESITA-3195).
-                The first two stay pinned; only the families scroll. */}
-            <button
-              type="button"
-              onClick={clearMapFamilies}
-              aria-pressed={everyFamily}
-              className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
-              data-search-chip-top
-            >
-              <FamilyIcon
-                name="all"
-                className={HEADER_ICON}
-                strokeWidth={HEADER_ICON_STROKE}
-              />
-              <span>Top</span>
-            </button>
+          <div className="flex min-w-0 items-center gap-3 pt-1 pl-3 [&>*]:pointer-events-auto">
             <button
               type="button"
               onClick={() => setSheetOpen(true)}
@@ -189,6 +173,22 @@ export function SearchHeader({
               className="scrollbar-hide flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-x-contain py-2 pr-3"
               data-search-chips
             >
+              {/* The circle, Top, then the families (Pato, MESITA-3198, undoing
+                  MESITA-3195): the circle stays pinned, Top scrolls with them. */}
+              <button
+                type="button"
+                onClick={clearMapFamilies}
+                aria-pressed={everyFamily}
+                className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
+                data-search-chip-top
+              >
+                <FamilyIcon
+                  name="all"
+                  className={HEADER_ICON}
+                  strokeWidth={HEADER_ICON_STROKE}
+                />
+                <span>Top</span>
+              </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
                 const on = filters.familyKeys.includes(family.key);
                 return (
