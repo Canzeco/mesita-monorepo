@@ -4,10 +4,11 @@ import {
   brandFromWebsite,
   confirmedLink,
   discoverLinks,
-  poolFromUrls,
+  hitsFromFirecrawl,
+  ownSiteAmong,
+  poolFromHits,
   resolverBackground,
   searchQueries,
-  urlsFromFirecrawl,
   validateLink,
 } from "./links.ts";
 
@@ -25,11 +26,22 @@ test("a channel URL is kept and the wrong shape is dropped", () => {
 });
 
 test("the pool is shape-valid and de-duplicated", () => {
-  assert.deepEqual(poolFromUrls("website_url", [
-    "https://www.pujol.com.mx/menu",
-    "https://pujol.com.mx/menu?utm=1",
-    "https://www.instagram.com/pujol",
-  ]), ["https://www.pujol.com.mx/menu"]);
+  assert.deepEqual(poolFromHits("website_url", [
+    { url: "https://www.pujol.com.mx/menu" },
+    { url: "https://pujol.com.mx/menu?utm=1" },
+    { url: "https://www.instagram.com/pujol" },
+  ]).map((item) => item.url), ["https://www.pujol.com.mx/menu"]);
+});
+
+test("a post in the results gives the account behind it, and says so", () => {
+  const [candidate] = poolFromHits("instagram_url", [{
+    url: "https://www.instagram.com/reel/abc",
+    title: "Tacos Orinoco (@taqueriaorinoco) • Instagram reel",
+  }]);
+  assert.equal(candidate.url, "https://www.instagram.com/taqueriaorinoco");
+  assert.match(candidate.line, /the account behind a post/);
+  assert.deepEqual(poolFromHits("instagram_url", [{ url: "https://www.instagram.com/p/abc", title: "A post" }]), []);
+  assert.deepEqual(poolFromHits("instagram_url", [{ url: "https://www.instagram.com/popular/tacos" }]), []);
 });
 
 test("Perplexity cannot introduce a URL Firecrawl did not return", () => {
@@ -41,11 +53,12 @@ test("Perplexity cannot introduce a URL Firecrawl did not return", () => {
 });
 
 test("Firecrawl v2 web hits and a flat data array both yield URLs", () => {
-  assert.deepEqual(urlsFromFirecrawl({ data: { web: [{ url: "https://a.example" }], news: [{ url: "https://b.example" }] } }), [
+  const urls = (payload: unknown) => hitsFromFirecrawl(payload).map((hit) => hit.url);
+  assert.deepEqual(urls({ data: { web: [{ url: "https://a.example" }], news: [{ url: "https://b.example" }] } }), [
     "https://a.example",
     "https://b.example",
   ]);
-  assert.deepEqual(urlsFromFirecrawl({ data: [{ url: "https://c.example" }] }), ["https://c.example"]);
+  assert.deepEqual(urls({ data: [{ url: "https://c.example" }] }), ["https://c.example"]);
 });
 
 test("a sourced link is kept and an invented one is dropped", async () => {
@@ -140,7 +153,7 @@ test("a count of zero does not search that source", async () => {
   assert.equal(queries[0]?.includes("instagram"), false);
 });
 
-test("a citation is kept only when Firecrawl already returned it", async () => {
+test("the Resolver's null stands; a citation only fills in when no answer came back", async () => {
   const fetchImpl: typeof fetch = async (input) => {
     const url = String(input);
     if (url.includes("firecrawl")) {
@@ -163,7 +176,7 @@ test("a citation is kept only when Firecrawl already returned it", async () => {
             facebook_url: null,
             opentable_url: null,
             uber_eats_url: null,
-          }),
+          }).replace('"website_url":null,', ""),
           annotations: [
             { url: "https://pujol.com.mx/menu" },
             { url: "https://www.instagram.com/not-in-the-pool" },
@@ -314,11 +327,15 @@ test("a chain branch's brand comes from the website host its name carries", () =
   assert.equal(brandFromWebsite("Starbucks", null), null);
   assert.deepEqual(searchQueries("instagram_url", "Starbucks Biblioteca ITESM MTY II", "Monterrey", "starbucks"), [
     "Starbucks Biblioteca ITESM MTY II Monterrey instagram",
-    '"Starbucks Biblioteca ITESM MTY II" site:instagram.com',
+    "Starbucks Biblioteca ITESM MTY II Monterrey site:instagram.com",
     "starbucks Monterrey instagram",
   ]);
   assert.deepEqual(searchQueries("website_url", "Starbucks Biblioteca ITESM MTY II", "Monterrey", "starbucks"), [
     "Starbucks Biblioteca ITESM MTY II Monterrey official website",
+  ]);
+  assert.deepEqual(searchQueries("facebook_url", "Taquería Orinoco ( TEC )", "Monterrey", null), [
+    "Taquería Orinoco ( TEC ) Monterrey facebook",
+    "Taquería Orinoco Monterrey site:facebook.com",
   ]);
 });
 
@@ -340,7 +357,7 @@ test("the brand account found by the brand search reaches the Resolver and is ke
   const found = (await discoverLinks({
     name: "Starbucks Biblioteca ITESM MTY II",
     city: "Monterrey",
-    website: "https://www.starbucks.com.mx/",
+    google: { website_url: "https://www.starbucks.com.mx/" },
     have: {},
     counts: { website_url: 0, instagram_url: 7, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
     firecrawlKey: "fc",
@@ -349,4 +366,81 @@ test("the brand account found by the brand search reaches the Resolver and is ke
   })).links;
   assert.equal(found.instagram_url, "https://www.instagram.com/starbucksmex");
   assert.match(input, /location of the "starbucks" brand/);
+});
+
+function resolverStub(answer: Record<string, unknown>, seen: { input: string; bodies: Record<string, unknown>[]; scraped: string[] }, site: string[] = []) {
+  const fetchImpl: typeof fetch = async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    if (String(url).endsWith("/v2/scrape")) {
+      seen.scraped.push(String(body.url));
+      return Response.json({ data: { links: site } });
+    }
+    if (String(url).includes("firecrawl")) {
+      seen.bodies.push(body);
+      return Response.json({ data: { web: [] } });
+    }
+    seen.input = String(body.input ?? "");
+    return Response.json({ output: [{ type: "message", content: [{ text: JSON.stringify(answer) }] }] });
+  };
+  return fetchImpl;
+}
+
+const SOCIAL_ONLY = { website_url: 0, instagram_url: 7, facebook_url: 3, opentable_url: 0, uber_eats_url: 0 };
+
+test("the place's own website is read, its links reach the Resolver marked, and only a pick is kept", async () => {
+  const seen = { input: "", bodies: [] as Record<string, unknown>[], scraped: [] as string[] };
+  const out = await discoverLinks({
+    name: "Strana",
+    city: "Puerto Vallarta",
+    country: "MX",
+    category: "night_club",
+    google: { website_url: "https://grupoalme.mx/strana" },
+    have: {},
+    counts: SOCIAL_ONLY,
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl: resolverStub(
+      { instagram_url: "https://www.instagram.com/stranavallarta_oficial", facebook_url: null },
+      seen,
+      ["https://www.instagram.com/stranavallarta_oficial/", "https://www.instagram.com/grupoalme/", "https://www.facebook.com/StranaPV/"],
+    ),
+  });
+  assert.deepEqual(seen.scraped, ["https://grupoalme.mx/strana"]);
+  assert.match(seen.input, /stranavallarta_oficial \[linked from https:\/\/grupoalme\.mx\/strana\]/);
+  assert.match(seen.input, /category: night_club/);
+  assert.deepEqual(out.links, { instagram_url: "https://www.instagram.com/stranavallarta_oficial" });
+  assert.ok(seen.bodies.every((body) => body.country === "MX"));
+});
+
+test("Google's link stays when the Resolver keeps it or finds nothing better", async () => {
+  const seen = { input: "", bodies: [] as Record<string, unknown>[], scraped: [] as string[] };
+  const google = { website_url: "https://pujol.com.mx" };
+  const fetchImpl: typeof fetch = async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    if (String(url).endsWith("/v2/scrape")) return Response.json({ data: { links: [] } });
+    if (String(url).includes("firecrawl")) {
+      return Response.json({ data: { web: String(body.query).includes("official") ? [{ url: "https://news.example/pujol" }] : [] } });
+    }
+    seen.input = String(body.input ?? "");
+    return Response.json({ output: [{ type: "message", content: [{ text: JSON.stringify({ website_url: "https://pujol.com.mx" }) }] }] });
+  };
+  const out = await discoverLinks({
+    name: "Pujol",
+    city: "Mexico City",
+    google,
+    have: {},
+    counts: { website_url: 5, instagram_url: 0, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.match(seen.input, /pujol\.com\.mx\/? \[Google's listing/);
+  assert.deepEqual(out.links, {});
+  assert.match(out.report.detail ?? "", /kept no candidate/);
+});
+
+test("with no website from Google, only a host carrying the name is read", () => {
+  const pool = poolFromHits("website_url", [{ url: "https://news.example/tacos" }, { url: "https://www.orinoco.mx/" }]);
+  assert.equal(ownSiteAmong("Taquería Orinoco", pool), "https://www.orinoco.mx/");
+  assert.equal(ownSiteAmong("Pujol", pool), null);
 });

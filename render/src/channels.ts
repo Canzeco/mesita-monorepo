@@ -168,7 +168,7 @@ function instagramProfile(url: string): string | null {
   const handle = match[1].replace(/^@/, "").trim();
   if (!handle) return null;
   if (
-    new Set(["p", "reel", "reels", "explore", "stories", "tv"]).has(
+    new Set(["p", "reel", "reels", "explore", "stories", "tv", "accounts", "about", "developer", "directory", "legal", "popular", "web"]).has(
       handle.toLowerCase(),
     )
   )
@@ -225,6 +225,12 @@ function facebookPage(url: string): string | null {
     "search",
     "hashtag",
     "p",
+    "share",
+    "public",
+    "places",
+    "plugins",
+    "dialog",
+    "tr",
   ]);
   if (reserved.has(segment.toLowerCase())) return null;
   return `https://www.facebook.com/${segment}`;

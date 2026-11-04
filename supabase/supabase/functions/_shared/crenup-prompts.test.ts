@@ -77,13 +77,12 @@ Deno.test("the rendered input is a TEMPLATE — sentinels, never a real place", 
 
 Deno.test("the Resolver template renders every optional branch", () => {
   // The operator should read the FULLEST form of the message, not the degraded
-  // one — a preview that hides the sibling/website/SERP blocks under-describes
-  // what the vendor is actually sent on a normal run.
+  // one — a preview that hides the brand/SERP blocks under-describes what the
+  // vendor is actually sent on a normal run.
   const resolver = crenupPromptsMeta().find((p) => p.key === "resolver")!;
-  assert(resolver.input.includes("Already-known official channels"));
-  assert(resolver.input.includes("Trust the links this official website itself lists"));
+  assert(resolver.input.includes("location of the"));
   assert(resolver.input.includes("Background on the place"));
-  assert(resolver.input.includes("Candidate URLs found by search"));
+  assert(resolver.input.includes("Candidate URLs"));
   // Every channel field must be asked for by name.
   for (const f of ["website_url", "instagram_url", "facebook_url", "opentable_url", "uber_eats_url"]) {
     assert(resolver.input.includes(f), `${f} missing from the Resolver template`);
