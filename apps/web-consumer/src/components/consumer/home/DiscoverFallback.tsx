@@ -7,9 +7,11 @@ import { cn } from "@/lib/utils";
 import {
   TILE_ACTIONS,
   TILE_BAND,
+  TILE_FOOT,
   TILE_FRAME,
   TILE_PHOTO,
   TILE_TEXT,
+  TILE_TEXT_WITH_COUPON,
 } from "./catalog-tile-classes";
 
 // HOME › PLACES WHILE ITS POOL LOADS (Pato, MESITA-2701: "the placeholders
@@ -26,8 +28,8 @@ export const PLACES_LIST =
 
 /** CatalogTile's silhouette, from its own boxes (catalog-tile-classes.ts):
  *  the hairlined square, the photo's top 50%, the white band's 50% with its
- *  rows (the 16px name, the two 14px rows, the 20px coupon), and Save ·
- *  Share as two 32px blocks where CardActions sits. */
+ *  rows (the 16px name, the two 14px rows), Save · Share as two 32px blocks
+ *  where CardActions sits, and the 24px coupon under them. */
 function CatalogTileSkeleton() {
   return (
     <li className={TILE_FRAME}>
@@ -35,7 +37,7 @@ function CatalogTileSkeleton() {
         <Skeleton className="h-full w-full rounded-none" />
       </div>
       <div className={TILE_BAND}>
-        <div className={TILE_TEXT}>
+        <div className={cn(TILE_TEXT, TILE_TEXT_WITH_COUPON)}>
           <div className="flex h-5 items-center">
             <Skeleton className="h-4 w-1/2" />
           </div>
@@ -45,14 +47,14 @@ function CatalogTileSkeleton() {
           <div className="flex h-5 items-center">
             <Skeleton className="h-3.5 w-2/3" />
           </div>
-          <div className="flex h-5 items-center">
-            <Skeleton className="h-5 w-1/2" />
-          </div>
         </div>
       </div>
-      <div className={cn(CARD_ACTIONS_ROW, TILE_ACTIONS)}>
-        <Skeleton className={CARD_BUTTON_BOX} />
-        <Skeleton className={CARD_BUTTON_BOX} />
+      <div className={cn(TILE_ACTIONS, TILE_FOOT)}>
+        <div className={CARD_ACTIONS_ROW}>
+          <Skeleton className={CARD_BUTTON_BOX} />
+          <Skeleton className={CARD_BUTTON_BOX} />
+        </div>
+        <Skeleton className="h-6 rounded-lg" />
       </div>
     </li>
   );

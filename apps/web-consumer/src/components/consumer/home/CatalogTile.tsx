@@ -22,9 +22,11 @@ import {
 import {
   TILE_ACTIONS,
   TILE_BAND,
+  TILE_FOOT,
   TILE_FRAME,
   TILE_PHOTO,
   TILE_TEXT,
+  TILE_TEXT_WITH_COUPON,
 } from "./catalog-tile-classes";
 
 /**
@@ -77,8 +79,9 @@ function TileLink({
 
 /**
  * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
- * a white band below carrying four rows — name; $$ · category · stars;
- * Open or Closed · distance; the coupon (MESITA-3229) — and two buttons, Save and Share
+ * a white band below carrying three rows — name; $$ · category · stars;
+ * Open or Closed · distance (MESITA-3229) — and two buttons, with the coupon under
+ * them when the place has a discount (MESITA-3233). The buttons, Save and Share
  * (MESITA-2650, MESITA-2668). A Premier place wears the Premier mark
  * after its name, "Premier 2X" (MESITA-2925; Enriched has no guest mark). A Google-only card opens its profile
  * through `onOpenGoogle`, and its one button, Generate Profile, does the
@@ -113,8 +116,8 @@ export function CatalogTile({
   const google = isGoogleOnlyPlace(place);
   const href = placeHref(place.slug || place.id);
   // The card's facts, shared with the Search card (MESITA-2668): name;
-  // $$ · category · stars; Open or Closed · distance; the coupon. No zone on
-  // the tile. Each cell hides when the place has none.
+  // $$ · category · stars; Open or Closed · distance. No zone on the tile. Each
+  // cell hides when the place has none.
   const facts = cardFacts(place);
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
@@ -164,8 +167,8 @@ export function CatalogTile({
   // ONE SQUARE, PHOTO 50%, CONTENT 50% (Pato, MESITA-3229: "maybe a bit more
   // space in the info"; 60/40 and 55/45 cannot hold the four rows on a small
   // phone), every tile, a Google-only card too (MESITA-2663): name; $$ ·
-  // category · stars; Open or Closed · distance; the coupon; then Save and
-  // Share side by side (32px, 44px hit area). 20px lines and a 2px gap. The
+  // category · stars; Open or Closed · distance; then Save and Share side by
+  // side (32px, 44px hit area), then the coupon. 20px lines and a 2px gap. The
   // photo is fully
   // shown and centred, nothing over it (MESITA-2369); the band under it is
   // plain white (MESITA-2658: the reflection went). The split went 45/55
@@ -198,14 +201,19 @@ export function CatalogTile({
               on a 20px line, full ink (place-card.tsx). TILE_TEXT centres
               the rows in what Save and Share leave. The mark follows the
               name. */}
-          <div className={cn("text-foreground", TILE_TEXT)}>
+          <div
+            className={cn(
+              "text-foreground",
+              TILE_TEXT,
+              facts.off && TILE_TEXT_WITH_COUPON,
+            )}
+          >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               <PremierBadge tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} />
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />
-            <CouponRow facts={facts} />
           </div>
         </div>
       </TileLink>
@@ -213,21 +221,23 @@ export function CatalogTile({
           Share (Pato, MESITA-2843, reversing MESITA-2663): the tap is the
           card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
           foot (MESITA-2668); it was 8px at the foot. */}
-      <CardActions
-        name={place.name}
-        saved={saved}
-        onSave={onToggle}
-        onShare={onShare ?? (() => void sharePlace(place))}
-        onGenerate={
-          google
-            ? () => {
-                onOpen?.();
-                onOpenGoogle?.();
-              }
-            : undefined
-        }
-        className={TILE_ACTIONS}
-      />
+      <div className={cn(TILE_ACTIONS, TILE_FOOT)}>
+        <CardActions
+          name={place.name}
+          saved={saved}
+          onSave={onToggle}
+          onShare={onShare ?? (() => void sharePlace(place))}
+          onGenerate={
+            google
+              ? () => {
+                  onOpen?.();
+                  onOpenGoogle?.();
+                }
+              : undefined
+          }
+        />
+        <CouponRow facts={facts} />
+      </div>
     </li>
   );
 }

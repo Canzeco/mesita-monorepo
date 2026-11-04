@@ -25,7 +25,7 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount, on its own row of the Home card ("30% OFF, up to $60 MXN", MESITA-3231). */
+  /** The discount, under the Home card's buttons ("30% OFF, up to $60 MXN", MESITA-3233). */
   off: string | null;
   rating: string | null;
   reviews: string | null;
@@ -134,16 +134,21 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Home card row four: the discount as a coupon (Pato, MESITA-3229: "maybe like
- *  in a tag mode … simulating a coupon"). A card with no discount has no row. */
+/** The discount under Save and Share, as wide as the two, its words centred
+ *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
+ *  but only if it has reward"). Display only: a tap falls through to the card's
+ *  own link beneath it. */
 export function CouponRow({ facts }: { facts: CardFacts }) {
   if (!facts.off) return null;
   return (
-    <p className="flex min-w-0 font-sans">
-      <span className={PLACE_REWARD_COUPON_CLASS}>
-        <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-        {facts.off}
-      </span>
+    <p
+      className={cn(
+        PLACE_REWARD_COUPON_CLASS,
+        "pointer-events-none flex h-6 w-full justify-center rounded-lg font-sans",
+      )}
+    >
+      <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+      {facts.off}
     </p>
   );
 }

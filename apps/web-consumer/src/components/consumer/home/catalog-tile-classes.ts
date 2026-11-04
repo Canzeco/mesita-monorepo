@@ -24,12 +24,19 @@ export const TILE_PHOTO =
 export const TILE_BAND =
   "bg-paper absolute inset-x-0 bottom-0 h-[50%] overflow-hidden rounded-b-2xl";
 
-/** The band's rows, four at 20px, 2px apart, 12px side padding, centred in
+/** The band's three 20px rows, 2px apart, 12px side padding, centred in
  *  what Save · Share leave: pb-11 is the 32px row and its 12px foot, so the
  *  gap over the name and the gap over the buttons match (MESITA-2645). */
 export const TILE_TEXT =
   "relative flex h-full flex-col justify-center gap-0.5 px-3 pb-11";
 
+/** The text's foot on a tile with a discount: pb-[4.75rem] is the 24px coupon,
+ *  its 8px gap, the 32px row and its 12px foot (MESITA-3233). */
+export const TILE_TEXT_WITH_COUPON = "pb-[4.75rem]";
+
 /** Save · Share, 12px from the tile's sides AND its foot (MESITA-2668: "its
  *  not the same vertical margin as horizontal margin"). */
 export const TILE_ACTIONS = "absolute inset-x-3 bottom-3";
+
+/** Save · Share, then the coupon under them, 8px apart (MESITA-3233). */
+export const TILE_FOOT = "flex flex-col gap-2";
