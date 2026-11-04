@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(73);
+select plan(94);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -281,19 +281,105 @@ create function pg_temp.close(code text, digits text, req text) returns jsonb la
 $$;
 
 select is(
-  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-c'),
-  '{"outcome": "ok", "guest_name": "Caro", "bill_cents": null, "place_name": "Visit Probe", "currency": "MXN", "code_set": true,
-    "rewards": [{"kind": "welcome_visit", "percent": 20, "cap_cents": null}]}'::jsonb,
-  'the page gets a first name and only the rewards this guest can use, never a member number'
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-c')
+    - 'expires_at' - 'opened_at',
+  '{"outcome": "ok", "guest_name": "Caro", "bill_cents": null, "bill_confirmed_at": null, "place_name": "Visit Probe",
+    "currency": "MXN", "code_set": true, "story": false, "story_offered": false, "task_seen_at": null, "task_skipped_at": null,
+    "rewards": [{"kind": "welcome_visit", "percent": 20, "cap_cents": null}], "quote": null, "quote_with_story": null, "step": "bill"}'::jsonb,
+  'the page gets a first name, only the rewards this guest can use, and an open visit at the bill step, never a member number'
 );
+
+-- ━━━ The shared visit (MESITA-3270) ━━━
+
+select ok(
+  (select vc.opened_at is not null and vc.expires_at > now() + interval '50 minutes'
+     from public.place_visit_codes vc where vc.code_hash = 'hash-c'),
+  'the scan stamps the visit open and gives the table an hour'
+);
+select is(
+  public.place_visit_state_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000c3202')->>'step',
+  'bill',
+  'the guest reads the same open visit by account, without the secret'
+);
+select is(
+  public.place_visit_state_for_guest('00000000-0000-4000-8000-000000013202', '00000000-0000-4000-8000-0000000c3202')->>'outcome',
+  'none',
+  'a guest with no open visit at a place reads none'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-right', '00000000-0000-4000-8000-00000000c0a0')->>'outcome', 'bill_not_confirmed',
+  'the till cannot close a visit with no bill on it'
+);
+select is(
+  public.place_visit_set_bill('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-wrong', 100)->>'outcome',
+  'wrong_place_code',
+  'the guest holds the link too, so the link alone cannot write the bill'
+);
+select is(
+  (select bill_cents from public.place_visit_codes where code_hash = 'hash-c'), null::integer,
+  'a refused bill writes nothing'
+);
+select ok(
+  (select vc.expires_at from public.place_visit_codes vc where vc.code_hash = 'hash-c')
+    = (select (public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-c')->>'expires_at')::timestamptz),
+  'reading an open visit again does not extend it'
+);
+select is(
+  public.place_visit_set_bill('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 50000)->'quote',
+  '{"percent": 20, "discount_cents": 10000, "total_cents": 40000}'::jsonb,
+  'staff type the bill and both phones read what it costs with the rewards that count'
+);
+select is(
+  public.place_visit_confirm_bill('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000c3202', 49900)->>'outcome',
+  'bill_changed',
+  'the guest cannot confirm a number that is not the one on the row'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-right', '00000000-0000-4000-8000-00000000c0a1')->>'outcome', 'bill_not_confirmed',
+  'a bill the guest has not confirmed does not close'
+);
+select is(
+  public.place_visit_confirm_bill('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000c3202', 50000)->>'step',
+  'pay',
+  'the guest confirms the bill, and with no Story offered the visit is at pay'
+);
+select is(
+  public.place_visit_set_bill('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 60000)->>'bill_confirmed_at',
+  null,
+  'a bill staff change needs the guest''s confirmation again'
+);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 60000, '{}', '00000000-0000-4000-8000-00000000c0a2')->>'outcome',
+  'bill_not_confirmed',
+  'the changed bill does not close until the guest confirms it'
+);
+select public.place_visit_set_bill('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 50000);
+select is(
+  public.place_visit_set_bill('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 50000)->>'bill_confirmed_at',
+  null,
+  'a bill set back to the old number is still unconfirmed'
+);
+select public.place_visit_confirm_bill('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000c3202', 50000);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-c', 'pc-right', 49000, '{}', '00000000-0000-4000-8000-00000000c0a3')->>'outcome',
+  'bill_not_confirmed',
+  'the till logs the confirmed number and no other'
+);
+
 select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-billed', now() + interval '10 minutes', 125000);
 select is(
   public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-billed')->>'bill_cents', '125000',
-  'the bill the guest typed reaches the page (MESITA-3245)'
+  'a bill already on the row reaches the page'
+);
+select public.place_visit_confirm_bill('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 125000);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-billed', 'pc-right', 125000, '{}', '00000000-0000-4000-8000-00000000c0b1')#>>'{visit,bill_cents}', '125000',
+  'the confirmed bill is the one logged'
 );
 select is(
-  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-billed', 'pc-right', 120000, '{}', '00000000-0000-4000-8000-00000000c0b1')#>>'{visit,bill_cents}', '120000',
-  'the amount the place confirms is the one logged, not what the guest typed'
+  public.place_visit_state_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202')->>'outcome',
+  'none',
+  'the close ends the open visit on the guest''s side too'
 );
 select is(
   public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-nope'),
@@ -358,6 +444,12 @@ select ok(
   not has_table_privilege('authenticated', 'public.place_code_tries', 'SELECT')
     and not has_table_privilege('anon', 'public.place_code_tries', 'SELECT')
     and not has_function_privilege('anon', 'public.place_visit_open(uuid, text)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_visit_state(uuid, text)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_visit_state_for_guest(uuid, uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_visit_confirm_bill(uuid, uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_visit_skip_task(uuid, uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_visit_set_bill(uuid, text, text, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_visit_set_task(uuid, text, text, boolean)', 'EXECUTE')
     and not has_function_privilege('anon',
       'public.place_visit_close(uuid, text, text, integer, text[], uuid)', 'EXECUTE')
     and not has_function_privilege('authenticated',
@@ -365,30 +457,63 @@ select ok(
   'client roles hold nothing on closing a visit'
 );
 
--- MESITA-3259: Story is the guest's choice, and the tick reaches staff with the code.
+-- MESITA-3259 then MESITA-3270: Story counts only once staff saw it, at the Task step.
 select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-unticked', now() + interval '10 minutes', 100000);
+select public.place_visit_confirm_bill('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 100000);
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-unticked') - 'rewards' - 'expires_at' - 'opened_at' - 'bill_confirmed_at'
+    - 'guest_name' - 'place_name' - 'currency' - 'code_set' - 'task_seen_at' - 'task_skipped_at',
+  '{"outcome": "ok", "bill_cents": 100000, "story": false, "story_offered": true, "step": "task",
+    "quote": {"percent": 10, "discount_cents": 10000, "total_cents": 90000},
+    "quote_with_story": {"percent": 30, "discount_cents": 30000, "total_cents": 70000}}'::jsonb,
+  'a Story on offer is a task step, and both phones read what the bill costs with and without it'
+);
 select ok(
   not (public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-unticked')->'rewards' @> '[{"kind": "instagram_story"}]'::jsonb),
-  'an unticked Story does not reach staff, even for a guest who could use it'
+  'a Story nobody saw does not count, even for a guest who could use it'
 );
 select is(
   public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', 100000, '{instagram_story}', '00000000-0000-4000-8000-00000000d001')->>'reason',
-  'story_not_ticked',
-  'the close refuses a Story the guest did not tick'
+  'story_not_seen',
+  'the close refuses a Story staff did not see'
 );
 select is(
   (select count(*)::integer from public.place_visits where request_id = '00000000-0000-4000-8000-00000000d001'), 0,
   'a refused Story logs no visit'
 );
-select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-ticked', now() + interval '10 minutes', 100000, true);
-select ok(
-  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-ticked')->'rewards' @> '[{"kind": "instagram_story"}]'::jsonb,
-  'a ticked Story reaches staff'
+select is(
+  public.place_visit_set_task('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-wrong', true)->>'outcome',
+  'wrong_place_code',
+  'the guest holds the link too, so the link alone cannot say the Story was seen'
 );
 select is(
-  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-ticked', 'pc-right', 100000, '{instagram_story}', '00000000-0000-4000-8000-00000000d002')#>>'{visit,discount_cents}',
-  '20000',
-  'a ticked Story comes off the bill'
+  public.place_visit_skip_task('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202')->>'step',
+  'pay',
+  'the guest passes on the Story and the visit moves to pay'
+);
+select is(
+  public.place_visit_set_task('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', true) - 'expires_at' - 'opened_at' - 'bill_confirmed_at'
+    - 'guest_name' - 'place_name' - 'currency' - 'code_set' - 'task_seen_at' - 'task_skipped_at' - 'quote_with_story' - 'bill_cents' - 'story_offered',
+  '{"outcome": "ok", "story": true, "step": "pay",
+    "rewards": [{"kind": "returning_visit", "percent": 10, "cap_cents": null}, {"kind": "instagram_story", "percent": 20, "cap_cents": null}],
+    "quote": {"percent": 30, "discount_cents": 30000, "total_cents": 70000}}'::jsonb,
+  'staff saw the Story: it counts, and the quote says so'
+);
+select is(
+  public.place_visit_skip_task('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202')->>'story',
+  'true',
+  'the guest cannot undo a Story staff already saw'
+);
+select is(
+  public.place_visit_set_task('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', false)->>'story',
+  'false',
+  'staff can take a Story back off'
+);
+select public.place_visit_set_task('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', true);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', 100000, '{returning_visit,instagram_story}', '00000000-0000-4000-8000-00000000d002')#>>'{visit,discount_cents}',
+  '30000',
+  'a Story staff saw comes off the bill'
 );
 
 -- MESITA-3262: the QR won't scan, so staff type the member number and the place code.

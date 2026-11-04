@@ -8,6 +8,17 @@ export type RewardKind = typeof REWARD_KINDS[number];
 export const PAYMENT_METHODS = ["cash", "card", "transfer", "other"] as const;
 export type PaymentMethod = typeof PAYMENT_METHODS[number];
 
+/** What a refused stamp says at the till (MESITA-3240, MESITA-3270). */
+export const VISIT_REFUSED: Record<string, string> = {
+  bad_code: "This QR has ended. Ask the guest to open it again.",
+  no_place_code: "This place hasn't set its place code yet. The owner sets it in Mesita Business, under Rewards.",
+  wrong_place_code: "That isn't this place's code.",
+  locked: "Too many wrong codes for this guest. Try again in 15 minutes.",
+  reward_off: "This place doesn't offer one of those rewards right now.",
+  not_eligible: "This guest can't use one of those rewards.",
+  bill_not_confirmed: "The guest hasn't confirmed this bill yet.",
+};
+
 /** How long a guest's code works. */
 export const VISIT_CODE_MINUTES = 10;
 /** Draws before giving up on a free code at this place. */

@@ -610,12 +610,29 @@ verify_jwt = true
 [functions.consumer-web-list-visits]
 verify_jwt = true
 
+# MESITA-3270: the shared visit, the guest's phone. By account, never by the QR's secret.
+[functions.consumer-web-get-visit]
+verify_jwt = true
+
+[functions.consumer-web-confirm-bill]
+verify_jwt = true
+
+[functions.consumer-web-skip-task]
+verify_jwt = true
+
 # MESITA-3240: visit.mesita.ai has no sign-in. The QR link's secret and the place
 # code are the keys, checked inside each function.
 [functions.visit-web-get-visit]
 verify_jwt = false
 
 [functions.visit-web-close-visit]
+verify_jwt = false
+
+# MESITA-3270: the shared visit, staff's stamps. The place code is the key.
+[functions.visit-web-set-bill]
+verify_jwt = false
+
+[functions.visit-web-set-task]
 verify_jwt = false
 
 # MESITA-3262: the QR won't scan. The member number and the place code together.

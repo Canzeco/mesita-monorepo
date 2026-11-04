@@ -19,7 +19,7 @@ export function RewardSheet({ placeId }: { placeId: string }) {
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const raw = useParams<{ step?: string }>().step;
-  const step = raw && isRewardStep(raw) ? raw : "reward";
+  const step = raw && isRewardStep(raw) ? raw : "qr";
   const [place, setPlace] = useState(() => seededRewardPlace(placeId));
   const { open, requestClose } = useOverlayPresence(() => router.push(CONSUMER_ROUTES.pay));
 

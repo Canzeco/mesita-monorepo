@@ -194,15 +194,16 @@ export function placePath(idOrSlug: string): string {
   return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
 }
 
-/** The steps of using a reward, each an address under Pay (MESITA-3254). */
-export const REWARD_STEPS = ["reward", "bill", "qr", "pay"] as const;
+/** The steps of using a reward, each an address under Pay (MESITA-3254). The QR opens
+ *  the shared visit; the other four run on both phones (MESITA-3270). */
+export const REWARD_STEPS = ["qr", "bill", "reward", "task", "pay"] as const;
 export type RewardStep = (typeof REWARD_STEPS)[number];
 
 export function isRewardStep(step: string): step is RewardStep {
   return (REWARD_STEPS as readonly string[]).includes(step);
 }
 
-export function rewardStepPath(placeId: string, step: RewardStep = "reward"): string {
+export function rewardStepPath(placeId: string, step: RewardStep = "qr"): string {
   return `${CONSUMER_ROUTES.pay}/${placeId}/${step}`;
 }
 
