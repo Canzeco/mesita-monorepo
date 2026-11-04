@@ -240,12 +240,11 @@ function RewardRow({ place, percent }: { place: Place; percent?: number }) {
           </span>
         ) : null}
       </span>
-      {/* A code you have not opened yet (Pato, MESITA-3255: "more secret, not that
-          dark… you need to open the actual ticket to see the QR"): a light tile
-          that looks tappable, a blurred grey QR. The real one is in the sheet. It
-          still mirrors the photo (MESITA-3249). */}
-      <span className="border-border bg-muted text-muted-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border shadow-xs">
-        <QrCode className="h-10 w-10 opacity-70 blur-[1.5px]" aria-hidden />
+      {/* A mark, never a code: the real QR is in the sheet (Pato, MESITA-3255: "not
+          that dark"; MESITA-3258: the blur "looks like shit"). Sharp ink on a white
+          tile that mirrors the photo (MESITA-3249). */}
+      <span className="border-border bg-card text-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border">
+        <QrCode className="h-9 w-9" aria-hidden />
       </span>
     </Link>
   );
