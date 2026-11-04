@@ -31,10 +31,18 @@ export async function apiListRewardPercents(client: SupabaseClient, placeIds: st
   return res.percents ?? {};
 }
 
-export type VisitCode = { code: string; expires_at: string };
+export type VisitCode = { code: string; issued_at: string; expires_at: string };
 
 export async function apiCreateVisitCode(client: SupabaseClient, placeId: string, billCents: number): Promise<VisitCode> {
   return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents });
+}
+
+export type VisitResult = { bill_cents: number; discount_cents: number; total_cents: number; currency: string };
+
+/** What staff closed for this guest here since `since`, or null while they haven't (MESITA-3256). */
+export async function apiGetVisitResult(client: SupabaseClient, placeId: string, since: string): Promise<VisitResult | null> {
+  const res = await invokeEF<{ visit: VisitResult | null }>(client, "consumer-web-get-visit-result", { place_id: placeId, since });
+  return res.visit;
 }
 
 /** What the guest reads before the visit closes (MESITA-3254), by the sum

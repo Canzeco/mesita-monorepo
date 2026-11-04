@@ -193,7 +193,7 @@ export function placePath(idOrSlug: string): string {
 }
 
 /** The steps of using a reward, each an address under Pay (MESITA-3254). */
-export const REWARD_STEPS = ["bill", "reward", "qr"] as const;
+export const REWARD_STEPS = ["bill", "reward", "qr", "pay"] as const;
 export type RewardStep = (typeof REWARD_STEPS)[number];
 
 export function isRewardStep(step: string): step is RewardStep {
