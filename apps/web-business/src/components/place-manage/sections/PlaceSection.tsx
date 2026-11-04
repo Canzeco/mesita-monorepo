@@ -281,7 +281,7 @@ export function PlaceSection({
   children,
 }: {
   place: AdminPlace;
-  /** Extra Place-page boxes (Reviews) — flow in the same masonry columns. */
+  /** Extra Profile boxes (Actions, staff) — flow in the same masonry columns. */
   children?: React.ReactNode;
 }) {
   const { savePending, profile, setPlace } = usePlaceContext();
@@ -411,7 +411,8 @@ export function PlaceSection({
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
           Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
           Reviews is its own tab (MESITA-2183).
-          Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin;
+          Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin,
+          except Actions, which ProfileTab adds here for staff (MESITA-3205);
           Team on Controls; the reputation rail on Activity. */}
       <SectionCard
         icon={<Store className="h-4 w-4" />}

@@ -7,13 +7,13 @@ import { placeTabFromPathname } from "@/lib/routes";
 // The profile editor stays mounted on every tab. Leaving /profile used to
 // unmount it, and the section cleanup wiped the draft. Off Profile the form
 // is hidden and inert so it cannot take focus.
-export function PlaceScroll({ children }: { children: React.ReactNode }) {
+export function PlaceScroll({ staff, children }: { staff: boolean; children: React.ReactNode }) {
   const tab = placeTabFromPathname(usePathname());
   const onProfile = tab === "profile";
   return (
     <div className="min-h-0 flex-1 overflow-y-auto pb-8">
       <div className={onProfile ? undefined : "hidden"} inert={!onProfile}>
-        <ProfileTab />
+        <ProfileTab staff={staff} />
       </div>
       {children}
     </div>

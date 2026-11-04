@@ -45,7 +45,7 @@ export default async function PlaceLayout({
           <PlaceTabTitle />
           <PreviewButton />
         </div>
-        <PlaceScroll>{children}</PlaceScroll>
+        <PlaceScroll staff={manage.role === "superadmin"}>{children}</PlaceScroll>
       </div>
     </PlaceManageShell>
   );
