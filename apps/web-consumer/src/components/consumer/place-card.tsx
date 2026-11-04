@@ -25,7 +25,7 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount, on its own row of the Home card ("30% OFF, up to $60", MESITA-3231). */
+  /** The discount, on its own row of the Home card ("30% OFF, up to $60 MXN", MESITA-3231). */
   off: string | null;
   rating: string | null;
   reviews: string | null;
