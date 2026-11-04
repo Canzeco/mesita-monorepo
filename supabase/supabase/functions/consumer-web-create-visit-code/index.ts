@@ -2,16 +2,16 @@
 //
 // MESITA-3202: the place screen's Rewards tab, Show my code. Six digits a guest
 // shows staff: this place only, ten minutes, one use. Asking again replaces the
-// last one. The code is never stored in the clear.
+// last one. The code is never stored in the clear. A closed account's code is
+// refused where it is used (place_visit_check, place_visit_create).
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, code: "123456", expires_at }
-//         | { ok: false, code: "no_rewards" | "account_deleted", error }
+//         | { ok: false, code: "no_rewards", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { hashVisitCode, newVisitCode, VISIT_CODE_DRAWS, VISIT_CODE_MINUTES } from "../_shared/place-visits.ts";
 
@@ -32,10 +32,6 @@ serveJson("consumer-web-create-visit-code", async (req) => {
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
   const admin = adminClient(envRes.env);
-  const { data: me, error: meErr } = await admin.from("consumers").select("deleted_at").eq("id", userId).maybeSingle();
-  if (meErr) return json({ ok: false, error: `consumers: ${meErr.message}` }, 500);
-  if (!me || isDeletedConsumer(me)) return accountDeletedResponse();
-
   const { data: rewards, error: rewardsErr } = await admin.rpc("place_rewards_for_guest", {
     p_place_id: placeId,
     p_consumer_id: userId,

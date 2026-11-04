@@ -14,6 +14,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { readBoostPlace } from "../_shared/boost.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
@@ -35,8 +36,8 @@ serveJson("business-web-list-place-visits", async (req) => {
   const access = await requirePlaceAccess(admin, user, placeId);
   if (access instanceof Response) return access;
 
-  const { data: place, error: placeErr } = await admin.from("places").select("timezone").eq("id", placeId).maybeSingle();
-  if (placeErr) return json({ ok: false, error: `places: ${placeErr.message}` }, 500);
+  const placeRes = await readBoostPlace(admin, placeId);
+  if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
 
   let query = admin.from("place_visits")
     .select(
@@ -61,7 +62,7 @@ serveJson("business-web-list-place-visits", async (req) => {
   return json({
     ok: true,
     can_void: canManage(access.role),
-    timezone: place?.timezone ?? null,
+    timezone: placeRes.place?.timezone ?? null,
     visits,
     next: rows.length > PAGE ? page[page.length - 1].created_at : null,
   });
