@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Zap } from "lucide-react";
+import { LightningIcon } from "@phosphor-icons/react/dist/ssr";
 import type { AdminPlace } from "../actions";
 import { updatePlace } from "../actions";
 import { usePlaceContext } from "../PlaceContext";
@@ -58,7 +58,7 @@ export function ActionStatesCard({ place }: { place: AdminPlace }) {
   }
 
   return (
-    <SectionCard icon={<Zap className="h-4 w-4" />} tint="amber" title="Actions" subtitle="What a guest can do here.">
+    <SectionCard icon={<LightningIcon size={20} />} title="Actions" subtitle="What a guest can do here.">
       <div className="mt-3 flex flex-col">
         <Row label="Mesita Reservations Enabled">
           <Switch on={on} pending={pending} onClick={toggle} label="Mesita Reservations Enabled" />

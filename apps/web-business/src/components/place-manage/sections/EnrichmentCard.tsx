@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { SparkleIcon } from "@phosphor-icons/react/dist/ssr";
 import {
   getPlaceEnrichment,
   type AdminPlace,
@@ -53,8 +53,7 @@ export function EnrichmentCard({ place }: { place: AdminPlace }) {
 
   return (
     <SectionCard
-      icon={<Sparkles className="h-4 w-4" />}
-      tint="indigo"
+      icon={<SparkleIcon size={20} />}
       title="Enrichment"
     >
       {!loaded ? (

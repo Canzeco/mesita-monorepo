@@ -17,33 +17,7 @@ import {
 } from "@/lib/phone-countries";
 
 // Shared admin manage/records kit — `@/components/ui/manage`.
-// Tinted icon chips, Fraunces titles, filled inputs.
-
-/** Fixed tint palette for card icon chips — differentiated, never loud. */
-export type Tint =
-  | "rose"
-  | "pink"
-  | "amber"
-  | "sky"
-  | "violet"
-  | "emerald"
-  | "teal"
-  | "orange"
-  | "indigo"
-  | "slate";
-
-const TINT_CHIP: Record<Tint, string> = {
-  rose: "bg-rose-500/10 text-rose-600",
-  pink: "bg-pink-500/10 text-pink-600",
-  amber: "bg-amber-500/10 text-amber-600",
-  sky: "bg-sky-500/10 text-sky-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  emerald: "bg-emerald-500/10 text-emerald-600",
-  teal: "bg-teal-500/10 text-teal-600",
-  orange: "bg-orange-500/10 text-orange-600",
-  indigo: "bg-indigo-500/10 text-indigo-600",
-  slate: "bg-muted text-muted-foreground",
-};
+// Grey icon chips (Pato, MESITA-3235), Fraunces titles, filled inputs.
 
 /** SectionCard's surface: the white card, its hairline and shadow, with no
  *  padding (the Admin tab's disclosures pad their summary and body, and
@@ -62,7 +36,6 @@ export const BONE_CLASS = "bg-muted animate-pulse rounded-lg";
 export function SectionCard({
   id,
   icon,
-  tint = "slate",
   title,
   subtitle,
   action,
@@ -71,8 +44,6 @@ export function SectionCard({
   /** Optional scroll/focus target (e.g. completeness Menu → Menus). */
   id?: string;
   icon?: React.ReactNode;
-  /** Icon-chip hue — keep sibling cards on different tints. */
-  tint?: Tint;
   title: string;
   subtitle?: string;
   action?: React.ReactNode;
@@ -83,12 +54,7 @@ export function SectionCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon != null && (
-            <span
-              className={
-                "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl " +
-                TINT_CHIP[tint]
-              }
-            >
+            <span className="bg-muted text-foreground inline-flex size-10 shrink-0 items-center justify-center rounded-xl">
               {icon}
             </span>
           )}
