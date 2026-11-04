@@ -607,6 +607,9 @@ verify_jwt = true
 [functions.consumer-web-get-visit-result]
 verify_jwt = true
 
+[functions.consumer-web-list-visits]
+verify_jwt = true
+
 # MESITA-3240: visit.mesita.ai has no sign-in. The QR link's secret and the place
 # code are the keys, checked inside each function.
 [functions.visit-web-get-visit]

@@ -6,6 +6,7 @@ import {
   Crown,
   Heart,
   Plug,
+  QrCode,
   Settings as SettingsIcon,
   Share2,
   UserRound,
@@ -15,7 +16,7 @@ import { Instagram } from "@/components/shared/instagram-icon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid } from "./profile-sections";
 
-// ─── Me's ten cells and the page they sit on ──────────────────────────────
+// ─── Me's eleven cells and the page they sit on ──────────────────────────────
 //
 // ONE SOURCE FOR THE HUB (Pato, MESITA-2701: "the placeholders must be
 // similar to the page you are loading, like the sizes"). ProfileClient draws
@@ -36,13 +37,14 @@ import { DestGrid } from "./profile-sections";
 //   2              Profile · Instagram
 //   2              Class · Plan
 //   2              Notifications · Reservations
-//   2              Favorites · Connector
-//   2              Share · Settings
+//   2              Favorites · Visits
+//   2              Connector · Share
+//   1              Settings
 //
 // Share left the bar (MESITA-2871) and came here (MESITA-2887, Pato: "Add
 // the Sharee button here"); it fills the cell beside Settings.
 //
-// TEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// ELEVEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
 // display anything of info of the user ... don't display info
@@ -121,21 +123,30 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
       href: CONSUMER_ROUTES.mePages.favorites,
     },
     {
+      Icon: QrCode,
+      title: "Visits",
+      summary: "Places you visited",
+      href: CONSUMER_ROUTES.mePages.visits,
+    },
+  ],
+  // Share wears the three joined dots it wore on the bar (MESITA-2568,
+  // MESITA-2887). Visits took Connector's cell (MESITA-3264).
+  [
+    {
       Icon: Plug,
       title: "Connector",
       summary: "ChatGPT or Claude",
       href: CONSUMER_ROUTES.mePages.connector,
     },
-  ],
-  // Settings closes the page (Pato, MESITA-2562); Share sits beside it, the
-  // three joined dots it wore on the bar (MESITA-2568, MESITA-2887).
-  [
     {
       Icon: Share2,
       title: "Share",
       summary: "Invite your friends",
       href: CONSUMER_ROUTES.share,
     },
+  ],
+  // Settings closes the page (Pato, MESITA-2562), alone since the cells went odd.
+  [
     {
       Icon: SettingsIcon,
       title: "Settings",

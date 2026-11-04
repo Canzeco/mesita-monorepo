@@ -315,7 +315,6 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/ticket/t1",
     "/gift/1234567890",
     "/me/diamond",
-    "/me/visits",
     "/me/settings/metrics",
   ])("%s is a redirect source that resolves in one hop", async (address) => {
     const redirects = await nextConfig.redirects!();
@@ -578,7 +577,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 
   it("routes each box to its page: notifications, reservations and favorites on Me", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
-    expect(ME).not.toContain("CONSUMER_ROUTES.mePages.visits");
+    expect(ME).toContain("CONSUMER_ROUTES.mePages.visits");
     // Each its own page again (MESITA-2565); they were Saved's two tabs
     // (MESITA-2521, MESITA-2561).
     expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
@@ -604,7 +603,7 @@ describe("T6 — Activity's sections are pages on Me", () => {
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is ten live cells", () => {
+describe("T8 — Me's grid is eleven live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_ROWS, the one
   // source ProfileClient and /me's loading.tsx both map, so the fallback
@@ -613,7 +612,7 @@ describe("T8 — Me's grid is ten live cells", () => {
   /** The cells' titles, in render order. */
   const gridTitles = () => ME_HUB_ROWS.flat().map((cell) => cell.title);
 
-  it("renders ten cells in Pato's order", () => {
+  it("renders eleven cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -632,6 +631,7 @@ describe("T8 — Me's grid is ten live cells", () => {
       "Notifications",
       "Reservations",
       "Favorites",
+      "Visits",
       "Connector",
       "Share",
       "Settings",
@@ -641,7 +641,6 @@ describe("T8 — Me's grid is ten live cells", () => {
   it("holds no money door and no Second Stage door", () => {
     for (const gone of [
       "Wallet",
-      "Visits",
       "Orders",
       "Gift",
       "Integrations",
@@ -660,11 +659,11 @@ describe("T8 — Me's grid is ten live cells", () => {
     expect(gridTitles()).not.toContain("Support");
   });
 
-  it("rows are pairs, Settings last; nothing spans", () => {
-    // Five pairs, Share · Settings last (MESITA-2887; Settings stood alone
-    // from MESITA-2562). Each row is one DestGrid (MeHubFrame), and DestGrid
-    // has no `cols`.
-    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2]);
+  it("rows are pairs, Settings alone last; nothing spans", () => {
+    // Five pairs, then Settings alone, as it stood from MESITA-2562: Visits made
+    // the cells odd (MESITA-3264). Each row is one DestGrid (MeHubFrame), and
+    // DestGrid has no `cols`.
+    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2, 1]);
     expect(HUB).toContain("<DestGrid key=");
     expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(HUB).not.toMatch(/<DestGrid cols=/);
@@ -865,7 +864,6 @@ describe("T9 — Pay holds only the reward steps, and the Second Stage trees are
       // NOT ["(shell)", "share"]: the referral deck stays gone, but /share is
       // its own page (MESITA-2566), off the bar since MESITA-2871.
       ["(shell)", "me", "diamond"],
-      ["(shell)", "me", "visits"],
       ["(shell)", "me", "settings", "metrics"],
       ["gift"],
     ]) {

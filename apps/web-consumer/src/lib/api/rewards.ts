@@ -37,6 +37,23 @@ export async function apiCreateVisitCode(client: SupabaseClient, placeId: string
   return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents, story });
 }
 
+export type GuestVisit = {
+  id: string;
+  place_id: string;
+  place_name: string | null;
+  photo: string | null;
+  bill_cents: number;
+  discount_cents: number;
+  total_cents: number;
+  currency: string;
+  created_at: string;
+};
+
+/** This guest's closed visits, newest first (MESITA-3264). `next` is the `before` of the next page. */
+export async function apiListVisits(client: SupabaseClient, before?: string): Promise<{ visits: GuestVisit[]; next: string | null }> {
+  return await invokeEF<{ visits: GuestVisit[]; next: string | null }>(client, "consumer-web-list-visits", before ? { before } : {});
+}
+
 export type VisitResult = { bill_cents: number; discount_cents: number; total_cents: number; currency: string };
 
 /** What staff closed for this guest here since `since`, or null while they haven't (MESITA-3256). */

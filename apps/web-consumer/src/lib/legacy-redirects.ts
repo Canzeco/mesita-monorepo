@@ -73,7 +73,6 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/class/invite", destination: "/me", permanent: true },
   { source: "/me/diamond/invite", destination: "/me", permanent: true },
   { source: "/me/diamond", destination: "/me", permanent: true },
-  { source: "/me/visits", destination: "/me", permanent: true },
   {
     source: "/me/settings/metrics",
     destination: "/me/settings",
