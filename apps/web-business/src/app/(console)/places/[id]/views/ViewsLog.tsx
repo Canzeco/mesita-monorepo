@@ -127,8 +127,12 @@ export function ViewsLog({ placeId, timezone, initial }: { placeId: string; time
   }
 
   return (
-    <Card className="flex flex-col p-0 sm:p-0">
-      <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Log</h2>
+    <Card className="flex min-w-0 flex-col p-0 sm:p-0">
+      {/* Beside the chart, so it wears the chart's title. */}
+      <div className="px-5 py-4 sm:px-6">
+        <h2 className="font-sans text-sm font-medium tracking-normal">Log</h2>
+        <p className="text-muted-foreground text-sm">Who viewed, liked and shared.</p>
+      </div>
       <ul className="divide-border border-border divide-y border-t">
         {events.length === 0 ? <li className={cn(ROW, "text-muted-foreground")}>No guests yet.</li> : null}
         {events.map((event, i) => (
