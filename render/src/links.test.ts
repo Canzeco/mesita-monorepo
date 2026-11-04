@@ -5,6 +5,7 @@ import {
   confirmedLink,
   discoverLinks,
   hitsFromFirecrawl,
+  rateLimitWaitMs,
   ownSiteAmong,
   poolFromHits,
   resolverBackground,
@@ -443,4 +444,56 @@ test("with no website from Google, only a host carrying the name is read", () =>
   const pool = poolFromHits("website_url", [{ url: "https://news.example/tacos" }, { url: "https://www.orinoco.mx/" }]);
   assert.equal(ownSiteAmong("Taquería Orinoco", pool), "https://www.orinoco.mx/");
   assert.equal(ownSiteAmong("Pujol", pool), null);
+});
+
+test("a rate-limited search waits as long as Firecrawl says and still lands in the pool", async () => {
+  assert.ok(rateLimitWaitMs("please retry after 5s, resets at") >= 6000);
+  const realSetTimeout = globalThis.setTimeout;
+  globalThis.setTimeout = ((fn: () => void, ms?: number) => realSetTimeout(fn, Math.min(ms ?? 0, 1))) as typeof setTimeout;
+  try {
+    let refusals = 3;
+    const fetchImpl: typeof fetch = async (url) => {
+      if (String(url).includes("/v2/search")) {
+        if (refusals-- > 0) return Response.json({ error: "please retry after 5s" }, { status: 429 });
+        return Response.json({ data: { web: [{ url: "https://www.instagram.com/pujol" }] } });
+      }
+      return Response.json({ output: [{ type: "message", content: [{ text: JSON.stringify({ instagram_url: "https://www.instagram.com/pujol" }) }] }] });
+    };
+    const out = await discoverLinks({
+      name: "Pujol",
+      city: "Mexico City",
+      have: {},
+      counts: { website_url: 0, instagram_url: 7, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+      firecrawlKey: "fc",
+      perplexityKey: "px",
+      fetchImpl,
+    });
+    assert.equal(out.links.instagram_url, "https://www.instagram.com/pujol");
+    assert.doesNotMatch(out.report.detail ?? "", /never answered/);
+  } finally {
+    globalThis.setTimeout = realSetTimeout;
+  }
+});
+
+test("a search that never answers says so on a completed step", async () => {
+  const fetchImpl: typeof fetch = async (url, init) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as { query?: string };
+    if (String(url).includes("/v2/search")) {
+      return String(body.query).includes("site:")
+        ? Response.json({ error: "down" }, { status: 500 })
+        : Response.json({ data: { web: [{ url: "https://www.instagram.com/pujol" }] } });
+    }
+    return Response.json({ output: [{ type: "message", content: [{ text: JSON.stringify({ instagram_url: "https://www.instagram.com/pujol" }) }] }] });
+  };
+  const out = await discoverLinks({
+    name: "Pujol",
+    city: "Mexico City",
+    have: {},
+    counts: { website_url: 0, instagram_url: 7, facebook_url: 0, opentable_url: 0, uber_eats_url: 0 },
+    firecrawlKey: "fc",
+    perplexityKey: "px",
+    fetchImpl,
+  });
+  assert.equal(out.report.state, "completed");
+  assert.match(out.report.detail ?? "", /1 search\(es\) never answered/);
 });

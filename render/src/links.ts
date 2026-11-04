@@ -224,9 +224,10 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
       if (url && !isGoogles(field, url, google)) found[field] = url;
     }
     const count = Object.keys(found).length;
+    const dropped = gathered.lost ? ` ${gathered.lost} search(es) never answered, so this pool is short.` : "";
     return {
       links: found,
-      report: completed(count ? `Found ${count} new link(s).` : "The Resolver kept no candidate."),
+      report: completed(`${count ? `Found ${count} new link(s).` : "The Resolver kept no candidate."}${dropped}`),
     };
   } catch (err) {
     const why = err instanceof Error ? err.message : String(err);
@@ -294,6 +295,8 @@ export function searchQueries(field: LinkField, name: string, city: string | nul
   return queries;
 }
 
+// One search at a time: Firecrawl allows 10 a minute and two places run at once,
+// so a burst only earns 429s.
 async function gatherPools(
   fetchImpl: FetchImpl,
   apiKey: string,
@@ -301,18 +304,23 @@ async function gatherPools(
   brand: string | null,
   fields: LinkField[],
   counts: Record<LinkField, number>,
-): Promise<{ pools: Partial<Record<LinkField, Candidate[]>>; failed: number }> {
-  const runs = await Promise.all(fields.map(async (field) => {
-    const searches = await Promise.all(searchQueries(field, place.name, place.city, brand).map((query) =>
-      firecrawlSearch(fetchImpl, apiKey, query, counts[field], place.country ?? null)
-    ));
-    return { hits: searches.flatMap((run) => run.hits), ok: searches.some((run) => run.ok) };
-  }));
+): Promise<{ pools: Partial<Record<LinkField, Candidate[]>>; failed: number; lost: number }> {
   const pools: Partial<Record<LinkField, Candidate[]>> = {};
-  fields.forEach((field, index) => {
-    pools[field] = poolFromHits(field, runs[index].hits);
-  });
-  return { pools, failed: runs.filter((run) => !run.ok).length };
+  let failed = 0;
+  let lost = 0;
+  for (const field of fields) {
+    const hits: Hit[] = [];
+    let answered = false;
+    for (const query of searchQueries(field, place.name, place.city, brand)) {
+      const run = await firecrawlSearch(fetchImpl, apiKey, query, counts[field], place.country ?? null);
+      hits.push(...run.hits);
+      if (run.ok) answered = true;
+      else lost++;
+    }
+    pools[field] = poolFromHits(field, hits);
+    if (!answered) failed++;
+  }
+  return { pools, failed, lost };
 }
 
 // With no website from Google, the search's first result whose host carries a
@@ -349,33 +357,50 @@ function addSiteLinks(
 }
 
 async function firecrawlSiteLinks(fetchImpl: FetchImpl, apiKey: string, url: string): Promise<string[]> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 30000);
-  try {
-    const res = await fetchImpl("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      // Social links live in the footer, which onlyMainContent would drop.
-      body: JSON.stringify({ url, formats: ["links"], onlyMainContent: false, timeout: 25000 }),
-      signal: ctrl.signal,
-    });
-    if (!res.ok) {
-      console.error(`[links] firecrawl scrape ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  for (let attempt = 0; attempt < RATE_LIMIT_ATTEMPTS; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    try {
+      const res = await fetchImpl("https://api.firecrawl.dev/v2/scrape", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        // Social links live in the footer, which onlyMainContent would drop.
+        body: JSON.stringify({ url, formats: ["links"], onlyMainContent: false, timeout: 25000 }),
+        signal: ctrl.signal,
+      });
+      if (res.status === 429 && attempt < RATE_LIMIT_ATTEMPTS - 1) {
+        await delay(rateLimitWaitMs(await res.text().catch(() => "")));
+        continue;
+      }
+      if (!res.ok) {
+        console.error(`[links] firecrawl scrape ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`);
+        return [];
+      }
+      const payload = await res.json() as { data?: { links?: unknown; metadata?: { creditsUsed?: unknown } } };
+      const used = payload.data?.metadata?.creditsUsed;
+      const credits = typeof used === "number" && used >= 0 ? used : 1;
+      charge("firecrawl", credits * FIRECRAWL_USD_PER_CREDIT, `scrape ${credits} credits`);
+      const links = payload.data?.links;
+      return Array.isArray(links) ? links.filter((link): link is string => typeof link === "string") : [];
+    } catch (err) {
+      const why = ctrl.signal.aborted ? "timeout after 30000ms" : (err instanceof Error ? err.message : String(err)).slice(0, 200);
+      console.error(`[links] firecrawl scrape ${why}`);
       return [];
+    } finally {
+      clearTimeout(timer);
     }
-    const payload = await res.json() as { data?: { links?: unknown; metadata?: { creditsUsed?: unknown } } };
-    const used = payload.data?.metadata?.creditsUsed;
-    const credits = typeof used === "number" && used >= 0 ? used : 1;
-    charge("firecrawl", credits * FIRECRAWL_USD_PER_CREDIT, `scrape ${credits} credits`);
-    const links = payload.data?.links;
-    return Array.isArray(links) ? links.filter((link): link is string => typeof link === "string") : [];
-  } catch (err) {
-    const why = ctrl.signal.aborted ? "timeout after 30000ms" : (err instanceof Error ? err.message : String(err)).slice(0, 200);
-    console.error(`[links] firecrawl scrape ${why}`);
-    return [];
-  } finally {
-    clearTimeout(timer);
   }
+  return [];
+}
+
+// A minute's window with two places running: a few waits always clear it.
+const RATE_LIMIT_ATTEMPTS = 6;
+
+// Firecrawl's 429 says "please retry after 5s". The jitter keeps two places from
+// waking in the same instant.
+export function rateLimitWaitMs(body: string): number {
+  const seconds = Number(/retry after (\d+)\s*s/i.exec(body)?.[1] ?? 10);
+  return (seconds + 1) * 1000 + Math.floor(Math.random() * 1000);
 }
 
 async function firecrawlSearch(
@@ -385,7 +410,7 @@ async function firecrawlSearch(
   limit: number,
   country: string | null,
 ): Promise<{ hits: Hit[]; ok: boolean }> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < RATE_LIMIT_ATTEMPTS; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20000);
     try {
@@ -395,8 +420,8 @@ async function firecrawlSearch(
         body: JSON.stringify({ query, limit, sources: [{ type: "web" }], ...(country ? { country } : {}) }),
         signal: ctrl.signal,
       });
-      if (res.status === 429 && attempt === 0) {
-        await delay(1000);
+      if (res.status === 429 && attempt < RATE_LIMIT_ATTEMPTS - 1) {
+        await delay(rateLimitWaitMs(await res.text().catch(() => "")));
         continue;
       }
       if (!res.ok) {
