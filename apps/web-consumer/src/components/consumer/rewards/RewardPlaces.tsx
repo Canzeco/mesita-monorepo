@@ -1,11 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapPinOff, QrCode, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { cardFacts } from "@/components/consumer/place-card";
-import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
@@ -33,9 +32,14 @@ import { errMsg } from "@/lib/utils";
 
 // THE REWARD TAB (Pato, MESITA-3214: "a list of all the places … sorted by
 // location. no searchbar … when you click the shit, the QR its actually open").
-// One card of rows under Home's header: every Mesita place, nearest first from
-// the header's location. For the moment every place counts as offering rewards.
+// Rows under Home's header: every Mesita place, nearest first from the header's
+// location. For the moment every place counts as offering rewards.
 // What a guest actually gets off the bill is what that place has switched on.
+//
+// SOCIAL'S ROWS (Pato, MESITA-3223: "why some has borders and the others don't.
+// pick one and use same for both"): an endless list, so one white band edge to
+// edge, hairlines top and bottom and between rows, never side borders or a
+// rounded card (MESITA-2542). It was one rounded card on grey.
 //
 // LOCATION MUST BE ON: with no fix and no saved pin there is nothing to sort
 // from, so this tab asks for it. Home's Monterrey fallback does not apply here.
@@ -43,6 +47,8 @@ import { errMsg } from "@/lib/utils";
 const PAGE = 20;
 /** h-56 and w-56, the QR's bone and its slot. */
 const QR_SIZE = 224;
+/** Social's band (SocialFeed.tsx). divide-y draws only between direct children. */
+const ROWS_BAND = "divide-border border-border bg-card divide-y border-y";
 
 export function RewardPlaces() {
   const supabase = useBrowserSupabase();
@@ -179,11 +185,10 @@ export function RewardPlaces() {
   }
 
   return (
-    <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4" data-reward-scroller>
-      <ul role="list" aria-label="Places" className="border-border bg-card overflow-hidden rounded-2xl border">
-        {pool.places.map((place, i) => (
+    <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-6" data-reward-scroller>
+      <ul role="list" aria-label="Places" className={ROWS_BAND}>
+        {pool.places.map((place) => (
           <li key={place.id}>
-            {i > 0 && <RowDivider />}
             <RewardRow
               place={place}
               percent={percents[place.id] ?? mockRewardPercent(place.id)}
@@ -191,7 +196,12 @@ export function RewardPlaces() {
             />
           </li>
         ))}
-        {hasMore && !fillFailed ? <li ref={sentinel} aria-hidden className="h-px" /> : null}
+        {/* The next page, waiting: one grey row, as on Social. */}
+        {hasMore && !fillFailed ? (
+          <li ref={sentinel} aria-hidden>
+            <RewardSkeletonRow />
+          </li>
+        ) : null}
       </ul>
       {hasMore && fillFailed ? (
         <button
@@ -227,12 +237,14 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
     <button
       type="button"
       onClick={onOpen}
-      className="hover:bg-muted flex min-h-16 w-full items-center gap-3 px-4 py-3 text-left transition"
+      className="hover:bg-muted/40 flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
       {photo ? (
-        <SizedImg src={photo} size="thumb" alt="" className="h-11 w-11 shrink-0 rounded-lg object-cover" />
+        <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
+          <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
+        </span>
       ) : (
-        <span className="bg-muted text-muted-foreground flex h-11 w-11 shrink-0 items-center justify-center rounded-lg">
+        <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
           <QrCode className="h-5 w-5" aria-hidden />
         </span>
       )}
@@ -333,22 +345,33 @@ function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
 }
 
 /** The card of rows as it will land, in the same margins. */
+/** One row, empty: the three lines of a row with its percent. */
+function RewardSkeletonRow() {
+  return (
+    <div className="flex min-h-16 items-center gap-3 px-4 py-3.5">
+      <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+      <span className="min-w-0 flex-1">
+        <span className="flex h-5 items-center">
+          <Skeleton className="h-3.5 w-3/5" />
+        </span>
+        <span className="flex h-4 items-center">
+          <Skeleton className="h-3 w-2/5" />
+        </span>
+        <span className="mt-0.5 flex h-4 items-center">
+          <Skeleton className="h-3 w-1/2" />
+        </span>
+      </span>
+      <Skeleton className="h-5 w-5 shrink-0" />
+    </div>
+  );
+}
+
 export function RewardRowsSkeleton() {
   return (
-    <div className="min-h-0 flex-1 overflow-hidden p-4" aria-busy>
-      <div className="border-border bg-card overflow-hidden rounded-2xl border" aria-hidden>
+    <div className="min-h-0 flex-1 overflow-hidden pb-6" aria-busy>
+      <div className={ROWS_BAND} aria-hidden>
         {Array.from({ length: 8 }, (_, i) => (
-          <Fragment key={i}>
-            {i > 0 && <RowDivider />}
-            <div className="flex min-h-16 items-center gap-3 px-4 py-3">
-              <Skeleton className="h-11 w-11 rounded-lg" />
-              <span className="flex-1">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="mt-1.5 h-3 w-20" />
-              </span>
-              <Skeleton className="h-5 w-5" />
-            </div>
-          </Fragment>
+          <RewardSkeletonRow key={i} />
         ))}
       </div>
     </div>
