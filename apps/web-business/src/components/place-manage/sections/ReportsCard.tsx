@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flag } from "lucide-react";
+import { FlagIcon } from "@phosphor-icons/react/dist/ssr";
 import { listPlaceReports, type AdminPlace, type AdminPlaceReport } from "../actions";
 import { SectionCard } from "@/components/ui/manage";
 import { ReportRow } from "@/components/reports/ReportRow";
@@ -39,8 +39,7 @@ export function ReportsCard({ place }: { place: AdminPlace }) {
 
   return (
     <SectionCard
-      icon={<Flag className="h-4 w-4" />}
-      tint="rose"
+      icon={<FlagIcon size={20} />}
       title="Reports"
       subtitle={
         reports && reports.length > 0
