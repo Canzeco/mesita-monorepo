@@ -17,6 +17,7 @@ import {
 import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
+import { mockRewardLabel } from "@/lib/mock-rewards";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
@@ -116,6 +117,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // Mesita Prepay (MESITA-3098): only a Mesita place can take money.
     onPrepay: isMesitaPlaceId(place.id) ? () => setPrepayOpen(true) : undefined,
     onBoost,
+    rewardLabel: mockRewardLabel(place.id),
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
   };

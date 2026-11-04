@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
+import { BadgePercent, Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
@@ -137,6 +137,7 @@ export function ProfileSummary({
           </ProfileFact>
         )}
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
+        {actions?.rewardLabel && <ProfileFact icon={BadgePercent}>{actions.rewardLabel}</ProfileFact>}
         {stateValue && (
           <ProfileFact icon={Clock} strong={isOpen}>
             {stateValue}
