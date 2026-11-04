@@ -32,7 +32,8 @@ import type { RewardPlaceHeader } from "./reward-place-seed";
 // remember we have many steps"; MESITA-3254: full screen, each step an address
 // under /pay). Based on the old Ticket (TicketScreen and JourneyRail at 0134a1f9^):
 // the place, a rail of steps, one step at a time. Only the steps that work today:
-// the guest enters the bill (MESITA-3245), sees the rewards and what they pay,
+// the guest sees the rewards and picks Story first (MESITA-3266), so there is time
+// to post it, then enters the bill (MESITA-3245) and sees what they pay,
 // shows a QR that carries the bill to visit.mesita.ai (MESITA-3240). The code lasts
 // ten minutes and one use, and a new one replaces it when it ends, so what's on
 // screen always works. The bill stays out of the address, so a reload starts at Bill.
@@ -323,9 +324,9 @@ export function VisitFlow({
   const billCents = readBill(typed);
   const billMissing = billCents === null;
 
-  // A reload on a later step has no bill. Pay has nothing to say until staff close.
+  // A reload on QR or Pay has no bill. Pay has nothing to say until staff close.
   useEffect(() => {
-    if (step !== "bill" && billMissing) router.replace(rewardStepPath(placeId));
+    if ((step === "qr" || step === "pay") && billMissing) router.replace(rewardStepPath(placeId, "bill"));
     else if (step === "pay" && !result) router.replace(rewardStepPath(placeId, "qr"));
   }, [router, placeId, step, billMissing, result]);
 
@@ -358,7 +359,7 @@ export function VisitFlow({
         <StepRail
           step={step}
           // Once staff closed the visit there is nothing to go back to.
-          canReach={(id) => !result && id !== "pay" && (id === "bill" || (!billMissing && (id === "reward" || usable)))}
+          canReach={(id) => !result && id !== "pay" && (id === "reward" || (usable && (id === "bill" || !billMissing)))}
           onGo={go}
         />
       </div>
@@ -368,7 +369,7 @@ export function VisitFlow({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!billMissing) go("reward");
+            if (!billMissing && usable) go("qr");
           }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
@@ -391,26 +392,24 @@ export function VisitFlow({
                 MXN
               </span>
             </div>
+            {!billMissing && usable ? (
+              <div className="mt-4">
+                <BillSummary billCents={billCents} rewards={summary} />
+              </div>
+            ) : null}
           </div>
           <div className="border-border border-t p-4">
-            <button type="submit" disabled={billMissing} className={PRIMARY_BUTTON_CLASS}>
-              Next
+            <button type="submit" disabled={billMissing || !usable} className={PRIMARY_BUTTON_CLASS}>
+              Show my QR
             </button>
           </div>
         </form>
       ) : null}
 
-      {step === "reward" && !billMissing ? (
+      {step === "reward" ? (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
             <h2 className={STEP_TITLE}>Your reward</h2>
-            {data && usable ? (
-              <div className="mt-4">
-                <BillSummary billCents={billCents} rewards={summary} />
-              </div>
-            ) : (
-              <p className="text-muted-foreground mt-1 text-sm tabular-nums">On your bill of {billText(billCents)}.</p>
-            )}
             <div className="border-border bg-card mt-4 rounded-2xl border">
               {data ? (
                 usable ? (
@@ -449,8 +448,8 @@ export function VisitFlow({
             ) : null}
           </div>
           <div className="border-border border-t p-4">
-            <button type="button" disabled={!usable} onClick={() => go("qr")} className={PRIMARY_BUTTON_CLASS}>
-              Show my QR
+            <button type="button" disabled={!usable} onClick={() => go("bill")} className={PRIMARY_BUTTON_CLASS}>
+              Next
             </button>
           </div>
         </>

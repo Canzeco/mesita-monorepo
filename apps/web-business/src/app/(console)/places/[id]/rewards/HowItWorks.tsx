@@ -7,7 +7,7 @@ import { Card } from "@/components/shell/Page";
 const HOW_IT_WORKS: Array<{ name: string; line: string }> = [
   {
     name: "The guest shows a QR",
-    line: "They enter their bill in Mesita, see the rewards that apply and get a QR. It works for ten minutes, once.",
+    line: "They see the rewards that apply in Mesita, enter their bill and get a QR. It works for ten minutes, once.",
   },
   {
     name: "Your staff scan it",
