@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
@@ -13,7 +13,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
-import { NO_BOOST, NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
+import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,8 +31,8 @@ import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-li
 //      (MESITA-2307, MESITA-2679); then one row of actions: the heart,
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
-//   2. The sticky strip, Overview · Reviews · Products (Soon, with Rewards)
-//      · Premier, for every place (MESITA-2332, MESITA-2861, MESITA-2925). While a Google-only profile is being
+//   2. The sticky strip, Overview · Reviews · Products · Rewards (both Soon),
+//      for every place (MESITA-2332, MESITA-3201). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
 //      band; there is no vote
@@ -46,39 +46,16 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
-  boost,
-  openTab,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** The Premier tab's body (MESITA-2861, MESITA-2925), drawn by the
-   *  host: the consumer passes its subscribe/cancel pane; without it the
-   *  tab explains where a place is made Premier. */
-  boost?: React.ReactNode;
-  /** The host asks for a tab. Each new `key` switches once; the guest's own
-   *  taps win after. */
-  openTab?: { tab: PlaceTab; key: number } | null;
   /** Set while a Google-only profile is being created (MESITA-2307): a
    *  Creating fact leads the facts row, or a refusal says why. */
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
 }) {
-  const [tab, setTab] = useState<PlaceTab>(openTab?.tab ?? "place");
-  // A new request switches the tab during render (React's "adjust state when
-  // a prop changes"), never in an effect.
-  const [openKey, setOpenKey] = useState(openTab?.key ?? null);
-  if (openTab && openTab.key !== openKey) {
-    setOpenKey(openTab.key);
-    setTab(openTab.tab);
-  }
-  // THE ASK JUMPS TO THE TAB (Pato, MESITA-3200: jump down to the prices): the
-  // strip goes to the top, so the tab it opened is on screen, not below the
-  // summary. Only the scroll needs an effect; the tab switched during render.
-  const tabBarRef = useRef<HTMLElement>(null);
-  useEffect(() => {
-    if (openKey != null) tabBarRef.current?.scrollIntoView({ block: "start" });
-  }, [openKey]);
+  const [tab, setTab] = useState<PlaceTab>("place");
   const create = place.is_enriched ? null : (creating ?? null);
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
@@ -93,7 +70,7 @@ export function PlaceDetailBody({
         creating={create != null && create.error == null}
       />
       <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar ref={tabBarRef} tab={tab} onChange={setTab} />
+        <PlaceTabBar tab={tab} onChange={setTab} />
           {/* NO EMPTY BOXES WHILE IT IS CREATED (Pato, MESITA-2685: "if a
               place is being created, better at the bottom write, no
               overview yet, following the same style of reviews and products
@@ -132,8 +109,7 @@ export function PlaceDetailBody({
           {tab === "reviews" && (
             <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
           )}
-          {tab === "products" && <SoonScreen />}
-          {tab === "boost" && (boost ?? <PlaceEmptyScreen {...NO_BOOST} />)}
+          {(tab === "products" || tab === "rewards") && <SoonScreen />}
       </div>
     </div>
   );
