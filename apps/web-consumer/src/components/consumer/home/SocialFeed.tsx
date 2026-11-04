@@ -40,8 +40,10 @@
 // MESITA-2532: "is juse one person one place events. list all the fucking
 // events. its readl time uner you radious or near you, just enough to odn't
 // kill"): the server returns every event inside the operator's Area circle
-// around the guest, newest first, at most 50, and the pane refetches every
-// LIVE_MS while the tab is visible. NEVER "A MEMBER" (Pato, MESITA-2612:
+// around the guest, newest first, A PAGE AT A TIME as the list's foot nears
+// the view (MESITA-3220, Pato: "use pagination loading here in social"), and
+// the pane refetches the newest page every LIVE_MS while the tab is visible,
+// keeping the older pages it holds. NEVER "A MEMBER" (Pato, MESITA-2612:
 // "who the fuck is a member, remove that shit"; it retires MESITA-2580's and
 // MESITA-2594's "A member"): the member's name. NO MOCK DATA
 // (Pato, MESITA-2591: "remove mock data"; it reverses MESITA-2520's sample
@@ -113,6 +115,7 @@ import {
   apiMemberHistoryCards,
   isMesitaPlaceId,
   type ActivityFeedItem,
+  type ActivityFeedPage,
   type ActivityKind,
   type ActivityPerson,
   type MemberHistoryItem,
@@ -459,7 +462,7 @@ const cardKey = (e: CardEvent) => `${e.placeId}|${e.kind}|${e.at}`;
  *  the last feed, each opened card's history, and each card's fetched pages
  *  and scroll. In memory only, for this tab's life; every one is refetched
  *  behind what it repaints. */
-let lastFeed: ActivityFeedItem[] | null = null;
+let lastFeed: (ActivityFeedPage & { fromKey: string }) | null = null;
 const MEMORY_CARDS = 20;
 const historyMemory = new Map<string, MemberHistory>();
 const cardMemory = new Map<
@@ -1034,9 +1037,52 @@ function HistoryTileLink({
   );
 }
 
+/** The newest page laid over the pages already held (MESITA-3220): it replaces
+ *  the rows its span covers and keeps the older ones with their cursor. When it
+ *  does not reach the held rows, more arrived than a page holds, and it starts
+ *  the list again rather than leave a hole. Times compare as the server's own
+ *  strings: JavaScript's Date would round the microseconds. */
+export function mergeNewestPage(
+  held: ActivityFeedPage | null,
+  page: ActivityFeedPage,
+): ActivityFeedPage {
+  const last = page.items[page.items.length - 1];
+  if (!held || !last || !page.next) return page;
+  const newestHeld = held.items[0];
+  if (!newestHeld || newestHeld.at < last.at) return page;
+  const older = held.items.filter((it) => it.at < last.at);
+  return older.length > 0
+    ? { items: [...page.items, ...older], next: held.next }
+    : page;
+}
+
+/** How far ahead of the view the next page is asked for. */
+const FEED_AHEAD = "600px";
+/** Failed page reads in a row before the list stops asking until a refresh. */
+const FEED_MORE_TRIES = 3;
+const FEED_MORE_RETRY_MS = 2000;
+
 /** Rows the loading band draws: enough to run past the pane's foot, as a
  *  full feed does (each row is 68px). */
 const SKELETON_ROWS = 10;
+
+/** One row of the band, empty: the loading list's and the next page's. */
+function SkeletonRow() {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1">
+        <div className="flex h-5 items-center">
+          <Skeleton className="h-3.5 w-3/5" />
+        </div>
+        <div className="mt-0.5 flex h-4 items-center">
+          <Skeleton className="h-3 w-2/5" />
+        </div>
+      </div>
+      <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+    </div>
+  );
+}
 
 /** Loading is the feed it waits for, block for block (Pato, MESITA-2701:
  *  "the placeholders must be similar to the page you are loading, like the
@@ -1054,18 +1100,7 @@ function FeedSkeleton() {
       </div>
       <div className="divide-border border-border bg-card divide-y border-y">
         {Array.from({ length: SKELETON_ROWS }, (_, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
-            <div className="min-w-0 flex-1">
-              <div className="flex h-5 items-center">
-                <Skeleton className="h-3.5 w-3/5" />
-              </div>
-              <div className="mt-0.5 flex h-4 items-center">
-                <Skeleton className="h-3 w-2/5" />
-              </div>
-            </div>
-            <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
-          </div>
+          <SkeletonRow key={i} />
         ))}
       </div>
     </div>
@@ -1092,10 +1127,12 @@ function SocialFeedBody() {
   const [state, setState] = useState<
     | { status: "loading" }
     | { status: "error"; message: string }
-    | { status: "ready"; items: ActivityFeedItem[] }
+    | { status: "ready"; items: ActivityFeedItem[]; next: string | null }
   >(() =>
     // Back on Social: the last list repaints at once while it refetches.
-    lastFeed ? { status: "ready", items: lastFeed } : { status: "loading" },
+    lastFeed
+      ? { status: "ready", items: lastFeed.items, next: lastFeed.next }
+      : { status: "loading" },
   );
   // Bumped by Try again and the refresh button: the effect refetches.
   const [attempt, setAttempt] = useState(0);
@@ -1107,7 +1144,7 @@ function SocialFeedBody() {
   // The events already shown (null before the first load, which glows
   // nothing) and the ones that just arrived.
   const seenRef = useRef<Set<string> | null>(
-    lastFeed ? new Set(lastFeed.map(eventKey)) : null,
+    lastFeed ? new Set(lastFeed.items.map(eventKey)) : null,
   );
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const freshTimer = useRef<number | undefined>(undefined);
@@ -1127,8 +1164,16 @@ function SocialFeedBody() {
   const pullStart = useRef<number | null>(null);
   const scroller = () =>
     rootRef.current?.closest<HTMLElement>("[data-home-scroller]") ?? null;
+  // The next page (MESITA-3220): the foot of the list nearing the view asks.
+  const footRef = useRef<HTMLDivElement>(null);
+  const loadingMore = useRef(false);
+  const moreFails = useRef(0);
+  const [moreRound, setMoreRound] = useState(0);
+  const [gaveUp, setGaveUp] = useState(false);
   const refresh = () => {
     setRefreshing(true);
+    moreFails.current = 0;
+    setGaveUp(false);
     setAttempt((n) => n + 1);
   };
 
@@ -1139,8 +1184,9 @@ function SocialFeedBody() {
         supabase,
         from ? { lat: from.lat, lng: from.lng } : null,
       )
-        .then((items) => {
+        .then((page) => {
           if (cancelled) return;
+          const { items } = page;
           const keys = items.map(eventKey);
           const seen = seenRef.current;
           const arrived = seen ? keys.filter((k) => !seen.has(k)) : [];
@@ -1161,8 +1207,14 @@ function SocialFeedBody() {
           const at = Date.now();
           setUpdatedAt(at);
           setNow(at);
-          lastFeed = items;
-          setState({ status: "ready", items });
+          // Read now, not at the ask: a page may have landed since. Another
+          // location's rows are never kept.
+          const merged = mergeNewestPage(
+            lastFeed?.fromKey === fromKey ? lastFeed : null,
+            page,
+          );
+          lastFeed = { ...merged, fromKey };
+          setState({ status: "ready", ...merged });
           setRefreshing(false);
         })
         .catch((err) => {
@@ -1193,6 +1245,65 @@ function SocialFeedBody() {
   }, [supabase, fromKey, attempt]);
 
   useEffect(() => () => window.clearTimeout(freshTimer.current), []);
+
+  const next = state.status === "ready" ? state.next : null;
+  useEffect(() => {
+    const el = footRef.current;
+    if (!next || gaveUp || !el) return;
+    let cancelled = false;
+    const settle = () => {
+      loadingMore.current = false;
+      if (!cancelled) setMoreRound((n) => n + 1);
+    };
+    const io = new IntersectionObserver(
+      (seen) => {
+        if (!seen.some((e) => e.isIntersecting) || loadingMore.current) return;
+        loadingMore.current = true;
+        apiListActivityFeed(
+          supabase,
+          from ? { lat: from.lat, lng: from.lng } : null,
+          next,
+        )
+          .then((page) => {
+            moreFails.current = 0;
+            // The location moved, or a refresh restarted the list: this page
+            // no longer follows what is held.
+            if (lastFeed?.fromKey === fromKey && lastFeed.next === next) {
+              const held = new Set(lastFeed.items.map(eventKey));
+              const items = [
+                ...lastFeed.items,
+                ...page.items.filter((it) => !held.has(eventKey(it))),
+              ];
+              lastFeed = { items, next: page.next, fromKey };
+              seenRef.current = new Set([
+                ...(seenRef.current ?? []),
+                ...items.map(eventKey),
+              ]);
+              setState({ status: "ready", items, next: page.next });
+            }
+            settle();
+          })
+          .catch((err) => {
+            console.warn(
+              "social_feed_page_failed",
+              errMsg(err, "consumer-web-list-activity failed"),
+            );
+            moreFails.current += 1;
+            if (moreFails.current >= FEED_MORE_TRIES) setGaveUp(true);
+            setTimeout(settle, FEED_MORE_RETRY_MS);
+          });
+      },
+      // The root is Home's scroller: a margin on the viewport would not reach
+      // past the scroller's own clipping.
+      { root: scroller(), rootMargin: `${FEED_AHEAD} 0px` },
+    );
+    io.observe(el);
+    return () => {
+      cancelled = true;
+      io.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [next, moreRound, gaveUp, fromKey, supabase]);
 
   // Scrolled to the top by hand: the pill has nothing left to say.
   const ready = state.status === "ready";
@@ -1266,7 +1377,8 @@ function SocialFeedBody() {
     );
   }
   const rows = state.items;
-  if (rows.length === 0) {
+  const more = next != null && !gaveUp;
+  if (rows.length === 0 && !more) {
     return (
       <>
         <EmptyState
@@ -1356,14 +1468,21 @@ function SocialFeedBody() {
         aria-label="Social"
         className="divide-border border-border bg-card divide-y border-y"
       >
-        {rows.map((item, i) => (
+        {rows.map((item) => (
           <FeedRow
-            key={`${i}|${item.placeId}|${item.kind}`}
+            key={eventKey(item)}
             item={item}
             fresh={fresh.has(eventKey(item))}
             onPerson={openPerson}
           />
         ))}
+        {more && (
+          <li aria-hidden data-social-more>
+            <div ref={footRef}>
+              <SkeletonRow />
+            </div>
+          </li>
+        )}
       </ul>
       {card}
     </div>

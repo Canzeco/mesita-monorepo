@@ -179,7 +179,7 @@ export function RewardPlaces() {
   }
 
   return (
-    <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4" data-reward-scroller>
+    <div className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4" data-reward-scroller>
       <ul role="list" aria-label="Places" className="border-border bg-card overflow-hidden rounded-2xl border">
         {pool.places.map((place, i) => (
           <li key={place.id}>

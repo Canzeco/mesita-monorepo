@@ -641,7 +641,7 @@ select ok(
 );
 
 select ok(
-  not has_function_privilege('authenticated', 'public.place_activity_feed(integer)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.place_activity_feed(integer, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.place_activity_people(uuid, integer)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.place_activity_history_by(uuid, text, timestamptz, integer)', 'EXECUTE'),
   'client roles cannot run the Social readers (they name other members)'

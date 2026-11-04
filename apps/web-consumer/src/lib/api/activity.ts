@@ -94,16 +94,27 @@ export async function apiTrackActivity(
   return { enriching: res.enriching === true };
 }
 
+/** One page of the feed (MESITA-3220). `next` is where the following page
+ *  starts, null at the end; a page can be short, or empty, and still have one. */
+export type ActivityFeedPage = {
+  items: ActivityFeedItem[];
+  next: string | null;
+};
+
 export async function apiListActivityFeed(
   client: SupabaseClient,
   from: { lat: number; lng: number } | null,
-): Promise<ActivityFeedItem[]> {
-  const { items } = await invokeEF<{ items: ActivityFeedItem[] }>(
+  before?: string,
+): Promise<ActivityFeedPage> {
+  const { items, next } = await invokeEF<ActivityFeedPage>(
     client,
     "consumer-web-list-activity",
-    from ? { lat: from.lat, lng: from.lng } : {},
+    {
+      ...(from ? { lat: from.lat, lng: from.lng } : {}),
+      ...(before ? { before } : {}),
+    },
   );
-  return items;
+  return { items, next };
 }
 
 export async function apiPlaceActivity(
