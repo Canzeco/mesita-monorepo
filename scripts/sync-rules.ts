@@ -244,6 +244,7 @@ export const TARGETS: Target[] = [
   { label: "apps/web-consumer", dir: join(repoRoot, "apps", "web-consumer"), quickstart: false, budget: 297 },
   { label: "apps/web-landing", dir: join(repoRoot, "apps", "web-landing"), quickstart: false, budget: 104 },
   { label: "apps/web-business", dir: join(repoRoot, "apps", "web-business"), quickstart: false, budget: 144 },
+  { label: "apps/web-visit", dir: join(repoRoot, "apps", "web-visit"), quickstart: false, budget: 60 },
   // The deploy path, the ACL and the RLS rules no test pins.
   { label: "supabase", dir: join(repoRoot, "supabase"), quickstart: false, budget: 351 },
 ];
