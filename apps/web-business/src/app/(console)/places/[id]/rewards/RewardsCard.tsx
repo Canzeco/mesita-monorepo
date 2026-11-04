@@ -91,7 +91,7 @@ export function RewardsCard({ placeId, initial, canEdit }: { placeId: string; in
       {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
       {!canEdit ? <p className="text-muted-foreground text-sm">Only the owner can change rewards.</p> : null}
       <p className="text-muted-foreground text-sm">
-        Welcome or Returning, plus Story, plus VIP Class: they add up on one bill. Guests show a code and you enter it below.
+        Welcome or Returning, plus Story, plus VIP Class: they add up on one bill.
       </p>
     </>
   );

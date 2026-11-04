@@ -51,3 +51,12 @@ export async function hashVisitCode(placeId: string, code: string): Promise<stri
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** SHA-256 hex of the place code (MESITA-3226), under its own prefix so it can never
+ *  match a guest's code hash. Six digits are guessable from a leaked hash; the hash
+ *  keeps the number out of plain sight, and the table is service-role only. */
+export async function hashPlaceCode(placeId: string, code: string): Promise<string> {
+  const bytes = new TextEncoder().encode(`place-code:${placeId}:${code}`);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}

@@ -589,10 +589,7 @@ verify_jwt = true
 [functions.business-web-set-place-reward]
 verify_jwt = true
 
-[functions.business-web-check-visit-code]
-verify_jwt = true
-
-[functions.business-web-create-place-visit]
+[functions.business-web-set-place-code]
 verify_jwt = true
 
 [functions.business-web-list-place-visits]

@@ -1,7 +1,7 @@
 "use client";
 
-// The log (MESITA-3202), newest first. New visit is on Rewards for the moment
-// (MESITA-3210), so this page only reads and voids.
+// The log (MESITA-3202), newest first. No visit is registered from this app
+// (MESITA-3226), so this page only reads and voids.
 
 import { useState } from "react";
 import { Card } from "@/components/shell/Page";
