@@ -24,6 +24,11 @@ export const STICKY_COL_CELL =
 export const FOCUS_RING_CLASS =
   "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
+/** The same ring on a dark surface (the rail): the offset takes the surface's
+ *  colour, because `background` would draw a pale halo around it. */
+export const FOCUS_RING_ON_DARK_CLASS =
+  "outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-foreground";
+
 export const TOUCH_TARGET_CLASS =
   "relative after:absolute after:inset-x-0 after:top-1/2 after:h-11 after:w-full after:-translate-y-1/2 after:content-['']";
 

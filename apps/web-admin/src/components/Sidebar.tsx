@@ -22,7 +22,7 @@ import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
-import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
+import { FOCUS_RING_ON_DARK_CLASS } from "@/lib/ui-classes";
 
 type SidebarProps = {
   onNavigate?: () => void;
@@ -127,18 +127,18 @@ const SIDEBAR_SECTIONS: {
 
 /** "Mesita Admin" in the frame: Outfit, as Business and the consumer app draw
  *  the word. The font loads in the root layout, because a `next/font` call in
- *  this module would break `Sidebar.test.ts`. */
+ *  this module would break `Sidebar.test.ts`. It inherits its colour, because
+ *  it sits on the dark rail and on the light phone top bar. */
 export function AdminWordmark() {
   return (
     <span className="flex items-baseline gap-2 select-none">
-      <span className="text-foreground font-(family-name:--font-wordmark) text-2xl leading-none font-bold tracking-[-0.03em]">
+      <span className="font-(family-name:--font-wordmark) text-2xl leading-none font-bold tracking-[-0.03em]">
         Mesita
       </span>
-      <span className="text-muted-foreground text-sm font-medium">Admin</span>
+      <span className="text-sm font-medium opacity-60">Admin</span>
     </span>
   );
 }
-
 /** One row size, from the Business rail: 40px with a 20px icon slot. The drawer
  *  is a touch target, so it starts at 44px and `lg:` tightens to 40. */
 function NavLink({
@@ -157,10 +157,10 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={
-        `flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors lg:min-h-10 ${FOCUS_RING_CLASS} ` +
+        `flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors lg:min-h-10 ${FOCUS_RING_ON_DARK_CLASS} ` +
         (active
-          ? "bg-muted text-foreground font-medium"
-          : "text-foreground/80 hover:bg-muted/60 hover:text-foreground")
+          ? "bg-background/15 text-background font-medium"
+          : "text-background/75 hover:bg-background/10 hover:text-background")
       }
     >
       <span className="flex w-5 shrink-0 justify-center">
@@ -178,12 +178,12 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   // scroll, so Account stays reachable on a short window; `-mx-1 px-1` keeps
   // the rows' focus rings from clipping against the scroller.
   return (
-    <aside className="border-border bg-card pb-safe flex h-full w-full flex-col overflow-hidden border-r px-3 pt-5 lg:pb-3">
+    <aside className="border-background/10 bg-foreground text-background pb-safe flex h-full w-full flex-col overflow-hidden border-r px-3 pt-5 scheme-dark lg:pb-3">
       <Link
         href={MULTIPLE_PLACES_PARENT.href}
         onClick={onNavigate}
         title="Mesita Admin"
-        className={`mb-5 flex h-10 shrink-0 items-center rounded-lg px-3 ${FOCUS_RING_CLASS}`}
+        className={`mb-5 flex h-10 shrink-0 items-center rounded-lg px-3 ${FOCUS_RING_ON_DARK_CLASS}`}
       >
         <AdminWordmark />
       </Link>
@@ -192,7 +192,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-1 py-0.5">
           {SIDEBAR_SECTIONS.map((section) => (
             <div key={section.id} role="group" aria-label={section.label} className="flex flex-col gap-0.5">
-              <p className="text-muted-foreground flex h-7 shrink-0 items-center px-3 text-xs font-semibold">
+              <p className="text-background/55 flex h-7 shrink-0 items-center px-3 text-xs font-semibold">
                 {section.label}
               </p>
               {section.items.map((item) => (
@@ -206,7 +206,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </div>
           ))}
         </div>
-        <div className="border-border mt-2 shrink-0 border-t pt-2">
+        <div className="border-background/10 mt-2 shrink-0 border-t pt-2">
           <NavLink
             {...ACCOUNT_NAV}
             active={isNavActive(pathname, ACCOUNT_NAV.href)}
