@@ -74,12 +74,12 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   },
   {
     name: "Marketing Agent",
-    line: "Creates your photos, videos and posts with AI, reuses guests' verified Stories with their permission, and publishes to your social media and Mesita profile. Runs your paid ads on Instagram, Facebook and Google and measures the visits and purchases they bring. You approve everything from one queue.",
+    line: "Connects to Google and Meta. Uses Higgsfield to turn your profile data and guests' Instagram Stories, with their permission, into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
     icon: BroadcastIcon,
   },
   {
     name: "Answering Agent",
-    line: "A phone, WhatsApp and text agent that answers with your current hours, menu and booking information. It turns questions into orders and bookings, so your staff get structured information instead of scattered calls and messages.",
+    line: "Agents connected to all your channels, including phone, WhatsApp and text, that know your business: hours, menu and bookings. They turn questions into orders and bookings, so your staff get structured information instead of scattered calls and messages.",
     icon: ChatCircleIcon,
   },
   {
