@@ -12,12 +12,8 @@ const ROW = "flex min-h-14 items-center gap-3 px-5 py-3 text-sm sm:px-6";
 
 const SOON: Array<{ name: string; line: string }> = [
   {
-    name: "Rewards",
-    line: "Three ways a guest earns a discount with you: Welcome Visit, Instagram Story and VIP Class. You turn each on; the guest shows it, you confirm it at the table.",
-  },
-  {
-    name: "Visits",
-    line: "Every confirmed visit in one list: who came, which reward, the bill and how it was paid.",
+    name: "Products",
+    line: "What you sell, on your page for guests to see.",
   },
   {
     name: "Payments",
@@ -28,7 +24,7 @@ const SOON: Array<{ name: string; line: string }> = [
     line: "Guests buy your meals ahead at a bonus you set, gift them or send them. You get the money when they buy.",
   },
   {
-    name: "Credit rewards",
+    name: "Credits",
     line: "Rewards paid as credit for the next visit instead of a discount today.",
   },
   {

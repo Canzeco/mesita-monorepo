@@ -6,8 +6,11 @@
 //   Place
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
+//   ┌ Operations (MESITA-3202) ────────────────────┐
+//   │ Visits                                       │  what happens every day
+//   └──────────────────────────────────────────────┘
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Reviews · Premier · Soon           │  Soon: MESITA-3197, the
+//   │ Profile · Reviews · Premier · Rewards · Soon │  Soon: MESITA-3197, the
 //   └──────────────────────────────────────────────┘  one page about what is not on yet
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
@@ -54,7 +57,7 @@ type Row = { key: string; label: string; icon: LucideIcon; href: string | null; 
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
 
-type PlaceMenu = { products: Row[]; manage: Row[] };
+type PlaceMenu = { operations: Row[]; products: Row[]; manage: Row[] };
 
 function menu(
   pathname: string,
@@ -82,10 +85,12 @@ function menu(
     account,
     switcher,
     place: {
+      operations: [tab("visits")],
       products: [
         tab("profile"),
         tab("reviews"),
         tab("premier"),
+        tab("rewards"),
         // Last: what is not on yet, as one page (MESITA-3197).
         tab("soon"),
       ],
@@ -131,7 +136,7 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
   );
 }
 
-/** A group's title; one style for Place, Capabilities and Manage. */
+/** A group's title; one style for Place, Operations, Capabilities and Manage. */
 function GroupLabel({ label }: { label: string }) {
   return <p className="text-muted-foreground hidden h-7 items-center px-3 text-xs font-semibold lg:flex">{label}</p>;
 }
@@ -233,6 +238,7 @@ export function BusinessShell({
             <GroupLabel label="Place" />
             <PlaceSwitcher s={switcher} />
           </div>
+          <Group label="Operations" rows={place.operations} />
           <Group label="Capabilities" rows={place.products} />
           <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}

@@ -413,3 +413,81 @@ export async function decideVerification(
   return { ok: true, data: null };
 }
 
+// ── Rewards and Visits (MESITA-3202) ─────────────
+
+export type RewardKind = "welcome_visit" | "returning_visit" | "instagram_story" | "vip_class";
+export type PaymentMethod = "cash" | "card" | "transfer" | "other";
+
+export type PlaceRewards = {
+  rewards: { kind: RewardKind; percent: number; enabled: boolean }[];
+  cap: { cents: number; enabled: boolean };
+};
+
+export async function getPlaceRewards(placeId: string): Promise<Result<PlaceRewards & { can_edit: boolean }>> {
+  const r = await efInvoke<PlaceRewards & { can_edit: boolean }>("business-web-get-place-rewards", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap, can_edit: r.data.can_edit } };
+}
+
+/** One switch: a reward or the Cap. Returns the whole page as it now stands. */
+export async function setPlaceReward(placeId: string, key: RewardKind | "cap", enabled: boolean): Promise<Result<PlaceRewards>> {
+  const r = await efInvoke<PlaceRewards>("business-web-set-place-reward", { place_id: placeId, key, enabled });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap } };
+}
+
+export type VisitGuest = {
+  guest: { name: string | null; member_number: string | null };
+  rewards: { kind: RewardKind; percent: number; cap_cents: number | null; eligible: boolean; reason: string | null }[];
+};
+
+export async function checkVisitCode(placeId: string, code: string): Promise<Result<VisitGuest>> {
+  const r = await efInvoke<VisitGuest>("business-web-check-visit-code", { place_id: placeId, code });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { guest: r.data.guest, rewards: r.data.rewards ?? [] } };
+}
+
+export type PlaceVisit = {
+  id: string;
+  guest_name: string | null;
+  member_number: string | null;
+  bill_cents: number;
+  currency: string;
+  payment_method: PaymentMethod;
+  reward_kind: RewardKind | null;
+  reward_percent: number | null;
+  discount_cents: number;
+  total_cents: number;
+  created_at: string;
+  voided_at: string | null;
+};
+
+export async function createPlaceVisit(
+  placeId: string,
+  visit: { code: string; billCents: number; method: PaymentMethod; rewardKind: RewardKind | null; requestId: string },
+): Promise<Result<Omit<PlaceVisit, "guest_name" | "member_number">>> {
+  const r = await efInvoke<{ visit: Omit<PlaceVisit, "guest_name" | "member_number"> }>("business-web-create-place-visit", {
+    place_id: placeId,
+    code: visit.code,
+    bill_cents: visit.billCents,
+    payment_method: visit.method,
+    reward_kind: visit.rewardKind,
+    request_id: visit.requestId,
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.visit };
+}
+
+export type PlaceVisits = { visits: PlaceVisit[]; next: string | null; can_void: boolean; timezone: string | null };
+
+export async function listPlaceVisits(placeId: string, before?: string): Promise<Result<PlaceVisits>> {
+  const r = await efInvoke<PlaceVisits>("business-web-list-place-visits", { place_id: placeId, ...(before ? { before } : {}) });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { visits: r.data.visits ?? [], next: r.data.next ?? null, can_void: r.data.can_void, timezone: r.data.timezone ?? null } };
+}
+
+export async function voidPlaceVisit(placeId: string, visitId: string): Promise<Result<{ voided_at: string | null }>> {
+  const r = await efInvoke<{ voided_at: string | null }>("business-web-void-place-visit", { place_id: placeId, visit_id: visitId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { voided_at: r.data.voided_at } };
+}

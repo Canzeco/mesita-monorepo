@@ -13,7 +13,7 @@ import { MediaBox } from "./place-detail/media";
 import { ProfileSummary } from "./place-detail/profile-summary";
 import { GoogleReviewsBox } from "./place-detail/reviews";
 import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
-import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
+import { NO_OVERVIEW, NO_REWARDS, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
@@ -31,7 +31,7 @@ import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-li
 //      (MESITA-2307, MESITA-2679); then one row of actions: the heart,
 //      Reserve · Directions, then Contact (MESITA-2618/2619/2623; no
 //      pinned bar).
-//   2. The sticky strip, Overview · Reviews · Products · Rewards (both Soon),
+//   2. The sticky strip, Overview · Reviews · Products (Soon) · Rewards,
 //      for every place (MESITA-2332, MESITA-3201). While a Google-only profile is being
 //      created, Overview is one "No overview yet" screen like the other
 //      empty tabs (MESITA-2685), and a refused create shows only the refusal
@@ -46,6 +46,7 @@ export function PlaceDetailBody({
   actions,
   creating,
   social,
+  rewards,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
@@ -54,6 +55,9 @@ export function PlaceDetailBody({
   creating?: PlaceCreatingView | null;
   /** Social v1's line (MESITA-2442), in the profile summary. */
   social?: React.ReactNode;
+  /** The Rewards tab's body (MESITA-3202), the host's: it reads what this place
+   *  offers this guest. A host with none (admin Preview) draws NO_REWARDS. */
+  rewards?: React.ReactNode;
 }) {
   const [tab, setTab] = useState<PlaceTab>("place");
   const create = place.is_enriched ? null : (creating ?? null);
@@ -109,7 +113,8 @@ export function PlaceDetailBody({
           {tab === "reviews" && (
             <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
           )}
-          {(tab === "products" || tab === "rewards") && <SoonScreen />}
+          {tab === "products" && <SoonScreen />}
+          {tab === "rewards" && (rewards ?? <PlaceEmptyScreen {...NO_REWARDS} />)}
       </div>
     </div>
   );

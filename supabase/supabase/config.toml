@@ -580,3 +580,29 @@ verify_jwt = true
 # same handler as admin-web-grant-place-premier).
 [functions.business-web-boost-place]
 verify_jwt = true
+
+# MESITA-3202: Visits and Rewards. Business sets the rewards and logs the visit;
+# a guest reads the offers and asks for the code they show staff.
+[functions.business-web-get-place-rewards]
+verify_jwt = true
+
+[functions.business-web-set-place-reward]
+verify_jwt = true
+
+[functions.business-web-check-visit-code]
+verify_jwt = true
+
+[functions.business-web-create-place-visit]
+verify_jwt = true
+
+[functions.business-web-list-place-visits]
+verify_jwt = true
+
+[functions.business-web-void-place-visit]
+verify_jwt = true
+
+[functions.consumer-web-get-place-rewards]
+verify_jwt = true
+
+[functions.consumer-web-create-visit-code]
+verify_jwt = true

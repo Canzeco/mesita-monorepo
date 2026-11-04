@@ -1,6 +1,6 @@
 "use client";
 
-import { Store, type LucideIcon } from "lucide-react";
+import { Gift, Store, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/format";
 import { PLACE_SCREEN_TITLE_CLASS } from "../../lib/ui";
 
@@ -21,8 +21,14 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
   line: "The overview of this place will show up here.",
 };
 
-// A tab with nothing to show draws this one screen: the Soon tabs (Products
-// and Rewards), a place with no reviews yet (MESITA-2682) and Overview while the
+/** The Rewards tab where the host draws no pane (admin Preview). */
+export const NO_REWARDS: PlaceEmptyScreenProps = {
+  icon: Gift,
+  title: "Rewards",
+  line: "Guests see this place's rewards here in the Mesita app.",
+};
+
+// A tab with nothing to show draws this one screen: the Soon tab (Products), a place with no reviews yet (MESITA-2682) and Overview while the
 // profile is created (NO_OVERVIEW). The place scale (MESITA-2636): a grey
 // chip with an ink glyph, an Inter title, a 14px muted line. No next step.
 export function PlaceEmptyScreen({ icon: Icon, title, line }: PlaceEmptyScreenProps) {
