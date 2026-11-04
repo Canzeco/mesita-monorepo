@@ -25,8 +25,8 @@ export const PLACES_LIST =
   "grid grid-cols-1 content-start gap-1.5 px-1.5 pt-1.5";
 
 /** CatalogTile's silhouette, from its own boxes (catalog-tile-classes.ts):
- *  the hairlined square, the photo's top 60%, the white band's 40% with its
- *  three 20px rows (the 16px name, then the two 14px rows), and Save ·
+ *  the hairlined square, the photo's top 50%, the white band's 50% with its
+ *  rows (the 16px name, the two 14px rows, the 24px coupon), and Save ·
  *  Share as two 32px blocks where CardActions sits. */
 function CatalogTileSkeleton() {
   return (
@@ -44,6 +44,9 @@ function CatalogTileSkeleton() {
           </div>
           <div className="flex h-5 items-center">
             <Skeleton className="h-3.5 w-2/3" />
+          </div>
+          <div className="flex h-6 items-center">
+            <Skeleton className="h-6 w-1/2" />
           </div>
         </div>
       </div>

@@ -1,16 +1,15 @@
-// The closed chip says WHICH day (MESITA-2047).
+// The next opening names WHICH day (MESITA-2047).
 //
-// Scroll serves closed places now — the one live place, Dos Amores, is shut on
-// Tuesdays — so "Closed · opens 08:30" gets read. Before this, that label at
-// 07:00 on a Tuesday promised a table in ninety minutes at a place that would
-// not open until Wednesday.
+// The one live place then, Dos Amores, is shut on Tuesdays. Before this, 07:00 on
+// a Tuesday read "opens 08:30", ninety minutes away, at a place that would not
+// open until Wednesday. The chips now say only Open or Closed (MESITA-3229); the
+// data keeps the day for whichever screen prints it next.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   computeOpenState,
   opensOnDay,
 } from "./place-to-detail-helpers";
-import { getOpeningStateLabel } from "./lib/place-state";
 
 const DOS_AMORES = Object.fromEntries(
   ["monday", "wednesday", "thursday", "friday", "saturday", "sunday"].map(
@@ -25,43 +24,40 @@ function at(isoLocal: string) {
   vi.setSystemTime(new Date(`${isoLocal}-06:00`));
 }
 
-function label() {
-  const s = computeOpenState(DOS_AMORES, TZ);
-  return getOpeningStateLabel({
-    open_now: s.open_now,
-    opens_at: s.opens_at || null,
-    closes_at: s.closes_at || null,
-  });
+function opensAt() {
+  return computeOpenState(DOS_AMORES, TZ).opens_at;
 }
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("closed chip names the day", () => {
+describe("the next opening names the day", () => {
   it("Tuesday 07:00, shut all day → opens tomorrow", () => {
     at("2026-09-22T07:00:00");
-    expect(label()).toBe("Closed · opens tomorrow 08:30");
+    expect(opensAt()).toBe("tomorrow 08:30");
   });
 
   it("Tuesday 21:54 (the screenshot) → opens tomorrow", () => {
     at("2026-09-22T21:54:00");
-    expect(label()).toBe("Closed · opens tomorrow 08:30");
+    expect(opensAt()).toBe("tomorrow 08:30");
   });
 
   it("Monday 16:00, Tuesday shut → names Wednesday", () => {
     at("2026-09-21T16:00:00");
-    expect(label()).toBe("Closed · opens Wed 08:30");
+    expect(opensAt()).toBe("Wed 08:30");
   });
 
   it("Wednesday 07:00 → later today stays a bare time", () => {
     at("2026-09-23T07:00:00");
-    expect(label()).toBe("Closed · opens 08:30");
+    expect(opensAt()).toBe("08:30");
   });
 
   it("Wednesday noon → open until 15:00", () => {
     at("2026-09-23T12:00:00");
-    expect(label()).toBe("Open · until 15:00");
+    const s = computeOpenState(DOS_AMORES, TZ);
+    expect(s.open_now).toBe(true);
+    expect(s.closes_at).toBe("15:00");
   });
 
   it("a week out says next", () => {

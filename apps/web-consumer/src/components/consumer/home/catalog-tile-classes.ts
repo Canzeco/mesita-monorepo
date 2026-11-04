@@ -14,17 +14,17 @@
 export const TILE_FRAME =
   "relative isolate aspect-square min-w-0 overflow-hidden rounded-2xl shadow-tile";
 
-/** The photo, the top 60% (Pato, MESITA-2655: "better 40% and 60%, and use
- *  the space for 4 rows"). It carries the radius itself, as the band does:
+/** The photo, the top 50% (Pato, MESITA-3229: "maybe a bit more space in the
+ *  info"). It carries the radius itself, as the band does:
  *  a child layer can escape the parent's rounded clip (MESITA-2429). */
 export const TILE_PHOTO =
-  "absolute inset-x-0 top-0 h-[60%] overflow-hidden rounded-t-2xl";
+  "absolute inset-x-0 top-0 h-[50%] overflow-hidden rounded-t-2xl";
 
-/** The bottom 40%, a plain white band (MESITA-2658: no reflection). */
+/** The bottom 50%, a plain white band (MESITA-2658: no reflection). */
 export const TILE_BAND =
-  "bg-paper absolute inset-x-0 bottom-0 h-[40%] overflow-hidden rounded-b-2xl";
+  "bg-paper absolute inset-x-0 bottom-0 h-[50%] overflow-hidden rounded-b-2xl";
 
-/** The band's three 20px rows, 2px apart, 12px side padding, centred in
+/** The band's rows (three 20px, then the 24px coupon), 2px apart, 12px side padding, centred in
  *  what Save · Share leave: pb-11 is the 32px row and its 12px foot, so the
  *  gap over the name and the gap over the buttons match (MESITA-2645). */
 export const TILE_TEXT =

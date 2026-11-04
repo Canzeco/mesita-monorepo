@@ -68,7 +68,7 @@ describe("the Class sheet", () => {
     const html = renderToStaticMarkup(<ClassSheet open onClose={() => {}} />);
     const words = text(html);
     expect(words).not.toMatch(/\b(Free|Premier|Premium|Pro|Diamond|Select|Upgrade|Buy)\b/);
-    expect(words).not.toMatch(/\$\s?\d|\d+\s?% off/);
+    expect(words).not.toMatch(/\$\s?\d|\d+\s?%\s?off/i);
     expect(html).not.toMatch(/<(button|input|form)\b/);
   });
 });
@@ -101,7 +101,7 @@ describe("Class and Plan labels", () => {
     for (const [name, src] of Object.entries(FILES)) {
       const s = strings(src);
       expect(s, name).not.toMatch(/\$\s?\d/);
-      expect(s, name).not.toMatch(/\d+\s?% off/);
+      expect(s, name).not.toMatch(/\d+\s?%\s?off/i);
       expect(s, name).not.toMatch(/\b3 reservations\b/);
     }
   });

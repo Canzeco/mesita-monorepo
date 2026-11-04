@@ -12,10 +12,12 @@ import type { PlaceReward } from "@/lib/api/rewards";
 export const MOCK_REWARDS_ON = true;
 
 const MOCK_PERCENT = 30;
+/** The bill the mock discount applies to (Pato, MESITA-3229: "be honest with the reward"). */
+const MOCK_FIRST_PESOS = 200;
 
-/** The summary after the price: "30% off", or null for a card with no Mesita row. */
+/** The summary after the price: "30%OFF on first $200MX", or null for a card with no Mesita row. */
 export function mockRewardLabel(placeId: string): string | null {
-  return MOCK_REWARDS_ON && isMesitaPlaceId(placeId) ? `${MOCK_PERCENT}% off` : null;
+  return MOCK_REWARDS_ON && isMesitaPlaceId(placeId) ? `${MOCK_PERCENT}%OFF on first $${MOCK_FIRST_PESOS}MX` : null;
 }
 
 /** The Reward tab's "Up to N%" when the server has no real number. */

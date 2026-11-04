@@ -1,13 +1,13 @@
 "use client";
 
 import type React from "react";
-import { BadgePercent, Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Tag, Ticket } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
-import { getOpeningStateLabel } from "../../lib/place-state";
 import { cn, formatDistanceKm } from "../../lib/format";
+import { PLACE_REWARD_COUPON_CLASS } from "../../lib/ui";
 
 import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
@@ -71,7 +71,10 @@ export function ProfileSummary({
       priceLevel: place.price_level,
       currency: place.currency,
     }) ?? null;
-  const stateValue = getOpeningStateLabel(place);
+  // Open or Closed, never until when (Pato, MESITA-3229: "just open or closed,
+  // to save space"). Unknown hours draw nothing.
+  const stateValue =
+    place.open_now === true ? "Open" : place.open_now === false ? "Closed" : null;
   const isOpen = place.open_now === true;
 
   return (
@@ -106,7 +109,8 @@ export function ProfileSummary({
           tags/general data of the place because it looks like a button. the
           stuff at the top must include google category, price, hour, zone,
           distance"). Plain text, each fact behind a small muted icon, no
-          fill and no pill: on this screen only buttons wear a fill. In this
+          fill and no pill: on this screen only buttons and the discount
+          wear a fill (Pato, MESITA-3229). In this
           order: Google's category (the place's Google primary type) · price ·
           hours · zone · distance; a missing fact draws nothing, never a
           "- km" (MESITA-2315). While the Enricher builds the profile an
@@ -137,7 +141,12 @@ export function ProfileSummary({
           </ProfileFact>
         )}
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
-        {actions?.rewardLabel && <ProfileFact icon={BadgePercent}>{actions.rewardLabel}</ProfileFact>}
+        {actions?.rewardLabel && (
+          <li className={PLACE_REWARD_COUPON_CLASS}>
+            <Ticket className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            {actions.rewardLabel}
+          </li>
+        )}
         {stateValue && (
           <ProfileFact icon={Clock} strong={isOpen}>
             {stateValue}
