@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Rewards" };
 
 // Rewards (MESITA-3202, Pato: "On or off, not in between points"): four
-// switches and the Cap, then the place code (MESITA-3226). A visit is never
+// switches, the Cap and the total (MESITA-3228), then the place code (MESITA-3226). A visit is never
 // registered here: Pato, "never. there they only set the fucking number". The log
 // is Visits.
 export default async function RewardsPage({ params }: { params: Promise<{ id: string }> }) {
