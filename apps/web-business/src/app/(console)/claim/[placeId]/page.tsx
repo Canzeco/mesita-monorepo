@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { findPlaces, type ClaimablePlace } from "@/lib/business-api";
 import { PageHeader } from "@/components/shell/Page";
 import { ClaimForm } from "@/components/claim/ClaimForm";
+import { placeTabHref } from "@/lib/routes";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Claim your place" };
@@ -20,6 +21,9 @@ export default async function ClaimPlacePage({
   const hit = found.data[0];
   if (!hit?.id) notFound();
   const place = hit as ClaimablePlace;
+  // Consumer's "Manage this place" comes through here (MESITA-3194): an owner
+  // has nothing to claim, so they land on the place.
+  if (place.mine === "owner") redirect(placeTabHref(place.id, "profile"));
 
   return (
     <div className="flex flex-col gap-6">
