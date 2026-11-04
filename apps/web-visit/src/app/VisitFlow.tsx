@@ -18,7 +18,7 @@ const REWARD_NAME: Record<string, string> = {
   vip_class: "VIP Class",
 };
 
-export function VisitFlow({ placeId, code }: { placeId: string; code: string }) {
+export function VisitFlow({ placeId, code, placeCode }: { placeId: string; code: string; placeCode?: string }) {
   const [visit, setVisit] = useState<Visit | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -108,6 +108,7 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
           placeId={placeId}
           code={code}
           guestBillCents={visit.bill_cents}
+          typedPlaceCode={placeCode}
           rewardKinds={rewardKinds}
           onClosed={setClosed}
         />
@@ -124,17 +125,20 @@ function CloseForm({
   placeId,
   code,
   guestBillCents,
+  typedPlaceCode,
   rewardKinds,
   onClosed,
 }: {
   placeId: string;
   code: string;
   guestBillCents: number | null;
+  /** Staff who typed the codes already gave this (MESITA-3262). */
+  typedPlaceCode?: string;
   rewardKinds: string[];
   onClosed: (closed: ClosedVisit) => void;
 }) {
   const [amount, setAmount] = useState(guestBillCents != null ? amountText(guestBillCents) : "");
-  const [placeCode, setPlaceCode] = useState("");
+  const [placeCode, setPlaceCode] = useState(typedPlaceCode ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // One per opening of this form, so a retried tap never logs a visit twice.
@@ -174,7 +178,7 @@ function CloseForm({
           className="secret"
           inputMode="numeric"
           autoComplete="off"
-          autoFocus={guestBillCents != null}
+          autoFocus={guestBillCents != null && !typedPlaceCode}
           maxLength={6}
           value={placeCode}
           onChange={(e) => setPlaceCode(e.target.value.replace(/\D/g, ""))}

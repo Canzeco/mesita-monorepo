@@ -41,6 +41,11 @@ async function call<T>(name: string, body: Record<string, unknown>): Promise<T> 
   return data;
 }
 
+/** The QR wouldn't scan (MESITA-3262): the two codes get what its link would have held. */
+export function findVisit(memberNumber: string, placeCode: string): Promise<{ place_id: string; code: string }> {
+  return call("visit-web-find-visit", { member_number: memberNumber, place_code: placeCode });
+}
+
 export function getVisit(placeId: string, code: string): Promise<Visit> {
   return call<Visit>("visit-web-get-visit", { place_id: placeId, code });
 }

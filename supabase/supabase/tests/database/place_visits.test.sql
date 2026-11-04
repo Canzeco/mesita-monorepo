@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(62);
+select plan(73);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -389,6 +389,57 @@ select is(
   public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-ticked', 'pc-right', 100000, '{instagram_story}', '00000000-0000-4000-8000-00000000d002')#>>'{visit,discount_cents}',
   '20000',
   'a ticked Story comes off the bill'
+);
+
+-- MESITA-3262: the QR won't scan, so staff type the member number and the place code.
+update public.consumers set code = '3202-0001' where id = '00000000-0000-4000-8000-0000000a3202';
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-typed', now() + interval '10 minutes', 120000);
+create function pg_temp.typed(digits text, new_hash text) returns jsonb language sql as $$
+  select public.place_visit_member_claim('3202-0001', jsonb_build_array(jsonb_build_object(
+    'place_id', '00000000-0000-4000-8000-000000003202', 'place_code_hash', digits, 'new_code_hash', new_hash)))
+$$;
+select ok(
+  public.place_visit_member_places('3202-0001') @> array['00000000-0000-4000-8000-000000003202'::uuid],
+  'a member number finds the place of an open QR'
+);
+select is(pg_temp.typed('pc-wrong', 'hash-new')->>'outcome', 'no_match', 'a member number with the wrong place code opens nothing');
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-typed')->>'outcome', 'ok',
+  'a wrong try leaves the scanned QR working'
+);
+select is(public.place_visit_member_claim('9999-9999', '[]'::jsonb)->>'outcome', 'no_match', 'an unknown member reads the same as wrong digits');
+select pg_temp.typed('pc-wrong', 'hash-new');
+select pg_temp.typed('pc-wrong', 'hash-new');
+select pg_temp.typed('pc-wrong', 'hash-new');
+select is(pg_temp.typed('pc-wrong', 'hash-new')->>'outcome', 'locked', 'five wrong tries lock typing for that guest');
+select is(pg_temp.typed('pc-right', 'hash-new')->>'outcome', 'locked', 'the right digits wait out the lock');
+select is(
+  (select count(*)::integer from public.place_code_tries
+    where place_id = '00000000-0000-4000-8000-000000003202' and consumer_id = '00000000-0000-4000-8000-0000000a3202'),
+  0,
+  'typing wrong codes never counts against the guest''s scanned QR'
+);
+delete from public.visit_member_tries where consumer_id = '00000000-0000-4000-8000-0000000a3202';
+select is(
+  pg_temp.typed('pc-right', 'hash-new')->>'place_id', '00000000-0000-4000-8000-000000003202',
+  'both codes right opens the visit'
+);
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-typed')->>'outcome', 'bad_code',
+  'the old secret ends when the codes open the visit'
+);
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-new')->>'bill_cents', '120000',
+  'the new secret holds the guest''s bill'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.visit_member_tries', 'SELECT')
+    and not has_table_privilege('anon', 'public.visit_member_tries', 'SELECT')
+    and not has_function_privilege('anon', 'public.place_visit_member_places(text)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_visit_member_places(text)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_visit_member_claim(text, jsonb)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.place_visit_member_claim(text, jsonb)', 'EXECUTE'),
+  'client roles hold nothing on typing the codes'
 );
 
 select * from finish();

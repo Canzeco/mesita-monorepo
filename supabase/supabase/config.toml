@@ -615,6 +615,10 @@ verify_jwt = false
 [functions.visit-web-close-visit]
 verify_jwt = false
 
+# MESITA-3262: the QR won't scan. The member number and the place code together.
+[functions.visit-web-find-visit]
+verify_jwt = false
+
 # MESITA-3206: Business Views, and the share it counts.
 [functions.business-web-get-place-views]
 verify_jwt = true
