@@ -53,7 +53,7 @@ const RAIL_CARD_ROW = "flex h-[8.25rem] shrink-0 items-stretch";
 
 /** The discount as the card's top edge, its dashed line a ticket's tear. */
 const RAIL_CARD_COUPON =
-  "border-paper/70 shrink-0 rounded-none border-b border-dashed outline-none";
+  "border-fact-reward/40 shrink-0 rounded-none border-b border-dashed outline-none";
 
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift

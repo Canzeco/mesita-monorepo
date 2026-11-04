@@ -236,11 +236,11 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
       className="hover:bg-muted/40 flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
       {photo ? (
-        <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
+        <span className="bg-muted ring-border block h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1">
           <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
         </span>
       ) : (
-        <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+        <span className="bg-muted text-muted-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
           <QrCode className="h-5 w-5" aria-hidden />
         </span>
       )}
@@ -254,11 +254,15 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
         {percent ? (
           <span className={cn(PLACE_REWARD_COUPON_CLASS, "mt-1 font-semibold")}>
             <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            Up to {percent}% OFF for you
+            <span className="truncate">Up to {percent}% OFF for you</span>
           </span>
         ) : null}
       </span>
-      <QrCode className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+      {/* The QR is the point of this list, in a box that mirrors the photo (Pato,
+          MESITA-3249: "must be more visible"; "keep symmetry in image and in QR"). */}
+      <span className="bg-foreground text-paper flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
+        <QrCode className="h-8 w-8" aria-hidden />
+      </span>
     </button>
   );
 }
@@ -284,23 +288,18 @@ function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
 }
 
 /** The card of rows as it will land, in the same margins. */
-/** One row, empty: the three lines of a row with its percent. */
+/** One row, empty: the photo, the name, the coupon and the QR. */
 function RewardSkeletonRow() {
   return (
     <div className="flex min-h-16 items-center gap-3 px-4 py-3.5">
-      <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
       <span className="min-w-0 flex-1">
         <span className="flex h-5 items-center">
           <Skeleton className="h-3.5 w-3/5" />
         </span>
-        <span className="flex h-4 items-center">
-          <Skeleton className="h-3 w-2/5" />
-        </span>
-        <span className="mt-0.5 flex h-4 items-center">
-          <Skeleton className="h-3 w-1/2" />
-        </span>
+        <Skeleton className="mt-1 h-8 w-4/5 rounded-lg" />
       </span>
-      <Skeleton className="h-5 w-5 shrink-0" />
+      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
     </div>
   );
 }
