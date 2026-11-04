@@ -93,6 +93,16 @@ export function slotMinutes(hhmm: string): number {
   return Number(h) * 60 + Number(m);
 }
 
+/** A label's trailing `HH:mm` on the 12-hour clock: "15:00" → "3 PM", "tomorrow
+ *  08:30" → "tomorrow 8:30 AM", "24:00" → "12 AM". Anything else stays as it is. */
+export function toAmPm(label: string): string {
+  return label.replace(/(\d{1,2}):(\d{2})$/, (_, hh: string, mm: string) => {
+    const h = Number(hh) % 24;
+    const minutes = mm === "00" ? "" : `:${mm}`;
+    return `${h % 12 || 12}${minutes} ${h < 12 ? "AM" : "PM"}`;
+  });
+}
+
 /**
  * Is `hhmm` on `dateIso` already behind the place's clock? ISO dates sort
  * lexicographically, so the day comparison needs no parsing. The current

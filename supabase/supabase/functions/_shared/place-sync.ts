@@ -3,6 +3,13 @@
 // The function fetches, checks, and normalizes. It does not write.
 // A manual Reviews sync persists the patch. Enrichment folds the same
 // patch into the run draft and commits once.
+//
+// Instagram Found and Facebook Found follow the last check (MESITA-3247): an
+// answer sets true with the new count; a failure sets false and leaves the
+// last count, so a timeout never blanks a real number. No link writes nothing:
+// Enrich passes only the links its run found, so a missing one says nothing
+// about the saved link. Google Found is not here: Details just answered in the
+// same Enrich, and a failed lookup must not undo it.
 
 export type SyncSourceName = "google" | "instagram" | "facebook" | "google_reviews";
 
@@ -96,18 +103,20 @@ export async function syncSavedLinks(opts: {
       ? opts.fetchers.instagramSummary(instagram).then((result) =>
         result.ok
           ? outcome("instagram", "synced", null, {
+            instagram_found: true,
             instagram_followers_count: result.value.followers,
           })
-          : outcome("instagram", "error", result.error)
+          : outcome("instagram", "error", result.error, { instagram_found: false })
       )
       : Promise.resolve(outcome("instagram", "no_link", null)),
     facebook
       ? opts.fetchers.facebookSummary(facebook).then((result) =>
         result.ok
           ? outcome("facebook", "synced", null, {
+            facebook_found: true,
             facebook_followers: result.value.followers,
           })
-          : outcome("facebook", "error", result.error)
+          : outcome("facebook", "error", result.error, { facebook_found: false })
       )
       : Promise.resolve(outcome("facebook", "no_link", null)),
     googleId

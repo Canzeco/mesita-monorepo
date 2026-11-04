@@ -122,7 +122,7 @@ test("Google's Instagram link is the Instagram field, not the website", () => {
   assert.equal(got.ok, true);
   if (!got.ok) return;
   assert.equal(got.patch.instagram_url, "https://www.instagram.com/casaluminar");
-  assert.equal(got.patch.instagram_found, true);
+  assert.equal("instagram_found" in got.patch, false);
   assert.equal("website_url" in got.patch, false);
   assert.equal("price_level" in got.patch, false);
   assert.equal("google_reviews" in got.patch, false);

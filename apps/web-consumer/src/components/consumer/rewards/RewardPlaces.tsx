@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPinOff, QrCode, X } from "lucide-react";
-import { SizedImg } from "@mesita/place-profile";
-import { cardFacts } from "@/components/consumer/place-card";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { MapPinOff, QrCode, Ticket } from "lucide-react";
+import { PremierBadge, SizedImg } from "@mesita/place-profile";
+import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
+import { cn } from "@/lib/utils";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
 import { useActiveLocation } from "@/lib/active-location";
@@ -27,7 +28,7 @@ import {
   useUserLocationError,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
-import { VisitQr } from "./VisitQr";
+import { VisitFlow } from "./VisitFlow";
 
 // THE REWARD TAB (Pato, MESITA-3214: "a list of all the places … sorted by
 // location. no searchbar … when you click the shit, the QR its actually open").
@@ -209,27 +210,27 @@ export function RewardPlaces() {
           Try again
         </button>
       ) : null}
-      <LocalDialog
+      <LocalSheet
         open={qr?.open === true}
         onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
-        ariaLabel={qr ? `Your code for ${qr.place.name}` : "Your code"}
+        ariaLabel={qr ? `Use your reward at ${qr.place.name}` : "Use your reward"}
       >
         {qr ? (
-          <RewardQr
+          <VisitFlow
             key={qr.opened}
-            place={qr.place}
+            placeId={qr.place.id}
+            placeName={qr.place.name}
+            photo={qr.place.photos?.[0]}
             onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
           />
         ) : null}
-      </LocalDialog>
+      </LocalSheet>
     </div>
   );
 }
 
 function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number; onOpen: () => void }) {
-  const facts = cardFacts(place);
   const photo = place.photos?.[0];
-  const line = [facts.kind, facts.distance].filter(Boolean).join(" · ");
   return (
     <button
       type="button"
@@ -237,63 +238,50 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
       className="hover:bg-muted/40 flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
       {photo ? (
-        <span className="bg-muted ring-border block h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1">
+        <span className="bg-muted ring-border block h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1">
           <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" />
         </span>
       ) : (
-        <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+        <span className="bg-muted text-muted-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
           <QrCode className="h-5 w-5" aria-hidden />
         </span>
       )}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">{place.name}</span>
-        {line ? <span className="text-muted-foreground block truncate text-xs">{line}</span> : null}
+        {/* The name, its Premier mark, the reward: nothing else (Pato, MESITA-3246). */}
+        <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+          <span className="truncate">{place.name}</span>
+          <PremierBadge tier={place.boost_tier} compact ad />
+        </span>
         {/* "Up to": Story counts, and staff check it at the till (MESITA-3217). */}
-        {percent ? <span className="text-fact-reward mt-0.5 block truncate text-xs font-semibold">Up to {percent}% OFF for you</span> : null}
+        {percent ? (
+          <span className={cn(PLACE_REWARD_COUPON_CLASS, "mt-1 font-semibold")}>
+            <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="truncate">Up to {percent}% OFF for you</span>
+          </span>
+        ) : null}
       </span>
-      <QrCode className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+      {/* The QR is the point of this list, in a box that mirrors the photo (Pato,
+          MESITA-3249: "must be more visible"; "keep symmetry in image and in QR"). */}
+      <span className="bg-foreground text-paper flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
+        <QrCode className="h-8 w-8" aria-hidden />
+      </span>
     </button>
   );
 }
 
-/** A tap on a place: the guest's bill, then their QR for it (MESITA-3245). */
-function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
-  return (
-    <div className="relative flex flex-col items-center p-6 text-center">
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="text-muted-foreground absolute top-2 right-2 flex h-11 w-11 items-center justify-center"
-      >
-        <X className="h-5 w-5" aria-hidden />
-      </button>
-      <p className="w-full truncate px-8 font-semibold">{place.name}</p>
-      <div className="mt-4 w-full">
-        <VisitQr placeId={place.id} />
-      </div>
-    </div>
-  );
-}
-
 /** The card of rows as it will land, in the same margins. */
-/** One row, empty: the three lines of a row with its percent. */
+/** One row, empty: the photo, the name, the coupon and the QR. */
 function RewardSkeletonRow() {
   return (
     <div className="flex min-h-16 items-center gap-3 px-4 py-3.5">
-      <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
       <span className="min-w-0 flex-1">
         <span className="flex h-5 items-center">
           <Skeleton className="h-3.5 w-3/5" />
         </span>
-        <span className="flex h-4 items-center">
-          <Skeleton className="h-3 w-2/5" />
-        </span>
-        <span className="mt-0.5 flex h-4 items-center">
-          <Skeleton className="h-3 w-1/2" />
-        </span>
+        <Skeleton className="mt-1 h-8 w-4/5 rounded-lg" />
       </span>
-      <Skeleton className="h-5 w-5 shrink-0" />
+      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
     </div>
   );
 }

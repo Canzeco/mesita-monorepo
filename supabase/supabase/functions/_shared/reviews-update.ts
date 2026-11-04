@@ -29,7 +29,15 @@ export async function runReviewsUpdate(admin: SupabaseClient, placeId: string): 
     instagramUrl: place.instagram_url,
     facebookUrl: place.facebook_url,
   });
-  const written = await writePlace(admin, { table: "place_profiles", mode: "update", id: placeId, patch: synced.patch });
+  // These are the saved links, so no link means nothing to be found: clearing
+  // one turns its Found off (MESITA-3247). Sync itself writes nothing for a
+  // missing link, because Enrich passes only the links its run found.
+  const patch = {
+    ...synced.patch,
+    ...(place.instagram_url?.trim() ? {} : { instagram_found: false }),
+    ...(place.facebook_url?.trim() ? {} : { facebook_found: false }),
+  };
+  const written = await writePlace(admin, { table: "place_profiles", mode: "update", id: placeId, patch });
   if (!written.ok) return { ok: false, status: 500, error: written.error };
   return { ok: true, synced };
 }

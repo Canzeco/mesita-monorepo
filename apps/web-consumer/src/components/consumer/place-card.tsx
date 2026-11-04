@@ -25,7 +25,7 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount, under the Home card's buttons ("30% OFF, up to $60 MXN", MESITA-3233). */
+  /** The discount, under the Home card's buttons ("30% OFF, up to $200 MXN", MESITA-3248). */
   off: string | null;
   rating: string | null;
   reviews: string | null;
@@ -136,44 +136,28 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
 
 /** The discount under Save and Share, as wide as the two, its words centred
  *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
- *  but only if it has reward"), as tall as they are (MESITA-3241). Display only:
- *  a tap falls through to the card's own link beneath it. */
-export function CouponRow({ facts }: { facts: CardFacts }) {
+ *  but only if it has reward"), as tall as they are (MESITA-3241). The Search
+ *  card wears it as a strip on its top (MESITA-3246), through `className`.
+ *  Display only: a tap falls through to the card's own link beneath it. */
+export function CouponRow({
+  facts,
+  className,
+}: {
+  facts: CardFacts;
+  className?: string;
+}) {
   if (!facts.off) return null;
   return (
     <p
       className={cn(
         PLACE_REWARD_COUPON_CLASS,
-        CARD_BUTTON_BOX,
         "pointer-events-none flex w-full justify-center font-sans font-semibold",
+        className,
       )}
     >
       <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
       {facts.off}
     </p>
-  );
-}
-
-/** The coupon on the Search card's photo (Pato, MESITA-3241: "somehow add coupon
- *  tag here too"): the rail's fixed height has no fourth row and the whole line
- *  does not fit the text column on a phone, so the percent and its limit take
- *  two lines in the corner. Display only: a tap opens the card. */
-export function CouponTag({ facts }: { facts: CardFacts }) {
-  if (!facts.off) return null;
-  const [percent, limit] = facts.off.split(", ");
-  return (
-    <span
-      className={cn(
-        PLACE_REWARD_COUPON_CLASS,
-        "pointer-events-none absolute top-1.5 left-1.5 h-auto flex-col items-start gap-0 py-0.5 font-sans leading-4 font-semibold",
-      )}
-    >
-      <span className="inline-flex items-center gap-1">
-        <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-        {percent}
-      </span>
-      {limit ? <span className="font-medium">{limit}</span> : null}
-    </span>
   );
 }
 
