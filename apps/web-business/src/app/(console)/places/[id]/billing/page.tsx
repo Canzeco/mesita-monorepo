@@ -1,6 +1,7 @@
 import { getBilling, getPremier } from "@/lib/business-api";
 import { BillingPanel, type CardReturn } from "./BillingPanel";
 import { PlansCard } from "@/components/billing/PlansCard";
+import { StopGuestPlan } from "./StopGuestPlan";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Billing" };
@@ -30,6 +31,12 @@ export default async function BillingPage({
   const billing = await getBilling(id);
   return (
     <div className="flex flex-col gap-4 pb-8">
+      {premier.ok && premier.data.paid && !premier.data.paid.by_you ? (
+        <StopGuestPlan
+          placeId={id}
+          until={new Date(premier.data.paid.ends_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+        />
+      ) : null}
       <BillingPanel placeId={id} billing={billing.ok ? billing.data : null} error={billing.ok ? null : billing.error} returned={returned}
         plans={<PlansCard placeId={id} initial={premier.ok ? premier.data : null} picked={picked} />}
       />

@@ -146,11 +146,7 @@ export function SearchHeader({
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={cn(
-                CHIP_DISC,
-                // Red while a filter is on (Pato, MESITA-3192).
-                !everyFamily && "bg-destructive text-destructive-foreground hover:bg-destructive border-destructive",
-              )}
+              className={CHIP_DISC}
               data-search-filters
             >
               <SlidersHorizontal
@@ -161,7 +157,8 @@ export function SearchHeader({
               {everyFamily ? null : (
                 <span
                   aria-hidden
-                  className={DISC_BADGE}
+                  // Only the bubble is red (Pato, MESITA-3216, replacing MESITA-3192).
+                  className={cn(DISC_BADGE, "bg-destructive text-destructive-foreground")}
                   data-search-filters-badge
                 >
                   {filters.familyKeys.length}

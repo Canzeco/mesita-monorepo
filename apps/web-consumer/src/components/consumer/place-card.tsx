@@ -2,6 +2,7 @@ import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
+import { mockRewardLabel } from "@/lib/mock-rewards";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 // THE PREVIEW CARD'S ROWS AND BUTTONS, ONE SOURCE (MESITA-2668): the Home
@@ -30,6 +31,8 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
+  /** The discount summary after the price ("30% off", MESITA-3218). */
+  off: string | null;
   rating: string | null;
   reviews: string | null;
   /** true open, false closed, null unknown (no hours row). */
@@ -61,6 +64,7 @@ export function cardFacts(place: Place): CardFacts {
     kindPrice: [readableKind(place), price].filter(Boolean).join(" · "),
     kind: readableKind(place),
     price: price || null,
+    off: mockRewardLabel(place.id),
     rating: formatRating(o.google_rating),
     reviews:
       typeof o.google_count === "number" && o.google_count > 0
@@ -90,7 +94,7 @@ function Dot() {
  *  MESITA-2674: "price before category, it's easier and faster to see"),
  *  green; the star yellow. */
 export function KindRow({ facts }: { facts: CardFacts }) {
-  if (!facts.kindPrice && !facts.rating) return null;
+  if (!facts.kindPrice && !facts.rating && !facts.off) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
@@ -99,7 +103,9 @@ export function KindRow({ facts }: { facts: CardFacts }) {
           {facts.price}
         </span>
       ) : null}
-      {facts.kind && facts.price ? <Dot /> : null}
+      {facts.off && facts.price ? <Dot /> : null}
+      {facts.off ? <span className="shrink-0 font-semibold">{facts.off}</span> : null}
+      {facts.kind && (facts.price || facts.off) ? <Dot /> : null}
       {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
       {facts.kindPrice && facts.rating ? <Dot /> : null}
       {facts.rating ? (
@@ -118,7 +124,7 @@ export function KindRow({ facts }: { facts: CardFacts }) {
 
 /** Search card row two (MESITA-2674): $$ (green) · category. */
 export function PriceKindRow({ facts }: { facts: CardFacts }) {
-  if (!facts.kind && !facts.price) return null;
+  if (!facts.kind && !facts.price && !facts.off) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
@@ -126,7 +132,9 @@ export function PriceKindRow({ facts }: { facts: CardFacts }) {
           {facts.price}
         </span>
       ) : null}
-      {facts.kind && facts.price ? <Dot /> : null}
+      {facts.off && facts.price ? <Dot /> : null}
+      {facts.off ? <span className="shrink-0 font-semibold">{facts.off}</span> : null}
+      {facts.kind && (facts.price || facts.off) ? <Dot /> : null}
       {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
     </p>
   );

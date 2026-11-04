@@ -1371,6 +1371,80 @@ export type Database = {
           },
         ]
       }
+      place_rewards: {
+        Row: {
+          cap: boolean
+          instagram_story: boolean
+          place_id: string
+          returning_visit: boolean
+          updated_at: string
+          updated_by: string | null
+          vip_class: boolean
+          welcome_visit: boolean
+        }
+        Insert: {
+          cap?: boolean
+          instagram_story?: boolean
+          place_id: string
+          returning_visit?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          vip_class?: boolean
+          welcome_visit?: boolean
+        }
+        Update: {
+          cap?: boolean
+          instagram_story?: boolean
+          place_id?: string
+          returning_visit?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          vip_class?: boolean
+          welcome_visit?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_rewards_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_shares: {
+        Row: {
+          consumer_id: string
+          place_id: string
+          shared_at: string
+        }
+        Insert: {
+          consumer_id: string
+          place_id: string
+          shared_at?: string
+        }
+        Update: {
+          consumer_id?: string
+          place_id?: string
+          shared_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_shares_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_shares_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_tags: {
         Row: {
           created_at: string
@@ -1532,6 +1606,114 @@ export type Database = {
           },
           {
             foreignKeyName: "place_verification_sends_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_visit_codes: {
+        Row: {
+          code_hash: string
+          consumer_id: string
+          created_at: string
+          expires_at: string
+          place_id: string
+        }
+        Insert: {
+          code_hash: string
+          consumer_id: string
+          created_at?: string
+          expires_at: string
+          place_id: string
+        }
+        Update: {
+          code_hash?: string
+          consumer_id?: string
+          created_at?: string
+          expires_at?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_visit_codes_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_visit_codes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_visits: {
+        Row: {
+          bill_cents: number
+          consumer_id: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          discount_cents: number
+          id: string
+          payment_method: string
+          place_id: string
+          request_id: string
+          reward_kinds: string[]
+          reward_percent: number | null
+          total_cents: number
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          bill_cents: number
+          consumer_id?: string | null
+          created_at?: string
+          created_by: string
+          currency: string
+          discount_cents?: number
+          id?: string
+          payment_method: string
+          place_id: string
+          request_id: string
+          reward_kinds?: string[]
+          reward_percent?: number | null
+          total_cents: number
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          bill_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          discount_cents?: number
+          id?: string
+          payment_method?: string
+          place_id?: string
+          request_id?: string
+          reward_kinds?: string[]
+          reward_percent?: number | null
+          total_cents?: number
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_visits_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_visits_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
@@ -2429,6 +2611,26 @@ export type Database = {
         Args: { p_consumer_id: string; p_email: string }
         Returns: number
       }
+      place_reward_cap_cents: { Args: never; Returns: number }
+      place_reward_catalog: {
+        Args: never
+        Returns: {
+          kind: string
+          ord: number
+          percent: number
+        }[]
+      }
+      place_rewards_for_guest: {
+        Args: { p_consumer_id: string; p_place_id: string }
+        Returns: {
+          cap_cents: number
+          eligible: boolean
+          kind: string
+          percent: number
+          reason: string
+        }[]
+      }
+      place_rewards_read: { Args: { p_place_id: string }; Returns: Json }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
         Returns: string
@@ -2452,6 +2654,35 @@ export type Database = {
           p_reviewer?: string
         }
         Returns: string
+      }
+      place_visit_check: {
+        Args: { p_code_hash: string; p_place_id: string }
+        Returns: Json
+      }
+      place_visit_code_issue: {
+        Args: {
+          p_code_hash: string
+          p_consumer_id: string
+          p_expires_at: string
+          p_place_id: string
+        }
+        Returns: boolean
+      }
+      place_visit_create: {
+        Args: {
+          p_bill_cents: number
+          p_code_hash: string
+          p_created_by: string
+          p_payment_method: string
+          p_place_id: string
+          p_request_id: string
+          p_reward_kinds: string[]
+        }
+        Returns: Json
+      }
+      place_visit_void: {
+        Args: { p_place_id: string; p_visit_id: string; p_voided_by: string }
+        Returns: Json
       }
       premier_add_days: {
         Args: {

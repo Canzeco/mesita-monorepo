@@ -127,12 +127,12 @@ export function BoostPane({
                 {level === t.rank ? <span className="text-muted-foreground text-sm">Now</span> : null}
               </span>
               <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</p>
-              <p className="text-muted-foreground text-sm tabular-nums">{p ? money(p.price_cents) : "…"}</p>
+              <p className="text-muted-foreground text-sm tabular-nums">{p ? `${money(p.price_cents)} USD` : "…"}</p>
               <button
                 type="button"
                 onClick={() => void start(t.rank)}
                 disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                aria-label={p ? `Buy ${VISIBILITY[t.rank]} visibility for ${money(p.price_cents)}` : undefined}
+                aria-label={p ? `Buy ${VISIBILITY[t.rank]} visibility for ${money(p.price_cents)} USD` : undefined}
                 className={cn(
                   PRIMARY_BUTTON_CLASS,
                   "mt-3 h-11",

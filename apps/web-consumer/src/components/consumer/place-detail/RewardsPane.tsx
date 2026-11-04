@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   apiCreateVisitCode,
   apiGetPlaceRewards,
+  type PlaceReward,
   type PlaceRewards,
   type RewardKind,
   type VisitCode,
 } from "@/lib/api/rewards";
+import { MOCK_REWARDS } from "@/lib/mock-rewards";
 import type { PlaceDetail } from "@/lib/place-detail";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
@@ -29,14 +31,14 @@ const NAME: Record<RewardKind, string> = {
 const LINE: Record<RewardKind, string> = {
   welcome_visit: "Your first visit here.",
   returning_visit: "Every visit after your first.",
-  instagram_story: "Post a story about this place and show it to staff.",
+  instagram_story: "Post a story about this place and show it to staff. You need more than 1,000 Instagram followers and a public profile.",
   vip_class: "For VIP guests.",
 };
 
-/** Whole pesos when there are no centavos. */
-function capLine(cents: number | null): string {
+/** The Cap is in pesos, on the whole bill, whatever adds up (MESITA-3210). */
+function capLine(cents: number | null | undefined): string {
   if (cents == null) return "";
-  return ` Up to $${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })}.`;
+  return ` At most $${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} MXN off a bill.`;
 }
 
 function endsAt(iso: string): string {
@@ -44,7 +46,9 @@ function endsAt(iso: string): string {
 }
 
 export function RewardsPane({ place }: { place: PlaceDetail }) {
-  const getSupabase = useLazyBrowserSupabase();
+  // Memoized, unlike the lazy getter: the effect below depends on it, and a new
+  // value every render would fetch forever (MESITA-3207).
+  const supabase = useBrowserSupabase();
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -54,7 +58,7 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
 
   useEffect(() => {
     let live = true;
-    apiGetPlaceRewards(getSupabase(), place.id).then(
+    apiGetPlaceRewards(supabase, place.id).then(
       (rewards) => {
         if (live) setData(rewards);
       },
@@ -65,13 +69,13 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
     return () => {
       live = false;
     };
-  }, [getSupabase, place.id, attempt]);
+  }, [supabase, place.id, attempt]);
 
   async function showCode() {
     setAsking(true);
     setCodeError(null);
     try {
-      setCode(await apiCreateVisitCode(getSupabase(), place.id));
+      setCode(await apiCreateVisitCode(supabase, place.id));
     } catch (err) {
       setCodeError(errMsg(err, "Couldn't make a code. Try again."));
     } finally {
@@ -103,7 +107,9 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       </div>
     );
   }
-  if (data.rewards.length === 0) {
+  // Real rewards where a place has them on, else the mock (MESITA-3218).
+  const rewards = data.rewards.length > 0 ? data.rewards : MOCK_REWARDS;
+  if (rewards.length === 0) {
     return (
       <div className="border-border bg-card rounded-2xl border p-4">
         <p className="font-semibold">No rewards here yet</p>
@@ -112,20 +118,39 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
     );
   }
 
-  const usable = data.rewards.some((r) => r.eligible);
+  const usable = rewards.some((r) => r.eligible);
+  // (Welcome or Returning) + Story + VIP (Pato, MESITA-3210): the first two share
+  // a row, because a visit is one or the other; the rest add on.
+  const firstOrLater = rewards.filter((r) => r.kind === "welcome_visit" || r.kind === "returning_visit");
+  const addOns = rewards.filter((r) => r.kind !== "welcome_visit" && r.kind !== "returning_visit");
+  const cell = (r: PlaceReward) => (
+    <div className={cn("min-w-0 flex-1", !r.eligible && data.signed_in && "opacity-50")}>
+      <p className="font-semibold">{NAME[r.kind]}</p>
+      <p className="text-sm font-semibold tabular-nums">{r.percent}% off</p>
+      <p className="text-muted-foreground text-sm">{LINE[r.kind]}</p>
+    </div>
+  );
   return (
     <section className="border-border bg-card flex flex-col rounded-2xl border" aria-label="Rewards">
       <ul className="divide-border divide-y">
-        {data.rewards.map((r) => (
-          <li key={r.kind} className={cn("flex items-center gap-3 p-4", !r.eligible && data.signed_in && "opacity-50")}>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{NAME[r.kind]}</p>
-              <p className="text-muted-foreground text-sm">
-                {LINE[r.kind]}
-                {capLine(r.cap_cents)}
-              </p>
-            </div>
-            <p className="shrink-0 font-semibold tabular-nums">{r.percent}% off</p>
+        {firstOrLater.length > 0 ? (
+          <li className="flex items-start gap-3 p-4">
+            {firstOrLater.map((r, i) => (
+              <Fragment key={r.kind}>
+                {i > 0 ? <span className="text-muted-foreground shrink-0 pt-0.5 text-sm font-medium">or</span> : null}
+                {cell(r)}
+              </Fragment>
+            ))}
+          </li>
+        ) : null}
+        {addOns.map((r, i) => (
+          <li key={r.kind} className="flex items-start gap-3 p-4">
+            {firstOrLater.length > 0 || i > 0 ? (
+              <span aria-label="plus" className="text-muted-foreground shrink-0 font-semibold">
+                +
+              </span>
+            ) : null}
+            {cell(r)}
           </li>
         ))}
       </ul>
@@ -150,7 +175,10 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
           </p>
         )}
         {codeError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{codeError}</p> : null}
-        <p className="text-muted-foreground mt-3 text-sm">One per visit. The place takes it off today&apos;s bill.</p>
+        <p className="text-muted-foreground mt-3 text-sm">
+          The ones you qualify for add up, and the place takes them off today&apos;s bill.
+          {capLine(rewards[0]?.cap_cents)}
+        </p>
       </div>
     </section>
   );

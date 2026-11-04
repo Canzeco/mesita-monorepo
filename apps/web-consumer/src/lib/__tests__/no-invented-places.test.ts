@@ -13,6 +13,12 @@ import { describe, expect, it } from "vitest";
 // Tests are exempt: a render test needs a row, and no app file may import a
 // test's fixture.
 
+// One exemption, by name (Pato, MESITA-3218: "for the moment we are going to only
+// use mock data"): the discount numbers on real places. It invents no place, and
+// it keeps "mock" in its name so it stays easy to find and delete.
+const MOCK_REWARDS_FILE = "lib/mock-rewards.ts";
+const MOCK_REWARDS_MODULE = "@/lib/mock-rewards";
+
 const SRC = join(__dirname, "..", "..");
 const CODE = /\.(ts|tsx)$/;
 
@@ -54,14 +60,14 @@ describe("no file under src/ invents a place", () => {
   });
 
   it("no app file is named for a mock", () => {
-    const named = files.map(rel).filter((p) => /mock/i.test(p));
+    const named = files.map(rel).filter((p) => /mock/i.test(p) && p !== MOCK_REWARDS_FILE);
     expect(named).toEqual([]);
   });
 
   it("no app file imports a mock or fixture module", () => {
     const offenders = files.flatMap((path) =>
       specifiers(readFileSync(path, "utf8"))
-        .filter((spec) => /(^|[/._-])mocks?([/._-]|$)|fixtures?\//i.test(spec))
+        .filter((spec) => spec !== MOCK_REWARDS_MODULE && /(^|[/._-])mocks?([/._-]|$)|fixtures?\//i.test(spec))
         .map((spec) => `${rel(path)} -> ${spec}`),
     );
     expect(offenders).toEqual([]);

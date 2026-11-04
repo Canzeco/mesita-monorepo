@@ -89,7 +89,8 @@ const ITEMS: Item[] = [
   {
     href: CONSUMER_ROUTES.pay,
     Icon: QrCode,
-    label: "Pay",
+    // Reward, singular (Pato, MESITA-3211: "keep the pay name in route").
+    label: "Reward",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
   },
   {

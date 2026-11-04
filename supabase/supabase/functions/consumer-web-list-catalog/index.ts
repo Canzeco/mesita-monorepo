@@ -46,6 +46,8 @@
 //             returned, chunks } }.
 //   ids       true: rank once and answer `order` (every ranked id) + the
 //             first page's cards.
+//   nearest   true, with `ids`: `order` is distance alone, nearest first, for
+//             the Reward tab (MESITA-3214). Home's score still fills `area`.
 //   offset    a whole number ≥ 0: the ranked position the page starts at;
 //             absent = the old whole answer (≤ 1000).
 //   lat/lng   a POINT; none = no location (Popularity alone).
@@ -120,6 +122,8 @@ type Body = {
   offset?: unknown;
   /** `true`: rank once and answer `order` (MESITA-3057). */
   ids?: unknown;
+  /** With `ids`: sort by distance alone (the Reward tab, MESITA-3214). */
+  nearest?: unknown;
   /** Ids from an `order` whose cards Home wants (MESITA-3057). */
   fill?: unknown;
 };
@@ -247,6 +251,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // pool does not select it (MESITA-2328).
       cardColumns: PLACE_CARD_COLUMNS,
       wire: wirePlaces,
+      nearest: rank && body.nearest === true,
       // A rank answers the first page; `order` carries the rest by id.
       ...(rank
         ? { page: { offset: 0, size: catalogPageSize(cfg.map) } }
