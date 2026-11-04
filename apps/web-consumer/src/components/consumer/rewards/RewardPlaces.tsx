@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPinOff, QrCode, Ticket, X } from "lucide-react";
+import { MapPinOff, QrCode, Ticket } from "lucide-react";
 import { PremierBadge, SizedImg } from "@mesita/place-profile";
 import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { cn } from "@/lib/utils";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
 import { useActiveLocation } from "@/lib/active-location";
@@ -28,7 +28,7 @@ import {
   useUserLocationError,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
-import { VisitQr } from "./VisitQr";
+import { VisitFlow } from "./VisitFlow";
 
 // THE REWARD TAB (Pato, MESITA-3214: "a list of all the places … sorted by
 // location. no searchbar … when you click the shit, the QR its actually open").
@@ -210,19 +210,21 @@ export function RewardPlaces() {
           Try again
         </button>
       ) : null}
-      <LocalDialog
+      <LocalSheet
         open={qr?.open === true}
         onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
-        ariaLabel={qr ? `Your code for ${qr.place.name}` : "Your code"}
+        ariaLabel={qr ? `Use your reward at ${qr.place.name}` : "Use your reward"}
       >
         {qr ? (
-          <RewardQr
+          <VisitFlow
             key={qr.opened}
-            place={qr.place}
+            placeId={qr.place.id}
+            placeName={qr.place.name}
+            photo={qr.place.photos?.[0]}
             onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
           />
         ) : null}
-      </LocalDialog>
+      </LocalSheet>
     </div>
   );
 }
@@ -264,26 +266,6 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
         <QrCode className="h-8 w-8" aria-hidden />
       </span>
     </button>
-  );
-}
-
-/** A tap on a place: the guest's bill, then their QR for it (MESITA-3245). */
-function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
-  return (
-    <div className="relative flex flex-col items-center p-6 text-center">
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Close"
-        className="text-muted-foreground absolute top-2 right-2 flex h-11 w-11 items-center justify-center"
-      >
-        <X className="h-5 w-5" aria-hidden />
-      </button>
-      <p className="w-full truncate px-8 font-semibold">{place.name}</p>
-      <div className="mt-4 w-full">
-        <VisitQr placeId={place.id} />
-      </div>
-    </div>
   );
 }
 
