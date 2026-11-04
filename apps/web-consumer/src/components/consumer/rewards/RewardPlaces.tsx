@@ -260,10 +260,12 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
           </span>
         ) : null}
       </span>
-      {/* The QR is the point of this list, in a box that mirrors the photo (Pato,
-          MESITA-3249: "must be more visible"; "keep symmetry in image and in QR"). */}
-      <span className="bg-foreground text-paper flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
-        <QrCode className="h-8 w-8" aria-hidden />
+      {/* A code you have not opened yet (Pato, MESITA-3255: "more secret, not that
+          dark… you need to open the actual ticket to see the QR"): a light tile
+          that looks tappable, a blurred grey QR. The real one is in the sheet. It
+          still mirrors the photo (MESITA-3249). */}
+      <span className="border-border bg-muted text-muted-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border shadow-xs">
+        <QrCode className="h-10 w-10 opacity-70 blur-[1.5px]" aria-hidden />
       </span>
     </button>
   );
