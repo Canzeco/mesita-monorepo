@@ -2,7 +2,7 @@ import { QrCode } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { WalletPage } from "@/components/consumer/wallet/WalletPage";
 
-// The bar's Rewards tab (Pato, MESITA-3208: "for the moment ... name this reward,
+// The bar's Reward tab (Pato, MESITA-3208, MESITA-3211: "name this reward,
 // not pay"); the route stays /pay. Rewards live on each place (MESITA-3202), so
 // this says where to find them. The bar's tab wears no tag (MESITA-3124).
 //
