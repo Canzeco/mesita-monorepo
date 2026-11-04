@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   CardActions,
+  CouponRow,
   HoursRow,
   KindRow,
   cardFacts,
@@ -76,8 +77,8 @@ function TileLink({
 
 /**
  * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
- * a white band below carrying three rows — name; category · $$ · stars;
- * hours · distance (MESITA-2645) — and two buttons, Save and Share
+ * a white band below carrying four rows — name; $$ · category · stars;
+ * Open or Closed · distance; the coupon (MESITA-3229) — and two buttons, Save and Share
  * (MESITA-2650, MESITA-2668). A Premier place wears the Premier mark
  * after its name, "Premier 2X" (MESITA-2925; Enriched has no guest mark). A Google-only card opens its profile
  * through `onOpenGoogle`, and its one button, Generate Profile, does the
@@ -112,8 +113,8 @@ export function CatalogTile({
   const google = isGoogleOnlyPlace(place);
   const href = placeHref(place.slug || place.id);
   // The card's facts, shared with the Search card (MESITA-2668): name;
-  // category · $$ · stars; hours · distance. No zone on the tile. Each cell
-  // hides when the place has none.
+  // $$ · category · stars; Open or Closed · distance; the coupon. No zone on
+  // the tile. Each cell hides when the place has none.
   const facts = cardFacts(place);
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
@@ -160,14 +161,15 @@ export function CatalogTile({
   // like and the button share; share must be almost everywhere to maximize
   // sharing and the virality of the app").
   //
-  // ONE SQUARE, PHOTO 60%, CONTENT 40%, FOUR ROWS (Pato, MESITA-2655:
-  // "better 40% and 60%, and use the space for 4 rows"), every tile, a
-  // Google-only card too (MESITA-2663): name; category · $$ · stars;
-  // hours · distance; then Save and Share side by side (32px, 44px hit
-  // area). 20px lines and a 2px gap so the four fit. The photo is fully
+  // ONE SQUARE, PHOTO 50%, CONTENT 50% (Pato, MESITA-3229: "maybe a bit more
+  // space in the info"; 60/40 and 55/45 cannot hold the four rows on a small
+  // phone), every tile, a Google-only card too (MESITA-2663): name; $$ ·
+  // category · stars; Open or Closed · distance; the coupon; then Save and
+  // Share side by side (32px, 44px hit area). 20px lines and a 2px gap. The
+  // photo is fully
   // shown and centred, nothing over it (MESITA-2369); the band under it is
   // plain white (MESITA-2658: the reflection went). The split went 45/55
-  // (MESITA-2652) and 66/34 (MESITA-2654) on the way back to 60/40. The
+  // (MESITA-2652), 66/34 (MESITA-2654) and 60/40 (MESITA-2655) before this. The
   // boxes are catalog-tile-classes.ts, shared with the tile's loading
   // silhouette (MESITA-2701).
   return (
@@ -186,7 +188,7 @@ export function CatalogTile({
         </div>
         {/* NO REFLECTION (Pato, MESITA-2658: "what actually looks better is
             removing the reflection of the place in the box"): a plain white
-            band, the three rows centred on it (MESITA-2645). MESITA-2657's
+            band, the rows centred on it (MESITA-2645). MESITA-2657's
             ring and darker list ground stay out. */}
         <div className={TILE_BAND} data-tile-info>
           {/* ONE TYPE SCALE (Pato, MESITA-2645: "standardize fonts and sizes
@@ -203,6 +205,7 @@ export function CatalogTile({
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />
+            <CouponRow facts={facts} />
           </div>
         </div>
       </TileLink>
