@@ -611,5 +611,8 @@ verify_jwt = true
 [functions.business-web-get-place-views]
 verify_jwt = true
 
+[functions.business-web-list-place-views-log]
+verify_jwt = true
+
 [functions.consumer-web-track-place-share]
 verify_jwt = true

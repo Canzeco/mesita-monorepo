@@ -494,10 +494,40 @@ export async function voidPlaceVisit(placeId: string, visitId: string): Promise<
 
 // ── Views (MESITA-3206) ──────────────────────────
 
-export type PlaceViews = { views: number; likes: number; shares: number };
+export type PlaceViewsDay = { day: string; views: number; likes: number; shares: number };
+
+export type PlaceViews = { views: number; likes: number; shares: number; timezone: string; days: PlaceViewsDay[] };
 
 export async function getPlaceViews(placeId: string): Promise<Result<PlaceViews>> {
   const r = await efInvoke<PlaceViews>("business-web-get-place-views", { place_id: placeId });
   if (!r.ok) return fail(r);
-  return { ok: true, data: { views: r.data.views, likes: r.data.likes, shares: r.data.shares } };
+  const { views, likes, shares, timezone, days } = r.data;
+  return { ok: true, data: { views, likes, shares, timezone, days: days ?? [] } };
+}
+
+// ── Views log (MESITA-3213) ──────────────────────
+
+export type PlaceViewEvent = {
+  /** The stored kinds; `saved` reads "liked". */
+  kind: "viewed" | "saved" | "shared";
+  at: string;
+  person: {
+    name: string;
+    avatarUrl: string | null;
+    handle: string | null;
+    followers: number;
+    guestClass: "regular" | "vip";
+    instagram: boolean;
+  };
+};
+
+export type PlaceViewsLog = { events: PlaceViewEvent[]; next: string | null };
+
+export async function listPlaceViewsLog(placeId: string, before?: string): Promise<Result<PlaceViewsLog>> {
+  const r = await efInvoke<PlaceViewsLog>("business-web-list-place-views-log", {
+    place_id: placeId,
+    ...(before ? { before } : {}),
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { events: r.data.events ?? [], next: r.data.next ?? null } };
 }
