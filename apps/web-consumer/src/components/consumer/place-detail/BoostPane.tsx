@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, ChevronRight, Loader2, Mail } from "lucide-react";
+import { BadgeCheck, ChevronRight, CreditCard, Loader2, Mail, Rocket, type LucideIcon } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -34,17 +34,34 @@ import { cn, errMsg } from "@/lib/utils";
 // Business app's.
 //
 // It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
-// explain current level and what to do"): one card of the three levels side by
-// side (Pato picked it, MESITA-3203), so where the place is and where it can go
-// are one look; 2X and 5X each have a Buy button straight to Checkout. Below,
-// the ownership box: claim the place, or that it has an owner and who to write
-// to, or that it is yours. It never names the owner. Every amount, date and line
-// is the server's (consumer-web-get-premier-refill); nothing here computes money.
-// Premier is paid ranking priority: it never verifies the place and never
-// promises views.
+// explain current level and what to do"), in three boxes with one job each (Pato
+// picked them, MESITA-3230: "more modular design"). Buy: the three levels side by
+// side (MESITA-3203), so where the place is and where it can go are one look; 2X
+// and 5X each have a Buy button straight to Checkout. The facts: what it is and
+// how it charges (Pato cut the "Ad" and no-guarantee lines: "its just to move
+// shit to the top"). The owner: claim the place, or that it has an owner and who
+// to write to, or that it is yours. It never names the owner. Every amount, date
+// and line is the server's (consumer-web-get-premier-refill); nothing here
+// computes money. Premier is paid ranking priority: it never verifies the place.
 
 /** A Premier level as visibility: 0 is where every place starts. */
 const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
+
+const BOX_CLASS = "border-border bg-card overflow-hidden rounded-2xl border";
+
+/** What a guest should know before paying. */
+const FACTS: ReadonlyArray<{ Icon: LucideIcon; title: string; detail: string }> = [
+  {
+    Icon: Rocket,
+    title: "3 months of Mesita Pro or Mesita Max",
+    detail: "Pro is Premier 2X, Max is Premier 5X. The place moves up in Mesita.",
+  },
+  {
+    Icon: CreditCard,
+    title: "Charged once by Stripe",
+    detail: "In US dollars. Nothing renews. Starts after any days already running.",
+  },
+];
 
 const ORIGIN: Record<RefillDays["source"], string> = {
   admin: "by Mesita",
@@ -96,54 +113,57 @@ export function BoostPane({
 
   return (
     <section className="mt-5 flex flex-col gap-3" aria-labelledby="boost-title">
-      <div aria-live="polite">
-        <p className="font-semibold">Visibility for 3 months</p>
-        {!loading &&
-          statusLines(boost).map((line) => (
-            <p key={line} className="text-muted-foreground text-sm">
-              {line}
-            </p>
-          ))}
-      </div>
-
-      <div className="border-border bg-card divide-border grid grid-cols-3 divide-x rounded-2xl border">
-        <div className="flex min-w-0 flex-col p-3">
-          <span className="h-5" />
-          <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[0]}</p>
-          <p className="text-muted-foreground text-sm">Free</p>
-          {level === 0 ? (
-            <span className="bg-muted text-muted-foreground mt-3 flex h-11 items-center justify-center rounded-lg text-sm font-semibold">
-              Now
-            </span>
-          ) : null}
+      <div className={BOX_CLASS}>
+        <div className="border-border border-b p-3" aria-live="polite">
+          <p className="font-semibold">Visibility for 3 months</p>
+          {!loading &&
+            statusLines(boost).map((line) => (
+              <p key={line} className="text-muted-foreground text-sm">
+                {line}
+              </p>
+            ))}
         </div>
-        {BOOST_TIERS.map((t) => {
-          const p = packs.find((x) => x.tier === t.rank);
-          const off = !loading && !!p && !p.available;
-          return (
-            <div key={t.rank} className="flex min-w-0 flex-col p-3">
-              <span className="flex h-5 items-center gap-1.5">
-                <PremierRosette />
-                {level === t.rank ? <span className="text-muted-foreground text-sm">Now</span> : null}
+        <div className="divide-border grid grid-cols-3 divide-x">
+          <div className="flex min-w-0 flex-col p-3">
+            <span className="h-5" />
+            <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[0]}</p>
+            <p className="text-sm font-semibold">Free</p>
+            <p className="text-muted-foreground text-sm tabular-nums">$0 USD</p>
+            {level === 0 ? (
+              <span className="bg-muted text-muted-foreground mt-3 flex h-11 items-center justify-center rounded-lg text-sm font-semibold">
+                Now
               </span>
-              <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</p>
-              <p className="text-muted-foreground text-sm tabular-nums">{p ? `${money(p.price_cents)} USD` : "…"}</p>
-              <button
-                type="button"
-                onClick={() => void start(t.rank)}
-                disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                aria-label={p ? `Buy ${VISIBILITY[t.rank]} visibility for ${money(p.price_cents)} USD` : undefined}
-                className={cn(
-                  PRIMARY_BUTTON_CLASS,
-                  "mt-3 h-11",
-                  off ? "bg-muted text-muted-foreground" : "bg-destructive text-destructive-foreground",
-                )}
-              >
-                {starting === t.rank ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Buy"}
-              </button>
-            </div>
-          );
-        })}
+            ) : null}
+          </div>
+          {BOOST_TIERS.map((t) => {
+            const p = packs.find((x) => x.tier === t.rank);
+            const off = !loading && !!p && !p.available;
+            return (
+              <div key={t.rank} className="flex min-w-0 flex-col p-3">
+                <span className="flex h-5 items-center gap-1.5">
+                  <PremierRosette />
+                  {level === t.rank ? <span className="text-muted-foreground text-sm">Now</span> : null}
+                </span>
+                <p className="mt-1 text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</p>
+                <p className="text-sm font-semibold">{t.plan}</p>
+                <p className="text-muted-foreground text-sm tabular-nums">{p ? `${money(p.price_cents)} USD` : "…"}</p>
+                <button
+                  type="button"
+                  onClick={() => void start(t.rank)}
+                  disabled={loading || !p || off || starting !== null || !boost?.signed_in}
+                  aria-label={p ? `Buy 3 months of Mesita ${t.plan}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
+                  className={cn(
+                    PRIMARY_BUTTON_CLASS,
+                    "mt-3 h-11",
+                    off ? "bg-muted text-muted-foreground" : "bg-destructive text-destructive-foreground",
+                  )}
+                >
+                  {starting === t.rank ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Buy"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {[...new Set(lines)].map((line) => (
@@ -156,10 +176,17 @@ export function BoostPane({
         <p className="text-muted-foreground text-sm">Sign in to upgrade this place.</p>
       ) : null}
 
-      <p className="text-muted-foreground text-sm">
-        Moves the place up in Mesita, with no guarantee of more views. It shows an “Ad” label and doesn&apos;t verify the
-        place. Starts after any days already running. Charged once by Stripe in US dollars; nothing renews.
-      </p>
+      <div className={cn(BOX_CLASS, "divide-border divide-y")}>
+        {FACTS.map(({ Icon, title, detail }) => (
+          <div key={title} className="flex gap-3 p-3">
+            <Icon className="text-muted-foreground mt-0.5 h-[18px] w-[18px] shrink-0" aria-hidden />
+            <p className="min-w-0 text-sm">
+              <span className="block font-semibold">{title}</span>
+              <span className="text-muted-foreground block">{detail}</span>
+            </p>
+          </div>
+        ))}
+      </div>
 
       {boost ? <OwnerBox place={place} owner={boost.owner ?? "none"} /> : null}
 
@@ -195,7 +222,7 @@ function OwnerBox({
           : businessClaimHref(place.id)
       }
       {...(other ? {} : { target: "_blank", rel: "noopener" })}
-      className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border p-4"
+      className={cn(BOX_CLASS, "flex min-h-16 items-center gap-3 p-3")}
     >
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">

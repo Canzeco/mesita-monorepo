@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { CircleArrowUp, Flag, Heart, Link2, Share2, Store, type LucideIcon } from "lucide-react";
+import { Flag, Heart, Link2, Rocket, Share2, Store, type LucideIcon } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -75,7 +75,7 @@ export function PlaceMoreSheet({
     {
       key: "boost",
       label: "Upgrade",
-      icon: CircleArrowUp,
+      icon: Rocket,
       run: onBoost,
     },
   ];
