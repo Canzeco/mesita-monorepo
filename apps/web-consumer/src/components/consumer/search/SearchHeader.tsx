@@ -146,7 +146,11 @@ export function SearchHeader({
               }
               aria-haspopup="dialog"
               data-active={everyFamily ? undefined : "true"}
-              className={CHIP_DISC}
+              className={cn(
+                CHIP_DISC,
+                // Red while a filter is on (Pato, MESITA-3192).
+                !everyFamily && "bg-destructive text-destructive-foreground hover:bg-destructive border-destructive",
+              )}
               data-search-filters
             >
               <SlidersHorizontal
