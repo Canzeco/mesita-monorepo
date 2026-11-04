@@ -31,8 +31,14 @@ const NAME: Record<RewardKind, string> = {
 const LINE: Record<RewardKind, string> = {
   welcome_visit: "Your first visit here.",
   returning_visit: "Every visit after your first.",
-  instagram_story: "Post a story about this place and show it to staff. You need more than 1,000 Instagram followers and a public profile.",
+  instagram_story: "Post a story about this place and show it to staff. You need 1,000 or more Instagram followers and a public profile.",
   vip_class: "For VIP guests.",
+};
+
+/** Why Story is off for this guest (MESITA-3224). The server decides. */
+const WHY_OFF: Record<string, string> = {
+  instagram_not_connected: "Connect your Instagram in Me to use this.",
+  not_enough_followers: "Your Instagram is under 1,000 followers.",
 };
 
 /** The Cap is in pesos, on the whole bill, whatever adds up (MESITA-3210). */
@@ -128,6 +134,7 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       <p className="font-semibold">{NAME[r.kind]}</p>
       <p className="text-sm font-semibold tabular-nums">{r.percent}% off</p>
       <p className="text-muted-foreground text-sm">{LINE[r.kind]}</p>
+      {r.reason && WHY_OFF[r.reason] ? <p className="text-sm font-medium">{WHY_OFF[r.reason]}</p> : null}
     </div>
   );
   return (

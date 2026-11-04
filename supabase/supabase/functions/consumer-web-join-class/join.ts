@@ -2,27 +2,27 @@
 // every exit is tested with no network: the two reads and the write come in
 // as functions.
 //
-//   body ──parseJoinBody──> {via:"code",code} | {via:"instagram"} | null (400)
+//   body ──parseJoinBody──> {via:"code",code} | {via:"leave"} | null (400)
 //          │
-//          ▼ readRow (one read: class, Instagram, note)
+//          ▼ via code: only EMULATOR_CODE (twelve zeros, MESITA-3071)
+//            joins; any other twelve digits → 403 invalid_code
+//          ▼ readRow (one read: class, note)
 //   error → 500 join_failed · none → 404 · VIP → 200 joined:false
-//          │
-//          ▼ via instagram: decideInstagram (the STORED handle and count)
-//   no handle → 403 · null count → 403 · < bar → 403 · ≥ bar ─┐
-//          ▼ via code: only EMULATOR_CODE (twelve zeros, MESITA-3071) │
-//            joins; any other twelve digits → 403 invalid_code    │
-//   writeClass("vip", note) ◄─────────────────────────────────────┘
+//          ▼
+//   writeClass("vip", note)
 //   error → 500 join_failed · ok → 200 joined:true
 //
 //   via leave (after the row read): not VIP → 200 left:false ·
 //   writeClass("regular", "[left] …") → 200 left:true
 //
-// The note is tagged, [code:emulated] or [instagram:typed], so the VIPs of
-// the testing period are found and demoted in one query before VIP grants
-// anything real (MESITA-3055). It goes in front of any operator note.
+// VIP pays for the room, a guest a partner vouches for, so followers never make
+// a VIP (MESITA-3224 closed via:"instagram"; followers are Instagram Story's
+// bar). The note is tagged [code:emulated], so the VIPs of the testing period
+// are found and demoted in one query before VIP grants anything real
+// (MESITA-3055); older ones may read [instagram:typed]. It goes in front of any
+// operator note.
 
 import type { ClassJoinRow } from "../_shared/consumer-doc.ts";
-import { INSTAGRAM_REACH_FOLLOWERS } from "../_shared/instagram-reach.ts";
 import { parseClassCode } from "./class-code.ts";
 
 /** The one code the emulator accepts until partners issue real ones
@@ -32,7 +32,6 @@ export const EMULATOR_CODE = "000000000000";
 
 export type JoinBody =
   | { via: "code"; code: string }
-  | { via: "instagram" }
   | { via: "leave" };
 
 export type JoinOutcome =
@@ -44,13 +43,10 @@ export type JoinOutcome =
   | "bad_code"
   | "invalid_code"
   | "consumer_not_found"
-  | "instagram_not_connected"
-  | "followers_unknown"
-  | "not_enough_followers"
   | "error";
 
 export type JoinLog = {
-  via: "code" | "instagram" | "leave" | null;
+  via: "code" | "leave" | null;
   outcome: JoinOutcome;
   cause?: "consumer_read" | "consumer_write";
   message?: string;
@@ -71,13 +67,11 @@ export type JoinDeps = {
 
 const NOTE_MAX = 280; // consumers_guest_class_note_check
 
-/** `null` = not a join body. Only `via` and `code` are read: a handle or a
- *  follower count in the body is never looked at. A malformed code still
- *  parses as `via:"code"` so the guest hears "Enter the 12-digit code.". */
+/** `null` = not a join body. Only `via` and `code` are read. A malformed code
+ *  still parses as `via:"code"` so the guest hears "Enter the 12-digit code.". */
 export function parseJoinBody(body: unknown): JoinBody | { via: "code"; code: null } | null {
   if (!body || typeof body !== "object") return null;
   const b = body as Record<string, unknown>;
-  if (b.via === "instagram") return { via: "instagram" };
   if (b.via === "leave") return { via: "leave" };
   if (b.via === "code") {
     const code = parseClassCode(b.code);
@@ -86,30 +80,8 @@ export function parseJoinBody(body: unknown): JoinBody | { via: "code"; code: nu
   return null;
 }
 
-export type InstagramDecision =
-  | { ok: true; handle: string; followers: number }
-  | { ok: false; code: "instagram_not_connected" | "followers_unknown" }
-  | { ok: false; code: "not_enough_followers"; followers: number };
-
-/** The bar is inclusive: exactly `needed` followers joins. */
-export function decideInstagram(
-  row: Pick<ClassJoinRow, "instagram_handle" | "instagram_followers_count">,
-  needed: number = INSTAGRAM_REACH_FOLLOWERS,
-): InstagramDecision {
-  const handle = row.instagram_handle;
-  if (!handle) return { ok: false, code: "instagram_not_connected" };
-  const followers = row.instagram_followers_count;
-  if (followers === null || followers === undefined) return { ok: false, code: "followers_unknown" };
-  if (followers < needed) return { ok: false, code: "not_enough_followers", followers };
-  return { ok: true, handle, followers };
-}
-
 export function codeJoinNote(code: string): string {
   return `[code:emulated] Joined with code …${code.slice(-4)}`;
-}
-
-export function instagramJoinNote(handle: string, followers: number): string {
-  return `[instagram:typed] Joined via Instagram @${handle} (${followers.toLocaleString("en-US")} followers)`;
 }
 
 /** The join note first, then any operator note, cut to the column's 280. */
@@ -133,7 +105,7 @@ const LEFT_NOTE = "[left] Left VIP";
 export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<JoinResult> {
   const body = parseJoinBody(rawBody);
   if (!body) {
-    return fail(400, "bad_request", 'Body must be {via:"code",code} or {via:"instagram"}.', {
+    return fail(400, "bad_request", 'Body must be {via:"code",code} or {via:"leave"}.', {
       via: null,
       outcome: "bad_request",
     });
@@ -196,8 +168,7 @@ export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<Join
     };
   }
 
-  // Before any follower check: a VIP whose cached page still says Regular
-  // must land on VIP, not on "Needs 1,000 followers".
+  // A VIP whose cached page still says Regular lands on VIP.
   if (row.guest_class === "vip") {
     return {
       status: 200,
@@ -206,31 +177,7 @@ export async function handleJoin(rawBody: unknown, deps: JoinDeps): Promise<Join
     };
   }
 
-  let joinNote: string;
-  if (body.via === "instagram") {
-    const d = decideInstagram(row);
-    if (!d.ok) {
-      if (d.code === "instagram_not_connected") {
-        return fail(403, d.code, "Connect Instagram first.", { via, outcome: d.code });
-      }
-      if (d.code === "followers_unknown") {
-        return fail(403, d.code, "We couldn't read your follower count.", { via, outcome: d.code });
-      }
-      if (d.code !== "not_enough_followers") throw new Error("unreachable");
-      return fail(
-        403,
-        d.code,
-        `Needs ${INSTAGRAM_REACH_FOLLOWERS.toLocaleString("en-US")} followers.`,
-        { via, outcome: d.code },
-        { followers: d.followers, needed: INSTAGRAM_REACH_FOLLOWERS },
-      );
-    }
-    joinNote = instagramJoinNote(d.handle, d.followers);
-  } else {
-    joinNote = codeJoinNote(body.code);
-  }
-
-  const write = await deps.writeClass("vip", mergeNote(joinNote, row.guest_class_note));
+  const write = await deps.writeClass("vip", mergeNote(codeJoinNote(body.code), row.guest_class_note));
   if (!write.ok) {
     return fail(500, "join_failed", JOIN_FAILED, {
       via,
