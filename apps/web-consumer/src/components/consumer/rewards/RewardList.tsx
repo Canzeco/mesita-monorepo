@@ -6,14 +6,14 @@ import { cn } from "@/lib/utils";
 // Rewards tab and the Reward step (MESITA-3250). Who qualifies and every number
 // is the server's.
 
-const NAME: Record<RewardKind, string> = {
+export const REWARD_NAME: Record<RewardKind, string> = {
   welcome_visit: "Welcome Visit",
   returning_visit: "Returning Visit",
   instagram_story: "Instagram Story",
   vip_class: "VIP Class",
 };
 
-const LINE: Record<RewardKind, string> = {
+export const REWARD_LINE: Record<RewardKind, string> = {
   welcome_visit: "Your first visit here.",
   returning_visit: "Every visit after your first.",
   instagram_story: "Post a story about this place and show it to staff. You need 1,000 or more Instagram followers and a public profile.",
@@ -39,9 +39,9 @@ export function RewardList({ rewards, signedIn }: { rewards: PlaceReward[]; sign
   const addOns = rewards.filter((r) => r.kind !== "welcome_visit" && r.kind !== "returning_visit");
   const cell = (r: PlaceReward) => (
     <div className={cn("min-w-0 flex-1", !r.eligible && signedIn && "opacity-50")}>
-      <p className="font-semibold">{NAME[r.kind]}</p>
+      <p className="font-semibold">{REWARD_NAME[r.kind]}</p>
       <p className="text-fact-reward text-sm font-semibold tabular-nums">{r.percent}% OFF</p>
-      <p className="text-muted-foreground text-sm">{LINE[r.kind]}</p>
+      <p className="text-muted-foreground text-sm">{REWARD_LINE[r.kind]}</p>
       {r.reason && WHY_OFF[r.reason] ? <p className="text-sm font-medium">{WHY_OFF[r.reason]}</p> : null}
     </div>
   );

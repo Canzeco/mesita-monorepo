@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(57);
+select plan(62);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -363,6 +363,32 @@ select ok(
     and not has_function_privilege('authenticated',
       'public.place_visit_close(uuid, text, text, integer, text[], uuid)', 'EXECUTE'),
   'client roles hold nothing on closing a visit'
+);
+
+-- MESITA-3259: Story is the guest's choice, and the tick reaches staff with the code.
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-unticked', now() + interval '10 minutes', 100000);
+select ok(
+  not (public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-unticked')->'rewards' @> '[{"kind": "instagram_story"}]'::jsonb),
+  'an unticked Story does not reach staff, even for a guest who could use it'
+);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-unticked', 'pc-right', 100000, '{instagram_story}', '00000000-0000-4000-8000-00000000d001')->>'reason',
+  'story_not_ticked',
+  'the close refuses a Story the guest did not tick'
+);
+select is(
+  (select count(*)::integer from public.place_visits where request_id = '00000000-0000-4000-8000-00000000d001'), 0,
+  'a refused Story logs no visit'
+);
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-ticked', now() + interval '10 minutes', 100000, true);
+select ok(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-ticked')->'rewards' @> '[{"kind": "instagram_story"}]'::jsonb,
+  'a ticked Story reaches staff'
+);
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000003202', 'hash-ticked', 'pc-right', 100000, '{instagram_story}', '00000000-0000-4000-8000-00000000d002')#>>'{visit,discount_cents}',
+  '20000',
+  'a ticked Story comes off the bill'
 );
 
 select * from finish();

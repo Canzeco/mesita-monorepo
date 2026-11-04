@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ticket, X } from "lucide-react";
+import { X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
-import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { Skeleton } from "@/components/shared";
 import {
   apiCreateVisitCode,
@@ -20,11 +19,11 @@ import {
   type VisitResult,
 } from "@/lib/api/rewards";
 import { REWARD_STEPS, rewardStepPath, type RewardStep } from "@/lib/consumer-route-contract";
-import { MOCK_COUPON, MOCK_REWARDS, mockRewardLabel } from "@/lib/mock-rewards";
+import { MOCK_FIRST_VISIT } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
-import { capLine, RewardList } from "./RewardList";
+import { capLine, REWARD_LINE, REWARD_NAME } from "./RewardList";
 import type { RewardPlaceHeader } from "./reward-place-seed";
 
 // USING A REWARD, IN STEPS (Pato, MESITA-3250: "open almost a full screen modal …
@@ -41,10 +40,17 @@ import type { RewardPlaceHeader } from "./reward-place-seed";
 // asks for that result every few seconds and moves here when it exists. No money
 // moves through Mesita, and a tip is only words: the reward comes off the bill,
 // never the tip, so the bill typed here is the one before tip.
+//
+// A CHECKLIST (Pato, MESITA-3259: "only mention the current reward you apply"):
+// the Reward step lists only what this guest can use, so a first visit never
+// mentions Returning. Story is the one to tick, because it is the one the guest
+// has to earn. It starts off, and the tick waits with the code for staff.
 
 const STEP_LABEL: Record<RewardStep, string> = { bill: "Bill", reward: "Reward", qr: "QR", pay: "Pay" };
 
 const STEP_TITLE = "text-lg font-semibold tracking-tight";
+
+const STORY = "instagram_story";
 
 /** How often the QR step asks whether staff closed the visit. */
 const RESULT_POLL_MS = 4000;
@@ -111,6 +117,44 @@ function Receipt({ billCents, offCents, payCents, currency }: { billCents: numbe
   );
 }
 
+/** What applies to this guest today. Only Story is a choice. */
+function RewardChecklist({ rewards, story, onStory }: { rewards: PlaceReward[]; story: boolean; onStory: (on: boolean) => void }) {
+  return (
+    <ul className="divide-border divide-y">
+      {rewards.map((r) => {
+        const body = (
+          <>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold">{REWARD_NAME[r.kind]}</span>
+              <span className="text-muted-foreground block text-sm">
+                {r.kind === STORY ? "Post a story about this place and show it to staff. Your profile must be public." : REWARD_LINE[r.kind]}
+              </span>
+            </span>
+            <span className="text-fact-reward shrink-0 text-sm font-semibold tabular-nums">{r.percent}% OFF</span>
+          </>
+        );
+        return (
+          <li key={r.kind}>
+            {r.kind === STORY ? (
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 p-4">
+                <input
+                  type="checkbox"
+                  checked={story}
+                  onChange={(event) => onStory(event.target.checked)}
+                  className="accent-foreground mt-0.5 h-5 w-5 shrink-0"
+                />
+                {body}
+              </label>
+            ) : (
+              <div className="flex items-start gap-3 p-4">{body}</div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 /** Before the close: the same sum the server does. */
 function BillSummary({ billCents, rewards }: { billCents: number; rewards: PlaceReward[] }) {
   const { offCents, payCents } = billAfterRewards(billCents, rewards);
@@ -121,12 +165,14 @@ function BillSummary({ billCents, rewards }: { billCents: number; rewards: Place
 function VisitCodeQr({
   placeId,
   billCents,
+  story,
   summary,
   onIssued,
   onChangeBill,
 }: {
   placeId: string;
   billCents: number;
+  story: boolean;
   summary: PlaceReward[];
   onIssued: (issuedAt: string) => void;
   onChangeBill: () => void;
@@ -138,7 +184,7 @@ function VisitCodeQr({
 
   useEffect(() => {
     let live = true;
-    apiCreateVisitCode(supabase, placeId, billCents).then(
+    apiCreateVisitCode(supabase, placeId, billCents, story).then(
       (next) => {
         if (!live) return;
         setCode(next);
@@ -220,6 +266,7 @@ export function VisitFlow({
   const router = useRouter();
   const supabase = useBrowserSupabase();
   const [typed, setTyped] = useState("");
+  const [story, setStory] = useState(false);
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -274,12 +321,11 @@ export function VisitFlow({
 
   const go = (id: RewardStep) => router.push(rewardStepPath(placeId, id));
 
-  // Real rewards where a place has them on, else the mock (MESITA-3218).
-  const real = (data?.rewards.length ?? 0) > 0;
-  const rewards = data ? (real ? data.rewards : MOCK_REWARDS) : [];
-  const summary = data && real ? data.rewards : MOCK_COUPON;
-  const usable = rewards.some((r) => r.eligible);
-  const coupon = mockRewardLabel(placeId);
+  // Real rewards where a place has them on, else the mock (MESITA-3218). Only what
+  // this guest can use, and Story only once it's ticked.
+  const rewards = (data ? (data.rewards.length > 0 ? data.rewards : MOCK_FIRST_VISIT) : []).filter((r) => r.eligible);
+  const summary = rewards.filter((r) => r.kind !== STORY || story);
+  const usable = rewards.length > 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -355,15 +401,15 @@ export function VisitFlow({
             ) : (
               <p className="text-muted-foreground mt-1 text-sm tabular-nums">On your bill of {billText(billCents)}.</p>
             )}
-            {coupon ? (
-              <p className={cn(PLACE_REWARD_COUPON_CLASS, "mt-4 flex w-full justify-center font-semibold")}>
-                <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-                <span className="truncate">{coupon}</span>
-              </p>
-            ) : null}
             <div className="border-border bg-card mt-4 rounded-2xl border">
               {data ? (
-                <RewardList rewards={rewards} signedIn={data.signed_in} />
+                usable ? (
+                  <RewardChecklist rewards={rewards} story={story} onStory={setStory} />
+                ) : (
+                  <p className="text-muted-foreground p-4 text-sm">
+                    {data.signed_in ? "None of these apply to you right now." : "Sign in to use a reward."}
+                  </p>
+                )
               ) : failed ? (
                 <div className="p-4">
                   <p className="font-semibold">Rewards didn&apos;t load.</p>
@@ -386,13 +432,9 @@ export function VisitFlow({
                 </div>
               )}
             </div>
-            {data ? (
+            {usable ? (
               <p className="text-muted-foreground mt-3 text-sm">
-                {usable
-                  ? `The ones you qualify for add up, and the place takes them off today's bill.${capLine(rewards[0]?.cap_cents)}`
-                  : data.signed_in
-                    ? "None of these apply to you right now."
-                    : "Sign in to use a reward."}
+                The ones you qualify for add up, and the place takes them off today&apos;s bill.{capLine(rewards[0]?.cap_cents)}
               </p>
             ) : null}
           </div>
@@ -410,6 +452,7 @@ export function VisitFlow({
             <VisitCodeQr
               placeId={placeId}
               billCents={billCents}
+              story={story}
               summary={summary}
               onIssued={(issuedAt) => setSince((first) => first ?? issuedAt)}
               onChangeBill={() => go("bill")}
