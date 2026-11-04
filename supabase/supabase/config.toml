@@ -615,7 +615,7 @@ verify_jwt = false
 [functions.visit-web-close-visit]
 verify_jwt = false
 
-# MESITA-3262: the QR won't scan. The member code and the place code together.
+# MESITA-3262: the QR won't scan. The member number and the place code together.
 [functions.visit-web-find-visit]
 verify_jwt = false
 

@@ -179,7 +179,7 @@ function VisitCodeQr({
   onChangeBill: () => void;
 }) {
   const supabase = useBrowserSupabase();
-  const memberCode = useServerProfile()?.code;
+  const memberNumber = useServerProfile()?.code;
   const [code, setCode] = useState<VisitCode | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -240,9 +240,9 @@ function VisitCodeQr({
         )}
       </div>
       {/* Staff type this at visit.mesita.ai when the QR won't scan (MESITA-3262). */}
-      {code && memberCode ? (
+      {code && memberNumber ? (
         <p className="text-muted-foreground mt-2 text-sm">
-          Won&apos;t scan? Member code <span className="text-foreground font-semibold">{memberCode}</span>
+          Won&apos;t scan? Member number <span className="text-foreground font-semibold">{memberNumber}</span>
         </p>
       ) : null}
       <div className="mt-4 w-full">

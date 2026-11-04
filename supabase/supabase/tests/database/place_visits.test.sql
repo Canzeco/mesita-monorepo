@@ -391,7 +391,7 @@ select is(
   'a ticked Story comes off the bill'
 );
 
--- MESITA-3262: the QR won't scan, so staff type the member code and the place code.
+-- MESITA-3262: the QR won't scan, so staff type the member number and the place code.
 update public.consumers set code = '3202-0001' where id = '00000000-0000-4000-8000-0000000a3202';
 select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202', 'hash-typed', now() + interval '10 minutes', 120000);
 create function pg_temp.typed(digits text, new_hash text) returns jsonb language sql as $$
@@ -400,9 +400,9 @@ create function pg_temp.typed(digits text, new_hash text) returns jsonb language
 $$;
 select ok(
   public.place_visit_member_places('3202-0001') @> array['00000000-0000-4000-8000-000000003202'::uuid],
-  'a member code finds the place of an open QR'
+  'a member number finds the place of an open QR'
 );
-select is(pg_temp.typed('pc-wrong', 'hash-new')->>'outcome', 'no_match', 'a member code with the wrong place code opens nothing');
+select is(pg_temp.typed('pc-wrong', 'hash-new')->>'outcome', 'no_match', 'a member number with the wrong place code opens nothing');
 select is(
   public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-typed')->>'outcome', 'ok',
   'a wrong try leaves the scanned QR working'

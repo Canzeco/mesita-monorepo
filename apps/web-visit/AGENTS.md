@@ -3,6 +3,6 @@
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 
-- No install, no sign-in. The QR link's secret and the place code are the keys. A member code alone opens nothing.
+- No install, no sign-in. The QR link's secret and the place code are the keys. A member number alone opens nothing.
 - **Edge Functions:** `visit-web-*` only. Every rule and peso is the server's.
 - Light theme, no index by search engines.
