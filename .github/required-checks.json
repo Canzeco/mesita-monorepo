@@ -9,6 +9,7 @@
   "web-consumer · lint · typecheck · test · build",
   "web-landing · lint · typecheck · test · build",
   "web-business · lint · typecheck · test · build",
+  "web-visit · lint · typecheck · test · build",
   "place-profile · typecheck · test",
   "render · test"
 ]

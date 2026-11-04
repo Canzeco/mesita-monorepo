@@ -25,6 +25,7 @@ export const SCAN_ROOTS = [
   "apps/web-consumer/src",
   "apps/web-landing/src",
   "apps/web-business/src",
+  "apps/web-visit/src",
   "packages/place-profile/src",
   "supabase/supabase/functions",
 ] as const;
@@ -34,6 +35,7 @@ const CARD_PATHS = [
   "apps/web-consumer/CLAUDE.md",
   "apps/web-landing/CLAUDE.md",
   "apps/web-business/CLAUDE.md",
+  "apps/web-visit/CLAUDE.md",
   "supabase/CLAUDE.md",
 ] as const;
 

@@ -52,6 +52,18 @@ updates:
       security:
         applies-to: security-updates
         patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /apps/web-visit
+    schedule:
+      interval: monthly
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /packages/place-profile
     schedule:

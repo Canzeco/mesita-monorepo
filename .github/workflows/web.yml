@@ -1,6 +1,6 @@
 name: web
 
-# The four apps and the shared place profile, one required check each. The
+# The five apps and the shared place profile, one required check each. The
 # apps install packages/place-profile as a file: dependency, so a change there
 # runs web-admin and web-consumer too.
 on:
@@ -11,6 +11,7 @@ on:
       - "apps/web-consumer/**"
       - "apps/web-landing/**"
       - "apps/web-business/**"
+      - "apps/web-visit/**"
       - "packages/place-profile/**"
       - ".github/workflows/web.yml"
       - ".github/actions/pnpm-check/**"
@@ -33,6 +34,7 @@ jobs:
       web-consumer: ${{ steps.filter.outputs.web-consumer }}
       web-landing: ${{ steps.filter.outputs.web-landing }}
       web-business: ${{ steps.filter.outputs.web-business }}
+      web-visit: ${{ steps.filter.outputs.web-visit }}
       place-profile: ${{ steps.filter.outputs.place-profile }}
     steps:
       - uses: actions/checkout@v7
@@ -56,6 +58,10 @@ jobs:
               - '.github/actions/pnpm-check/**'
             web-business:
               - 'apps/web-business/**'
+              - '.github/workflows/web.yml'
+              - '.github/actions/pnpm-check/**'
+            web-visit:
+              - 'apps/web-visit/**'
               - '.github/workflows/web.yml'
               - '.github/actions/pnpm-check/**'
             place-profile:
@@ -113,6 +119,18 @@ jobs:
       - uses: ./.github/actions/pnpm-check
         with:
           dir: apps/web-business
+          scripts: lint typecheck test build
+
+  web-visit:
+    name: web-visit · lint · typecheck · test · build
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.web-visit != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/pnpm-check
+        with:
+          dir: apps/web-visit
           scripts: lint typecheck test build
 
   # The package's tsconfig.json and vitest.config.ts resolve React, Next and
