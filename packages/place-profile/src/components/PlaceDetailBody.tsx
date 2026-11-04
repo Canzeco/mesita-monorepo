@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { PlaceActions, PlaceCreatingView } from "../actions";
 import { AboutBox } from "./AboutBox";
@@ -72,6 +72,13 @@ export function PlaceDetailBody({
     setOpenKey(openTab.key);
     setTab(openTab.tab);
   }
+  // THE ASK JUMPS TO THE TAB (Pato, MESITA-3200: jump down to the prices): the
+  // strip goes to the top, so the tab it opened is on screen, not below the
+  // summary. Only the scroll needs an effect; the tab switched during render.
+  const tabBarRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (openKey != null) tabBarRef.current?.scrollIntoView({ block: "start" });
+  }, [openKey]);
   const create = place.is_enriched ? null : (creating ?? null);
   return (
     // decision: Pato (2026-10-16) — the name header and the section strip
@@ -86,7 +93,7 @@ export function PlaceDetailBody({
         creating={create != null && create.error == null}
       />
       <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar tab={tab} onChange={setTab} />
+        <PlaceTabBar ref={tabBarRef} tab={tab} onChange={setTab} />
           {/* NO EMPTY BOXES WHILE IT IS CREATED (Pato, MESITA-2685: "if a
               place is being created, better at the bottom write, no
               overview yet, following the same style of reviews and products

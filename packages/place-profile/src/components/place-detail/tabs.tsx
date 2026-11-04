@@ -1,5 +1,7 @@
 "use client";
 
+import type { RefObject } from "react";
+
 import { cn } from "../../lib/format";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
@@ -40,9 +42,11 @@ export function placeTabs(): readonly PlaceTabDef[] {
 export function PlaceTabBar({
   tab,
   onChange,
+  ref,
 }: {
   tab: PlaceTab;
   onChange: (t: PlaceTab) => void;
+  ref?: RefObject<HTMLElement | null>;
 }) {
   const tabs = placeTabs();
   return (
@@ -51,6 +55,7 @@ export function PlaceTabBar({
     // translucency) so the strip matches the name header and scrolled
     // content can't bleed through. The page wash stays below the strip.
     <nav
+      ref={ref}
       className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-1"
       aria-label="Place sections"
     >

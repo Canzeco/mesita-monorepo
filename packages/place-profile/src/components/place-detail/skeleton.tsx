@@ -38,7 +38,7 @@ import { PlaceTabBar } from "./tabs";
 // placeholders must be similar to the page you are loading, like the
 // sizes"). Every block here stands where the loaded screen draws its own, at
 // its size: PlaceTopBar, then ProfileSummary's white band (photo and the
-// three counts, the facts boxes, the four tiles, Mesita Reserve, Prepay ·
+// three counts, the facts boxes, the five tiles, Mesita Reserve, Prepay ·
 // Pay), the tab strip, then Overview's white cards on the grey ground.
 // NOTHING HERE RE-TYPES A REAL PART: the top bar, the tab strip, the Boxes
 // and the "No overview yet" screen are the real components; the summary's
@@ -116,12 +116,12 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: four tiles, then Mesita Reserve full width (live or
+      {/* ProfileActions: five tiles, then Mesita Reserve full width (live or
           disabled, never missing — MESITA-3078) and Prepay · Pay halved, the
           44px place button. */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
-          {[0, 1, 2, 3].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
           ))}
         </div>

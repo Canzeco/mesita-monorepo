@@ -80,8 +80,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [prepayOpen, setPrepayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // When ⋯ › Premier last asked for the Premier tab (ms).
+  // When the Upgrade tile (MESITA-3200) or ⋯ › Business last asked for the
+  // Business tab (ms).
   const [boostAskedAt, setBoostAskedAt] = useState<number | null>(null);
+  const onBoost = () => setBoostAskedAt(Date.now());
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
@@ -116,6 +118,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onReserve: () => setReserveOpen(true),
     // Mesita Prepay (MESITA-3098): only a Mesita place can take money.
     onPrepay: isMesitaPlaceId(place.id) ? () => setPrepayOpen(true) : undefined,
+    onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
   };
@@ -158,7 +161,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         onClose={() => setMoreOpen(false)}
         saved={saved}
         onSave={onSave}
-        onBoost={() => setBoostAskedAt(Date.now())}
+        onBoost={onBoost}
         // A Google-only card is not a place row yet: nothing to report.
         onReport={
           isMesitaPlaceId(place.id) ? () => setReportOpen(true) : undefined

@@ -2,6 +2,7 @@
 
 import {
   CalendarCheck,
+  CircleArrowUp,
   Heart,
   Map as MapIcon,
   Phone,
@@ -24,14 +25,18 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // contact share / reserve / prepay pay"; MESITA-2688/2689 had Reserve and
 // Pay side by side):
 //
-//   [ ♡ Save ] [ ▱ Directions ] [ ✆ Contact ] [ ⇪ Share ]
-//   [ ▣ Mesita Reserve                                  ]
-//   [ ▤ Mesita Prepay  Soon  ] [ ▦ Mesita Pay  Soon     ]
+//   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
+//   [ ▣ Mesita Reserve                                          ]
+//   [ ▤ Mesita Prepay  Soon      ] [ ▦ Mesita Pay  Soon         ]
 //
-// ROW 1 is four equal grey tiles, icon over a 12px label. Save is the heart
+// ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
-// tile (MESITA-2635). Directions opens Google Maps already routing to the
-// place (MESITA-2619). Share is back here; the top bar's dots report.
+// tile (MESITA-2635). Maps opens Google Maps already routing to the place
+// (MESITA-2619); it read Directions until the fifth tile left no room for
+// the word (MESITA-3200). Share is back here; the top bar's dots report.
+// UPGRADE (Pato, MESITA-3200: "I don't like boost being hidden there below")
+// opens the Business tab, never Checkout, on every place: a Google-only one
+// gets that tab's not-open-yet screen, so the row never changes width.
 //
 // ROWS 2 AND 3 are the ink button (Pato, MESITA-2689: "kinda like this
 // button but half and half, but same height and colour"): 44px, icon beside
@@ -85,8 +90,8 @@ const blockedInkButton = cn(
  *  (Pato, MESITA-2823: "fix spacing here"): the 12px under the tiles was the
  *  only step that was not the tiles' and the halves' 8px. */
 export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
-/** Row 1: four equal tiles, 8px apart. */
-export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-4 gap-2";
+/** Row 1: five equal tiles, 8px apart. */
+export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
 /** A tile's box: 56px, rounded-lg, icon over label. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
@@ -169,6 +174,7 @@ export function ProfileActions({
   const onOpenLink = actions?.onOpenLink;
   const onReserve = actions?.onReserve;
   const onPrepay = actions?.onPrepay;
+  const onBoost = actions?.onBoost;
   const takesPrepay = place.prepay_enabled === true;
   const takesReservations = isReserveActionEnabled(place);
   const reserveLive = takesReservations && Boolean(onReserve);
@@ -199,7 +205,7 @@ export function ProfileActions({
           // paper plane each lived a night. Imported as MapIcon so it never
           // shadows the global Map.
           Icon={MapIcon}
-          label="Directions"
+          label="Maps"
           live={Boolean(onOpenLink)}
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
           ariaLabel="Directions in Google Maps"
@@ -230,6 +236,13 @@ export function ProfileActions({
           live={Boolean(onShare)}
           onClick={onShare}
           ariaLabel="Share"
+        />
+        <ActionTile
+          Icon={CircleArrowUp}
+          label="Upgrade"
+          live={Boolean(onBoost)}
+          onClick={onBoost}
+          ariaLabel="Upgrade this place"
         />
       </div>
 
