@@ -6,10 +6,8 @@ import { CopyIdButton, ReadField } from "@/components/ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { SpecialActionsCard } from "./SpecialActionsCard";
 import { StateCard } from "./StateCard";
-import { ProfileStatsCard } from "./ProfileStatsCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { ReportsCard } from "./ReportsCard";
-import { ActionStatesCard } from "./ActionStatesCard";
 import { formatAbsoluteUtc } from "@/lib/format";
 
 // Admin — the Mesita-internal tab (Pato, 2026-08-04).
@@ -17,10 +15,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
 //   Profile States      Created · Pulsing · Enriching · Enriched · Owned · Premier ·
-//                         Disabled (Selected died, MESITA-2925). Profile
-//                         Stats (Viewed · Saved) is its own box
-//                         (MESITA-2735). A place is enriching or enriched.
-//                         There is no step ladder.
+//                         Disabled (Selected died, MESITA-2925). A place is
+//                         enriching or enriched. There is no step ladder.
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
 //   Reports             the place's guest reports from the three dots,
@@ -33,7 +29,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //   Vectors / Metadata (UID & audit). The SERP Summary box went with the
 //   enrichment stage path (MESITA-2424): Render never stored the summary.
 // Verification (claim requests, MESITA-3157) is a card in the same columns;
-// who runs the place is Settings'.
+// who runs the place is Settings'. Actions lives on Profile, for staff, and
+// Profile Stats on Visits, for the place's whole team (MESITA-3205).
 
 /** The tab's masonry: one column, two from lg, three from xl, its cards
  *  never split. The tab's loading.tsx lays its cards out in it too. */
@@ -49,10 +46,6 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
       <StateCard place={place} />
       {/* Enrich · Update Google · Update Reviews · Enable · Disable (MESITA-3159). */}
       <SpecialActionsCard place={place} />
-      {/* Reservations and Prepayments are Mesita's switches; they left the
-          profile editor when it moved to the Business app (MESITA-3103). */}
-      <ActionStatesCard place={place} />
-      <ProfileStatsCard place={place} />
       <ReviewsStateCard place={place} />
       {/* key remounts the list when the operator switches places. */}
       <ReportsCard key={`reports-${place.id}`} place={place} />

@@ -46,7 +46,7 @@ Deno.test("overview returns the vote threshold", () => {
 
 Deno.test("overview carries Profile Stats from place_activity", () => {
   assertEquals(READ.includes("fetchPlaceProfileStats("), true);
-  assertEquals(READ.includes("place.profile_stats = profileStats"), true);
+  assertEquals(READ.includes("profile_stats: profileStats"), true);
 });
 
 Deno.test("the place row and its enrichment map are read together", () => {

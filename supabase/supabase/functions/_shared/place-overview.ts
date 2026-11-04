@@ -2,11 +2,11 @@
 // admin-web-get-overview (super-admin, web-admin) and business-web-get-place
 // (whoever runs the place, or a super-admin, web-business) since MESITA-3103.
 //
-// One round trip: the place row, its enrichment map, and the vocabulary Family
-// and Category resolve against. `internal` adds what only Mesita staff see:
-// the embedding, Google's id, the Enrich ladder and function states, Profile
-// Stats, and who runs the place (owners, pending requests). An owner's read
-// never carries them.
+// One round trip: the place row, its enrichment map, Profile Stats (guests
+// already see those counts, MESITA-3205), and the vocabulary Family and
+// Category resolve against. `internal` adds what only Mesita staff see: the
+// embedding, Google's id, the Enrich ladder and function states, and who runs
+// the place (owners, pending requests). An owner's read never carries them.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { PLACE_PROFILE_COLUMNS } from "./place-columns.ts";
@@ -74,7 +74,7 @@ export async function buildPlaceOverview(
         .from("place_media_assets")
         .select("public_url, source_url, analysis_text")
         .eq("place_id", placeId),
-      internal ? fetchPlaceProfileStats(admin, placeId) : Promise.resolve(null),
+      fetchPlaceProfileStats(admin, placeId),
     ]);
   if (placeRow.error) return { ok: false, status: 500, error: placeRow.error.message };
   if (!placeRow.data) return { ok: false, status: 404, error: "Place not found" };
@@ -119,6 +119,7 @@ export async function buildPlaceOverview(
     operator_fields: readOperatorFields(enrichmentRow.data?.enrichment_sources),
     ...reviewFoundFromRow((enrichmentRow.data ?? {}) as Record<string, unknown>),
     photo_analysis: photoAnalysisMap(assetsRow.data),
+    profile_stats: profileStats,
   };
 
   if (internal) {
@@ -131,7 +132,6 @@ export async function buildPlaceOverview(
     place.enrich_functions = operatorFunctionStates(
       enrichmentMap.functions as Partial<Record<string, FunctionState>>,
     );
-    place.profile_stats = profileStats;
     // Who runs this place (MESITA-3103): staff see it beside State.
     const owners = await listPlaceOwners(admin, placeId);
     place.owners = owners.owners;
