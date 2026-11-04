@@ -1,14 +1,14 @@
 import { getPremier } from "@/lib/business-api";
 import { PremierPanel } from "./PremierPanel";
-import { getManagePlace } from "@/lib/place-view";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Premier" };
 
-// Premier (MESITA-3103): the place's paid visibility, run by the place. The
-// read is business-web-get-premier; with `?boost=<session>` (a Stripe Checkout
-// started here before MESITA-3186) it first settles the caller's own payment.
-// Billing (plans, card, charges) is its own page (MESITA-3160, MESITA-3173).
+// Premier (MESITA-3103): the place's level and how it works, to read
+// (MESITA-3204). Anything that changes it is Billing (MESITA-3160, MESITA-3173).
+// The read is business-web-get-premier; with `?boost=<session>` (a Stripe
+// Checkout started here before MESITA-3186) it first settles the caller's own
+// payment.
 export default async function PremierPage({
   params,
   searchParams,
@@ -18,15 +18,6 @@ export default async function PremierPage({
 }) {
   const { id } = await params;
   const { boost } = await searchParams;
-  const [res, manage] = await Promise.all([getPremier(id, boost ?? null), getManagePlace(id)]);
-  return (
-    <div className="flex flex-col gap-4">
-      {manage?.role === "editor" ? (
-        <p className="border-border bg-muted/50 rounded-xl border px-4 py-3 text-sm">
-          You are an editor here. Only the place&apos;s owner can buy, change or stop its plan.
-        </p>
-      ) : null}
-      <PremierPanel placeId={id} initial={res.ok ? res.data : null} loadError={res.ok ? null : res.error} />
-    </div>
-  );
+  const res = await getPremier(id, boost ?? null);
+  return <PremierPanel placeId={id} data={res.ok ? res.data : null} loadError={res.ok ? null : res.error} />;
 }
