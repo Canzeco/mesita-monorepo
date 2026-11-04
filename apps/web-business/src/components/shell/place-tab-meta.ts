@@ -18,7 +18,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   all: {
     label: "All",
     icon: DotsThreeCircleIcon,
-    sub: "Mesita is the ultimate marketing, financial and operations software for independent restaurants, with AI and agents that take your whole restaurant digital.",
+    sub: "Mesita Suite is the ultimate marketing, financial and operations software for independent restaurants, with AI and agents that take your whole restaurant digital.",
   },
   billing: { label: "Billing", icon: ReceiptIcon, sub: "What's running, what it costs and every charge." },
   settings: { label: "Settings", icon: GearIcon, sub: "Place and team." },
