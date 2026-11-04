@@ -134,11 +134,9 @@ export function profileFromGoogle(
     },
   };
   if (phone) patch.phone = phone;
-  if (channel) {
-    patch[channel.key] = channel.url;
-    if (channel.key === "instagram_url") patch.instagram_found = true;
-    if (channel.key === "facebook_url") patch.facebook_found = true;
-  }
+  // The link only. Instagram Found and Facebook Found are Sync's, after it
+  // checks the link (MESITA-3247).
+  if (channel) patch[channel.key] = channel.url;
   const price = priceLevelFromGoogle(details.priceLevel, details.priceRange);
   if (price) patch.price_level = price;
   if (
