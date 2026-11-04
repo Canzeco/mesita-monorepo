@@ -26,6 +26,8 @@ export type PlaceActions = {
   onReserve?: () => void;
   /** Mesita Prepay (MESITA-3098): live only where the place takes prepayments. */
   onPrepay?: () => void;
+  /** The fifth tile, Upgrade (MESITA-3200): opens the Business tab. */
+  onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
 };
