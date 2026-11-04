@@ -34,7 +34,7 @@ export default async function PlaceLayout({
       <PlaceTabTitle right={enrichmentView(manage.place).enriching ? <EnrichingTag /> : null} />
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         <PreviewButton />
-        <PlaceScroll staff={manage.role === "superadmin"}>{children}</PlaceScroll>
+        <PlaceScroll>{children}</PlaceScroll>
       </div>
     </PlaceManageShell>
   );

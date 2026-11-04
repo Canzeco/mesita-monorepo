@@ -1,55 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { LightningIcon } from "@phosphor-icons/react/dist/ssr";
-import type { AdminPlace } from "../actions";
-import { updatePlace } from "../actions";
 import { usePlaceContext } from "../PlaceContext";
-import { SectionCard } from "@/components/ui/manage";
+import { updatePlace } from "../actions";
+import { prepayPatch, reservationsPatch } from "./action-patches";
+import { Card } from "@/components/shell/Page";
 import { Switch } from "@/components/ui/config";
 
-// Profile's Actions box (MESITA-2786, toggles MESITA-2787). Reservations
-// saves the moment it flips; the save stores it as the operator's answer so a
-// later Enrich cannot reopen or close bookings. Prepayments saves the moment
-// it flips too (MESITA-3098): on, the place screen's Mesita Prepay sells a
-// balance at this place. Payments is not built: locked off.
+// Settings' Actions card (MESITA-2786, toggles MESITA-2787, moved from Profile
+// by MESITA-3236). Staff only: the switches are Mesita's, and
+// business-web-update-place refuses them from an owner. It reads the live place
+// from PlaceContext, so a flip survives moving between tabs. Reservations saves
+// the moment it flips; the save stores it as the operator's answer so a later
+// Enrich cannot reopen or close bookings. Prepayments saves the moment it flips
+// too (MESITA-3098): on, the place screen's Mesita Prepay sells a balance at
+// this place. Payments is not built: locked off.
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="border-border flex items-center justify-between gap-4 border-b py-3 last:border-b-0">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-    </div>
-  );
-}
+const ROW = "flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm sm:px-6";
 
-export function ActionStatesCard({ place }: { place: AdminPlace }) {
-  const { setPlace } = usePlaceContext();
-  const [pending, setPending] = useState(false);
+export function ActionStatesCard() {
+  const { place, setPlace } = usePlaceContext();
+  const [pending, setPending] = useState<"reservations" | "prepay" | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const on = place.reservations_enabled === true;
-  const prepayOn = place.prepay_enabled === true;
-  const [prepayPending, setPrepayPending] = useState(false);
 
-  async function togglePrepay() {
-    setPrepayPending(true);
+  async function save(which: "reservations" | "prepay", patch: Parameters<typeof updatePlace>[0]) {
+    setPending(which);
     setError(null);
-    const r = await updatePlace({ id: place.id, prepay_enabled: !prepayOn });
-    setPrepayPending(false);
-    if (!r.ok) {
-      setError(r.error);
-      return;
-    }
-    setPlace(r.data.place);
-  }
-
-  async function toggle() {
-    setPending(true);
-    setError(null);
-    const current = place.reservation_channel;
-    const channel = on ? "none" : current && current !== "none" ? current : "phone";
-    const r = await updatePlace({ id: place.id, reservations_enabled: !on, reservation_channel: channel });
-    setPending(false);
+    const r = await updatePlace(patch);
+    setPending(null);
     if (!r.ok) {
       setError(r.error);
       return;
@@ -58,24 +36,33 @@ export function ActionStatesCard({ place }: { place: AdminPlace }) {
   }
 
   return (
-    <SectionCard icon={<LightningIcon size={20} />} title="Actions" subtitle="What a guest can do here.">
-      <div className="mt-3 flex flex-col">
-        <Row label="Mesita Reservations Enabled">
-          <Switch on={on} pending={pending} onClick={toggle} label="Mesita Reservations Enabled" />
-        </Row>
-        <Row label="Mesita Payments Enabled">
-          <Switch on={false} pending onClick={() => {}} label="Mesita Payments Enabled" />
-        </Row>
-        <Row label="Mesita Prepayments Enabled">
+    <Card className="flex flex-col p-0 sm:p-0">
+      <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Actions</h2>
+      <ul className="divide-border divide-y">
+        <li className={ROW}>
+          <span className="font-medium">Mesita Reservations Enabled</span>
           <Switch
-            on={prepayOn}
-            pending={prepayPending}
-            onClick={togglePrepay}
+            on={place.reservations_enabled === true}
+            pending={pending === "reservations"}
+            onClick={() => void save("reservations", reservationsPatch(place))}
+            label="Mesita Reservations Enabled"
+          />
+        </li>
+        <li className={ROW}>
+          <span className="font-medium">Mesita Payments Enabled</span>
+          <Switch on={false} pending onClick={() => {}} label="Mesita Payments Enabled" />
+        </li>
+        <li className={ROW}>
+          <span className="font-medium">Mesita Prepayments Enabled</span>
+          <Switch
+            on={place.prepay_enabled === true}
+            pending={pending === "prepay"}
+            onClick={() => void save("prepay", prepayPatch(place))}
             label="Mesita Prepayments Enabled"
           />
-        </Row>
-      </div>
-      {error ? <p className="text-destructive mt-2 text-xs">{error}</p> : null}
-    </SectionCard>
+        </li>
+        {error ? <li className={`${ROW} text-destructive`}>{error}</li> : null}
+      </ul>
+    </Card>
   );
 }

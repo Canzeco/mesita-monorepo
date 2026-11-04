@@ -271,14 +271,7 @@ function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function PlaceSection({
-  place,
-  children,
-}: {
-  place: AdminPlace;
-  /** Extra Profile boxes (Actions, staff) — flow in the same masonry columns. */
-  children?: React.ReactNode;
-}) {
+export function PlaceSection({ place }: { place: AdminPlace }) {
   const { savePending, profile, setPlace } = usePlaceContext();
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
@@ -407,7 +400,7 @@ export function PlaceSection({
           Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin,
-          except Actions, which ProfileTab adds here for staff (MESITA-3205);
+          Actions on Settings (MESITA-3236);
           Team on Controls; the reputation rail on Activity. */}
       <SectionCard
         icon={<StorefrontIcon size={20} />}
@@ -682,9 +675,6 @@ export function PlaceSection({
           />
         </div>
       </SectionCard>
-
-
-      {children}
     </div>
   );
 }
