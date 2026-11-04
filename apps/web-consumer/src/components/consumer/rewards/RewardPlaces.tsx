@@ -10,6 +10,7 @@ import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
 import { useActiveLocation } from "@/lib/active-location";
+import { isMesitaPlaceId } from "@/lib/api/activity";
 import {
   apiFillAreaPool,
   apiListAreaPool,
@@ -17,7 +18,7 @@ import {
   type AreaPool,
   type Place,
 } from "@/lib/api/places";
-import { apiCreateVisitCode, type VisitCode } from "@/lib/api/rewards";
+import { apiCreateVisitCode, apiListRewardPercents, type VisitCode } from "@/lib/api/rewards";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -93,6 +94,23 @@ export function RewardPlaces() {
   // The server sorts every id once; the rest of the rows load as the guest
   // scrolls, as on Home (MESITA-3057).
   const sentinel = useRef<HTMLLIElement | null>(null);
+
+  // What each row can say (MESITA-3217): asked for places as they load, once
+  // each. A failed read only leaves the amounts off; the list still works.
+  const [percents, setPercents] = useState<Record<string, number>>({});
+  const asked = useRef(new Set<string>());
+  const placeIds = (pool?.places ?? []).map((p) => p.id).join(",");
+  useEffect(() => {
+    if (!placeIds) return;
+    const fresh = placeIds.split(",").filter((id) => isMesitaPlaceId(id) && !asked.current.has(id)).slice(0, 100);
+    if (fresh.length === 0) return;
+    for (const id of fresh) asked.current.add(id);
+    apiListRewardPercents(supabase, fresh).then(
+      (next) => setPercents((now) => ({ ...now, ...next })),
+      () => undefined,
+    );
+  }, [supabase, placeIds]);
+
   const hasMore = pool !== null && pool.asked < pool.order.length;
   useEffect(() => {
     const el = sentinel.current;
@@ -167,6 +185,7 @@ export function RewardPlaces() {
             {i > 0 && <RowDivider />}
             <RewardRow
               place={place}
+              percent={percents[place.id]}
               onOpen={() => setQr((cur) => ({ place, opened: (cur?.opened ?? 0) + 1, open: true }))}
             />
           </li>
@@ -199,7 +218,7 @@ export function RewardPlaces() {
   );
 }
 
-function RewardRow({ place, onOpen }: { place: Place; onOpen: () => void }) {
+function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number; onOpen: () => void }) {
   const facts = cardFacts(place);
   const photo = place.photos?.[0];
   const line = [facts.kind, facts.distance].filter(Boolean).join(" · ");
@@ -219,6 +238,8 @@ function RewardRow({ place, onOpen }: { place: Place; onOpen: () => void }) {
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-semibold">{place.name}</span>
         {line ? <span className="text-muted-foreground block truncate text-xs">{line}</span> : null}
+        {/* "Up to": Story counts, and staff check it at the till (MESITA-3217). */}
+        {percent ? <span className="mt-0.5 block truncate text-xs font-semibold">Up to {percent}% off for you</span> : null}
       </span>
       <QrCode className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
     </button>

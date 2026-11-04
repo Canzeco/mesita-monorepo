@@ -22,6 +22,15 @@ export async function apiGetPlaceRewards(client: SupabaseClient, placeId: string
   return await invokeEF<PlaceRewards>(client, "consumer-web-get-place-rewards", { place_id: placeId });
 }
 
+/** Each place's "Up to N%" for this guest (MESITA-3217). A place with nothing on
+ *  is left out. Mesita places only: a Google-only card has no rewards row. */
+export async function apiListRewardPercents(client: SupabaseClient, placeIds: string[]): Promise<Record<string, number>> {
+  const res = await invokeEF<{ percents: Record<string, number> }>(client, "consumer-web-list-reward-percents", {
+    place_ids: placeIds,
+  });
+  return res.percents ?? {};
+}
+
 export type VisitCode = { code: string; expires_at: string };
 
 export async function apiCreateVisitCode(client: SupabaseClient, placeId: string): Promise<VisitCode> {
