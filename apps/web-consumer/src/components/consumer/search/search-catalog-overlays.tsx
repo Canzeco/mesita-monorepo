@@ -55,9 +55,11 @@ export const RAIL_LEAD_PAGES = 1;
  *  first (MESITA-2886; MESITA-2885 pinned a narrow button beside it). */
 const RAIL_ROW = "flex items-start pb-1";
 
-/** The carousel: snap pages, sideways. */
+/** The carousel: snap pages, sideways, aligned to their foot so a card with a
+ *  discount stands taller and every photo and button stays on one line
+ *  (MESITA-3246). */
 const RAIL_SCROLLER =
-  "scrollbar-hide flex min-w-0 flex-1 snap-x snap-mandatory overflow-x-auto";
+  "scrollbar-hide flex min-w-0 flex-1 snap-x snap-mandatory items-end overflow-x-auto";
 
 /** The first load's carousel (Pato, MESITA-2701: "the placeholders must be
  *  similar to the page you are loading, like the sizes"): the loaded row's

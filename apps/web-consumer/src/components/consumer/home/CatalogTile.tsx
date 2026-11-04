@@ -221,8 +221,11 @@ export function CatalogTile({
           Share (Pato, MESITA-2843, reversing MESITA-2663): the tap is the
           card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
           foot (MESITA-2668); it was 8px at the foot. */}
-      <div className={cn(TILE_ACTIONS, TILE_FOOT)}>
+      {/* The foot lets taps through, so the coupon opens the place like the rest
+          of the card (Pato, MESITA-3246); only the buttons catch their own. */}
+      <div className={cn(TILE_ACTIONS, TILE_FOOT, "pointer-events-none")}>
         <CardActions
+          className="pointer-events-auto"
           name={place.name}
           saved={saved}
           onSave={onToggle}
