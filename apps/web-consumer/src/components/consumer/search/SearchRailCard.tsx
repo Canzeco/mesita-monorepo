@@ -12,6 +12,7 @@ import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
   CardActions,
+  CouponTag,
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
@@ -174,6 +175,7 @@ export function RailCard({
             </span>
           )}
           {photoOverlay}
+          <CouponTag facts={facts} />
         </div>
         <div className={cn("text-foreground", RAIL_CARD_TEXT)}>
           <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
