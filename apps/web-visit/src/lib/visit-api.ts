@@ -1,5 +1,7 @@
 // The two calls this app makes (MESITA-3240), with plain fetch: no sign-in, so
-// supabase-js has no session to carry. A refusal's words are the server's.
+// supabase-js has no session to carry. A refusal's words are the server's. The two
+// NEXT_PUBLIC_SUPABASE_ variables are public and the build bakes them in, so changing
+// one in Vercel needs a new build, and only a commit under apps/web-visit makes one.
 
 export type VisitReward = { kind: string; percent: number; cap_cents: number | null };
 
