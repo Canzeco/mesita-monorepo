@@ -102,6 +102,9 @@ export function NewVisit({ placeId }: { placeId: string }) {
     reset();
   }
 
+  // A disabled button's title never shows on a phone at the till.
+  const storyOff = found?.rewards.find((r) => r.kind === "instagram_story" && !r.eligible);
+
   return (
     <Card className="flex flex-col p-0 sm:p-0">
       <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">New visit</h2>
@@ -186,9 +189,12 @@ export function NewVisit({ placeId }: { placeId: string }) {
                 </div>
               )}
             </li>
+            {storyOff?.reason ? (
+              <li className={cn(ROW, "text-muted-foreground")}>Instagram Story: {REWARD_REASON[storyOff.reason]}.</li>
+            ) : null}
             {picked.includes("instagram_story") ? (
               <li className={cn(ROW, "text-muted-foreground")}>
-                Check on the guest&apos;s phone: the story, more than 1,000 followers and a public profile.
+                Check on the guest&apos;s phone: the story and a public profile.
               </li>
             ) : null}
             <li className={ROW}>

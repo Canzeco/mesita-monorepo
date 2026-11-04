@@ -434,8 +434,6 @@ export async function readSocialStanding(
  *  Instagram as stored at connect (never what the request says). */
 export type ClassJoinRow = {
   guest_class: string | null;
-  instagram_handle: string | null;
-  instagram_followers_count: number | null;
   guest_class_note: string | null;
 };
 
@@ -449,7 +447,7 @@ export async function readClassJoinRow(
   const { data, error } = await admin
     .from("consumers")
     .select(
-      "guest_class, instagram_handle, instagram_followers_count, guest_class_note",
+      "guest_class, guest_class_note",
     )
     .eq("id", consumerId)
     .is("deleted_at", null)

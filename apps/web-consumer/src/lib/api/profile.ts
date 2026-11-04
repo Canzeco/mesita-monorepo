@@ -78,13 +78,12 @@ type ConsumerAppearAnonymousPatch = {
 };
 
 /** Join VIP (MESITA-3054): a 12-digit invitation code (emulated on the server:
- *  any 12 digits) or the guest's connected Instagram at 1,000+ followers. Any
- *  200 is VIP (`joined: false` = already was). The cache is patched FIRST, so
+ *  only twelve zeros). Followers never make a VIP (MESITA-3224). Any 200 is VIP (`joined: false` = already was). The cache is patched FIRST, so
  *  every reader shows VIP even if the refetch fails, and a refetch that comes
  *  back Regular never overwrites it. */
 export async function apiJoinClass(
   client: SupabaseClient,
-  body: { via: "code"; code: string } | { via: "instagram" },
+  body: { via: "code"; code: string },
 ): Promise<void> {
   await invokeEF<{ guest_class: "vip"; joined: boolean }>(
     client,

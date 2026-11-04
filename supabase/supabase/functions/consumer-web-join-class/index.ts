@@ -1,9 +1,10 @@
 // Supabase Edge Function — consumer-web-join-class
 //
-// Me › Class: a Regular guest joins VIP (MESITA-2984, two ways since
-// MESITA-3054). The guest always taps; nothing joins on its own.
+// Me › Class: a Regular guest joins VIP (MESITA-2984). The guest always taps;
+// nothing joins on its own. VIP pays for the room, a guest a partner vouches
+// for, so followers never make a VIP (MESITA-3224 closed via:"instagram").
 //
-// Body: { via: "code", code: "<12 digits>" } | { via: "instagram" }
+// Body: { via: "code", code: "<12 digits>" }
 //       | { via: "leave" } — a VIP goes back to Regular (Pato, MESITA-3054:
 //         "add button to downgrade class in the weird case someone wishes
 //         to"); 200 { ok, guest_class: "regular", left }.
@@ -12,9 +13,6 @@
 //          accept upgrade"); any other twelve digits is 403 invalid_code.
 //          Real one-use codes are MESITA-3055; this EF is where they will be
 //          checked.
-//   instagram — the guest's STORED handle and follower count (set when they
-//          connected Instagram) must reach INSTAGRAM_REACH_FOLLOWERS (1,000,
-//          _shared/instagram-reach.ts). Nothing in the body is trusted.
 //
 // Response: 200 { ok: true, guest_class: "vip", joined } — joined:false when
 // the guest was already VIP (a retry is safe).
@@ -22,8 +20,6 @@
 // Docs › Identity (Class):
 //   400 bad_request · 400 bad_code · 403 invalid_code ·
 //   404 consumer_not_found ·
-//   403 instagram_not_connected · 403 followers_unknown ·
-//   403 not_enough_followers { followers, needed } ·
 //   500 join_failed { request_id } (never the database's own words).
 // Every request logs one `class_join` line {via, outcome}; a code's last four
 // digits at most.
