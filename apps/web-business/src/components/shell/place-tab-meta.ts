@@ -3,7 +3,7 @@
 // entry.
 
 import type { Icon } from "@phosphor-icons/react";
-import { DotsThreeIcon, EyeIcon, FootprintsIcon, GearIcon, GiftIcon, MegaphoneIcon, ReceiptIcon, ShieldCheckIcon, StarIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
+import { DotsThreeCircleIcon, EyeIcon, FootprintsIcon, GearIcon, GiftIcon, MegaphoneIcon, ReceiptIcon, ShieldCheckIcon, StarIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
 
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
@@ -17,7 +17,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   // line is about Mesita, not the page (Pato, MESITA-3237).
   all: {
     label: "All",
-    icon: DotsThreeIcon,
+    icon: DotsThreeCircleIcon,
     sub: "Mesita is the ultimate marketing, financial and operations software for independent restaurants, taking your whole restaurant digital.",
   },
   billing: { label: "Billing", icon: ReceiptIcon, sub: "What's running, what it costs and every charge." },
