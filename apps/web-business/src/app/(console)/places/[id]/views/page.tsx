@@ -9,8 +9,9 @@ export const metadata = { title: "Views" };
 // Views (MESITA-3206, Pato: "Views (like eyes), Visits (like walk-ins) ... online
 // is the number of views, the number of likes, the number of shares"): one card
 // of three numbers. Each counts signed-in guests, not taps, and every number is
-// the server's. MESITA-3213 puts the last 30 days above them and the log of who
-// did what below.
+// the server's. MESITA-3213 adds the last 30 days and the log of who did what.
+// Two columns at lg (Pato, MESITA-3234: "left column for analytcs, right coluymn
+// for events"), as on Reviews.
 export default async function ViewsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [views, log] = await Promise.all([getPlaceViews(id), listPlaceViewsLog(id)]);
@@ -30,8 +31,8 @@ export default async function ViewsPage({ params }: { params: Promise<{ id: stri
     { name: "Shares", line: "Guests who shared it or copied its link.", value: views.data.shares },
   ];
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <Card className="flex flex-col p-0 sm:p-0">
+    <div className="grid grid-cols-1 items-start gap-4 pb-8 lg:grid-cols-2 lg:gap-5">
+      <Card className="flex min-w-0 flex-col p-0 sm:p-0">
         <ViewsChart days={views.data.days} />
         <ul className="divide-border border-border divide-y border-t">
           {rows.map((row) => (
@@ -48,7 +49,7 @@ export default async function ViewsPage({ params }: { params: Promise<{ id: stri
       {log.ok ? (
         <ViewsLog placeId={id} timezone={views.data.timezone} initial={log.data} />
       ) : (
-        <Card>
+        <Card className="min-w-0">
           <p className="font-semibold">The log didn&apos;t load.</p>
           <p className="text-muted-foreground mt-1 text-sm">{log.error}</p>
         </Card>
