@@ -2,12 +2,12 @@
 // design across pages"). The side menu and the page title read the same
 // entry, so a page is drawn with the mark its menu row wears.
 
-import { BadgeCheck, ClipboardList, Eye, Gift, Receipt, MapPinned, Settings, ShieldCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Eye, Footprints, Gift, Receipt, MapPinned, Settings, ShieldCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
 import type { PlaceTab } from "@/lib/routes";
 
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon; sub: string }> = {
   views: { label: "Views", icon: Eye, sub: "Who saw your place online." },
-  visits: { label: "Visits", icon: ClipboardList, sub: "Who walked in, the bill and how it was paid." },
+  visits: { label: "Visits", icon: Footprints, sub: "Who walked in, the bill and how it was paid." },
   profile: { label: "Profile", icon: MapPinned, sub: "What guests read about your place." },
   reviews: { label: "Reviews", icon: Star, sub: "What guests say on Google, Instagram and Facebook." },
   premier: { label: "Premier", icon: BadgeCheck, sub: "Rank higher on Home and the Map. Marked as an ad." },
