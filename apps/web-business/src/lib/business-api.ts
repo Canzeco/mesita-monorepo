@@ -449,7 +449,8 @@ export type PlaceVisit = {
   member_number: string | null;
   bill_cents: number;
   currency: string;
-  payment_method: PaymentMethod;
+  /** Null on a visit closed at visit.mesita.ai, which does not ask (MESITA-3240). */
+  payment_method: PaymentMethod | null;
   reward_kinds: RewardKind[];
   reward_percent: number | null;
   discount_cents: number;

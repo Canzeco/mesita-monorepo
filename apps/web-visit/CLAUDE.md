@@ -1,6 +1,7 @@
-# apps/web-visit — confirm a guest's visit (visit.mesita.ai)
+# apps/web-visit — close a guest's visit (visit.mesita.ai)
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 
-- One page for now, with no install and no sign-in. No Supabase, no env vars.
+- No install, no sign-in. The QR link's secret and the place code are the keys.
+- **Edge Functions:** `visit-web-*` only. Every rule and peso is the server's.
 - Light theme, no index by search engines.

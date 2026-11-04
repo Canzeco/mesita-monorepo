@@ -17,7 +17,7 @@ import {
   type AreaPool,
   type Place,
 } from "@/lib/api/places";
-import { apiCreateVisitCode, apiListRewardPercents, type VisitCode } from "@/lib/api/rewards";
+import { apiCreateVisitCode, apiListRewardPercents, visitLink, type VisitCode } from "@/lib/api/rewards";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
 import { mockRewardPercent } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -264,8 +264,8 @@ function endsAt(iso: string): string {
 }
 
 /** The guest's code for this place: ten minutes, one use (MESITA-3202). The QR
- *  holds the six digits and they show under it, since staff type them. A new
- *  code replaces the old one when it ends, so what's on screen always works. */
+ *  links to visit.mesita.ai (MESITA-3240), and nobody types the code. A new code
+ *  replaces the old one when it ends, so what's on screen always works. */
 function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
   const supabase = useBrowserSupabase();
   const [code, setCode] = useState<VisitCode | null>(null);
@@ -313,7 +313,7 @@ function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
       <p className="w-full truncate px-8 font-semibold">{place.name}</p>
       <div className="mt-4 flex min-h-56 items-center justify-center">
         {code ? (
-          <QRCodeSVG value={code.code} size={QR_SIZE} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
+          <QRCodeSVG value={visitLink(place.id, code.code)} size={QR_SIZE} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
         ) : error ? (
           <div>
             <p className="text-sm">{error}</p>
@@ -333,12 +333,9 @@ function RewardQr({ place, onClose }: { place: Place; onClose: () => void }) {
         )}
       </div>
       {code ? (
-        <div aria-live="polite">
-          <p className="mt-4 text-3xl font-semibold tracking-[0.2em] tabular-nums">{code.code}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Show this to staff. It works until {endsAt(code.expires_at)}.
-          </p>
-        </div>
+        <p aria-live="polite" className="text-muted-foreground mt-4 text-sm">
+          Show this to staff. It works until {endsAt(code.expires_at)}.
+        </p>
       ) : null}
     </div>
   );

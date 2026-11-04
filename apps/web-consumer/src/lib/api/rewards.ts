@@ -36,3 +36,8 @@ export type VisitCode = { code: string; expires_at: string };
 export async function apiCreateVisitCode(client: SupabaseClient, placeId: string): Promise<VisitCode> {
   return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId });
 }
+
+/** What the guest's QR holds (MESITA-3240): a phone camera opens this page. */
+export function visitLink(placeId: string, code: string): string {
+  return `https://visit.mesita.ai/?place=${encodeURIComponent(placeId)}&code=${encodeURIComponent(code)}`;
+}

@@ -10,7 +10,7 @@ export type PaymentMethod = typeof PAYMENT_METHODS[number];
 
 /** How long a guest's code works. */
 export const VISIT_CODE_MINUTES = 10;
-/** Draws before giving up on a free set of digits at this place. */
+/** Draws before giving up on a free code at this place. */
 export const VISIT_CODE_DRAWS = 5;
 
 export function isRewardKind(v: unknown): v is RewardKind {
@@ -31,20 +31,26 @@ export function isBillCents(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 100_000_000;
 }
 
-/** Six digits, or null. Spaces a person typed do not count. */
-export function readVisitCode(v: unknown): string | null {
+/** A place code: six digits, or null. Spaces a person typed do not count. */
+export function readPlaceCode(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const code = v.replace(/\s/g, "");
   return /^\d{6}$/.test(code) ? code : null;
 }
 
-/** Six random digits, leading zeros kept. */
-export function newVisitCode(): string {
-  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
-  return String(n).padStart(6, "0");
+/** The secret in a guest's QR link, or null. */
+export function readVisitCode(v: unknown): string | null {
+  return typeof v === "string" && /^[0-9a-f]{32}$/.test(v) ? v : null;
 }
 
-/** SHA-256 hex of the code, bound to its place: the same digits mean nothing
+/** 128 random bits as hex (MESITA-3240). Nobody types it, and whoever holds the
+ *  link sees the guest's first name, so it must not be guessable. */
+export function newVisitCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** SHA-256 hex of the code, bound to its place: the same code means nothing
  *  anywhere else, and only a hash is stored. */
 export async function hashVisitCode(placeId: string, code: string): Promise<string> {
   const bytes = new TextEncoder().encode(`visit:${placeId}:${code}`);

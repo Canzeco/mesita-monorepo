@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(40);
+select plan(55);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -265,6 +265,95 @@ insert into public.place_rewards (place_id, welcome_visit) values ('00000000-000
 select is(
   public.place_rewards_read('00000000-0000-4000-8000-000000013202')#>>'{cap,enabled}', 'true',
   'a place''s first switch leaves the Cap on'
+);
+
+-- ━━━ Closing at visit.mesita.ai (MESITA-3240) ━━━
+
+select is(
+  public.place_visit_close('00000000-0000-4000-8000-000000013202', 'hash-any', 'pc-any', 50000, '{}', '00000000-0000-4000-8000-00000000c100')->>'outcome',
+  'no_place_code',
+  'a place with no code set closes nothing'
+);
+
+update public.place_rewards set place_code_hash = 'pc-right' where place_id = '00000000-0000-4000-8000-000000003202';
+create function pg_temp.close(code text, digits text, req text) returns jsonb language sql as $$
+  select public.place_visit_close('00000000-0000-4000-8000-000000003202', code, digits, 50000, '{}', req::uuid)
+$$;
+
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-c'),
+  '{"outcome": "ok", "guest_name": "Caro", "place_name": "Visit Probe", "currency": "MXN", "code_set": true,
+    "rewards": [{"kind": "welcome_visit", "percent": 20, "cap_cents": null}]}'::jsonb,
+  'the page gets a first name and only the rewards this guest can use, never a member number'
+);
+select is(
+  public.place_visit_open('00000000-0000-4000-8000-000000003202', 'hash-nope'),
+  '{"outcome": "bad_code"}'::jsonb,
+  'a QR that has ended shows nothing'
+);
+
+select is(
+  pg_temp.close('hash-nope', 'pc-right', '00000000-0000-4000-8000-00000000c101')->>'outcome', 'bad_code',
+  'a QR that has ended closes nothing, even with the right number'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c102')->>'outcome', 'wrong_place_code',
+  'a wrong number is refused'
+);
+select pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c102');
+select pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c102');
+select pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c102');
+select is(
+  pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c102')->>'outcome', 'locked',
+  'the fifth wrong number in a row locks this guest here'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-right', '00000000-0000-4000-8000-00000000c103')->>'outcome', 'locked',
+  'the right number waits out the lock'
+);
+select is(
+  (select count(*)::integer from public.place_visits where consumer_id = '00000000-0000-4000-8000-0000000c3202'), 0,
+  'no refused try logs a visit'
+);
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a9');
+select is(
+  pg_temp.close('hash-a9', 'pc-wrong', '00000000-0000-4000-8000-00000000c104')->>'outcome', 'wrong_place_code',
+  'one guest''s lock does not touch another guest at the till'
+);
+
+update public.place_code_tries set locked_until = now() - interval '1 minute'
+ where consumer_id = '00000000-0000-4000-8000-0000000c3202';
+select is(
+  pg_temp.close('hash-c', 'pc-right', '00000000-0000-4000-8000-00000000c105')->>'outcome', 'ok',
+  'after the lock, the right number closes the visit'
+);
+select is(
+  (select jsonb_build_object('method', payment_method, 'by', created_by, 'total', total_cents)
+     from public.place_visits where request_id = '00000000-0000-4000-8000-00000000c105'),
+  '{"method": null, "by": null, "total": 50000}'::jsonb,
+  'the visit holds the amount, with no payment method and nobody signed in'
+);
+select is(
+  (select count(*)::integer from public.place_code_tries where consumer_id = '00000000-0000-4000-8000-0000000c3202'), 0,
+  'the right number clears the wrong tries'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-right', '00000000-0000-4000-8000-00000000c105')->>'replayed', 'true',
+  'a retried tap returns the same visit, though the guest''s code is spent'
+);
+select is(
+  pg_temp.close('hash-c', 'pc-wrong', '00000000-0000-4000-8000-00000000c105')->>'outcome', 'bad_code',
+  'a retry without the right number learns nothing about the visit'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.place_code_tries', 'SELECT')
+    and not has_table_privilege('anon', 'public.place_code_tries', 'SELECT')
+    and not has_function_privilege('anon', 'public.place_visit_open(uuid, text)', 'EXECUTE')
+    and not has_function_privilege('anon',
+      'public.place_visit_close(uuid, text, text, integer, text[], uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated',
+      'public.place_visit_close(uuid, text, text, integer, text[], uuid)', 'EXECUTE'),
+  'client roles hold nothing on closing a visit'
 );
 
 select * from finish();

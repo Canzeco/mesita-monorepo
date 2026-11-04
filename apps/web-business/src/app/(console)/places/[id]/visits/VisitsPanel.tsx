@@ -43,7 +43,7 @@ function VisitRow({
     : null;
   const facts = [
     `Paid ${money(visit.total_cents, visit.currency)}`,
-    PAYMENT_LABEL[visit.payment_method],
+    visit.payment_method ? PAYMENT_LABEL[visit.payment_method] : null,
     reward,
     when(visit.created_at, timezone),
   ].filter(Boolean);
