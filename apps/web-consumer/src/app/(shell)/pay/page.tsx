@@ -2,8 +2,9 @@ import { QrCode } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { WalletPage } from "@/components/consumer/wallet/WalletPage";
 
-// Pay — the Soon state again (Pato, 2026-11-02: "Pay must be as Soon";
-// MESITA-3113). The bar's tab wears no tag (MESITA-3124).
+// The bar's Rewards tab (Pato, MESITA-3208: "for the moment ... name this reward,
+// not pay"); the route stays /pay. Rewards live on each place (MESITA-3202), so
+// this says where to find them. The bar's tab wears no tag (MESITA-3124).
 //
 // MONEY: a Mesita Prepay checkout (MESITA-3098) still returns here with
 // `?prepay=<session>`, and the Wallet's read is what credits that payment,
@@ -14,8 +15,8 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
   return (
     <EmptyState
       icon={QrCode}
-      title="Pay is coming soon"
-      description="Paying at a place with Mesita lands here shortly — thanks for waiting."
+      title="Rewards are on each place"
+      description="Open a place and its Rewards tab shows what it offers you."
     />
   );
 }
