@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, Loader2 } from "lucide-react";
+import { BadgeCheck, ChevronRight, Loader2 } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -15,6 +15,7 @@ import {
   type RefillDays,
   type TierRank,
 } from "@/lib/api/boost";
+import { businessClaimHref } from "@/lib/business-url";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -31,10 +32,10 @@ import { cn, errMsg } from "@/lib/utils";
 // Business app's.
 //
 // It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
-// explain current level and what to do"; layout MESITA-3193, version B of his
-// board): one card with the place's current visibility, two tiles and one button
-// that says what you pay, straight to Checkout. "Is this your
-// business?" is in the place's ⋯ menu. Every amount, date and line is the
+// explain current level and what to do"; MESITA-3194: "like two products"): one
+// big box with the place's current visibility and the two Boosts, each with its
+// own Buy button straight to Checkout; below it, one box to claim the place, also
+// in the ⋯ menu. Every amount, date and line is the
 // server's (consumer-web-get-premier-refill); nothing here computes money.
 // Premier is paid ranking priority: it never verifies the place and never
 // promises views.
@@ -61,31 +62,27 @@ export function BoostPane({
   onRetry: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const [chosen, setChosen] = useState<TierRank | null>(null);
-  const [starting, setStarting] = useState(false);
+  const [starting, setStarting] = useState<TierRank | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
 
   const packs = boost?.packs ?? [];
-  const forSale = packs.filter((p) => p.available);
-  // The tile the guest tapped, or the first the place can take.
-  const pack = forSale.find((p) => p.tier === chosen) ?? forSale[0] ?? null;
-  const refused = packs.find((p) => !p.available && p.code);
-  const reason = refused?.code ? (START_REFUSED[refused.code] ?? "Not for sale here now.") : null;
+  const notices = [...new Set(packs.filter((p) => p.available && p.notice).map((p) => p.notice))];
+  const claimHref = businessClaimHref(place.id);
 
-  async function start() {
-    if (!pack || starting) return;
-    setStarting(true);
+  async function start(tier: TierRank) {
+    if (starting) return;
+    setStarting(tier);
     setStartError(null);
     try {
       const res = await apiStartRefill(getSupabase(), {
         placeId: place.id,
-        tier: pack.tier,
+        tier,
         returnUrl: `${window.location.origin}${window.location.pathname}`,
       });
       window.location.assign(res.url);
     } catch (err) {
       setStartError(refusal(err, "Couldn't open checkout. Try again."));
-      setStarting(false);
+      setStarting(null);
     }
   }
 
@@ -112,70 +109,71 @@ export function BoostPane({
         <hr className="border-border my-4" />
 
         <p className="font-semibold">Boost it for 30 days</p>
-        <div className="mt-3 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Boost">
+        <p className="mt-1 flex items-center gap-1.5 text-sm">
+          <PremierRosette />
+          With the Premier red tag
+        </p>
+
+        <div className="mt-3 grid grid-cols-2 gap-3">
           {BOOST_TIERS.map((t) => {
             const p = packs.find((x) => x.tier === t.rank);
-            const on = pack?.tier === t.rank;
+            const off = !loading && !!p && !p.available;
             return (
-              <button
-                key={t.rank}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                disabled={loading || !p?.available}
-                onClick={() => {
-                  setChosen(t.rank);
-                  setStartError(null);
-                }}
-                className={cn(
-                  "bg-card flex min-h-11 flex-col items-start rounded-xl border px-3.5 py-3 text-left disabled:opacity-50",
-                  on ? "border-destructive ring-destructive ring-1" : "border-border",
+              <div key={t.rank} className="border-border flex flex-col rounded-xl border p-3">
+                <p className="text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</p>
+                <p className="text-muted-foreground text-sm">visibility</p>
+                <p className="mt-3 mb-3 font-semibold tabular-nums">{p ? money(p.price_cents) : "…"}</p>
+                {off ? (
+                  <p className="text-muted-foreground mt-auto text-sm">
+                    {(p.code && START_REFUSED[p.code]) ?? "Not for sale here now."}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void start(t.rank)}
+                    disabled={loading || !p || starting !== null || !boost?.signed_in}
+                    aria-label={p ? `Buy ${VISIBILITY[t.rank]} visibility for ${money(p.price_cents)}` : undefined}
+                    className={cn(PRIMARY_BUTTON_CLASS, "bg-destructive text-destructive-foreground mt-auto h-11")}
+                  >
+                    {starting === t.rank ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : "Buy"}
+                  </button>
                 )}
-              >
-                <span className="text-2xl font-semibold tracking-tight">{VISIBILITY[t.rank]}</span>
-                <span className="text-muted-foreground text-sm">{p ? money(p.price_cents) : "…"}</span>
-              </button>
+              </div>
             );
           })}
         </div>
 
-        <p className="mt-3 flex items-center gap-1.5">
-          <PremierRosette />
-          Premier red tag
-        </p>
-
-        {pack?.notice ? <p className="text-muted-foreground mt-3 text-sm">{pack.notice}.</p> : null}
+        {notices.map((n) => (
+          <p key={n} className="text-muted-foreground mt-3 text-sm">
+            {n}.
+          </p>
+        ))}
         {startError ? <p className={cn(ERROR_BOX_CLASS, "mt-3")}>{startError}</p> : null}
-        {reason ? <p className="text-muted-foreground mt-3 text-sm">{reason}</p> : null}
-
-        {loading || pack ? (
-          <button
-            type="button"
-            onClick={() => void start()}
-            disabled={loading || starting || !boost?.signed_in}
-            className={cn(
-              PRIMARY_BUTTON_CLASS,
-              "bg-destructive text-destructive-foreground mt-3",
-            )}
-          >
-            {starting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {starting
-              ? "Opening…"
-              : pack
-                ? `Boost to ${VISIBILITY[pack.tier]} for ${money(pack.price_cents)}`
-                : "Boost"}
-          </button>
-        ) : null}
         {boost && !boost.signed_in ? (
-          <p className="text-muted-foreground mt-2 text-sm">Sign in to boost this place.</p>
+          <p className="text-muted-foreground mt-3 text-sm">Sign in to boost this place.</p>
         ) : null}
+
+        <p className="text-muted-foreground mt-3 text-sm">
+          Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places
+          show “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by
+          Stripe in US dollars; nothing renews.
+        </p>
       </div>
 
-      <p className="text-muted-foreground text-sm">
-        Visibility is ranking priority: it moves the place up but doesn&apos;t guarantee more views. Boosted places show
-        “Ad”, and a Boost doesn&apos;t verify a place. It runs after any days already running. Charged once by Stripe in
-        US dollars; nothing renews.
-      </p>
+      {claimHref ? (
+        <a
+          href={claimHref}
+          target="_blank"
+          rel="noopener"
+          className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border p-4"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Is this your business?</span>
+            <span className="text-muted-foreground block text-sm">Claim it on Mesita Business to manage its page.</span>
+          </span>
+          <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+        </a>
+      ) : null}
 
       {failed && (
         <div className={ERROR_BOX_CLASS} role="alert">
