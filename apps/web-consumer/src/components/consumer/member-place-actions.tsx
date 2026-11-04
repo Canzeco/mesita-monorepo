@@ -40,6 +40,11 @@ const ReportSheet = dynamic(() =>
 const MenuViewer = dynamic(() =>
   import("@/components/consumer/MenuViewer").then((m) => m.MenuViewer),
 );
+const RewardsPane = dynamic(() =>
+  import("@/components/consumer/place-detail/RewardsPane").then(
+    (m) => m.RewardsPane,
+  ),
+);
 const BoostSheet = dynamic(() =>
   import("@/components/consumer/place-detail/BoostSheet").then(
     (m) => m.BoostSheet,
@@ -64,6 +69,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
+  /** The Rewards tab's body (MESITA-3202). */
+  rewards: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
@@ -171,6 +178,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     actions,
     sheets,
     social: activity.social,
+    // A Google-only card is not a place row yet: it has no rewards to read.
+    rewards: isMesitaPlaceId(place.id) ? <RewardsPane key={place.id} place={place} /> : undefined,
   };
 }
 

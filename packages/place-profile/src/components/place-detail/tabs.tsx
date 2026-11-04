@@ -8,14 +8,14 @@ import { cn } from "../../lib/format";
 // 2026-08-22 to 2026-10-21; he flips this word, so read the live label here.
 // NO SOON IN THE STRIP (Pato, MESITA-2631: "remove the products and rewards
 // soon directly it looks like shit. just when opening the view, you mention
-// this is for soon"). `soon` still marks the two tabs whose screen is the
+// this is for soon"). `soon` still marks the tab whose screen is the
 // Soon screen; the strip draws only the four labels. The same strip on
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
 // OVERVIEW · REVIEWS · PRODUCTS · REWARDS (Pato, MESITA-3201: "the bottom must
-// be Overview Reviews Products Rewards"): Products and Rewards share the one
-// Soon screen. The paid tier was the fourth tab (MESITA-2861, called Premier,
+// be Overview Reviews Products Rewards"): Products is the Soon screen and
+// Rewards the host's body (MESITA-3202). The paid tier was the fourth tab (MESITA-2861, called Premier,
 // then Business); it is the host's Upgrade sheet now, off the Upgrade tile.
 export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
@@ -29,7 +29,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
-  { key: "rewards", label: "Rewards", soon: true },
+  { key: "rewards", label: "Rewards" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {

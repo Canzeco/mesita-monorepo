@@ -1,0 +1,181 @@
+-- MESITA-3202 — Visits and Rewards: the discount, who qualifies, and the code.
+
+begin;
+
+create extension if not exists pgtap with schema public;
+
+select plan(25);
+
+insert into auth.users (id) values
+  ('00000000-0000-4000-8000-0000000a3202'),
+  ('00000000-0000-4000-8000-0000000b3202');
+insert into public.consumers (id, first_name) values
+  ('00000000-0000-4000-8000-0000000a3202', 'Ana'),
+  ('00000000-0000-4000-8000-0000000b3202', 'Beto');
+update public.consumers set guest_class = 'vip' where id = '00000000-0000-4000-8000-0000000b3202';
+insert into public.place_profiles (id, google_name) values
+  ('00000000-0000-4000-8000-000000003202', 'Visit Probe'),
+  ('00000000-0000-4000-8000-000000013202', 'Other Probe');
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000003202', 'mesita-3202-probe', 'active', 'generating', 'MXN'),
+  ('00000000-0000-4000-8000-000000013202', 'mesita-3202-other', 'active', 'generating', 'MXN');
+insert into public.place_rewards (place_id, welcome_visit, returning_visit, instagram_story, vip_class, cap)
+values ('00000000-0000-4000-8000-000000003202', true, true, true, false, false);
+
+create function pg_temp.issue(guest text, code text) returns boolean language sql as $$
+  select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', guest::uuid, code, now() + interval '10 minutes')
+$$;
+create function pg_temp.visit(code text, bill integer, reward text, req text) returns jsonb language sql as $$
+  select public.place_visit_create('00000000-0000-4000-8000-000000003202', code, bill, 'cash', reward, req::uuid,
+    '00000000-0000-4000-8000-0000000a3202')
+$$;
+
+-- ━━━ EF-only ━━━
+
+select ok(
+  (select bool_and(relrowsecurity) from pg_class
+    where oid in ('public.place_rewards'::regclass, 'public.place_visit_codes'::regclass, 'public.place_visits'::regclass))
+    and not exists (select 1 from pg_policies where schemaname = 'public'
+                     and tablename in ('place_rewards', 'place_visit_codes', 'place_visits')),
+  'visit tables have RLS on and no policy'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.place_visits', 'SELECT')
+    and not has_table_privilege('anon', 'public.place_rewards', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.place_visit_codes', 'SELECT')
+    and not has_function_privilege('authenticated',
+      'public.place_visit_create(uuid, text, integer, text, text, uuid, uuid)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.place_rewards_for_guest(uuid, uuid)', 'EXECUTE'),
+  'client roles hold nothing on visits or their functions'
+);
+
+-- ━━━ Who qualifies ━━━
+
+select is(
+  (select array_agg(kind) from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202')),
+  array['welcome_visit', 'returning_visit', 'instagram_story'],
+  'a switched-off reward is not offered, and the order is fixed'
+);
+select is(
+  (select bool_or(eligible) from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', null)),
+  false,
+  'a signed-out read sees the offers, none eligible'
+);
+
+-- ━━━ The code ━━━
+
+select ok(pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a'), 'a code is issued');
+select is(pg_temp.issue('00000000-0000-4000-8000-0000000b3202', 'hash-a'), false, 'digits another guest holds are refused');
+select is(
+  public.place_visit_check('00000000-0000-4000-8000-000000013202', 'hash-a')->>'outcome', 'bad_code',
+  'a code works only at the place it was made for'
+);
+select is(
+  public.place_visit_check('00000000-0000-4000-8000-000000003202', 'hash-a')#>>'{guest,name}', 'Ana',
+  'the place sees the name of the guest who showed the code'
+);
+
+-- ━━━ The money ━━━
+
+select is(
+  pg_temp.visit('hash-a', 12345, 'welcome_visit', '00000000-0000-4000-8000-00000000a001')#>>'{visit,discount_cents}', '2469',
+  'Welcome Visit is 20%'
+);
+select is(
+  (select (total_cents, currency, reward_percent)::text from public.place_visits
+    where request_id = '00000000-0000-4000-8000-00000000a001'),
+  '(9876,MXN,20)',
+  'the total, the place''s currency and the percent are stored as they were'
+);
+select is(
+  pg_temp.visit('hash-a', 99999, null, '00000000-0000-4000-8000-00000000a001')#>>'{visit,bill_cents}', '12345',
+  'a repeated request returns the same visit'
+);
+select is(
+  pg_temp.visit('hash-a', 500, null, '00000000-0000-4000-8000-00000000a002')->>'outcome', 'bad_code',
+  'a spent code does not work twice'
+);
+
+-- ━━━ First visit, later visits ━━━
+
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a2');
+select is(
+  pg_temp.visit('hash-a2', 1000, 'welcome_visit', '00000000-0000-4000-8000-00000000a003')->>'reason', 'not_first_visit',
+  'Welcome Visit is refused after a first visit'
+);
+select is(
+  public.place_visit_check('00000000-0000-4000-8000-000000003202', 'hash-a2')->>'outcome', 'ok',
+  'a refused reward does not spend the code'
+);
+select is(
+  pg_temp.visit('hash-a2', 1000, 'vip_class', '00000000-0000-4000-8000-00000000a004')->>'outcome', 'reward_off',
+  'a reward the place switched off is refused'
+);
+select is(
+  pg_temp.visit('hash-a2', 12345, 'returning_visit', '00000000-0000-4000-8000-00000000a005')#>>'{visit,discount_cents}', '1235',
+  'Returning Visit is 10%, and half a cent rounds up'
+);
+select is(
+  (select reason from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000b3202') where kind = 'returning_visit'),
+  'first_visit',
+  'Returning Visit is refused on a first visit'
+);
+
+-- ━━━ The cap ━━━
+
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a3');
+select is(
+  pg_temp.visit('hash-a3', 200000, 'instagram_story', '00000000-0000-4000-8000-00000000a006')#>>'{visit,discount_cents}', '40000',
+  'with the Cap off, 20% of 2,000 pesos is 400'
+);
+update public.place_rewards set cap = true where place_id = '00000000-0000-4000-8000-000000003202';
+select pg_temp.issue('00000000-0000-4000-8000-0000000a3202', 'hash-a4');
+select is(
+  pg_temp.visit('hash-a4', 200000, 'instagram_story', '00000000-0000-4000-8000-00000000a007')#>>'{visit,total_cents}', '180000',
+  'with the Cap on, the discount stops at 200 pesos'
+);
+select is(
+  public.place_rewards_read('00000000-0000-4000-8000-000000003202')->'cap',
+  '{"cents": 20000, "enabled": true}'::jsonb,
+  'the page reads the cap and its amount from the server'
+);
+
+-- ━━━ Voiding ━━━
+
+select is(
+  public.place_visit_void('00000000-0000-4000-8000-000000013202',
+    (select id from public.place_visits where request_id = '00000000-0000-4000-8000-00000000a001'),
+    '00000000-0000-4000-8000-0000000a3202')->>'outcome',
+  'not_found',
+  'a place cannot void another place''s visit'
+);
+select public.place_visit_void('00000000-0000-4000-8000-000000003202', v.id, '00000000-0000-4000-8000-0000000a3202')
+  from public.place_visits v where v.consumer_id = '00000000-0000-4000-8000-0000000a3202';
+select is(
+  (select eligible from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000a3202') where kind = 'welcome_visit'),
+  true,
+  'voiding every visit opens Welcome Visit again'
+);
+
+-- ━━━ VIP, expiry, a closed account ━━━
+
+update public.place_rewards set vip_class = true where place_id = '00000000-0000-4000-8000-000000003202';
+select is(
+  (select array_agg(eligible order by kind) from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000b3202') where kind in ('vip_class')),
+  array[true],
+  'a VIP guest qualifies for VIP Class'
+);
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000b3202', 'hash-old', now() - interval '1 minute');
+select is(
+  public.place_visit_check('00000000-0000-4000-8000-000000003202', 'hash-old')->>'outcome', 'bad_code',
+  'an expired code is refused'
+);
+select pg_temp.issue('00000000-0000-4000-8000-0000000b3202', 'hash-gone');
+update public.consumers set deleted_at = now() where id = '00000000-0000-4000-8000-0000000b3202';
+select is(
+  public.place_visit_check('00000000-0000-4000-8000-000000003202', 'hash-gone')->>'outcome', 'bad_code',
+  'a closed account''s code is refused'
+);
+
+select * from finish();
+rollback;

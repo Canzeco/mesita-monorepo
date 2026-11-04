@@ -15,7 +15,6 @@ describe("section strip", () => {
     ]);
     expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
       "Products",
-      "Rewards",
     ]);
   });
 
