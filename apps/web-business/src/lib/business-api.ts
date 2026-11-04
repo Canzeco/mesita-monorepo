@@ -423,10 +423,10 @@ export type PlaceRewards = {
   cap: { cents: number; enabled: boolean };
 };
 
-export async function getPlaceRewards(placeId: string): Promise<Result<PlaceRewards & { can_edit: boolean }>> {
-  const r = await efInvoke<PlaceRewards & { can_edit: boolean }>("business-web-get-place-rewards", { place_id: placeId });
+export async function getPlaceRewards(placeId: string): Promise<Result<PlaceRewards & { can_edit: boolean; code_set: boolean }>> {
+  const r = await efInvoke<PlaceRewards & { can_edit: boolean; code_set: boolean }>("business-web-get-place-rewards", { place_id: placeId });
   if (!r.ok) return fail(r);
-  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap, can_edit: r.data.can_edit } };
+  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap, can_edit: r.data.can_edit, code_set: r.data.code_set === true } };
 }
 
 /** One switch: a reward or the Cap. Returns the whole page as it now stands. */
@@ -436,15 +436,11 @@ export async function setPlaceReward(placeId: string, key: RewardKind | "cap", e
   return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap } };
 }
 
-export type VisitGuest = {
-  guest: { name: string | null; member_number: string | null };
-  rewards: { kind: RewardKind; percent: number; cap_cents: number | null; eligible: boolean; reason: string | null }[];
-};
-
-export async function checkVisitCode(placeId: string, code: string): Promise<Result<VisitGuest>> {
-  const r = await efInvoke<VisitGuest>("business-web-check-visit-code", { place_id: placeId, code });
+/** The place code (MESITA-3226): six digits, stored only as a hash. */
+export async function setPlaceCode(placeId: string, code: string): Promise<Result<true>> {
+  const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });
   if (!r.ok) return fail(r);
-  return { ok: true, data: { guest: r.data.guest, rewards: r.data.rewards ?? [] } };
+  return { ok: true, data: true };
 }
 
 export type PlaceVisit = {
@@ -461,22 +457,6 @@ export type PlaceVisit = {
   created_at: string;
   voided_at: string | null;
 };
-
-export async function createPlaceVisit(
-  placeId: string,
-  visit: { code: string; billCents: number; method: PaymentMethod; rewardKinds: RewardKind[]; requestId: string },
-): Promise<Result<Omit<PlaceVisit, "guest_name" | "member_number">>> {
-  const r = await efInvoke<{ visit: Omit<PlaceVisit, "guest_name" | "member_number"> }>("business-web-create-place-visit", {
-    place_id: placeId,
-    code: visit.code,
-    bill_cents: visit.billCents,
-    payment_method: visit.method,
-    reward_kinds: visit.rewardKinds,
-    request_id: visit.requestId,
-  });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: r.data.visit };
-}
 
 export type PlaceVisits = { visits: PlaceVisit[]; next: string | null; can_void: boolean; timezone: string | null };
 

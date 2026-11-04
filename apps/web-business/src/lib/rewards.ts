@@ -10,15 +10,6 @@ export const REWARD_COPY: Record<RewardKind, { name: string; line: string }> = {
   vip_class: { name: "VIP Class", line: "Guests Mesita marks as VIP." },
 };
 
-/** Why a guest can't use a reward today. */
-export const REWARD_REASON: Record<string, string> = {
-  not_first_visit: "Not their first visit",
-  first_visit: "This is their first visit",
-  not_vip: "Not a VIP guest",
-  instagram_not_connected: "No Instagram connected",
-  not_enough_followers: "Under 1,000 Instagram followers",
-};
-
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   cash: "Cash",
   card: "Card",

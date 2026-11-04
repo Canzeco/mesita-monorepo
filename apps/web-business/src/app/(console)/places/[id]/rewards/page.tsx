@@ -1,14 +1,15 @@
 import { getPlaceRewards } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { NewVisit } from "./NewVisit";
+import { PlaceCode } from "./PlaceCode";
 import { RewardsCard } from "./RewardsCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Rewards" };
 
 // Rewards (MESITA-3202, Pato: "On or off, not in between points"): four
-// switches and the Cap, then New visit for the moment (MESITA-3210: "to leave all
-// the configuration in rewards its clearer"). The log is Visits.
+// switches and the Cap, then the place code (MESITA-3226). A visit is never
+// registered here: Pato, "never. there they only set the fucking number". The log
+// is Visits.
 export default async function RewardsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const rewards = await getPlaceRewards(id);
@@ -17,7 +18,7 @@ export default async function RewardsPage({ params }: { params: Promise<{ id: st
       {rewards.ok ? (
         <>
           <RewardsCard placeId={id} initial={rewards.data} canEdit={rewards.data.can_edit} />
-          <NewVisit placeId={id} />
+          <PlaceCode placeId={id} initialSet={rewards.data.code_set} canEdit={rewards.data.can_edit} />
         </>
       ) : (
         <Card>

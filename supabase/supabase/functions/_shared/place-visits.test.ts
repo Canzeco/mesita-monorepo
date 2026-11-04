@@ -1,5 +1,5 @@
 import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
-import { hashVisitCode, isBillCents, newVisitCode, readVisitCode } from "./place-visits.ts";
+import { hashPlaceCode, hashVisitCode, isBillCents, newVisitCode, readVisitCode } from "./place-visits.ts";
 
 Deno.test("a code hash is bound to its place", async () => {
   const a = await hashVisitCode("place-a", "123456");
@@ -21,4 +21,11 @@ Deno.test("a bill is whole cents, above zero, within the table's limit", () => {
   assertEquals(isBillCents(0), false);
   assertEquals(isBillCents(10.5), false);
   assertEquals(isBillCents(100_000_001), false);
+});
+
+Deno.test("a place code hash is bound to its place and never equals a guest's code hash", async () => {
+  const a = await hashPlaceCode("place-a", "123456");
+  assertEquals(a, await hashPlaceCode("place-a", "123456"));
+  assertNotEquals(a, await hashPlaceCode("place-b", "123456"));
+  assertNotEquals(a, await hashVisitCode("place-a", "123456"));
 });
