@@ -128,6 +128,7 @@ function resolverPrompt(): CrenupPrompt {
         category: PLACE.category,
         brand: "{the brand, for a chain branch}",
         context: "{the Scout's SERP Summary}",
+        listed: { website_url: "{the link Google lists}" },
       },
       candidates,
     ),

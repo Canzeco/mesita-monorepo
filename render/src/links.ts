@@ -1,14 +1,15 @@
 // Official links the Google spine did not already have.
-// Firecrawl is the only source: Search in the place's own country, plus the
-// links on the place's own website. A chain branch ("Starbucks Biblioteca ITESM
-// MTY II") rarely has an account of its own, so the brand is searched too: the
-// website's host label, when the place name carries it. The Resolver (the
-// Perplexity Agent the Enrichment page shows) is the only selector: it picks one
-// URL per field from candidates that carry their page title, description and
-// origin, and a URL outside that pool is dropped. A count of 0 does not search
-// that source. Google's own link joins the pool, so a pick can replace it but a
-// null leaves it. The Scout's read, when the job carried a Scout message, is the
-// Resolver's background on the place: never the source of a URL.
+// Firecrawl sources, Perplexity selects. Every candidate URL came out of Firecrawl:
+// Search in the place's own country, plus the links on the place's own website.
+// A chain branch ("Starbucks Biblioteca ITESM MTY II") rarely has an account of its
+// own, so the brand is searched too: the website's host label, when the place name
+// carries it. The Resolver (the Perplexity Agent the Enrichment page shows) is the
+// only selector: it picks one URL per field from candidates that carry their page
+// title, description and origin, and anything outside that pool is dropped. Nothing
+// is saved unless it picked it. A count of 0 does not search that source. Google's
+// own link is context, never a candidate: a pick can replace it and a null leaves it.
+// The Scout's read, when the job carried a Scout message, is the Resolver's
+// background on the place: never the source of a URL.
 
 import { charge, firecrawlCredits, FIRECRAWL_USD_PER_CREDIT } from "./cost.ts";
 import { channelFromUrl, type GoogleChannel } from "./channels.ts";
@@ -71,43 +72,53 @@ export function validateLink(field: LinkField, raw: string): string | null {
     }
   }
   if (field === "uber_eats_url" && !channel.url.includes("/store/")) return null;
+  // Search results carry trackers (?srsltid=, ?utm_source=). Facebook's ?id= is
+  // kept: channels.ts builds that URL itself.
+  if (field === "website_url" || field === "opentable_url" || field === "uber_eats_url") {
+    const clean = new URL(channel.url);
+    clean.search = "";
+    return clean.toString();
+  }
   return channel.url;
 }
 
 /** One Firecrawl result, before it is held to a field's shape. */
 export type Hit = { url: string; title?: string; description?: string; origin?: string };
 
-/** One URL the Resolver may pick, as it reads it. */
-export type Candidate = { url: string; line: string };
+const BEHIND_A_POST = "the account behind a post in the results";
 
-const POST_PATH = /instagram\.com\/(p|reel|reels|tv)\//i;
-
-// A post in the results names the account behind it ("Foo (@foo) • Instagram
-// reel"). That account is a candidate, and the Resolver is told where it came from.
-function accountBehindPost(hit: Hit): string | null {
-  if (!POST_PATH.test(hit.url)) return null;
-  const handle = /\(@([A-Za-z0-9._]{1,30})\)/.exec(`${hit.title ?? ""} ${hit.description ?? ""}`)?.[1];
-  return handle ? validateLink("instagram_url", `https://www.instagram.com/${handle}`) : null;
+// Most social results are posts, not profiles. A post's URL names who posted it
+// (facebook.com/Page/posts/1): that account is a candidate, and its title and
+// description describe the post, so the Resolver is told.
+function isDeepSocialPath(field: LinkField, raw: string): boolean {
+  if (field !== "instagram_url" && field !== "facebook_url") return false;
+  try {
+    return new URL(raw).pathname.split("/").filter(Boolean).length > 1;
+  } catch {
+    return false;
+  }
 }
 
-export function poolFromHits(field: LinkField, hits: Hit[]): Candidate[] {
-  const out: Candidate[] = [];
+export function poolFromHits(field: LinkField, hits: Hit[]): Hit[] {
+  const out: Hit[] = [];
   for (const hit of hits) {
-    const direct = validateLink(field, hit.url);
-    const behind = !direct && field === "instagram_url" ? accountBehindPost(hit) : null;
-    const url = direct ?? behind;
-    if (!url || out.some((item) => sameOfficialUrl(item.url, url))) continue;
-    out.push({ url, line: candidateLine(url, behind ? { ...hit, origin: "the account behind a post in the results" } : hit) });
+    const url = validateLink(field, hit.url);
+    if (!url) continue;
+    const candidate = isDeepSocialPath(field, hit.url) ? { ...hit, url, origin: BEHIND_A_POST } : { ...hit, url };
+    const seen = out.findIndex((item) => sameOfficialUrl(item.url, url));
+    if (seen < 0) out.push(candidate);
+    // The profile's own result says more about it than a post of its did.
+    else if (out[seen].origin === BEHIND_A_POST && candidate.origin !== BEHIND_A_POST) out[seen] = candidate;
   }
   return out;
 }
 
-function candidateLine(url: string, hit: Hit): string {
+export function candidateLine(candidate: Hit): string {
   const clip = (value: string | undefined, max: number) => value?.replace(/\s+/g, " ").trim().slice(0, max) ?? "";
-  const title = clip(hit.title, 100);
-  const description = clip(hit.description, 160);
-  return `- ${url}` +
-    (hit.origin ? ` [${hit.origin}]` : "") +
+  const title = clip(candidate.title, 100);
+  const description = clip(candidate.description, 160);
+  return `- ${candidate.url}` +
+    (candidate.origin ? ` [${candidate.origin}]` : "") +
     (title ? ` — "${title}"` : "") +
     (description ? ` — ${description}` : "");
 }
@@ -179,26 +190,30 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
     const gathered = await gatherPools(fetchImpl, firecrawlKey, opts, brand, missing, counts);
     const pools = gathered.pools;
     const site = website ?? ownSiteAmong(opts.name, pools.website_url ?? []);
-    if (site && missing.some((field) => field !== "website_url")) {
-      addSiteLinks(pools, missing, site, await firecrawlSiteLinks(fetchImpl, firecrawlKey, site));
+    if (site && !gathered.noCredits && missing.some((field) => field !== "website_url")) {
+      const origin = website ? `linked from the website Google lists, ${site}` : `linked from ${site}, a search result`;
+      addSiteLinks(pools, missing, origin, await firecrawlSiteLinks(fetchImpl, firecrawlKey, site));
     }
     // Google's link alone leaves nothing to choose.
     const judgedFields = missing.filter((field) => (pools[field] ?? []).some((item) => !isGoogles(field, item.url, google)));
     if (!judgedFields.length) {
+      if (gathered.noCredits) return { links: {}, report: failed("Firecrawl is out of credits, so no link was looked for.") };
       return gathered.failed === missing.length
         ? { links: {}, report: failed("Firecrawl Search did not answer.") }
         : { links: {}, report: completed("Firecrawl found no candidate links.") };
     }
-    for (const field of judgedFields) {
-      const own = google[field];
-      if (!own || (pools[field] ?? []).some((item) => sameOfficialUrl(item.url, own))) continue;
-      pools[field] = [...poolFromHits(field, [{ url: own, origin: "Google's listing for this place" }]), ...(pools[field] ?? [])];
-    }
     const judged = await callAgent({
       apiKey: perplexityKey,
       input: resolverInput(
-        { name: opts.name, city: opts.city, category: opts.category ?? null, brand, context: opts.context?.trim() ?? "" },
-        Object.fromEntries(judgedFields.map((field) => [field, (pools[field] ?? []).map((item) => item.line)])),
+        {
+          name: opts.name,
+          city: opts.city,
+          category: opts.category ?? null,
+          brand,
+          context: opts.context?.trim() ?? "",
+          listed: Object.fromEntries(judgedFields.flatMap((field) => google[field] ? [[field, google[field]]] : [])),
+        },
+        Object.fromEntries(judgedFields.map((field) => [field, (pools[field] ?? []).map(candidateLine)])),
       ),
       instructions: opts.instructions?.trim() ||
         "You choose a place's official online channels from the candidates given. A chain branch with no account of its own takes the brand's. Never fabricate a URL.",
@@ -214,13 +229,13 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
       fetchImpl,
     });
     if (!judged) return { links: {}, report: failed("The Resolver did not answer.") };
+    if (!judgedFields.some((field) => field in judged.answer)) {
+      return { links: {}, report: failed("The Resolver's answer could not be read.") };
+    }
     const found: Partial<Record<LinkField, string>> = {};
     for (const field of judgedFields) {
       const pool = (pools[field] ?? []).map((item) => item.url);
-      // The Resolver's null stands. A citation only fills in when no answer came back at all.
-      const url = field in judged.answer
-        ? confirmedLink(field, pool, judged.answer[field])
-        : citedLink(field, pool, judged.hitUrls);
+      const url = confirmedLink(field, pool, judged.answer[field]);
       if (url && !isGoogles(field, url, google)) found[field] = url;
     }
     const count = Object.keys(found).length;
@@ -239,16 +254,6 @@ export async function discoverLinks(opts: DiscoverOptions): Promise<{
 function isGoogles(field: LinkField, url: string, google: Partial<Record<LinkField, string | null>>): boolean {
   const own = google[field];
   return !!own && sameOfficialUrl(own, url);
-}
-
-// A citation is a pick only when that URL is already in this field's pool.
-// The first candidate is not a pick: an empty answer stays empty.
-function citedLink(field: LinkField, pool: string[], hitUrls: string[]): string | null {
-  for (const url of hitUrls) {
-    const hit = confirmedLink(field, pool, url);
-    if (hit) return hit;
-  }
-  return null;
 }
 
 // The brand a chain branch belongs to: the website's first host label
@@ -277,22 +282,17 @@ export function coreName(name: string): string {
   return core || name.trim();
 }
 
-const SOCIAL_SITE: Partial<Record<LinkField, string>> = {
-  instagram_url: "instagram.com",
-  facebook_url: "facebook.com",
-};
-
-// The searches behind one field's pool. A social source also searches its own
-// site, on the name without a branch's tail, and a chain branch searches its brand's.
+// The searches behind one field's pool. Measured on 20 real places, a second
+// search per social source added no pick its first did not find, and Firecrawl
+// allows 10 a minute. Instagram's name + city finds the profile; Facebook's own
+// site does, on the name without a branch's tail. A chain branch adds its brand's.
 export function searchQueries(field: LinkField, name: string, city: string | null, brand: string | null): string[] {
-  const scope = [name, city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ");
-  const queries = [`${scope} ${SEARCH_TERM[field]}`];
-  const site = SOCIAL_SITE[field];
-  if (site) {
-    queries.push(`${[coreName(name), city ?? ""].map((part) => part.trim()).filter(Boolean).join(" ")} site:${site}`);
-    if (brand) queries.push(`${brand} ${city ?? ""} ${SEARCH_TERM[field]}`.replace(/\s+/g, " ").trim());
-  }
-  return queries;
+  const join = (...parts: (string | null)[]) => parts.map((part) => part?.trim()).filter(Boolean).join(" ");
+  const first = field === "facebook_url"
+    ? `${join(coreName(name), city)} site:facebook.com`
+    : `${join(name, city)} ${SEARCH_TERM[field]}`;
+  const social = field === "instagram_url" || field === "facebook_url";
+  return brand && social ? [first, join(brand, city, SEARCH_TERM[field])] : [first];
 }
 
 // One search at a time: Firecrawl allows 10 a minute and two places run at once,
@@ -304,8 +304,8 @@ async function gatherPools(
   brand: string | null,
   fields: LinkField[],
   counts: Record<LinkField, number>,
-): Promise<{ pools: Partial<Record<LinkField, Candidate[]>>; failed: number; lost: number }> {
-  const pools: Partial<Record<LinkField, Candidate[]>> = {};
+): Promise<{ pools: Partial<Record<LinkField, Hit[]>>; failed: number; lost: number; noCredits: boolean }> {
+  const pools: Partial<Record<LinkField, Hit[]>> = {};
   let failed = 0;
   let lost = 0;
   for (const field of fields) {
@@ -313,6 +313,8 @@ async function gatherPools(
     let answered = false;
     for (const query of searchQueries(field, place.name, place.city, brand)) {
       const run = await firecrawlSearch(fetchImpl, apiKey, query, counts[field], place.country ?? null);
+      // Every search after this one would be refused too.
+      if (run.noCredits) return { pools, failed: fields.length, lost: lost + 1, noCredits: true };
       hits.push(...run.hits);
       if (run.ok) answered = true;
       else lost++;
@@ -320,12 +322,12 @@ async function gatherPools(
     pools[field] = poolFromHits(field, hits);
     if (!answered) failed++;
   }
-  return { pools, failed, lost };
+  return { pools, failed, lost, noCredits: false };
 }
 
 // With no website from Google, the search's first result whose host carries a
 // word of the name is the site worth reading. Any other host names no one.
-export function ownSiteAmong(name: string, pool: Candidate[]): string | null {
+export function ownSiteAmong(name: string, pool: Hit[]): string | null {
   const fold = (value: string) => value.toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
   const words = fold(name).split(/[^a-z0-9]+/).filter((word) => word.length >= 4);
   for (const { url } of pool) {
@@ -339,20 +341,24 @@ export function ownSiteAmong(name: string, pool: Candidate[]): string | null {
   return null;
 }
 
-// The site's links go first in each pool. A website's links never answer
-// website_url: they point away from it.
+// The site's links go first in each pool, keeping what a search said about them.
+// A website's links never answer website_url: they point away from it.
 function addSiteLinks(
-  pools: Partial<Record<LinkField, Candidate[]>>,
+  pools: Partial<Record<LinkField, Hit[]>>,
   fields: LinkField[],
-  site: string,
+  origin: string,
   links: string[],
 ): void {
-  const origin = `linked from ${site}`;
   for (const field of fields) {
     if (field === "website_url") continue;
-    const fromSite = poolFromHits(field, links.map((url) => ({ url, origin })));
-    const rest = (pools[field] ?? []).filter((item) => !fromSite.some((own) => sameOfficialUrl(own.url, item.url)));
-    pools[field] = [...fromSite, ...rest];
+    const rest = pools[field] ?? [];
+    const fromSite = poolFromHits(field, links.map((url) => ({ url, origin }))).map((own) => ({
+      ...rest.find((item) => sameOfficialUrl(item.url, own.url)),
+      ...own,
+      // A link on the site's own post is still the site's link.
+      origin,
+    }));
+    pools[field] = [...fromSite, ...rest.filter((item) => !fromSite.some((own) => sameOfficialUrl(own.url, item.url)))];
   }
 }
 
@@ -409,7 +415,7 @@ async function firecrawlSearch(
   query: string,
   limit: number,
   country: string | null,
-): Promise<{ hits: Hit[]; ok: boolean }> {
+): Promise<{ hits: Hit[]; ok: boolean; noCredits?: boolean }> {
   for (let attempt = 0; attempt < RATE_LIMIT_ATTEMPTS; attempt++) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20000);
@@ -427,7 +433,7 @@ async function firecrawlSearch(
       if (!res.ok) {
         const body = (await res.text().catch(() => "")).slice(0, 200);
         console.error(`[links] firecrawl ${res.status} ${body}`);
-        return { hits: [], ok: false };
+        return { hits: [], ok: false, noCredits: res.status === 402 };
       }
       const payload = await res.json();
       const credits = firecrawlCredits(payload, limit);
@@ -478,7 +484,14 @@ export function resolverBackground(context: string): string {
 }
 
 export function resolverInput(
-  place: { name: string; city: string | null; category: string | null; brand: string | null; context: string },
+  place: {
+    name: string;
+    city: string | null;
+    category: string | null;
+    brand: string | null;
+    context: string;
+    listed?: Partial<Record<LinkField, string>>;
+  },
   candidates: Partial<Record<LinkField, string[]>>,
 ): string {
   const where = place.city?.trim() ? ` in ${place.city.trim()}` : "";
@@ -486,8 +499,10 @@ export function resolverInput(
   const lists = Object.entries(candidates).map(([field, lines]) =>
     `${field} candidates:\n${(lines ?? []).join("\n")}`
   ).join("\n");
+  const listed = Object.entries(place.listed ?? {}).map(([field, url]) => `- ${field}: ${url}`).join("\n");
   return `Review and select the official channels for the place "${place.name}"${where}${kind}.\n\n` +
     resolverBackground(place.context) +
+    (listed ? `Google already lists these, and they stay when you return null:\n${listed}\n\n` : "") +
     (place.brand
       ? `This place is a location of the "${place.brand}" brand. If it has no account of its own, ` +
         `the brand's account is the answer, preferring this country's.\n\n`
