@@ -11,9 +11,8 @@ function Bone({ className }: { className: string }) {
 
 export default function FeedbackLoading() {
   return (
-    <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Activity · Feedback"
         title="Feedback"
         description="Every guest report, newest first."
       />

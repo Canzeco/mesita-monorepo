@@ -2,14 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
-  UserRound,
-} from "lucide-react";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
-import { MesitaMark } from "@/components/brand/MesitaMark";
+import type { Icon } from "@phosphor-icons/react";
+import { ShieldCheckIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { ANALYTICS_PARENT } from "@/app/(app)/analytics/nav";
 import { BILLING_TEST_PARENT } from "@/app/(app)/billing-test/nav";
 import { LOGS_PARENT } from "@/app/(app)/logs/nav";
@@ -28,30 +22,25 @@ import { FILTERS_PARENT } from "@/app/(app)/filters-config/nav";
 import { RESERVATIONS_PARENT } from "@/app/(app)/reservations-config/nav";
 import { MODELS_PARENT } from "@/app/(app)/models-config/nav";
 import { isNavActive } from "@/lib/nav-active";
+import { FOCUS_RING_CLASS } from "@/lib/ui-classes";
 
 type SidebarProps = {
   onNavigate?: () => void;
-  /** Icon-only rail. Desktop instance only — the mobile drawer is always full. */
-  collapsed?: boolean;
-  /** Omitted on the drawer instance, which has no collapsed state to toggle. */
-  onToggleCollapse?: () => void;
 };
 
 type NavItem = {
   href: string;
   label: string;
-  Icon: React.ComponentType<{ className?: string }>;
+  Icon: Icon;
 };
 
 // Labels never repeat their section heading — the heading already says
 // "Configurations", so no item ends in "Config" (MESITA-1073).
 // Each label lives in its route's nav.ts; the Sidebar is their only consumer.
-const PRIMARY_NAV: NavItem[] = [
-  { href: "/account", label: "Account", Icon: UserRound },
-];
+const ACCOUNT_NAV: NavItem = { href: "/account", label: "Account", Icon: UserCircleIcon };
 
-// The MVP First Stage rail (MESITA-2088): Account · Manage · Configurations ·
-// Testing. Alerts (Global Monitor, Credits Liability) are deleted, routes and
+// The MVP First Stage rail (MESITA-2088): Manage · Configurations · Activity ·
+// Testing, with Account at the foot (MESITA-3261). Alerts (Global Monitor, Credits Liability) are deleted, routes and
 // all — Pato, 2026-10-10: "kill the stupid alerts". Testing › Billing went
 // with them and came back the same day (MESITA-2125).
 
@@ -68,7 +57,7 @@ const PRIMARY_NAV: NavItem[] = [
 // (MESITA-3011): every place's paid visibility at once. Not Configurations;
 // nothing here is a policy blob.
 export const MANAGE_NAV: NavItem[] = [
-  { href: "/admin-config", label: "Admins", Icon: ShieldCheck },
+  { href: "/admin-config", label: "Admins", Icon: ShieldCheckIcon },
   GUESTS_PARENT,
   DB_PARENT,
   MULTIPLE_PLACES_PARENT,
@@ -125,182 +114,106 @@ export const ACTIVITY_NAV: NavItem[] = [LOGS_PARENT, ANALYTICS_PARENT, FEEDBACK_
 // Testing — operator tools that probe live external systems (Billing only).
 const TESTING_NAV: NavItem[] = [BILLING_TEST_PARENT];
 
-// The first group is deliberately unlabelled: a heading reading "Account" above
-// a lone "Account" link is the redundancy this menu is trying to shed.
 const SIDEBAR_SECTIONS: {
   id: string;
-  label: string | null;
+  label: string;
   items: NavItem[];
 }[] = [
-  { id: "primary", label: null, items: PRIMARY_NAV },
   { id: "manage", label: "Manage", items: MANAGE_NAV },
   { id: "configurations", label: "Configurations", items: CONFIGURATIONS_NAV },
   { id: "activity", label: "Activity", items: ACTIVITY_NAV },
   { id: "testing", label: "Testing", items: TESTING_NAV },
 ];
 
+/** "Mesita Admin" in the frame: Outfit, as Business and the consumer app draw
+ *  the word. The font loads in the root layout, because a `next/font` call in
+ *  this module would break `Sidebar.test.ts`. */
+export function AdminWordmark() {
+  return (
+    <span className="flex items-baseline gap-2 select-none">
+      <span className="text-foreground font-(family-name:--font-wordmark) text-2xl leading-none font-bold tracking-[-0.03em]">
+        Mesita
+      </span>
+      <span className="text-muted-foreground text-sm font-medium">Admin</span>
+    </span>
+  );
+}
+
+/** One row size, from the Business rail: 40px with a 20px icon slot. The drawer
+ *  is a touch target, so it starts at 44px and `lg:` tightens to 40. */
 function NavLink({
   href,
   label,
-  Icon,
+  Icon: RowIcon,
   active,
-  collapsed,
   onNavigate,
 }: NavItem & {
   active: boolean;
-  collapsed: boolean;
   onNavigate?: () => void;
 }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
-      // Collapsed, the icon is the only affordance — the native tooltip is
-      // what names the destination.
-      title={collapsed ? label : undefined}
-      // The drawer instance is a TOUCH target, the desktop rail a pointer one,
-      // so the mobile sizes are the larger pair and `lg:` tightens them back
-      // down. Before this the base styles were the desktop rail's and the
-      // drawer inherited 26px-tall rows on a phone.
+      aria-current={active ? "page" : undefined}
       className={
-        "flex items-center rounded-xl text-sm font-medium transition lg:text-xs lg:type-body " +
-        (collapsed
-          ? "justify-center py-2 "
-          : "min-h-11 gap-3 px-3 lg:min-h-0 lg:gap-2.5 lg:px-2.5 lg:py-2 ") +
+        `flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors lg:min-h-10 ${FOCUS_RING_CLASS} ` +
         (active
-          ? "bg-secondary text-secondary-foreground"
-          : "text-background/60 hover:bg-background/10 hover:text-background")
+          ? "bg-muted text-foreground font-medium"
+          : "text-foreground/80 hover:bg-muted/60 hover:text-foreground")
       }
     >
-      <Icon
-        className={
-          collapsed ? "h-4 w-4 shrink-0" : "h-4 w-4 shrink-0 lg:h-3.5 lg:w-3.5"
-        }
-      />
-      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
+      <span className="flex w-5 shrink-0 justify-center">
+        <RowIcon size={20} weight={active ? "fill" : "regular"} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </Link>
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="px-3 pt-3 pb-1 lg:px-2.5 lg:pt-2">
-      <span className="text-background/35 type-meta font-medium tracking-[0.14em] uppercase">
-        {children}
-      </span>
-    </div>
-  );
-}
-
-function SectionGap() {
-  return <div className="py-1" />;
-}
-
-// Collapsed there is no room for a heading, so the grouping survives as a rule.
-function SectionRule() {
-  return <div className="border-background/10 mx-1.5 my-2 border-t" />;
-}
-
-function SidebarNav({
-  collapsed,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
 
+  // Width is the shell's call, so the rail fills its column. Only the groups
+  // scroll, so Account stays reachable on a short window; `-mx-1 px-1` keeps
+  // the rows' focus rings from clipping against the scroller.
   return (
-    <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain">
-      {SIDEBAR_SECTIONS.map((section, index) => (
-        <div key={section.id}>
-          {index === 0 ? null : collapsed ? <SectionRule /> : <SectionGap />}
-          {collapsed || !section.label ? null : (
-            <SectionLabel>{section.label}</SectionLabel>
-          )}
-          <div className="flex flex-col gap-0.5">
-            {section.items.map(({ href, label, Icon }) => (
-              <NavLink
-                key={href}
-                href={href}
-                label={label}
-                Icon={Icon}
-                active={isNavActive(pathname, href)}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
-    </nav>
-  );
-}
-
-function CollapseToggle({
-  collapsed,
-  onToggle,
-}: {
-  collapsed: boolean;
-  onToggle: () => void;
-}) {
-  const action = collapsed ? "Expand menu" : "Collapse menu";
-  const Icon = collapsed ? PanelLeftOpen : PanelLeftClose;
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      title={action}
-      aria-label={action}
-      aria-expanded={!collapsed}
-      className={
-        "text-background/45 hover:bg-background/10 hover:text-background mt-1 flex shrink-0 items-center rounded-xl py-2 text-xs font-medium transition " +
-        (collapsed ? "justify-center" : "gap-2.5 px-2.5")
-      }
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      {collapsed ? null : <span className="truncate">Collapse</span>}
-    </button>
-  );
-}
-
-export function Sidebar({
-  onNavigate,
-  collapsed = false,
-  onToggleCollapse,
-}: SidebarProps) {
-  // Dark lateral rail — only the main menu is inverted; content stays light.
-  // Width is the shell's call (it animates the column), so the rail fills it.
-  return (
-    <aside className="bg-foreground text-background border-background/10 pb-safe flex h-full w-full flex-col overflow-hidden border-r px-2 pt-4 lg:px-2.5 lg:pb-3">
+    <aside className="border-border bg-card pb-safe flex h-full w-full flex-col overflow-hidden border-r px-3 pt-5 lg:pb-3">
       <Link
-        href="/central"
+        href={MULTIPLE_PLACES_PARENT.href}
         onClick={onNavigate}
-        title={collapsed ? "Mesita admin" : undefined}
-        className={
-          "inline-flex shrink-0 items-center " +
-          (collapsed ? "justify-center" : "gap-2 px-2")
-        }
+        title="Mesita Admin"
+        className={`mb-5 flex h-10 shrink-0 items-center rounded-lg px-3 ${FOCUS_RING_CLASS}`}
       >
-        {collapsed ? (
-          <MesitaMark className="h-5 w-5" />
-        ) : (
-          <>
-            <MesitaLogo variant="horizontal" className="h-5 w-auto" />
-            <span className="text-background/50 type-meta font-medium tracking-[0.14em] uppercase">
-              admin
-            </span>
-          </>
-        )}
+        <AdminWordmark />
       </Link>
 
-      <SectionGap />
-
-      <SidebarNav collapsed={collapsed} onNavigate={onNavigate} />
-
-      {onToggleCollapse ? (
-        <CollapseToggle collapsed={collapsed} onToggle={onToggleCollapse} />
-      ) : null}
+      <nav aria-label="Admin" className="flex min-h-0 flex-1 flex-col">
+        <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-1 py-0.5">
+          {SIDEBAR_SECTIONS.map((section) => (
+            <div key={section.id} role="group" aria-label={section.label} className="flex flex-col gap-0.5">
+              <p className="text-muted-foreground flex h-7 shrink-0 items-center px-3 text-xs font-semibold">
+                {section.label}
+              </p>
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  {...item}
+                  active={isNavActive(pathname, item.href)}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="border-border mt-2 shrink-0 border-t pt-2">
+          <NavLink
+            {...ACCOUNT_NAV}
+            active={isNavActive(pathname, ACCOUNT_NAV.href)}
+            onNavigate={onNavigate}
+          />
+        </div>
+      </nav>
     </aside>
   );
 }

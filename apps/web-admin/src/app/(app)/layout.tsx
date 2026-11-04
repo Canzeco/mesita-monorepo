@@ -1,11 +1,9 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Shield } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { efInvoke } from "@/lib/supabase-ef";
-import { SIDEBAR_COLLAPSED_COOKIE } from "@/lib/sidebar-prefs";
 import { authSignOut } from "@/app/auth/actions";
 
 // Admin shell layout. Two gates, in order:
@@ -70,11 +68,7 @@ export default async function AppLayout({
     );
   }
 
-  const cookieStore = await cookies();
-  const sidebarCollapsed =
-    cookieStore.get(SIDEBAR_COLLAPSED_COOKIE)?.value === "1";
-
-  return <AppShell defaultCollapsed={sidebarCollapsed}>{children}</AppShell>;
+  return <AppShell>{children}</AppShell>;
 }
 
 function AccessDenied({

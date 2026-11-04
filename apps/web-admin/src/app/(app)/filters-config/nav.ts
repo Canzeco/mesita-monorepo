@@ -1,4 +1,4 @@
-import { Compass } from "lucide-react";
+import { CompassIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Discovery — ONE sidebar entry, ONE page (MESITA-2327): five pipeline boxes,
 // no subpages. The prefix is frozen: /filters-config. Every retired subpage
@@ -7,7 +7,7 @@ import { Compass } from "lucide-react";
 export const FILTERS_PARENT = {
   href: "/filters-config",
   label: "Discovery",
-  Icon: Compass,
+  Icon: CompassIcon,
 } as const;
 
 // Deep link from Crenup, Manage Multiple and Single Place: what Google

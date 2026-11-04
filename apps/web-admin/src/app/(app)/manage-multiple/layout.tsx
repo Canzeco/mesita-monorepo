@@ -13,9 +13,8 @@ export default function ManageMultipleLayout({
   children: React.ReactNode;
 }) {
   return (
-    <PageContainer size="5xl" className="pb-16 sm:pb-24">
+    <PageContainer className="pb-16 sm:pb-24">
       <PageHeader
-        eyebrow="Manage · Multiple Places"
         title="Multiple Places"
         description="Many places at once. Google Search and Mesita Search look them up; Create, Enrich and Edit write them. The rail jumps to each; one place at a time is Single Place."
       />

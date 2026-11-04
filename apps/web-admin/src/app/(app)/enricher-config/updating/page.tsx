@@ -8,7 +8,7 @@ export default async function UpdatingConfigPage() {
   const settings = await getAtlasSettings();
 
   return (
-    <ConfigPageLayout eyebrow="Operations · Updating" title="Updating">
+    <ConfigPageLayout title="Updating">
       <div className="space-y-6 pb-24">
         <div className="prose prose-sm max-w-none text-muted-foreground">
           <p>

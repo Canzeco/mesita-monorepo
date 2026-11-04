@@ -1,4 +1,4 @@
-import { UsersRound } from "lucide-react";
+import { UsersThreeIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Manage › Guests (MESITA-2550) — find a guest, then
 // set Class (Regular or VIP) and Plan (Free or Pro), MESITA-2553. Right after
@@ -6,5 +6,5 @@ import { UsersRound } from "lucide-react";
 export const GUESTS_PARENT = {
   href: "/guests",
   label: "Guests",
-  Icon: UsersRound,
+  Icon: UsersThreeIcon,
 } as const;

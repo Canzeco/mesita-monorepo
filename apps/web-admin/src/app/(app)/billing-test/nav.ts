@@ -1,4 +1,4 @@
-import { Activity } from "lucide-react";
+import { PulseIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Billing Test — the first page under the "Testing" sidebar section. It probes
 // each paid third-party API in isolation (auth still valid? balance left?) so a
@@ -7,5 +7,5 @@ import { Activity } from "lucide-react";
 export const BILLING_TEST_PARENT = {
   href: "/billing-test",
   label: "Billing",
-  Icon: Activity,
+  Icon: PulseIcon,
 } as const;

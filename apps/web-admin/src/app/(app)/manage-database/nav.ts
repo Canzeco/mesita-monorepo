@@ -1,4 +1,4 @@
-import { Database } from "lucide-react";
+import { DatabaseIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Second in Manage, after Admins — the backend itself, above the places
 // and consumers stored in it. Home for database-wide operator actions; today
@@ -8,5 +8,5 @@ import { Database } from "lucide-react";
 export const DB_PARENT = {
   href: "/manage-database",
   label: "Database",
-  Icon: Database,
+  Icon: DatabaseIcon,
 } as const;

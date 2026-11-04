@@ -1,4 +1,4 @@
-import { Building } from "lucide-react";
+import { BuildingIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Manage › Single Place — one place at a time: find it by Google Place ID or
 // by name, read its facts and its Crenup ladder, run the Crenup buttons on
@@ -10,5 +10,5 @@ import { Building } from "lucide-react";
 export const SINGLE_PLACE_PARENT = {
   href: "/manage-single",
   label: "Single Place",
-  Icon: Building,
+  Icon: BuildingIcon,
 } as const;

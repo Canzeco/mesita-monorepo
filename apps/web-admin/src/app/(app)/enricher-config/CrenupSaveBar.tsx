@@ -31,7 +31,7 @@ export function CrenupSaveBar({
      over buttons rather than three items fighting for 343px. */
   return (
     <div className="border-border bg-card/90 pb-safe sticky bottom-0 z-20 -mx-4 border-t backdrop-blur sm:-mx-6 sm:pb-0 lg:-mx-8">
-      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
+      <div className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6 lg:px-8">
         <div className="min-w-0">
           {blocked ? (
             <p className="text-destructive m-0 text-sm font-semibold">
@@ -83,7 +83,7 @@ export function CrenupSaveBar({
         </div>
       </div>
       {error && (
-        <div className="mx-auto max-w-5xl px-4 pb-3 sm:px-6">
+        <div className="px-4 pb-3 sm:px-6 lg:px-8">
           <ErrorNote message={error} />
         </div>
       )}

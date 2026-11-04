@@ -83,7 +83,7 @@ export function SectionStrip({ view }: { view: CrenupView }) {
           (shown ? "" : "pointer-events-none opacity-0")
         }
       >
-      <div className="mx-auto flex max-w-5xl items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6">
+      <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none px-4 py-2 sm:px-6 lg:px-8">
         <span className="text-muted-foreground type-meta mr-1.5 font-bold tracking-wider whitespace-nowrap uppercase">
           {STRIP_TITLE[view]}
         </span>

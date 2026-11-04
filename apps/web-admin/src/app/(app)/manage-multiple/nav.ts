@@ -1,4 +1,4 @@
-import { Building2 } from "lucide-react";
+import { BuildingsIcon } from "@phosphor-icons/react/dist/ssr";
 
 // Manage › Multiple Places — the bulk tool: Google Search · Mesita Search ·
 // Create · Enrich · Update over a pasted list of Google Place IDs. The qualifier came back with
@@ -8,5 +8,5 @@ import { Building2 } from "lucide-react";
 export const MULTIPLE_PLACES_PARENT = {
   href: "/manage-multiple",
   label: "Multiple Places",
-  Icon: Building2,
+  Icon: BuildingsIcon,
 } as const;

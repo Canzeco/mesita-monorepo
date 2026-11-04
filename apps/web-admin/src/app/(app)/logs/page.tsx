@@ -12,7 +12,6 @@ export default async function LogsPage() {
   ]);
   return (
     <ConfigPageLayout
-      eyebrow="Activity · Logs"
       title="Logs"
       description="Headline counters and a recent activity feed. Enrichment workflow lines stay available for deep debugging."
     >

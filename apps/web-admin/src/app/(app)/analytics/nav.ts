@@ -1,7 +1,7 @@
-import { BarChart3 } from "lucide-react";
+import { ChartBarIcon } from "@phosphor-icons/react/dist/ssr";
 
 export const ANALYTICS_PARENT = {
   href: "/analytics",
   label: "Analytics",
-  Icon: BarChart3,
+  Icon: ChartBarIcon,
 } as const;

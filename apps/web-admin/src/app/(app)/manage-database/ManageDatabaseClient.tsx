@@ -20,9 +20,8 @@ const MAX_PURGE_PASSES = 60;
 
 export function ManageDatabaseClient() {
   return (
-    <PageContainer size="3xl" className="flex flex-col gap-6 sm:gap-8">
+    <PageContainer className="flex flex-col gap-6 sm:gap-8">
       <PageHeader
-        eyebrow="Manage · Database"
         title="Database"
         description="Database-wide operator actions. Handle with care — these run against the live singleton backend. Super-admins only."
       />
