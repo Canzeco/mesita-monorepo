@@ -34,8 +34,9 @@ import { cn, errMsg } from "@/lib/utils";
 // It sells (MESITA-3189, Pato: "you are ultimately selling a product, so maybe
 // explain current level and what to do"; MESITA-3194: "like two products"): one
 // big box with the place's current visibility and the two Boosts, each with its
-// own Buy button straight to Checkout; below it, one box to claim the place, also
-// in the ⋯ menu. Every amount, date and line is the
+// own Buy button straight to Checkout; below it, one box to manage the place in
+// the Business app (its claim door: an owner lands on the place, anyone else can
+// claim it). Every amount, date and line is the
 // server's (consumer-web-get-premier-refill); nothing here computes money.
 // Premier is paid ranking priority: it never verifies the place and never
 // promises views.
@@ -168,8 +169,8 @@ export function BoostPane({
           className="border-border bg-card flex min-h-16 items-center gap-3 rounded-2xl border p-4"
         >
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Is this your business?</span>
-            <span className="text-muted-foreground block text-sm">Claim it on Mesita Business to manage its page.</span>
+            <span className="block font-semibold">Manage this place</span>
+            <span className="text-muted-foreground block text-sm">Open Mesita Business to edit its page, reviews and plan.</span>
           </span>
           <ChevronRight className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
         </a>
