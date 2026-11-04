@@ -504,7 +504,7 @@ export async function updatePlaceGoogle(placeId: string): Promise<Result<{ updat
   return { ok: true, data: { updatedAt: r.data.updatedAt ?? null } };
 }
 
-/** One line of a Boost run (business-web-boost-place, MESITA-3180). */
+/** One line of an Upgrade run (business-web-boost-place, MESITA-3180). */
 export type BoostLine = {
   result: "ok" | "refused" | "unknown";
   code?: string;
@@ -514,8 +514,8 @@ export type BoostLine = {
   ended_days?: number;
 };
 
-/** Boost this place (staff): Premier 2X (tier 1) or 5X (tier 2) for `days`,
- *  given by Mesita, or end Mesita's Boost. One Google Place ID, one line. */
+/** Upgrade this place (staff): Premier 2X (tier 1) or 5X (tier 2) for `days`,
+ *  given by Mesita, or end Mesita's Upgrade. One Google Place ID, one line. */
 export async function boostPlace(
   googlePlaceId: string,
   run: { action: "refill"; tier: 1 | 2; days: number; requestId: string } | { action: "end_mesita_days" },

@@ -70,7 +70,7 @@ export function shortDay(iso: string): string {
  *  pack's tier: buying keeps it there longer, it does not lift it. */
 export function refillNotice(check: RefillCheck, tier: RefillTier): string | undefined {
   if (check.result !== "ok" || !check.already) return undefined;
-  return `This place is already ${refillLabel(check.level)}; your Boost keeps it ${refillLabel(tier)} until ${shortDay(check.until)}`;
+  return `This place is already ${refillLabel(check.level)}; your Upgrade keeps it ${refillLabel(tier)} until ${shortDay(check.until)}`;
 }
 
 /** What a refusal means, in the guest's words. */
@@ -79,7 +79,7 @@ export const REFILL_REFUSED: Record<string, string> = {
   archived: "This place is closed on Mesita.",
   unlisted: "This place is hidden on Mesita right now.",
   paid_higher: "This place's own plan is already higher.",
-  cap_reached: "This place has a year of Boost queued already.",
+  cap_reached: "This place has a year of Upgrades queued already.",
   stripe_unavailable: "Payments are not available right now.",
 };
 
@@ -116,7 +116,7 @@ export function refillCheckoutParams(args: {
       price_data: {
         currency: PREMIER_CURRENCY,
         unit_amount: REFILL_PACK_CENTS[args.tier],
-        product_data: { name: `Boost · ${refillLabel(args.tier)} · ${REFILL_PACK_DAYS} days · ${args.placeName}`.slice(0, 250) },
+        product_data: { name: `Upgrade · ${refillLabel(args.tier)} · ${REFILL_PACK_DAYS} days · ${args.placeName}`.slice(0, 250) },
       },
     }],
     payment_intent_data: { metadata },
@@ -153,7 +153,7 @@ export function purchaseLine(p: { status: PurchaseStatus; tier: number; ends_at:
     case "expired":
       return "Checkout expired, nothing charged";
     case "paid":
-      return "Paid — the Boost is being added";
+      return "Paid — the Upgrade is being added";
     case "granted":
       return p.ends_at ? `Added: ${refillLabel(p.tier)} until ${shortDay(p.ends_at)}` : `Added: ${refillLabel(p.tier)}`;
     case "refunded":

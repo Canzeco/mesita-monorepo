@@ -544,7 +544,7 @@ export async function endMesitaDays(googlePlaceIds: string[]): Promise<Result<Re
   return { ok: true, data: r.data.lines ?? [] };
 }
 
-// ─── Who is Premier, under the Boost box (MESITA-3011, MESITA-3188) ─────
+// ─── Who is Premier, under the Upgrade box (MESITA-3011, MESITA-3188) ─────
 
 export type PremierRow = {
   id: string;

@@ -49,7 +49,7 @@ export const PLACE_SOLUTIONS: Solution[] = [
     body: "Your page already exists, built by AI from your Google listing and other public sources. Claim it to control photos, hours, channels and the presentation guests read. Free forever.",
   },
   {
-    name: "Premier Boost",
+    name: "Premier",
     body: "The one paid mark in Mesita. Subscribe at 2X or 5X and your score multiplies in every Discovery search, always marked Ad. It orders, never excludes. Cancel any month.",
   },
   {

@@ -1,9 +1,9 @@
 // Supabase Edge Function — business-web-boost-place
 //
-// MESITA-3180: Business › Admin › Special actions › Boost, for Mesita staff on
+// MESITA-3180: Business › Admin › Special actions › Upgrade, for Mesita staff on
 // one place (Pato: "In special actions, add the button to boost"). The same
-// body as admin-web-grant-place-premier (Multiple Places' Boost box): a Boost
-// of Premier 2X (tier 1) or 5X (tier 2) for `days`, or ending Mesita's Boost.
+// body as admin-web-grant-place-premier (Multiple Places' Upgrade box): an Upgrade
+// of Premier 2X (tier 1) or 5X (tier 2) for `days`, or ending Mesita's Upgrade.
 // Business calls only business-web-* functions, so this is that door.
 //
 // Body:     { action: "refill", googlePlaceIds: [one id], tier: 1|2, days: 1..366, requestId }

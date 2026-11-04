@@ -125,21 +125,21 @@ export function BillingPanel({
     else if (sub.state === "paused" && sub.resumes_at && sub.next_charge_at) {
       money.push(
         daysAway(sub.resumes_at) === daysAway(sub.next_charge_at)
-          ? `Paused while a Boost runs — resumes and charges${amount} on ${day(sub.next_charge_at)}.`
-          : `Paused while a Boost runs — resumes ${day(sub.resumes_at)}, next charge${amount} on ${day(sub.next_charge_at)}.`,
+          ? `Paused while an Upgrade runs — resumes and charges${amount} on ${day(sub.next_charge_at)}.`
+          : `Paused while an Upgrade runs — resumes ${day(sub.resumes_at)}, next charge${amount} on ${day(sub.next_charge_at)}.`,
       );
     } else if (sub.state === "waiting" && sub.next_charge_at) {
       money.push(
         sub.early_start
-          ? `${planName(sub.tier)} starts when the Boost ends on ${day(sub.next_charge_at)}: first charge${amount}.`
+          ? `${planName(sub.tier)} starts when the Upgrade ends on ${day(sub.next_charge_at)}: first charge${amount}.`
           : daysAway(sub.next_charge_at) <= 0
             ? `Next charge${amount} in the next few minutes.`
-            : `Next charge${amount} on ${day(sub.next_charge_at)}, when the Boost ends.`,
+            : `Next charge${amount} on ${day(sub.next_charge_at)}, when the Upgrade ends.`,
       );
     } else if (sub.next_charge_at) money.push(`Next charge${amount} on ${day(sub.next_charge_at)}.`);
     if (!you) money.push("Paid by another member of your team.");
   } else if (keep) {
-    money.push(`Keep Premier ${FACTOR[keep.tier]} with ${planName(keep.tier)} — first charge ${usd(keep.price_cents)} on ${day(keep.ends_at)}, the day the Boost ends.`);
+    money.push(`Keep Premier ${FACTOR[keep.tier]} with ${planName(keep.tier)} — first charge ${usd(keep.price_cents)} on ${day(keep.ends_at)}, the day the Upgrade ends.`);
   } else if (empty) {
     money.push("Your place ranks like every other place.");
   } else {

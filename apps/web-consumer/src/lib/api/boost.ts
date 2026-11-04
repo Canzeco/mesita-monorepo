@@ -1,6 +1,6 @@
 // Mesita Premier on the place screen (MESITA-3168; Premier MESITA-2925,
-// Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys a
-// Boost for a place (Refill until MESITA-3175) — 30 days of Premier 2X or
+// Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys an
+// Upgrade for a place (Refill until MESITA-3175, Boost until MESITA-3199) — 30 days of Premier 2X or
 // Premier 5X, paid once, no renewal and no owner check. The recurring Premier
 // Subscription is the Business app's. Every amount, date and line here comes
 // from the server (consumer-web-get-premier-refill): this file never
@@ -11,19 +11,19 @@ import { invokeEF } from "./_invoke";
 
 export type TierRank = 1 | 2;
 
-/** The two Boosts (MESITA-3175: a guest buys a Boost, never a plan): each sells what the place gets, and
+/** The two Upgrades (MESITA-3175: a guest buys an Upgrade, never a plan): each sells what the place gets, and
  *  `priority` is the factor the ranking applies (Home's list and the Map).
  *  Prices come from the server. */
 export const BOOST_TIERS = [
   {
     rank: 1,
-    label: "Boost 2X",
+    label: "Upgrade 2X",
     priority: "Premier 2X",
     blurb: "Moves the place up on Home and the Map",
   },
   {
     rank: 2,
-    label: "Boost 5X",
+    label: "Upgrade 5X",
     priority: "Premier 5X",
     blurb: "The biggest lift on Home and the Map",
   },
@@ -94,7 +94,7 @@ export const START_REFUSED: Record<string, string> = {
   archived: "This place is closed on Mesita.",
   unlisted: "This place is hidden on Mesita right now.",
   paid_higher: "This place's own plan is already higher.",
-  cap_reached: "This place has a year of Boost queued already.",
+  cap_reached: "This place has a year of Upgrades queued already.",
   stripe_unavailable: "Payments are not available right now.",
 };
 

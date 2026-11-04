@@ -129,7 +129,7 @@ export function MultiplePlacesClient({ premierNow }: { premierNow?: React.ReactN
         id={PIPELINE_STEPS[4].id}
         tint="amber"
         title={PIPELINE_STEPS[4].label}
-        blurb="Boost → Premier, Plan → Premier: a place ranks at the higher of the two. A Boost is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Boost ends only the Boost added here."
+        blurb="Upgrade → Premier, Plan → Premier: a place ranks at the higher of the two. An Upgrade is Premier 2X or 5X for a number of days, given by Mesita, never a plan. 5X runs first, then 2X. A place paying for a higher plan is refused. End Mesita Upgrade ends only the Upgrade added here."
       >
         <RefillBox id={PIPELINE_STEPS[4].id} text={sharedIds} onTextChange={setSharedIds} />
         {premierNow}

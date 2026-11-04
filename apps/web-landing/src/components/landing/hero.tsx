@@ -126,7 +126,7 @@ function Hero() {
               5X
             </span>
             <span className="text-[13px] leading-tight font-semibold">
-              Premier Boost
+              Premier
               <span className="text-muted-foreground block text-[11px] font-medium">
                 marked Ad
               </span>

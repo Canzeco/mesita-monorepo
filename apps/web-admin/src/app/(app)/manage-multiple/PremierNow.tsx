@@ -1,7 +1,7 @@
 import { businessPlaceHref } from "@/lib/business-url";
 import { listPremier, type PremierRow } from "./actions";
 
-// Under the Boost box (MESITA-3188, Pato: "remove the premier page here. that
+// Under the Upgrade box (MESITA-3188, Pato: "remove the premier page here. that
 // goes inside manage multiple places"): the places Premier now, or with a
 // subscription renewal or Checkout in flight, each opening in Business. A
 // server component, so a slow read never holds the rest of the tool.
@@ -16,7 +16,7 @@ function day(iso: string): string {
 function standing(p: PremierRow): string {
   if (p.charging) return "Charging at Stripe…";
   const parts = [
-    p.manual ? `Boost ${MARK[p.manual.tier] ?? ""} until ${day(p.manual.ends_at)}` : null,
+    p.manual ? `Upgrade ${MARK[p.manual.tier] ?? ""} until ${day(p.manual.ends_at)}` : null,
     p.period ? `Plan ${MARK[p.period.tier] ?? ""} until ${day(p.period.ends_at)}` : null,
     p.backups > 0 && !p.period ? "Plan renews within 5 minutes" : null,
     p.waiting > 0 ? `${p.waiting} waiting at Checkout` : null,

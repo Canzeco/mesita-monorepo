@@ -6,7 +6,7 @@
 //
 // One card of two rows (MESITA-3186, Pato: "the plans go into billing. In
 // premier put far less information"): the plan, with Change going to Billing,
-// and the Boost. The place runs at the higher of the two. Every date is the
+// and the Upgrade. The place runs at the higher of the two. Every date is the
 // server's (business-web-get-premier).
 
 import Link from "next/link";
@@ -75,7 +75,7 @@ export function PremierPanel({ placeId, initial, loadError }: { placeId: string;
             </Link>
           </li>
           <li className={rowClass}>
-            <span className={labelClass}>Boost</span>
+            <span className={labelClass}>Upgrade</span>
             {boost ? (
               <p className="min-w-0 flex-1">
                 <span className="font-semibold">
