@@ -480,6 +480,15 @@ type RankedPool = {
   order: string[];
 };
 
+/** The Reward tab's order (MESITA-3214): distance alone, then id; a place with
+ *  no coordinates last. Popularity and Premier play no part. */
+function nearestFirst(places: readonly AreaPoolPlace[]): AreaPoolPlace[] {
+  return [...places].sort((a, b) =>
+    (a.area.distanceKm ?? Infinity) - (b.area.distanceKm ?? Infinity) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
 /** Both passes: walk, rank with `selectAreaPool`, keep `keepMax`, read the
  *  kept cards, emit them in rank order. */
 async function selectRankedPool<T extends PoolRow>(
@@ -489,6 +498,7 @@ async function selectRankedPool<T extends PoolRow>(
   gates: CatalogGates,
   keepMax: number,
   offset = 0,
+  nearest = false,
 ): Promise<RankedPool> {
   const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
   const ranked = await selectAreaPool({
@@ -498,10 +508,11 @@ async function selectRankedPool<T extends PoolRow>(
     mesitaRows: walk.rows,
     cfg: deps.cfg,
   });
+  const list = nearest ? nearestFirst(ranked.places) : ranked.places;
   // One page of the ranked list (MESITA-3044): the whole list is ranked,
   // only this slice's cards are read.
-  const end = Math.min(ranked.places.length, offset + keepMax);
-  const kept = ranked.places.slice(offset, end);
+  const end = Math.min(list.length, offset + keepMax);
+  const kept = list.slice(offset, end);
   const cards = await cardsForIds(
     deps.read,
     deps.cfg,
@@ -526,10 +537,10 @@ async function selectRankedPool<T extends PoolRow>(
       scanCapped: walk.scanCapped,
       missing: kept.length - places.length,
       offset,
-      next: end < ranked.places.length ? end : null,
+      next: end < list.length ? end : null,
     },
     lastId: walk.lastId,
-    order: surface === "catalog" ? ranked.places.map((p) => p.id) : [],
+    order: surface === "catalog" ? list.map((p) => p.id) : [],
   };
 }
 
@@ -547,7 +558,12 @@ async function selectRankedPool<T extends PoolRow>(
  * from pass 1's values, so a row edited between the two reads can disagree.
  */
 export function selectCatalogPool<T extends PoolRow>(
-  deps: RankedPoolDeps<T> & { location: AreaLocation; page?: { offset: number; size: number } },
+  deps: RankedPoolDeps<T> & {
+    location: AreaLocation;
+    page?: { offset: number; size: number };
+    /** Sort by distance alone instead of the score (MESITA-3214). */
+    nearest?: boolean;
+  },
 ): Promise<RankedPool> {
   return selectRankedPool(
     deps,
@@ -556,6 +572,7 @@ export function selectCatalogPool<T extends PoolRow>(
     { families: deps.families },
     deps.page ? deps.page.size : CATALOG_RETURN_MAX,
     deps.page ? deps.page.offset : 0,
+    deps.nearest === true,
   );
 }
 
