@@ -141,7 +141,7 @@ export function CouponRow({ facts }: { facts: CardFacts }) {
   return (
     <p className="flex min-w-0 font-sans">
       <span className={PLACE_REWARD_COUPON_CLASS}>
-        <Ticket className={MARK} strokeWidth={2.25} aria-hidden />
+        <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
         {facts.off}
       </span>
     </p>

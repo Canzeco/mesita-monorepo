@@ -24,7 +24,7 @@ export const TILE_PHOTO =
 export const TILE_BAND =
   "bg-paper absolute inset-x-0 bottom-0 h-[50%] overflow-hidden rounded-b-2xl";
 
-/** The band's rows (three 20px, then the 24px coupon), 2px apart, 12px side padding, centred in
+/** The band's rows, four at 20px, 2px apart, 12px side padding, centred in
  *  what Save · Share leave: pb-11 is the 32px row and its 12px foot, so the
  *  gap over the name and the gap over the buttons match (MESITA-2645). */
 export const TILE_TEXT =
