@@ -10,7 +10,7 @@ import { PLACE_TAB_META } from "./place-tab-meta";
 export function PlaceTabTitle({ right }: { right?: React.ReactNode }) {
   const tab = placeTabFromPathname(usePathname());
   if (!tab) return null;
-  const { label, icon: Icon, sub, soon } = PLACE_TAB_META[tab];
+  const { label, icon: Icon, sub } = PLACE_TAB_META[tab];
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
@@ -18,10 +18,7 @@ export function PlaceTabTitle({ right }: { right?: React.ReactNode }) {
           <Icon className="size-4.5" aria-hidden />
         </span>
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-            {label}
-            {soon ? <span className="type-label bg-muted text-muted-foreground rounded-full px-2 py-0.5 font-semibold">Soon</span> : null}
-          </h2>
+          <h2 className="text-lg font-semibold tracking-tight">{label}</h2>
           <p className="text-muted-foreground text-sm">{sub}</p>
         </div>
       </div>
