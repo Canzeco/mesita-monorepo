@@ -23,6 +23,7 @@ import { MOCK_FIRST_VISIT } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { GuestPassport } from "./GuestPassport";
 import { capLine, REWARD_LINE, REWARD_NAME } from "./RewardList";
 import type { RewardPlaceHeader } from "./reward-place-seed";
 
@@ -215,7 +216,8 @@ function VisitCodeQr({
 
   return (
     <div className="flex flex-col items-center text-center">
-      <h2 className={STEP_TITLE}>Show this to staff</h2>
+      <GuestPassport />
+      <h2 className={cn(STEP_TITLE, "mt-4")}>Show this to staff</h2>
       <div className="mt-4 flex min-h-60 items-center justify-center">
         {code ? (
           <QRCodeSVG value={visitLink(placeId, code.code)} size={240} level="M" marginSize={2} bgColor="#ffffff" fgColor="#000000" />
