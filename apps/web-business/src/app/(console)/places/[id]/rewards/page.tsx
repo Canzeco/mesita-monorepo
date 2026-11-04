@@ -1,5 +1,6 @@
 import { getPlaceRewards } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
+import { HowItWorks } from "./HowItWorks";
 import { PlaceCode } from "./PlaceCode";
 import { RewardsCard } from "./RewardsCard";
 
@@ -19,6 +20,7 @@ export default async function RewardsPage({ params }: { params: Promise<{ id: st
         <>
           <RewardsCard placeId={id} initial={rewards.data} canEdit={rewards.data.can_edit} />
           <PlaceCode placeId={id} initialSet={rewards.data.code_set} canEdit={rewards.data.can_edit} />
+          <HowItWorks />
         </>
       ) : (
         <Card>
