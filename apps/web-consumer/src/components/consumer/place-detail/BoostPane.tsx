@@ -85,7 +85,7 @@ export function BoostPane({
   return (
     <section className="flex flex-col gap-4 py-2" aria-labelledby="boost-title">
       <h2 id="boost-title" className="sr-only">
-        Premier
+        Business
       </h2>
 
       <div className="border-border bg-card rounded-2xl border p-4" aria-live="polite">

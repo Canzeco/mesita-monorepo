@@ -74,7 +74,7 @@ export function PlaceMoreSheet({
     },
     {
       key: "boost",
-      label: "Premier",
+      label: "Business",
       icon: BadgeCheck,
       run: onBoost,
     },
