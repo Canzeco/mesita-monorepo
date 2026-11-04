@@ -132,7 +132,7 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
   const cell = (r: PlaceReward) => (
     <div className={cn("min-w-0 flex-1", !r.eligible && data.signed_in && "opacity-50")}>
       <p className="font-semibold">{NAME[r.kind]}</p>
-      <p className="text-fact-reward text-sm font-semibold tabular-nums">{r.percent}%OFF</p>
+      <p className="text-fact-reward text-sm font-semibold tabular-nums">{r.percent}% OFF</p>
       <p className="text-muted-foreground text-sm">{LINE[r.kind]}</p>
       {r.reason && WHY_OFF[r.reason] ? <p className="text-sm font-medium">{WHY_OFF[r.reason]}</p> : null}
     </div>

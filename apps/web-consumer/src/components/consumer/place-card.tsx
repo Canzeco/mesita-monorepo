@@ -25,7 +25,7 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount, on its own row of the Home card ("30%OFF on first $200MX", MESITA-3229). */
+  /** The discount, on its own row of the Home card ("30% OFF, up to $60", MESITA-3231). */
   off: string | null;
   rating: string | null;
   reviews: string | null;
@@ -149,7 +149,7 @@ export function CouponRow({ facts }: { facts: CardFacts }) {
 }
 
 /** Search card row two (MESITA-2674): $$ (green) · category. No coupon: the
- *  rail's fixed height has no fourth row, and "30%OFF" alone would hide its
+ *  rail's fixed height has no fourth row, and "30% OFF" alone would hide its
  *  limit (MESITA-3229). */
 export function PriceKindRow({ facts }: { facts: CardFacts }) {
   if (!facts.kind && !facts.price) return null;
