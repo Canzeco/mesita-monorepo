@@ -5,7 +5,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(30);
+select plan(40);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3202'),
@@ -14,6 +14,8 @@ insert into public.consumers (id, first_name) values
   ('00000000-0000-4000-8000-0000000a3202', 'Ana'),
   ('00000000-0000-4000-8000-0000000b3202', 'Beto');
 update public.consumers set guest_class = 'vip' where id = '00000000-0000-4000-8000-0000000b3202';
+update public.consumers set instagram_followers_count = 1500, instagram_verified_at = now()
+ where id = '00000000-0000-4000-8000-0000000a3202';
 insert into public.place_profiles (id, google_name) values
   ('00000000-0000-4000-8000-000000003202', 'Visit Probe'),
   ('00000000-0000-4000-8000-000000013202', 'Other Probe');
@@ -209,6 +211,60 @@ update public.consumers set deleted_at = now() where id = '00000000-0000-4000-80
 select is(
   public.place_visit_check('00000000-0000-4000-8000-000000003202', 'hash-gone')->>'outcome', 'bad_code',
   'a closed account''s code is refused'
+);
+
+-- ━━━ Story's follower bar (MESITA-3224) ━━━
+
+create function pg_temp.story(guest text) returns text language sql as $$
+  select coalesce(eligible::text, 'null') || ':' || coalesce(reason, 'none')
+    from public.place_rewards_for_guest('00000000-0000-4000-8000-000000003202', guest::uuid)
+   where kind = 'instagram_story'
+$$;
+
+insert into auth.users (id) values ('00000000-0000-4000-8000-0000000c3202');
+insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000c3202', 'Caro');
+
+select is(pg_temp.story('00000000-0000-4000-8000-0000000c3202'), 'false:instagram_not_connected',
+  'no Instagram, no Story');
+update public.consumers set instagram_followers_count = 5000 where id = '00000000-0000-4000-8000-0000000c3202';
+select is(pg_temp.story('00000000-0000-4000-8000-0000000c3202'), 'false:instagram_not_connected',
+  'a count on an account nobody verified does not count');
+update public.consumers set instagram_followers_count = null, instagram_verified_at = now() where id = '00000000-0000-4000-8000-0000000c3202';
+select is(pg_temp.story('00000000-0000-4000-8000-0000000c3202'), 'false:instagram_not_connected',
+  'a verified account with no count is not zero, and is not eligible');
+update public.consumers set instagram_followers_count = 999 where id = '00000000-0000-4000-8000-0000000c3202';
+select is(pg_temp.story('00000000-0000-4000-8000-0000000c3202'), 'false:not_enough_followers',
+  '999 followers is under the bar');
+update public.consumers set instagram_followers_count = 1000 where id = '00000000-0000-4000-8000-0000000c3202';
+select is(pg_temp.story('00000000-0000-4000-8000-0000000c3202'), 'true:none',
+  '1,000 followers clears the bar');
+
+update public.consumers set instagram_followers_count = 999 where id = '00000000-0000-4000-8000-0000000c3202';
+select public.place_visit_code_issue('00000000-0000-4000-8000-000000003202', '00000000-0000-4000-8000-0000000c3202', 'hash-c', now() + interval '10 minutes');
+select is(
+  pg_temp.visit('hash-c', 100000, 'instagram_story', '00000000-0000-4000-8000-00000000c001') - 'visit',
+  '{"outcome": "not_eligible", "reason": "not_enough_followers"}'::jsonb,
+  'the till refuses Story under the bar'
+);
+select is(
+  pg_temp.visit('hash-c', 100000, 'welcome_visit,instagram_story', '00000000-0000-4000-8000-00000000c002')->>'outcome', 'not_eligible',
+  'one bad pick refuses the visit; the discount never quietly shrinks'
+);
+select is(
+  (select count(*)::integer from public.place_visits where consumer_id = '00000000-0000-4000-8000-0000000c3202'), 0,
+  'a refused visit writes nothing'
+);
+
+-- ━━━ The Cap starts on (MESITA-3224) ━━━
+
+select is(
+  public.place_rewards_read('00000000-0000-4000-8000-000000013202')#>>'{cap,enabled}', 'true',
+  'a place with no row reads the Cap on'
+);
+insert into public.place_rewards (place_id, welcome_visit) values ('00000000-0000-4000-8000-000000013202', true);
+select is(
+  public.place_rewards_read('00000000-0000-4000-8000-000000013202')#>>'{cap,enabled}', 'true',
+  'a place''s first switch leaves the Cap on'
 );
 
 select * from finish();
