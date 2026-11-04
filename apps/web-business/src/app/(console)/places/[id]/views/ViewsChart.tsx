@@ -26,7 +26,7 @@ export function ViewsChart({ days }: { days: PlaceViewsDay[] }) {
   return (
     <div className="px-5 py-4 sm:px-6">
       <p className="text-sm font-medium">Last 30 days</p>
-      <p className="text-muted-foreground text-sm">Each guest counts once per action, on their latest.</p>
+      <p className="text-muted-foreground text-sm">Every view, like and share.</p>
       <div className="mt-4 flex gap-2">
         <div className="min-w-0 flex-1">
           <div className={cn("border-border relative h-28 border-b", peak > 0 && "border-t")}>
