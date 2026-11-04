@@ -33,8 +33,8 @@ export async function apiListRewardPercents(client: SupabaseClient, placeIds: st
 
 export type VisitCode = { code: string; issued_at: string; expires_at: string };
 
-export async function apiCreateVisitCode(client: SupabaseClient, placeId: string, billCents: number): Promise<VisitCode> {
-  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents });
+export async function apiCreateVisitCode(client: SupabaseClient, placeId: string, billCents: number, story: boolean): Promise<VisitCode> {
+  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents, story });
 }
 
 export type VisitResult = { bill_cents: number; discount_cents: number; total_cents: number; currency: string };

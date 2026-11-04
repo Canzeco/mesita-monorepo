@@ -16,7 +16,10 @@
 // MESITA-3245: the guest enters the bill first, and it waits with the code. The
 // place corrects it if it is wrong when it closes the visit.
 //
-// Body: { place_id: uuid, bill_cents: integer }
+// MESITA-3259: Story is the guest's choice, and the tick waits with the code too.
+// Staff's page and the close read it.
+//
+// Body: { place_id: uuid, bill_cents: integer, story?: boolean }
 // Response: { ok: true, code: "<32 hex>", issued_at, expires_at }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -54,6 +57,7 @@ serveJson("consumer-web-create-visit-code", async (req) => {
       p_code_hash: await hashVisitCode(placeId, code),
       p_expires_at: expiresAt,
       p_bill_cents: billCents,
+      p_story: bodyRes.body.story === true,
     });
     if (error) return json({ ok: false, error: error.message }, 500);
     if (issued === true) return json({ ok: true, code, issued_at: issuedAt.toISOString(), expires_at: expiresAt });
