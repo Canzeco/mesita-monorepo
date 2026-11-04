@@ -1,4 +1,6 @@
+import { apiTrackPlaceShare } from "@/lib/api/place-share";
 import { placeHref } from "@/lib/place-route";
+import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 
 // Sharing anything: the OS share sheet where there is one, the clipboard
@@ -118,14 +120,25 @@ export async function shareOrCopy(
   return "failed";
 }
 
+/** Count a share for the place's Insights (MESITA-3206). In the background and
+ *  silent: a share that could not be counted is still a share. */
+function countShare(placeId: string): void {
+  try {
+    void apiTrackPlaceShare(createBrowserSupabase(), placeId).catch(() => undefined);
+  } catch {
+    // No client on this page: nothing to count with.
+  }
+}
+
 /** Copy a place's link, and say so (the ⋯ menu's Copy link, MESITA-2692). */
 export async function copyPlaceLink(place: {
   id: string;
   slug?: string | null;
 }): Promise<void> {
-  if (await copyToClipboard(placeShareUrl(place.slug ?? place.id)))
+  if (await copyToClipboard(placeShareUrl(place.slug ?? place.id))) {
     toast.success("Link copied");
-  else toast.error("Couldn't copy the link");
+    countShare(place.id);
+  } else toast.error("Couldn't copy the link");
 }
 
 /** Share a place, or copy its link. */
@@ -135,8 +148,10 @@ export async function sharePlace(place: {
   name: string;
 }): Promise<ShareOutcome> {
   const url = placeShareUrl(place.slug ?? place.id);
-  return shareOrCopy(
+  const outcome = await shareOrCopy(
     { title: place.name, url },
     { text: url, copied: "Link copied", failed: "Couldn't share this place" },
   );
+  if (outcome === "shared" || outcome === "copied") countShare(place.id);
+  return outcome;
 }
