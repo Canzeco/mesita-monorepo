@@ -33,8 +33,16 @@ export async function apiListRewardPercents(client: SupabaseClient, placeIds: st
 
 export type VisitCode = { code: string; expires_at: string };
 
-export async function apiCreateVisitCode(client: SupabaseClient, placeId: string): Promise<VisitCode> {
-  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId });
+export async function apiCreateVisitCode(client: SupabaseClient, placeId: string, billCents: number): Promise<VisitCode> {
+  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents });
+}
+
+/** "1,234.50" as whole cents, or null. On the digits, so no float touches it. */
+export function readBill(text: string): number | null {
+  const m = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(text.replace(/[,\s]/g, ""));
+  if (!m) return null;
+  const cents = Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
+  return cents > 0 ? cents : null;
 }
 
 /** What the guest's QR holds (MESITA-3240): a phone camera opens this page. */

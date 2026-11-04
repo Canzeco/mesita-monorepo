@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { readAmount } from "./amount";
+import { amountText, readAmount } from "./amount";
 
 describe("readAmount", () => {
+  it("reads back the guest's bill exactly", () => {
+    for (const cents of [125000, 125050, 125005, 1, 100000000]) {
+      expect(readAmount(amountText(cents))).toBe(cents);
+    }
+  });
+
   it("reads what a person types as whole cents", () => {
     expect(readAmount("1,234.50")).toBe(123450);
     expect(readAmount(" 200 ")).toBe(20000);
