@@ -19,14 +19,18 @@
 // MESITA-3259: Story is the guest's choice, and the tick waits with the code too.
 // Staff's page and the close read it.
 //
-// Body: { place_id: uuid, bill_cents: integer, story?: boolean }
+// MESITA-3270: the shared visit. The QR comes first and carries no bill and no tick:
+// staff type the bill after the scan and say whether they saw the Story. Asking again
+// replaces the open visit, which is how a guest starts over.
+//
+// Body: { place_id: uuid }
 // Response: { ok: true, code: "<32 hex>", issued_at, expires_at }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { hashVisitCode, isBillCents, newVisitCode, VISIT_CODE_DRAWS, VISIT_CODE_MINUTES } from "../_shared/place-visits.ts";
+import { hashVisitCode, newVisitCode, VISIT_CODE_DRAWS, VISIT_CODE_MINUTES } from "../_shared/place-visits.ts";
 
 serveJson("consumer-web-create-visit-code", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -43,8 +47,6 @@ serveJson("consumer-web-create-visit-code", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  const billCents = bodyRes.body.bill_cents;
-  if (!isBillCents(billCents)) return json({ ok: false, code: "bad_bill", error: "Enter your bill." }, 400);
 
   const admin = adminClient(envRes.env);
   const issuedAt = new Date();
@@ -56,8 +58,6 @@ serveJson("consumer-web-create-visit-code", async (req) => {
       p_consumer_id: userId,
       p_code_hash: await hashVisitCode(placeId, code),
       p_expires_at: expiresAt,
-      p_bill_cents: billCents,
-      p_story: bodyRes.body.story === true,
     });
     if (error) return json({ ok: false, error: error.message }, 500);
     if (issued === true) return json({ ok: true, code, issued_at: issuedAt.toISOString(), expires_at: expiresAt });

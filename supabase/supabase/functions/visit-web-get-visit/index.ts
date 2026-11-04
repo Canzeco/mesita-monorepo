@@ -4,9 +4,14 @@
 // what they can use here. No sign-in: the link's secret is the key, 128 random
 // bits, ten minutes, one use. Spends nothing.
 //
+// MESITA-3270: the shared visit. The first read opens it and gives the table an hour;
+// the page then asks every few seconds and follows the guest. Reading never extends it.
+//
 // Body: { place_id: uuid, code: "<32 hex>" }
-// Response: { ok: true, place_name, currency, code_set, guest_name, bill_cents,
-//             rewards: [{ kind, percent, cap_cents }] }
+// Response: { ok: true, place_name, currency, code_set, guest_name, expires_at, opened_at,
+//             bill_cents, bill_confirmed_at, story, story_offered, task_seen_at,
+//             task_skipped_at, rewards: [{ kind, percent, cap_cents }],
+//             quote, quote_with_story, step: "bill" | "task" | "pay" }
 //         | { ok: false, code: "bad_code", error }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -39,13 +44,11 @@ serveJson("visit-web-get-visit", async (req) => {
   if (error) return json({ ok: false, error: error.message }, 500);
   if (data?.outcome !== "ok") return json({ ok: false, code: "bad_code", error: ENDED }, 409);
 
+  const { outcome: _outcome, ...visit } = data;
   return json({
     ok: true,
+    ...visit,
     place_name: data.place_name ?? "This place",
-    currency: data.currency,
-    code_set: data.code_set,
     guest_name: data.guest_name ?? "Guest",
-    bill_cents: data.bill_cents ?? null,
-    rewards: data.rewards,
   });
 });

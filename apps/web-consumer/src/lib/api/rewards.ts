@@ -33,8 +33,45 @@ export async function apiListRewardPercents(client: SupabaseClient, placeIds: st
 
 export type VisitCode = { code: string; issued_at: string; expires_at: string };
 
-export async function apiCreateVisitCode(client: SupabaseClient, placeId: string, billCents: number, story: boolean): Promise<VisitCode> {
-  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId, bill_cents: billCents, story });
+/** Opens a visit here, or replaces the open one: that is how a guest starts over. */
+export async function apiCreateVisitCode(client: SupabaseClient, placeId: string): Promise<VisitCode> {
+  return await invokeEF<VisitCode>(client, "consumer-web-create-visit-code", { place_id: placeId });
+}
+
+export type VisitQuote = { percent: number; discount_cents: number; total_cents: number };
+
+/** The shared visit (MESITA-3270), the same picture staff's page reads. Every number
+ *  and the step are the server's. */
+export type OpenVisit = {
+  currency: string;
+  opened_at: string | null;
+  bill_cents: number | null;
+  bill_confirmed_at: string | null;
+  story: boolean;
+  story_offered: boolean;
+  /** The rewards that count right now: Story only once staff saw it. */
+  rewards: { kind: RewardKind; percent: number; cap_cents: number | null }[];
+  quote: VisitQuote | null;
+  quote_with_story: VisitQuote | null;
+  step: "bill" | "task" | "pay";
+};
+
+/** This guest's open visit here, or null when there is none. */
+export async function apiGetVisit(client: SupabaseClient, placeId: string): Promise<OpenVisit | null> {
+  const res = await invokeEF<{ visit: OpenVisit | null }>(client, "consumer-web-get-visit", { place_id: placeId });
+  return res.visit;
+}
+
+/** The guest signs the number they saw. A bill staff just changed is refused (bill_changed). */
+export async function apiConfirmBill(client: SupabaseClient, placeId: string, billCents: number): Promise<OpenVisit> {
+  const res = await invokeEF<{ visit: OpenVisit }>(client, "consumer-web-confirm-bill", { place_id: placeId, bill_cents: billCents });
+  return res.visit;
+}
+
+/** No story today. */
+export async function apiSkipTask(client: SupabaseClient, placeId: string): Promise<OpenVisit | null> {
+  const res = await invokeEF<{ visit: OpenVisit | null }>(client, "consumer-web-skip-task", { place_id: placeId });
+  return res.visit;
 }
 
 export type GuestVisit = {
@@ -60,25 +97,6 @@ export type VisitResult = { bill_cents: number; discount_cents: number; total_ce
 export async function apiGetVisitResult(client: SupabaseClient, placeId: string, since: string): Promise<VisitResult | null> {
   const res = await invokeEF<{ visit: VisitResult | null }>(client, "consumer-web-get-visit-result", { place_id: placeId, since });
   return res.visit;
-}
-
-/** What the guest reads before the visit closes (MESITA-3254), by the sum
- *  place_visit_create does: the percents add up, half a cent rounds up, then the
- *  Cap. The server's answer at the close is the one that counts. */
-export function billAfterRewards(billCents: number, rewards: PlaceReward[]): { offCents: number; payCents: number } {
-  const usable = rewards.filter((r) => r.eligible);
-  const percent = usable.reduce((sum, r) => sum + r.percent, 0);
-  const cap = usable.find((r) => r.cap_cents != null)?.cap_cents ?? billCents;
-  const offCents = Math.min(Math.floor((billCents * percent + 50) / 100), cap, billCents);
-  return { offCents, payCents: billCents - offCents };
-}
-
-/** "1,234.50" as whole cents, or null. On the digits, so no float touches it. */
-export function readBill(text: string): number | null {
-  const m = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(text.replace(/[,\s]/g, ""));
-  if (!m) return null;
-  const cents = Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
-  return cents > 0 ? cents : null;
 }
 
 /** What the guest's QR holds (MESITA-3240): a phone camera opens this page. */
