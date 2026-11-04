@@ -6,7 +6,7 @@ import { WalletSkeleton } from "@/components/consumer/wallet/WalletPage";
 export default function PayLoading() {
   return (
     <div className="flex h-full min-h-0 flex-col px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Rewards</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Reward</h1>
       <div className="mt-5">
         <WalletSkeleton />
       </div>
