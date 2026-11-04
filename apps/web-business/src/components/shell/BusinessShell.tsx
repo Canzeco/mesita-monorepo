@@ -227,24 +227,29 @@ export function BusinessShell({
             say Mesita like in the consumer app"): the word "Mesita" in
             Outfit, as the consumer app's header draws it; the bare mark
             below lg. */}
-        <Link href={PLACES} title="Mesita" className="mb-5 flex h-10 items-center justify-center lg:justify-start lg:px-3">
+        <Link href={PLACES} title="Mesita" className="mb-5 flex h-10 shrink-0 items-center justify-center lg:justify-start lg:px-3">
           <MesitaMark className="size-6 shrink-0 text-(--brand-pink) lg:hidden" />
           <span className={cn(wordmarkFont.className, "text-foreground hidden text-2xl leading-none tracking-[-0.03em] select-none lg:inline")}>
             Mesita
           </span>
         </Link>
-        <nav aria-label="Business" className="flex flex-1 flex-col gap-0.5">
-          {/* "Place" over the switcher, as Capabilities and Manage over
-              theirs (Pato, MESITA-3156: "just to keep symmetry"). */}
-          <div role="group" aria-label="Place" className="flex flex-col gap-0.5">
-            <GroupLabel label="Place" />
-            <PlaceSwitcher s={switcher} />
+        <nav aria-label="Business" className="flex min-h-0 flex-1 flex-col">
+          {/* Only the groups scroll, so a short window still reaches every row
+              and Account stays put (MESITA-3263). `-mx-1 px-1` keeps focus
+              outlines and the switcher's shadow from clipping at the edge. */}
+          <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto overscroll-contain px-1 py-0.5">
+            {/* "Place" over the switcher, as Capabilities and Manage over
+                theirs (Pato, MESITA-3156: "just to keep symmetry"). */}
+            <div role="group" aria-label="Place" className="flex flex-col gap-0.5">
+              <GroupLabel label="Place" />
+              <PlaceSwitcher s={switcher} />
+            </div>
+            <Group label="Operations" rows={place.operations} />
+            <Group label="Capabilities" rows={place.products} />
+            <Group label="Manage" rows={place.manage} />
           </div>
-          <Group label="Operations" rows={place.operations} />
-          <Group label="Capabilities" rows={place.products} />
-          <Group label="Manage" rows={place.manage} />
           {/* Account sits at the foot (Pato, MESITA-3136). */}
-          <div className="border-border mt-auto border-t pt-2">
+          <div className="border-border mt-2 shrink-0 border-t pt-2">
             <RailRow row={account} />
           </div>
         </nav>
