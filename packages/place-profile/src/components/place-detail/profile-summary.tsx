@@ -143,7 +143,7 @@ export function ProfileSummary({
         {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
         {actions?.rewardLabel && (
           <li className={PLACE_REWARD_COUPON_CLASS}>
-            <Ticket className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden />
+            <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
             {actions.rewardLabel}
           </li>
         )}

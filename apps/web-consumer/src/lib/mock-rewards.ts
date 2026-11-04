@@ -16,9 +16,9 @@ const MOCK_PERCENT = 30;
  *  MESITA-3229: "be honest with the reward"; MESITA-3231 for the words). */
 const MOCK_MAX_OFF_PESOS = 60;
 
-/** The summary after the price: "30% OFF, up to $60", or null for a card with no Mesita row. */
+/** The summary after the price: "30% OFF, up to $60 MXN", or null for a card with no Mesita row. */
 export function mockRewardLabel(placeId: string): string | null {
-  return MOCK_REWARDS_ON && isMesitaPlaceId(placeId) ? `${MOCK_PERCENT}% OFF, up to $${MOCK_MAX_OFF_PESOS}` : null;
+  return MOCK_REWARDS_ON && isMesitaPlaceId(placeId) ? `${MOCK_PERCENT}% OFF, up to $${MOCK_MAX_OFF_PESOS} MXN` : null;
 }
 
 /** The Reward tab's "Up to N%" when the server has no real number. */
