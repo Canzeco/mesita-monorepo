@@ -549,6 +549,42 @@ export type Database = {
         }
         Relationships: []
       }
+      place_code_tries: {
+        Row: {
+          consumer_id: string
+          locked_until: string | null
+          place_id: string
+          wrong: number
+        }
+        Insert: {
+          consumer_id: string
+          locked_until?: string | null
+          place_id: string
+          wrong?: number
+        }
+        Update: {
+          consumer_id?: string
+          locked_until?: string | null
+          place_id?: string
+          wrong?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_code_tries_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_code_tries_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_creation_attempts: {
         Row: {
           caller: string
@@ -694,6 +730,45 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_events: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: number
+          kind: string
+          place_id: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: never
+          kind: string
+          place_id: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: never
+          kind?: string
+          place_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_events_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_events_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -1375,6 +1450,7 @@ export type Database = {
         Row: {
           cap: boolean
           instagram_story: boolean
+          place_code_hash: string | null
           place_id: string
           returning_visit: boolean
           updated_at: string
@@ -1385,6 +1461,7 @@ export type Database = {
         Insert: {
           cap?: boolean
           instagram_story?: boolean
+          place_code_hash?: string | null
           place_id: string
           returning_visit?: boolean
           updated_at?: string
@@ -1395,6 +1472,7 @@ export type Database = {
         Update: {
           cap?: boolean
           instagram_story?: boolean
+          place_code_hash?: string | null
           place_id?: string
           returning_visit?: boolean
           updated_at?: string
@@ -1615,25 +1693,43 @@ export type Database = {
       }
       place_visit_codes: {
         Row: {
+          bill_cents: number | null
+          bill_confirmed_at: string | null
           code_hash: string
           consumer_id: string
           created_at: string
           expires_at: string
+          opened_at: string | null
           place_id: string
+          story: boolean
+          task_seen_at: string | null
+          task_skipped_at: string | null
         }
         Insert: {
+          bill_cents?: number | null
+          bill_confirmed_at?: string | null
           code_hash: string
           consumer_id: string
           created_at?: string
           expires_at: string
+          opened_at?: string | null
           place_id: string
+          story?: boolean
+          task_seen_at?: string | null
+          task_skipped_at?: string | null
         }
         Update: {
+          bill_cents?: number | null
+          bill_confirmed_at?: string | null
           code_hash?: string
           consumer_id?: string
           created_at?: string
           expires_at?: string
+          opened_at?: string | null
           place_id?: string
+          story?: boolean
+          task_seen_at?: string | null
+          task_skipped_at?: string | null
         }
         Relationships: [
           {
@@ -1657,11 +1753,11 @@ export type Database = {
           bill_cents: number
           consumer_id: string | null
           created_at: string
-          created_by: string
+          created_by: string | null
           currency: string
           discount_cents: number
           id: string
-          payment_method: string
+          payment_method: string | null
           place_id: string
           request_id: string
           reward_kinds: string[]
@@ -1674,11 +1770,11 @@ export type Database = {
           bill_cents: number
           consumer_id?: string | null
           created_at?: string
-          created_by: string
+          created_by?: string | null
           currency: string
           discount_cents?: number
           id?: string
-          payment_method: string
+          payment_method?: string | null
           place_id: string
           request_id: string
           reward_kinds?: string[]
@@ -1691,11 +1787,11 @@ export type Database = {
           bill_cents?: number
           consumer_id?: string | null
           created_at?: string
-          created_by?: string
+          created_by?: string | null
           currency?: string
           discount_cents?: number
           id?: string
-          payment_method?: string
+          payment_method?: string | null
           place_id?: string
           request_id?: string
           reward_kinds?: string[]
@@ -2183,6 +2279,32 @@ export type Database = {
           },
         ]
       }
+      visit_member_tries: {
+        Row: {
+          consumer_id: string
+          locked_until: string | null
+          wrong: number
+        }
+        Insert: {
+          consumer_id: string
+          locked_until?: string | null
+          wrong?: number
+        }
+        Update: {
+          consumer_id?: string
+          locked_until?: string | null
+          wrong?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_member_tries_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: true
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_entries: {
         Row: {
           amount_cents: number
@@ -2544,7 +2666,7 @@ export type Database = {
         }[]
       }
       place_activity_feed: {
-        Args: { p_limit?: number }
+        Args: { p_before?: string; p_limit?: number }
         Returns: {
           anonymous: boolean
           avatar_url: string
@@ -2620,6 +2742,7 @@ export type Database = {
           percent: number
         }[]
       }
+      place_reward_story_followers: { Args: never; Returns: number }
       place_rewards_for_guest: {
         Args: { p_consumer_id: string; p_place_id: string }
         Returns: {
@@ -2655,18 +2778,72 @@ export type Database = {
         }
         Returns: string
       }
+      place_views_days: {
+        Args: { p_days?: number; p_place_id: string; p_timezone: string }
+        Returns: {
+          day: string
+          likes: number
+          shares: number
+          views: number
+        }[]
+      }
+      place_views_events: {
+        Args: { p_place_id: string }
+        Returns: {
+          consumer_id: string
+          created_at: string
+          kind: string
+        }[]
+      }
+      place_views_log: {
+        Args: { p_before?: string; p_limit?: number; p_place_id: string }
+        Returns: {
+          anonymous: boolean
+          avatar_url: string
+          consumer_id: string
+          created_at: string
+          first_name: string
+          guest_class: string
+          instagram: boolean
+          instagram_followers_count: number
+          instagram_handle: string
+          kind: string
+          plan: string
+        }[]
+      }
       place_visit_check: {
         Args: { p_code_hash: string; p_place_id: string }
         Returns: Json
       }
+      place_visit_close: {
+        Args: {
+          p_bill_cents: number
+          p_code_hash: string
+          p_place_code_hash: string
+          p_place_id: string
+          p_request_id: string
+          p_reward_kinds: string[]
+        }
+        Returns: Json
+      }
       place_visit_code_issue: {
         Args: {
+          p_bill_cents?: number
           p_code_hash: string
           p_consumer_id: string
           p_expires_at: string
           p_place_id: string
+          p_story?: boolean
         }
         Returns: boolean
+      }
+      place_visit_confirm_bill: {
+        Args: {
+          p_bill_cents: number
+          p_consumer_id: string
+          p_place_id: string
+        }
+        Returns: Json
       }
       place_visit_create: {
         Args: {
@@ -2678,6 +2855,61 @@ export type Database = {
           p_request_id: string
           p_reward_kinds: string[]
         }
+        Returns: Json
+      }
+      place_visit_lease: { Args: never; Returns: string }
+      place_visit_member_claim: {
+        Args: { p_candidates: Json; p_member_number: string }
+        Returns: Json
+      }
+      place_visit_member_places: {
+        Args: { p_member_number: string }
+        Returns: string[]
+      }
+      place_visit_open: {
+        Args: { p_code_hash: string; p_place_id: string }
+        Returns: Json
+      }
+      place_visit_quote: {
+        Args: { p_bill_cents: number; p_rewards: Json }
+        Returns: Json
+      }
+      place_visit_set_bill: {
+        Args: {
+          p_bill_cents: number
+          p_code_hash: string
+          p_place_code_hash: string
+          p_place_id: string
+        }
+        Returns: Json
+      }
+      place_visit_set_task: {
+        Args: {
+          p_code_hash: string
+          p_place_code_hash: string
+          p_place_id: string
+          p_seen: boolean
+        }
+        Returns: Json
+      }
+      place_visit_skip_task: {
+        Args: { p_consumer_id: string; p_place_id: string }
+        Returns: Json
+      }
+      place_visit_staff_check: {
+        Args: {
+          p_code_hash: string
+          p_place_code_hash: string
+          p_place_id: string
+        }
+        Returns: string
+      }
+      place_visit_state: {
+        Args: { p_code_hash: string; p_place_id: string }
+        Returns: Json
+      }
+      place_visit_state_for_guest: {
+        Args: { p_consumer_id: string; p_place_id: string }
         Returns: Json
       }
       place_visit_void: {
