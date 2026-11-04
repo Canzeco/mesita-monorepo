@@ -31,8 +31,12 @@ Deno.test("sync keeps a successful source when another fails", async () => {
   assertEquals("facebook_followers" in result.patch, false);
   assertEquals(result.sources.find((row) => row.source === "facebook")?.status, "error");
   assertEquals(result.patch.google_reviews, [{ author: "Ana", quote: "Good" }]);
-  assertEquals("instagram_found" in result.patch, false);
-  assertEquals("facebook_found" in result.patch, false);
+  // The card reads these: an answer is found, a failure is not and keeps the
+  // count (MESITA-3247). Google Found is Details', so a failed lookup cannot
+  // undo the answer Details just gave in the same Enrich.
+  assertEquals(result.patch.instagram_found, true);
+  assertEquals(result.patch.facebook_found, false);
+  assertEquals("google_found" in result.patch, false);
 });
 
 Deno.test("a missing link is no_link and is not fetched", async () => {
@@ -50,6 +54,10 @@ Deno.test("a missing link is no_link and is not fetched", async () => {
   assertEquals(instagramCalls, 0);
   assertEquals(result.sources.find((row) => row.source === "instagram")?.status, "no_link");
   assertEquals(result.sources.find((row) => row.source === "facebook")?.status, "no_link");
+  // Links can find nothing on an Enrich while the saved link stands: its flag
+  // and count must survive.
+  assertEquals("instagram_found" in result.patch, false);
+  assertEquals("facebook_found" in result.patch, false);
 });
 
 Deno.test("reviews replace the list instead of appending", () => {
