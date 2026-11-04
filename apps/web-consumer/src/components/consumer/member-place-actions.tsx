@@ -4,18 +4,10 @@ import dynamic from "next/dynamic";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import type {
-  PlaceActions,
-  PlaceMenuItem,
-  PlaceTab,
-} from "@mesita/place-profile";
+import type { PlaceActions, PlaceMenuItem } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { PrepaySheet } from "@/components/consumer/wallet/PrepaySheet";
-import {
-  BoostPane,
-  BoostUnavailable,
-} from "@/components/consumer/place-detail/BoostPane";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -48,6 +40,11 @@ const ReportSheet = dynamic(() =>
 const MenuViewer = dynamic(() =>
   import("@/components/consumer/MenuViewer").then((m) => m.MenuViewer),
 );
+const BoostSheet = dynamic(() =>
+  import("@/components/consumer/place-detail/BoostSheet").then(
+    (m) => m.BoostSheet,
+  ),
+);
 
 // One hook per member surface so the body and the Reserve bar share the
 // sheets. The shared renderer stays presentational.
@@ -67,11 +64,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
-  /** The Premier tab's body (MESITA-2861, MESITA-2925). */
-  boost: ReactNode;
-  /** Set when ⋯ › Premier or Stripe Checkout's return asks for the
-   *  Premier tab (MESITA-2797, MESITA-2861). */
-  openTab: { tab: PlaceTab; key: number } | null;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
@@ -80,18 +72,16 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [prepayOpen, setPrepayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
-  // When the Upgrade tile (MESITA-3200) or ⋯ › Business last asked for the
-  // Business tab (ms).
-  const [boostAskedAt, setBoostAskedAt] = useState<number | null>(null);
+  // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
+  const [boostAskedAt, setBoostAskedAt] = useState(0);
+  const [boostClosedAt, setBoostClosedAt] = useState(0);
   const onBoost = () => setBoostAskedAt(Date.now());
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  // ⋯ › Premier and Stripe Checkout's return both open the Premier tab; the
-  // later ask wins, and each new key switches once (PlaceDetailBody).
-  const boostAsk = Math.max(boostAskedAt ?? 0, boost.returnedAt ?? 0);
-  const openTab =
-    boostAsk > 0 ? { tab: "boost" as const, key: boostAsk } : null;
+  // Stripe Checkout's return asks for the sheet too: it is open while the
+  // latest ask is newer than the last close (MESITA-3201).
+  const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
 
   const onSave = useCallback(() => {
     const nowSaved = !saved;
@@ -123,21 +113,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onOpenLink,
   };
 
-  // A Google-only card is not a place row yet: nothing to back. It says so
-  // in the consumer's own words (MESITA-2797), never the package's
-  // "from the Mesita app" line, which reads wrong inside the app.
-  const boostPane = isMesitaPlaceId(place.id) ? (
-    <BoostPane
-      place={place}
-      boost={boost.data}
-      loading={boost.loading}
-      failed={boost.failed}
-      onRetry={boost.reload}
-    />
-  ) : (
-    <BoostUnavailable />
-  );
-
   const sheets = (
     <>
       <PlaceContactSheet
@@ -154,6 +129,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={prepayOpen}
         onClose={() => setPrepayOpen(false)}
+      />
+      <BoostSheet
+        place={place}
+        boost={boost.data}
+        loading={boost.loading}
+        failed={boost.failed}
+        onRetry={boost.reload}
+        open={boostOpen}
+        onClose={() => setBoostClosedAt(Date.now())}
       />
       <PlaceMoreSheet
         place={place}
@@ -187,8 +171,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     actions,
     sheets,
     social: activity.social,
-    boost: boostPane,
-    openTab,
   };
 }
 
@@ -206,7 +188,7 @@ function sayCheckoutOutcome(data: PlaceBoost) {
   if (p.status === "granted") toast.success(`${p.line}.`);
   else if (p.status === "open")
     toast(
-      "Still confirming. We'll update this tab; you won't be charged twice.",
+      "Still confirming. This updates on its own; you won't be charged twice.",
     );
   else toast(`${p.line}.`);
 }

@@ -25,8 +25,9 @@ import {
 } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 
-// THE PREMIER TAB (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925, the
-// place's fourth tab MESITA-2861). Pato, 2026-11-03: a guest buys an Upgrade
+// THE UPGRADE SHEET'S BODY (MESITA-3168; boxes MESITA-3107, Premier MESITA-2925;
+// the place's fourth tab from MESITA-2861 until the sheet, MESITA-3201, see
+// BoostSheet). Pato, 2026-11-03: a guest buys an Upgrade
 // for any place (MESITA-3175) — 30 days of Premier 2X or Premier 5X,
 // paid once, no renewal, no owner check. The recurring Subscription is the
 // Business app's.
@@ -88,11 +89,7 @@ export function BoostPane({
   }
 
   return (
-    <section className="flex flex-col gap-3 py-2" aria-labelledby="boost-title">
-      <h2 id="boost-title" className="sr-only">
-        Business
-      </h2>
-
+    <section className="mt-5 flex flex-col gap-3" aria-labelledby="boost-title">
       <div className="border-border bg-card rounded-2xl border p-4">
         <div aria-live="polite">
           <p className="text-muted-foreground text-sm">Current level</p>
@@ -220,7 +217,7 @@ function statusLines(boost: PlaceBoost | null): string[] {
   return lines.sort((x, y) => y.tier - x.tier).map((l) => l.text);
 }
 
-/** The Premier tab on a Google-only card (MESITA-2797): no Mesita row, so
+/** The Upgrade sheet on a Google-only card (MESITA-2797): no Mesita row, so
  *  nothing to buy yet. */
 export function BoostUnavailable() {
   return (

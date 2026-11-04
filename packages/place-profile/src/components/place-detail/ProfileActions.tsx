@@ -34,9 +34,10 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // tile (MESITA-2635). Maps opens Google Maps already routing to the place
 // (MESITA-2619); it read Directions until the fifth tile left no room for
 // the word (MESITA-3200). Share is back here; the top bar's dots report.
-// UPGRADE (Pato, MESITA-3200: "I don't like boost being hidden there below")
-// opens the Business tab, never Checkout, on every place: a Google-only one
-// gets that tab's not-open-yet screen, so the row never changes width.
+// UPGRADE (Pato, MESITA-3200: "I don't like boost being hidden there below";
+// MESITA-3201: "Upgrade just opens a modal on top, like contact") opens the
+// host's sheet, never Checkout, on every place: a Google-only one gets that
+// sheet's not-open-yet screen, so the row never changes width.
 //
 // ROWS 2 AND 3 are the ink button (Pato, MESITA-2689: "kinda like this
 // button but half and half, but same height and colour"): 44px, icon beside

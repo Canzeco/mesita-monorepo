@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment } from "react";
-import { BadgeCheck, Flag, Heart, Link2, Share2, Store, type LucideIcon } from "lucide-react";
+import { CircleArrowUp, Flag, Heart, Link2, Share2, Store, type LucideIcon } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   RowDivider,
@@ -16,11 +16,11 @@ import { cn } from "@/lib/utils";
 
 // THE THREE DOTS' MENU (Pato, MESITA-2692: "three dots in place profile is
 // not only to report"), Instagram's way: one card of rows, Report last and
-// red. Share · Add to favorites · Copy link · Premier · Is this your
+// red. Share · Add to favorites · Copy link · Upgrade · Is this your
 // business? · Report. Every row
 // closes the menu first; Report then opens the Report sheet (MESITA-2684)
-// and Premier switches the place to its Premier tab (MESITA-2861, the
-// word since MESITA-2925; a sheet on top from MESITA-2815 until then).
+// and Upgrade the Upgrade sheet (MESITA-3201; the place's fourth tab from
+// MESITA-2861 until then).
 // decision: the rows are the place's own one-tap actions plus Copy link;
 // nothing new is built behind them.
 
@@ -47,7 +47,7 @@ export function PlaceMoreSheet({
   onClose: () => void;
   saved: boolean;
   onSave: () => void;
-  /** Opens the Premier tab. */
+  /** Opens the Upgrade sheet. */
   onBoost: () => void;
   /** Absent for a Google-only card: no Report row. */
   onReport?: () => void;
@@ -74,8 +74,8 @@ export function PlaceMoreSheet({
     },
     {
       key: "boost",
-      label: "Business",
-      icon: BadgeCheck,
+      label: "Upgrade",
+      icon: CircleArrowUp,
       run: onBoost,
     },
   ];

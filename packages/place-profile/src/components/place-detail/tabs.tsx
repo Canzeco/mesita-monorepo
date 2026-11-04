@@ -1,7 +1,5 @@
 "use client";
 
-import type { RefObject } from "react";
-
 import { cn } from "../../lib/format";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
@@ -15,12 +13,11 @@ import { cn } from "../../lib/format";
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
-// OVERVIEW · REVIEWS · PRODUCTS · PREMIER (Pato, MESITA-2861: "call
-// Products & Rewards coming soon … but make a Boost page"): Rewards folds
-// into the Products Soon screen, and the paid tier is the fourth tab. It was
-// a tab (MESITA-2789), then a sheet off ⋯ (MESITA-2815); ⋯ › Premier now
-// opens it. Its word is Business since MESITA-3191 (Premier from MESITA-2925); the key stays `boost`.
-export type PlaceTab = "place" | "reviews" | "products" | "boost";
+// OVERVIEW · REVIEWS · PRODUCTS · REWARDS (Pato, MESITA-3201: "the bottom must
+// be Overview Reviews Products Rewards"): Products and Rewards share the one
+// Soon screen. The paid tier was the fourth tab (MESITA-2861, called Premier,
+// then Business); it is the host's Upgrade sheet now, off the Upgrade tile.
+export type PlaceTab = "place" | "reviews" | "products" | "rewards";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -32,7 +29,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
-  { key: "boost", label: "Business" },
+  { key: "rewards", label: "Rewards", soon: true },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
@@ -42,11 +39,9 @@ export function placeTabs(): readonly PlaceTabDef[] {
 export function PlaceTabBar({
   tab,
   onChange,
-  ref,
 }: {
   tab: PlaceTab;
   onChange: (t: PlaceTab) => void;
-  ref?: RefObject<HTMLElement | null>;
 }) {
   const tabs = placeTabs();
   return (
@@ -55,7 +50,6 @@ export function PlaceTabBar({
     // translucency) so the strip matches the name header and scrolled
     // content can't bleed through. The page wash stays below the strip.
     <nav
-      ref={ref}
       className="bg-card border-border sticky top-0 z-20 -mx-4 grid grid-cols-4 border-b px-1"
       aria-label="Place sections"
     >

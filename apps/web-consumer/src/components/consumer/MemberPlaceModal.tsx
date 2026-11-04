@@ -10,7 +10,7 @@ export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   // The distance after the zone (MESITA-2644).
   const measured = useMeasuredPlace(fetched);
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, actions, sheets, social, boost, openTab } = useMemberPlaceActions(measured);
+  const { place, actions, sheets, social } = useMemberPlaceActions(measured);
   return (
     <>
       <PlaceDetailModalShell place={place} onMore={actions.onMore}>
@@ -18,8 +18,6 @@ export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
           place={place}
           actions={actions}
           social={social}
-          boost={boost}
-          openTab={openTab}
         />
       </PlaceDetailModalShell>
       {sheets}
