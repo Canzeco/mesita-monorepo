@@ -1,25 +1,40 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Ticket, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { Skeleton } from "@/components/shared";
-import { apiCreateVisitCode, apiGetPlaceRewards, apiGetVisitResult, readBill, visitLink, type PlaceRewards, type VisitCode, type VisitResult } from "@/lib/api/rewards";
-import { MOCK_REWARDS, mockRewardLabel } from "@/lib/mock-rewards";
+import {
+  apiCreateVisitCode,
+  apiGetPlaceRewards,
+  apiGetVisitResult,
+  billAfterRewards,
+  readBill,
+  visitLink,
+  type PlaceReward,
+  type PlaceRewards,
+  type VisitCode,
+  type VisitResult,
+} from "@/lib/api/rewards";
+import { REWARD_STEPS, rewardStepPath, type RewardStep } from "@/lib/consumer-route-contract";
+import { MOCK_COUPON, MOCK_REWARDS, mockRewardLabel } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
 import { capLine, RewardList } from "./RewardList";
+import type { RewardPlaceHeader } from "./reward-place-seed";
 
 // USING A REWARD, IN STEPS (Pato, MESITA-3250: "open almost a full screen modal …
-// remember we have many steps"), inside a LocalSheet. Based on the old Ticket
-// (TicketScreen and JourneyRail at 0134a1f9^): the place, a rail of steps, one step
-// at a time. Only the steps that work today: the guest enters the bill (MESITA-3245),
-// sees the rewards, shows a QR that carries the bill to visit.mesita.ai
-// (MESITA-3240). The code lasts ten minutes and one use, and a new one replaces it
-// when it ends, so what's on screen always works.
+// remember we have many steps"; MESITA-3254: full screen, each step an address
+// under /pay). Based on the old Ticket (TicketScreen and JourneyRail at 0134a1f9^):
+// the place, a rail of steps, one step at a time. Only the steps that work today:
+// the guest enters the bill (MESITA-3245), sees the rewards and what they pay,
+// shows a QR that carries the bill to visit.mesita.ai (MESITA-3240). The code lasts
+// ten minutes and one use, and a new one replaces it when it ends, so what's on
+// screen always works. The bill stays out of the address, so a reload starts at Bill.
 //
 // PAY (Pato, MESITA-3256: "the step to pay the amount to the waiter"): staff close
 // the visit on visit.mesita.ai and the server works out the discount. The QR step
@@ -27,14 +42,7 @@ import { capLine, RewardList } from "./RewardList";
 // moves through Mesita, and a tip is only words: the reward comes off the bill,
 // never the tip, so the bill typed here is the one before tip.
 
-const STEPS = [
-  { id: "bill", label: "Bill" },
-  { id: "reward", label: "Reward" },
-  { id: "qr", label: "QR" },
-  { id: "pay", label: "Pay" },
-] as const;
-
-type StepId = (typeof STEPS)[number]["id"];
+const STEP_LABEL: Record<RewardStep, string> = { bill: "Bill", reward: "Reward", qr: "QR", pay: "Pay" };
 
 const STEP_TITLE = "text-lg font-semibold tracking-tight";
 
@@ -49,23 +57,23 @@ function billText(cents: number, currency = "MXN"): string {
   return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
-/** The rail: a bar over a word, equal columns. Steps already done go back. */
-function StepRail({ step, onGo }: { step: StepId; onGo: (id: StepId) => void }) {
-  const at = STEPS.findIndex((s) => s.id === step);
+/** The rail: a bar over a word, equal columns. Any step the guest can reach is a
+ *  tap away, either way (Pato, MESITA-3254: "more easily navigate"). */
+function StepRail({ step, canReach, onGo }: { step: RewardStep; canReach: (id: RewardStep) => boolean; onGo: (id: RewardStep) => void }) {
+  const at = REWARD_STEPS.indexOf(step);
   return (
     <ol className="grid grid-cols-4 gap-1.5" aria-label="Steps">
-      {STEPS.map(({ id, label }, i) => {
+      {REWARD_STEPS.map((id, i) => {
         const body = (
           <>
             <span aria-hidden className={cn("h-[3px] w-full rounded-full", i <= at ? "bg-foreground" : "bg-border")} />
-            <span className={cn("text-xs", i === at ? "font-semibold" : i < at ? "font-medium" : "text-muted-foreground font-medium")}>{label}</span>
+            <span className={cn("text-xs", i === at ? "font-semibold" : i < at ? "font-medium" : "text-muted-foreground font-medium")}>{STEP_LABEL[id]}</span>
           </>
         );
         const shell = "flex min-h-11 w-full flex-col items-start justify-center gap-1.5 text-left";
         return (
           <li key={id} className="min-w-0">
-            {/* Once staff closed the visit there is nothing to go back to. */}
-            {i < at && step !== "pay" ? (
+            {i !== at && canReach(id) ? (
               <button type="button" onClick={() => onGo(id)} className={shell}>
                 {body}
               </button>
@@ -81,15 +89,45 @@ function StepRail({ step, onGo }: { step: StepId; onGo: (id: StepId) => void }) 
   );
 }
 
+/** The amounts, like a receipt (Pato, MESITA-3254: "clear billing, like what is the
+ *  amount"). */
+function Receipt({ billCents, offCents, payCents, currency }: { billCents: number; offCents: number; payCents: number; currency?: string }) {
+  const row = "flex items-center justify-between gap-4 px-4 py-3 tabular-nums";
+  return (
+    <dl className="border-border bg-card divide-border w-full divide-y rounded-2xl border text-left text-sm">
+      <div className={row}>
+        <dt className="text-muted-foreground">Your bill</dt>
+        <dd className="font-medium">{billText(billCents, currency)}</dd>
+      </div>
+      <div className={row}>
+        <dt className="text-muted-foreground">Your reward</dt>
+        <dd className="text-fact-reward font-semibold">−{billText(offCents, currency)}</dd>
+      </div>
+      <div className={row}>
+        <dt className="font-semibold">You pay</dt>
+        <dd className="text-base font-semibold">{billText(payCents, currency)}</dd>
+      </div>
+    </dl>
+  );
+}
+
+/** Before the close: the same sum the server does. */
+function BillSummary({ billCents, rewards }: { billCents: number; rewards: PlaceReward[] }) {
+  const { offCents, payCents } = billAfterRewards(billCents, rewards);
+  return <Receipt billCents={billCents} offCents={offCents} payCents={payCents} />;
+}
+
 /** The QR step's code: made on arrival, replaced when it ends. */
 function VisitCodeQr({
   placeId,
   billCents,
+  summary,
   onIssued,
   onChangeBill,
 }: {
   placeId: string;
   billCents: number;
+  summary: PlaceReward[];
   onIssued: (issuedAt: string) => void;
   onChangeBill: () => void;
 }) {
@@ -153,11 +191,13 @@ function VisitCodeQr({
           <Skeleton className="h-60 w-60 rounded-xl" />
         )}
       </div>
+      <div className="mt-4 w-full">
+        <BillSummary billCents={billCents} rewards={summary} />
+      </div>
       {code ? (
-        <div aria-live="polite">
-          <p className="mt-4 font-semibold tabular-nums">Your bill: {billText(billCents)}</p>
-          <p className="text-muted-foreground mt-1 text-sm">It works until {endsAt(code.expires_at)}. Staff scan it, correct the bill if it&apos;s off, and take your reward off. Then this screen shows what to pay.</p>
-        </div>
+        <p aria-live="polite" className="text-muted-foreground mt-3 text-sm">
+          It works until {endsAt(code.expires_at)}. Staff scan it, correct the bill if it&apos;s off, and take your reward off. Then this screen shows what to pay.
+        </p>
       ) : null}
       <button type="button" onClick={onChangeBill} className="text-muted-foreground mt-1 min-h-11 text-sm underline">
         Change the bill
@@ -168,17 +208,17 @@ function VisitCodeQr({
 
 export function VisitFlow({
   placeId,
-  placeName,
-  photo,
+  place,
+  step,
   onClose,
 }: {
   placeId: string;
-  placeName: string;
-  photo?: string | null;
+  place: RewardPlaceHeader | null;
+  step: RewardStep;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const supabase = useBrowserSupabase();
-  const [step, setStep] = useState<StepId>("bill");
   const [typed, setTyped] = useState("");
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
@@ -196,7 +236,7 @@ export function VisitFlow({
         (visit) => {
           if (!live || !visit) return;
           setResult(visit);
-          setStep("pay");
+          router.replace(rewardStepPath(placeId, "pay"));
         },
         // A missed read only waits for the next one.
         () => undefined,
@@ -206,7 +246,7 @@ export function VisitFlow({
       live = false;
       clearInterval(timer);
     };
-  }, [supabase, placeId, step, since]);
+  }, [supabase, router, placeId, step, since]);
 
   useEffect(() => {
     let live = true;
@@ -224,24 +264,47 @@ export function VisitFlow({
   }, [supabase, placeId, attempt]);
 
   const billCents = readBill(typed);
+  const billMissing = billCents === null;
+
+  // A reload on a later step has no bill. Pay has nothing to say until staff close.
+  useEffect(() => {
+    if (step !== "bill" && billMissing) router.replace(rewardStepPath(placeId));
+    else if (step === "pay" && !result) router.replace(rewardStepPath(placeId, "qr"));
+  }, [router, placeId, step, billMissing, result]);
+
+  const go = (id: RewardStep) => router.push(rewardStepPath(placeId, id));
+
   // Real rewards where a place has them on, else the mock (MESITA-3218).
-  const rewards = data ? (data.rewards.length > 0 ? data.rewards : MOCK_REWARDS) : [];
+  const real = (data?.rewards.length ?? 0) > 0;
+  const rewards = data ? (real ? data.rewards : MOCK_REWARDS) : [];
+  const summary = data && real ? data.rewards : MOCK_COUPON;
   const usable = rewards.some((r) => r.eligible);
   const coupon = mockRewardLabel(placeId);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 px-4 pt-1">
+      <div className="flex items-center gap-3 px-4 pt-3">
         <span className="bg-muted ring-border block h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-1">
-          {photo ? <SizedImg src={photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
+          {place?.photo ? <SizedImg src={place.photo} size="thumb" alt="" className="h-full w-full object-cover" /> : null}
         </span>
-        <p className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">{placeName}</p>
+        {place ? (
+          <p className="min-w-0 flex-1 truncate text-base font-semibold tracking-tight">{place.name}</p>
+        ) : (
+          <span className="min-w-0 flex-1">
+            <Skeleton className="h-4 w-3/5" />
+          </span>
+        )}
         <button type="button" onClick={onClose} aria-label="Close" className="text-muted-foreground -mr-2 flex h-11 w-11 shrink-0 items-center justify-center">
           <X className="h-5 w-5" aria-hidden />
         </button>
       </div>
       <div className="px-4 pt-2">
-        <StepRail step={step} onGo={setStep} />
+        <StepRail
+          step={step}
+          // Once staff closed the visit there is nothing to go back to.
+          canReach={(id) => !result && id !== "pay" && (id === "bill" || (!billMissing && (id === "reward" || usable)))}
+          onGo={go}
+        />
       </div>
 
       {step === "bill" ? (
@@ -249,12 +312,12 @@ export function VisitFlow({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(event) => {
             event.preventDefault();
-            if (billCents !== null) setStep("reward");
+            if (!billMissing) go("reward");
           }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
             <h2 className={STEP_TITLE}>How much is your bill?</h2>
-            <p className="text-muted-foreground mt-1 text-sm">Type it before any tip: your reward comes off the bill, not the tip. Staff correct it if it&apos;s off.</p>
+            <p className="text-muted-foreground mt-1 text-sm">The full amount on your bill, before any discount or tip. Your reward comes off the bill, not the tip. Staff correct it if it&apos;s off.</p>
             <div className="relative mt-4">
               <span aria-hidden className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2 text-sm">
                 $
@@ -274,18 +337,24 @@ export function VisitFlow({
             </div>
           </div>
           <div className="border-border border-t p-4">
-            <button type="submit" disabled={billCents === null} className={PRIMARY_BUTTON_CLASS}>
+            <button type="submit" disabled={billMissing} className={PRIMARY_BUTTON_CLASS}>
               Next
             </button>
           </div>
         </form>
       ) : null}
 
-      {step === "reward" ? (
+      {step === "reward" && !billMissing ? (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
             <h2 className={STEP_TITLE}>Your reward</h2>
-            {billCents !== null ? <p className="text-muted-foreground mt-1 text-sm tabular-nums">On your bill of {billText(billCents)}.</p> : null}
+            {data && usable ? (
+              <div className="mt-4">
+                <BillSummary billCents={billCents} rewards={summary} />
+              </div>
+            ) : (
+              <p className="text-muted-foreground mt-1 text-sm tabular-nums">On your bill of {billText(billCents)}.</p>
+            )}
             {coupon ? (
               <p className={cn(PLACE_REWARD_COUPON_CLASS, "mt-4 flex w-full justify-center font-semibold")}>
                 <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -328,21 +397,22 @@ export function VisitFlow({
             ) : null}
           </div>
           <div className="border-border border-t p-4">
-            <button type="button" disabled={!usable} onClick={() => setStep("qr")} className={PRIMARY_BUTTON_CLASS}>
+            <button type="button" disabled={!usable} onClick={() => go("qr")} className={PRIMARY_BUTTON_CLASS}>
               Show my QR
             </button>
           </div>
         </>
       ) : null}
 
-      {step === "qr" && billCents !== null ? (
+      {step === "qr" && !billMissing ? (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
             <VisitCodeQr
               placeId={placeId}
               billCents={billCents}
+              summary={summary}
               onIssued={(issuedAt) => setSince((first) => first ?? issuedAt)}
-              onChangeBill={() => setStep("bill")}
+              onChangeBill={() => go("bill")}
             />
           </div>
           <p className="border-border text-muted-foreground border-t p-4 text-center text-sm" aria-live="polite">
@@ -357,20 +427,9 @@ export function VisitFlow({
             <h2 className={STEP_TITLE}>Pay your waiter</h2>
             <p className="mt-4 text-3xl font-semibold tracking-tight tabular-nums">{billText(result.total_cents, result.currency)}</p>
             <p className="text-muted-foreground mt-1 text-sm">Pay it at the place, in cash or by card. Nothing is charged through Mesita.</p>
-            <dl className="border-border bg-card divide-border mt-4 divide-y rounded-2xl border text-sm tabular-nums">
-              <div className="flex items-center justify-between gap-3 p-4">
-                <dt className="text-muted-foreground">Bill</dt>
-                <dd>{billText(result.bill_cents, result.currency)}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3 p-4">
-                <dt className="text-muted-foreground">Reward</dt>
-                <dd>−{billText(result.discount_cents, result.currency)}</dd>
-              </div>
-              <div className="flex items-center justify-between gap-3 p-4 font-semibold">
-                <dt>You pay</dt>
-                <dd>{billText(result.total_cents, result.currency)}</dd>
-              </div>
-            </dl>
+            <div className="mt-4">
+              <Receipt billCents={result.bill_cents} offCents={result.discount_cents} payCents={result.total_cents} currency={result.currency} />
+            </div>
             <p className="text-muted-foreground mt-3 text-sm">Leaving a tip? Add it on top. Your reward came off the bill, not the tip.</p>
           </div>
           <div className="border-border border-t p-4">

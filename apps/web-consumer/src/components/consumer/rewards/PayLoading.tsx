@@ -2,7 +2,8 @@ import { BrandHeader } from "@/components/consumer/ModeTabs";
 import { RewardRowsSkeleton } from "@/components/consumer/rewards/RewardPlaces";
 import { Skeleton } from "@/components/shared";
 
-// /pay's fallback is the Reward tab as it will land (Pato, MESITA-2701: "the
+// Pay's frame in (shell)/loading.tsx (no loading.tsx under pay/layout.tsx, which
+// would draw a second list, MESITA-3254): the Reward tab as it will land (Pato, MESITA-2701: "the
 // placeholders must be similar to the page you are loading, like the sizes"):
 // Home's header, then the card of rows in bones (MESITA-3214).
 export default function PayLoading() {

@@ -45,6 +45,17 @@ export async function apiGetVisitResult(client: SupabaseClient, placeId: string,
   return res.visit;
 }
 
+/** What the guest reads before the visit closes (MESITA-3254), by the sum
+ *  place_visit_create does: the percents add up, half a cent rounds up, then the
+ *  Cap. The server's answer at the close is the one that counts. */
+export function billAfterRewards(billCents: number, rewards: PlaceReward[]): { offCents: number; payCents: number } {
+  const usable = rewards.filter((r) => r.eligible);
+  const percent = usable.reduce((sum, r) => sum + r.percent, 0);
+  const cap = usable.find((r) => r.cap_cents != null)?.cap_cents ?? billCents;
+  const offCents = Math.min(Math.floor((billCents * percent + 50) / 100), cap, billCents);
+  return { offCents, payCents: billCents - offCents };
+}
+
 /** "1,234.50" as whole cents, or null. On the digits, so no float touches it. */
 export function readBill(text: string): number | null {
   const m = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(text.replace(/[,\s]/g, ""));

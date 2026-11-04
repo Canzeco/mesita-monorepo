@@ -10,7 +10,8 @@
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
 // Nothing here may name /home/places, /home/social, /pay, /search,
-// /search/chat, /me or any live /me/<box>.
+// /search/chat, /me or any live /me/<box>. /pay/:tab is one segment on purpose:
+// the live reward steps are two, /pay/<place>/<step> (MESITA-3254).
 //
 // BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
 // SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and

@@ -40,8 +40,9 @@ export const CONSUMER_ROUTES = {
   },
   // PAY IS ONE PAGE, AND IT IS THE SOON STATE (Pato, MESITA-2087: "Keep pay
   // but delete everything else. just the empty page with soon."). The tab
-  // links here and lights here; nothing hangs underneath. Every former Pay,
-  // Visit, Wallet, Credits and Order address 308s to this page.
+  // links here and lights here. Every former Pay, Visit, Wallet, Credits and
+  // Order address 308s to this page. Under it now: the reward steps,
+  // /pay/<place>/<step> (MESITA-3254), see rewardStepPath.
   pay: "/pay",
   // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
@@ -189,6 +190,18 @@ export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
 
 export function placePath(idOrSlug: string): string {
   return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
+}
+
+/** The steps of using a reward, each an address under Pay (MESITA-3254). */
+export const REWARD_STEPS = ["bill", "reward", "qr", "pay"] as const;
+export type RewardStep = (typeof REWARD_STEPS)[number];
+
+export function isRewardStep(step: string): step is RewardStep {
+  return (REWARD_STEPS as readonly string[]).includes(step);
+}
+
+export function rewardStepPath(placeId: string, step: RewardStep = "bill"): string {
+  return `${CONSUMER_ROUTES.pay}/${placeId}/${step}`;
 }
 
 export function reservationPath(id: string): string {
