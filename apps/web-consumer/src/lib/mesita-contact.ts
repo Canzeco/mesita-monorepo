@@ -9,6 +9,8 @@
 // mesita-contact.test.ts fails the build if one comes back.
 
 export const MESITA_SUPPORT_EMAIL = "support@mesita.ai";
+/** The place's ownership box (Pato, MESITA-3203: "don't mention support call it Hello"). */
+export const MESITA_HELLO_EMAIL = "hello@mesita.ai";
 export const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
 export const MESITA_INSTAGRAM_URL = "https://instagram.com/mesita.ai";
 export const MESITA_INSTAGRAM_HANDLE = "@mesita.ai";

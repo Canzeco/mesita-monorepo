@@ -18,10 +18,12 @@ import { isUuid } from "./place-id.ts";
 
 export type RefillTier = 1 | 2;
 
-/** One pack per tier: 30 days. Above the Subscription's $10 / $100 a month,
- *  so subscribing stays the better deal (CEO D3). A price change is a PR. */
-export const REFILL_PACK_DAYS = 30;
-export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 10_00, 2: 100_00 };
+/** One pack per tier: 3 months (Pato, MESITA-3203: "sell 3 months packages, not
+ *  1 month"). $30 / $300 is the Subscription's $10 / $100 a month, three times,
+ *  so a pack never undercuts subscribing. A purchase keeps the days it stored
+ *  when it opened. A price change is a PR. */
+export const REFILL_PACK_DAYS = 90;
+export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 30_00, 2: 300_00 };
 
 /** The level guests read (MESITA-3174): Pro is Premier 2X, Max Premier 5X. */
 export const refillLabel = (tier: number): string => (tier === 2 ? "Premier 5X" : "Premier 2X");

@@ -1,6 +1,6 @@
 // Mesita Premier on the place screen (MESITA-3168; Premier MESITA-2925,
 // Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys an
-// Upgrade for a place (Refill until MESITA-3175, Boost until MESITA-3199) — 30 days of Premier 2X or
+// Upgrade for a place (Refill until MESITA-3175, Boost until MESITA-3199) — 3 months of Premier 2X or
 // Premier 5X, paid once, no renewal and no owner check. The recurring Premier
 // Subscription is the Business app's. Every amount, date and line here comes
 // from the server (consumer-web-get-premier-refill): this file never
@@ -81,6 +81,9 @@ export type RefillPurchase = {
 export type PlaceBoost = {
   level: 0 | 1 | 2;
   signed_in: boolean;
+  /** Who runs the place (MESITA-3203), never their name or email. Absent on a
+   *  read kept from before it shipped. */
+  owner?: "none" | "you" | "other";
   refill: RefillDays[];
   /** The place's own Subscription period running now (Business app). */
   subscription: { tier: number; ends_at: string } | null;

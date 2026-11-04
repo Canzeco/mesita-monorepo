@@ -9,8 +9,13 @@
 // (Checkout's return, `?refill=`) it says what happened to that purchase.
 // Signed out, it is the read alone.
 //
+// `owner` (MESITA-3203) is who runs the place, for the sheet's ownership box:
+// "you" (the caller holds a live seat), "other" (someone else owns it), "none".
+// Never who: every guest reads this, so no name or email leaves here.
+//
 // Body: { place_id: uuid, session_id?: string }
 // Response: { ok: true, level: 0 | 1 | 2, signed_in: boolean,
+//             owner: "none" | "you" | "other",
 //             refill: [{ tier, starts_at, ends_at, source: "admin" | "code" | "purchase" }],
 //             subscription: { tier, ends_at } | null,
 //             packs: [{ tier, days, price_cents, currency, available, code?, notice? }],
@@ -21,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import {
   checkRefill,
@@ -95,7 +101,7 @@ serveJson("consumer-web-get-premier-refill", async (req) => {
 
   // ── The place's Premier now ─────────────────────────────────────────────
   const nowIso = new Date().toISOString();
-  const [checks, rowsRes, periodRes] = await Promise.all([
+  const [checks, rowsRes, periodRes, managersRes] = await Promise.all([
     Promise.all(([1, 2] as RefillTier[]).map((t) => checkRefill(admin, placeId, t))),
     admin
       .from("place_manual_premier")
@@ -113,9 +119,11 @@ serveJson("consumer-web-get-premier-refill", async (req) => {
       .gt("ends_at", nowIso)
       .order("starts_at", { ascending: false })
       .limit(1),
+    admin.from("place_managers").select(MANAGER_COLUMNS).eq("place_id", placeId).is("revoked_at", null),
   ]);
   if (rowsRes.error) return json({ ok: false, error: `refill: ${rowsRes.error.message}` }, 500);
   if (periodRes.error) return json({ ok: false, error: `subscription: ${periodRes.error.message}` }, 500);
+  if (managersRes.error) return json({ ok: false, error: `managers: ${managersRes.error.message}` }, 500);
   if (checks[0].result !== "ok" && checks[0].code === "not_found") {
     return json({ ok: false, code: "not_found", error: "This place isn't on Mesita yet." }, 404);
   }
@@ -124,11 +132,18 @@ serveJson("consumer-web-get-premier-refill", async (req) => {
   const refill = ((rowsRes.data ?? []) as Array<{ tier: number; starts_at: string; ends_at: string; source: string }>)
     .filter((r) => r.ends_at > r.starts_at);
   const period = ((periodRes.data ?? []) as Array<{ tier: number; ends_at: string }>)[0] ?? null;
+  const seats = ((managersRes.data ?? []) as unknown as ManagerRow[]).filter((r) => isLiveManager(r));
+  const owner = user && seats.some((r) => r.consumer_id === user.id)
+    ? "you"
+    : seats.some((r) => r.role === "owner")
+    ? "other"
+    : "none";
 
   return json({
     ok: true,
     level: checks[0].level,
     signed_in: user != null,
+    owner,
     refill,
     subscription: period ? { tier: period.tier, ends_at: period.ends_at } : null,
     packs: ([1, 2] as RefillTier[]).map((tier, i) => {
