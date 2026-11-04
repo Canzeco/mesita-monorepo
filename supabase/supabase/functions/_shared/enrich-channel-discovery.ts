@@ -15,8 +15,6 @@ export type ChannelField =
   | "opentable_url"
   | "uber_eats_url";
 
-type ChannelMap = Record<ChannelField, string | null>;
-
 // Channels the discovery pass actively searches for. TripAdvisor / Yelp are
 // RETIRED product-wide (same posture as TikTok) — not discovered, not
 // persisted; their columns stay dormant.
@@ -28,101 +26,50 @@ export const CHANNEL_FIELDS: ChannelField[] = [
   "uber_eats_url",
 ];
 
-// Human-readable field spec for the Resolver selection prompt.
-const FIELD_SPEC: Record<ChannelField, string> = {
-  website_url: "website_url: the place's own official website (its homepage domain).",
-  instagram_url:
-    "instagram_url: the place's Instagram profile (instagram.com/<handle>). A brand/franchise main account is acceptable.",
-  facebook_url: "facebook_url: the place's official Facebook page.",
-  opentable_url:
-    "opentable_url: the canonical OpenTable restaurant page (opentable.com/r/… or a country domain). A brand page is acceptable.",
-  uber_eats_url:
-    "uber_eats_url: the canonical Uber Eats store page (ubereats.com/.../store/...).",
-};
-
 // Exported so admin Crenup can RENDER it (crenup-prompts.ts → the console). The
 // console shows this exact constant, so what an operator reads is what the
 // vendor receives — a second copy could drift, this cannot.
 export const RESOLVER_INSTRUCTIONS =
-  "You resolve a place's official online channels. You are given candidate URLs " +
-  "found by search plus web access. For each requested field, return the single " +
-  "best URL for this place, or null. Prefer this location's own branch site and " +
-  "accounts over a parent group when the branch has its own. When it does not — a " +
-  "branch of a chain or franchise, a kiosk, a counter inside a campus, mall, " +
-  "hospital or airport — the brand's main account IS this place's channel; between " +
-  "brand accounts prefer the one for this country. Return null only when no " +
-  "candidate plausibly belongs to the place or its brand: a missing channel is a " +
-  "worse miss than a brand-level one. When the same handle is linked from the " +
-  "website and from another channel, that agreement wins. Output ONLY strict JSON " +
-  "matching the schema. Never fabricate a URL.";
+  "You choose a place's official online channels. You are given candidate URLs, each " +
+  "with its page title, description and where it came from when known, plus web access " +
+  "to check them. For each requested field, return the one candidate that really is this " +
+  "place's own channel, or null. Check the name, the city and the kind of business; a " +
+  "similar name in another city or country, or a different business, is null. " +
+  "A candidate linked from the place's own website is the strongest evidence, and the " +
+  "same handle on the website and another channel wins. That holds only when the site is " +
+  "the place's or its brand's: a mall, group, magazine or directory page links its own " +
+  "accounts, and a group page may list one account per branch, so take the one for this " +
+  "city. Prefer this location's own account over a parent group or a branch elsewhere. " +
+  "When this location has none (a branch of a chain or franchise, a kiosk, a counter " +
+  "inside a campus, mall, hospital or airport), the brand's main account IS this place's " +
+  "channel, this country's first. Between several official accounts of the same place, " +
+  "take the current one with the most followers. website_url is the place's or brand's " +
+  "own site, never an article, review, ranking, guide, directory, aggregator or delivery " +
+  "page. instagram_url and facebook_url are profiles or pages, never a post or a video. " +
+  "opentable_url and uber_eats_url must be this place's page, or its brand's in this " +
+  "city. Return null only when no candidate is this place or its brand. Output ONLY " +
+  "strict JSON matching the schema. Never fabricate a URL.";
 
 // The per-place message. Pure and exported so crenup-prompts.ts can render the
 // REAL template with sentinel values — the console never re-types this prose.
+// The Enricher on Render sends this same text (resolverInput in
+// render/src/links.ts), pinned by render/src/twins.test.ts.
 export function buildResolverInput(
-  place: { name: string; locationLine: string; category: string | null },
-  fields: readonly ChannelField[],
+  place: { name: string; city: string | null; category: string | null; brand: string | null; context: string },
   candidates: Partial<Record<ChannelField, string[]>>,
-  opts: {
-    siblings?: Partial<ChannelMap>;
-    serpContext?: string;
-    website?: string | null;
-  } = {},
 ): string {
-  const want = new Set(fields);
-  const candidateBlock = fields
-    .map((f) => {
-      const pool = (candidates[f] ?? []).slice(0, 10);
-      return pool.length ? `${f} candidates:\n${pool.map((u) => `  - ${u}`).join("\n")}` : "";
-    })
-    .filter(Boolean)
-    .join("\n");
-
-  const siblings = opts.siblings ?? {};
-  const sibLines = (["website_url", "instagram_url", "facebook_url"] as ChannelField[])
-    .filter((f) => siblings[f])
-    .map((f) => `- ${f}: ${siblings[f]}`)
-    .join("\n");
-
-  const askLines: string[] = fields.map((f) => `- ${FIELD_SPEC[f]}`);
-
-  const igRule = want.has("instagram_url")
-    ? "For instagram_url, prefer the place's OWN account over a parent brand / group / " +
-      "umbrella account spanning many locations. If SEVERAL official accounts exist for " +
-      "this same place (e.g. an older/secondary handle alongside a current one), pick the " +
-      "FLAGSHIP: the account with the MOST FOLLOWERS and most recent activity — never an " +
-      "older, secondary, regional, or lower-follower duplicate. "
-    : "";
-
-  const serpLine = (opts.serpContext ?? "").trim()
-    ? `Background on the place (soft web context — never the source of a URL):\n${
-      opts.serpContext!.trim().slice(0, 600)
-    }\n\n`
-    : "";
-
-  const input =
-    `Review and select the official channels for the place "${place.name}"` +
-    (place.locationLine ? ` in ${place.locationLine}` : "") +
-    (place.category ? ` (category: ${place.category})` : "") + ".\n\n" +
-    serpLine +
-    (sibLines
-      ? `Already-known official channels (the missing ones almost always share the same brand handle / are linked from these — anchor on them):\n${sibLines}\n\n`
+  const where = place.city?.trim() ? ` in ${place.city.trim()}` : "";
+  const kind = place.category?.trim() ? ` (category: ${place.category.trim()})` : "";
+  const lists = Object.entries(candidates).map(([field, lines]) =>
+    `${field} candidates:\n${(lines ?? []).join("\n")}`
+  ).join("\n");
+  const context = place.context.trim();
+  return `Review and select the official channels for the place "${place.name}"${where}${kind}.\n\n` +
+    (context ? `Background on the place (soft web context — never the source of a URL):\n${context.slice(0, 600)}\n\n` : "") +
+    (place.brand
+      ? `This place is a location of the "${place.brand}" brand. If it has no account of its own, ` +
+        `the brand's account is the answer, preferring this country's.\n\n`
       : "") +
-    (opts.website ? `Trust the links this official website itself lists: ${opts.website}\n\n` : "") +
-    (candidateBlock ? `Candidate URLs found by search — review each and pick the correct one when present:\n${candidateBlock}\n\n` : "") +
-    `Return strict JSON with ONLY these keys:\n${askLines.join("\n")}\n\n` +
-    // The leniency flip (child B): FALSE POSITIVES > FALSE NEGATIVES.
-    `Selection rule — LEAN TOWARD KEEPING: a plausible official link is better than ` +
-    `dropping a correct one, so return a value whenever a candidate (or the web) ` +
-    `plausibly IS this place's own channel. Return null for a field ONLY when NOTHING ` +
-    `you can find is even plausibly this place's own presence. ${igRule}` +
-    `Each URL must be the place's OWN channel — NEVER a review site, ranking / "best of" ` +
-    `list, guide, directory, aggregator, a single post/video, or a source you merely cited. ` +
-    `This location's own branch wins over a parent group, holding company, or umbrella brand. ` +
-    `A franchise main account is not acceptable when a branch account exists. ` +
-    `When this location has no account of its own (a chain branch, a kiosk, a counter ` +
-    `inside a campus or mall), the brand's account is the answer, preferring this country's. ` +
-    `A handle that appears on more than one of this place's own channels outranks a larger parent account. ` +
-    `Never invent a URL.`;
-
-  return input;
+    `Candidate URLs, each with its page title, description and origin when known:\n${lists}\n\n` +
+    "Return strict JSON. Each value is one URL from that field's list, or null. Never invent a URL.";
 }

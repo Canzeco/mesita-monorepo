@@ -17,6 +17,7 @@ import {
 const FIELD_MASK = [
   "id",
   "displayName",
+  "primaryType",
   "formattedAddress",
   "addressComponents",
   "location",
@@ -45,8 +46,9 @@ const BUSINESS = new Set([
 export type GooglePlace = {
   id?: string;
   displayName?: { text?: string };
+  primaryType?: string;
   formattedAddress?: string;
-  addressComponents?: { types?: string[]; longText?: string }[];
+  addressComponents?: { types?: string[]; longText?: string; shortText?: string }[];
   location?: { latitude?: number; longitude?: number };
   nationalPhoneNumber?: string;
   internationalPhoneNumber?: string;

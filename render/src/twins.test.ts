@@ -9,6 +9,7 @@ import { vectorLiteral } from "./embedding.ts";
 import { capPresentation, PRESENTATION_MAX } from "./google-spine.ts";
 import { closesAtFromHours, type GooglePeriod, weeklyHoursFromPeriods } from "./hours.ts";
 import { defaultImageKnobs } from "./images.ts";
+import { resolverInput } from "./links.ts";
 
 type Fixture = {
   hours: { periods: GooglePeriod[] | null; expected: unknown }[];
@@ -16,6 +17,7 @@ type Fixture = {
   priceLevel: { value: string | null; range: Parameters<typeof priceLevelFromGoogle>[1] | null; expected: number | null }[];
   vectorLiteral: { values: number[]; expected: string }[];
   imagePrompts: { analysis: string; sorting: string };
+  resolverInput: { place: Parameters<typeof resolverInput>[0]; candidates: Parameters<typeof resolverInput>[1]; expected: string }[];
   presentation: { max: number; cases: { note: string; text: [string, number][]; expected: [string, number][] }[] };
 };
 
@@ -25,6 +27,10 @@ const build = (parts: [string, number][]) => parts.map(([s, n]) => s.repeat(n)).
 const fixture = JSON.parse(
   readFileSync(new URL("../../supabase/supabase/functions/_shared/render-twins.fixture.json", import.meta.url), "utf8"),
 ) as Fixture;
+
+test("twin: resolverInput matches _shared/enrich-channel-discovery.ts", () => {
+  for (const c of fixture.resolverInput) assert.equal(resolverInput(c.place, c.candidates), c.expected);
+});
 
 test("twin: weeklyHoursFromPeriods matches _shared/enrich-google-hours.ts", () => {
   for (const c of fixture.hours) {

@@ -14,7 +14,7 @@ import {
   type ImageKnobs,
   type PhotoAnalysis,
 } from "./images.ts";
-import { discoverLinks, linkCounts, type LinkField } from "./links.ts";
+import { discoverLinks, LINK_FIELDS, linkCounts, type LinkField } from "./links.ts";
 import { fetchDraftSync } from "./draft-sync.ts";
 import { scoutPlace } from "./scout.ts";
 import type { RanSteps } from "./steps.ts";
@@ -149,7 +149,9 @@ export async function buildEnrichment(
   const discovered = await timed("links", () => discoverLinks({
     name,
     city,
-    website: stringField(spine.patch.website_url),
+    country: countryOf(details),
+    category: details.primaryType ?? null,
+    google: Object.fromEntries(LINK_FIELDS.map((field) => [field, stringField(spine.patch[field])])),
     // Every link is looked for again; one the Resolver keeps replaces the saved one.
     have: {},
     counts,
@@ -245,6 +247,10 @@ function imageKnobs(knobs: EnrichmentKnobs): ImageKnobs {
 
 function countOr(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function countryOf(details: { addressComponents?: { types?: string[]; shortText?: string }[] }): string | null {
+  return details.addressComponents?.find((row) => row.types?.includes("country"))?.shortText?.trim() || null;
 }
 
 function stringField(value: unknown): string | null {
