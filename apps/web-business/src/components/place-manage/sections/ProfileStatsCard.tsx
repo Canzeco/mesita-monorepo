@@ -18,9 +18,8 @@ import {
 import { StateRow } from "./StateCard";
 
 const DETAIL: Record<(typeof PROFILE_STATS_FACTS)[number]["key"], string> = {
-  viewed:
-    "Unique members who opened this place profile (Social viewed event).",
-  saved: "Unique members who saved this place (Social liked/saved event).",
+  viewed: "Unique members who opened this place profile.",
+  saved: "Unique members who saved this place.",
 };
 
 export function ProfileStatsCard({ place }: { place: AdminPlace }) {

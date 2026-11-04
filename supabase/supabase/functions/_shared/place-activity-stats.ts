@@ -1,4 +1,4 @@
-// Profile Stats for admin (MESITA-2735): unique members who saved or viewed
+// Profile Stats (MESITA-2735): unique members who saved or viewed
 // a place. One row per consumer × place × kind in place_activity — count is
 // the member cardinality, not event volume (a re-opened profile bumps
 // created_at but does not add a row).

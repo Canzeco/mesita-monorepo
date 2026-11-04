@@ -9,14 +9,14 @@ export const metadata = { title: "Visits" };
 
 // Visits (MESITA-3202): log a visit from the guest's code, and the log, newest
 // first. A record of the place's own till: no money moves through Mesita.
-// Profile Stats moved here from Admin (MESITA-3205). Staff only: business-web-get-place
-// sends the counts to a super-admin alone.
+// Profile Stats moved here from Admin (MESITA-3205), for the place's whole team:
+// guests already see these counts.
 export default async function VisitsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [visits, manage] = await Promise.all([listPlaceVisits(id), getManagePlace(id)]);
   return (
     <div className="flex flex-col gap-4 pb-8">
-      {manage?.role === "superadmin" ? <ProfileStatsCard place={manage.place} /> : null}
+      {manage?.place.profile_stats ? <ProfileStatsCard place={manage.place} /> : null}
       {visits.ok ? (
         <VisitsPanel placeId={id} initial={visits.data} />
       ) : (
