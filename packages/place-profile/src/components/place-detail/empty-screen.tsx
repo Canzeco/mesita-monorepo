@@ -24,7 +24,7 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
 /** The Premier tab where the host draws no pane (admin Preview). */
 export const NO_BOOST: PlaceEmptyScreenProps = {
   icon: BadgeCheck,
-  title: "Premier",
+  title: "Business",
   line: "Guests Boost this place from the Mesita app: Premier 2X or 5X for 30 days.",
 };
 

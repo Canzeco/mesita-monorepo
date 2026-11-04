@@ -17,7 +17,7 @@ import { cn } from "../../lib/format";
 // Products & Rewards coming soon … but make a Boost page"): Rewards folds
 // into the Products Soon screen, and the paid tier is the fourth tab. It was
 // a tab (MESITA-2789), then a sheet off ⋯ (MESITA-2815); ⋯ › Premier now
-// opens it. Its word is Premier since MESITA-2925; the key stays `boost`.
+// opens it. Its word is Business since MESITA-3191 (Premier from MESITA-2925); the key stays `boost`.
 export type PlaceTab = "place" | "reviews" | "products" | "boost";
 
 export type PlaceTabDef = {
@@ -30,7 +30,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Products", soon: true },
-  { key: "boost", label: "Premier" },
+  { key: "boost", label: "Business" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
