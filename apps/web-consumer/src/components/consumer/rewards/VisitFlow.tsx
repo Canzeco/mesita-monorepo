@@ -6,7 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { SizedImg } from "@mesita/place-profile";
 import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { Skeleton } from "@/components/shared";
-import { apiCreateVisitCode, apiGetPlaceRewards, readBill, visitLink, type PlaceRewards, type VisitCode } from "@/lib/api/rewards";
+import { apiCreateVisitCode, apiGetPlaceRewards, apiGetVisitResult, readBill, visitLink, type PlaceRewards, type VisitCode, type VisitResult } from "@/lib/api/rewards";
 import { MOCK_REWARDS, mockRewardLabel } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { INPUT_CLASS, PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -20,30 +20,40 @@ import { capLine, RewardList } from "./RewardList";
 // sees the rewards, shows a QR that carries the bill to visit.mesita.ai
 // (MESITA-3240). The code lasts ten minutes and one use, and a new one replaces it
 // when it ends, so what's on screen always works.
+//
+// PAY (Pato, MESITA-3256: "the step to pay the amount to the waiter"): staff close
+// the visit on visit.mesita.ai and the server works out the discount. The QR step
+// asks for that result every few seconds and moves here when it exists. No money
+// moves through Mesita, and a tip is only words: the reward comes off the bill,
+// never the tip, so the bill typed here is the one before tip.
 
 const STEPS = [
   { id: "bill", label: "Bill" },
   { id: "reward", label: "Reward" },
   { id: "qr", label: "QR" },
+  { id: "pay", label: "Pay" },
 ] as const;
 
 type StepId = (typeof STEPS)[number]["id"];
 
 const STEP_TITLE = "text-lg font-semibold tracking-tight";
 
+/** How often the QR step asks whether staff closed the visit. */
+const RESULT_POLL_MS = 4000;
+
 function endsAt(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-function billText(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} MXN`;
+function billText(cents: number, currency = "MXN"): string {
+  return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${currency}`;
 }
 
 /** The rail: a bar over a word, equal columns. Steps already done go back. */
 function StepRail({ step, onGo }: { step: StepId; onGo: (id: StepId) => void }) {
   const at = STEPS.findIndex((s) => s.id === step);
   return (
-    <ol className="grid grid-cols-3 gap-1.5" aria-label="Steps">
+    <ol className="grid grid-cols-4 gap-1.5" aria-label="Steps">
       {STEPS.map(({ id, label }, i) => {
         const body = (
           <>
@@ -54,7 +64,8 @@ function StepRail({ step, onGo }: { step: StepId; onGo: (id: StepId) => void }) 
         const shell = "flex min-h-11 w-full flex-col items-start justify-center gap-1.5 text-left";
         return (
           <li key={id} className="min-w-0">
-            {i < at ? (
+            {/* Once staff closed the visit there is nothing to go back to. */}
+            {i < at && step !== "pay" ? (
               <button type="button" onClick={() => onGo(id)} className={shell}>
                 {body}
               </button>
@@ -71,7 +82,17 @@ function StepRail({ step, onGo }: { step: StepId; onGo: (id: StepId) => void }) 
 }
 
 /** The QR step's code: made on arrival, replaced when it ends. */
-function VisitCodeQr({ placeId, billCents, onChangeBill }: { placeId: string; billCents: number; onChangeBill: () => void }) {
+function VisitCodeQr({
+  placeId,
+  billCents,
+  onIssued,
+  onChangeBill,
+}: {
+  placeId: string;
+  billCents: number;
+  onIssued: (issuedAt: string) => void;
+  onChangeBill: () => void;
+}) {
   const supabase = useBrowserSupabase();
   const [code, setCode] = useState<VisitCode | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +105,7 @@ function VisitCodeQr({ placeId, billCents, onChangeBill }: { placeId: string; bi
         if (!live) return;
         setCode(next);
         setError(null);
+        onIssued(next.issued_at);
       },
       (err) => {
         if (!live) return;
@@ -94,6 +116,8 @@ function VisitCodeQr({ placeId, billCents, onChangeBill }: { placeId: string; bi
     return () => {
       live = false;
     };
+    // onIssued only keeps the first time, so a new function changes nothing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase, placeId, billCents, attempt]);
 
   useEffect(() => {
@@ -132,7 +156,7 @@ function VisitCodeQr({ placeId, billCents, onChangeBill }: { placeId: string; bi
       {code ? (
         <div aria-live="polite">
           <p className="mt-4 font-semibold tabular-nums">Your bill: {billText(billCents)}</p>
-          <p className="text-muted-foreground mt-1 text-sm">It works until {endsAt(code.expires_at)}. Staff scan it, correct the bill if it&apos;s off, and take your reward off.</p>
+          <p className="text-muted-foreground mt-1 text-sm">It works until {endsAt(code.expires_at)}. Staff scan it, correct the bill if it&apos;s off, and take your reward off. Then this screen shows what to pay.</p>
         </div>
       ) : null}
       <button type="button" onClick={onChangeBill} className="text-muted-foreground mt-1 min-h-11 text-sm underline">
@@ -159,6 +183,30 @@ export function VisitFlow({
   const [data, setData] = useState<PlaceRewards | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // The first code's time: a visit closed since then is this one, and a replaced
+  // code does not move it.
+  const [since, setSince] = useState<string | null>(null);
+  const [result, setResult] = useState<VisitResult | null>(null);
+
+  useEffect(() => {
+    if (step !== "qr" || !since) return;
+    let live = true;
+    const timer = setInterval(() => {
+      apiGetVisitResult(supabase, placeId, since).then(
+        (visit) => {
+          if (!live || !visit) return;
+          setResult(visit);
+          setStep("pay");
+        },
+        // A missed read only waits for the next one.
+        () => undefined,
+      );
+    }, RESULT_POLL_MS);
+    return () => {
+      live = false;
+      clearInterval(timer);
+    };
+  }, [supabase, placeId, step, since]);
 
   useEffect(() => {
     let live = true;
@@ -206,7 +254,7 @@ export function VisitFlow({
         >
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4">
             <h2 className={STEP_TITLE}>How much is your bill?</h2>
-            <p className="text-muted-foreground mt-1 text-sm">Type the total on your bill. Staff correct it if it&apos;s off.</p>
+            <p className="text-muted-foreground mt-1 text-sm">Type it before any tip: your reward comes off the bill, not the tip. Staff correct it if it&apos;s off.</p>
             <div className="relative mt-4">
               <span aria-hidden className="text-muted-foreground absolute top-1/2 left-3 -translate-y-1/2 text-sm">
                 $
@@ -290,7 +338,40 @@ export function VisitFlow({
       {step === "qr" && billCents !== null ? (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
-            <VisitCodeQr placeId={placeId} billCents={billCents} onChangeBill={() => setStep("bill")} />
+            <VisitCodeQr
+              placeId={placeId}
+              billCents={billCents}
+              onIssued={(issuedAt) => setSince((first) => first ?? issuedAt)}
+              onChangeBill={() => setStep("bill")}
+            />
+          </div>
+          <p className="border-border text-muted-foreground border-t p-4 text-center text-sm" aria-live="polite">
+            Waiting for staff…
+          </p>
+        </>
+      ) : null}
+
+      {step === "pay" && result ? (
+        <>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
+            <h2 className={STEP_TITLE}>Pay your waiter</h2>
+            <p className="mt-4 text-3xl font-semibold tracking-tight tabular-nums">{billText(result.total_cents, result.currency)}</p>
+            <p className="text-muted-foreground mt-1 text-sm">Pay it at the place, in cash or by card. Nothing is charged through Mesita.</p>
+            <dl className="border-border bg-card divide-border mt-4 divide-y rounded-2xl border text-sm tabular-nums">
+              <div className="flex items-center justify-between gap-3 p-4">
+                <dt className="text-muted-foreground">Bill</dt>
+                <dd>{billText(result.bill_cents, result.currency)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 p-4">
+                <dt className="text-muted-foreground">Reward</dt>
+                <dd>−{billText(result.discount_cents, result.currency)}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-3 p-4 font-semibold">
+                <dt>You pay</dt>
+                <dd>{billText(result.total_cents, result.currency)}</dd>
+              </div>
+            </dl>
+            <p className="text-muted-foreground mt-3 text-sm">Leaving a tip? Add it on top. Your reward came off the bill, not the tip.</p>
           </div>
           <div className="border-border border-t p-4">
             <button type="button" onClick={onClose} className={PRIMARY_BUTTON_CLASS}>

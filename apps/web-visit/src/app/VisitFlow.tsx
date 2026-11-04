@@ -175,7 +175,7 @@ function CloseForm({
   return (
     <form onSubmit={(e) => void submit(e)}>
       <label className="field">
-        <span>Full bill, before the discount. Correct it if it&apos;s wrong.</span>
+        <span>Full bill, before the discount and any tip. Correct it if it&apos;s wrong.</span>
         <input
           inputMode="decimal"
           autoComplete="off"

@@ -31,6 +31,13 @@ export function isBillCents(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 100_000_000;
 }
 
+/** A moment as ISO text, or null. */
+export function readSince(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const at = new Date(v);
+  return Number.isNaN(at.getTime()) ? null : at.toISOString();
+}
+
 /** A place code: six digits, or null. Spaces a person typed do not count. */
 export function readPlaceCode(v: unknown): string | null {
   if (typeof v !== "string") return null;
