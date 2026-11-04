@@ -11,9 +11,14 @@ import { DEFAULT_IMAGE_ANALYSIS_PROMPT, DEFAULT_IMAGE_SORTING_PROMPT } from "./e
 import { vectorLiteral } from "./embeddings-vector.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
+import { buildResolverInput } from "./enrich-channel-discovery.ts";
 
 /** Fixture text is [chunk, times] pairs, so a 2,300-character case stays one line. */
 const build = (parts: [string, number][]) => parts.map(([s, n]) => s.repeat(n)).join("");
+
+Deno.test("twin: the Resolver's message matches what Render sends", () => {
+  for (const c of fixture.resolverInput) assertEquals(buildResolverInput(c.place, c.candidates), c.expected);
+});
 
 Deno.test("twin: weeklyHoursFromPeriods matches the Render fixture", () => {
   for (const c of fixture.hours) {

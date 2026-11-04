@@ -16,14 +16,16 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
   const { boost } = await searchParams;
   const [identity, billing] = await Promise.all([getIdentityCached(), listBilling(boost ?? null)]);
   return (
-    <div className="flex flex-col gap-6 pb-8">
+    <>
       <PageHeader title="Account" />
-      <AccountCard email={identity.ok ? identity.data.email : null} />
-      <WhatYouPay
-        initial={billing.ok ? billing.data.subscriptions : null}
-        loadError={billing.ok ? null : billing.error}
-        outcome={billing.ok ? (billing.data.outcome ?? null) : null}
-      />
-    </div>
+      <div className="flex flex-col gap-6 pb-8">
+        <AccountCard email={identity.ok ? identity.data.email : null} />
+        <WhatYouPay
+          initial={billing.ok ? billing.data.subscriptions : null}
+          loadError={billing.ok ? null : billing.error}
+          outcome={billing.ok ? (billing.data.outcome ?? null) : null}
+        />
+      </div>
+    </>
   );
 }

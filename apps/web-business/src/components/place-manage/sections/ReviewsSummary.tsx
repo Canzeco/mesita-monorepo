@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Star } from "lucide-react";
-import { SectionCard, type Tint } from "@/components/ui/manage";
+import { SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 
 // Reviews: the four boxes, read-only. Update Reviews refills them when the
@@ -113,7 +113,6 @@ export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
         <div className="flex min-w-0 flex-col gap-4">
       <ReviewBox
         mark="/channels/google.svg"
-        tint="amber"
         title="Google Summary"
         state={googleState}
         hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google, shownAt)}
@@ -123,7 +122,6 @@ export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
       />
       <ReviewBox
         mark="/channels/instagram.svg"
-        tint="pink"
         title="Instagram Summary"
         state={igState}
         hint={hintFor(igState, "followers", errors.instagram, shownAt)}
@@ -132,7 +130,6 @@ export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
       />
       <ReviewBox
         mark="/channels/facebook.svg"
-        tint="sky"
         title="Facebook Summary"
         state={fbState}
         hint={hintFor(fbState, "followers", errors.facebook, shownAt)}
@@ -143,7 +140,6 @@ export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
         <div className="min-w-0">
       <ReviewBox
         mark="/channels/google.svg"
-        tint="violet"
         title="Google Reviews"
         state={reviewsState}
         hint={hintFor(reviewsState, reviews.length > 0 ? "on file" : "No reviews on file.", errors.google_reviews, shownAt)}
@@ -391,7 +387,6 @@ function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
 
 function ReviewBox({
   mark,
-  tint,
   title,
   state,
   hint,
@@ -401,7 +396,6 @@ function ReviewBox({
   extra,
 }: {
   mark: string;
-  tint: Tint;
   title: string;
   state: BoxState;
   hint: string;
@@ -414,9 +408,8 @@ function ReviewBox({
     <SectionCard
       icon={
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={mark} alt="" aria-hidden className="h-4 w-4" />
+        <img src={mark} alt="" aria-hidden className="size-5" />
       }
-      tint={tint}
       title={title}
       subtitle={hint}
       action={<span className="text-muted-foreground type-label">{boxStateLabel(state)}</span>}

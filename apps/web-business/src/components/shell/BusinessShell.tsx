@@ -10,8 +10,8 @@
 //   │ Views · Visits                               │  online and walk-ins
 //   └──────────────────────────────────────────────┘
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Reviews · Premier · Rewards · Soon │  Soon: MESITA-3197, the
-//   └──────────────────────────────────────────────┘  one page about what is not on yet
+//   │ Profile · Reviews · Premier · Rewards · All  │  All: MESITA-3238, every
+//   └──────────────────────────────────────────────┘  product, current and future
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -39,7 +39,8 @@
 import Link from "next/link";
 import { Outfit } from "next/font/google";
 import { usePathname } from "next/navigation";
-import { CircleUser, Store, type LucideIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
+import { StorefrontIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { PLACE_TAB_META } from "./place-tab-meta";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
@@ -52,7 +53,7 @@ const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
 /** `href` null: there is no place yet, so the row is drawn greyed, not a link. */
-type Row = { key: string; label: string; icon: LucideIcon; href: string | null; active: boolean };
+type Row = { key: string; label: string; icon: Icon; href: string | null; active: boolean };
 
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
@@ -66,7 +67,7 @@ function menu(
   isSuperAdmin: boolean,
 ): { account: Row; switcher: Switcher; place: PlaceMenu } {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const account: Row = { key: "account", label: "Account", icon: CircleUser, href: ACCOUNT, active: pathname === ACCOUNT };
+  const account: Row = { key: "account", label: "Account", icon: UserCircleIcon, href: ACCOUNT, active: pathname === ACCOUNT };
   const role = place?.role === "owner" ? "Owner" : place?.role === "editor" ? "Editor" : isSuperAdmin ? "Mesita staff" : null;
   const switcher: Switcher = {
     href: PLACES,
@@ -91,8 +92,8 @@ function menu(
         tab("reviews"),
         tab("premier"),
         tab("rewards"),
-        // Last: what is not on yet, as one page (MESITA-3197).
-        tab("soon"),
+        // Last: every product, current and future (MESITA-3238).
+        tab("all"),
       ],
       manage: [
         // Billing first in Manage (Pato, MESITA-3160: "Billing, Settings").
@@ -125,7 +126,7 @@ function PlaceSwitcher({ s }: { s: Switcher }) {
         <img src={s.photo} alt="" className="size-7 shrink-0 rounded-md object-cover" />
       ) : (
         <span className="bg-muted text-muted-foreground flex size-7 shrink-0 items-center justify-center rounded-md">
-          <Store className="size-4" aria-hidden />
+          <StorefrontIcon size={20} aria-hidden />
         </span>
       )}
       <span className="hidden min-w-0 flex-1 flex-col lg:flex">
@@ -157,11 +158,12 @@ function Group({ label, rows }: { label: string; rows: Row[] }) {
 const ROW = "flex h-10 items-center justify-center gap-3 rounded-lg px-1.5 text-sm transition-colors lg:justify-start lg:px-3";
 
 function RailRow({ row }: { row: Row }) {
-  const Icon = row.icon;
+  const RowIcon = row.icon;
   const inner = (
     <>
       <span className="flex w-5 shrink-0 justify-center">
-        <Icon className={cn("size-4", row.active ? "text-foreground" : "text-muted-foreground")} aria-hidden />
+        {/* Solid on the open page (Pato, MESITA-3235). */}
+        <RowIcon size={20} weight={row.active ? "fill" : "regular"} aria-hidden />
       </span>
       <span className="hidden min-w-0 flex-1 truncate lg:inline">{row.label}</span>
     </>

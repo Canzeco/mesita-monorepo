@@ -1,13 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  Clock,
-  Globe,
-  MapPin,
-  Store,
-  type LucideIcon,
-} from "lucide-react";
+import { ClockIcon, GlobeIcon, MapPinIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
+import { Globe, type LucideIcon } from "lucide-react";
 import {
   type AdminPlace,
   type PlaceFieldLimits,
@@ -276,14 +271,7 @@ function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function PlaceSection({
-  place,
-  children,
-}: {
-  place: AdminPlace;
-  /** Extra Profile boxes (Actions, staff) — flow in the same masonry columns. */
-  children?: React.ReactNode;
-}) {
+export function PlaceSection({ place }: { place: AdminPlace }) {
   const { savePending, profile, setPlace } = usePlaceContext();
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
@@ -412,11 +400,10 @@ export function PlaceSection({
           Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
           Reviews is its own tab (MESITA-2183).
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin,
-          except Actions, which ProfileTab adds here for staff (MESITA-3205);
+          Actions on Settings (MESITA-3236);
           Team on Controls; the reputation rail on Activity. */}
       <SectionCard
-        icon={<Store className="h-4 w-4" />}
-        tint="rose"
+        icon={<StorefrontIcon size={20} />}
         title="Basics"
         subtitle="What this place is."
       >
@@ -486,8 +473,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<MapPin className="h-4 w-4" />}
-        tint="sky"
+        icon={<MapPinIcon size={20} />}
         title="Location"
         subtitle="Where it is."
       >
@@ -520,8 +506,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Clock className="h-4 w-4" />}
-        tint="amber"
+        icon={<ClockIcon size={20} />}
         title="Hours"
         subtitle="When it opens."
       >
@@ -606,8 +591,7 @@ export function PlaceSection({
       </SectionCard>
 
       <SectionCard
-        icon={<Globe className="h-4 w-4" />}
-        tint="indigo"
+        icon={<GlobeIcon size={20} />}
         title="Links"
       >
         {/* One column, one list — links and contacts are all just channels;
@@ -691,9 +675,6 @@ export function PlaceSection({
           />
         </div>
       </SectionCard>
-
-
-      {children}
     </div>
   );
 }

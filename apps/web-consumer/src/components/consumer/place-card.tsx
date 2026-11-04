@@ -1,7 +1,8 @@
-import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
+import { Clock, Heart, Navigation, Share2, Sparkles, Star, Ticket } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
+import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { mockRewardLabel } from "@/lib/mock-rewards";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
@@ -14,11 +15,6 @@ import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 // THE COLOUR, the words stay ink (MESITA-2668, Pato: "for hour use a clock,
 // green if open, red if closed, for distance use blue … for stars yellow").
 
-/** Capitalise every word ("opens tomorrow 07:00" → "Opens Tomorrow 07:00"). */
-function titleWords(line: string): string {
-  return line.replace(/(^|\s)(\p{Ll})/gu, (_, sp, ch) => sp + ch.toUpperCase());
-}
-
 function readableKind(place: Place): string | null {
   const raw = place.category_label ?? place.category;
   if (!raw || raw.trim().toLowerCase() === "undefined") return null;
@@ -26,19 +22,15 @@ function readableKind(place: Place): string | null {
 }
 
 export type CardFacts = {
-  /** "Cafe · $$": category, then the price level as dollar signs. */
-  kindPrice: string;
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount summary after the price ("30% off", MESITA-3218). */
+  /** The discount, under the Home card's buttons ("30% OFF, up to $60 MXN", MESITA-3233). */
   off: string | null;
   rating: string | null;
   reviews: string | null;
-  /** true open, false closed, null unknown (no hours row). */
+  /** true open, false closed, null unknown (no Open or Closed on the card). */
   open: boolean | null;
-  /** "Closed · Opens Tomorrow 07:00", Title Case (MESITA-2665). */
-  hours: string | null;
   distance: string | null;
 };
 
@@ -50,18 +42,7 @@ export function cardFacts(place: Place): CardFacts {
   // dummies ($, $$, $$$, $$$$)"): never "MX$200–300" on a card. The place
   // screen keeps the range.
   const price = formatPlacePriceLevelSymbols(place.price_level);
-  const hours =
-    o.open_now === true
-      ? o.closes_at
-        ? `Open · until ${o.closes_at}`
-        : "Open now"
-      : o.open_now === false
-        ? o.opens_at
-          ? `Closed · opens ${o.opens_at}`
-          : "Closed"
-        : null;
   return {
-    kindPrice: [readableKind(place), price].filter(Boolean).join(" · "),
     kind: readableKind(place),
     price: price || null,
     off: mockRewardLabel(place.id),
@@ -70,8 +51,7 @@ export function cardFacts(place: Place): CardFacts {
       typeof o.google_count === "number" && o.google_count > 0
         ? formatCompactCount(o.google_count)
         : null,
-    open: hours ? o.open_now === true : null,
-    hours: hours ? titleWords(hours) : null,
+    open: o.open_now ?? null,
     distance:
       typeof place.distance_km === "number" && place.distance_km > 0
         ? formatKm(place.distance_km)
@@ -90,11 +70,11 @@ function Dot() {
   );
 }
 
-/** Row two: $$ · category · ★ rating (reviews) — the price first (Pato,
- *  MESITA-2674: "price before category, it's easier and faster to see"),
+/** Home card row two: $$ · category · ★ rating (reviews), the price first
+ *  (Pato, MESITA-2674: "price before category, it's easier and faster to see"),
  *  green; the star yellow. */
 export function KindRow({ facts }: { facts: CardFacts }) {
-  if (!facts.kindPrice && !facts.rating && !facts.off) return null;
+  if (!facts.kind && !facts.price && !facts.rating) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
@@ -103,11 +83,9 @@ export function KindRow({ facts }: { facts: CardFacts }) {
           {facts.price}
         </span>
       ) : null}
-      {facts.off && facts.price ? <Dot /> : null}
-      {facts.off ? <span className="shrink-0 font-semibold">{facts.off}</span> : null}
-      {facts.kind && (facts.price || facts.off) ? <Dot /> : null}
+      {facts.kind && facts.price ? <Dot /> : null}
       {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
-      {facts.kindPrice && facts.rating ? <Dot /> : null}
+      {(facts.kind || facts.price) && facts.rating ? <Dot /> : null}
       {facts.rating ? (
         <span className="inline-flex shrink-0 items-center gap-1">
           <Star
@@ -122,9 +100,64 @@ export function KindRow({ facts }: { facts: CardFacts }) {
   );
 }
 
-/** Search card row two (MESITA-2674): $$ (green) · category. */
+/** Home card row three: the clock, green Open or red Closed, never until when
+ *  (Pato, MESITA-3229: "just open or closed, to save space"); then the blue
+ *  arrow and the distance. */
+export function HoursRow({ facts }: { facts: CardFacts }) {
+  if (facts.open === null && !facts.distance) return null;
+  return (
+    <p className={ROW}>
+      {facts.open !== null ? (
+        <span className="inline-flex shrink-0 items-center gap-1">
+          <Clock
+            className={cn(
+              MARK,
+              facts.open ? "text-fact-open" : "text-fact-closed",
+            )}
+            strokeWidth={2.5}
+            aria-hidden
+          />
+          {facts.open ? "Open" : "Closed"}
+        </span>
+      ) : null}
+      {facts.open !== null && facts.distance ? <Dot /> : null}
+      {facts.distance ? (
+        <span className="inline-flex shrink-0 items-center gap-1">
+          <Navigation
+            className={cn(MARK, "fill-fact-distance text-fact-distance")}
+            aria-hidden
+          />
+          {facts.distance}
+        </span>
+      ) : null}
+    </p>
+  );
+}
+
+/** The discount under Save and Share, as wide as the two, its words centred
+ *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
+ *  but only if it has reward"). Display only: a tap falls through to the card's
+ *  own link beneath it. */
+export function CouponRow({ facts }: { facts: CardFacts }) {
+  if (!facts.off) return null;
+  return (
+    <p
+      className={cn(
+        PLACE_REWARD_COUPON_CLASS,
+        "pointer-events-none flex h-6 w-full justify-center rounded-lg font-sans",
+      )}
+    >
+      <Ticket className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+      {facts.off}
+    </p>
+  );
+}
+
+/** Search card row two (MESITA-2674): $$ (green) · category. No coupon: the
+ *  rail's fixed height has no fourth row, and "30% OFF" alone would hide its
+ *  limit (MESITA-3229). */
 export function PriceKindRow({ facts }: { facts: CardFacts }) {
-  if (!facts.kind && !facts.price && !facts.off) return null;
+  if (!facts.kind && !facts.price) return null;
   return (
     <p className={ROW}>
       {facts.price ? (
@@ -132,9 +165,7 @@ export function PriceKindRow({ facts }: { facts: CardFacts }) {
           {facts.price}
         </span>
       ) : null}
-      {facts.off && facts.price ? <Dot /> : null}
-      {facts.off ? <span className="shrink-0 font-semibold">{facts.off}</span> : null}
-      {facts.kind && (facts.price || facts.off) ? <Dot /> : null}
+      {facts.kind && facts.price ? <Dot /> : null}
       {facts.kind ? <span className="truncate">{facts.kind}</span> : null}
     </p>
   );
@@ -187,49 +218,6 @@ export function StarsOpenRow({
             aria-hidden
           />
           <span className="truncate">{distance}</span>
-        </span>
-      ) : null}
-    </p>
-  );
-}
-
-/**
- * Row three: a clock, green open and red closed, then the hours; then, when
- * `withDistance`, a blue arrow and the distance. The Search card leaves the
- * distance out: the map already says where the place is (MESITA-2668).
- */
-export function HoursRow({
-  facts,
-  withDistance = true,
-}: {
-  facts: CardFacts;
-  withDistance?: boolean;
-}) {
-  const distance = withDistance ? facts.distance : null;
-  if (!facts.hours && !distance) return null;
-  return (
-    <p className={ROW}>
-      {facts.hours ? (
-        <>
-          <Clock
-            className={cn(
-              MARK,
-              facts.open ? "text-fact-open" : "text-fact-closed",
-            )}
-            strokeWidth={2.5}
-            aria-hidden
-          />
-          <span className="truncate">{facts.hours}</span>
-        </>
-      ) : null}
-      {facts.hours && distance ? <Dot /> : null}
-      {distance ? (
-        <span className="inline-flex shrink-0 items-center gap-1">
-          <Navigation
-            className={cn(MARK, "fill-fact-distance text-fact-distance")}
-            aria-hidden
-          />
-          {distance}
         </span>
       ) : null}
     </p>

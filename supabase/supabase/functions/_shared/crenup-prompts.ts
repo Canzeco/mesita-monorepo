@@ -97,35 +97,40 @@ function scoutPrompt(): CrenupPrompt {
 }
 
 function resolverPrompt(): CrenupPrompt {
-  // Two candidates per field so the pool block renders as a list, and every
-  // sibling/website/serp branch is populated.
+  // Two candidates per field so the pool block renders as a list, and the
+  // brand and background branches are populated.
   const candidates = Object.fromEntries(
-    CHANNEL_FIELDS.map((f) => [f, [`{${f} candidate 1}`, `{${f} candidate 2}`]]),
+    CHANNEL_FIELDS.map((f) => [f, [
+      `- {${f} candidate 1} [{where it came from}] — "{page title}" — {page description}`,
+      `- {${f} candidate 2}`,
+    ]]),
   );
   return {
     key: "resolver",
     fn: stepOf("links"),
     agent: "Resolver",
     label: "Review & Select Links",
-    vendor: "Firecrawl Search, then Perplexity Agent",
+    vendor: "Firecrawl Search and Scrape, then Perplexity Agent",
     vendorNote:
-      "Firecrawl Search gathers the candidate pool — one search per source, at " +
-      "the per-source counts above. Then ONE Perplexity Agent call reviews every " +
-      "pool and returns one URL per field or null. With no Perplexity key the " +
-      "step degrades to the first shape-valid Firecrawl candidate and this " +
-      "prompt is never sent.",
+      "Firecrawl gathers the candidate pool: searches in the place's country at " +
+      "the per-source counts above, plus the links on the place's own website. " +
+      "Then ONE Perplexity Agent call reviews every pool and returns one URL per " +
+      "field or null. With no Firecrawl or Perplexity key the step finds nothing " +
+      "new and this prompt is never sent.",
     writes:
       "website_url, instagram_url, facebook_url, opentable_url, uber_eats_url — " +
       "each the place's own official channel, or null.",
     instructions: RESOLVER_INSTRUCTIONS,
-    input: buildResolverInput(PLACE, CHANNEL_FIELDS, candidates, {
-      siblings: {
-        website_url: "{already-known website}",
-        instagram_url: "{already-known instagram}",
+    input: buildResolverInput(
+      {
+        name: PLACE.name,
+        city: PLACE.locationLine,
+        category: PLACE.category,
+        brand: "{the brand, for a chain branch}",
+        context: "{the Scout's SERP Summary}",
       },
-      serpContext: "{the Scout's SERP Summary}",
-      website: "{official website}",
-    }),
+      candidates,
+    ),
   };
 }
 

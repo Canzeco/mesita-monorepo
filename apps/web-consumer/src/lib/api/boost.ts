@@ -11,25 +11,31 @@ import { invokeEF } from "./_invoke";
 
 export type TierRank = 1 | 2;
 
-/** The two Upgrades (MESITA-3175: a guest buys an Upgrade, never a plan): each sells what the place gets, and
- *  `priority` is the factor the ranking applies (Home's list and the Map).
- *  Prices come from the server. */
+/** The two Upgrades: each sells what the place gets, and `priority` is the
+ *  factor the ranking applies (Home's list and the Map). `plan` is the place
+ *  plan with that level (MESITA-3230, Pato: "what you are buying is Mesita Pro
+ *  and Mesita Max"): the level is a plan's one perk, so the words are true, but
+ *  a guest buys days and never starts a subscription (MESITA-3175). Prices come
+ *  from the server. */
 export const BOOST_TIERS = [
   {
     rank: 1,
     label: "Upgrade 2X",
+    plan: "Pro",
     priority: "Premier 2X",
     blurb: "Moves the place up on Home and the Map",
   },
   {
     rank: 2,
     label: "Upgrade 5X",
+    plan: "Max",
     priority: "Premier 5X",
     blurb: "The biggest lift on Home and the Map",
   },
 ] as const satisfies ReadonlyArray<{
   rank: TierRank;
   label: string;
+  plan: string;
   priority: string;
   blurb: string;
 }>;

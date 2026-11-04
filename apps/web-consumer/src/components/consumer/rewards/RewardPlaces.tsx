@@ -252,7 +252,7 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
         <span className="block truncate text-sm font-semibold">{place.name}</span>
         {line ? <span className="text-muted-foreground block truncate text-xs">{line}</span> : null}
         {/* "Up to": Story counts, and staff check it at the till (MESITA-3217). */}
-        {percent ? <span className="mt-0.5 block truncate text-xs font-semibold">Up to {percent}% off for you</span> : null}
+        {percent ? <span className="text-fact-reward mt-0.5 block truncate text-xs font-semibold">Up to {percent}% OFF for you</span> : null}
       </span>
       <QrCode className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
     </button>

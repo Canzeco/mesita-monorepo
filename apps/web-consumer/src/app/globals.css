@@ -202,6 +202,10 @@
   --fact-star: oklch(0.828 0.189 84.429);
   /* The $$ on a card (MESITA-2673): green-700, ~5:1 on white at 14px. */
   --fact-price: oklch(0.527 0.154 150.069);
+  /* The discount (MESITA-3233, Pato: "better discount color and more discret"):
+     green-800 on green-100, the one fact with a fill. */
+  --fact-reward: oklch(0.448 0.119 151.328);
+  --fact-reward-bg: oklch(0.962 0.044 156.743);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -255,6 +259,8 @@
   --color-fact-distance: var(--fact-distance);
   --color-fact-star: var(--fact-star);
   --color-fact-price: var(--fact-price);
+  --color-fact-reward: var(--fact-reward);
+  --color-fact-reward-bg: var(--fact-reward-bg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

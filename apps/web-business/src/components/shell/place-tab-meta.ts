@@ -1,20 +1,26 @@
 // Each place page's name, icon and one line (MESITA-3151: "standardize
-// design across pages"). The side menu and the page title read the same
-// entry, so a page is drawn with the mark its menu row wears.
+// design across pages"). The side menu and the page header read the same
+// entry.
 
-import { BadgeCheck, Eye, Footprints, Gift, Receipt, MapPinned, Settings, ShieldCheck, Sparkles, Star, type LucideIcon } from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
+import { DotsThreeIcon, EyeIcon, FootprintsIcon, GearIcon, GiftIcon, MegaphoneIcon, ReceiptIcon, ShieldCheckIcon, StarIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
 
-export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: LucideIcon; sub: string }> = {
-  views: { label: "Views", icon: Eye, sub: "Who saw your place online." },
-  visits: { label: "Visits", icon: Footprints, sub: "Who walked in, the bill and how it was paid." },
-  profile: { label: "Profile", icon: MapPinned, sub: "What guests read about your place." },
-  reviews: { label: "Reviews", icon: Star, sub: "What guests say on Google, Instagram and Facebook." },
-  premier: { label: "Premier", icon: BadgeCheck, sub: "Rank higher on Home and the Map. Marked as an ad." },
-  rewards: { label: "Rewards", icon: Gift, sub: "Discounts guests get on today's bill. Your place gives them." },
-  // The one page about what is not on yet (MESITA-3197): copy only.
-  soon: { label: "Soon", icon: Sparkles, sub: "What comes next for your place." },
-  billing: { label: "Billing", icon: Receipt, sub: "What's running, what it costs and every charge." },
-  settings: { label: "Settings", icon: Settings, sub: "Place and team." },
-  admin: { label: "Admin", icon: ShieldCheck, sub: "Mesita staff only." },
+export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
+  views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
+  visits: { label: "Visits", icon: FootprintsIcon, sub: "Who walked in, the bill and how it was paid." },
+  profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
+  reviews: { label: "Reviews", icon: StarIcon, sub: "What guests say on Google, Instagram and Facebook." },
+  premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
+  rewards: { label: "Rewards", icon: GiftIcon, sub: "Discounts guests get on today's bill. Your place gives them." },
+  // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
+  // line is about Mesita, not the page (Pato, MESITA-3237).
+  all: {
+    label: "All",
+    icon: DotsThreeIcon,
+    sub: "Mesita is the ultimate marketing, financial and operations software for independent restaurants, taking your whole restaurant digital.",
+  },
+  billing: { label: "Billing", icon: ReceiptIcon, sub: "What's running, what it costs and every charge." },
+  settings: { label: "Settings", icon: GearIcon, sub: "Place and team." },
+  admin: { label: "Admin", icon: ShieldCheckIcon, sub: "Mesita staff only." },
 };

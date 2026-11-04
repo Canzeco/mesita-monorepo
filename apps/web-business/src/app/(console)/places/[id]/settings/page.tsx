@@ -3,6 +3,7 @@ import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
 import { TeamCard } from "@/components/team/TeamCard";
+import { ActionStatesCard } from "@/components/place-manage/sections/ActionStatesCard";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Settings" };
@@ -15,9 +16,9 @@ const METHOD: Record<string, string> = {
   review: "Mesita reviewed your request",
 };
 
-// The place's settings only: Place (with Leave) and Team (MESITA-3171, Pato:
-// "use standard names for the boxes. short"), as cards of rows like Billing and
-// Premier (MESITA-3196). The header already says the place's name and "Mesita
+// The place's settings only: Place (with Leave), Actions (staff, MESITA-3236)
+// and Team (MESITA-3171, Pato: "use standard names for the boxes. short"), as
+// cards of rows like Billing and Premier (MESITA-3196). The header already says the place's name and "Mesita
 // staff". Your email and sign-out live in Account alone (MESITA-3154).
 export default async function PlaceSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -49,6 +50,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
           ) : null}
         </ul>
       </Card>
+      {manage.role === "superadmin" ? <ActionStatesCard /> : null}
       <TeamCard placeId={id} />
     </div>
   );

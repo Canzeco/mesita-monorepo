@@ -567,5 +567,37 @@
         ]
       }
     ]
-  }
+  },
+  "resolverInput": [
+    {
+      "place": {
+        "name": "Strana",
+        "city": "Puerto Vallarta",
+        "category": "night_club",
+        "brand": "strana",
+        "context": "A nightclub."
+      },
+      "candidates": {
+        "instagram_url": [
+          "- https://www.instagram.com/x [linked from https://x.mx] — \"X\""
+        ]
+      },
+      "expected": "Review and select the official channels for the place \"Strana\" in Puerto Vallarta (category: night_club).\n\nBackground on the place (soft web context — never the source of a URL):\nA nightclub.\n\nThis place is a location of the \"strana\" brand. If it has no account of its own, the brand's account is the answer, preferring this country's.\n\nCandidate URLs, each with its page title, description and origin when known:\ninstagram_url candidates:\n- https://www.instagram.com/x [linked from https://x.mx] — \"X\"\n\nReturn strict JSON. Each value is one URL from that field's list, or null. Never invent a URL."
+    },
+    {
+      "place": {
+        "name": "Pujol",
+        "city": null,
+        "category": null,
+        "brand": null,
+        "context": ""
+      },
+      "candidates": {
+        "website_url": [
+          "- https://pujol.com.mx"
+        ]
+      },
+      "expected": "Review and select the official channels for the place \"Pujol\".\n\nCandidate URLs, each with its page title, description and origin when known:\nwebsite_url candidates:\n- https://pujol.com.mx\n\nReturn strict JSON. Each value is one URL from that field's list, or null. Never invent a URL."
+    }
+  ]
 }

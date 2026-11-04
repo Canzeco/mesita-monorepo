@@ -30,22 +30,11 @@ export default async function PlaceLayout({
   return (
     <PlaceManageShell placeId={id} initialPlace={manage.place} initialProfile={manage.profile}>
       <ShellPlaceName id={id} name={manage.place.name ?? null} photo={manage.place.photos?.[0] ?? null} />
+      {/* Mesita is filling in the profile (MESITA-3140). */}
+      <PlaceTabTitle right={enrichmentView(manage.place).enriching ? <EnrichingTag /> : null} />
       <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="flex shrink-0 flex-col gap-4">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h1 title={manage.place.name} className="min-w-0 truncate font-sans text-xl font-semibold tracking-tight sm:text-2xl">
-              {manage.place.name}
-            </h1>
-            {/* Mesita is filling in the profile (MESITA-3140). */}
-            {enrichmentView(manage.place).enriching ? <EnrichingTag /> : null}
-            {manage.role === "superadmin" ? (
-              <span className="border-border bg-card type-label rounded-full border px-2.5 py-0.5 font-semibold">Mesita staff</span>
-            ) : null}
-          </div>
-          <PlaceTabTitle />
-          <PreviewButton />
-        </div>
-        <PlaceScroll staff={manage.role === "superadmin"}>{children}</PlaceScroll>
+        <PreviewButton />
+        <PlaceScroll>{children}</PlaceScroll>
       </div>
     </PlaceManageShell>
   );

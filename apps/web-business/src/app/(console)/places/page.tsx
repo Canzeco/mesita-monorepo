@@ -16,7 +16,7 @@ export default async function PlacesPage() {
   const { places, isSuperAdmin } = identity.data;
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <PageHeader title="Places" sub="Selected is the place the menu works on. Yours are the places you run. All is every other place: find yours and claim it." />
       {/* Three boxes in two columns (Pato, MESITA-3151/3152): Selected over
           Yours on the left, All (the search, MESITA-3126) on the right. Everyone, staff included,
@@ -25,6 +25,6 @@ export default async function PlacesPage() {
         <PlacesBoard places={places} isSuperAdmin={isSuperAdmin} />
         <ClaimSearch />
       </div>
-    </div>
+    </>
   );
 }

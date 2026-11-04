@@ -28,7 +28,7 @@ export type PlaceActions = {
   onPrepay?: () => void;
   /** The fifth tile, Upgrade (MESITA-3200): opens the host's sheet (MESITA-3201). */
   onBoost?: () => void;
-  /** The discount summary after the price ("30% off", MESITA-3218). The consumer
+  /** The discount summary after the price ("30% OFF, up to $60 MXN", MESITA-3231). The consumer
    *  passes it; admin and Business Preview show none. */
   rewardLabel?: string | null;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
