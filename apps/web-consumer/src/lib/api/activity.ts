@@ -134,17 +134,21 @@ export type MemberHistoryItem = {
   placeId: string;
   kind: ActivityKind;
   at: string;
-  place: Place;
+  /** Only the first page's places carry a card (MESITA-3212); the rest come
+   *  from apiMemberHistoryCards. */
+  place?: Place;
 };
 
 /** The member behind one feed event and their whole history, liked and
  *  viewed, newest first: Social's person card (MESITA-2609, replacing
  *  MESITA-2583's liked-only list). The event names the member, never an id
  *  (MESITA-2460). The person is named by a like's rule, so the card may name
- *  a handle the row did not; a deleted member returns null. */
+ *  a handle the row did not; a deleted member returns null. `first` is how
+ *  many places of each verb come with their card. */
 export async function apiMemberHistory(
   client: SupabaseClient,
   event: Pick<ActivityFeedItem, "placeId" | "kind" | "at">,
+  first: number,
 ): Promise<{ person: ActivityPerson | null; items: MemberHistoryItem[] }> {
   const { person, items } = await invokeEF<{
     person: ActivityPerson | null;
@@ -153,6 +157,21 @@ export async function apiMemberHistory(
     place_id: event.placeId,
     kind: event.kind,
     at: event.at,
+    first,
   });
   return { person, items };
+}
+
+/** The person card's next page of place cards. A place missing from the
+ *  answer is no longer listed. */
+export async function apiMemberHistoryCards(
+  client: SupabaseClient,
+  placeIds: string[],
+): Promise<Place[]> {
+  const { places } = await invokeEF<{ places: Place[] }>(
+    client,
+    "consumer-web-get-person",
+    { fill: placeIds },
+  );
+  return places;
 }
