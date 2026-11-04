@@ -9,6 +9,7 @@ import { toast } from "./toast";
 const SILENT_EFS = new Set([
   "consumer-web-track-event",
   "consumer-web-track-activity",
+  "consumer-web-track-place-share",
 ]);
 
 /** Show `message` as an error notification. */

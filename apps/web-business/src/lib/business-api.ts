@@ -491,3 +491,13 @@ export async function voidPlaceVisit(placeId: string, visitId: string): Promise<
   if (!r.ok) return fail(r);
   return { ok: true, data: { voided_at: r.data.voided_at } };
 }
+
+// ── Views (MESITA-3206) ──────────────────────────
+
+export type PlaceViews = { views: number; likes: number; shares: number };
+
+export async function getPlaceViews(placeId: string): Promise<Result<PlaceViews>> {
+  const r = await efInvoke<PlaceViews>("business-web-get-place-views", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { views: r.data.views, likes: r.data.likes, shares: r.data.shares } };
+}
