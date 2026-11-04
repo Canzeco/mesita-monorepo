@@ -1,5 +1,11 @@
 import { assertEquals, assertNotEquals } from "jsr:@std/assert@1";
-import { hashPlaceCode, hashVisitCode, isBillCents, newVisitCode, readPlaceCode, readVisitCode } from "./place-visits.ts";
+import { hashPlaceCode, hashVisitCode, isBillCents, newVisitCode, readPlaceCode, readSince, readVisitCode } from "./place-visits.ts";
+
+Deno.test("since is a real moment or nothing", () => {
+  assertEquals(readSince("2026-11-04T09:00:00.000Z"), "2026-11-04T09:00:00.000Z");
+  assertEquals(readSince("not a date"), null);
+  assertEquals(readSince(1793782729), null);
+});
 
 Deno.test("a code hash is bound to its place", async () => {
   const a = await hashVisitCode("place-a", "123456");

@@ -6,10 +6,10 @@
 //
 // Instagram Found and Facebook Found follow the last check (MESITA-3247): an
 // answer sets true with the new count; a failure sets false and leaves the
-// last count, so a timeout never blanks a real number. No link writes nothing:
-// Enrich passes only the links its run found, so a missing one says nothing
-// about the saved link. Google Found is not here: Details just answered in the
-// same Enrich, and a failed lookup must not undo it.
+// last count, so a timeout never blanks a real number. No link sets false and
+// leaves the count: both callers pass the link the place ends up with, so a
+// missing one means the place has none (MESITA-3251). Google Found is not here:
+// Details just answered in the same Enrich, and a failed lookup must not undo it.
 
 export type SyncSourceName = "google" | "instagram" | "facebook" | "google_reviews";
 
@@ -108,7 +108,7 @@ export async function syncSavedLinks(opts: {
           })
           : outcome("instagram", "error", result.error, { instagram_found: false })
       )
-      : Promise.resolve(outcome("instagram", "no_link", null)),
+      : Promise.resolve(outcome("instagram", "no_link", null, { instagram_found: false })),
     facebook
       ? opts.fetchers.facebookSummary(facebook).then((result) =>
         result.ok
@@ -118,7 +118,7 @@ export async function syncSavedLinks(opts: {
           })
           : outcome("facebook", "error", result.error, { facebook_found: false })
       )
-      : Promise.resolve(outcome("facebook", "no_link", null)),
+      : Promise.resolve(outcome("facebook", "no_link", null, { facebook_found: false })),
     googleId
       ? opts.fetchers.googleReviews(googleId).then((result) =>
         result.ok

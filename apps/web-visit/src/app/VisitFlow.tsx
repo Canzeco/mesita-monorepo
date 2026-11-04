@@ -18,14 +18,10 @@ const REWARD_NAME: Record<string, string> = {
   vip_class: "VIP Class",
 };
 
-/** Story is the one reward a person has to see first (MESITA-3202). */
-const SEEN_FIRST = "instagram_story";
-
 export function VisitFlow({ placeId, code }: { placeId: string; code: string }) {
   const [visit, setVisit] = useState<Visit | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [storySeen, setStorySeen] = useState(false);
   const [received, setReceived] = useState(false);
   const [closed, setClosed] = useState<ClosedVisit | null>(null);
 
@@ -81,9 +77,9 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
   }
 
   const cap = visit.rewards.find((r) => r.cap_cents != null)?.cap_cents ?? null;
-  const rewardKinds = visit.rewards
-    .filter((r) => r.kind !== SEEN_FIRST || storySeen)
-    .map((r) => r.kind);
+  // Every reward this guest has counts; none is a choice here (Pato, MESITA-3254:
+  // "don't make story selectable"). The server decides who has which.
+  const rewardKinds = visit.rewards.map((r) => r.kind);
 
   return (
     <main>
@@ -98,19 +94,7 @@ export function VisitFlow({ placeId, code }: { placeId: string; code: string }) 
         <ul>
           {visit.rewards.map((r) => (
             <li key={r.kind}>
-              {r.kind === SEEN_FIRST ? (
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={storySeen}
-                    disabled={received}
-                    onChange={(e) => setStorySeen(e.target.checked)}
-                  />
-                  <span>{REWARD_NAME[r.kind]}: you saw the story</span>
-                </label>
-              ) : (
-                <span>{REWARD_NAME[r.kind] ?? r.kind}</span>
-              )}
+              <span>{REWARD_NAME[r.kind] ?? r.kind}</span>
               <strong>{r.percent}%</strong>
             </li>
           ))}
@@ -175,7 +159,7 @@ function CloseForm({
   return (
     <form onSubmit={(e) => void submit(e)}>
       <label className="field">
-        <span>Full bill, before the discount. Correct it if it&apos;s wrong.</span>
+        <span>Full bill, before the discount and any tip. Correct it if it&apos;s wrong.</span>
         <input
           inputMode="decimal"
           autoComplete="off"

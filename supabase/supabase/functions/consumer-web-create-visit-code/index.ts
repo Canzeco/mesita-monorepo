@@ -16,8 +16,11 @@
 // MESITA-3245: the guest enters the bill first, and it waits with the code. The
 // place corrects it if it is wrong when it closes the visit.
 //
-// Body: { place_id: uuid, bill_cents: integer }
-// Response: { ok: true, code: "<32 hex>", expires_at }
+// MESITA-3259: Story is the guest's choice, and the tick waits with the code too.
+// Staff's page and the close read it.
+//
+// Body: { place_id: uuid, bill_cents: integer, story?: boolean }
+// Response: { ok: true, code: "<32 hex>", issued_at, expires_at }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -44,7 +47,8 @@ serveJson("consumer-web-create-visit-code", async (req) => {
   if (!isBillCents(billCents)) return json({ ok: false, code: "bad_bill", error: "Enter your bill." }, 400);
 
   const admin = adminClient(envRes.env);
-  const expiresAt = new Date(Date.now() + VISIT_CODE_MINUTES * 60_000).toISOString();
+  const issuedAt = new Date();
+  const expiresAt = new Date(issuedAt.getTime() + VISIT_CODE_MINUTES * 60_000).toISOString();
   for (let draw = 0; draw < VISIT_CODE_DRAWS; draw++) {
     const code = newVisitCode();
     const { data: issued, error } = await admin.rpc("place_visit_code_issue", {
@@ -53,9 +57,10 @@ serveJson("consumer-web-create-visit-code", async (req) => {
       p_code_hash: await hashVisitCode(placeId, code),
       p_expires_at: expiresAt,
       p_bill_cents: billCents,
+      p_story: bodyRes.body.story === true,
     });
     if (error) return json({ ok: false, error: error.message }, 500);
-    if (issued === true) return json({ ok: true, code, expires_at: expiresAt });
+    if (issued === true) return json({ ok: true, code, issued_at: issuedAt.toISOString(), expires_at: expiresAt });
   }
   return json({ ok: false, error: "Couldn't make a code. Try again." }, 500);
 });

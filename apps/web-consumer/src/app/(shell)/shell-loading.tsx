@@ -14,7 +14,7 @@ import ProfileLoading from "./me/profile/loading";
 import ReservationsLoading from "./me/reservations/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
-import PayLoading from "./pay/loading";
+import PayLoading from "@/components/consumer/rewards/PayLoading";
 import ShareLoading from "./share/loading";
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:

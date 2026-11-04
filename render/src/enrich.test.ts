@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { commitPatch, isPermanentlyClosed } from "./enrich.ts";
+import { accountsAfterRun, commitPatch, isPermanentlyClosed } from "./enrich.ts";
 
 test("an empty or failed step never blanks a filled field; a fresh value replaces it", () => {
   const patch = commitPatch({
@@ -18,6 +18,24 @@ test("an empty or failed step never blanks a filled field; a fresh value replace
   assert.equal("photos" in patch, false);
   assert.equal(patch.website_url, "https://new.example");
   assert.equal(patch.description, "fresh");
+});
+
+// Sync turns Found off for a missing link, so losing the saved one here would
+// switch a real account off on every run where Links finds nothing (MESITA-3251).
+test("Sync and Images read what the run found, else the saved link", () => {
+  const saved = {
+    savedInstagramUrl: "https://www.instagram.com/saved",
+    savedFacebookUrl: "https://www.facebook.com/saved",
+  };
+  assert.deepEqual(accountsAfterRun({}, saved), {
+    instagramUrl: "https://www.instagram.com/saved",
+    facebookUrl: "https://www.facebook.com/saved",
+  });
+  assert.deepEqual(accountsAfterRun({ instagram_url: "https://www.instagram.com/found", facebook_url: "" }, saved), {
+    instagramUrl: "https://www.instagram.com/found",
+    facebookUrl: "https://www.facebook.com/saved",
+  });
+  assert.deepEqual(accountsAfterRun({}, {}), { instagramUrl: null, facebookUrl: null });
 });
 
 test("Render never sends the Mesita-owned columns (MESITA-2790)", () => {

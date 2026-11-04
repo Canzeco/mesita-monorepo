@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { MapPinOff, QrCode, Ticket } from "lucide-react";
 import { PremierBadge, SizedImg } from "@mesita/place-profile";
 import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
+import { rewardStepPath } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared";
 import { useActiveLocation } from "@/lib/active-location";
@@ -28,12 +29,13 @@ import {
   useUserLocationError,
   useUserLocationSettled,
 } from "@/lib/use-user-location";
-import { VisitFlow } from "./VisitFlow";
+import { seedRewardPlace } from "./reward-place-seed";
 
 // THE REWARD TAB (Pato, MESITA-3214: "a list of all the places … sorted by
 // location. no searchbar … when you click the shit, the QR its actually open").
 // Rows under Home's header: every Mesita place, nearest first from the header's
-// location. For the moment every place counts as offering rewards.
+// location, each a link to its steps at /pay/<place>/bill (MESITA-3254). For the
+// moment every place counts as offering rewards.
 // What a guest actually gets off the bill is what that place has switched on.
 //
 // SOCIAL'S ROWS (Pato, MESITA-3223: "why some has borders and the others don't.
@@ -62,9 +64,6 @@ export function RewardPlaces() {
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [fillFailed, setFillFailed] = useState(false);
-  // A new `opened` remounts the QR, so every tap asks for a fresh code; `place`
-  // stays set while the dialog fades out.
-  const [qr, setQr] = useState<{ place: Place; opened: number; open: boolean } | null>(null);
 
   useEffect(() => {
     if (!from) return;
@@ -187,11 +186,7 @@ export function RewardPlaces() {
       <ul role="list" aria-label="Places" className={ROWS_BAND}>
         {pool.places.map((place) => (
           <li key={place.id}>
-            <RewardRow
-              place={place}
-              percent={percents[place.id] ?? mockRewardPercent(place.id)}
-              onOpen={() => setQr((cur) => ({ place, opened: (cur?.opened ?? 0) + 1, open: true }))}
-            />
+            <RewardRow place={place} percent={percents[place.id] ?? mockRewardPercent(place.id)} />
           </li>
         ))}
         {/* The next page, waiting: one grey row, as on Social. */}
@@ -210,31 +205,16 @@ export function RewardPlaces() {
           Try again
         </button>
       ) : null}
-      <LocalSheet
-        open={qr?.open === true}
-        onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
-        ariaLabel={qr ? `Use your reward at ${qr.place.name}` : "Use your reward"}
-      >
-        {qr ? (
-          <VisitFlow
-            key={qr.opened}
-            placeId={qr.place.id}
-            placeName={qr.place.name}
-            photo={qr.place.photos?.[0]}
-            onClose={() => setQr((cur) => (cur ? { ...cur, open: false } : cur))}
-          />
-        ) : null}
-      </LocalSheet>
     </div>
   );
 }
 
-function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number; onOpen: () => void }) {
+function RewardRow({ place, percent }: { place: Place; percent?: number }) {
   const photo = place.photos?.[0];
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <Link
+      href={rewardStepPath(place.id)}
+      onClick={() => seedRewardPlace(place.id, place.name, photo)}
       className="hover:bg-muted/40 flex min-h-16 w-full items-center gap-3 px-4 py-3.5 text-left transition"
     >
       {photo ? (
@@ -260,12 +240,13 @@ function RewardRow({ place, percent, onOpen }: { place: Place; percent?: number;
           </span>
         ) : null}
       </span>
-      {/* The QR is the point of this list, in a box that mirrors the photo (Pato,
-          MESITA-3249: "must be more visible"; "keep symmetry in image and in QR"). */}
-      <span className="bg-foreground text-paper flex h-16 w-16 shrink-0 items-center justify-center rounded-xl">
-        <QrCode className="h-8 w-8" aria-hidden />
+      {/* A mark, never a code: the real QR is in the sheet (Pato, MESITA-3255: "not
+          that dark"; MESITA-3258: the blur "looks like shit"). Sharp ink on a white
+          tile that mirrors the photo (MESITA-3249). */}
+      <span className="border-border bg-card text-foreground flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border">
+        <QrCode className="h-9 w-9" aria-hidden />
       </span>
-    </button>
+    </Link>
   );
 }
 

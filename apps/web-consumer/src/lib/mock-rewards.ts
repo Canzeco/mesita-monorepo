@@ -26,6 +26,15 @@ export function mockRewardPercent(placeId: string): number | undefined {
   return MOCK_REWARDS_ON && isMesitaPlaceId(placeId) ? MOCK_PERCENT : undefined;
 }
 
+/** The Reward step at a place with nothing on: a first visit, with Story to tick
+ *  (Pato, MESITA-3259). The till takes nothing off there. */
+export const MOCK_FIRST_VISIT: PlaceReward[] = MOCK_REWARDS_ON
+  ? [
+      { kind: "welcome_visit", percent: 20, cap_cents: MOCK_MAX_OFF_PESOS * 100, eligible: true, reason: null },
+      { kind: "instagram_story", percent: 20, cap_cents: MOCK_MAX_OFF_PESOS * 100, eligible: true, reason: null },
+    ]
+  : [];
+
 /** The matrix on a place's Rewards tab, the same one Business switches on. */
 export const MOCK_REWARDS: PlaceReward[] = MOCK_REWARDS_ON
   ? [

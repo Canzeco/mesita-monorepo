@@ -54,10 +54,12 @@ Deno.test("a missing link is no_link and is not fetched", async () => {
   assertEquals(instagramCalls, 0);
   assertEquals(result.sources.find((row) => row.source === "instagram")?.status, "no_link");
   assertEquals(result.sources.find((row) => row.source === "facebook")?.status, "no_link");
-  // Links can find nothing on an Enrich while the saved link stands: its flag
-  // and count must survive.
-  assertEquals("instagram_found" in result.patch, false);
-  assertEquals("facebook_found" in result.patch, false);
+  // Both callers pass the link the place ends up with, so none means the place
+  // has none: Found goes off and the last count stays (MESITA-3251).
+  assertEquals(result.patch.instagram_found, false);
+  assertEquals(result.patch.facebook_found, false);
+  assertEquals("instagram_followers_count" in result.patch, false);
+  assertEquals("facebook_followers" in result.patch, false);
 });
 
 Deno.test("reviews replace the list instead of appending", () => {
