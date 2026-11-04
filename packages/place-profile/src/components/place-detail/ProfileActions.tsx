@@ -2,11 +2,11 @@
 
 import {
   CalendarCheck,
-  CircleArrowUp,
   Heart,
   Map as MapIcon,
   Phone,
   QrCode,
+  Rocket,
   Share2,
   Wallet,
   type LucideIcon,
@@ -239,7 +239,7 @@ export function ProfileActions({
           ariaLabel="Share"
         />
         <ActionTile
-          Icon={CircleArrowUp}
+          Icon={Rocket}
           label="Upgrade"
           live={Boolean(onBoost)}
           onClick={onBoost}

@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleArrowUp } from "lucide-react";
+import { Rocket } from "lucide-react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   BoostPane,
@@ -37,7 +37,7 @@ export function BoostSheet({
       <div className={SHEET_BODY_CLASS}>
         <div className="flex items-center gap-3">
           <span className="bg-muted text-muted-foreground flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-            <CircleArrowUp className="h-5 w-5" aria-hidden />
+            <Rocket className="h-5 w-5" aria-hidden />
           </span>
           <div className="min-w-0">
             <h2 id="boost-title" className={SHEET_TITLE_CLASS}>
