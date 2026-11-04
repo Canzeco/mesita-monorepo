@@ -11,7 +11,11 @@ export function LeavePlace({ placeId }: { placeId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="flex flex-col gap-1">
+    <>
+      <div className="min-w-0 flex-1">
+        <p>Remove this place from my account</p>
+        {error ? <p className="text-destructive">{error}</p> : null}
+      </div>
       <button
         type="button"
         disabled={busy}
@@ -25,11 +29,10 @@ export function LeavePlace({ placeId }: { placeId: string }) {
           router.push(PLACES);
           router.refresh();
         }}
-        className="border-border hover:bg-muted h-9 w-fit rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+        className="border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
       >
-        {armed ? "Tap again to remove it" : "Remove this place from my account"}
+        {armed ? "Tap to confirm" : "Remove"}
       </button>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-    </div>
+    </>
   );
 }
