@@ -81,6 +81,7 @@ Deno.test("the Resolver template renders every optional branch", () => {
   // vendor is actually sent on a normal run.
   const resolver = crenupPromptsMeta().find((p) => p.key === "resolver")!;
   assert(resolver.input.includes("location of the"));
+  assert(resolver.input.includes("Google already lists"));
   assert(resolver.input.includes("Background on the place"));
   assert(resolver.input.includes("Candidate URLs"));
   // Every channel field must be asked for by name.

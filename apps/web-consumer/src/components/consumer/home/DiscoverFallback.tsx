@@ -29,7 +29,7 @@ export const PLACES_LIST =
 /** CatalogTile's silhouette, from its own boxes (catalog-tile-classes.ts):
  *  the frame, the photo, the white band with its
  *  rows (the 16px name, the two 14px rows), Save · Share as two 32px blocks
- *  where CardActions sits, and the 24px coupon under them. */
+ *  where CardActions sits, and the 32px coupon under them. */
 function CatalogTileSkeleton() {
   return (
     <li className={TILE_FRAME}>
@@ -54,7 +54,7 @@ function CatalogTileSkeleton() {
           <Skeleton className={CARD_BUTTON_BOX} />
           <Skeleton className={CARD_BUTTON_BOX} />
         </div>
-        <Skeleton className="h-6 rounded-lg" />
+        <Skeleton className={CARD_BUTTON_BOX} />
       </div>
     </li>
   );

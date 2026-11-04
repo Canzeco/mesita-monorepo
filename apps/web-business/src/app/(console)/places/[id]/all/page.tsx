@@ -22,19 +22,12 @@ export const metadata = { title: "All" };
 
 // Every product, current and future (MESITA-3238, Pato: "call that page (All)
 // ... mention current and future and divide"; a catalog since MESITA-3237, was
-// Soon, MESITA-3197). A current tile is the rail's row, same name and icon, and
-// opens its page. A future tile is copy only: no links, forms, dates or sign-up,
+// Soon, MESITA-3197). A current tile is a Capabilities row of the rail, same name
+// and icon, and opens its page; Views and Visits stay out as Operations (Pato,
+// MESITA-3243). A future tile is copy only: no links, forms, dates or sign-up,
 // so it has no hover. One card of rows on a phone; tiles from `sm`, four across
 // only from `2xl`, where "Reservations Management" still fits one line.
 const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
-  {
-    tab: "views",
-    line: "How many guests opened your place, saved it and shared it. See the last 30 days and a log of who did what.",
-  },
-  {
-    tab: "visits",
-    line: "Every guest who walked in, newest first, with the bill and how it was paid. It's a record of your own till: no money moves through Mesita.",
-  },
   {
     tab: "profile",
     line: "What guests read about your place: basics, hours, location and links. Edit it here and preview it the way guests see it.",
@@ -55,8 +48,8 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
 
 const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   {
-    name: "Digital Menu",
-    line: "Your menu, built by AI from a photo, file or website, and approved by you. Every order source sells from it, and guests can browse it from a QR code.",
+    name: "Smart Menu",
+    line: "Your interactive menu, built by AI from a photo, file or website, approved by you and hosted on Mesita. Guests open it from a QR code or link with no account, ask its AI questions, and order and pay directly, at your place or from anywhere.",
     icon: BookOpenIcon,
   },
   {
@@ -66,47 +59,47 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
   },
   {
     name: "Digital Payments",
-    line: "Guests pay from their phone into your own Stripe account, by card, Apple Pay or Google Pay. Staff can also show a QR code for a bill, no account needed.",
+    line: "Guests pay by card, Apple Pay or Google Pay into your own Stripe account: members in the app, anyone else with no account. Staff can show a QR code for any bill, and every payment is recorded in Mesita.",
     icon: CreditCardIcon,
   },
   {
     name: "Credit Prepayments",
-    line: "Guests buy credit ahead at a bonus you set, gift it or send it, and spend it only with you. One balance tracks every purchase, gift and redemption.",
+    line: "Guests buy credit ahead at a bonus you set, give it as a gift card and spend it only with you. Credit Back rewards land in the same balance, and one ledger tracks every purchase, gift and redemption.",
     icon: WalletIcon,
   },
   {
     name: "Mesita Capital",
-    line: "Cash upfront, by selling future credit at your restaurant to Mesita at a discount. Guests redeem that credit over time, so the funding brings visits with it.",
+    line: "Cash upfront, by selling an agreed amount of future credit at your restaurant to Mesita at a discount. Mesita gives that credit to guests, who redeem it over time, so the funding brings visits with it.",
     icon: MoneyIcon,
   },
   {
     name: "Marketing Agent",
-    line: "Creates your photos, videos and posts, publishes them on your social media and runs your paid ads on Instagram, Facebook and Google. You approve everything from one queue.",
+    line: "Connects to Google and Meta. Uses Higgsfield to turn your profile data and guests' Instagram Stories, with their permission, into AI content made to go viral. Create your content, post it to your feed and boost it with ads on every channel, all from one place.",
     icon: BroadcastIcon,
   },
   {
     name: "Answering Agent",
-    line: "Answers phone, WhatsApp and text with your current hours and menu. Turns questions into orders and bookings while your staff focus on service.",
+    line: "Agents connected to all your channels, including phone, WhatsApp and text, that know your business: hours, menu and bookings. They turn questions into orders and bookings, so your staff get structured information instead of scattered calls and messages.",
     icon: ChatCircleIcon,
   },
   {
     name: "Orders Management",
-    line: "Every order in one queue, from Uber Eats, Rappi, DiDi Food, your website and Mesita. Manage status, prep time and sold-out items in one place.",
+    line: "One queue for every order, labeled by source: Mesita members, your website and agents, and Uber Eats, Rappi and DiDi Food. Manage status, prep time, cancellations and sold-out items, and see the day's delivery sales.",
     icon: ShoppingBagIcon,
   },
   {
     name: "Reservations Management",
-    line: "Every booking in one calendar, from Mesita, your website, your agents and outside booking systems. Manage availability, confirmations and changes from this console.",
+    line: "One calendar for every booking, labeled by source: Mesita members, your website and agents, and outside booking systems, synced so tables aren't double-booked. Manage availability, confirmations, reminders, changes and cancellations, with every booking tied to its guest.",
     icon: CalendarCheckIcon,
   },
   {
     name: "Mesita Terminal",
-    line: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, and staff see the result on the right ticket.",
+    line: "A card device connected to the Mesita bill. Guests tap or insert their card at the counter or table, staff see the result on the right ticket, and online and in-person payments reconcile in one place.",
     icon: CalculatorIcon,
   },
   {
     name: "Mesita POS",
-    line: "Take orders, track the kitchen and close bills on a point of sale connected to your menu. Counter, table and online sales share the same guest and payment records.",
+    line: "Take orders, track the kitchen and close bills on a point of sale connected to your Smart Menu. Counter, table and online sales share the same guest, rewards and payment records.",
     icon: MonitorIcon,
   },
 ];
