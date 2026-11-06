@@ -17,7 +17,7 @@ import {
 import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
-import { mockRewardLabel } from "@/lib/mock-rewards";
+import { useRewardLabel } from "@/lib/use-reward-label";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
@@ -87,6 +87,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
+  const coupon = useRewardLabel(place.id);
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -117,7 +118,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // Mesita Prepay (MESITA-3098): only a Mesita place can take money.
     onPrepay: isMesitaPlaceId(place.id) ? () => setPrepayOpen(true) : undefined,
     onBoost,
-    rewardLabel: mockRewardLabel(place.id),
+    rewardLabel: coupon,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
   };

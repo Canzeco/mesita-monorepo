@@ -6,7 +6,6 @@ import { capLine, RewardList } from "@/components/consumer/rewards/RewardList";
 import { seedRewardPlace } from "@/components/consumer/rewards/reward-place-seed";
 import { apiGetPlaceRewards, type PlaceRewards } from "@/lib/api/rewards";
 import { rewardStepPath } from "@/lib/consumer-route-contract";
-import { MOCK_REWARDS } from "@/lib/mock-rewards";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -64,8 +63,7 @@ export function RewardsPane({ place }: { place: PlaceDetail }) {
       </div>
     );
   }
-  // Real rewards where a place has them on, else the mock (MESITA-3218).
-  const rewards = data.rewards.length > 0 ? data.rewards : MOCK_REWARDS;
+  const rewards = data.rewards;
   if (rewards.length === 0) {
     return (
       <div className="border-border bg-card rounded-2xl border p-4">

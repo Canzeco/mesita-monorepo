@@ -22,7 +22,6 @@ import {
 } from "@/lib/api/rewards";
 import { rewardStepPath, type RewardStep } from "@/lib/consumer-route-contract";
 import { useServerProfile } from "@/lib/identity-context";
-import { MOCK_FIRST_VISIT } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
@@ -225,9 +224,8 @@ export function VisitFlow({
     };
   }, [supabase, placeId, offersAttempt]);
 
-  // Real rewards where a place has them on, else the mock (MESITA-3218). Only what this
-  // guest can use.
-  const offered = (offers ? (offers.rewards.length > 0 ? offers.rewards : MOCK_FIRST_VISIT) : []).filter((r) => r.eligible);
+  // What the place really has on, and only what this guest can use.
+  const offered = (offers?.rewards ?? []).filter((r) => r.eligible);
   const usable = offered.length > 0;
   const opened = Boolean(visit?.opened_at);
   const known = visit !== undefined;
@@ -353,7 +351,11 @@ export function VisitFlow({
             <div className="flex flex-col items-center text-center">
               {offers && !usable ? (
                 <p className="text-muted-foreground w-full p-4 text-sm">
-                  {offers.signed_in ? "None of these apply to you right now." : "Sign in to use a reward."}
+                  {!offers.signed_in
+                    ? "Sign in to use a reward."
+                    : offers.rewards.length === 0
+                      ? "This place has no rewards yet."
+                      : "None of these apply to you right now."}
                 </p>
               ) : offersFailed && !offers ? (
                 <div className="w-full p-4">

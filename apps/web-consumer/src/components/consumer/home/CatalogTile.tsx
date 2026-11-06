@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PremierBadge, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
+import { useRewardLabel } from "@/lib/use-reward-label";
 import { sharePlace } from "@/lib/share-place";
 import {
   cardPhoto,
@@ -119,6 +120,7 @@ export function CatalogTile({
   // $$ · category · stars; Open or Closed · distance. No zone on the tile. Each
   // cell hides when the place has none.
   const facts = cardFacts(place);
+  const coupon = useRewardLabel(place.id);
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
@@ -205,7 +207,7 @@ export function CatalogTile({
             className={cn(
               "text-foreground",
               TILE_TEXT,
-              facts.off && TILE_TEXT_WITH_COUPON,
+              coupon && TILE_TEXT_WITH_COUPON,
             )}
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
@@ -239,7 +241,7 @@ export function CatalogTile({
               : undefined
           }
         />
-        <CouponRow facts={facts} />
+        <CouponRow label={coupon} />
       </div>
     </li>
   );
