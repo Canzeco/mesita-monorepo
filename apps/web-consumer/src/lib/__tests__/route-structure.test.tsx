@@ -271,7 +271,7 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/place/abc", "Home"],
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
-    ["/pay", "Reward"],
+    ["/pay", "Pay"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -351,7 +351,7 @@ describe("the bar is Home · Search · Pay · Me", () => {
   }
 
   it("is exactly Home · Search · Pay · Me (MESITA-2871)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Reward", "Me"]);
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
