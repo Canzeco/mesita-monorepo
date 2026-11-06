@@ -3,7 +3,6 @@ import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
 import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
-import { mockRewardLabel } from "@/lib/mock-rewards";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 // THE PREVIEW CARD'S ROWS AND BUTTONS, ONE SOURCE (MESITA-2668): the Home
@@ -25,8 +24,6 @@ export type CardFacts = {
   /** The category alone, and the $$ alone (green on the card, MESITA-2673). */
   kind: string | null;
   price: string | null;
-  /** The discount, under the Home card's buttons ("30% OFF, up to $200 MXN", MESITA-3248). */
-  off: string | null;
   rating: string | null;
   reviews: string | null;
   /** true open, false closed, null unknown (no Open or Closed on the card). */
@@ -45,7 +42,6 @@ export function cardFacts(place: Place): CardFacts {
   return {
     kind: readableKind(place),
     price: price || null,
-    off: mockRewardLabel(place.id),
     rating: formatRating(o.google_rating),
     reviews:
       typeof o.google_count === "number" && o.google_count > 0
@@ -138,15 +134,16 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
  *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
  *  but only if it has reward"), as tall as they are (MESITA-3241). The Search
  *  card wears it as a strip on its top (MESITA-3246), through `className`.
+ *  The words are useRewardLabel's: only what this guest would really get (MESITA-3288).
  *  Display only: a tap falls through to the card's own link beneath it. */
 export function CouponRow({
-  facts,
+  label,
   className,
 }: {
-  facts: CardFacts;
+  label: string | null;
   className?: string;
 }) {
-  if (!facts.off) return null;
+  if (!label) return null;
   return (
     <p
       className={cn(
@@ -156,7 +153,7 @@ export function CouponRow({
       )}
     >
       <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      {facts.off}
+      {label}
     </p>
   );
 }

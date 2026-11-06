@@ -20,8 +20,8 @@ import {
 } from "@/lib/api/places";
 import { apiListRewardPercents } from "@/lib/api/rewards";
 import { areaPoolKey, readAreaPool, writeAreaPool } from "@/lib/area-pool-cache";
-import { mockRewardPercent } from "@/lib/mock-rewards";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { rewardLabel } from "@/lib/use-reward-label";
 import {
   LOCATION_HELP,
   useLocateUser,
@@ -186,7 +186,7 @@ export function RewardPlaces() {
       <ul role="list" aria-label="Places" className={ROWS_BAND}>
         {pool.places.map((place) => (
           <li key={place.id}>
-            <RewardRow place={place} percent={percents[place.id] ?? mockRewardPercent(place.id)} />
+            <RewardRow place={place} percent={percents[place.id]} />
           </li>
         ))}
         {/* The next page, waiting: one grey row, as on Social. */}
@@ -232,11 +232,10 @@ function RewardRow({ place, percent }: { place: Place; percent?: number }) {
           <span className="truncate">{place.name}</span>
           <PremierBadge tier={place.boost_tier} compact ad />
         </span>
-        {/* "Up to": Story counts, and staff check it at the till (MESITA-3217). */}
         {percent ? (
           <span className={cn(PLACE_REWARD_COUPON_CLASS, "mt-1 font-semibold")}>
             <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="truncate">Up to {percent}% OFF for you</span>
+            <span className="truncate">{rewardLabel(percent)}</span>
           </span>
         ) : null}
       </span>
@@ -251,7 +250,7 @@ function RewardRow({ place, percent }: { place: Place; percent?: number }) {
 }
 
 /** The card of rows as it will land, in the same margins. */
-/** One row, empty: the photo, the name, the coupon and the QR. */
+/** One row, empty: the photo, the name and the QR. */
 function RewardSkeletonRow() {
   return (
     <div className="flex min-h-16 items-center gap-3 px-4 py-3.5">
@@ -260,7 +259,6 @@ function RewardSkeletonRow() {
         <span className="flex h-5 items-center">
           <Skeleton className="h-3.5 w-3/5" />
         </span>
-        <Skeleton className="mt-1 h-8 w-4/5 rounded-lg" />
       </span>
       <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
     </div>

@@ -6,6 +6,7 @@ import {
   isGoogleOnlyPlace,
   placePlaceholder,
 } from "@/lib/place-placeholder";
+import { useRewardLabel } from "@/lib/use-reward-label";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared";
 import {
@@ -85,10 +86,9 @@ export function RailCardSkeleton() {
   return (
     <div
       aria-hidden
-      className={cn(RAIL_CARD_FRAME, RAIL_CARD_WITH_COUPON_HEIGHT_CLASS)}
+      className={cn(RAIL_CARD_FRAME, RAIL_CARD_HEIGHT_CLASS)}
     >
       <div className="absolute inset-0 flex flex-col">
-        <Skeleton className="h-8 shrink-0 rounded-none" />
         <div className={RAIL_CARD_ROW}>
           <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
           <div className={RAIL_CARD_TEXT}>
@@ -143,12 +143,13 @@ export function RailCard({
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
+  const coupon = useRewardLabel(place.id);
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        facts.off ? RAIL_CARD_WITH_COUPON_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
+        coupon ? RAIL_CARD_WITH_COUPON_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
@@ -161,7 +162,7 @@ export function RailCard({
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <CouponRow facts={facts} className={RAIL_CARD_COUPON} />
+        <CouponRow label={coupon} className={RAIL_CARD_COUPON} />
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card
