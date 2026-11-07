@@ -31,7 +31,7 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
 //   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
-//   [Reserve] [   Up to 30% Bonus ] [   5% Back         ]
+//   [Reserve] [   30% Bonus       ] [   5% Back         ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -307,7 +307,7 @@ export function MesitaActions({
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 30% Bonus" />
+        <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
         <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
       </div>
     </>
@@ -328,8 +328,9 @@ const MESITA_TILE_ICON = "h-5 w-5 shrink-0";
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
  *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
- *  `amount` is the second line, always shown (MESITA-3324): "Up to 30% Bonus"
- *  (Pato, MESITA-3345: "up to x%": the packs bonus +10% · +20% · +30%) and
+ *  `amount` is the second line, always shown (MESITA-3324): "30% Bonus" (Pato,
+ *  MESITA-3349: "don't mention up to 30% bonus, just 30% Bonus"; "Up to"
+ *  for an hour, MESITA-3345) and
  *  "5% Back" (Pato, MESITA-3339: "its clearer, instead of OFF"; "Up to 25%
  *  OFF" and "5% Cashback" until then). */
 function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string; amount: string }) {
