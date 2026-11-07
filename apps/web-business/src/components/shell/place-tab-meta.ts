@@ -4,13 +4,13 @@
 
 import type { Icon } from "@phosphor-icons/react";
 import {
-  ArrowsLeftRightIcon,
   CreditCardIcon,
   DotsThreeCircleIcon,
   EyeIcon,
   FootprintsIcon,
   GearIcon,
   MegaphoneIcon,
+  MoneyIcon,
   ReceiptIcon,
   ShieldCheckIcon,
   StarIcon,
@@ -19,14 +19,15 @@ import {
 import type { PlaceTab } from "@/lib/routes";
 
 // Discounts left with the discount product (MESITA-3299, Pato: "discounts are
-// gone across all the app"). Operations is Views · Visits · Transactions
-// (MESITA-3301): a visit is a guest paying here with Mesita, a transaction is
-// a payment, a voucher or cashback; both pages stand before any place takes
-// payments (Pato: "keep the pages even if Mesita Payments is not enabled yet").
+// gone across all the app"). Operations is Views · Visits · Money
+// (MESITA-3301; Money was Transactions for an hour, MESITA-3308): a visit is
+// a guest paying here with Mesita, Money is every payment, voucher and
+// cashback; both pages stand before any place takes payments (Pato: "keep the
+// pages even if Mesita Payments is not enabled yet").
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
-  transactions: { label: "Transactions", icon: ArrowsLeftRightIcon, sub: "Every payment, voucher and cashback at your place." },
+  money: { label: "Money", icon: MoneyIcon, sub: "Every payment, voucher and cashback at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   reviews: { label: "Reviews", icon: StarIcon, sub: "What guests say on Google, Instagram and Facebook." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },

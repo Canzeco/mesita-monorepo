@@ -1,8 +1,9 @@
-// Visits and Transactions (MESITA-3301, Pato: "In Operations include Views
-// and Visits and Transactions. Keep the pages even if Mesita Payments is not
-// enabled yet"). Both wear the Views frame (MESITA-3213: the last 30 days on
-// the left, the log on the right) with nothing in it: no place takes payments
-// in Mesita yet, so there is no visit and no transaction to show, and the page
+// Visits and Money (MESITA-3301, Pato: "In Operations include Views and
+// Visits and Transactions. Keep the pages even if Mesita Payments is not
+// enabled yet"; MESITA-3308: "call the Transactions page Money"). Both wear
+// the Views frame (MESITA-3213: the last 30 days on the left, the log on the
+// right) with nothing in it: no place takes payments in Mesita yet, so there
+// is no visit and no money movement to show, and the page
 // says so instead of hiding. No mock rows (Pato rejects mock data on product
 // surfaces). The counts and the log arrive with the pay flow (MESITA-3272 W2)
 // and the owner's money section (W3); this frame is what they fill.

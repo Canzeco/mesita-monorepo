@@ -40,6 +40,8 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   // money is Payments. Visits is a live page again (MESITA-3301).
   { source: "/places/:id/rewards", destination: "/places/:id/payments" },
   { source: "/places/:id/discounts", destination: "/places/:id/payments" },
+  // Transactions became Money (Pato, MESITA-3308).
+  { source: "/places/:id/transactions", destination: "/places/:id/money" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
   // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its
   // only admin, and only at the place level"): the cross-place Claim
