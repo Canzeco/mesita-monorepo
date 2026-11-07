@@ -1,19 +1,23 @@
 // Supabase Edge Function — consumer-web-get-wallet
 //
-// MESITA-3097 / MESITA-3302: the signed-in guest's Wallet — one balance per
-// place they hold credit at, Available and Pending, with its history. Every
-// open purchase of theirs is settled with Stripe first, on the purchase's
-// own connected account (paid → credited, expired → closed), so money paid
-// by a guest who never came back from Checkout shows the next time they
-// look. With `session_id` (Checkout's return) it also says what happened to
-// that one purchase (`outcome`).
+// MESITA-3097 / MESITA-3302 / MESITA-3303: the signed-in guest's Wallet —
+// one balance per place they hold credit at, Available and Pending, with
+// its history. Every open purchase of theirs is settled with Stripe first,
+// on the purchase's own connected account (paid → credited, expired →
+// closed), so money paid by a guest who never came back from Checkout shows
+// the next time they look. Settling runs under one 3-second budget: past
+// it the read answers anyway, names the purchases still open (`settling`),
+// and the next read, the receiver or the cron (W2b) finishes them. With
+// `session_id` (Checkout's return) it also says what happened to that one
+// purchase (`outcome`).
 //
 // Body: { session_id?: string }
-// Response: { ok: true,
+// Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents, last_at,
 //                          entries: [{ kind, amount_cents, at, pending }] }],
-//             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none" }
+//             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
+//             settling?: true, pending_purchases?: [purchase ids] }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -24,9 +28,12 @@ import {
   type Entry,
   type OpenPurchase,
   readWalletPlaces,
+  settleAll,
   type SettleOutcome,
-  settlePurchase,
 } from "../_shared/wallet.ts";
+
+/** How long one read waits on Stripe for every open purchase together. */
+const SETTLE_BUDGET_MS = 3000;
 
 serveJson("consumer-web-get-wallet", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -48,7 +55,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
     .from("wallet_purchases")
-    .select("id, stripe_checkout_session_id, stripe_account_id, created_at")
+    .select("id, stripe_checkout_session_id, stripe_account_id, created_at, voucher")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .in("status", ["opening", "open"])
@@ -57,19 +64,15 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (openErr) return json({ ok: false, error: `purchases: ${openErr.message}` }, 500);
 
   let outcome: SettleOutcome | "none" | undefined = sessionId ? "none" : undefined;
+  let settling: string[] = [];
   const key = boostStripeKey();
-  if (key && (open ?? []).length > 0) {
-    const stripe = stripeClient(key);
-    const now = Date.now();
-    for (const p of (open ?? []) as OpenPurchase[]) {
-      try {
-        const o = await settlePurchase(admin, stripe, p, now);
-        if (sessionId && p.stripe_checkout_session_id === sessionId) outcome = o;
-      } catch (err) {
-        // The guest sees the purchase as pending; the next read settles it.
-        console.error("[consumer-web-get-wallet] settle", p.id, String(err));
-        if (sessionId && p.stripe_checkout_session_id === sessionId) outcome = "pending";
-      }
+  const purchases = (open ?? []) as OpenPurchase[];
+  if (key && purchases.length > 0) {
+    const res = await settleAll(admin, stripeClient(key), purchases, Date.now(), SETTLE_BUDGET_MS);
+    settling = res.settling;
+    if (sessionId) {
+      const mine = purchases.find((p) => p.stripe_checkout_session_id === sessionId);
+      if (mine) outcome = res.outcomes.get(mine.id) ?? "pending";
     }
   }
   if (sessionId && outcome === "none") {
@@ -101,7 +104,9 @@ serveJson("consumer-web-get-wallet", async (req) => {
 
   return json({
     ok: true,
+    test_mode: !livemode,
     balances: balances.map(({ place_id, ...b }) => ({ place: places.get(place_id) ?? null, place_id, ...b })),
     ...(outcome === undefined ? {} : { outcome }),
+    ...(settling.length > 0 ? { settling: true, pending_purchases: settling } : {}),
   });
 });

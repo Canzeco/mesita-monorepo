@@ -13,6 +13,8 @@ export const MONEY_CODES = [
   "no_account",
   "currency_mismatch",
   "paused",
+  "not_available",
+  "welcome_used",
   "place_code_required",
   // The amount
   "below_minimum",

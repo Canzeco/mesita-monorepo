@@ -8,7 +8,8 @@
 // client-side later.
 
 import { googleTypeEmoji } from "./lib/google-type-emoji";
-import { VOUCHER_KEYS, type PlaceDetail, type VoucherKey } from "./place-detail";
+import { VOUCHER_KEYS, type PlaceBalance, type PlaceDetail, type PlaceMoney, type VoucherKey } from "./place-detail";
+import type { VoucherReason } from "./money-state";
 import { detectMenuKind } from "./lib/menu-url";
 import { parseMenuNutrition } from "./lib/nutrition";
 import { resolvePlaceCategoryName } from "./lib/place-category";
@@ -50,15 +51,56 @@ function profileStats(raw: unknown): PlaceDetail["profile_stats"] {
   return { viewed: Math.max(0, viewed), saved: Math.max(0, saved) };
 }
 
-// consumer-web-get-place's `money` (MESITA-3299): the owner's switches and the
-// account's state. Any missing flag reads as off; no object reads as absent.
-function placeMoney(raw: unknown): PlaceDetail["money"] {
+// consumer-web-get-place's and consumer-web-list-vouchers' `money`
+// (MESITA-3299, selling since MESITA-3303): the owner's switches, the
+// account's state, what is for sale and why the rest is not, the catalog and
+// the caller's credit. Any missing flag reads as off; no object reads as
+// absent; a catalog line with a bad number is dropped.
+export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
   if (!raw || typeof raw !== "object") return undefined;
   const m = raw as Record<string, unknown>;
   const v = (m.vouchers && typeof m.vouchers === "object" ? m.vouchers : {}) as Record<string, unknown>;
   const vouchers = {} as Record<VoucherKey, boolean>;
   for (const k of VOUCHER_KEYS) vouchers[k] = v[k] === true;
-  return { charges_enabled: m.charges_enabled === true, cashback: m.cashback === true, vouchers };
+  const isKey = (x: unknown): x is VoucherKey => typeof x === "string" && (VOUCHER_KEYS as readonly string[]).includes(x);
+  const sell = Array.isArray(m.sell) ? m.sell.filter(isKey) : [];
+  const unavailable: PlaceMoney["unavailable"] = {};
+  const u = (m.unavailable && typeof m.unavailable === "object" ? m.unavailable : {}) as Record<string, unknown>;
+  for (const k of VOUCHER_KEYS) if (typeof u[k] === "string") unavailable[k] = u[k] as VoucherReason;
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : null);
+  const catalog: PlaceMoney["catalog"] = {};
+  const c = (m.catalog && typeof m.catalog === "object" ? m.catalog : {}) as Record<string, unknown>;
+  for (const k of VOUCHER_KEYS) {
+    const line = c[k];
+    if (!line || typeof line !== "object") continue;
+    const l = line as Record<string, unknown>;
+    const price = n(l.price_cents);
+    const bonus = n(l.bonus_cents);
+    const credit = n(l.credit_cents);
+    const after = n(l.available_after_sec);
+    if (price === null || bonus === null || credit === null || after === null) continue;
+    catalog[k] = { price_cents: price, bonus_cents: bonus, credit_cents: credit, available_after_sec: after };
+  }
+  const b = m.balance && typeof m.balance === "object" ? (m.balance as Record<string, unknown>) : null;
+  const balance: PlaceBalance | null = b
+    ? {
+        available_cents: n(b.available_cents) ?? 0,
+        pending_cents: n(b.pending_cents) ?? 0,
+        held_cents: n(b.held_cents) ?? 0,
+        spendable_cents: n(b.spendable_cents) ?? 0,
+      }
+    : null;
+  return {
+    charges_enabled: m.charges_enabled === true,
+    cashback: m.cashback === true,
+    vouchers,
+    test_mode: m.test_mode === true,
+    currency: typeof m.currency === "string" ? m.currency : "mxn",
+    sell,
+    unavailable,
+    catalog,
+    balance,
+  };
 }
 
 // Google's documented write-review link (MESITA-2916).
@@ -106,7 +148,6 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
 
   return {
     reservations_enabled: isReserveActionEnabled(row),
-    prepay_enabled: row.prepay_enabled === true,
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,
@@ -140,7 +181,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     is_enriched: row.is_enriched === true ||
       (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     boost_tier: num(row.boost_tier) ?? 0,
-    money: placeMoney(row.money),
+    money: placeMoneyFrom(row.money),
     request_count: num(row.request_count) ?? 0,
     request_threshold: num(row.request_threshold) ?? 5,
     requested: row.requested === true,

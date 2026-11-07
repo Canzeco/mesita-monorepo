@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { usePlaceContext } from "../PlaceContext";
 import { updatePlace } from "../actions";
-import { prepayPatch, reservationsPatch } from "./action-patches";
+import { reservationsPatch } from "./action-patches";
 import { Card } from "@/components/shell/Page";
 import { Switch } from "@/components/ui/config";
 
@@ -51,15 +51,6 @@ export function ActionStatesCard() {
         <li className={ROW}>
           <span className="font-medium">Mesita Payments Enabled</span>
           <Switch on={false} pending onClick={() => {}} label="Mesita Payments Enabled" />
-        </li>
-        <li className={ROW}>
-          <span className="font-medium">Mesita Prepayments Enabled</span>
-          <Switch
-            on={place.prepay_enabled === true}
-            pending={pending === "prepay"}
-            onClick={() => void save("prepay", prepayPatch(place))}
-            label="Mesita Prepayments Enabled"
-          />
         </li>
         {error ? <li className={`${ROW} text-destructive`}>{error}</li> : null}
       </ul>

@@ -33,7 +33,11 @@ export type VoucherReason =
   | "needs_account"
   | "not_yet"
   | "needs_card_payments"
-  | "needs_instagram";
+  | "needs_instagram"
+  /** Selling is paused for every place (the admin console's kill switch). */
+  | "paused"
+  /** Welcome: this guest already had theirs here, or has paid here before. */
+  | "used";
 
 /** Vouchers in the catalog that no wave sells yet, and why. W1b sells the
  *  other three; MX$5,000 waits for its own wave, VIP for card payments

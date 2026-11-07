@@ -12,6 +12,8 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
+import { VOUCHER_CATALOG } from "./money.ts";
+import type { MoneyVoucherKey } from "./money-state.ts";
 
 export { classifySession } from "./checkout-session.ts";
 
@@ -25,9 +27,65 @@ export type OpenPurchase = {
   stripe_checkout_session_id: string | null;
   stripe_account_id: string;
   created_at: string;
+  /** The catalog key; null on a legacy prepay. */
+  voucher?: string | null;
   /** When the credit turns Available; null credits at once. */
   available_at?: string | null;
 };
+
+/** When a voucher paid now turns Available: open vouchers an hour after the
+ *  charge, earned ones at once (the catalog's available_after_sec). */
+export function availableAtFor(voucher: string | null | undefined, nowMs: number): string | null {
+  const line = voucher ? VOUCHER_CATALOG[voucher as MoneyVoucherKey] : undefined;
+  if (!line || line.available_after_sec <= 0) return null;
+  return new Date(nowMs + line.available_after_sec * 1000).toISOString();
+}
+
+/** The wallet read's settle-on-read under ONE budget: an AbortController on
+ *  the Stripe fetches only (the RPC after a fetch is always awaited), so a
+ *  slow Stripe never fails the read and never leaves a half-written credit.
+ *  Answers each purchase's outcome and the ids still open when the budget
+ *  ran out (`settling`). The receiver and the cron settle those later. */
+export async function settleAll(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  purchases: OpenPurchase[],
+  nowMs: number,
+  budgetMs: number,
+): Promise<{ outcomes: Map<string, SettleOutcome>; settling: string[] }> {
+  const outcomes = new Map<string, SettleOutcome>();
+  const settling: string[] = [];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), budgetMs);
+  try {
+    for (const p of purchases) {
+      if (controller.signal.aborted) {
+        settling.push(p.id);
+        outcomes.set(p.id, "pending");
+        continue;
+      }
+      try {
+        const o = await settlePurchase(
+          admin,
+          stripe,
+          { ...p, available_at: p.available_at ?? availableAtFor(p.voucher, nowMs) },
+          nowMs,
+          { signal: controller.signal },
+        );
+        outcomes.set(p.id, o);
+      } catch (err) {
+        // Aborted or failed: the guest sees it as pending; the next read,
+        // the receiver or the cron settles it.
+        if (!controller.signal.aborted) console.error("[wallet] settle", p.id, String(err));
+        settling.push(p.id);
+        outcomes.set(p.id, "pending");
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+  return { outcomes, settling };
+}
 
 /** Settles one open purchase against Stripe, on the purchase's own connected
  *  account. Idempotent: the RPC credits once. */
@@ -136,6 +194,23 @@ export function balancesOf(entries: Entry[], nowMs: number = Date.now()): Balanc
 
 // ── Place reads (kept last: the write-surface scan reads 2000 characters
 // after a `.from("profiles")`) ─────────────────────────────────────────────
+
+export type VoucherPlace = { id: string; name: string | null; state: string | null; currency: string | null };
+
+/** The place a guest buys a voucher at: its name for the receipt, its state
+ *  and its currency. */
+export async function readVoucherPlace(
+  admin: SupabaseClient,
+  placeId: string,
+): Promise<{ ok: true; place: VoucherPlace | null } | { ok: false; error: string }> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, name, state, currency")
+    .eq("id", placeId)
+    .maybeSingle();
+  if (error) return { ok: false, error: `place_read: ${error.message}` };
+  return { ok: true, place: (data as VoucherPlace | null) ?? null };
+}
 
 export type WalletPlace = { id: string; slug: string | null; name: string | null; photo: string | null };
 
