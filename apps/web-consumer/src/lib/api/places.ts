@@ -102,6 +102,10 @@ export type Place = {
   reservations_enabled?: boolean | null;
   /** Mesita Prepay (MESITA-3098): true where the place takes prepayments. */
   prepay_enabled?: boolean | null;
+  /** The Home tile's voucher line (MESITA-3312): the best bonus among the
+   *  vouchers the place sells now, a whole percent from the server; null or
+   *  absent = no line. Only list-catalog sends it. */
+  vouchers_up_to_pct?: number | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //

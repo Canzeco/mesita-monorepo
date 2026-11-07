@@ -99,6 +99,7 @@ import {
 } from "../_shared/area-pipeline.ts";
 import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
+import { withVouchersUpTo } from "../_shared/payments.ts";
 
 type Body = {
   lat?: number;
@@ -237,7 +238,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
       familyKeys: families,
       ...filled.summary,
     }));
-    return json({ ok: true, places: filled.places, summary: filled.summary });
+    // The tile's voucher line (MESITA-3312), two reads for the page.
+    return json({ ok: true, places: await withVouchersUpTo(admin, filled.places), summary: filled.summary });
   }
 
   let pool: Awaited<ReturnType<typeof selectCatalogPool<PoolRow>>>;
@@ -275,6 +277,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
     }));
   }
 
+  // The tile's voucher line (MESITA-3312), two reads for the page.
+  const places = await withVouchersUpTo(admin, pool.places);
+
   console.log(JSON.stringify({
     fn: "consumer-web-list-catalog",
     wire: "unified",
@@ -298,7 +303,7 @@ serveJson("consumer-web-list-catalog", async (req) => {
     next: offset === null || rank ? null : pool.summary.next,
     total: pool.summary.total,
     ...(rank ? { order: pool.order } : {}),
-    places: pool.places,
+    places,
     summary: pool.summary,
   });
 });
