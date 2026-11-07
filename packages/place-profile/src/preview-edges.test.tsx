@@ -118,10 +118,11 @@ describe("member preview edges", () => {
       />,
     );
     expect(html).toContain("3.8");
-    expect(html).toContain("3.8 ★ (484)");
+    expect(html).toContain(">484<");
+    expect(html).toContain("3.8 ★");
     expect(html).toContain("Instagram, not connected");
     expect(html).toContain("Facebook, not connected");
-    const googleAt = html.indexOf("3.8 ★ (484)");
+    const googleAt = html.indexOf(">484<");
     const instagramAt = html.indexOf(">Instagram<");
     const facebookAt = html.indexOf(">Facebook<");
     expect(googleAt).toBeGreaterThan(-1);
