@@ -54,13 +54,11 @@ const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
 
 const BOX_CLASS = "border-border bg-card overflow-hidden rounded-xl border";
 const ROW_CLASS = "flex items-center gap-3 p-3";
-/** A plan's face: 56px square, the level badge on its corner. */
+/** A plan's face: 56px square. No level badge on its corner since
+ *  MESITA-3374 (Pato: "this feels redundant"): the perk line says the
+ *  level once. */
 const FACE_CLASS =
   "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-lg";
-const FACE_BADGE_CLASS =
-  "absolute -top-1.5 -right-1.5 type-meta rounded-md px-1.5 py-0.5 leading-none font-semibold tabular-nums";
-/** The Premier red (PremierBadge.tsx), for the face's badge. */
-const PREMIER_RED = "bg-[#F4212E] text-white";
 /** One width for Buy and Now, so the column reads as one edge. */
 const SLOT_CLASS = "w-[76px] shrink-0";
 
@@ -164,10 +162,9 @@ export function BoostPane({
               <PlanFace rank={t.rank} />
               <div className="min-w-0 flex-1 text-sm">
                 <p className="font-semibold">{name}</p>
-                <p className="text-muted-foreground flex items-center gap-1.5">
-                  <PremierRosette />
-                  <span className="min-w-0">{VISIBILITY[t.rank]} visibility, Premier red tag</span>
-                </p>
+                {/* Words alone (MESITA-3374): the face already wears the
+                    rosette, so the line does not repeat it. */}
+                <p className="text-muted-foreground">{VISIBILITY[t.rank]} visibility, Premier red tag</p>
                 <p className="font-semibold tabular-nums">
                   {p ? (
                     `${money(p.price_cents)} USD for 3 months`
@@ -203,9 +200,8 @@ export function BoostPane({
   );
 }
 
-/** A plan's face: the level as a badge on the corner, the Premier rosette on
- *  red for a paid plan, a grey rocket for Free. Decorative: the row's text
- *  says the level. */
+/** A plan's face: the Premier rosette on red for a paid plan, a grey rocket
+ *  for Free. Decorative: the row's text says the level. */
 function PlanFace({ rank }: { rank: number }) {
   const premier = rank > 0;
   return (
@@ -218,9 +214,6 @@ function PlanFace({ rank }: { rank: number }) {
       ) : (
         <Rocket className="h-6 w-6" strokeWidth={1.75} />
       )}
-      <span className={cn(FACE_BADGE_CLASS, premier ? PREMIER_RED : "bg-foreground text-paper")}>
-        {VISIBILITY[rank]}
-      </span>
     </span>
   );
 }
