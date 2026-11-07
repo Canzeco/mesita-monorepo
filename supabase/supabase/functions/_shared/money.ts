@@ -25,6 +25,12 @@ export const MONEY_CURRENCY = "mxn";
  *  confirm on MESITA-3280]. */
 export const MIN_CHARGE_CENTS: Record<string, number> = { mxn: 10_00 };
 
+/** The most one credit-only payment may ask for (MESITA-3304), MX$100,000
+ *  [estimated]. An input guard against a typo, never a product limit: a
+ *  guest cannot hold more credit than was bought, and the RPC refuses more
+ *  than spendable anyway. Above it the EF answers 400 above_cap. */
+export const MAX_PAYMENT_INPUT_CENTS = 100_000_00;
+
 /** `cents * bps / 10000`, rounded down to the cent. */
 export function bps(cents: number, rateBps: number): number {
   return Math.floor((cents * rateBps) / 10000);

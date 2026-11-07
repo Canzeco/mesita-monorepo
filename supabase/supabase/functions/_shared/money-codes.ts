@@ -20,6 +20,7 @@ export const MONEY_CODES = [
   "below_minimum",
   "amount_required",
   "insufficient",
+  "above_cap",
   // The session
   "sign_in",
   "forbidden",

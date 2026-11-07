@@ -147,6 +147,9 @@ export type Entry = {
   created_at: string;
   /** Pending until this moment; missing reads as Available. */
   available_at?: string | null;
+  /** The payment a spend belongs to (MESITA-3304): the Wallet links it to
+   *  that payment's proof. */
+  payment_id?: string | null;
 };
 
 export type Balance = {
@@ -156,16 +159,30 @@ export type Balance = {
   balance_cents: number;
   available_cents: number;
   pending_cents: number;
+  /** What the guest can pay with now (MESITA-3304): Available minus credit
+   *  held by open payments, from SQL (wallet_balances), never below zero. */
+  spendable_cents: number;
   last_at: string;
-  entries: Array<{ kind: string; amount_cents: number; at: string; pending: boolean }>;
+  entries: Array<{ kind: string; amount_cents: number; at: string; pending: boolean; payment_id: string | null }>;
 };
 
+/** The key balancesOf and a spendable map share. */
+export function balanceKey(placeId: string, currency: string): string {
+  return `${placeId}:${currency}`;
+}
+
 /** One balance per (place, currency), newest activity first; entries newest
- *  first. A place whose entries sum to zero still shows (its history). */
-export function balancesOf(entries: Entry[], nowMs: number = Date.now()): Balance[] {
+ *  first. A place whose entries sum to zero still shows (its history).
+ *  `spendable` comes from SQL keyed by balanceKey; a balance it does not
+ *  name can pay nothing (the hold rule lives in SQL only). */
+export function balancesOf(
+  entries: Entry[],
+  nowMs: number = Date.now(),
+  spendable: Map<string, number> = new Map(),
+): Balance[] {
   const byKey = new Map<string, Balance>();
   for (const e of entries) {
-    const key = `${e.place_id}:${e.currency}`;
+    const key = balanceKey(e.place_id, e.currency);
     let b = byKey.get(key);
     if (!b) {
       b = {
@@ -174,6 +191,7 @@ export function balancesOf(entries: Entry[], nowMs: number = Date.now()): Balanc
         balance_cents: 0,
         available_cents: 0,
         pending_cents: 0,
+        spendable_cents: Math.max(spendable.get(key) ?? 0, 0),
         last_at: e.created_at,
         entries: [],
       };
@@ -184,7 +202,7 @@ export function balancesOf(entries: Entry[], nowMs: number = Date.now()): Balanc
     if (pending) b.pending_cents += e.amount_cents;
     else b.available_cents += e.amount_cents;
     if (e.created_at > b.last_at) b.last_at = e.created_at;
-    b.entries.push({ kind: e.kind, amount_cents: e.amount_cents, at: e.created_at, pending });
+    b.entries.push({ kind: e.kind, amount_cents: e.amount_cents, at: e.created_at, pending, payment_id: e.payment_id ?? null });
   }
   const out = [...byKey.values()];
   for (const b of out) b.entries.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));
