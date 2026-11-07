@@ -1,0 +1,64 @@
+name: shared
+
+# The money modules the place screen and the Edge Functions both run
+# (moneyState, the money codes) have one source in _shared and a generated
+# copy in packages/place-profile (MESITA-3302). This fails a PR whose copy
+# drifted from its source.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/supabase/functions/_shared/money-state.ts"
+      - "supabase/supabase/functions/_shared/money-codes.ts"
+      - "packages/place-profile/src/money-state.ts"
+      - "packages/place-profile/src/money-codes.ts"
+      - "scripts/sync-shared.ts"
+      - "deno.json"
+      - ".github/workflows/shared.yml"
+  # Every PR runs this workflow; the `changes` job decides whether the check
+  # has anything to do.
+  pull_request: {}
+
+concurrency:
+  group: shared-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: detect shared-module changes
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ github.event_name != 'pull_request' && 'true' || steps.filter.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: filter
+        with:
+          filters: |
+            shared:
+              - 'supabase/supabase/functions/_shared/money-state.ts'
+              - 'supabase/supabase/functions/_shared/money-codes.ts'
+              - 'packages/place-profile/src/money-state.ts'
+              - 'packages/place-profile/src/money-codes.ts'
+              - 'scripts/sync-shared.ts'
+              - 'deno.json'
+              - '.github/workflows/shared.yml'
+
+  # SKIPPED when the PR touches neither side, which merges. If `changes`
+  # fails, its output is empty, not 'false', and the check runs.
+  check:
+    name: shared modules in sync
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.changed != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.9.1
+
+      - name: Check
+        run: deno task sync-shared:check

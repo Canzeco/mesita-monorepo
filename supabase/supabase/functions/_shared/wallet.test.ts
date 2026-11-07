@@ -1,29 +1,13 @@
-// MESITA-3097 — the money rules of a prepayment: what amount is sold, which
-// Checkout answer credits a balance, and how entries sum.
+// MESITA-3097 / MESITA-3302 — the money rules of the Wallet: which Checkout
+// answer credits a balance, that a purchase is read on its own connected
+// account, and how entries sum into Available and Pending.
 
-import { assert, assertEquals } from "jsr:@std/assert@1";
-import { balancesOf, checkPrepayAmount, classifySession, parsePrepayStart, prepayCheckoutParams } from "./wallet.ts";
+import { assertEquals } from "jsr:@std/assert@1";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import type { StripeCall } from "./boost.ts";
+import { balancesOf, classifySession, type OpenPurchase, settlePurchase } from "./wallet.ts";
 
-const PLACE = "00000000-0000-4000-8000-000000003097";
 const PURCHASE = "00000000-0000-4000-8000-0000000a3097";
-
-Deno.test("parsePrepayStart: a Mesita return address and a positive whole amount", () => {
-  const ok = parsePrepayStart({ place_id: PLACE, amount_cents: 50000, return_url: "https://mesita.ai/web/pay" });
-  assert(ok.ok);
-  assert(!parsePrepayStart({ place_id: PLACE, amount_cents: 50000, return_url: "https://evil.example/pay" }).ok);
-  assert(!parsePrepayStart({ place_id: PLACE, amount_cents: 500.5, return_url: "https://mesita.ai/web/pay" }).ok);
-  assert(!parsePrepayStart({ place_id: PLACE, amount_cents: -100, return_url: "https://mesita.ai/web/pay" }).ok);
-  assert(!parsePrepayStart({ place_id: "nope", amount_cents: 50000, return_url: "https://mesita.ai/web/pay" }).ok);
-});
-
-Deno.test("checkPrepayAmount: whole pesos between 100 and 10,000; unknown currencies refused", () => {
-  assertEquals(checkPrepayAmount(10000, "mxn"), null);
-  assertEquals(checkPrepayAmount(1000000, "mxn"), null);
-  assert(checkPrepayAmount(9900, "mxn"));
-  assert(checkPrepayAmount(1000100, "mxn"));
-  assert(checkPrepayAmount(50050, "mxn"));
-  assert(checkPrepayAmount(50000, "eur"));
-});
 
 Deno.test("classifySession: only a paid session of THIS purchase credits", () => {
   const meta = { purchase_id: PURCHASE };
@@ -37,29 +21,51 @@ Deno.test("classifySession: only a paid session of THIS purchase credits", () =>
   assertEquals(classifySession({ metadata: meta, status: "expired", payment_status: "unpaid" }, PURCHASE).kind, "expired");
 });
 
-Deno.test("prepayCheckoutParams: charges the place's currency, returns with the session id", () => {
-  const p = prepayCheckoutParams({
-    customer: "cus_1",
-    purchaseId: PURCHASE,
-    placeId: PLACE,
-    consumerId: "c",
-    amountCents: 50000,
-    currency: "mxn",
-    placeName: "Pangea",
-    returnUrl: "https://mesita.ai/web/pay",
-    nowSec: 0,
-  }) as { mode: string; success_url: string; line_items: Array<{ price_data: { currency: string; unit_amount: number } }> };
-  assertEquals(p.mode, "payment");
-  assertEquals(p.success_url, "https://mesita.ai/web/pay?prepay={CHECKOUT_SESSION_ID}");
-  assertEquals(p.line_items[0].price_data, { ...p.line_items[0].price_data, currency: "mxn", unit_amount: 50000 });
+Deno.test("settlePurchase reads the session on the purchase's connected account and credits with its available_at", async () => {
+  const calls: Array<{ path: string; opts?: Record<string, unknown> }> = [];
+  const stripe: StripeCall = (_m, path, _p, opts) => {
+    calls.push({ path, opts: opts as Record<string, unknown> });
+    return Promise.resolve({ metadata: { purchase_id: PURCHASE }, payment_status: "paid", payment_intent: "pi_1" });
+  };
+  const rpcs: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const admin = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      rpcs.push({ name, args });
+      return Promise.resolve({ data: { ok: true, outcome: "credited" }, error: null });
+    },
+  } as unknown as SupabaseClient;
+  const purchase: OpenPurchase = {
+    id: PURCHASE,
+    stripe_checkout_session_id: "cs_1",
+    stripe_account_id: "acct_place",
+    created_at: "2026-11-07T00:00:00Z",
+    available_at: "2026-11-07T01:00:00Z",
+  };
+  const signal = new AbortController().signal;
+  assertEquals(await settlePurchase(admin, stripe, purchase, Date.parse("2026-11-07T00:05:00Z"), { signal }), "credited");
+  assertEquals(calls.length, 1);
+  assertEquals(calls[0].path, "checkout/sessions/cs_1");
+  assertEquals(calls[0].opts?.stripeAccount, "acct_place");
+  assertEquals(calls[0].opts?.signal, signal);
+  assertEquals(rpcs, [{
+    name: "wallet_credit_purchase",
+    args: { p_purchase_id: PURCHASE, p_payment_intent: "pi_1", p_available_at: "2026-11-07T01:00:00Z" },
+  }]);
 });
 
-Deno.test("balancesOf: one balance per place, newest first, entries summed", () => {
+Deno.test("balancesOf: one balance per place, newest first, Pending split from Available", () => {
+  const now = Date.parse("2026-11-07T12:00:00Z");
   const b = balancesOf([
-    { place_id: "a", kind: "prepay", amount_cents: 20000, currency: "mxn", created_at: "2026-11-01T10:00:00Z" },
-    { place_id: "b", kind: "prepay", amount_cents: 50000, currency: "mxn", created_at: "2026-11-01T12:00:00Z" },
-    { place_id: "a", kind: "prepay", amount_cents: 30000, currency: "mxn", created_at: "2026-11-01T11:00:00Z" },
+    { place_id: "a", kind: "voucher", amount_cents: 20000, currency: "mxn", created_at: "2026-11-07T10:00:00Z", available_at: "2026-11-07T11:00:00Z" },
+    { place_id: "b", kind: "voucher", amount_cents: 50000, currency: "mxn", created_at: "2026-11-07T11:30:00Z", available_at: "2026-11-07T12:30:00Z" },
+    { place_id: "a", kind: "bonus", amount_cents: 2000, currency: "mxn", created_at: "2026-11-07T10:00:00Z", available_at: "2026-11-07T11:00:00Z" },
+    { place_id: "a", kind: "spend", amount_cents: -5000, currency: "mxn", created_at: "2026-11-07T11:45:00Z" },
+  ], now);
+  // Newest activity first: the spend at 11:45 puts "a" ahead of "b" (11:30).
+  assertEquals(b.map((x) => [x.place_id, x.balance_cents, x.available_cents, x.pending_cents]), [
+    ["a", 17000, 17000, 0],
+    ["b", 50000, 0, 50000],
   ]);
-  assertEquals(b.map((x) => [x.place_id, x.balance_cents]), [["b", 50000], ["a", 50000]]);
-  assertEquals(b[1].entries.map((e) => e.amount_cents), [30000, 20000]);
+  assertEquals(b[0].entries.map((e) => [e.amount_cents, e.pending]), [[-5000, false], [20000, false], [2000, false]]);
+  assertEquals(b[1].entries[0].pending, true);
 });

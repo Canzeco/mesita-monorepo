@@ -584,8 +584,13 @@ export type StripeCall = (
   path: string,
   params?: Record<string, unknown>,
   /** `version`: a Stripe-Version header for this one call (Connect's account
-   *  create needs a preview version, MESITA-3296); unset is the key's default. */
-  opts?: { idempotencyKey?: string; version?: string },
+   *  create needs a preview version, MESITA-3296); unset is the key's default.
+   *  `stripeAccount`: a Stripe-Account header, so the call runs on the
+   *  place's connected account (direct charges and their refunds,
+   *  MESITA-3302); unset is Mesita's own account (Premier).
+   *  `signal`: aborts the fetch (a wallet read's budget), never the caller's
+   *  database write. */
+  opts?: { idempotencyKey?: string; version?: string; stripeAccount?: string; signal?: AbortSignal },
 ) => Promise<Record<string, unknown>>;
 
 export function stripeClient(key: string, fetchFn: typeof fetch = fetch): StripeCall {
@@ -598,7 +603,8 @@ export function stripeClient(key: string, fetchFn: typeof fetch = fetch): Stripe
     };
     if (opts?.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
     if (opts?.version) headers["Stripe-Version"] = opts.version;
-    const res = await fetchFn(url, { method, headers, body: method === "GET" ? undefined : body });
+    if (opts?.stripeAccount) headers["Stripe-Account"] = opts.stripeAccount;
+    const res = await fetchFn(url, { method, headers, body: method === "GET" ? undefined : body, signal: opts?.signal });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
       const err = (data.error ?? {}) as { message?: string; type?: string; code?: string };
