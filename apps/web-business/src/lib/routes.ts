@@ -28,7 +28,9 @@ export const ACCOUNT = "/account";
 // No Wallet (MESITA-3391, Pato: "wallet is for consumers, not for
 // businesses"; the MESITA-3377 mock is gone): credits are the guest's, and
 // a place's ways to pay live on Payments.
-export const PLACE_TABS = ["views", "visits", "money", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
+// No Reviews tab (MESITA-3393, Pato: "move reviews inside Profile"): the
+// reviews boxes sit under the Profile editor; /reviews redirects there.
+export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

@@ -88,8 +88,8 @@ function menu(
     place: {
       operations: [tab("views"), tab("visits"), tab("money")],
       products: [
+        // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),
-        tab("reviews"),
         tab("premier"),
         tab("payments"),
         // Last: every product, current and future (MESITA-3238).
