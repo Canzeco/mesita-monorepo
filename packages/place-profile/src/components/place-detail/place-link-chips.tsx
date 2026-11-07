@@ -39,6 +39,8 @@ export type ChannelChip = {
   logoWide?: boolean;
   logoOnly?: boolean;
   url: string;
+  /** The brand's own background and ink (MESITA-3320); grey without one. */
+  tone?: string;
 };
 
 export function ChannelChips({
@@ -54,7 +56,7 @@ export function ChannelChips({
 }) {
   return (
     <div className={grid ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
-      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url }) => {
+      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, tone }) => {
         // decision: trailing SquareArrowOutUpRight on web destinations so
         // chips read as "leaves the app" — skip tel: (Phone opens dialer).
         const leavesApp = !url.startsWith("tel:");
@@ -63,14 +65,15 @@ export function ChannelChips({
             ? `${label} (opens externally)`
             : label
           : undefined;
-        // ONE GREY BUTTON FOR EVERY LINK (MESITA-2636): the brand's own
-        // logo is the only colour; the tinted chips (sky, emerald, pink,
-        // amber) broke the consumer's black-and-white rule.
+        // EACH LINK ON ITS BRAND'S TINT (Pato, MESITA-3320: "Uber Eats must
+        // be green and so on"); a link with no tone keeps MESITA-2636's one
+        // grey button.
         const className = cn(
           grid
             ? PLACE_BUTTON_CLASS
             : "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition",
-          "bg-muted text-foreground hover:bg-muted/70",
+          tone ?? "bg-muted text-foreground hover:bg-muted/70",
+          tone && "hover:opacity-90",
         );
         const body = (
           <>
