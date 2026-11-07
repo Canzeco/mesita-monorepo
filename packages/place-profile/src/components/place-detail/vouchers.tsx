@@ -1,7 +1,7 @@
 "use client";
 
 import { type ComponentType, useEffect } from "react";
-import { Coffee, Coins, Crown, Hand, Utensils, Wine } from "lucide-react";
+import { Coins, Crown, Hand, Wallet } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -21,12 +21,19 @@ import { Box } from "./box";
 // (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and Special Welcome ·
 // Story · VIP, each with the same mark and colour on both sides (one mark
 // everywhere). A guest sees them as A CATALOG (Pato, MESITA-3323: "make a
-// catalog, like it must feel e commerce like products"): six product cards
-// in two columns that scroll down with the page (MESITA-3310 had them as
-// one card of rows, which read boring), Standard first: each card its mark
-// big on its colour with the bonus in a corner, the price as the product's
-// name, the credit it buys in one objective line (Pato: "be super
-// objective"), the condition, and Buy or the tag. Under the title, one
+// catalog, like it must feel e commerce like products"; MESITA-3326: "use
+// vertical list catalog with e-commerce vibes here. Not 2*3 but 1*6"): six
+// full-width product cards stacked down the page (the 2×3 grid lasted an
+// hour; MESITA-3310's card of rows read boring), Standard first: each card
+// a square face on the left, the mark big on its colour with the bonus in
+// a corner, and on the right the price as the product's name, the credit it
+// buys in one objective line (Pato: "be super objective"), the condition,
+// and Buy or the tag. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
+// wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
+// have the same icon and the same color. the deals that have different
+// colors are welcome and story VIP"); the specials keep their own. The
+// cashback in Payment promos is the same kind of card, so the two boxes
+// read as one module (Pato: "symmetry and modularity"). Under the title, one
 // line says the credit is ready an hour after the purchase, Story's at
 // once (the catalog's available_after_sec, MESITA-3302; Pato, MESITA-3323:
 // "must be 1 hour before paying the bill ... All but the Instagram one").
@@ -82,10 +89,12 @@ type Product = {
   tone: string;
 };
 
+const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
+
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "MX$200", line: "Get MX$220 of credit.", bonus: "+10%", mark: Coffee, tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "MX$1,000", line: "Get MX$1,200 of credit.", bonus: "+20%", mark: Utensils, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_5000", name: "MX$5,000", line: "Get MX$6,500 of credit.", bonus: "+30%", mark: Wine, tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_200", name: "MX$200", line: "Get MX$220 of credit.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_1000", name: "MX$1,000", line: "Get MX$1,200 of credit.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_5000", name: "MX$5,000", line: "Get MX$6,500 of credit.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
 ];
 
 const SPECIAL: Product[] = [
@@ -132,6 +141,21 @@ function tag(reason: VoucherReason | undefined): string {
 
 const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
 
+/** One product card, full width: the face on the left, the words on the
+ *  right (MESITA-3326). `ProductFace` is shared with the cashback card. */
+function ProductFace({ Mark, tone, badge }: { Mark: Mark; tone: string; badge: string }) {
+  return (
+    <div className={cn("relative flex w-28 shrink-0 items-center justify-center self-stretch", tone)} aria-hidden>
+      <Mark className="h-9 w-9" strokeWidth={1.75} />
+      <span className="bg-card/85 text-foreground absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums">
+        {badge}
+      </span>
+    </div>
+  );
+}
+
+const PRODUCT_CARD = "border-border bg-card flex min-h-28 overflow-hidden rounded-xl border";
+
 function VoucherCard({
   product,
   reason,
@@ -145,27 +169,18 @@ function VoucherCard({
   currency: string;
   actions?: PlaceActions;
 }) {
-  const Mark = product.mark;
   const forSale = !reason;
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher === product.key;
   const text = creditLine(product, line, currency);
   return (
     <li
-      className={cn(
-        "border-border bg-card flex flex-col overflow-hidden rounded-xl border",
-        !forSale && "opacity-50 grayscale",
-      )}
+      className={cn(PRODUCT_CARD, !forSale && "opacity-50 grayscale")}
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      <div className={cn("relative flex aspect-[4/3] items-center justify-center", product.tone)} aria-hidden>
-        <Mark className="h-10 w-10" strokeWidth={1.75} />
-        <span className="bg-card/85 text-foreground absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums">
-          {product.bonus}
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col gap-0.5 p-3">
+      <ProductFace Mark={product.mark} tone={product.tone} badge={product.bonus} />
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-3">
         <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <p className={PLACE_META_CLASS}>
           {text}
@@ -178,7 +193,7 @@ function VoucherCard({
             onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
             disabled={buying || (actions?.buyingVoucher != null && !buying)}
             aria-label={`Buy the ${product.name} voucher`}
-            className={cn(buyButton, "mt-auto w-full")}
+            className={cn(buyButton, "mt-auto self-start")}
           >
             {buying ? "Opening…" : "Buy"}
           </button>
@@ -246,21 +261,23 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         <p className={PLACE_META_CLASS}>
           Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
         </p>
-        <ul className="grid grid-cols-2 gap-3" data-voucher-catalog>
+        <ul className="flex flex-col gap-3" data-voucher-catalog>
           {[...STANDARD, ...SPECIAL].map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
           ))}
         </ul>
       </Box>
       <Box title="Payment promos">
-        <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
-          <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>
-            <Coins className="h-6 w-6" strokeWidth={1.75} aria-hidden />
-          </span>
-          <div className="min-w-0">
+        <div
+          className={cn(PRODUCT_CARD, !state.cashback && "opacity-50 grayscale")}
+          aria-label={`5% cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
+          data-cashback
+        >
+          <ProductFace Mark={Coins} tone={CASHBACK_TONE} badge="5%" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-3">
             <p className="text-foreground text-sm font-semibold">5% cashback</p>
             <p className={PLACE_META_CLASS}>Pay by card here and 5% of it comes back as credit.</p>
-            <p className={cn(PLACE_META_CLASS, "mt-1 font-medium", state.cashback && "text-foreground")}>{cashbackTag}</p>
+            <p className={cn(PLACE_META_CLASS, "mt-auto pt-2 font-medium", state.cashback && "text-foreground")}>{cashbackTag}</p>
           </div>
         </div>
       </Box>
