@@ -8,7 +8,7 @@ import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
-import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
+import { PLACE_BODY_CLASS, PLACE_META_CLASS, PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
 import { GoogleMapsMark } from "../BrandLogos";
@@ -197,19 +197,20 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
+      {/* THE FACTS ROW'S OWN CHIP (Pato, MESITA-3359: "hours looks like
+          shit"): the clock, then "Saturday · Closed until 10 AM" in ink, no
+          dot and no red or green (a coloured line with a dot for an hour,
+          MESITA-3343). */}
       {stateValue ? (
-        <p className="mb-2 flex items-center gap-2 text-sm font-semibold" data-hours-today>
-          <span
-            aria-hidden
-            className={cn(
-              "h-2 w-2 shrink-0 rounded-full",
-              place.open_now ? "bg-emerald-600" : "bg-red-600",
-            )}
-          />
-          {today ? <span className="text-foreground">{today}</span> : null}
-          {today ? <span className="text-muted-foreground">·</span> : null}
-          <span className={place.open_now ? "text-emerald-600" : "text-red-600"}>{stateValue}</span>
-        </p>
+        <div className="flex" data-hours-today>
+          <span className={PLACE_OUTLINE_CHIP_CLASS}>
+            <Clock className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+            <span className="truncate">
+              {today ? `${today} · ` : ""}
+              {stateValue}
+            </span>
+          </span>
+        </div>
       ) : null}
       <ul className="border-border overflow-hidden rounded-lg border">
         {place.hours_table.map((row) => (
