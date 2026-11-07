@@ -1,6 +1,6 @@
 "use client";
 
-import { Store, Ticket, type LucideIcon } from "lucide-react";
+import { Store, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/format";
 import { PLACE_SCREEN_TITLE_CLASS } from "../../lib/ui";
 
@@ -19,13 +19,6 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
   icon: Store,
   title: "No overview yet",
   line: "The overview of this place will show up here.",
-};
-
-/** The Vouchers tab of a place with nothing on (MESITA-3299). */
-export const NO_VOUCHERS: PlaceEmptyScreenProps = {
-  icon: Ticket,
-  title: "Vouchers",
-  line: "Not available yet at this place.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products), a place with no reviews yet (MESITA-2682) and Overview while the
