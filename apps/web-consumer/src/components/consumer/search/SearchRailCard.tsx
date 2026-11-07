@@ -15,6 +15,7 @@ import {
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
+  VouchersLine,
 } from "@/components/consumer/place-card";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
@@ -40,6 +41,13 @@ import {
  *  neighbor — the peek strip has to line up, and the square thumb stays the
  *  same size on every page. */
 export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
+/** A card with the promo strip: the same card under a 32px strip (Pato,
+ *  MESITA-3327: "if the place offers promos, mention the promos at the top,
+ *  just as one of the prev version"; MESITA-3246's coupon stood there). The
+ *  rail aligns to its foot, so only the strips stand up. */
+const RAIL_CARD_WITH_STRIP_HEIGHT_CLASS = "h-[10.375rem]";
+/** The strip as the card's top edge: square corners, a hairline under it. */
+const RAIL_CARD_STRIP = "border-fact-price/30 shrink-0 rounded-none border-b";
 
 /** The photo and text row: the card's 132px inner height, explicit so the square
  *  photo's h-full holds. The discount strip that stood above it left with the
@@ -133,12 +141,14 @@ export function RailCard({
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
+  // The server's number, or no strip (MESITA-3327).
+  const strip = typeof place.vouchers_up_to_pct === "number" && place.vouchers_up_to_pct > 0;
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        RAIL_CARD_HEIGHT_CLASS,
+        strip ? RAIL_CARD_WITH_STRIP_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
@@ -151,6 +161,7 @@ export function RailCard({
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
+        <VouchersLine pct={place.vouchers_up_to_pct} className={RAIL_CARD_STRIP} />
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card

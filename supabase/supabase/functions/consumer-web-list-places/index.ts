@@ -69,6 +69,7 @@ import {
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeysList } from "../_shared/place-family-keys.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
+import { withVouchersUpTo } from "../_shared/payments.ts";
 import { loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { DISCOVERY_DEFAULTS, NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { decideNearby, wantsGoogleFill } from "../_shared/geo.ts";
@@ -242,10 +243,9 @@ serveJson("consumer-web-list-places", async (req) => {
     lastId: area.summary.scanCapped ? area.lastId : undefined,
     returned: places.length,
   }));
-  return json({
-    ok: true,
-    places: withFamilyKeysList(
-      places.map(({ area: a, ...p }) => {
+  // The Search card's promo strip (MESITA-3327): `vouchers_up_to_pct` per
+  // row, two batched reads for the page, as list-catalog does (MESITA-3312).
+  const rows = places.map(({ area: a, ...p }) => {
         const wired = wireMapPlace(p as PlaceProfileRow);
         return {
           ...wired,
@@ -257,8 +257,12 @@ serveJson("consumer-web-list-places", async (req) => {
             distanceKm: a.distanceKm,
           } satisfies WireScore,
         };
-      }) as CardRow[],
-    ),
+      }) as CardRow[];
+  // No EF env (a local run with no service key): the strip just stays off.
+  const cards = efEnv.ok ? await withVouchersUpTo(adminClient(efEnv.env), rows) : rows;
+  return json({
+    ok: true,
+    places: withFamilyKeysList(cards),
     radiusKm,
     // The Map's reload throttle (MESITA-2444) plus min screen move (MESITA-2732);
     // the dead km/sec pair is not sent.
