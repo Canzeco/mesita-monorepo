@@ -8,6 +8,7 @@ import type { PlaceDetail } from "../../place-detail";
 
 import {
   CHANNEL_DEFS,
+  PHONE_TONE,
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
@@ -148,6 +149,7 @@ type LinkChipDef = {
   logo?: string;
   logoWide?: boolean;
   logoOnly?: boolean;
+  tone?: string;
 };
 
 function linkChipLogo(def: LinkChipDef) {
@@ -155,6 +157,7 @@ function linkChipLogo(def: LinkChipDef) {
     logo: def.logo,
     logoWide: def.logoWide,
     logoOnly: def.logoOnly,
+    tone: def.tone,
   };
 }
 
@@ -188,6 +191,7 @@ export function LinksBox({
       label: "Phone",
       Icon: Phone,
       url: `tel:${place.phone.replace(/\s+/g, "")}`,
+      tone: PHONE_TONE,
     });
   }
   for (const def of CHANNEL_DEFS) {
@@ -225,8 +229,8 @@ export function LinksBox({
   }
   if (chips.length === 0) return null;
   // decision: light like Location / About — drop the inverted Channels surface.
-  // Grey buttons, the brand's own logo the only colour (MESITA-2636; the
-  // soft clay tints were removed).
+  // Each button on its brand's tint since MESITA-3320 (MESITA-2636 had one
+  // grey button with the logo the only colour).
   // TWO COLUMNS OF BUTTONS (Pato, MESITA-2619: "for links make buttons in a
   // grid with 2 columns"): every link is a full-width cell of one height,
   // never a wrapping pill cluster that leaves a ragged last row.
