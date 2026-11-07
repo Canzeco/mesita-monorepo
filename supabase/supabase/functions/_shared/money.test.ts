@@ -2,7 +2,7 @@
 // down. Money, so pinned.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { bps, CASHBACK_BPS, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents } from "./money.ts";
+import { bps, CASHBACK_BPS, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct } from "./money.ts";
 
 Deno.test("bps rounds down to the cent", () => {
   assertEquals(bps(999_99, 500), 4999);
@@ -25,4 +25,11 @@ Deno.test("the catalog's bonuses and fees, in centavos", () => {
   assertEquals(voucherFeeCents("voucher_200"), 10_00);
   assertEquals(VOUCHER_CATALOG.voucher_200.available_after_sec, 3600);
   assertEquals(VOUCHER_CATALOG.voucher_welcome.available_after_sec, 0);
+});
+
+Deno.test("the Home tile's line is the best bonus among what the place sells (MESITA-3312)", () => {
+  assertEquals(vouchersUpToPct([]), null);
+  assertEquals(vouchersUpToPct(["voucher_200"]), 10);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000"]), 20);
+  assertEquals(vouchersUpToPct(["voucher_200", "voucher_1000", "voucher_welcome"]), 30);
 });

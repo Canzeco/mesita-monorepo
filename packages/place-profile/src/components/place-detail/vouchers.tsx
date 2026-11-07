@@ -10,19 +10,23 @@ import { PLACE_BUTTON_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { TestBand } from "../TestBand";
-import { Box, BoxHScroll } from "./box";
+import { Box } from "./box";
 
-// THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS (Pato, MESITA-3309: "Make the
-// Vouchers graphics. It must look like 6 digital products"). The six
-// vouchers are one catalog on the server (VOUCHER_CATALOG, MESITA-3302) and
-// the six cards Business › Payments draws (MESITA-3298): Standard MX$200 ·
-// MX$1,000 · MX$5,000 and Special Welcome · Story · VIP, each with the same
-// mark and colour on both sides (one mark everywhere). A guest sees them as
-// products on two shelves: a card per voucher, its mark on its colour, the
-// bonus, the price and the credit it buys, in one objective line (Pato: "be
-// super objective"); then Cashback, the standard 5%, as one more card.
+// THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
+// MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
+// products"; then MESITA-3310, with the two shelves scrolling sideways:
+// "Make the vouchers vertical, not scrollable horizontally. Just a list of
+// 6 items vertical"). The six vouchers are one catalog on the server
+// (VOUCHER_CATALOG, MESITA-3302) and the six cards Business › Payments draws
+// (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and Special Welcome ·
+// Story · VIP, each with the same mark and colour on both sides (one mark
+// everywhere). A guest sees them as one card of six rows, Standard first:
+// a row per voucher, its mark on its colour, the name, the bonus, the price
+// and the credit it buys, in one objective line (Pato: "be super objective");
+// then Cashback, the standard 5%, as one more card drawn the same way.
+// Nothing scrolls sideways.
 //
-// Every card is always there, so the tab never reads as empty and never
+// Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
 // and one it does not (the owner's switch off, no Stripe account, not
 // sellable by any wave yet, sales paused, or Welcome already had) is dimmed
@@ -30,12 +34,12 @@ import { Box, BoxHScroll } from "./box";
 // consumer-web-list-vouchers (moneyState's twin plus the kill switch and
 // Welcome-once); a read with no `sell` (an older EF, a Google-only card)
 // falls back to moneyState alone, with nothing for sale. The numbers on a
-// card are the server's catalog when the read carries one, else the copy
+// row are the server's catalog when the read carries one, else the copy
 // here; this file formats cents and never adds. The guest's credit here
 // leads the tab when they have any; the TestBand leads everything while
 // Stripe is in test mode.
 //
-// decision: the cards carry colour on an achromatic screen (MESITA-2636): a
+// decision: the marks carry colour on an achromatic screen (MESITA-2636): a
 // voucher is a product with its own face, as a brand's logo is, and the same
 // face the owner sees on Payments.
 
@@ -55,7 +59,7 @@ function InstagramMark({ className, strokeWidth = 2 }: { className?: string; str
 
 type Product = {
   key: MoneyVoucherKey;
-  /** The product's name on the card: the amount, or the special's name. */
+  /** The product's name on the row: the amount, or the special's name. */
   name: string;
   /** What the guest gets, in one line (the copy when the read has no catalog). */
   line: string;
@@ -63,7 +67,7 @@ type Product = {
   when?: string;
   bonus: string;
   mark: Mark;
-  /** The card's face and the mark on it. */
+  /** The mark's tile and the mark on it. */
   tone: string;
 };
 
@@ -98,11 +102,10 @@ export function pesos(cents: number, currency: string): string {
   }
 }
 
-/** The card's line from the server's catalog, else the copy. */
+/** The row's line from the server's catalog, else the copy. */
 function creditLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (!line) return product.line;
-  const special = product.when !== undefined;
-  return special
+  return product.when !== undefined
     ? `Pay ${pesos(line.price_cents, currency)}, get ${pesos(line.credit_cents, currency)} of credit.`
     : `Get ${pesos(line.credit_cents, currency)} of credit.`;
 }
@@ -116,9 +119,9 @@ function tag(reason: VoucherReason | undefined): string {
   return "Coming soon";
 }
 
-const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 w-full hover:opacity-90 disabled:opacity-60");
+const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
 
-function VoucherCard({
+function VoucherRow({
   product,
   reason,
   line,
@@ -138,67 +141,37 @@ function VoucherCard({
   const text = creditLine(product, line, currency);
   return (
     <li
-      className={cn(
-        "border-border bg-card flex w-40 shrink-0 flex-col overflow-hidden rounded-xl border",
-        !forSale && "opacity-50 grayscale",
-      )}
-      aria-label={`${product.name} voucher, ${text} ${tag(reason)}`}
+      className={cn("flex items-center gap-3 py-3 first:pt-0 last:pb-0", !forSale && "opacity-50 grayscale")}
+      aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      <div className={cn("relative flex h-24 items-center justify-center", product.tone)} aria-hidden>
-        <Mark className="h-9 w-9" strokeWidth={1.75} />
-        <span className="bg-card/85 text-foreground absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums">
-          {product.bonus}
-        </span>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", product.tone)}>
+        <Mark className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-sm font-semibold">
+          {product.name}
+          <span className="text-muted-foreground ml-2 font-medium tabular-nums">{product.bonus}</span>
+        </p>
+        <p className={PLACE_META_CLASS}>
+          {text}
+          {product.when ? ` ${product.when}` : null}
+        </p>
+        {forSale ? null : <p className={cn(PLACE_META_CLASS, "mt-1 font-medium")}>{tag(reason)}</p>}
       </div>
-      <div className="flex flex-1 flex-col gap-0.5 p-3">
-        <p className="text-foreground text-sm font-semibold">{product.name}</p>
-        <p className={PLACE_META_CLASS}>{text}</p>
-        {product.when ? <p className={PLACE_META_CLASS}>{product.when}</p> : null}
-        {forSale ? (
-          <button
-            type="button"
-            {...inertButtonProps(live)}
-            onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
-            disabled={buying || (actions?.buyingVoucher != null && !buying)}
-            aria-label={`Buy the ${product.name} voucher`}
-            className={buyButton}
-          >
-            {buying ? "Opening…" : "Buy"}
-          </button>
-        ) : (
-          <p className={cn(PLACE_META_CLASS, "mt-auto pt-1.5 font-medium")}>{tag(reason)}</p>
-        )}
-      </div>
+      {forSale ? (
+        <button
+          type="button"
+          {...inertButtonProps(live)}
+          onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
+          disabled={buying || (actions?.buyingVoucher != null && !buying)}
+          aria-label={`Buy the ${product.name} voucher`}
+          className={buyButton}
+        >
+          {buying ? "Opening…" : "Buy"}
+        </button>
+      ) : null}
     </li>
-  );
-}
-
-function Shelf({
-  title,
-  products,
-  unavailable,
-  catalog,
-  currency,
-  actions,
-}: {
-  title: string;
-  products: Product[];
-  unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>>;
-  catalog: Partial<Record<MoneyVoucherKey, VoucherCatalogLine>>;
-  currency: string;
-  actions?: PlaceActions;
-}) {
-  return (
-    <Box title={title}>
-      <BoxHScroll>
-        <ul className="flex gap-3">
-          {products.map((p) => (
-            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
-          ))}
-        </ul>
-      </BoxHScroll>
-    </Box>
   );
 }
 
@@ -250,8 +223,13 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Shelf title="Standard vouchers" products={STANDARD} unavailable={unavailable} catalog={catalog} currency={currency} actions={actions} />
-      <Shelf title="Special vouchers" products={SPECIAL} unavailable={unavailable} catalog={catalog} currency={currency} actions={actions} />
+      <Box title="Vouchers">
+        <ul className="divide-border divide-y">
+          {[...STANDARD, ...SPECIAL].map((p) => (
+            <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
+          ))}
+        </ul>
+      </Box>
       <Box title="Cashback">
         <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
           <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>

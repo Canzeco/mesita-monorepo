@@ -61,3 +61,12 @@ export function voucherBonusCents(key: MoneyVoucherKey): number {
 export function voucherFeeCents(key: MoneyVoucherKey): number {
   return bps(VOUCHER_CATALOG[key].price_cents, MESITA_FEE_BPS_VOUCHER);
 }
+
+/** The best bonus among the vouchers a place sells now, as a whole percent
+ *  for the Home tile's one line ("Up to 30% extra credit", MESITA-3312);
+ *  null when it sells none. The client prints it, never computes it. */
+export function vouchersUpToPct(sell: readonly MoneyVoucherKey[]): number | null {
+  let best = 0;
+  for (const key of sell) best = Math.max(best, VOUCHER_CATALOG[key].bonus_bps);
+  return best > 0 ? Math.floor(best / 100) : null;
+}

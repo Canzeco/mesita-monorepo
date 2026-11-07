@@ -16,14 +16,17 @@ import {
   CardActions,
   HoursRow,
   KindRow,
+  VouchersLine,
   cardFacts,
 } from "@/components/consumer/place-card";
 import {
   TILE_ACTIONS,
   TILE_BAND,
+  TILE_FOOT,
   TILE_FRAME,
   TILE_PHOTO,
   TILE_TEXT,
+  TILE_TEXT_WITH_VOUCHERS,
 } from "./catalog-tile-classes";
 
 /**
@@ -77,8 +80,9 @@ function TileLink({
 /**
  * One place, as one tile (Pato, MESITA-2364, MESITA-2373): the photo on top,
  * a white band below carrying three rows — name; $$ · category · stars;
- * Open or Closed · distance (MESITA-3229) — and two buttons, with the coupon under
- * them when the place has a discount (MESITA-3233). The buttons, Save and Share
+ * Open or Closed · distance (MESITA-3229) — and two buttons, with the voucher
+ * line under them when the place sells vouchers (MESITA-3312, in the coupon's
+ * old spot, MESITA-3233). The buttons, Save and Share
  * (MESITA-2650, MESITA-2668). A Premier place wears the Premier mark
  * after its name, "Premier 2X" (MESITA-2925; Enriched has no guest mark). A Google-only card opens its profile
  * through `onOpenGoogle`, and its one button, Generate Profile, does the
@@ -116,6 +120,8 @@ export function CatalogTile({
   // $$ · category · stars; Open or Closed · distance. No zone on the tile. Each
   // cell hides when the place has none.
   const facts = cardFacts(place);
+  // The server's number, or nothing (MESITA-3312).
+  const vouchers = typeof place.vouchers_up_to_pct === "number" && place.vouchers_up_to_pct > 0;
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
@@ -164,8 +170,9 @@ export function CatalogTile({
   // THE PHOTO ABOUT 60%, THE TEXT THE REST (Pato, MESITA-3233: "return to 60%
   // image and 40% text or whatever"), every tile, a Google-only card too
   // (MESITA-2663): name; $$ · category · stars; Open or Closed · distance; then
-  // Save and Share side by side (32px, 44px hit area). The coupon under them
-  // left with the discount product (MESITA-3299). 20px
+  // Save and Share side by side (32px, 44px hit area), then the voucher line
+  // when the place sells vouchers (MESITA-3312; the coupon that sat there
+  // left with the discount product, MESITA-3299). 20px
   // lines and a 2px gap. The
   // photo is fully
   // shown and centred, nothing over it (MESITA-2369); the band under it is
@@ -199,7 +206,13 @@ export function CatalogTile({
               on a 20px line, full ink (place-card.tsx). TILE_TEXT leaves
               room for Save and Share. The mark follows the
               name. */}
-          <div className={cn("text-foreground", TILE_TEXT)}>
+          <div
+            className={cn(
+              "text-foreground",
+              TILE_TEXT,
+              vouchers && TILE_TEXT_WITH_VOUCHERS,
+            )}
+          >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               <PremierBadge tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} />
@@ -213,9 +226,9 @@ export function CatalogTile({
           Share (Pato, MESITA-2843, reversing MESITA-2663): the tap is the
           card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
           foot (MESITA-2668); it was 8px at the foot. */}
-      {/* The foot lets taps through to the card's own link; only the buttons
-          catch their own (MESITA-3246). */}
-      <div className={cn(TILE_ACTIONS, "pointer-events-none")}>
+      {/* The foot lets taps through, so the voucher line opens the place like
+          the rest of the card (MESITA-3246); only the buttons catch their own. */}
+      <div className={cn(TILE_ACTIONS, TILE_FOOT, "pointer-events-none")}>
         <CardActions
           className="pointer-events-auto"
           name={place.name}
@@ -231,6 +244,7 @@ export function CatalogTile({
               : undefined
           }
         />
+        <VouchersLine pct={place.vouchers_up_to_pct} />
       </div>
     </li>
   );
