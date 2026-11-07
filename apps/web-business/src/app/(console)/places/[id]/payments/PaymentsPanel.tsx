@@ -65,7 +65,7 @@ const STANDARD: Product[] = [
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome voucher", line: "Guest pays MX$100, gets MX$130 of credit. Once, on the first visit.", value: "+30%", icon: HandWavingIcon, tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story voucher", line: "Guest pays MX$100, gets MX$130 of credit after posting an Instagram story at your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-yellow-100 text-yellow-700" },
+  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
 
 /** Why a switched-on voucher is not for sale yet, beside its switch
