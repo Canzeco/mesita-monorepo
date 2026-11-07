@@ -7,26 +7,30 @@ import { cn } from "../../lib/format";
 import { PLACE_META_CLASS } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail } from "../../place-detail";
-import { Box, BoxHScroll } from "./box";
+import { Box } from "./box";
 
-// THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS (Pato, MESITA-3309: "Make the
-// Vouchers graphics. It must look like 6 digital products"). The six
-// vouchers are one catalog on the server (VOUCHER_CATALOG, MESITA-3302) and
-// the six cards Business › Payments draws (MESITA-3298): Standard MX$200 ·
-// MX$1,000 · MX$5,000 and Special Welcome · Story · VIP, each with the same
-// mark and colour on both sides (one mark everywhere). A guest sees them as
-// products on two shelves: a card per voucher, its mark on its colour, the
-// bonus, the price and the credit it buys, in one objective line (Pato: "be
-// super objective"); then Cashback, the standard 5%, as one more card.
+// THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
+// MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
+// products"; then MESITA-3310, with the two shelves scrolling sideways:
+// "Make the vouchers vertical, not scrollable horizontally. Just a list of
+// 6 items vertical"). The six vouchers are one catalog on the server
+// (VOUCHER_CATALOG, MESITA-3302) and the six cards Business › Payments draws
+// (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and Special Welcome ·
+// Story · VIP, each with the same mark and colour on both sides (one mark
+// everywhere). A guest sees them as one card of six rows, Standard first:
+// a row per voucher, its mark on its colour, the name, the bonus, the price
+// and the credit it buys, in one objective line (Pato: "be super objective");
+// then Cashback, the standard 5%, as one more card drawn the same way.
+// Nothing scrolls sideways.
 //
-// Every card is always there, so the tab never reads as empty and never
+// Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit, and one it does not (the
 // owner's switch off, no Stripe account, or not sellable by any wave yet) is
 // dimmed with one tag. moneyState (the server's twin) decides which is which.
 // Read only: buying arrives with MESITA-3272 W1b (MESITA-3303). The amounts
 // are the catalog's and copy here; the server never sells from this list.
 //
-// decision: the cards carry colour on an achromatic screen (MESITA-2636): a
+// decision: the marks carry colour on an achromatic screen (MESITA-2636): a
 // voucher is a product with its own face, as a brand's logo is, and the same
 // face the owner sees on Payments.
 
@@ -46,7 +50,7 @@ function InstagramMark({ className, strokeWidth = 2 }: { className?: string; str
 
 type Product = {
   key: MoneyVoucherKey;
-  /** The product's name on the card: the amount, or the special's name. */
+  /** The product's name on the row: the amount, or the special's name. */
   name: string;
   /** What the guest gets, in one line. */
   line: string;
@@ -54,7 +58,7 @@ type Product = {
   when?: string;
   bonus: string;
   mark: Mark;
-  /** The card's face and the mark on it. */
+  /** The mark's tile and the mark on it. */
   tone: string;
 };
 
@@ -79,44 +83,29 @@ function tag(reason: VoucherReason | undefined): string {
   return "Coming soon";
 }
 
-function VoucherCard({ product, reason }: { product: Product; reason: VoucherReason | undefined }) {
+function VoucherRow({ product, reason }: { product: Product; reason: VoucherReason | undefined }) {
   const Mark = product.mark;
   const on = !reason;
   return (
     <li
-      className={cn(
-        "border-border bg-card flex w-40 shrink-0 flex-col overflow-hidden rounded-xl border",
-        !on && "opacity-50 grayscale",
-      )}
-      aria-label={`${product.name} voucher, ${product.line} ${tag(reason)}`}
+      className={cn("flex items-center gap-3 py-3 first:pt-0 last:pb-0", !on && "opacity-50 grayscale")}
+      aria-label={`${product.name} voucher, ${product.bonus}, ${product.line} ${product.when ?? ""} ${tag(reason)}`}
     >
-      <div className={cn("relative flex h-24 items-center justify-center", product.tone)} aria-hidden>
-        <Mark className="h-9 w-9" strokeWidth={1.75} />
-        <span className="bg-card/85 text-foreground absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums">
-          {product.bonus}
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col gap-0.5 p-3">
-        <p className="text-foreground text-sm font-semibold">{product.name}</p>
-        <p className={PLACE_META_CLASS}>{product.line}</p>
-        {product.when ? <p className={PLACE_META_CLASS}>{product.when}</p> : null}
-        <p className={cn(PLACE_META_CLASS, "mt-auto pt-1.5 font-medium", on && "text-foreground")}>{tag(reason)}</p>
+      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", product.tone)}>
+        <Mark className="h-6 w-6" strokeWidth={1.75} aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-foreground text-sm font-semibold">
+          {product.name}
+          <span className="text-muted-foreground ml-2 font-medium tabular-nums">{product.bonus}</span>
+        </p>
+        <p className={PLACE_META_CLASS}>
+          {product.line}
+          {product.when ? ` ${product.when}` : null}
+        </p>
+        <p className={cn(PLACE_META_CLASS, "mt-1 font-medium", on && "text-foreground")}>{tag(reason)}</p>
       </div>
     </li>
-  );
-}
-
-function Shelf({ title, products, unavailable }: { title: string; products: Product[]; unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> }) {
-  return (
-    <Box title={title}>
-      <BoxHScroll>
-        <ul className="flex gap-3">
-          {products.map((p) => (
-            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} />
-          ))}
-        </ul>
-      </BoxHScroll>
-    </Box>
   );
 }
 
@@ -139,8 +128,13 @@ export function VouchersPane({ place }: { place: PlaceDetail }) {
   const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
   return (
     <div className="flex flex-col gap-3">
-      <Shelf title="Standard vouchers" products={STANDARD} unavailable={state.unavailable} />
-      <Shelf title="Special vouchers" products={SPECIAL} unavailable={state.unavailable} />
+      <Box title="Vouchers">
+        <ul className="divide-border divide-y">
+          {[...STANDARD, ...SPECIAL].map((p) => (
+            <VoucherRow key={p.key} product={p} reason={state.unavailable[p.key]} />
+          ))}
+        </ul>
+      </Box>
       <Box title="Cashback">
         <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
           <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>
