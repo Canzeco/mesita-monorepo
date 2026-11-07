@@ -232,43 +232,11 @@ export function RailScoreTag({ place }: { place: Pick<Place, "score"> }) {
   );
 }
 
-/**
- * The same numbers ON THE CARD'S PHOTO (Pato, MESITA-2877: "remove the scores
- * from there for the moment and put them on top of the image but kinda
- * transparent"): Search's rail, and Home's tiles too since MESITA-3053. A translucent dark scrim at the photo's foot, small white mono,
- * one number a line so it fits the square (what Proximity read, km and k,
- * on a line of its own). It never takes a tap: the photo
- * is the card's open target. The sources line is gone here: since
- * MESITA-2872 every place carries both Mesita sources.
- */
-export function RailScoreOverlay({ place }: { place: Pick<Place, "score"> }) {
-  const score = place.score;
-  if (!score) return null;
-  return (
-    <div
-      className="type-meta pointer-events-none absolute inset-x-0 bottom-0 bg-black/45 px-2 py-1.5 font-mono leading-tight text-white/90 tabular-nums"
-      data-rail-score-overlay
-    >
-      <p>prox {fmtScore(score.proximity)}</p>
-      {typeof score.distanceKm === "number" ? (
-        <p>
-          {score.distanceKm.toFixed(2)} km
-          {typeof score.distancePenalty === "number"
-            ? ` · k ${score.distancePenalty}`
-            : ""}
-        </p>
-      ) : null}
-      <p>pop {fmtScore(score.popularity)}</p>
-      <p>
-        premier{" "}
-        {fmtScore(
-          typeof score.selectedFactor === "number" ? score.selectedFactor : 1,
-        )}
-      </p>
-      <p className="font-semibold text-white">final {fmtScore(score.final)}</p>
-    </div>
-  );
-}
+// NO SCORE ON THE PHOTO (Pato, MESITA-3338: "remove the scores from here
+// too", after Home's went in MESITA-3319): RailScoreOverlay, the translucent
+// readout at the photo's foot (MESITA-2877, "put them on top of the image but
+// kinda transparent"), is gone; the breakdown lives on the place screen's
+// Overview, the Score box.
 
 export function SearchRailOverlay({
   places,
@@ -354,7 +322,6 @@ export function SearchRailOverlay({
                     <RailCard
                       key={place.id}
                       place={place}
-                      photoOverlay={<RailScoreOverlay place={place} />}
                       selected={place.id === selectedId}
                       onOpen={() => onOpenPlace(place)}
                       saved={cards.isSaved(place)}
