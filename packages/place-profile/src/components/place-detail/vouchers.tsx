@@ -144,8 +144,14 @@ function creditLine(product: Product, line: VoucherCatalogLine | undefined, curr
   if (!line) return product.line;
   return `Pay ${pesos(line.price_cents, currency)}, get ${pesos(line.credit_cents, currency)}.`;
 }
+/** What you pay, on its own line in the grid: "Pay MX$100"; Story adds the
+ *  post (Pato, MESITA-3364: "Pay X & post story, get Y"). */
+function payLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
+  const pay = priceValue(product, line, currency);
+  return product.key === "voucher_story" ? `Pay ${pay} & post a story` : `Pay ${pay}`;
+}
 /** The exchange in words: "Pay MX$100, get MX$130"; Story adds the post
- *  (Pato, MESITA-3364: "Pay X & post story, get Y"). */
+ *  (Pato, MESITA-3364: "Pay X & post story, get Y"). The aria label. */
 function exchangeLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   const pay = priceValue(product, line, currency);
   const get = creditValue(product, line, currency);
@@ -195,6 +201,9 @@ const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl bo
 // fucking bigger"): 18px bold on the card's white chip; 12px until then.
 /** A Promos section title: 18px, two steps over the boxes' 16px. */
 const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
+/** A small gift card in the 3×2 grid (MESITA-3370). */
+const GRID_CARD = "relative flex min-h-44 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-2.5";
+const GRID_BADGE = "bg-card/85 text-foreground self-start rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
@@ -226,29 +235,22 @@ function VoucherCard({
   const buyable = forSale || (!dim && reason !== "used" && reason !== "paused");
   return (
     <li
-      className={cn(GIFT_CARD, product.tone, !forSale && dim && "opacity-50 grayscale")}
+      className={cn(GRID_CARD, product.tone, !forSale && dim && "opacity-50 grayscale")}
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      <Watermark Mark={product.mark} />
-      <div className="relative flex items-start justify-between gap-2">
-        <p className="text-foreground text-sm font-semibold">{product.name}</p>
-        <span className={GIFT_BADGE}>{product.bonus}</span>
-      </div>
-      {/* THE EXCHANGE IN WORDS (Pato, MESITA-3364, with inKind's "Pay $499,
-          Get $625 · 25% Bonus" rows beside: "something easy to understand
-          in each box: Pay X, get Y, and then the bonus. And for the story:
-          Pay X & post story, get Y"): one 18px line; the arrow line
-          "MX$100 → MX$130" (MESITA-3360) until then. */}
-      <p className="text-foreground relative mt-3 text-lg leading-snug font-semibold tabular-nums" data-voucher-credit>
-        {exchangeLine(product, line, currency)}
+      {/* A SMALL GIFT CARD (MESITA-3370): the name, the bonus badge, "Pay
+          MX$100" over "Get MX$130" (the words of MESITA-3364 on two lines
+          so they fit a third of the page), the limit, a full-width Buy and
+          the state. No watermark at this size. */}
+      <p className="text-foreground truncate text-sm font-semibold">{product.name}</p>
+      <span className={GRID_BADGE}>{product.bonus}</span>
+      <p className="text-foreground mt-1 text-xs leading-snug tabular-nums">{payLine(product, line, currency)}</p>
+      <p className="text-foreground text-sm leading-snug font-semibold tabular-nums" data-voucher-credit>
+        Get {creditValue(product, line, currency)}
       </p>
-      <p className="text-foreground/70 relative mt-1 text-xs">
-        {product.when ? `${product.when} ` : null}
-        {product.limit}
-      </p>
-      <div className="relative mt-auto flex items-end justify-between gap-2 pt-3">
-        <p className="text-foreground/70 min-w-0 text-xs font-medium">{forSale ? "" : tag(reason)}</p>
+      <p className="text-foreground/70 line-clamp-2 text-xs leading-snug">{product.limit}</p>
+      <div className="mt-auto flex flex-col gap-1.5 pt-2">
         {buyable ? (
           <button
             type="button"
@@ -256,11 +258,12 @@ function VoucherCard({
             onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
             disabled={buying || (actions?.buyingVoucher != null && !buying)}
             aria-label={`Buy the ${product.name} voucher`}
-            className={cn(buyButton, "mt-0 shrink-0")}
+            className={cn(buyButton, "mt-0 h-9 w-full px-2")}
           >
             {buying ? "Opening…" : "Buy"}
           </button>
         ) : null}
+        {forSale ? null : <p className="text-foreground/70 text-xs leading-snug font-medium">{tag(reason)}</p>}
       </div>
     </li>
   );
@@ -383,7 +386,10 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         <p className={PLACE_META_CLASS}>
           Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
         </p>
-        <ul className="flex flex-col gap-3" data-voucher-catalog>
+        {/* THREE ACROSS, TWO ROWS (Pato, MESITA-3370: "for the prepayments
+            offers/deals actually use ... three columns, two rows"); one
+            full-width card each from MESITA-3326 until then. */}
+        <ul className="grid grid-cols-3 gap-2" data-voucher-catalog>
           {[...SPECIAL, ...STANDARD].map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
