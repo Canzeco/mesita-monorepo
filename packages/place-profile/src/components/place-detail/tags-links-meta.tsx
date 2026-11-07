@@ -116,12 +116,10 @@ export function ScoreBox({ place }: { place: PlaceDetail }) {
   const score = place.score;
   if (!score) return null;
   const rows: Array<{ key: string; label: string; value: string; strong?: boolean }> = [
+    // ONE NEARNESS ROW (Pato, MESITA-3341: "what the fuck with proximity and
+    // distance, use just one score"): Proximity alone; the km sits in the
+    // header chips, and `score.distance_km` stays on the type for them.
     { key: "proximity", label: "Proximity", value: scoreNumber(score.proximity) },
-    {
-      key: "distance",
-      label: "Distance",
-      value: typeof score.distance_km === "number" ? `${scoreNumber(score.distance_km, 1)} km` : "n/a",
-    },
     { key: "popularity", label: "Popularity", value: scoreNumber(score.popularity) },
     { key: "premier", label: "Premier", value: `×${scoreNumber(score.premier, 0)}` },
     { key: "final", label: "Final", value: scoreNumber(score.final), strong: true },
