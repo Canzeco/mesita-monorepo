@@ -199,7 +199,9 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
 const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/50 p-3";
 // The bonus badge is BIG (Pato, MESITA-3363: "mention the percentage
 // fucking bigger"): 18px bold on the card's white chip; 12px until then.
-/** A Promos section title: 18px, two steps over the boxes' 16px. */
+/** A Rewards section title: 18px, two steps over the boxes' 16px. The tab
+ *  is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or Perks";
+ *  Promos from MESITA-3322, Vouchers before). */
 const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
 /** A small gift card in the 3×2 grid (MESITA-3370). */
 const GRID_CARD = "relative flex min-h-40 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-3";
@@ -344,7 +346,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           an 18px title and one grey line. */}
       <section className="flex flex-col gap-3" data-promos="payment">
         <div>
-          <h3 className={PROMOS_TITLE_CLASS}>Payment Promos</h3>
+          <h3 className={PROMOS_TITLE_CLASS}>Payment Rewards</h3>
           <p className={PLACE_META_CLASS}>When you pay the bill here.</p>
         </div>
         <div
@@ -382,7 +384,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
       <hr className="border-border my-1" aria-hidden />
       <section className="flex flex-col gap-3" data-promos="prepayment">
         <div>
-          <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Promos</h3>
+          <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Rewards</h3>
           <p className={PLACE_META_CLASS}>Credit you buy before you go.</p>
         </div>
         {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]

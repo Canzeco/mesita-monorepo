@@ -36,7 +36,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "products", label: "Menu", soon: true },
   { key: "reviews", label: "Reviews" },
-  { key: "vouchers", label: "Promos" },
+  { key: "vouchers", label: "Rewards" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
