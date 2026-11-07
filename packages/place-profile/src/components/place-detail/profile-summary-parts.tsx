@@ -96,7 +96,9 @@ export function ProfileStat({
         </span>
       ) : null}
       {/* ONE BOLD LINE (MESITA-3355): the value, then the detail at the same
-          size with a filled yellow star hugging it, Google's "11K 4.7★"
+          size with a filled star in the ink hugging it, Google's "11K 4.7★"
+          (dark since MESITA-3358, Pato: "make google star dark again";
+          amber for an hour)
           (Pato: "same text for stars ... in the same line, not below ...
           an actual star, yellow"); a small line under the value for an
           hour (MESITA-3351), "4.9 ★ (13.8K)" before. "-" is muted. */}
@@ -117,7 +119,7 @@ export function ProfileStat({
         {detail ? (
           <span className="ml-1.5 inline-flex items-center gap-0.5">
             {detail}
-            <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+            <Star className="h-4 w-4 fill-current" aria-hidden />
           </span>
         ) : null}
       </span>
