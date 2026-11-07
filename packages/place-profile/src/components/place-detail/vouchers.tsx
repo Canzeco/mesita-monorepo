@@ -202,7 +202,7 @@ const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl bo
 /** A Promos section title: 18px, two steps over the boxes' 16px. */
 const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
 /** A small gift card in the 3×2 grid (MESITA-3370). */
-const GRID_CARD = "relative flex min-h-44 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-2.5";
+const GRID_CARD = "relative flex min-h-40 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-3";
 const GRID_BADGE = "bg-card/85 text-foreground self-start rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
@@ -245,8 +245,8 @@ function VoucherCard({
           the state. No watermark at this size. */}
       <p className="text-foreground truncate text-sm font-semibold">{product.name}</p>
       <span className={GRID_BADGE}>{product.bonus}</span>
-      <p className="text-foreground mt-1 text-xs leading-snug tabular-nums">{payLine(product, line, currency)}</p>
-      <p className="text-foreground text-sm leading-snug font-semibold tabular-nums" data-voucher-credit>
+      <p className="text-foreground mt-1 text-sm leading-snug tabular-nums">{payLine(product, line, currency)}</p>
+      <p className="text-foreground text-base leading-snug font-semibold tabular-nums" data-voucher-credit>
         Get {creditValue(product, line, currency)}
       </p>
       <p className="text-foreground/70 line-clamp-2 text-xs leading-snug">{product.limit}</p>
@@ -386,10 +386,10 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         <p className={PLACE_META_CLASS}>
           Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
         </p>
-        {/* THREE ACROSS, TWO ROWS (Pato, MESITA-3370: "for the prepayments
-            offers/deals actually use ... three columns, two rows"); one
-            full-width card each from MESITA-3326 until then. */}
-        <ul className="grid grid-cols-3 gap-2" data-voucher-catalog>
+        {/* TWO ACROSS, THREE ROWS (Pato, MESITA-3371: "two columns, three
+            rows, let's optimize space"; three across for half an hour,
+            MESITA-3370; one full-width card each from MESITA-3326 before). */}
+        <ul className="grid grid-cols-2 gap-2" data-voucher-catalog>
           {[...SPECIAL, ...STANDARD].map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
