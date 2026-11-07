@@ -16,6 +16,8 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
+import { moneyState, type MoneySettings } from "./money-state.ts";
+import { vouchersUpToPct } from "./money.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
@@ -68,6 +70,39 @@ export async function readPlaceMoney(
   const account = accountRes.error ? null : (accountRes.data as { charges_enabled?: unknown } | null);
   const { cashback, ...vouchers } = s;
   return { charges_enabled: account?.charges_enabled === true, cashback, vouchers };
+}
+
+/** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
+ *  voucher, draw the ... voucher icon at the bottom of the buttons"): on each
+ *  row of a page, `vouchers_up_to_pct`, the best bonus among the vouchers
+ *  moneyState says the place sells now, or null. Two batched reads for the
+ *  whole page (the switches and the accounts by id), never one per tile; a
+ *  read failure reads as nothing for sale, and the page still answers. */
+export async function withVouchersUpTo<T extends { id: string }>(
+  admin: SupabaseClient,
+  places: T[],
+): Promise<(T & { vouchers_up_to_pct: number | null })[]> {
+  const ids = places.map((p) => p.id);
+  if (ids.length === 0) return [];
+  const [settingsRes, accountsRes] = await Promise.all([
+    admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
+    admin.from("place_payment_accounts").select("place_id, charges_enabled").in("place_id", ids),
+  ]);
+  if (settingsRes.error) console.error(`[payments] settings page read: ${settingsRes.error.message}`);
+  if (accountsRes.error) console.error(`[payments] accounts page read: ${accountsRes.error.message}`);
+  // via unknown: a template-string select widens `data` to supabase-js's
+  // GenericStringError union, as in get-place.
+  const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[];
+  const accountRows = (accountsRes.error ? [] : accountsRes.data ?? []) as unknown as { place_id: string; charges_enabled?: unknown }[];
+  const settings = new Map<string, MoneySettings>();
+  for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
+  const charges = new Set<string>();
+  for (const row of accountRows) if (row.charges_enabled === true) charges.add(row.place_id);
+  return places.map((p) => {
+    const s = settings.get(p.id);
+    const sell = s ? moneyState(s, charges.has(p.id) ? { charges_enabled: true } : null, null).sell : [];
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell) };
+  });
 }
 
 // ── The account ────────────────────────────────────────────────────────────

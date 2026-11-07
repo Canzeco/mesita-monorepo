@@ -1,4 +1,12 @@
-import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
+import {
+  Clock,
+  Heart,
+  Navigation,
+  Share2,
+  Sparkles,
+  Star,
+  TicketPercent,
+} from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
@@ -292,5 +300,32 @@ export function CardActions({
         Share
       </button>
     </div>
+  );
+}
+
+/**
+ * THE VOUCHER LINE under Save and Share, as wide as the two and as tall
+ * (Pato, MESITA-3312: "if the place offers voucher, draw the kinda discount
+ * voucher icon at the bottom of the buttons saying Up to 25% OFF"). The spot
+ * and the form are MESITA-3233's coupon, which left with the discount
+ * product (MESITA-3299): dark green on pale green, one line, 32px, the ticket
+ * mark. The words are the voucher's own, extra credit, never a discount
+ * (MESITA-3299), and the number is the server's `vouchers_up_to_pct`, the
+ * best bonus among what the place sells now; nothing for sale, no line.
+ * Display only: a tap falls through to the card's own link beneath it.
+ */
+export function VouchersLine({ pct }: { pct: number | null | undefined }) {
+  if (typeof pct !== "number" || pct <= 0) return null;
+  return (
+    <p
+      className={cn(
+        CARD_BUTTON_BOX,
+        "bg-fact-price/10 text-fact-price pointer-events-none flex w-full items-center justify-center gap-1.5 px-2.5 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+      )}
+      data-tile-vouchers
+    >
+      <TicketPercent className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      Up to {pct}% extra credit
+    </p>
   );
 }
