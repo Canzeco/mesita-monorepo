@@ -82,7 +82,6 @@ import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
-import { RailScoreOverlay } from "@/components/consumer/search/search-catalog-overlays";
 import { CatalogTile } from "./CatalogTile";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
@@ -528,30 +527,12 @@ export function CatalogRails() {
             const located = withUserDistance(place, coords);
             return (
               <Fragment key={place.id}>
-                {/* FOR THE MOMENT (Pato, MESITA-2708: "also display the
-                    score and sub scores in the home feed"): the server's
-                    breakdown ON THE PHOTO (MESITA-3053: "put the score data
-                    on top of the image … not below … like … in map"),
-                    Search's own overlay. Remove with Search's once the
-                    ranking is verified. */}
+                {/* NO SCORE ON THE PHOTO (Pato, MESITA-3319: "remove scores
+                    from image for the moment"): the server's breakdown sat
+                    on the photo from MESITA-3053 (MESITA-2708 had it under
+                    the tile); it lives on the place screen's Overview now,
+                    the Score box. Search's own overlay stays. */}
                 <CatalogTile
-                  photoOverlay={
-                    place.area ? (
-                      <RailScoreOverlay
-                        place={{
-                          score: {
-                            proximity: place.area.signals.proximity,
-                            popularity: place.area.signals.popularity,
-                            selectedFactor: place.area.selectedFactor,
-                            final: place.area.final,
-                            foundBy: place.area.foundBy,
-                            distanceKm: place.area.distanceKm,
-                            distancePenalty: place.area.distancePenalty,
-                          },
-                        }}
-                      />
-                    ) : null
-                  }
                   place={located}
                   saved={cards.isSaved(place)}
                   onToggle={() => cards.toggle(place, i + 1)}

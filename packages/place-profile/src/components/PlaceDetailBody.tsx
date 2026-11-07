@@ -17,7 +17,7 @@ import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { VouchersPane } from "./place-detail/vouchers";
-import { FamiliesBox, LinksBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
+import { FamiliesBox, LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -105,6 +105,9 @@ export function PlaceDetailBody({
               <FamiliesBox place={place} />
               <TagsBox place={place} />
               <StatsBox place={place} />
+              {/* The ranking breakdown, last (MESITA-3319); nothing on a
+                  payload with no score. */}
+              <ScoreBox place={place} />
             </>
           )}
           {tab === "reviews" && (

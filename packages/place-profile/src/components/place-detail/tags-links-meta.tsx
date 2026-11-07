@@ -98,6 +98,47 @@ export function StatsBox({ place }: { place: PlaceDetail }) {
   );
 }
 
+// ── 12. Score ───────────────────────────────────────────────────────────
+
+// Pato, MESITA-3319: "at the bottom of stats write in overview that shit.
+// call it Score and write all the subscores and the final. keep super simple
+// design." One card of rows, the label left and the number right, the
+// server's breakdown for this guest's location (Proximity × Popularity ×
+// Premier = Final, MESITA-2379); it replaces the readout the Home tile wore
+// on its photo (MESITA-3053), hidden "for the moment". No score on the
+// payload (no location, no answer, admin Preview), no box.
+function scoreNumber(n: number | null | undefined, digits = 2): string {
+  return typeof n === "number" && Number.isFinite(n) ? n.toFixed(digits) : "n/a";
+}
+
+export function ScoreBox({ place }: { place: PlaceDetail }) {
+  const score = place.score;
+  if (!score) return null;
+  const rows: Array<{ key: string; label: string; value: string; strong?: boolean }> = [
+    { key: "proximity", label: "Proximity", value: scoreNumber(score.proximity) },
+    {
+      key: "distance",
+      label: "Distance",
+      value: typeof score.distance_km === "number" ? `${scoreNumber(score.distance_km, 1)} km` : "n/a",
+    },
+    { key: "popularity", label: "Popularity", value: scoreNumber(score.popularity) },
+    { key: "premier", label: "Premier", value: `×${scoreNumber(score.premier, 0)}` },
+    { key: "final", label: "Final", value: scoreNumber(score.final), strong: true },
+  ];
+  return (
+    <Box title="Score">
+      <ul className="divide-border divide-y" data-place-score>
+        {rows.map((r) => (
+          <li key={r.key} className="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0 text-sm">
+            <span className={r.strong ? "text-foreground font-semibold" : "text-muted-foreground"}>{r.label}</span>
+            <span className={r.strong ? "text-foreground font-semibold tabular-nums" : "text-foreground tabular-nums"}>{r.value}</span>
+          </li>
+        ))}
+      </ul>
+    </Box>
+  );
+}
+
 type ChipIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
 type LinkChipDef = {
