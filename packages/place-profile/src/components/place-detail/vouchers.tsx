@@ -245,7 +245,9 @@ function VoucherCard({
           Buy OR the state, never both. MESITA-3370's card stacked the
           badge, "Pay MX$100", "Get MX$130", the limit, Buy and the state. */}
       <div className="flex items-start justify-between gap-1.5">
-        <p className="text-foreground min-w-0 truncate text-sm font-semibold">{product.name}</p>
+        {/* The name wraps rather than truncates ("Standard Medium" read
+            "Standard M…" beside its badge, MESITA-3375). */}
+        <p className="text-foreground min-w-0 text-sm leading-tight font-semibold">{product.name}</p>
         <span className={GRID_BADGE}>{product.bonus}</span>
       </div>
       <p className="text-foreground mt-2 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
