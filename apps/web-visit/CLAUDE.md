@@ -2,6 +2,7 @@
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 
-- No install, no sign-in. The place code is the key. A holding page since MESITA-3299; payment proof and waiter's charge come with MESITA-3272.
+- No sign-in. `/proof/<token>`: the token is the key (MESITA-3304).
+- From `@mesita/place-profile`, plain `lib/*` modules only.
 - **Edge Functions:** `visit-web-*` only. Every rule and peso is the server's.
 - Light theme, no index by search engines.

@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronDown, Wallet as WalletIcon } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
@@ -23,8 +24,9 @@ import { cn } from "@/lib/utils";
 // Checkout comes back here with `?prepay=<session>`: the read credits it,
 // the toast says what the server said, and the parameter is dropped so a
 // reload does not ask again. While the server is still confirming a
-// purchase (`settling`) the page says so and asks again. Spending a balance
-// waits for Mesita Pay (W2b). In test mode the TestBand leads the page.
+// purchase (`settling`) the page says so and asks again. The Pay tab spends
+// a balance (MESITA-3304); a "Paid" row opens that payment's proof there. In
+// test mode the TestBand leads the page.
 
 const PREPAY_PARAM = "prepay";
 /** A purchase the server is still confirming is asked about again. */
@@ -181,19 +183,35 @@ function BalanceRow({
       </button>
       {open && (
         <ul className="border-border bg-muted/40 border-t px-4 py-2">
-          {balance.entries.map((e, i) => (
-            <li key={i} className="flex items-center justify-between py-2 text-sm">
-              <span>
-                {ENTRY_LABEL[e.kind] ?? e.kind}
-                <span className="text-muted-foreground"> · {entryDate(e.at)}</span>
-              </span>
-              <span className="font-semibold tabular-nums">
-                {e.amount_cents > 0 ? "+" : ""}
-                {money(e.amount_cents, balance.currency)}
-                {e.pending ? <span className="text-muted-foreground font-normal"> · pending</span> : null}
-              </span>
-            </li>
-          ))}
+          {balance.entries.map((e, i) => {
+            const row = (
+              <>
+                <span>
+                  {ENTRY_LABEL[e.kind] ?? e.kind}
+                  <span className="text-muted-foreground"> · {entryDate(e.at)}</span>
+                </span>
+                <span className="font-semibold tabular-nums">
+                  {e.amount_cents > 0 ? "+" : ""}
+                  {money(e.amount_cents, balance.currency)}
+                  {e.pending ? <span className="text-muted-foreground font-normal"> · pending</span> : null}
+                </span>
+              </>
+            );
+            return (
+              <li key={i}>
+                {e.kind === "spend" && e.payment_id ? (
+                  <Link
+                    href={`${CONSUMER_ROUTES.pay}?payment=${encodeURIComponent(e.payment_id)}`}
+                    className="flex items-center justify-between py-2 text-sm underline-offset-4 hover:underline"
+                  >
+                    {row}
+                  </Link>
+                ) : (
+                  <div className="flex items-center justify-between py-2 text-sm">{row}</div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -118,3 +118,14 @@ Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read
   assertEquals(availableAtFor("voucher_story", now), null);
   assertEquals(availableAtFor(null, now), null);
 });
+
+Deno.test("balancesOf: spendable comes from SQL by (place, currency); unnamed reads 0", () => {
+  const now = Date.parse("2026-11-07T12:00:00Z");
+  const b = balancesOf([
+    { place_id: "a", kind: "voucher", amount_cents: 20000, currency: "mxn", created_at: "2026-11-07T10:00:00Z" },
+    { place_id: "a", kind: "spend", amount_cents: -5000, currency: "mxn", created_at: "2026-11-07T11:00:00Z", payment_id: "p1" },
+    { place_id: "b", kind: "voucher", amount_cents: 9000, currency: "mxn", created_at: "2026-11-07T09:00:00Z" },
+  ], now, new Map([["a:mxn", 12000], ["b:usd", 9000]]));
+  assertEquals(b.map((x) => [x.place_id, x.available_cents, x.spendable_cents]), [["a", 15000, 12000], ["b", 9000, 0]]);
+  assertEquals(b[0].entries.map((e) => e.payment_id), ["p1", null]);
+});

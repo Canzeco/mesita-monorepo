@@ -5,9 +5,17 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { invokeEF } from "./_invoke";
 
-export type WalletEntry = { kind: string; amount_cents: number; at: string; pending: boolean };
+export type WalletEntry = {
+  kind: string;
+  amount_cents: number;
+  at: string;
+  pending: boolean;
+  /** A spend's payment (MESITA-3304): the Wallet links it to its proof. */
+  payment_id?: string | null;
+};
 
 export type WalletBalance = {
   place_id: string;
@@ -19,6 +27,9 @@ export type WalletBalance = {
   balance_cents: number;
   available_cents: number;
   pending_cents: number;
+  /** What the Pay tab can spend there now: Available minus credit held by
+   *  open payments, from the server (MESITA-3304). */
+  spendable_cents: number;
   last_at: string;
   entries: WalletEntry[];
 };
@@ -73,20 +84,109 @@ export const BUY_REFUSAL: Record<string, string> = {
   checkout_failed: "Couldn't open checkout. Try again.",
 };
 
-/** "MX$500" / "$25" — whole amounts drop the cents. */
-export function money(cents: number, currency: string): string {
-  const code = currency.toUpperCase();
-  const whole = cents % 100 === 0;
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: code,
-      minimumFractionDigits: whole ? 0 : 2,
-      maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100);
-  } catch {
-    return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
-  }
+/** "MX$500" / "$25" — whole amounts drop the cents. One formatter with the
+ *  staff's proof page (web-visit), so both screens print the same peso. */
+export const money = moneyLabel;
+
+// ── Paying from credit (MESITA-3304, W2a) ───────────────────────────────────
+
+/** A paid payment as the Pay tab shows its proof. */
+export type PayProof = {
+  payment_id: string;
+  place_name: string | null;
+  /** The row's state: paid, refunded, partly_refunded. */
+  status: string;
+  amount_cents: number;
+  currency: string;
+  paid_at: string;
+  /** When staff marked the proof seen on visit.mesita.ai. */
+  proof_seen_at: string | null;
+  proof: { token: string; url: string } | null;
+  test_mode: boolean;
+};
+
+type Started = {
+  payment_id: string;
+  status: string;
+  outcome: "paid" | "already_paid";
+  amount_cents: number;
+  credit_cents: number;
+  currency: string;
+  paid_at: string;
+  proof: { token: string; url: string } | null;
+  test_mode: boolean;
+};
+
+/** Pays the place from the guest's credit there. Refusals arrive as EFError
+ *  with a code from PAY_REFUSAL; `insufficient` carries `spendable_cents`,
+ *  `taken` the `payment_id` that already went through (EFError.body). */
+export async function apiStartPayment(
+  client: SupabaseClient,
+  args: { place_id: string; place_name: string | null; amount_cents: number; request_id: string; ticket: string | null },
+): Promise<PayProof> {
+  const r = await invokeEF<Started>(client, "consumer-web-start-payment", {
+    place_id: args.place_id,
+    amount_cents: args.amount_cents,
+    request_id: args.request_id,
+    ...(args.ticket ? { ticket: args.ticket } : {}),
+  });
+  return {
+    payment_id: r.payment_id,
+    place_name: args.place_name,
+    status: r.status,
+    amount_cents: r.amount_cents,
+    currency: r.currency,
+    paid_at: r.paid_at,
+    proof_seen_at: null,
+    proof: r.proof,
+    test_mode: r.test_mode,
+  };
+}
+
+/** One of the guest's paid payments: its proof again, and whether staff saw it. */
+export async function apiGetPayment(client: SupabaseClient, paymentId: string): Promise<PayProof> {
+  const r = await invokeEF<Omit<PayProof, "place_name"> & { place: { id: string; name: string | null } }>(
+    client,
+    "consumer-web-get-payment",
+    { payment_id: paymentId },
+  );
+  return {
+    payment_id: r.payment_id,
+    place_name: r.place?.name ?? null,
+    status: r.status,
+    amount_cents: r.amount_cents,
+    currency: r.currency,
+    paid_at: r.paid_at,
+    proof_seen_at: r.proof_seen_at,
+    proof: r.proof,
+    test_mode: r.test_mode,
+  };
+}
+
+/** What the guest reads when a payment is refused, by the server's code.
+ *  `insufficient` prints the server's spendable_cents instead. */
+export const PAY_REFUSAL: Record<string, string> = {
+  sign_in: "Sign in to pay.",
+  amount_required: "Type an amount to pay.",
+  above_cap: "That's more than one payment can be.",
+  gone: "This place can't take payments.",
+  taken: "This payment already went through.",
+};
+
+/** One tap's request id. A retry of the same place and amount keeps it (the
+ *  server replays it to the payment that went through); a new place or
+ *  amount mints a fresh one, since the server reads a kept id with another
+ *  amount as `taken`. The page drops it after any answer with a code. */
+export type PayAttempt = { requestId: string; placeId: string; amountCents: number };
+
+export function attemptFor(
+  prev: PayAttempt | null,
+  placeId: string,
+  amountCents: number,
+  mint: () => string = () => crypto.randomUUID(),
+): PayAttempt {
+  if (prev && prev.placeId === placeId && prev.amountCents === amountCents) return prev;
+  return { requestId: mint(), placeId, amountCents };
 }
 
 /** "Nov 1, 2026". */

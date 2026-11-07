@@ -69,6 +69,7 @@ jobs:
               - 'apps/web-admin/src/**'
               - 'apps/web-consumer/src/**'
               - 'apps/web-business/src/**'
+              - 'apps/web-visit/src/**'
             schema:
               - 'supabase/supabase/migrations/**'
               - 'supabase/supabase/tests/**'

@@ -14,8 +14,11 @@
 // Body: { session_id?: string }
 // Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo } | null, place_id, currency,
-//                          balance_cents, available_cents, pending_cents, last_at,
-//                          entries: [{ kind, amount_cents, at, pending }] }],
+//                          balance_cents, available_cents, pending_cents,
+//                          spendable_cents, last_at,
+//                          entries: [{ kind, amount_cents, at, pending, payment_id }] }],
+//   spendable_cents (MESITA-3304) is Available minus credit held by open
+//   payments, from wallet_balances: what the Pay tab can spend there now.
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
 //             settling?: true, pending_purchases?: [purchase ids] }
 
@@ -24,6 +27,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from 
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
+  balanceKey,
   balancesOf,
   type Entry,
   type OpenPurchase,
@@ -90,13 +94,22 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Balances ───────────────────────────────────────────────────────────
   const { data: rows, error: entriesErr } = await admin
     .from("wallet_entries")
-    .select("place_id, kind, amount_cents, currency, created_at, available_at")
+    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .order("created_at", { ascending: false })
     .limit(1000);
   if (entriesErr) return json({ ok: false, error: `entries: ${entriesErr.message}` }, 500);
-  const balances = balancesOf((rows ?? []) as Entry[]);
+  const { data: sums, error: sumsErr } = await admin.rpc("wallet_balances", {
+    p_consumer_id: userId,
+    p_livemode: livemode,
+  });
+  if (sumsErr) return json({ ok: false, error: `balances: ${sumsErr.message}` }, 500);
+  const spendable = new Map<string, number>();
+  for (const r of (sums ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number }>) {
+    spendable.set(balanceKey(r.place_id, r.currency), r.spendable_cents);
+  }
+  const balances = balancesOf((rows ?? []) as Entry[], Date.now(), spendable);
 
   const placesRes = await readWalletPlaces(admin, [...new Set(balances.map((b) => b.place_id))]);
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
