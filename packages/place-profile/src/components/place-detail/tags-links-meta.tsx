@@ -8,7 +8,7 @@ import type { PlaceDetail } from "../../place-detail";
 
 import {
   CHANNEL_DEFS,
-  PHONE_TONE,
+  PHONE_MARK,
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
@@ -149,7 +149,7 @@ type LinkChipDef = {
   logo?: string;
   logoWide?: boolean;
   logoOnly?: boolean;
-  tone?: string;
+  mark?: string;
   logoAsIs?: boolean;
 };
 
@@ -158,7 +158,7 @@ function linkChipLogo(def: LinkChipDef) {
     logo: def.logo,
     logoWide: def.logoWide,
     logoOnly: def.logoOnly,
-    tone: def.tone,
+    mark: def.mark,
     logoAsIs: def.logoAsIs,
   };
 }
@@ -193,7 +193,7 @@ export function LinksBox({
       label: "Phone",
       Icon: Phone,
       url: `tel:${place.phone.replace(/\s+/g, "")}`,
-      tone: PHONE_TONE,
+      mark: PHONE_MARK,
     });
   }
   for (const def of CHANNEL_DEFS) {

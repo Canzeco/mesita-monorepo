@@ -39,11 +39,11 @@ export type ChannelChip = {
   logoWide?: boolean;
   logoOnly?: boolean;
   url: string;
-  /** The brand's own solid colour under white (MESITA-3320, MESITA-3333);
-   *  grey without one. */
-  tone?: string;
+  /** The brand's colour for the mark alone (MESITA-3340); the chip stays
+   *  grey. Ink without one. */
+  mark?: string;
   /** Draw the logo as the file paints it (Google's four-colour G) instead
-   *  of white through a mask. */
+   *  of the mark colour through a mask. */
   logoAsIs?: boolean;
 };
 
@@ -60,7 +60,7 @@ export function ChannelChips({
 }) {
   return (
     <div className={grid ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
-      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, tone, logoAsIs }) => {
+      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, mark, logoAsIs }) => {
         // decision: trailing SquareArrowOutUpRight on web destinations so
         // chips read as "leaves the app" — skip tel: (Phone opens dialer).
         const leavesApp = !url.startsWith("tel:");
@@ -69,27 +69,27 @@ export function ChannelChips({
             ? `${label} (opens externally)`
             : label
           : undefined;
-        // EACH LINK ON ITS BRAND'S SOLID COLOUR, WORDS AND MARK WHITE (Pato,
-        // MESITA-3320: "Uber Eats must be green and so on"; MESITA-3333:
-        // "darker with color ... uber eats with the fucking uber eats
-        // logo"); a link with no tone keeps MESITA-2636's one grey button.
+        // EVERY LINK IS THE GREY CHIP, ONLY ITS MARK IN THE BRAND'S COLOUR
+        // (Pato, MESITA-3340: "keep discrete gray buttons, but logos with
+        // colors"; MESITA-3320's tints and MESITA-3333's solid fills are
+        // gone: "too strong buttons is an incentive for them to leave the
+        // app").
         const className = cn(
           grid
             ? PLACE_BUTTON_CLASS
             : "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition",
-          tone ?? "bg-muted text-foreground hover:bg-muted/70",
-          tone && "hover:opacity-90",
+          "bg-muted text-foreground hover:bg-muted/70",
         );
         const body = (
           <>
-            {logo && tone && !logoAsIs ? (
-              // The brand mark painted white: the SVGs in /public/channels
-              // are one colour, so a mask takes their shape and the chip's
-              // text colour fills it (MESITA-3333). Decorative: the label
-              // carries the name.
+            {logo && mark && !logoAsIs ? (
+              // The brand mark in its colour: the SVGs in /public/channels
+              // are one colour, so a mask takes their shape and `mark`
+              // fills it (MESITA-3333's mask, MESITA-3340's colour).
+              // Decorative: the label carries the name.
               <span
                 aria-hidden
-                className={cn("shrink-0 bg-current", grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5")}
+                className={cn("shrink-0 bg-current", mark, grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5")}
                 style={{
                   maskImage: `url(${logo})`,
                   WebkitMaskImage: `url(${logo})`,
@@ -119,12 +119,12 @@ export function ChannelChips({
                 )}
               />
             ) : (
-              <Icon className={grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5"} />
+              <Icon className={cn(grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5", mark)} />
             )}
             {!logoOnly && <span className="truncate">{label}</span>}
             {leavesApp && (
               <SquareArrowOutUpRight
-                className={cn("h-3 w-3", tone ? "opacity-80" : "opacity-55")}
+                className="h-3 w-3 opacity-55"
                 aria-hidden
                 strokeWidth={2}
               />
