@@ -21,13 +21,13 @@ import { premierLabel, premierLevel } from "../premier";
 
 /** The red rosette alone, where a screen shows the mark without a place's level
  *  (Business's plan boxes, MESITA-3183). */
-export function PremierRosette() {
+export function PremierRosette({ className }: { className?: string } = {}) {
   return (
     <svg
       viewBox="0 0 24 24"
       role="img"
       aria-label="Mesita Premier"
-      className="inline-block h-5 w-5 shrink-0"
+      className={cn("inline-block h-5 w-5 shrink-0", className)}
     >
       <title>Mesita Premier</title>
       <path
