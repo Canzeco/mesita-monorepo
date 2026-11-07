@@ -168,8 +168,9 @@ export default async function ConsumerShellLayout({
           {/* Body + modal host only: the @modal slot must not sit above
               BottomNav. An `inset-0` host as a sibling after the tab bar
               covered its hit targets even with pointer-events-none on the
-              wrapper (MESITA-2747). Intercepted routes that need the bar
-              hidden already do it on the page (place detail). */}
+              wrapper (MESITA-2747). A route that needs the bar hidden hides
+              it itself through HideShellNav (the place profile as a page and
+              as a slide-over, MESITA-3300). */}
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
             {/* The tapped tab's placeholder, drawn on finger-down over the

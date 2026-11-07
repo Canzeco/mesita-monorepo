@@ -23,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { PlaceTopBar } from "@mesita/place-profile";
+import { HideShellNav } from "@/components/consumer/HideShellNav";
 import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -178,7 +179,7 @@ function GeneratingPage(view: ViewProps) {
   }, [router]);
   return (
     <div className="bg-card relative flex flex-1 flex-col overflow-hidden">
-      <style>{`nav[data-shell-nav]{display:none}`}</style>
+      <HideShellNav />
       <PlaceTopBar name={null} onBack={onBack} backOnly />
       <div className="flex min-h-0 flex-1 items-center justify-center pb-20">
         <GeneratingPlace {...view} />

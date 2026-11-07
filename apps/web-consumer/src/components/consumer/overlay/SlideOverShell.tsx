@@ -4,6 +4,7 @@ import { createContext, useContext } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { HideShellNav } from "@/components/consumer/HideShellNav";
 import {
   OVERLAY_BACKDROP_CLASS,
   OVERLAY_EASE,
@@ -39,7 +40,17 @@ export function useSlideOverClose() {
   return close ?? (() => router.back());
 }
 
-export function SlideOverShell({ children }: { children: React.ReactNode }) {
+export function SlideOverShell({
+  children,
+  hideShellNav = false,
+}: {
+  children: React.ReactNode;
+  /** The panel owns the whole frame: the shell's bar hides while this
+   *  slide-over is on its route (the place profile, MESITA-3300). Rendered
+   *  inside the live tree below, so the stale-slot guard that drops the
+   *  panel also brings the bar back. */
+  hideShellNav?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const onModalRoute = isModalContractPath(pathname);
@@ -57,6 +68,7 @@ export function SlideOverShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="pointer-events-auto absolute inset-0 z-50 overflow-hidden">
+      {hideShellNav && <HideShellNav />}
       {/* Backdrop is only visible while the panel is mid-slide (the panel is
           full-width), but that beat of dimming is what sells the "on top of
           the screen" layering. */}
