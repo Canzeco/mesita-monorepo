@@ -309,9 +309,11 @@ export function CardActions({
  * voucher icon at the bottom of the buttons saying Up to 25% OFF"). The spot
  * and the form are MESITA-3233's coupon, which left with the discount
  * product (MESITA-3299): dark green on pale green, one line, 32px, the ticket
- * mark. The words are the voucher's own, extra credit, never a discount
- * (MESITA-3299), and the number is the server's `vouchers_up_to_pct`, the
- * best bonus among what the place sells now; nothing for sale, no line.
+ * mark. The words are Pato's, fixed: "Up to 25% OFF" (MESITA-3313, his call
+ * after the flag that vouchers are bonuses, +10% · +20% · +30%, and none is
+ * 25% off; MESITA-3312 shipped "Up to 30% extra credit" for one evening).
+ * The server's `vouchers_up_to_pct`, the best bonus among what the place
+ * sells now, decides only whether the line shows; nothing for sale, no line.
  * Display only: a tap falls through to the card's own link beneath it.
  */
 export function VouchersLine({ pct }: { pct: number | null | undefined }) {
@@ -325,7 +327,7 @@ export function VouchersLine({ pct }: { pct: number | null | undefined }) {
       data-tile-vouchers
     >
       <TicketPercent className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      Up to {pct}% extra credit
+      Up to 25% OFF
     </p>
   );
 }
