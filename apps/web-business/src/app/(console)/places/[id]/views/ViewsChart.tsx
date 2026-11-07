@@ -20,7 +20,7 @@ function tipAlign(index: number, length: number): string {
   return "left-1/2 -translate-x-1/2";
 }
 
-/** `line` names the series under "Last 30 days"; Visits and Transactions draw
+/** `line` names the series under "Last 30 days"; Visits and Money draw
  *  this same frame with no days yet (MESITA-3301). */
 export function ViewsChart({ days, line = "Every view, like and share." }: { days: PlaceViewsDay[]; line?: string }) {
   const totals = days.map((d) => d.views + d.likes + d.shares);

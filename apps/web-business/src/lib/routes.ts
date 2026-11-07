@@ -21,10 +21,11 @@ export const ACCOUNT = "/account";
 // Preview is a modal on Profile (MESITA-3136). All is the one page listing
 // every product, current and future (MESITA-3238; was Soon, MESITA-3197).
 // Payments (MESITA-3296) holds the place's Stripe account and money switches.
-// Operations is Views · Visits · Transactions (Pato, MESITA-3301: "include
-// Views and Visits and Transactions. Keep the pages even if Mesita Payments
-// is not enabled yet"); Visits is back as a page, not the MESITA-3202 log.
-export const PLACE_TABS = ["views", "visits", "transactions", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
+// Operations is Views · Visits · Money (Pato, MESITA-3301: "include Views and
+// Visits and Transactions. Keep the pages even if Mesita Payments is not
+// enabled yet"; MESITA-3308: "call the Transactions page Money"); Visits is
+// back as a page, not the MESITA-3202 log.
+export const PLACE_TABS = ["views", "visits", "money", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
