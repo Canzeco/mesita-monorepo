@@ -30,8 +30,9 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
-//   [Reserve] [   30% Bonus       ] [   5% Back         ]
+//   [   ▣   ] [ ▤ Mesita Prepay   ] [ ▦ Mesita Pay      ]
+//   [ Mesita] [   30% Bonus       ] [   5% Back         ]
+//   [Reserve]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -105,7 +106,7 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph at the left and the words at its right, the 14px label over the
  *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
+  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1";
 
 // Reserve is the grey tile's own box in the ink (MESITA-3315): one column,
 // the glyph over a 12px label.
@@ -119,10 +120,11 @@ const blockedInkReserve = cn(
   PROFILE_TILE_BOX_CLASS,
   "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
 );
-// A blocked wide Mesita tile (Prepay, Pay): the ink, `disabled`, 14px.
+// A blocked wide Mesita tile (Prepay, Pay): the ink, `disabled`, 13px so
+// "Mesita Prepay" fits two columns on a 375px phone (MESITA-3344).
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-sm font-semibold",
+  "bg-foreground text-paper cursor-not-allowed text-[13px] font-semibold",
 );
 
 const tileBtn = cn(
@@ -302,10 +304,17 @@ export function MesitaActions({
           className={takesReservations ? inkReserve : blockedInkReserve}
         >
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
-          <span className="max-w-full truncate">Reserve</span>
+          {/* "Mesita Reserve" on two lines: one column is too narrow for
+              the words side by side (Pato, MESITA-3344: "call it Mesita
+              Reserve, Mesita Prepay, Mesita Pay"). */}
+          <span className="max-w-full text-center leading-[1.15]">
+            Mesita
+            <br />
+            Reserve
+          </span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
-        <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
+        <InertInkTile Icon={Wallet} label="Mesita Prepay" amount="30% Bonus" />
+        <InertInkTile Icon={QrCode} label="Mesita Pay" amount="5% Back" />
       </div>
     </>
   );
