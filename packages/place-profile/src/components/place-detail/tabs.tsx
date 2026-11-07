@@ -15,14 +15,13 @@ import { cn } from "../../lib/format";
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
-// OVERVIEW · REVIEWS · MENU · DEALS: Menu is the Soon screen and Deals
-// lists the money products the place has on, the six vouchers as
-// Prepayment deals and cashback as Payment deals (the key stays
-// `vouchers`). It read Vouchers from MESITA-3299, when the discount product
-// left, until MESITA-3322 (Pato: "don't call that page Voucher. call it
-// Deals or something better ... Vouchers its just too boring", then "call
-// the section up Prepayments Deals ... Payments Deals"), and Rewards from
-// MESITA-3201 before that. The paid tier was
+// OVERVIEW · MENU · REVIEWS · PROMOS (Pato, MESITA-3323: "change order:
+// Overview Menu Reviews Promos/Deals (maybe Promos is the best)"; Reviews
+// came before Menu until then): Menu is the Soon screen and Promos lists
+// the money products the place has on, the six vouchers as Prepayment
+// promos and cashback as Payment promos (the key stays `vouchers`). It read
+// Deals for one evening (MESITA-3322), Vouchers from MESITA-3299, when the
+// discount product left, and Rewards from MESITA-3201 before that. The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's
 // Upgrade sheet now, off the Upgrade tile.
 export type PlaceTab = "place" | "reviews" | "products" | "vouchers";
@@ -35,9 +34,9 @@ export type PlaceTabDef = {
 
 const CORE_TABS = [
   { key: "place", label: "Overview" },
-  { key: "reviews", label: "Reviews" },
   { key: "products", label: "Menu", soon: true },
-  { key: "vouchers", label: "Deals" },
+  { key: "reviews", label: "Reviews" },
+  { key: "vouchers", label: "Promos" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {

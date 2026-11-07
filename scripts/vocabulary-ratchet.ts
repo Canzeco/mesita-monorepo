@@ -230,7 +230,9 @@ export function scanSource(relPath: string, source: string): Violation[] {
     pushIf("member code", /member code/i, text, index);
     pushIf("ambiance", /\bambiance\b/i, text, index);
     // Second Stage words (Docs › Vocabulary): a family's members are the one allowed membership.
-    pushIf("promo", /\bpromos?\b/i, text, index);
+    // "promo" left the list with MESITA-3323 (Pato, 2026-11-06: the place
+    // screen's fourth tab is Promos, "maybe Promos is the best"); it had
+    // been banned with the discount product (MESITA-3299).
     pushIf("membership", /\bmemberships?\b/i, text, index);
     pushIf("Agent X", /Agent X/i, text, index);
     pushIf("Agent Y", /Agent Y/i, text, index);

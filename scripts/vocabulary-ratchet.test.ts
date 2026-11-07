@@ -46,14 +46,15 @@ Deno.test("planted Crenup in a string would fail", () => {
 
 Deno.test("Second Stage words fail in UI copy; a family's membership does not", () => {
   const tokens = (src: string) => scanSource("apps/web-admin/src/x.tsx", src).map((v) => v.token);
-  assertEquals(tokens(`const a = "Get a promo code";`), ["promo"]);
+  // "promo" is a First Stage word since MESITA-3323 (the Promos tab).
+  assertEquals(tokens(`const a = "Get a promo code";`), []);
   assertEquals(tokens(`export const B = () => <p>Mesita membership</p>;`), ["membership"]);
   assertEquals(tokens(`const c = "Family membership lives on Atlas";`), []);
-  assertEquals(tokens(`// a promo in a comment is not copy\nconst d = "Promoting a place";`), []);
+  assertEquals(tokens(`// a membership in a comment is not copy\nconst d = "Members of a family";`), []);
 });
 
 Deno.test("a violation reports its own line, comments above it included", () => {
-  const src = `// one\n/* two\n   three */\nconst a = "Get a promo";\n`;
+  const src = `// one\n/* two\n   three */\nconst a = "Buy a membership";\n`;
   assertEquals(scanSource("supabase/supabase/functions/x/index.ts", src).map((v) => v.line), [4]);
 });
 

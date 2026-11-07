@@ -20,14 +20,22 @@ import { Box } from "./box";
 // (VOUCHER_CATALOG, MESITA-3302) and the six cards Business › Payments draws
 // (MESITA-3298): Standard MX$200 · MX$1,000 · MX$5,000 and Special Welcome ·
 // Story · VIP, each with the same mark and colour on both sides (one mark
-// everywhere). A guest sees them as one card of six rows, Standard first:
-// a row per voucher, its mark on its colour, the name, the bonus, the price
-// and the credit it buys, in one objective line (Pato: "be super objective").
-// TWO CARDS, DEALS (Pato, MESITA-3322: "call the section up Prepayments
-// Deals: Bonus 10% or whatever. Payments Deals: Cashback"): "Prepayment
-// deals" is the six rows, "Payment deals" is the standard 5% cashback, one
-// row drawn the same way, its one line the plain fact (Pato, a minute
-// before: "write cashback ... clearer"). Nothing scrolls sideways.
+// everywhere). A guest sees them as A CATALOG (Pato, MESITA-3323: "make a
+// catalog, like it must feel e commerce like products"): six product cards
+// in two columns that scroll down with the page (MESITA-3310 had them as
+// one card of rows, which read boring), Standard first: each card its mark
+// big on its colour with the bonus in a corner, the price as the product's
+// name, the credit it buys in one objective line (Pato: "be super
+// objective"), the condition, and Buy or the tag. Under the title, one
+// line says the credit is ready an hour after the purchase, Story's at
+// once (the catalog's available_after_sec, MESITA-3302; Pato, MESITA-3323:
+// "must be 1 hour before paying the bill ... All but the Instagram one").
+// TWO CARDS, PROMOS (Pato, MESITA-3322: "call the section up Prepayments
+// Deals: Bonus 10% or whatever. Payments Deals: Cashback"; MESITA-3323:
+// "maybe Promos is the best"): "Prepayment promos" is the catalog,
+// "Payment promos" is the standard 5% cashback, one row drawn the same way,
+// its one line the plain fact (Pato: "write cashback ... clearer"). Nothing
+// scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
@@ -122,9 +130,9 @@ function tag(reason: VoucherReason | undefined): string {
   return "Coming soon";
 }
 
-const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
+const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
 
-function VoucherRow({
+function VoucherCard({
   product,
   reason,
   line,
@@ -144,36 +152,40 @@ function VoucherRow({
   const text = creditLine(product, line, currency);
   return (
     <li
-      className={cn("flex items-center gap-3 py-3 first:pt-0 last:pb-0", !forSale && "opacity-50 grayscale")}
+      className={cn(
+        "border-border bg-card flex flex-col overflow-hidden rounded-xl border",
+        !forSale && "opacity-50 grayscale",
+      )}
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", product.tone)}>
-        <Mark className="h-6 w-6" strokeWidth={1.75} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-foreground text-sm font-semibold">
-          {product.name}
-          <span className="text-muted-foreground ml-2 font-medium tabular-nums">{product.bonus}</span>
-        </p>
+      <div className={cn("relative flex aspect-[4/3] items-center justify-center", product.tone)} aria-hidden>
+        <Mark className="h-10 w-10" strokeWidth={1.75} />
+        <span className="bg-card/85 text-foreground absolute top-2 right-2 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums">
+          {product.bonus}
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-0.5 p-3">
+        <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <p className={PLACE_META_CLASS}>
           {text}
           {product.when ? ` ${product.when}` : null}
         </p>
-        {forSale ? null : <p className={cn(PLACE_META_CLASS, "mt-1 font-medium")}>{tag(reason)}</p>}
+        {forSale ? (
+          <button
+            type="button"
+            {...inertButtonProps(live)}
+            onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
+            disabled={buying || (actions?.buyingVoucher != null && !buying)}
+            aria-label={`Buy the ${product.name} voucher`}
+            className={cn(buyButton, "mt-auto w-full")}
+          >
+            {buying ? "Opening…" : "Buy"}
+          </button>
+        ) : (
+          <p className={cn(PLACE_META_CLASS, "mt-auto pt-2 font-medium")}>{tag(reason)}</p>
+        )}
       </div>
-      {forSale ? (
-        <button
-          type="button"
-          {...inertButtonProps(live)}
-          onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
-          disabled={buying || (actions?.buyingVoucher != null && !buying)}
-          aria-label={`Buy the ${product.name} voucher`}
-          className={buyButton}
-        >
-          {buying ? "Opening…" : "Buy"}
-        </button>
-      ) : null}
     </li>
   );
 }
@@ -226,14 +238,21 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Box title="Prepayment deals">
-        <ul className="divide-border divide-y">
+      <Box title="Prepayment promos">
+        {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
+            before the bill. All but the Instagram one"): every voucher's
+            credit turns Available one hour after the charge except Story,
+            ready at once (the catalog's available_after_sec, MESITA-3302). */}
+        <p className={PLACE_META_CLASS}>
+          Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
+        </p>
+        <ul className="grid grid-cols-2 gap-3" data-voucher-catalog>
           {[...STANDARD, ...SPECIAL].map((p) => (
-            <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
+            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
           ))}
         </ul>
       </Box>
-      <Box title="Payment deals">
+      <Box title="Payment promos">
         <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
           <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>
             <Coins className="h-6 w-6" strokeWidth={1.75} aria-hidden />

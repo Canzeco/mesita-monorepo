@@ -113,6 +113,8 @@ Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read
   assertEquals(hung, 1);
   // An open voucher turns Available an hour after the charge.
   assertEquals(rpcs, ["wallet_credit_purchase:p_ok:2026-11-07T01:05:00.000Z"]);
-  assertEquals(availableAtFor("voucher_welcome", now), null);
+  // Every voucher waits the hour except Story (MESITA-3323).
+  assertEquals(availableAtFor("voucher_welcome", now), "2026-11-07T01:05:00.000Z");
+  assertEquals(availableAtFor("voucher_story", now), null);
   assertEquals(availableAtFor(null, now), null);
 });
