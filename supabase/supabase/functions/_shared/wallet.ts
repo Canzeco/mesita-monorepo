@@ -34,7 +34,7 @@ export type OpenPurchase = {
 };
 
 /** When a voucher paid now turns Available: open vouchers an hour after the
- *  charge, earned ones at once (the catalog's available_after_sec). */
+ *  charge, Story at once (the catalog's available_after_sec, MESITA-3323). */
 export function availableAtFor(voucher: string | null | undefined, nowMs: number): string | null {
   const line = voucher ? VOUCHER_CATALOG[voucher as MoneyVoucherKey] : undefined;
   if (!line || line.available_after_sec <= 0) return null;
