@@ -30,8 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [ ▣ Reserve ] [ ▤ Prepay        ] [ ▦ Pay           ]
-//   [           ] [   Up to 25% OFF ] [   5% Cashback   ]
+//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
+//   [Reserve] [   30% Bonus       ] [   5% Back         ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -95,27 +95,34 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
 /** A tile's box: 56px, rounded-lg, icon over label. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2: Reserve · Prepay · Pay, three equal tiles, 8px apart
- *  (MESITA-3314, MESITA-3315). */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A Mesita tile's box: the grey tiles' 56px, the glyph at the left and
- *  the words at its right (Pato, MESITA-3335: "put the logo at the left.
- *  icon Reserve, icon Prepay, icon Pay"); two text lines fit beside a glyph,
- *  so the taller tiles of MESITA-3328/3331 (64px, then 72px, the glyph over
- *  the words) are not needed. */
+/** Row 2: Reserve · Prepay · Pay on the grey tiles' five columns, 8px
+ *  apart (Pato, MESITA-3339: "reserve button is not as large, this way:
+ *  Save Maps Contact Share Upgrade / Reserve Prepay Prepay Pay Pay"):
+ *  Reserve takes the first column, Prepay and Pay two each. Three equal
+ *  tiles from MESITA-3314 until then. */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
+/** A wide Mesita tile's box: two columns, the grey tiles' 56px, a 20px
+ *  glyph at the left and the words at its right, the 14px label over the
+ *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
+  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
-// Row 2 is the grey tile's box in the ink (MESITA-3315), three across.
-const inkTile = cn(
-  PROFILE_MESITA_TILE_BOX_CLASS,
+// Reserve is the grey tile's own box in the ink (MESITA-3315): one column,
+// the glyph over a 12px label.
+const inkReserve = cn(
+  PROFILE_TILE_BOX_CLASS,
   "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
 );
-// A blocked Mesita tile: still the ink, but `disabled`: no hover, no press,
+// A blocked Reserve: still the ink, but `disabled`: no hover, no press,
 // the not-allowed cursor (MESITA-3081).
+const blockedInkReserve = cn(
+  PROFILE_TILE_BOX_CLASS,
+  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
+);
+// A blocked wide Mesita tile (Prepay, Pay): the ink, `disabled`, 14px.
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
+  "bg-foreground text-paper cursor-not-allowed text-sm font-semibold",
 );
 
 const tileBtn = cn(
@@ -292,13 +299,13 @@ export function MesitaActions({
               ? "Reserve a table"
               : "Reserve a table, not available at this place"
           }
-          className={takesReservations ? inkTile : blockedInkTile}
+          className={takesReservations ? inkReserve : blockedInkReserve}
         >
-          <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-          <span className="min-w-0 truncate">Reserve</span>
+          <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
+          <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 25% OFF" />
-        <InertInkTile Icon={QrCode} label="Pay" amount="5% Cashback" />
+        <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
+        <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
       </div>
     </>
   );
@@ -311,12 +318,16 @@ export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 flex fl
  *  strip. */
 export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 
-/** The glyph on an ink tile: the grey tiles' 18px. */
-const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
+/** Reserve's glyph: the grey tiles' 18px. */
+const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
+/** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
+const MESITA_TILE_ICON = "h-5 w-5 shrink-0";
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
  *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
- *  `amount` is the second line, always shown (MESITA-3324). */
+ *  `amount` is the second line, always shown (MESITA-3324): "30% Bonus" and
+ *  "5% Back" (Pato, MESITA-3339: "its clearer, instead of OFF"; "Up to 25%
+ *  OFF" and "5% Cashback" until then). */
 function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string; amount: string }) {
   return (
     <button
@@ -329,7 +340,7 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="flex min-w-0 flex-col items-start gap-1 text-left">
         <span className="max-w-full truncate leading-none">{label}</span>
-        <span className="text-paper/75 max-w-full truncate text-[11px] leading-none font-medium">{amount}</span>
+        <span className="text-paper/80 max-w-full truncate text-xs leading-none font-medium">{amount}</span>
       </span>
     </button>
   );
