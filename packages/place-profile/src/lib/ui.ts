@@ -31,11 +31,12 @@ export const PLACE_BODY_CLASS = "text-foreground text-sm leading-relaxed";
 export const PLACE_META_CLASS = "text-muted-foreground text-xs leading-snug";
 /** Information, never a button: 1px hairline, no fill, 32px. Tags and
  *  Mesita Families both wear it (MESITA-2932). */
-// A STEP SMALLER (Pato, MESITA-3325: "make the text tags in the header a
-// bit smaller, just a bit"): 12px on a 28px chip; it was 14px on 32px from
-// MESITA-2636. Families and Tags wear the same box, so they follow.
+// BETWEEN THE TWO (Pato, MESITA-3332: "make the tags a bit larger, in
+// between from this and past version"): 13px on a 30px chip; MESITA-3325
+// had 12px on 28px ("a bit smaller, just a bit"), MESITA-2636 14px on
+// 32px. Families and Tags wear the same box, so they follow.
 export const PLACE_OUTLINE_CHIP_CLASS =
-  "border-border text-foreground inline-flex h-7 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap tabular-nums";
+  "border-border text-foreground inline-flex h-[30px] min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-medium whitespace-nowrap tabular-nums";
 /** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";
