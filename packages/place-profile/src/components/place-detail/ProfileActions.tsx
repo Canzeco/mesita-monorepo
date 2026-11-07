@@ -50,9 +50,11 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // MESITA-2633: fixed hours "can be confused with confirmed availability"):
 // the guest picks day, party and a preferred time in the sheet, then the
 // agent calls and confirms. Pay is Soon ("pay is as soon but leave it there
-// for the moment"), and so is Prepay (decision: nothing behind it is built):
-// inert, each wearing the consumer bar's grey Soon tag. MESITA-2618 had
-// taken Pay off.
+// for the moment") until W2b (MESITA-3305), and so is Prepay: since W1b
+// (MESITA-3303) buying a voucher lives on the Vouchers tab, and W1b had
+// taken the Prepay button off, but Pato's row names it (MESITA-3314), so it
+// stays, inert, each wearing the consumer bar's grey Soon tag. MESITA-2618
+// had taken Pay off.
 //
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
 // (MESITA-2324). A missing callback leaves its button visible and inert, so
@@ -65,7 +67,8 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // place ("reserve can vary depending on the place"): live where it takes
 // bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
 // both blocked with Soon: the free-amount prepay left with the discount
-// product (MESITA-3299), and vouchers and paying arrive with MESITA-3272.
+// product (MESITA-3299), vouchers sell on their tab (MESITA-3303) and paying
+// arrives with W2b (MESITA-3305).
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at

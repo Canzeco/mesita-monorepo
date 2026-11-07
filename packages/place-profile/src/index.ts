@@ -32,7 +32,12 @@ export type {
   PlaceCreatingView,
   PlaceMenuItem,
 } from "./actions";
-export type { PlaceDetail } from "./place-detail";
+export type { PlaceBalance, PlaceDetail, PlaceMoney, VoucherCatalogLine, VoucherKey } from "./place-detail";
+export { VOUCHER_KEYS } from "./place-detail";
+export { placeMoneyFrom } from "./place-to-detail";
+export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";
+export { moneyState, NOT_YET_SELLABLE, type MoneyState, type VoucherReason } from "./money-state";
+export { MONEY_CODES, type MoneyCode } from "./money-codes";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";
 export { SizedImage, SizedImg } from "./components/SizedPhoto";

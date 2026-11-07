@@ -1,9 +1,10 @@
 // Wallet — the guest's credit at each place (MESITA-3097/3098; on the
-// place's own Stripe Connect account since MESITA-3302). Every amount and
-// outcome comes from the server: this file never computes money, it only
-// formats it. Buying a voucher arrives with MESITA-3303 (W1b).
+// place's own Stripe Connect account since MESITA-3302; vouchers bought
+// here since MESITA-3303). Every amount and outcome comes from the server:
+// this file never computes money, it only formats it.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
 import { invokeEF } from "./_invoke";
 
 export type WalletEntry = { kind: string; amount_cents: number; at: string; pending: boolean };
@@ -26,8 +27,13 @@ export type WalletBalance = {
 export type PrepayOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none";
 
 export type Wallet = {
+  /** Stripe is in test mode: the TestBand shows, no real money moves. */
+  test_mode?: boolean;
   balances: WalletBalance[];
   outcome?: PrepayOutcome;
+  /** The read ran out of time confirming a purchase with Stripe; it is
+   *  confirmed on the next read or by the server on its own. */
+  settling?: boolean;
 };
 
 export async function apiGetWallet(client: SupabaseClient, sessionId?: string): Promise<Wallet> {
@@ -35,6 +41,37 @@ export async function apiGetWallet(client: SupabaseClient, sessionId?: string): 
     ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
+
+/** The place's offer and the caller's credit there (the Vouchers tab). */
+export async function apiListVouchers(client: SupabaseClient, placeId: string): Promise<PlaceMoney | undefined> {
+  const r = await invokeEF<{ money: unknown }>(client, "consumer-web-list-vouchers", { place_id: placeId });
+  return placeMoneyFrom(r.money);
+}
+
+/** Opens Stripe Checkout for one voucher on the place's own account. The
+ *  `request_id` is one per tap: a retry with the same id finds the same
+ *  checkout. Refusals arrive as EFError with a code from BUY_REFUSAL. */
+export async function apiBuyVoucher(
+  client: SupabaseClient,
+  args: { place_id: string; voucher: VoucherKey; request_id: string; return_url: string },
+): Promise<{ url: string; purchase_id: string }> {
+  return await invokeEF<{ url: string; purchase_id: string }>(client, "consumer-web-buy-voucher", args);
+}
+
+/** What the guest reads when the buy is refused, by the server's code. */
+export const BUY_REFUSAL: Record<string, string> = {
+  sign_in: "Sign in to buy a voucher.",
+  no_account: "This place isn't taking payments yet.",
+  currency_mismatch: "This place can't sell vouchers in its currency yet.",
+  paused: "Voucher sales are paused for a moment. Try again later.",
+  not_available: "This place doesn't sell that voucher.",
+  not_yet: "This voucher isn't on sale yet.",
+  needs_card_payments: "This voucher arrives with card payments.",
+  needs_instagram: "This voucher arrives with the Instagram connection.",
+  welcome_used: "You already had your Welcome voucher here.",
+  below_minimum: "This amount is below the card minimum.",
+  checkout_failed: "Couldn't open checkout. Try again.",
+};
 
 /** "MX$500" / "$25" — whole amounts drop the cents. */
 export function money(cents: number, currency: string): string {

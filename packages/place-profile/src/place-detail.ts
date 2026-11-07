@@ -3,9 +3,29 @@
 // it; every field is null-safe on the adapter side, so the view never guards
 // against a missing column — an empty list simply hides its box.
 
+import type { VoucherReason } from "./money-state";
+
 /** The six vouchers and the cashback a place can switch on (MESITA-3296). */
 export const VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story", "voucher_vip"] as const;
 export type VoucherKey = (typeof VOUCHER_KEYS)[number];
+
+/** One catalog line as the server prices it (MESITA-3303). The client shows
+ *  these numbers and never adds them. */
+export type VoucherCatalogLine = {
+  price_cents: number;
+  bonus_cents: number;
+  /** Price plus bonus: the credit the guest ends up with. */
+  credit_cents: number;
+  available_after_sec: number;
+};
+
+/** The guest's credit at this place (consumer-web-list-vouchers). */
+export type PlaceBalance = {
+  available_cents: number;
+  pending_cents: number;
+  held_cents: number;
+  spendable_cents: number;
+};
 
 export type PlaceMoney = {
   /** Stripe lets the place's account take payments. */
@@ -13,14 +33,22 @@ export type PlaceMoney = {
   /** Payments Cashback, the standard 5%, on. */
   cashback: boolean;
   vouchers: Record<VoucherKey, boolean>;
+  /** Stripe is in test mode: the TestBand shows, no real money moves. */
+  test_mode: boolean;
+  /** Lowercase ISO 4217 ("mxn"). */
+  currency: string;
+  /** The vouchers a guest can buy here now (MESITA-3303). */
+  sell: VoucherKey[];
+  /** Every other voucher and why. */
+  unavailable: Partial<Record<VoucherKey, VoucherReason>>;
+  catalog: Partial<Record<VoucherKey, VoucherCatalogLine>>;
+  /** The signed-in guest's credit here; null when signed out or unknown. */
+  balance: PlaceBalance | null;
 };
 
 export type PlaceDetail = {
   /** Description/Actions — false only when this place has opted out of bookings. */
   reservations_enabled?: boolean;
-  /** Mesita Prepay — true only where admin turned Prepayments on (MESITA-3098).
-   *  Nothing reads it since MESITA-3299; it leaves with the free-amount prepay. */
-  prepay_enabled?: boolean;
   /** The money products the place has on (MESITA-3299): the owner's switches
    *  (Business › Payments) and whether its Stripe account can charge. The
    *  Vouchers tab reads it. Absent on a Google-only card and on older EFs. */

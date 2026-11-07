@@ -113,7 +113,7 @@ export function PlaceDetailBody({
           {tab === "products" && <SoonScreen />}
           {/* Vouchers (MESITA-3299): what the place has on, from the row itself,
               the same on the consumer and on Preview. */}
-          {tab === "vouchers" && <VouchersPane place={place} />}
+          {tab === "vouchers" && <VouchersPane place={place} actions={actions} />}
       </div>
     </div>
   );

@@ -5,7 +5,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
-import { balancesOf, classifySession, type OpenPurchase, settlePurchase } from "./wallet.ts";
+import { availableAtFor, balancesOf, classifySession, type OpenPurchase, settleAll, settlePurchase } from "./wallet.ts";
 
 const PURCHASE = "00000000-0000-4000-8000-0000000a3097";
 
@@ -68,4 +68,51 @@ Deno.test("balancesOf: one balance per place, newest first, Pending split from A
   ]);
   assertEquals(b[0].entries.map((e) => [e.amount_cents, e.pending]), [[-5000, false], [20000, false], [2000, false]]);
   assertEquals(b[1].entries[0].pending, true);
+});
+
+Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read goes on and names what is still open", async () => {
+  // Three open purchases. The first credits; the second hangs until the
+  // budget aborts its fetch; the third is never asked. The RPC runs only for
+  // the first.
+  let hung = 0;
+  const stripe: StripeCall = (_m, path, _p, opts) => {
+    if (path === "checkout/sessions/cs_ok") {
+      return Promise.resolve({ metadata: { purchase_id: "p_ok" }, payment_status: "paid", payment_intent: "pi_ok" });
+    }
+    hung++;
+    return new Promise((_resolve, reject) => {
+      opts?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    });
+  };
+  const rpcs: string[] = [];
+  const admin = {
+    rpc: (name: string, args: Record<string, unknown>) => {
+      rpcs.push(`${name}:${args.p_purchase_id}:${args.p_available_at}`);
+      return Promise.resolve({ data: { ok: true, outcome: "credited" }, error: null });
+    },
+  } as unknown as SupabaseClient;
+  const now = Date.parse("2026-11-07T00:05:00Z");
+  const mk = (id: string, cs: string): OpenPurchase => ({
+    id,
+    stripe_checkout_session_id: cs,
+    stripe_account_id: "acct_place",
+    created_at: "2026-11-07T00:00:00Z",
+    voucher: "voucher_200",
+  });
+  const { outcomes, settling } = await settleAll(
+    admin,
+    stripe,
+    [mk("p_ok", "cs_ok"), mk("p_slow", "cs_slow"), mk("p_next", "cs_next")],
+    now,
+    50,
+  );
+  assertEquals(outcomes.get("p_ok"), "credited");
+  assertEquals(outcomes.get("p_slow"), "pending");
+  assertEquals(outcomes.get("p_next"), "pending");
+  assertEquals(settling, ["p_slow", "p_next"]);
+  assertEquals(hung, 1);
+  // An open voucher turns Available an hour after the charge.
+  assertEquals(rpcs, ["wallet_credit_purchase:p_ok:2026-11-07T01:05:00.000Z"]);
+  assertEquals(availableAtFor("voucher_welcome", now), null);
+  assertEquals(availableAtFor(null, now), null);
 });

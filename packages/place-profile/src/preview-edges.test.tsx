@@ -88,8 +88,8 @@ describe("member preview edges", () => {
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
-    // Pay is back as a Soon tile beside Reserve (MESITA-2688).
-    expect(html).toContain('aria-label="Pay, Soon"');
+    // Pay is back as a Soon button under Reserve (MESITA-2688), full width since MESITA-3303.
+    expect(html).toContain('aria-label="Mesita Pay, Soon"');
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
   });

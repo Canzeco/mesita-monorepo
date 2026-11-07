@@ -4,8 +4,10 @@ import dynamic from "next/dynamic";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import type { PlaceActions, PlaceMenuItem } from "@mesita/place-profile";
+import type { PlaceActions, PlaceMenuItem, PlaceMoney, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
+import { EFError } from "@/lib/api/_invoke";
+import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL } from "@/lib/api/wallet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import {
   apiPlaceActivity,
@@ -77,6 +79,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
+  const vouchers = usePlaceVouchers(place.id);
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -104,11 +107,14 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
     onReserve: () => setReserveOpen(true),
-    // No Prepay sheet since MESITA-3299: the free-amount prepay left with the
-    // discount product; vouchers and paying arrive with MESITA-3272.
     onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
+    // The Vouchers tab (MESITA-3303): Buy opens Stripe Checkout on the
+    // place's account; opening the tab refreshes the offer and the credit.
+    onBuyVoucher: vouchers.buy,
+    buyingVoucher: vouchers.buying,
+    onLoadVouchers: vouchers.load,
   };
 
   const sheets = (
@@ -159,11 +165,81 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 
   const enriching =
     activity.enriching && !place.is_enriched && !place.is_enriching;
+  const shown =
+    enriching || vouchers.money
+      ? {
+          ...place,
+          ...(enriching ? { is_enriching: true } : {}),
+          ...(vouchers.money ? { money: vouchers.money } : {}),
+        }
+      : place;
   return {
-    place: enriching ? { ...place, is_enriching: true } : place,
+    place: shown,
     actions,
     sheets,
     social: activity.social,
+  };
+}
+
+// Vouchers (MESITA-3303): the tab's fresh offer and the one buy. The place
+// read carried an offer already; the tab asks again because the screen
+// may be served from the store and the guest's credit changes. Buy opens
+// Stripe Checkout on the place's own account; a refusal says the server's
+// line and refreshes the offer so the tab shows why.
+function usePlaceVouchers(placeId: string): {
+  money: PlaceMoney | null;
+  buying: VoucherKey | null;
+  load: () => void;
+  buy: (key: VoucherKey) => void;
+} {
+  const getSupabase = useLazyBrowserSupabase();
+  const mesita = isMesitaPlaceId(placeId);
+  const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
+  const [buying, setBuying] = useState<VoucherKey | null>(null);
+
+  const load = useCallback(() => {
+    if (!mesita) return;
+    void apiListVouchers(getSupabase(), placeId)
+      .then((money) => {
+        if (money) setState({ placeId, money });
+      })
+      .catch(() => {
+        // The place read's offer stays on screen.
+      });
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mesita, placeId]);
+
+  const buy = useCallback(
+    (key: VoucherKey) => {
+      if (!mesita) return;
+      setBuying(key);
+      void apiBuyVoucher(getSupabase(), {
+        place_id: placeId,
+        voucher: key,
+        request_id: crypto.randomUUID(),
+        return_url: window.location.href,
+      })
+        .then((r) => {
+          window.location.assign(r.url);
+        })
+        .catch((err: unknown) => {
+          setBuying(null);
+          const code = err instanceof EFError ? err.code : null;
+          toast((code && BUY_REFUSAL[code]) || BUY_REFUSAL.checkout_failed, { tone: "error" });
+          load();
+        });
+    },
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mesita, placeId, load],
+  );
+
+  return {
+    money: state?.placeId === placeId ? state.money : null,
+    buying,
+    load,
+    buy,
   };
 }
 
