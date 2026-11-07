@@ -15,8 +15,8 @@ import { Box } from "./box";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./empty-screen";
 import {
   PROFILE_ACTIONS_CLASS,
-  PROFILE_HALVES_ROW_CLASS,
-  PROFILE_MESITA_ROWS_CLASS,
+  PROFILE_MESITA_BUTTON_CLASS,
+  PROFILE_MESITA_ROW_CLASS,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
 } from "./ProfileActions";
@@ -38,8 +38,8 @@ import { PlaceTabBar } from "./tabs";
 // placeholders must be similar to the page you are loading, like the
 // sizes"). Every block here stands where the loaded screen draws its own, at
 // its size: PlaceTopBar, then ProfileSummary's white band (photo and the
-// three counts, the facts boxes, the five tiles, Mesita Reserve, Prepay ·
-// Pay), the tab strip, then Overview's white cards on the grey ground.
+// three counts, the facts boxes, the five tiles, Reserve · Prepay · Pay),
+// the tab strip, then Overview's white cards on the grey ground.
 // NOTHING HERE RE-TYPES A REAL PART: the top bar, the tab strip, the Boxes
 // and the "No overview yet" screen are the real components; the summary's
 // band, rows and boxes are the classes ProfileSummary, ProfilePhoto,
@@ -116,21 +116,22 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: five tiles, then Mesita Reserve full width (live or
-          disabled, never missing — MESITA-3078) and Prepay · Pay halved, the
-          44px place button. */}
+      {/* ProfileActions: five tiles, then Reserve · Prepay · Pay in one row
+          (MESITA-3314; Reserve live or disabled, never missing — MESITA-3078),
+          the 44px place button. */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
           {[0, 1, 2, 3, 4].map((i) => (
             <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
           ))}
         </div>
-        <div className={PROFILE_MESITA_ROWS_CLASS}>
-          <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-          <div className={PROFILE_HALVES_ROW_CLASS}>
-            <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-            <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-          </div>
+        <div className={PROFILE_MESITA_ROW_CLASS}>
+          {[0, 1, 2].map((i) => (
+            <Bone
+              key={i}
+              className={cn(PLACE_BUTTON_CLASS, PROFILE_MESITA_BUTTON_CLASS, "flex-1")}
+            />
+          ))}
         </div>
       </div>
     </section>
