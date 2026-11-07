@@ -5,7 +5,10 @@ import { Star, type LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
 import { cn, firstInitial } from "../../lib/format";
-import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
+import {
+  PLACE_FIGURE_CLASS,
+  PLACE_OUTLINE_CHIP_CLASS,
+} from "../../lib/ui";
 import { Spinner } from "../Spinner";
 import { SizedImg } from "../SizedPhoto";
 
@@ -41,10 +44,11 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
           className="h-full w-full object-cover"
         />
       ) : (
-        // No photo: a grey tile with the initial in Inter ink, the place
-        // scale (MESITA-2636); it was a pink gradient with a serif letter.
+        // No photo: a grey tile with the initial in Inter, muted, at the
+        // scale's one big size (MESITA-2636; 30px until MESITA-3379); it was
+        // a pink gradient with a serif letter.
         <div className="bg-muted flex h-full w-full items-center justify-center">
-          <span className="text-muted-foreground font-sans text-3xl font-semibold">
+          <span className={cn(PLACE_FIGURE_CLASS, "text-muted-foreground font-sans")}>
             {firstInitial(place.name)}
           </span>
         </div>

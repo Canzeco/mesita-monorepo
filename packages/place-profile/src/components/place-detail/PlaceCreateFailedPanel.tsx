@@ -5,6 +5,7 @@ import { AlertCircle } from "lucide-react";
 import {
   ERROR_BOX_CLASS,
   PLACE_BUTTON_CLASS,
+  PLACE_EMPTY_ICON_CLASS,
   PLACE_SCREEN_TITLE_CLASS,
 } from "../../lib/ui";
 
@@ -26,8 +27,8 @@ export function PlaceCreateFailedPanel({
       className="bg-card border-border border-b px-6 pt-8 pb-6 text-center"
       data-creating="failed"
     >
-      <span className="bg-muted text-foreground mx-auto flex h-12 w-12 items-center justify-center rounded-full">
-        <AlertCircle className="h-6 w-6" strokeWidth={2} />
+      <span className={PLACE_EMPTY_ICON_CLASS + " mx-auto"}>
+        <AlertCircle className="h-7 w-7" strokeWidth={2} />
       </span>
       <h3 className={PLACE_SCREEN_TITLE_CLASS + " mt-4"}>
         Couldn&apos;t create this profile
