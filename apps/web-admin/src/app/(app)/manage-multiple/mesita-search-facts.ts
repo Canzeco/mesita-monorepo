@@ -32,6 +32,9 @@ export function factOn(
   // place must never read Enriched off either it or content_state.
   if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
+  // Stripe (MESITA-3394): can take payments in the server's Stripe mode;
+  // null (a failed read, or an older EF) is unknown.
+  if (key === "stripe_connected") return hit.stripe_connected ?? "unknown";
   return "unknown";
 }
 

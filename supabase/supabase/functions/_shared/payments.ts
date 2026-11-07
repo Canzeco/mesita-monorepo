@@ -15,7 +15,7 @@
 // Test mode until Pato flips STRIPE_MODE (boostStripeKey); agents never do.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
+import { boostLivemode, type StripeCall } from "./boost.ts";
 import { moneyState, type MoneySettings } from "./money-state.ts";
 import { vouchersUpToPct } from "./money.ts";
 
@@ -53,23 +53,32 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
   return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
 }
 
-/** What a guest sees on the place screen's Vouchers tab (MESITA-3299): the
- *  owner's switches and whether the account can charge. Nothing else of the
- *  account reaches guests. A read failure reads as everything off. */
-export async function readPlaceMoney(
+/** Which of these places can take payments now (MESITA-3394): a
+ *  `place_payment_accounts` row with `charges_enabled` in the server's
+ *  current Stripe mode (`livemode`), the rule the voucher sale already uses
+ *  (`offerFrom` in vouchers.ts). One read for all the ids, no chunking: the
+ *  caller chunks when its page can be large. `null` when the read fails, so a
+ *  caller can say "unknown" instead of a false "no". The row is a snapshot:
+ *  only Business › Payments refreshes it until the Connect receiver
+ *  (MESITA-3305) lands. Readers: the admin "Stripe" general state
+ *  (admin-web-search-places) and the guest list rows (withVouchersUpTo), so
+ *  the two never disagree. */
+export async function chargesEnabledByPlace(
   admin: SupabaseClient,
-  placeId: string,
-): Promise<{ charges_enabled: boolean; cashback: boolean; vouchers: Record<Exclude<PaymentKey, "cashback">, boolean> }> {
-  const [settingsRes, accountRes] = await Promise.all([
-    admin.from("place_payment_settings").select(PAYMENT_KEYS.join(", ")).eq("place_id", placeId).maybeSingle(),
-    admin.from("place_payment_accounts").select("charges_enabled").eq("place_id", placeId).maybeSingle(),
-  ]);
-  if (settingsRes.error) console.error(`[payments] settings read: ${settingsRes.error.message}`);
-  if (accountRes.error) console.error(`[payments] account read: ${accountRes.error.message}`);
-  const s = settingsFromRow(settingsRes.error ? null : (settingsRes.data as Partial<Record<PaymentKey, unknown>> | null));
-  const account = accountRes.error ? null : (accountRes.data as { charges_enabled?: unknown } | null);
-  const { cashback, ...vouchers } = s;
-  return { charges_enabled: account?.charges_enabled === true, cashback, vouchers };
+  ids: string[],
+  livemode: boolean,
+): Promise<Set<string> | null> {
+  if (ids.length === 0) return new Set();
+  const { data, error } = await admin.from("place_payment_accounts").select("place_id, charges_enabled, livemode").in("place_id", ids);
+  if (error) {
+    console.error(`[payments] accounts read (${ids.length} ids): ${error.message}`);
+    return null;
+  }
+  const out = new Set<string>();
+  for (const row of (data ?? []) as { place_id: string; charges_enabled?: unknown; livemode?: unknown }[]) {
+    if (row.charges_enabled === true && row.livemode === livemode) out.add(row.place_id);
+  }
+  return out;
 }
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
@@ -89,20 +98,19 @@ export async function withVouchersUpTo<T extends { id: string }>(
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
   if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false }));
-  const [settingsRes, accountsRes] = await Promise.all([
+  // One list page of ids, so no chunking. The account read is the shared
+  // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
+  const [settingsRes, charging] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
-    admin.from("place_payment_accounts").select("place_id, charges_enabled").in("place_id", ids),
+    chargesEnabledByPlace(admin, ids, boostLivemode()),
   ]);
   if (settingsRes.error) console.error(`[payments] settings page read: ${settingsRes.error.message}`);
-  if (accountsRes.error) console.error(`[payments] accounts page read: ${accountsRes.error.message}`);
   // via unknown: a template-string select widens `data` to supabase-js's
   // GenericStringError union, as in get-place.
   const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[];
-  const accountRows = (accountsRes.error ? [] : accountsRes.data ?? []) as unknown as { place_id: string; charges_enabled?: unknown }[];
   const settings = new Map<string, MoneySettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
-  const charges = new Set<string>();
-  for (const row of accountRows) if (row.charges_enabled === true) charges.add(row.place_id);
+  const charges = charging ?? new Set<string>();
   return places.map((p) => {
     const s = settings.get(p.id);
     const sell = s ? moneyState(s, charges.has(p.id) ? { charges_enabled: true } : null, null).sell : [];

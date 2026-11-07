@@ -2,9 +2,11 @@
 // state a page shows is a pure read of the row. Money and auth, so pinned.
 
 import { assertEquals } from "jsr:@std/assert@1";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   accountState,
   accountView,
+  chargesEnabledByPlace,
   CONNECT_CONTROLLER,
   CONNECT_CONTROLLER_NO_DASHBOARD,
   connectApiVersion,
@@ -90,4 +92,36 @@ Deno.test("settings: seven switches, no row is all off, unknown keys refused", (
   assertEquals(settingsFromRow({ cashback: true, voucher_vip: "yes" }).voucher_vip, false);
   assertEquals(isPaymentKey("voucher_200"), true);
   assertEquals(isPaymentKey("prepay_enabled"), false);
+});
+
+// The "Stripe" general state and the guest Pay mark read one rule
+// (MESITA-3394): charging, in the server's Stripe mode; a failed read is
+// "unknown" (null), never "no". A chain fake stands in for PostgREST.
+function accountsFake(result: { data: unknown[] | null; error: { message: string } | null }) {
+  const calls = { in: 0 };
+  const client = {
+    from: () => ({ select: () => ({ in: () => { calls.in++; return Promise.resolve(result); } }) }),
+  } as unknown as SupabaseClient;
+  return { client, calls };
+}
+
+Deno.test("chargesEnabledByPlace: only charging accounts in the requested Stripe mode", async () => {
+  const { client } = accountsFake({
+    data: [
+      { place_id: "a", charges_enabled: true, livemode: false },
+      { place_id: "b", charges_enabled: true, livemode: true },
+      { place_id: "c", charges_enabled: false, livemode: false },
+    ],
+    error: null,
+  });
+  assertEquals(await chargesEnabledByPlace(client, ["a", "b", "c", "d"], false), new Set(["a"]));
+  assertEquals(await chargesEnabledByPlace(client, ["a", "b", "c", "d"], true), new Set(["b"]));
+});
+
+Deno.test("chargesEnabledByPlace: no ids reads nothing; a failed read is null, not empty", async () => {
+  const empty = accountsFake({ data: [], error: null });
+  assertEquals(await chargesEnabledByPlace(empty.client, [], false), new Set());
+  assertEquals(empty.calls.in, 0);
+  const failed = accountsFake({ data: null, error: { message: "boom" } });
+  assertEquals(await chargesEnabledByPlace(failed.client, ["a"], false), null);
 });

@@ -18,16 +18,17 @@ import {
 } from "./state-vocabulary";
 
 describe("state vocabulary", () => {
-  it("is five general facts plus nine Crenup steps 0–8", () => {
+  it("is six general facts plus nine Crenup steps 0–8", () => {
     // The MVP First Stage cut the commercial facts: Verified (MESITA-2106),
     // then Owned · Partnered · Rewards · Mesita Pay · Mesita Credits
-    // (MESITA-2115).
+    // (MESITA-2115). Stripe came back as one fact (MESITA-3394).
     expect(GENERAL_STATE_FACTS.map((f) => f.label)).toEqual([
       "Created",
       "Pulsing",
       "Enriching",
       "Enriched",
       "Disabled",
+      "Stripe",
     ]);
     expect(REVIEW_STATE_FACTS.map((f) => f.label)).toEqual([
       "Google Found",

@@ -66,7 +66,7 @@ export type PlaceHit = {
   google_review_count: number | null;
   content_state: string | null;
   // ── The state facts (labels: Created · Pulsing · Enriching · Enriched ·
-  //    Disabled). All derived (or
+  //    Disabled · Stripe). All derived (or
   //    projected) in admin-web-search-places, except Enriching which is
   //    content_state generating (MESITA-453 whole-pipeline). Disabled is
   //    `!listed`: the operator's off switch.
@@ -92,6 +92,9 @@ export type PlaceHit = {
    *  0 · 1 · 2 = Off · 2X · 5X. Null when the payload does not
    *  carry it. */
   boost_tier?: number | null;
+  /** Stripe (MESITA-3394): the place's account can take payments in the
+   *  server's Stripe mode; null when the EF could not read it ("?"). */
+  stripe_connected?: boolean | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */
   viewed?: number | null;
   saved?: number | null;
@@ -145,6 +148,8 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     ...enrichmentView({ ...raw, content_state: contentState }),
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
     boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
+    // A missing field (an EF older than this client) reads "?", never "no".
+    stripe_connected: typeof raw.stripe_connected === "boolean" ? raw.stripe_connected : null,
     viewed: typeof raw.viewed === "number" ? raw.viewed : null,
     saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,
