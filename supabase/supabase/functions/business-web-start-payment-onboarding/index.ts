@@ -66,14 +66,9 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
       account = null;
     }
     if (!account) {
-      const { data: place } = await admin.from("place_profiles").select("name, website_url").eq("id", placeId).maybeSingle();
-      const params = accountCreateParams({
-        placeId,
-        country,
-        name: (place?.name as string | null) ?? null,
-        website: (place?.website_url as string | null) ?? null,
-        email: user.emailLower ?? null,
-      });
+      // Stripe's onboarding asks the business name itself; only the owner's
+      // email is prefilled, so no place read happens here.
+      const params = accountCreateParams({ placeId, country, name: null, website: null, email: user.emailLower ?? null });
       const version = connectApiVersion();
       let created: Record<string, unknown>;
       try {

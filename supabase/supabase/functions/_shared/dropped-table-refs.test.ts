@@ -99,7 +99,6 @@ const DROPPED_TABLES = [
   "place_guest_customers",
   "place_members",
   "place_name_history",
-  "place_payment_accounts",
   "place_plans",
   "place_strikes",
   "place_subscriptions",
@@ -160,8 +159,10 @@ const MUST_COVER = [
   "venues",
 ] as const;
 
-/** Recycled: vacated once, then recreated. Must never re-enter the list. */
-const LIVE_AGAIN = ["places"] as const;
+/** Recycled: vacated once, then recreated. Must never re-enter the list.
+ *  `place_payment_accounts` is back a second time (MESITA-3296: Business ›
+ *  Payments connects the place's Stripe account). */
+const LIVE_AGAIN = ["places", "place_payment_accounts"] as const;
 
 const FUNCTIONS_DIR = new URL("../", import.meta.url).pathname;
 

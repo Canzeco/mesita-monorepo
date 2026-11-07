@@ -48,7 +48,7 @@ Deno.test("the page never gets the account id or Stripe's words", () => {
     place_id: "p",
     stripe_account_id: "acct_1",
     livemode: false,
-    country: "MX",
+    account_country: "MX",
     charges_enabled: false,
     details_submitted: true,
     payouts_enabled: false,
@@ -70,7 +70,7 @@ Deno.test("the page never gets the account id or Stripe's words", () => {
 Deno.test("Stripe's Account object becomes the row, missing fields read as off", () => {
   assertEquals(snapshotFromStripe({}, false), {
     livemode: false,
-    country: null,
+    account_country: null,
     charges_enabled: false,
     details_submitted: false,
     payouts_enabled: false,

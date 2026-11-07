@@ -20,7 +20,8 @@ create table public.place_payment_accounts (
   place_id uuid primary key references public.places (id) on delete cascade,
   stripe_account_id text not null unique,
   livemode boolean not null default false,
-  country text,
+  -- As Stripe reports it; set for good when the account is created.
+  account_country text,
   charges_enabled boolean not null default false,
   details_submitted boolean not null default false,
   payouts_enabled boolean not null default false,

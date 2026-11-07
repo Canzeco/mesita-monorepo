@@ -91,7 +91,7 @@ export type AccountRow = {
   place_id: string;
   stripe_account_id: string;
   livemode: boolean;
-  country: string | null;
+  account_country: string | null;
   charges_enabled: boolean;
   details_submitted: boolean;
   payouts_enabled: boolean;
@@ -100,14 +100,14 @@ export type AccountRow = {
 };
 
 export const ACCOUNT_COLUMNS =
-  "place_id, stripe_account_id, livemode, country, charges_enabled, details_submitted, payouts_enabled, requirements_due, disabled_reason";
+  "place_id, stripe_account_id, livemode, account_country, charges_enabled, details_submitted, payouts_enabled, requirements_due, disabled_reason";
 
 /** What Stripe's Account object says, as the row stores it. */
 export function snapshotFromStripe(account: Record<string, unknown>, livemode: boolean): Omit<AccountRow, "place_id" | "stripe_account_id"> {
   const req = (account.requirements ?? {}) as { currently_due?: unknown; disabled_reason?: unknown };
   return {
     livemode,
-    country: typeof account.country === "string" ? account.country : null,
+    account_country: typeof account.country === "string" ? account.country : null,
     charges_enabled: account.charges_enabled === true,
     details_submitted: account.details_submitted === true,
     payouts_enabled: account.payouts_enabled === true,
@@ -131,7 +131,7 @@ export function accountView(row: AccountRow | null) {
   return {
     state: accountState(row),
     livemode: row?.livemode ?? false,
-    country: row?.country ?? null,
+    country: row?.account_country ?? null,
     charges_enabled: row?.charges_enabled ?? false,
     payouts_enabled: row?.payouts_enabled ?? false,
     details_submitted: row?.details_submitted ?? false,

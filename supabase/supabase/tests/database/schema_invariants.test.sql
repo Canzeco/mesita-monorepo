@@ -1274,7 +1274,8 @@ select is_empty(
       'credit_gifts', 'credit_ledger', 'credit_lots', 'favorites', 'managers',
       'membership_plans', 'partner_memberships', 'place_api_keys',
       'place_field_proposals', 'place_guest_customers',
-      'place_members', 'place_payment_accounts', 'place_plans', 'place_strikes',
+      -- place_payment_accounts is back (MESITA-3296: the place's Stripe account).
+      'place_members', 'place_plans', 'place_strikes',
       'place_subscriptions', 'place_verifications', 'stripe_events',
       'ticket_check_events', 'ticket_reports', 'ticket_reviews',
       'visit_ticket_payments', 'visit_tickets'
