@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, ChevronRight, Loader2, Mail } from "lucide-react";
+import { BadgeCheck, Loader2 } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -16,8 +16,6 @@ import {
   type RefillPack,
   type TierRank,
 } from "@/lib/api/boost";
-import { businessClaimHref } from "@/lib/business-url";
-import { MESITA_HELLO_EMAIL } from "@/lib/mesita-contact";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -36,8 +34,8 @@ import { cn, errMsg } from "@/lib/utils";
 //
 // It reads top to bottom (MESITA-3257, Pato picked the rows and every line): who
 // it's for, one spot for messages, one card with a row per plan in Business ›
-// Billing's words (Mesita Suite Free, Pro, Max; the perk is Premier: visibility
-// and the red tag), the terms, then the owner. Buy and Now share one slot, and a
+// the plans' names (Mesita Free, Pro, Max, MESITA-3329; the perk is Premier: visibility
+// and the red tag), then the terms. Buy and Now share one slot, and a
 // reason a plan can't be bought stays in that plan's row. Every amount, date and
 // refusal is the server's (consumer-web-get-premier-refill); nothing here computes
 // money. Premier is paid ranking priority: it never verifies the place.
@@ -182,7 +180,6 @@ export function BoostPane({
 
       <p className="text-muted-foreground text-sm">{TERMS}</p>
 
-      {boost ? <OwnerBox place={place} owner={boost.owner ?? "none"} /> : null}
     </section>
   );
 }
@@ -194,44 +191,10 @@ function packReason(p: RefillPack | undefined): string | null {
   return p.notice ? `${p.notice}.` : null;
 }
 
-/** Who runs the place (Pato, MESITA-3203: "a box to claim ownership, and if
- *  already has an owner, like mention it, and contact mail"). The claim door
- *  lands an owner on the place and lets anyone else claim it. */
-function OwnerBox({
-  place,
-  owner,
-}: {
-  place: PlaceDetail;
-  owner: NonNullable<PlaceBoost["owner"]>;
-}) {
-  const other = owner === "other";
-  const Icon = other ? Mail : ChevronRight;
-  return (
-    <a
-      href={
-        other
-          ? `mailto:${MESITA_HELLO_EMAIL}?subject=${encodeURIComponent(`Ownership of ${place.name}`)}`
-          : businessClaimHref(place.id)
-      }
-      {...(other ? {} : { target: "_blank", rel: "noopener" })}
-      className={cn(BOX_CLASS, "flex min-h-16 items-center gap-3 p-3")}
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block font-semibold">
-          {other ? "This place has an owner" : owner === "you" ? "You run this place" : "Is this your place?"}
-        </span>
-        <span className="text-muted-foreground block text-sm">
-          {other
-            ? `Think that's wrong? Write to ${MESITA_HELLO_EMAIL}`
-            : owner === "you"
-              ? "Open it in Mesita Business."
-              : "Claim it in Mesita Business to edit its page, reviews and plan."}
-        </span>
-      </span>
-      <Icon className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
-    </a>
-  );
-}
+// NO OWNER CARD HERE (Pato, MESITA-3329: "remove is this your place from
+// here for clarity"): MESITA-3203's "Is this your place?" / "This place has
+// an owner" / "You run this place" box left this sheet; the claim page and
+// Business keep their own doors.
 
 /** A refused start in one line, from the server's code. */
 function refusal(err: unknown, fallback: string): string {
