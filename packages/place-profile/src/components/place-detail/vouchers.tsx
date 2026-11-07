@@ -1,14 +1,14 @@
 "use client";
 
-import { type ComponentType, useEffect } from "react";
-import { Coins, Crown, Hand, Wallet } from "lucide-react";
+import { type ComponentType, type ReactNode, useEffect } from "react";
+import { Crown, Hand, QrCode, Wallet } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
 import {
+  PLACE_BONE_CLASS,
   PLACE_BUTTON_CLASS,
-  PLACE_FIGURE_CLASS,
   PLACE_META_CLASS,
   PLACE_PILL_CLASS,
   PLACE_SCREEN_TITLE_CLASS,
@@ -189,36 +189,71 @@ function tag(reason: VoucherReason | undefined): string {
 
 const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
 
-/** EVERY PROMO IS A GIFT CARD (Pato, MESITA-3342: "must look like gift
- *  cards"; "clearer fucking text"; "add buy buttons ... the vouchers must
- *  be buyable"): one coloured card, the mark as a watermark at its right,
- *  the name and the bonus badge on top, the credit big in the middle with
- *  what it costs under it, the condition and the limit in one small line,
- *  and Buy at the bottom right. In test mode Buy sits on every card the
- *  server has not used up or paused, and the state reads beside it; the
- *  server still decides at the tap. The face-and-words row of MESITA-3326
- *  is gone. */
-// A hairline in the card's own hue, a quarter strength, so the pale tints
-// hold their edge on the grey page (Pato, MESITA-3357: "maybe add borders
-// or something to the products"); `border-current` reads the tone's text
-// colour, the mark's.
-const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/50 p-3";
 /** A Rewards section title: 18px, the screen title's size, on a tight line.
  *  The tab is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or
  *  Perks"; Promos from MESITA-3322, Vouchers before). */
 const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
-/** One full-width card in the list of six, laid out sideways (MESITA-3387):
- *  the words on the left, Buy on the right. */
-const GRID_CARD = "relative flex items-center gap-3 overflow-hidden rounded-xl border border-current/50 p-3";
-// ONE BADGE (MESITA-3379): the grid cards' 12px pill, on the cashback card
-// too. MESITA-3363 had made the cashback badge 18px ("mention the percentage
-// fucking bigger") when every gift card was full-width; the grid cards went
-// to 12px with MESITA-3370 and the card's own "5% back" line is the big one.
-const GRID_BADGE = cn(PLACE_PILL_CLASS, "bg-card/85 text-foreground shrink-0");
-const GIFT_BADGE = GRID_BADGE;
+/** ONE ROW CARD for every reward (MESITA-3387, Pato: "do this credits boxes
+ *  horizontal"; MESITA-3388 put the cashback on it too, "symmetry and
+ *  modularity"): the words on the left, the action in a 96px slot on the
+ *  right. A hairline in the card's own hue at half strength holds the pale
+ *  tint's edge (MESITA-3357/3366); `border-current` reads the tone's ink. */
+const ROW_CARD = "relative flex items-center gap-3 overflow-hidden rounded-xl border border-current/50 p-3";
+// ONE BADGE (MESITA-3379): the 12px pill on every row.
+const ROW_BADGE = cn(PLACE_PILL_CLASS, "bg-card/85 text-foreground shrink-0");
 
-function Watermark({ Mark }: { Mark: Mark }) {
-  return <Mark className="absolute -right-5 -bottom-5 h-32 w-32 opacity-20" strokeWidth={1.25} aria-hidden />;
+/** The row's shell: name and badge, "Get X" big, the line under it, a small
+ *  last line, and the right slot. */
+function RowCard({
+  tone,
+  dimmed,
+  name,
+  badge,
+  get,
+  sub,
+  small,
+  right,
+  ...rest
+}: {
+  tone: string;
+  dimmed: boolean;
+  name: string;
+  badge: string;
+  get: string;
+  sub: string;
+  small?: string;
+  right: ReactNode;
+  "aria-label": string;
+  "data-voucher"?: string;
+  "data-cashback"?: boolean;
+}) {
+  return (
+    <li className={cn(ROW_CARD, tone, dimmed && "opacity-50 grayscale")} {...rest}>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-foreground text-sm leading-tight font-semibold">{name}</p>
+          <span className={ROW_BADGE}>{badge}</span>
+        </div>
+        <p className="text-foreground mt-1 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
+          {get}
+        </p>
+        <p className="text-foreground/80 text-sm leading-snug tabular-nums">{sub}</p>
+        {small ? <p className="text-foreground/70 text-xs leading-snug">{small}</p> : null}
+      </div>
+      <div className="w-24 shrink-0">{right}</div>
+    </li>
+  );
+}
+
+/** The right slot while list-vouchers has not answered (MESITA-3388): a
+ *  44px bone, so no card flashes grey with "Not at this place yet". */
+function SlotBone() {
+  return <div className={cn(PLACE_BONE_CLASS, "h-11 w-full")} aria-hidden data-reward-loading />;
+}
+
+/** The state where Buy or Pay would be, right-aligned, objective. */
+function SlotTag({ children }: { children: string }) {
+  return <p className="text-foreground/70 text-right text-xs leading-snug font-medium">{children}</p>;
 }
 
 function VoucherCard({
@@ -228,6 +263,7 @@ function VoucherCard({
   currency,
   actions,
   dim,
+  loading,
 }: {
   product: Product;
   reason: VoucherReason | undefined;
@@ -236,6 +272,8 @@ function VoucherCard({
   actions?: PlaceActions;
   /** Grey out a card not for sale (live mode); test mode keeps the colour. */
   dim: boolean;
+  /** The offer is still loading: colour, and a bone in the slot. */
+  loading: boolean;
 }) {
   const forSale = reason === undefined;
   const live = Boolean(actions?.onBuyVoucher);
@@ -245,29 +283,20 @@ function VoucherCard({
   // or paused (Pato, MESITA-3342: "must be buyable or whatever").
   const buyable = forSale || (!dim && reason !== "used" && reason !== "paused");
   return (
-    <li
-      className={cn(GRID_CARD, product.tone, !forSale && dim && "opacity-50 grayscale")}
-      aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
+    <RowCard
+      tone={product.tone}
+      dimmed={!loading && !forSale && dim}
+      name={product.name}
+      badge={product.bonus}
+      get={`Get ${creditValue(product, line, currency)}`}
+      sub={forLine(product, line, currency)}
+      small={product.limit}
+      aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${loading ? "" : tag(reason)}`}
       data-voucher={product.key}
-    >
-      {/* SIDEWAYS (Pato, MESITA-3387: "do this credits boxes horizontal.
-          thus vertical list of 6 items"): on the left the name with the
-          badge beside it, "Get MX$130" big, "for MX$100" under it (Story:
-          "& a story") and the limit (MESITA-3373's words); on the right Buy
-          OR the state, never both. */}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="text-foreground text-sm leading-tight font-semibold">{product.name}</p>
-          <span className={GRID_BADGE}>{product.bonus}</span>
-        </div>
-        <p className="text-foreground mt-1 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
-          Get {creditValue(product, line, currency)}
-        </p>
-        <p className="text-foreground/80 text-sm leading-snug tabular-nums">{forLine(product, line, currency)}</p>
-        <p className="text-foreground/70 text-xs leading-snug">{product.limit}</p>
-      </div>
-      <div className="w-24 shrink-0">
-        {buyable ? (
+      right={
+        loading ? (
+          <SlotBone />
+        ) : buyable ? (
           <button
             type="button"
             {...inertButtonProps(live)}
@@ -279,10 +308,30 @@ function VoucherCard({
             {buying ? "Opening…" : "Buy"}
           </button>
         ) : (
-          <p className="text-foreground/70 text-right text-xs leading-snug font-medium">{tag(reason)}</p>
-        )}
+          <SlotTag>{tag(reason)}</SlotTag>
+        )
+      }
+    />
+  );
+}
+
+/** A section's head (MESITA-3388, Pato: "clearly divide sections"): the
+ *  hero tile's mark on the hero tile's green (ProfileActions: green-400,
+ *  neutral-950 ink), so Pay and Prepay up top name the section they open,
+ *  then the 18px title over one grey line. */
+function SectionHead({ id, Mark, title, subtitle }: { id: string; Mark: Mark; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-400 text-neutral-950" aria-hidden>
+        <Mark className="h-[18px] w-[18px]" />
+      </span>
+      <div className="min-w-0">
+        <h3 id={id} className={PROMOS_TITLE_CLASS}>
+          {title}
+        </h3>
+        <p className={PLACE_META_CLASS}>{subtitle}</p>
       </div>
-    </li>
+    </div>
   );
 }
 
@@ -293,6 +342,9 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   }, [onLoad]);
 
   const money = place.money;
+  // The host is still asking list-vouchers and the place read carried no
+  // offer: draw the colour and bones, never a guess (MESITA-3388).
+  const loading = actions?.vouchersLoading === true && !money;
   // A Google-only card or an older read has no money: every switch reads off.
   const state = moneyState(
     {
@@ -324,93 +376,93 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   // stands; the dimmed, greyed card is for live mode.
   const dim = money?.test_mode !== true;
   return (
-    // A WHITE PAGE FOR PROMOS ALONE (Pato, MESITA-3366: "only in the case of
-    // promos, either use white background or stronger borders for the
-    // products"): the pane undoes the body's 16px sides and the 16px under
-    // the sticky strip (the column's gap-3 plus the strip's mb-1,
-    // MESITA-3379) and paints itself white; the cards' hairline is twice as
-    // strong (border-current/50). The other tabs keep the grey. Sections sit
-    // 12px apart, the column's rhythm, with the hairline between them.
-    <div className="bg-card -mx-4 -mt-4 flex flex-col gap-3 px-4 pt-4 pb-6" data-promos-page>
-      {money?.test_mode ? <TestBand /> : null}
-      {hasCredit && balance ? (
-        <Box title="Your credit here">
-          <p className="text-foreground text-sm" data-place-credit>
-            <span className="font-semibold tabular-nums">{pesos(balance.available_cents, currency)}</span> available
-            {balance.pending_cents > 0 ? (
-              <>
-                {" · "}
-                <span className="font-semibold tabular-nums">{pesos(balance.pending_cents, currency)}</span> pending
-              </>
-            ) : null}
-          </p>
-        </Box>
+    // A WHITE PAGE FOR REWARDS ALONE (Pato, MESITA-3366): the pane undoes
+    // the body's 16px sides and the 16px under the sticky strip
+    // (MESITA-3379) and paints itself white.
+    //
+    // TWO SECTIONS, CLEARLY DIVIDED (Pato, MESITA-3388: "Payment Rewards /
+    // Prepayment Rewards — clearly divide sections"): each section on the
+    // white with its own head, and between them an 8px band of the page's
+    // grey, edge to edge, the grouped-list gap a guest already reads as "a
+    // new section". A 1px hairline (MESITA-3369) read as one more card edge.
+    // PAYMENT FIRST (Pato, MESITA-3350: "move payments to the top").
+    <div className="bg-card -mx-4 -mt-4 flex flex-col pb-2" data-promos-page>
+      {money?.test_mode || hasCredit ? (
+        <div className="flex flex-col gap-3 px-4 pt-4">
+          {money?.test_mode ? <TestBand /> : null}
+          {hasCredit && balance ? (
+            <Box title="Your credit here">
+              <p className="text-foreground text-sm" data-place-credit>
+                <span className="font-semibold tabular-nums">{pesos(balance.available_cents, currency)}</span> available
+                {balance.pending_cents > 0 ? (
+                  <>
+                    {" · "}
+                    <span className="font-semibold tabular-nums">{pesos(balance.pending_cents, currency)}</span> pending
+                  </>
+                ) : null}
+              </p>
+            </Box>
+          ) : null}
+        </div>
       ) : null}
-      {/* PAYMENT PROMOS FIRST (Pato, MESITA-3350: "move payments to the
-          top"): the cashback card, then the six gift cards. */}
-      {/* NO WHITE BOX AROUND THE CARDS (Pato, MESITA-3354: "it's gray and
-          then white and then the vouchers boxes of different colors ...
-          double margins"): the title and the note sit on the grey page and
-          the coloured cards on it, one surface fewer. */}
-      {/* EACH SECTION SAYS WHAT IT IS (Pato, MESITA-3366: "must be clear
-          that something is Prepayments and other things is Payments"):
-          an 18px title and one grey line. */}
-      <section className="flex flex-col gap-3" data-promos="payment">
-        <div>
-          <h3 className={PROMOS_TITLE_CLASS}>Payment Rewards</h3>
-          <p className={PLACE_META_CLASS}>When you pay the bill here.</p>
-        </div>
-        <div
-          className={cn(GIFT_CARD, CASHBACK_TONE, !state.cashback && dim && "opacity-50 grayscale")}
-          aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
-          data-cashback
-        >
-          <Watermark Mark={Coins} />
-          <div className="relative flex items-start justify-between gap-2">
-            <p className="text-foreground text-sm font-semibold">Cashback</p>
-            <span className={GIFT_BADGE}>5% Back</span>
-          </div>
-          <p className={cn(PLACE_FIGURE_CLASS, "text-foreground relative mt-3")}>5% back</p>
-          <p className="text-foreground/80 relative mt-1 text-sm">Pay by card here and 5% of it comes back as credit.</p>
-          {/* PAY, LIKE THE GIFT CARDS' BUY (Pato, MESITA-3352: "use Pay
-              button to redirect to pay page"): the host's Pay page; a host
-              without onPay draws the state alone. */}
-          <div className="relative mt-auto flex items-end justify-between gap-2 pt-3">
-            <p className="text-foreground/70 min-w-0 text-xs font-medium">{cashbackTag}</p>
-            {actions?.onPay ? (
-              <button
-                type="button"
-                onClick={actions.onPay}
-                aria-label="Pay here with Mesita"
-                className={buyButton}
-              >
-                Pay
-              </button>
-            ) : null}
-          </div>
-        </div>
+      <section className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
+        <SectionHead id="rewards-payment" Mark={QrCode} title="Payment Rewards" subtitle="When you pay the bill here." />
+        <ul className="flex flex-col gap-2">
+          {/* THE CASHBACK IS A ROW LIKE THE SIX (MESITA-3388): "Get 5% back"
+              at the vouchers' "Get MX$130" size, Pay in the same slot as
+              Buy (MESITA-3352: the host's Pay page; a host without onPay
+              draws the state). The coin watermark and the 24px figure of
+              MESITA-3363 went with the gift-card face. */}
+          <RowCard
+            tone={CASHBACK_TONE}
+            dimmed={!loading && !state.cashback && dim}
+            name="Cashback"
+            badge="5% Back"
+            get="Get 5% back"
+            sub="Pay by card here, 5% comes back as credit."
+            aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${loading ? "" : cashbackTag}`}
+            data-cashback
+            right={
+              loading ? (
+                <SlotBone />
+              ) : actions?.onPay ? (
+                <button type="button" onClick={actions.onPay} aria-label="Pay here with Mesita" className={cn(buyButton, "w-full px-2")}>
+                  Pay
+                </button>
+              ) : (
+                <SlotTag>{cashbackTag}</SlotTag>
+              )
+            }
+          />
+        </ul>
       </section>
-      {/* A HAIRLINE BETWEEN THE TWO (Pato, MESITA-3369: "add some line or
-          something dividing payments deals from prepayments deals"). */}
-      <hr className="border-border my-0" aria-hidden />
-      <section className="flex flex-col gap-3" data-promos="prepayment">
-        <div>
-          <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Rewards</h3>
-          <p className={PLACE_META_CLASS}>Credit you buy before you go.</p>
-        </div>
-        {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
-            before the bill. All but the Instagram one"): every voucher's
-            credit turns Available one hour after the charge except Story,
-            ready at once (the catalog's available_after_sec, MESITA-3302). */}
-        <p className={PLACE_META_CLASS}>
-          Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
-        </p>
+      <div className="bg-background h-2" aria-hidden data-rewards-divider />
+      <section className="flex flex-col gap-3 px-4 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
+        {/* ONE GREY LINE (MESITA-3388): the hour (Pato, MESITA-3323:
+            "Prepayments must be one [hour] before the bill. All but the
+            Instagram one"; the catalog's available_after_sec, MESITA-3302)
+            folds into the subtitle; it was a second paragraph. */}
+        <SectionHead
+          id="rewards-prepayment"
+          Mark={Wallet}
+          title="Pre-Payment Rewards"
+          subtitle="Credit you buy before you go. Ready in an hour, Story at once."
+        />
         {/* ONE COLUMN OF SIX (Pato, MESITA-3387: "vertical list of 6
             items"; the 2×3 grid of MESITA-3371 before). Specials first,
             then the standard three (MESITA-3328). */}
         <ul className="flex flex-col gap-2" data-voucher-catalog>
           {[...SPECIAL, ...STANDARD].map((p) => (
-            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
+            <VoucherCard
+              key={p.key}
+              product={p}
+              reason={unavailable[p.key]}
+              line={catalog[p.key]}
+              currency={currency}
+              actions={actions}
+              dim={dim}
+              loading={loading}
+            />
           ))}
         </ul>
       </section>
