@@ -264,6 +264,17 @@
   }
 }
 
+/* The rail Mesita staff see (MESITA-3297): web-admin's dark rail, in ink. Only
+   the tokens the rail draws with change, and only inside it. */
+.staff-rail {
+  --card: oklch(0.16 0.035 15);
+  --foreground: oklch(0.978 0.005 15);
+  --muted: oklch(0.978 0.005 15 / 0.15);
+  --muted-foreground: oklch(0.978 0.005 15 / 0.55);
+  --border: oklch(0.978 0.005 15 / 0.1);
+  color-scheme: dark;
+}
+
 /* The member phone is the consumer surface. Admin's page ground stays the
    warm near-white; these tokens apply only inside the frame. */
 .member-phone {

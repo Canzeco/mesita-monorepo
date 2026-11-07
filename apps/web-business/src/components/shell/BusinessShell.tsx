@@ -224,7 +224,15 @@ export function BusinessShell({
   // width, no bottom bar; below lg it narrows to an icon rail.
   return (
     <div className="min-h-dvh">
-      <aside className="border-border bg-card fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3">
+      {/* Dark for Mesita staff only (Pato, MESITA-3297); owners and editors
+          keep the light rail (MESITA-3116). `.staff-rail` swaps the tokens, so
+          every row below is drawn the same way in both. */}
+      <aside
+        className={cn(
+          "border-border bg-card text-foreground fixed inset-y-0 left-0 z-30 flex w-16 flex-col border-r px-2 pt-5 pb-3 lg:w-60 lg:px-3",
+          isSuperAdmin && "staff-rail",
+        )}
+      >
         {/* The name on top (Pato, MESITA-3153, reversing MESITA-3151: "just
             say Mesita like in the consumer app"): the word "Mesita" in
             Outfit, as the consumer app's header draws it; the bare mark
