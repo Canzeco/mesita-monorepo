@@ -1,4 +1,4 @@
--- MESITA-3219 — the history behind Business Views: what writes a row, and that a
+-- MESITA-3219, MESITA-3392 — the history behind Business Views: what writes a row, and that a
 -- like taken back is gone. Guests' names in the log are place_views_log.test.sql.
 
 begin;
@@ -49,10 +49,11 @@ select ok(
 
 select pg_temp.track('viewed', now() - interval '2 hours');
 select pg_temp.track('viewed', now() - interval '110 minutes');
-select is(pg_temp.events('viewed'), 1, 'a reopen within 30 minutes is the same view');
+select is(pg_temp.events('viewed'), 2, 'a reopen ten minutes later is a new view (MESITA-3392)');
 
-select pg_temp.track('viewed', now() - interval '1 hour');
-select is(pg_temp.events('viewed'), 2, 'a later open is a new view, and the old one stays');
+select pg_temp.track('viewed', now() - interval '109 minutes 50 seconds');
+select pg_temp.track('viewed', now() - interval '109 minutes 40 seconds');
+select is(pg_temp.events('viewed'), 4, 'every open is a view, even several in the same minute, and the old ones stay');
 select is(
   (select count(*)::int from public.place_activity where place_id = '00000000-0000-4000-8000-000000003219' and kind = 'viewed'),
   1,
