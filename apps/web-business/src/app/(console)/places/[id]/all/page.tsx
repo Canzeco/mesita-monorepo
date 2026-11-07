@@ -5,13 +5,11 @@ import {
   CalculatorIcon,
   CalendarCheckIcon,
   ChatCircleIcon,
-  CreditCardIcon,
   GlobeIcon,
   MoneyIcon,
   MonitorIcon,
   ShoppingBagIcon,
   UsersThreeIcon,
-  WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { PLACE_TAB_META } from "@/components/shell/place-tab-meta";
@@ -42,8 +40,12 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
     line: "Rank higher on Home and the Map, marked as an ad. See your level here and how it works.",
   },
   {
-    tab: "rewards",
-    line: "Discounts your place gives guests on today's bill. Turn each one on or off, and set the Cap and your place code.",
+    tab: "discounts",
+    line: "What your place gives guests off today's bill. Turn each one on or off, and set the Cap and your place code.",
+  },
+  {
+    tab: "payments",
+    line: "Digital Payments, Payments Cashback and Prepaid Vouchers, and which of them are on at your place.",
   },
 ];
 
@@ -57,16 +59,6 @@ const FUTURE: Array<{ name: string; line: string; icon: Icon }> = [
     name: "Express Website",
     line: "A website on your own domain, made from your Mesita profile with the same menu, hours and photos. Change it by asking, with ordering and reservation buttons already connected.",
     icon: GlobeIcon,
-  },
-  {
-    name: "Digital Payments",
-    line: "Guests pay by card, Apple Pay or Google Pay into your own Stripe account: members in the app, anyone else with no account. Staff can show a QR code for any bill, and every payment is recorded in Mesita.",
-    icon: CreditCardIcon,
-  },
-  {
-    name: "Credit Prepayments",
-    line: "Guests buy credit ahead at a bonus you set, give it as a gift card and spend it only with you. Credit Back rewards land in the same balance, and one ledger tracks every purchase, gift and redemption.",
-    icon: WalletIcon,
   },
   {
     name: "Mesita Capital",

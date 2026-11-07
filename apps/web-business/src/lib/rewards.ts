@@ -1,4 +1,4 @@
-// What the rewards are called on Rewards and Visits (MESITA-3202). Their
+// What the rewards are called on Discounts and Visits (MESITA-3202). Their
 // percents, the cap and who qualifies are the server's.
 
 import type { PaymentMethod, RewardKind } from "@/lib/business-api";

@@ -436,6 +436,49 @@ export async function setPlaceReward(placeId: string, key: RewardKind | "cap", e
   return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap } };
 }
 
+// ── Payments (MESITA-3296) ──────────────────────────────────────────────
+
+export type PaymentKey = "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
+export type PaymentSettings = Record<PaymentKey, boolean>;
+export type PaymentAccount = {
+  state: "none" | "onboarding" | "ready" | "restricted";
+  livemode: boolean;
+  country: string | null;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  requirements_due: number;
+};
+export type PlacePayments = { can_edit: boolean; test_mode: boolean; account: PaymentAccount; settings: PaymentSettings };
+
+/** The Stripe account as Stripe last said it stands, and every switch. */
+export async function getPlacePayments(placeId: string): Promise<Result<PlacePayments>> {
+  const r = await efInvoke<PlacePayments>("business-web-get-payments", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { can_edit: r.data.can_edit, test_mode: r.data.test_mode, account: r.data.account, settings: r.data.settings } };
+}
+
+/** One switch: Cashback or one voucher. Returns every switch as it now stands. */
+export async function setPlacePayment(placeId: string, key: PaymentKey, enabled: boolean): Promise<Result<PaymentSettings>> {
+  const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.settings };
+}
+
+/** Creates the place's Stripe account if it has none and answers Stripe's hosted setup. */
+export async function startPaymentOnboarding(placeId: string, returnUrl: string): Promise<Result<{ url: string }>> {
+  const r = await efInvoke<{ url: string }>("business-web-start-payment-onboarding", { place_id: placeId, return_url: returnUrl });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { url: r.data.url } };
+}
+
+/** A one-time link into the place's Stripe dashboard. */
+export async function openPaymentDashboard(placeId: string): Promise<Result<{ url: string }>> {
+  const r = await efInvoke<{ url: string }>("business-web-open-payment-dashboard", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { url: r.data.url } };
+}
+
 /** The place code (MESITA-3226): six digits, stored only as a hash. */
 export async function setPlaceCode(placeId: string, code: string): Promise<Result<true>> {
   const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });

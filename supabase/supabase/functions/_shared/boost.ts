@@ -583,7 +583,9 @@ export type StripeCall = (
   method: "GET" | "POST" | "DELETE",
   path: string,
   params?: Record<string, unknown>,
-  opts?: { idempotencyKey?: string },
+  /** `version`: a Stripe-Version header for this one call (Connect's account
+   *  create needs a preview version, MESITA-3296); unset is the key's default. */
+  opts?: { idempotencyKey?: string; version?: string },
 ) => Promise<Record<string, unknown>>;
 
 export function stripeClient(key: string, fetchFn: typeof fetch = fetch): StripeCall {
@@ -595,6 +597,7 @@ export function stripeClient(key: string, fetchFn: typeof fetch = fetch): Stripe
       "Content-Type": "application/x-www-form-urlencoded",
     };
     if (opts?.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
+    if (opts?.version) headers["Stripe-Version"] = opts.version;
     const res = await fetchFn(url, { method, headers, body: method === "GET" ? undefined : body });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
