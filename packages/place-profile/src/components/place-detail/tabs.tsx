@@ -3,9 +3,11 @@
 import { cn } from "../../lib/format";
 
 // The KEYS are addresses (and map to places.products); only the LABELS are
-// the words a guest reads. "Products" (Pato, MESITA-2618: "don't call it
-// menu for the moment. call it products. its cleaner"). It was "Menu" from
-// 2026-08-22 to 2026-10-21; he flips this word, so read the live label here.
+// the words a guest reads. "Menu" (Pato, MESITA-3318, 2026-11-06: "call
+// Products Menu instead"). It read "Products" from MESITA-2618 (Pato then:
+// "don't call it menu for the moment. call it products. its cleaner") and
+// "Menu" from 2026-08-22 to 2026-10-21 before that; he flips this word, so
+// read the live label here.
 // NO SOON IN THE STRIP (Pato, MESITA-2631: "remove the products and rewards
 // soon directly it looks like shit. just when opening the view, you mention
 // this is for soon"). `soon` still marks the tab whose screen is the
@@ -13,7 +15,7 @@ import { cn } from "../../lib/format";
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
-// OVERVIEW · REVIEWS · PRODUCTS · VOUCHERS: Products is the Soon screen and
+// OVERVIEW · REVIEWS · MENU · VOUCHERS: Menu is the Soon screen and
 // Vouchers lists the money products the place has on (MESITA-3299; it read
 // Rewards from MESITA-3201 until the discount product left). The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's
@@ -29,7 +31,7 @@ export type PlaceTabDef = {
 const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
-  { key: "products", label: "Products", soon: true },
+  { key: "products", label: "Menu", soon: true },
   { key: "vouchers", label: "Vouchers" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
