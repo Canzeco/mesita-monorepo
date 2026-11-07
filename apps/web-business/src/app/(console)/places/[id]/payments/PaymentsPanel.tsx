@@ -7,6 +7,7 @@
 // still open with owners.
 
 import { useState } from "react";
+import { moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
   ChampagneIcon,
@@ -66,6 +67,15 @@ const SPECIAL: Product[] = [
   { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-yellow-100 text-yellow-700" },
 ];
 
+/** Why a switched-on voucher is not for sale yet, beside its switch
+ *  (MESITA-3303). The guest sees the same reason on the Vouchers tab. */
+const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
+  needs_account: "Not for sale until Stripe setup is complete.",
+  not_yet: "Not on sale yet.",
+  needs_card_payments: "On sale once card payments are on.",
+  needs_instagram: "On sale once the Instagram connection is on.",
+};
+
 /** The account row: one line and one button per state. */
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
@@ -91,6 +101,9 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
   const { account, can_edit: canEdit, test_mode: testMode } = initial;
   const copy = accountCopy(account);
   const pending = !canEdit || busy !== null;
+  // Which switched-on vouchers a guest can buy right now, and why the others
+  // cannot: the same rule the server sells by (money-state, one source).
+  const selling = moneyState(settings, { charges_enabled: account.charges_enabled }, null);
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -122,6 +135,9 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <div className="min-w-0">
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
+          {on && key !== "cashback" && selling.unavailable[key] && NOT_SELLING[selling.unavailable[key]] ? (
+            <p className="text-muted-foreground text-xs">{NOT_SELLING[selling.unavailable[key]]}</p>
+          ) : null}
         </div>
         <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p>
         <Switch on={on} pending={pending} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
@@ -131,6 +147,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
 
   return (
     <>
+      {testMode ? <TestBand detail="Mesita's fee: 5% on vouchers, 5% on card payments. Guests pay with Stripe's test card." /> : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">
           <li className={ROW}>

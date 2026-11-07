@@ -15,7 +15,6 @@ import { Box } from "./box";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./empty-screen";
 import {
   PROFILE_ACTIONS_CLASS,
-  PROFILE_HALVES_ROW_CLASS,
   PROFILE_MESITA_ROWS_CLASS,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
@@ -117,7 +116,7 @@ function ProfileSummarySkeleton() {
         ))}
       </div>
       {/* ProfileActions: five tiles, then Mesita Reserve full width (live or
-          disabled, never missing — MESITA-3078) and Prepay · Pay halved, the
+          disabled, never missing — MESITA-3078) and Pay, full width, the
           44px place button. */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
@@ -127,10 +126,7 @@ function ProfileSummarySkeleton() {
         </div>
         <div className={PROFILE_MESITA_ROWS_CLASS}>
           <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-          <div className={PROFILE_HALVES_ROW_CLASS}>
-            <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-            <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
-          </div>
+          <Bone className={cn(PLACE_BUTTON_CLASS, "w-full")} />
         </div>
       </div>
     </section>

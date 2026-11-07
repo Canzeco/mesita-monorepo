@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import type { PlaceDetail } from "./place-detail";
+import type { PlaceDetail, VoucherKey } from "./place-detail";
 
 export type PlaceMenuItem = PlaceDetail["products"]["menu"][number];
 
@@ -28,6 +28,14 @@ export type PlaceActions = {
   onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
+  /** The Vouchers tab's Buy (MESITA-3303): opens Stripe Checkout on the
+   *  place's account. Absent, the button is inert (admin's preview). */
+  onBuyVoucher?: (key: VoucherKey) => void;
+  /** The voucher whose Checkout is opening; its button reads Opening…. */
+  buyingVoucher?: VoucherKey | null;
+  /** The Vouchers tab opened: the host refreshes `place.money` (the offer and
+   *  the guest's credit) from consumer-web-list-vouchers. */
+  onLoadVouchers?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {

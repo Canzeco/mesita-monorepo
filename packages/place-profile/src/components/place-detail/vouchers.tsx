@@ -1,12 +1,15 @@
 "use client";
 
-import type { ComponentType } from "react";
+import { type ComponentType, useEffect } from "react";
 import { Coffee, Coins, Crown, Hand, Utensils, Wine } from "lucide-react";
 
+import type { PlaceActions } from "../../actions";
+import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
-import { PLACE_META_CLASS } from "../../lib/ui";
+import { PLACE_BUTTON_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
-import type { PlaceDetail } from "../../place-detail";
+import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
+import { TestBand } from "../TestBand";
 import { Box } from "./box";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -24,11 +27,17 @@ import { Box } from "./box";
 // Nothing scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
-// pretends: a voucher this place sells is lit, and one it does not (the
-// owner's switch off, no Stripe account, or not sellable by any wave yet) is
-// dimmed with one tag. moneyState (the server's twin) decides which is which.
-// Read only: buying arrives with MESITA-3272 W1b (MESITA-3303). The amounts
-// are the catalog's and copy here; the server never sells from this list.
+// pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
+// and one it does not (the owner's switch off, no Stripe account, not
+// sellable by any wave yet, sales paused, or Welcome already had) is dimmed
+// with one tag. The server decides which is which: `place.money.sell` from
+// consumer-web-list-vouchers (moneyState's twin plus the kill switch and
+// Welcome-once); a read with no `sell` (an older EF, a Google-only card)
+// falls back to moneyState alone, with nothing for sale. The numbers on a
+// row are the server's catalog when the read carries one, else the copy
+// here; this file formats cents and never adds. The guest's credit here
+// leads the tab when they have any; the TestBand leads everything while
+// Stripe is in test mode.
 //
 // decision: the marks carry colour on an achromatic screen (MESITA-2636): a
 // voucher is a product with its own face, as a brand's logo is, and the same
@@ -52,7 +61,7 @@ type Product = {
   key: MoneyVoucherKey;
   /** The product's name on the row: the amount, or the special's name. */
   name: string;
-  /** What the guest gets, in one line. */
+  /** What the guest gets, in one line (the copy when the read has no catalog). */
   line: string;
   /** The condition, when the voucher has one. */
   when?: string;
@@ -76,20 +85,65 @@ const SPECIAL: Product[] = [
 
 const CASHBACK_TONE = "bg-amber-100 text-amber-700";
 
+/** "MX$1,200" from cents. Formatting only, never arithmetic. */
+export function pesos(cents: number, currency: string): string {
+  const code = currency.toUpperCase();
+  const whole = cents % 100 === 0;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: whole ? 0 : 2,
+      maximumFractionDigits: whole ? 0 : 2,
+    }).format(cents / 100).replace(/^\$/, code === "MXN" ? "MX$" : "$");
+  } catch {
+    return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
+  }
+}
+
+/** The row's line from the server's catalog, else the copy. */
+function creditLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
+  if (!line) return product.line;
+  return product.when !== undefined
+    ? `Pay ${pesos(line.price_cents, currency)}, get ${pesos(line.credit_cents, currency)} of credit.`
+    : `Get ${pesos(line.credit_cents, currency)} of credit.`;
+}
+
 /** One tag per state, objective: where it stands for this guest at this place. */
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
   if (reason === "off" || reason === "needs_account") return "Not at this place yet";
+  if (reason === "paused") return "Paused for a moment";
+  if (reason === "used") return "You had yours here";
   return "Coming soon";
 }
 
-function VoucherRow({ product, reason }: { product: Product; reason: VoucherReason | undefined }) {
+const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
+
+function VoucherRow({
+  product,
+  reason,
+  line,
+  currency,
+  actions,
+}: {
+  product: Product;
+  reason: VoucherReason | undefined;
+  line: VoucherCatalogLine | undefined;
+  currency: string;
+  actions?: PlaceActions;
+}) {
   const Mark = product.mark;
-  const on = !reason;
+  const forSale = !reason;
+  const live = Boolean(actions?.onBuyVoucher);
+  const buying = actions?.buyingVoucher === product.key;
+  const text = creditLine(product, line, currency);
   return (
     <li
-      className={cn("flex items-center gap-3 py-3 first:pt-0 last:pb-0", !on && "opacity-50 grayscale")}
-      aria-label={`${product.name} voucher, ${product.bonus}, ${product.line} ${product.when ?? ""} ${tag(reason)}`}
+      className={cn("flex items-center gap-3 py-3 first:pt-0 last:pb-0", !forSale && "opacity-50 grayscale")}
+      aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
+      data-voucher={product.key}
     >
       <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", product.tone)}>
         <Mark className="h-6 w-6" strokeWidth={1.75} aria-hidden />
@@ -100,16 +154,33 @@ function VoucherRow({ product, reason }: { product: Product; reason: VoucherReas
           <span className="text-muted-foreground ml-2 font-medium tabular-nums">{product.bonus}</span>
         </p>
         <p className={PLACE_META_CLASS}>
-          {product.line}
+          {text}
           {product.when ? ` ${product.when}` : null}
         </p>
-        <p className={cn(PLACE_META_CLASS, "mt-1 font-medium", on && "text-foreground")}>{tag(reason)}</p>
+        {forSale ? null : <p className={cn(PLACE_META_CLASS, "mt-1 font-medium")}>{tag(reason)}</p>}
       </div>
+      {forSale ? (
+        <button
+          type="button"
+          {...inertButtonProps(live)}
+          onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
+          disabled={buying || (actions?.buyingVoucher != null && !buying)}
+          aria-label={`Buy the ${product.name} voucher`}
+          className={buyButton}
+        >
+          {buying ? "Opening…" : "Buy"}
+        </button>
+      ) : null}
     </li>
   );
 }
 
-export function VouchersPane({ place }: { place: PlaceDetail }) {
+export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?: PlaceActions }) {
+  const onLoad = actions?.onLoadVouchers;
+  useEffect(() => {
+    onLoad?.();
+  }, [onLoad]);
+
   const money = place.money;
   // A Google-only card or an older read has no money: every switch reads off.
   const state = moneyState(
@@ -125,13 +196,37 @@ export function VouchersPane({ place }: { place: PlaceDetail }) {
     money ? { charges_enabled: money.charges_enabled } : null,
     null,
   );
+  // What sells is the server's word (`sell`, with the kill switch and
+  // Welcome-once applied); a read without it sells nothing.
+  const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = { ...state.unavailable };
+  for (const k of state.sell) {
+    if (!money?.sell.includes(k)) unavailable[k] = money?.unavailable[k] ?? "needs_account";
+  }
+  const catalog = money?.catalog ?? {};
+  const currency = money?.currency ?? "mxn";
+  const balance = money?.balance ?? null;
+  const hasCredit = !!balance && balance.available_cents + balance.pending_cents + balance.held_cents > 0;
   const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
   return (
     <div className="flex flex-col gap-3">
+      {money?.test_mode ? <TestBand /> : null}
+      {hasCredit && balance ? (
+        <Box title="Your credit here">
+          <p className="text-foreground text-sm" data-place-credit>
+            <span className="font-semibold tabular-nums">{pesos(balance.available_cents, currency)}</span> available
+            {balance.pending_cents > 0 ? (
+              <>
+                {" · "}
+                <span className="font-semibold tabular-nums">{pesos(balance.pending_cents, currency)}</span> pending
+              </>
+            ) : null}
+          </p>
+        </Box>
+      ) : null}
       <Box title="Vouchers">
         <ul className="divide-border divide-y">
           {[...STANDARD, ...SPECIAL].map((p) => (
-            <VoucherRow key={p.key} product={p} reason={state.unavailable[p.key]} />
+            <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
           ))}
         </ul>
       </Box>

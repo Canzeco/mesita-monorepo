@@ -8,7 +8,6 @@ import {
   QrCode,
   Rocket,
   Share2,
-  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
@@ -27,7 +26,7 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
 //   [ ▣ Mesita Reserve                                          ]
-//   [ ▤ Mesita Prepay  Soon      ] [ ▦ Mesita Pay  Soon         ]
+//   [ ▦ Mesita Pay  Soon                                        ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -42,14 +41,13 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // ROWS 2 AND 3 are the ink button (Pato, MESITA-2689: "kinda like this
 // button but half and half, but same height and colour"): 44px, icon beside
 // the label, 8px apart every way. Row 2 is Mesita Reserve alone, full width.
-// Row 3 is Mesita Prepay then Mesita Pay, halved; each drops "Mesita " when
-// the row is too narrow for "Mesita Prepay" and its Soon chip ("only if
-// enough space"). NO TIMES ON THE PROFILE (Pato, MESITA-2633: fixed hours
+// Row 3 is Mesita Pay alone, full width, since MESITA-3303: buying a voucher
+// lives on the Vouchers tab, so the Prepay half left with it. NO TIMES ON
+// THE PROFILE (Pato, MESITA-2633: fixed hours
 // "can be confused with confirmed availability"): the guest picks day,
 // party and a preferred time in the sheet, then the agent calls and
 // confirms. Pay is Soon ("pay is as soon but leave it there for the
-// moment"), and so is Prepay (decision: nothing behind it is built):
-// inert, each wearing the consumer bar's grey Soon tag. MESITA-2618 had
+// moment"): inert, wearing the consumer bar's grey Soon tag. MESITA-2618 had
 // taken Pay off.
 //
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
@@ -61,9 +59,10 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // dark", "same for mesita prepay and mesita pay"): every blocked Mesita
 // button is the ink button, `disabled`, no hover, no press. Reserve varies by
 // place ("reserve can vary depending on the place"): live where it takes
-// bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
-// both blocked with Soon: the free-amount prepay left with the discount
-// product (MESITA-3299), and vouchers and paying arrive with MESITA-3272.
+// bookings, blocked with a Walk-in chip where it doesn't. Pay is blocked with
+// Soon until W2b (MESITA-3305); the free-amount prepay left with the
+// discount product (MESITA-3299), and vouchers sell on their tab
+// (MESITA-3303).
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
@@ -96,8 +95,6 @@ export const PROFILE_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
 /** Rows 2 and 3, 8px apart. */
 export const PROFILE_MESITA_ROWS_CLASS = "flex flex-col gap-2";
-/** Row 3: Prepay and Pay, halved. */
-export const PROFILE_HALVES_ROW_CLASS = "grid grid-cols-2 gap-2";
 
 const tileBtn = cn(
   PROFILE_TILE_BOX_CLASS,
@@ -261,16 +258,7 @@ export function ProfileActions({
           <span className="truncate">Mesita Reserve</span>
           {!takesReservations && <BlockedChip>Walk-in</BlockedChip>}
         </button>
-        {/* @container: "Mesita " shows on both halves only when the row is
-            wide enough for "Mesita Prepay" and its Soon chip (Pato: "only if
-            enough space"): measured in Inter at 380px, so @sm (24rem). A
-            phone's row is ~326px, so it reads "Prepay · Pay" there. Measured
-            on the row, not the viewport, so admin's phone frame reads the
-            same. */}
-        <div className={cn("@container", PROFILE_HALVES_ROW_CLASS)}>
-          <SoonInkButton Icon={Wallet} label="Prepay" />
-          <SoonInkButton Icon={QrCode} label="Pay" />
-        </div>
+        <SoonInkButton Icon={QrCode} label="Mesita Pay" />
       </div>
     </div>
   );
@@ -288,10 +276,7 @@ function SoonInkButton({ Icon, label }: { Icon: LucideIcon; label: string }) {
       className={blockedInkButton}
     >
       <Icon className={PLACE_BUTTON_ICON_CLASS} strokeWidth={2.25} />
-      <span className="truncate">
-        <span className="hidden @sm:inline">Mesita </span>
-        {label}
-      </span>
+      <span className="truncate">{label}</span>
       <BlockedChip>Soon</BlockedChip>
     </button>
   );

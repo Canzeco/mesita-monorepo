@@ -13,7 +13,3 @@ export function reservationsPatch(place: AdminPlace) {
     reservation_channel: on ? "none" : current && current !== "none" ? current : "phone",
   };
 }
-
-export function prepayPatch(place: AdminPlace) {
-  return { id: place.id, prepay_enabled: place.prepay_enabled !== true };
-}

@@ -26,7 +26,8 @@ import {
   placeRequestState,
 } from "../_shared/place-requests.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { readPlaceMoney } from "../_shared/payments.ts";
+import { voucherOffer } from "../_shared/vouchers.ts";
+import { boostLivemode } from "../_shared/boost.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -34,6 +35,8 @@ import { readPlaceMoney } from "../_shared/payments.ts";
 const GOOGLE_REVIEW_FORM_COLUMN = ", google_place_id";
 
 type Body = { id?: string; slug?: string };
+
+const text = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
 serveJson("consumer-web-get-place", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -106,9 +109,15 @@ serveJson("consumer-web-get-place", async (req) => {
           .maybeSingle()
           .then((mine) => !mine.error && mine.data != null)
       : Promise.resolve(false),
-    // The Vouchers tab (MESITA-3299): the owner's switches and whether the
-    // account can charge; never the account itself.
-    readPlaceMoney(admin, placeId),
+    // The Vouchers tab (MESITA-3299, selling since MESITA-3303): the owner's
+    // switches, what is for sale and why the rest is not, the catalog, and
+    // the caller's credit here; never the account itself.
+    voucherOffer(
+      admin,
+      { id: placeId, name: text(row.name), state: text(row.state), currency: text(row.currency) },
+      user?.id ?? null,
+      boostLivemode(),
+    ),
   ]);
   const request = placeRequestState({
     requestCount: Number(row.request_count) || 0,

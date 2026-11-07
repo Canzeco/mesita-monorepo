@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { AdminPlace } from "../actions";
-import { prepayPatch, reservationsPatch } from "./action-patches";
+import { reservationsPatch } from "./action-patches";
 
 const place = (fields: Partial<AdminPlace>) => ({ id: "p1", ...fields }) as AdminPlace;
 
@@ -33,10 +33,6 @@ describe("Actions switches write only their own columns", () => {
     });
   });
 
-  it("flips prepay alone, reading a missing value as off", () => {
-    expect(prepayPatch(place({ prepay_enabled: true }))).toEqual({ id: "p1", prepay_enabled: false });
-    expect(prepayPatch(place({}))).toEqual({ id: "p1", prepay_enabled: true });
-  });
 });
 
 describe("Profile's save", () => {

@@ -278,6 +278,14 @@ verify_jwt = true
 [functions.consumer-web-get-wallet]
 verify_jwt = true
 
+# MESITA-3303: the place screen's Vouchers tab (list, public with an optional
+# session) and the buy (signed in).
+[functions.consumer-web-list-vouchers]
+verify_jwt = false
+
+[functions.consumer-web-buy-voucher]
+verify_jwt = true
+
 # Kill switch: select cron.unschedule('sync-premier');
 [functions.supabase-cron-sync-premier]
 verify_jwt = true

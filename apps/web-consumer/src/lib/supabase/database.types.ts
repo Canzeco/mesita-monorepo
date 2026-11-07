@@ -549,37 +549,113 @@ export type Database = {
         }
         Relationships: []
       }
-      place_code_tries: {
+      place_charge_tries: {
         Row: {
-          consumer_id: string
-          locked_until: string | null
+          addr_hash: string
+          id: number
           place_id: string
-          wrong: number
+          tried_at: string
         }
         Insert: {
-          consumer_id: string
-          locked_until?: string | null
+          addr_hash: string
+          id?: never
           place_id: string
-          wrong?: number
+          tried_at?: string
         }
         Update: {
-          consumer_id?: string
-          locked_until?: string | null
+          addr_hash?: string
+          id?: never
           place_id?: string
-          wrong?: number
+          tried_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "place_code_tries_consumer_id_fkey"
-            columns: ["consumer_id"]
+            foreignKeyName: "place_charge_tries_place_id_fkey"
+            columns: ["place_id"]
             isOneToOne: false
-            referencedRelation: "consumers"
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_charges: {
+        Row: {
+          amount_cents: number
+          code_hash: string
+          created_at: string
+          currency: string
+          expires_at: string
+          id: string
+          paid_at: string | null
+          payment_id: string | null
+          place_id: string
+          token_hash: string
+        }
+        Insert: {
+          amount_cents: number
+          code_hash: string
+          created_at?: string
+          currency: string
+          expires_at: string
+          id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          place_id: string
+          token_hash: string
+        }
+        Update: {
+          amount_cents?: number
+          code_hash?: string
+          created_at?: string
+          currency?: string
+          expires_at?: string
+          id?: string
+          paid_at?: string | null
+          payment_id?: string | null
+          place_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_charges_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_payments"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "place_code_tries_place_id_fkey"
+            foreignKeyName: "place_charges_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_codes: {
+        Row: {
+          code_hash: string
+          place_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code_hash: string
+          place_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code_hash?: string
+          place_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_codes_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
             referencedRelation: "places"
             referencedColumns: ["id"]
           },
@@ -1067,6 +1143,106 @@ export type Database = {
         }
         Relationships: []
       }
+      place_payment_accounts: {
+        Row: {
+          account_country: string | null
+          charges_enabled: boolean
+          created_at: string
+          details_submitted: boolean
+          disabled_reason: string | null
+          last_event_created: number | null
+          livemode: boolean
+          payouts_enabled: boolean
+          place_id: string
+          requirements_due: Json
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_country?: string | null
+          charges_enabled?: boolean
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          last_event_created?: number | null
+          livemode?: boolean
+          payouts_enabled?: boolean
+          place_id: string
+          requirements_due?: Json
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_country?: string | null
+          charges_enabled?: boolean
+          created_at?: string
+          details_submitted?: boolean
+          disabled_reason?: string | null
+          last_event_created?: number | null
+          livemode?: boolean
+          payouts_enabled?: boolean
+          place_id?: string
+          requirements_due?: Json
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_payment_accounts_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      place_payment_settings: {
+        Row: {
+          cashback: boolean
+          place_id: string
+          updated_at: string
+          updated_by: string | null
+          voucher_1000: boolean
+          voucher_200: boolean
+          voucher_5000: boolean
+          voucher_story: boolean
+          voucher_vip: boolean
+          voucher_welcome: boolean
+        }
+        Insert: {
+          cashback?: boolean
+          place_id: string
+          updated_at?: string
+          updated_by?: string | null
+          voucher_1000?: boolean
+          voucher_200?: boolean
+          voucher_5000?: boolean
+          voucher_story?: boolean
+          voucher_vip?: boolean
+          voucher_welcome?: boolean
+        }
+        Update: {
+          cashback?: boolean
+          place_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          voucher_1000?: boolean
+          voucher_200?: boolean
+          voucher_5000?: boolean
+          voucher_story?: boolean
+          voucher_vip?: boolean
+          voucher_welcome?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_payment_settings_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: true
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_premier_periods: {
         Row: {
           backing_id: string | null
@@ -1446,50 +1622,6 @@ export type Database = {
           },
         ]
       }
-      place_rewards: {
-        Row: {
-          cap: boolean
-          instagram_story: boolean
-          place_code_hash: string | null
-          place_id: string
-          returning_visit: boolean
-          updated_at: string
-          updated_by: string | null
-          vip_class: boolean
-          welcome_visit: boolean
-        }
-        Insert: {
-          cap?: boolean
-          instagram_story?: boolean
-          place_code_hash?: string | null
-          place_id: string
-          returning_visit?: boolean
-          updated_at?: string
-          updated_by?: string | null
-          vip_class?: boolean
-          welcome_visit?: boolean
-        }
-        Update: {
-          cap?: boolean
-          instagram_story?: boolean
-          place_code_hash?: string | null
-          place_id?: string
-          returning_visit?: boolean
-          updated_at?: string
-          updated_by?: string | null
-          vip_class?: boolean
-          welcome_visit?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_rewards_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: true
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       place_shares: {
         Row: {
           consumer_id: string
@@ -1684,132 +1816,6 @@ export type Database = {
           },
           {
             foreignKeyName: "place_verification_sends_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      place_visit_codes: {
-        Row: {
-          bill_cents: number | null
-          bill_confirmed_at: string | null
-          code_hash: string
-          consumer_id: string
-          created_at: string
-          expires_at: string
-          opened_at: string | null
-          place_id: string
-          story: boolean
-          task_seen_at: string | null
-          task_skipped_at: string | null
-        }
-        Insert: {
-          bill_cents?: number | null
-          bill_confirmed_at?: string | null
-          code_hash: string
-          consumer_id: string
-          created_at?: string
-          expires_at: string
-          opened_at?: string | null
-          place_id: string
-          story?: boolean
-          task_seen_at?: string | null
-          task_skipped_at?: string | null
-        }
-        Update: {
-          bill_cents?: number | null
-          bill_confirmed_at?: string | null
-          code_hash?: string
-          consumer_id?: string
-          created_at?: string
-          expires_at?: string
-          opened_at?: string | null
-          place_id?: string
-          story?: boolean
-          task_seen_at?: string | null
-          task_skipped_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_visit_codes_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_visit_codes_place_id_fkey"
-            columns: ["place_id"]
-            isOneToOne: false
-            referencedRelation: "places"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      place_visits: {
-        Row: {
-          bill_cents: number
-          consumer_id: string | null
-          created_at: string
-          created_by: string | null
-          currency: string
-          discount_cents: number
-          id: string
-          payment_method: string | null
-          place_id: string
-          request_id: string
-          reward_kinds: string[]
-          reward_percent: number | null
-          total_cents: number
-          voided_at: string | null
-          voided_by: string | null
-        }
-        Insert: {
-          bill_cents: number
-          consumer_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          currency: string
-          discount_cents?: number
-          id?: string
-          payment_method?: string | null
-          place_id: string
-          request_id: string
-          reward_kinds?: string[]
-          reward_percent?: number | null
-          total_cents: number
-          voided_at?: string | null
-          voided_by?: string | null
-        }
-        Update: {
-          bill_cents?: number
-          consumer_id?: string | null
-          created_at?: string
-          created_by?: string | null
-          currency?: string
-          discount_cents?: number
-          id?: string
-          payment_method?: string | null
-          place_id?: string
-          request_id?: string
-          reward_kinds?: string[]
-          reward_percent?: number | null
-          total_cents?: number
-          voided_at?: string | null
-          voided_by?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_visits_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: false
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "place_visits_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
@@ -2223,6 +2229,30 @@ export type Database = {
           },
         ]
       }
+      stripe_connect_events: {
+        Row: {
+          account: string | null
+          created: number
+          id: string
+          received_at: string
+          type: string
+        }
+        Insert: {
+          account?: string | null
+          created: number
+          id: string
+          received_at?: string
+          type: string
+        }
+        Update: {
+          account?: string | null
+          created?: number
+          id?: string
+          received_at?: string
+          type?: string
+        }
+        Relationships: []
+      }
       super_admins: {
         Row: {
           added_by: string | null
@@ -2279,63 +2309,43 @@ export type Database = {
           },
         ]
       }
-      visit_member_tries: {
-        Row: {
-          consumer_id: string
-          locked_until: string | null
-          wrong: number
-        }
-        Insert: {
-          consumer_id: string
-          locked_until?: string | null
-          wrong?: number
-        }
-        Update: {
-          consumer_id?: string
-          locked_until?: string | null
-          wrong?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "visit_member_tries_consumer_id_fkey"
-            columns: ["consumer_id"]
-            isOneToOne: true
-            referencedRelation: "consumers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       wallet_entries: {
         Row: {
           amount_cents: number
+          available_at: string
           consumer_id: string | null
           created_at: string
           currency: string
           id: string
           kind: string
           livemode: boolean
+          payment_id: string | null
           place_id: string
           purchase_id: string | null
         }
         Insert: {
           amount_cents: number
+          available_at?: string
           consumer_id?: string | null
           created_at?: string
           currency: string
           id?: string
           kind: string
           livemode?: boolean
+          payment_id?: string | null
           place_id: string
           purchase_id?: string | null
         }
         Update: {
           amount_cents?: number
+          available_at?: string
           consumer_id?: string | null
           created_at?: string
           currency?: string
           id?: string
           kind?: string
           livemode?: boolean
+          payment_id?: string | null
           place_id?: string
           purchase_id?: string | null
         }
@@ -2348,6 +2358,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "wallet_entries_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_payments"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wallet_entries_place_id_fkey"
             columns: ["place_id"]
             isOneToOne: false
@@ -2357,8 +2374,104 @@ export type Database = {
           {
             foreignKeyName: "wallet_entries_purchase_id_fkey"
             columns: ["purchase_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "wallet_purchases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_payments: {
+        Row: {
+          amount_cents: number
+          application_fee_cents: number
+          card_cents: number
+          cashback_cents: number
+          consumer_id: string | null
+          created_at: string
+          credit_cents: number
+          currency: string
+          id: string
+          livemode: boolean
+          paid_at: string | null
+          place_id: string
+          refunded_cents: number
+          request_id: string | null
+          settle_tries: number
+          status: string
+          stripe_account_id: string | null
+          stripe_checkout_session_id: string | null
+          stripe_error: string | null
+          stripe_payment_intent_id: string | null
+          ticket: string | null
+          tip_cents: number
+          uncovered_cents: number
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          application_fee_cents?: number
+          card_cents?: number
+          cashback_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          currency: string
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id: string
+          refunded_cents?: number
+          request_id?: string | null
+          settle_tries?: number
+          status?: string
+          stripe_account_id?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_error?: string | null
+          stripe_payment_intent_id?: string | null
+          ticket?: string | null
+          tip_cents?: number
+          uncovered_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          application_fee_cents?: number
+          card_cents?: number
+          cashback_cents?: number
+          consumer_id?: string | null
+          created_at?: string
+          credit_cents?: number
+          currency?: string
+          id?: string
+          livemode?: boolean
+          paid_at?: string | null
+          place_id?: string
+          refunded_cents?: number
+          request_id?: string | null
+          settle_tries?: number
+          status?: string
+          stripe_account_id?: string | null
+          stripe_checkout_session_id?: string | null
+          stripe_error?: string | null
+          stripe_payment_intent_id?: string | null
+          ticket?: string | null
+          tip_cents?: number
+          uncovered_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_payments_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_payments_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
         ]
@@ -2366,6 +2479,8 @@ export type Database = {
       wallet_purchases: {
         Row: {
           amount_cents: number
+          application_fee_cents: number
+          bonus_cents: number
           consumer_id: string | null
           created_at: string
           currency: string
@@ -2373,13 +2488,22 @@ export type Database = {
           livemode: boolean
           paid_at: string | null
           place_id: string
+          refunded_cents: number
+          request_id: string | null
+          settle_tries: number
           status: string
+          stripe_account_id: string
           stripe_checkout_session_id: string | null
+          stripe_error: string | null
           stripe_payment_intent_id: string | null
+          uncovered_cents: number
           updated_at: string
+          voucher: string | null
         }
         Insert: {
           amount_cents: number
+          application_fee_cents?: number
+          bonus_cents?: number
           consumer_id?: string | null
           created_at?: string
           currency: string
@@ -2387,13 +2511,22 @@ export type Database = {
           livemode?: boolean
           paid_at?: string | null
           place_id: string
+          refunded_cents?: number
+          request_id?: string | null
+          settle_tries?: number
           status?: string
+          stripe_account_id: string
           stripe_checkout_session_id?: string | null
+          stripe_error?: string | null
           stripe_payment_intent_id?: string | null
+          uncovered_cents?: number
           updated_at?: string
+          voucher?: string | null
         }
         Update: {
           amount_cents?: number
+          application_fee_cents?: number
+          bonus_cents?: number
           consumer_id?: string | null
           created_at?: string
           currency?: string
@@ -2401,10 +2534,17 @@ export type Database = {
           livemode?: boolean
           paid_at?: string | null
           place_id?: string
+          refunded_cents?: number
+          request_id?: string | null
+          settle_tries?: number
           status?: string
+          stripe_account_id?: string
           stripe_checkout_session_id?: string | null
+          stripe_error?: string | null
           stripe_payment_intent_id?: string | null
+          uncovered_cents?: number
           updated_at?: string
+          voucher?: string | null
         }
         Relationships: [
           {
@@ -2419,6 +2559,60 @@ export type Database = {
             columns: ["place_id"]
             isOneToOne: false
             referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_refund_attempts: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          error_code: string | null
+          id: string
+          payment_id: string | null
+          purchase_id: string | null
+          status: string
+          stripe_refund_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          id?: string
+          payment_id?: string | null
+          purchase_id?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          error_code?: string | null
+          id?: string
+          payment_id?: string | null
+          purchase_id?: string | null
+          status?: string
+          stripe_refund_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_refund_attempts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_refund_attempts_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "wallet_purchases"
             referencedColumns: ["id"]
           },
         ]
@@ -2725,6 +2919,10 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: boolean
       }
+      place_code_check: {
+        Args: { p_hash: string; p_place_id: string }
+        Returns: boolean
+      }
       place_family_keys: {
         Args: { fallback: string; google_types: Json; stored: string[] }
         Returns: string[]
@@ -2733,27 +2931,6 @@ export type Database = {
         Args: { p_consumer_id: string; p_email: string }
         Returns: number
       }
-      place_reward_cap_cents: { Args: never; Returns: number }
-      place_reward_catalog: {
-        Args: never
-        Returns: {
-          kind: string
-          ord: number
-          percent: number
-        }[]
-      }
-      place_reward_story_followers: { Args: never; Returns: number }
-      place_rewards_for_guest: {
-        Args: { p_consumer_id: string; p_place_id: string }
-        Returns: {
-          cap_cents: number
-          eligible: boolean
-          kind: string
-          percent: number
-          reason: string
-        }[]
-      }
-      place_rewards_read: { Args: { p_place_id: string }; Returns: Json }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
         Returns: string
@@ -2810,111 +2987,6 @@ export type Database = {
           kind: string
           plan: string
         }[]
-      }
-      place_visit_check: {
-        Args: { p_code_hash: string; p_place_id: string }
-        Returns: Json
-      }
-      place_visit_close: {
-        Args: {
-          p_bill_cents: number
-          p_code_hash: string
-          p_place_code_hash: string
-          p_place_id: string
-          p_request_id: string
-          p_reward_kinds: string[]
-        }
-        Returns: Json
-      }
-      place_visit_code_issue: {
-        Args: {
-          p_bill_cents?: number
-          p_code_hash: string
-          p_consumer_id: string
-          p_expires_at: string
-          p_place_id: string
-          p_story?: boolean
-        }
-        Returns: boolean
-      }
-      place_visit_confirm_bill: {
-        Args: {
-          p_bill_cents: number
-          p_consumer_id: string
-          p_place_id: string
-        }
-        Returns: Json
-      }
-      place_visit_create: {
-        Args: {
-          p_bill_cents: number
-          p_code_hash: string
-          p_created_by: string
-          p_payment_method: string
-          p_place_id: string
-          p_request_id: string
-          p_reward_kinds: string[]
-        }
-        Returns: Json
-      }
-      place_visit_lease: { Args: never; Returns: string }
-      place_visit_member_claim: {
-        Args: { p_candidates: Json; p_member_number: string }
-        Returns: Json
-      }
-      place_visit_member_places: {
-        Args: { p_member_number: string }
-        Returns: string[]
-      }
-      place_visit_open: {
-        Args: { p_code_hash: string; p_place_id: string }
-        Returns: Json
-      }
-      place_visit_quote: {
-        Args: { p_bill_cents: number; p_rewards: Json }
-        Returns: Json
-      }
-      place_visit_set_bill: {
-        Args: {
-          p_bill_cents: number
-          p_code_hash: string
-          p_place_code_hash: string
-          p_place_id: string
-        }
-        Returns: Json
-      }
-      place_visit_set_task: {
-        Args: {
-          p_code_hash: string
-          p_place_code_hash: string
-          p_place_id: string
-          p_seen: boolean
-        }
-        Returns: Json
-      }
-      place_visit_skip_task: {
-        Args: { p_consumer_id: string; p_place_id: string }
-        Returns: Json
-      }
-      place_visit_staff_check: {
-        Args: {
-          p_code_hash: string
-          p_place_code_hash: string
-          p_place_id: string
-        }
-        Returns: string
-      }
-      place_visit_state: {
-        Args: { p_code_hash: string; p_place_id: string }
-        Returns: Json
-      }
-      place_visit_state_for_guest: {
-        Args: { p_consumer_id: string; p_place_id: string }
-        Returns: Json
-      }
-      place_visit_void: {
-        Args: { p_place_id: string; p_visit_id: string; p_voided_by: string }
-        Returns: Json
       }
       premier_add_days: {
         Args: {
@@ -2999,8 +3071,39 @@ export type Database = {
         Args: { older_than?: string }
         Returns: number
       }
+      wallet_balance: {
+        Args: {
+          p_consumer_id: string
+          p_currency: string
+          p_livemode: boolean
+          p_now?: string
+          p_place_id: string
+        }
+        Returns: {
+          available_cents: number
+          held_cents: number
+          pending_cents: number
+          spendable_cents: number
+        }[]
+      }
       wallet_credit_purchase: {
-        Args: { p_payment_intent: string; p_purchase_id: string }
+        Args: {
+          p_available_at?: string
+          p_payment_intent: string
+          p_purchase_id: string
+        }
+        Returns: Json
+      }
+      wallet_lock: {
+        Args: { p_consumer_id: string; p_place_id: string }
+        Returns: undefined
+      }
+      wallet_refund_payment: {
+        Args: { p_amount_refunded: number; p_payment_id: string }
+        Returns: Json
+      }
+      wallet_refund_purchase: {
+        Args: { p_amount_refunded: number; p_purchase_id: string }
         Returns: Json
       }
     }
