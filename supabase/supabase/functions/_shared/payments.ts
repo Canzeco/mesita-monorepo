@@ -21,8 +21,20 @@ import { vouchersUpToPct } from "./money.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
+/** WAYS TO PAY (MESITA-3396, Pato: "Update the fields asked here then", the
+ *  Wallet mock's switches moved to Payments by MESITA-3391): how a guest may
+ *  settle the bill here. Default ON (no row, or a row from before the
+ *  column): nothing changes for a place until its owner flips one. Cash is
+ *  informational; moneyState reads Cards and Credits. */
+export const PAY_WAY_KEYS = ["pay_cash", "pay_cards", "pay_credits"] as const;
+export type PayWayKey = (typeof PAY_WAY_KEYS)[number];
+export function isPayWayKey(v: unknown): v is PayWayKey {
+  return typeof v === "string" && (PAY_WAY_KEYS as readonly string[]).includes(v);
+}
+
 /** The switches an owner has, in the order the page shows them. */
 export const PAYMENT_KEYS = [
+  ...PAY_WAY_KEYS,
   "cashback",
   "voucher_200",
   "voucher_1000",
@@ -39,10 +51,12 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
 
 export type PaymentSettings = Record<PaymentKey, boolean>;
 
-/** No row = everything off. */
+/** No row = every product off and every way to pay on. A way to pay reads
+ *  off only when the row says `false` outright, so a row from before the
+ *  column (or a failed select of it) never switches a place off. */
 export function settingsFromRow(row: Partial<Record<PaymentKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
-  for (const k of PAYMENT_KEYS) out[k] = row?.[k] === true;
+  for (const k of PAYMENT_KEYS) out[k] = isPayWayKey(k) ? row?.[k] !== false : row?.[k] === true;
   return out;
 }
 

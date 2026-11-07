@@ -181,7 +181,7 @@ function priceValue(product: Product, line: VoucherCatalogLine | undefined, curr
 /** One tag per state, objective: where it stands for this guest at this place. */
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
-  if (reason === "off" || reason === "needs_account") return "Not at this place yet";
+  if (reason === "off" || reason === "needs_account" || reason === "credits_off") return "Not at this place yet";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
   return "Coming soon";

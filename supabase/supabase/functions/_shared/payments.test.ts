@@ -84,10 +84,18 @@ Deno.test("Stripe's Account object becomes the row, missing fields read as off",
   assertEquals(s.requirements_due, ["a"]);
 });
 
-Deno.test("settings: seven switches, no row is all off, unknown keys refused", () => {
+Deno.test("settings: ten switches; no row is products off and ways to pay on; unknown keys refused", () => {
   const off = settingsFromRow(null);
-  assertEquals(Object.keys(off).length, 7);
-  assertEquals(Object.values(off).every((v) => v === false), true);
+  assertEquals(Object.keys(off).length, 10);
+  assertEquals(Object.entries(off).filter(([k]) => !k.startsWith("pay_")).every(([, v]) => v === false), true);
+  // Ways to pay (MESITA-3396) default on, and only an outright false turns one off:
+  // a row from before the column must never switch a place off.
+  assertEquals(off.pay_cash, true);
+  assertEquals(off.pay_cards, true);
+  assertEquals(off.pay_credits, true);
+  assertEquals(settingsFromRow({ cashback: true }).pay_credits, true);
+  assertEquals(settingsFromRow({ pay_credits: false }).pay_credits, false);
+  assertEquals(settingsFromRow({ pay_cards: "no" }).pay_cards, true);
   assertEquals(settingsFromRow({ cashback: true, voucher_vip: "yes" }).cashback, true);
   assertEquals(settingsFromRow({ cashback: true, voucher_vip: "yes" }).voucher_vip, false);
   assertEquals(isPaymentKey("voucher_200"), true);

@@ -19,7 +19,10 @@ export const MONEY_VOUCHER_KEYS = [
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
-export type MoneySettings = { cashback: boolean } & Record<MoneyVoucherKey, boolean>;
+/** The owner's switches. `pay_cards` and `pay_credits` are the ways to pay
+ *  (MESITA-3396); absent reads ON, so a reader from before them keeps
+ *  working and a place is never switched off by a missing field. */
+export type MoneySettings = { cashback: boolean; pay_cards?: boolean; pay_credits?: boolean } & Record<MoneyVoucherKey, boolean>;
 
 /** The place's connected account as the ledger last saw it; null = none. */
 export type MoneyAccount = { charges_enabled: boolean } | null;
@@ -30,6 +33,8 @@ export type MoneyBalance = { spendable_cents: number } | null;
 /** Why a voucher is not for sale right now. */
 export type VoucherReason =
   | "off"
+  /** The owner switched Credits off: nothing sells, since nobody could spend it here. */
+  | "credits_off"
   | "needs_account"
   | "not_yet"
   | "needs_card_payments"
@@ -63,15 +68,21 @@ export type MoneyState = {
 
 export function moneyState(settings: MoneySettings, account: MoneyAccount, balance: MoneyBalance): MoneyState {
   const charges = account?.charges_enabled === true;
+  // The ways to pay (MESITA-3396): Cards needs the account too; Credits is
+  // the owner's word alone. Absent means on.
+  const cards = charges && settings.pay_cards !== false;
+  const credits = settings.pay_credits !== false;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
     if (settings[key] !== true) unavailable[key] = "off";
+    else if (!credits) unavailable[key] = "credits_off";
     else if (!charges) unavailable[key] = "needs_account";
     else if (NOT_YET_SELLABLE[key]) unavailable[key] = NOT_YET_SELLABLE[key];
     else sell.push(key);
   }
-  const hasBalance = (balance?.spendable_cents ?? 0) > 0;
-  const pay: PayWay = hasBalance && charges ? "both" : hasBalance ? "credit" : charges ? "card" : "none";
-  return { sell, unavailable, cashback: settings.cashback === true && charges, pay };
+  const credit = credits && (balance?.spendable_cents ?? 0) > 0;
+  const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
+  // Cashback lands on the card part, so it needs Cards on, not just the account.
+  return { sell, unavailable, cashback: settings.cashback === true && cards, pay };
 }

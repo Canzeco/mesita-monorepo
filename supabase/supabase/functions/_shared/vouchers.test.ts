@@ -15,6 +15,9 @@ const REQUEST = "00000000-0000-4000-8000-0000000c3303";
 const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
+  pay_cash: true,
+  pay_cards: true,
+  pay_credits: true,
   cashback: true,
   voucher_200: true,
   voucher_1000: true,
