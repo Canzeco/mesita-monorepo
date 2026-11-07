@@ -19,7 +19,8 @@ export const PLACE_BUTTON_ICON_CLASS = "h-4 w-4 shrink-0";
  * there, the colors the fonts the styles the sizes the spacings"). Inter only
  * on the place screen (an <h3> would otherwise inherit the app's serif
  * display face); achromatic (a brand's own logo is the only colour); cards
- * rounded-2xl with p-4 and 12px inside, everything inside a card rounded-lg.
+ * rounded-xl (12px, one step down from 16px, MESITA-3325) with p-4 and 12px
+ * inside, everything inside a card rounded-lg.
  */
 /** A card's title: sentence case, 16px semibold ink. */
 export const PLACE_TITLE_CLASS =
@@ -30,8 +31,11 @@ export const PLACE_BODY_CLASS = "text-foreground text-sm leading-relaxed";
 export const PLACE_META_CLASS = "text-muted-foreground text-xs leading-snug";
 /** Information, never a button: 1px hairline, no fill, 32px. Tags and
  *  Mesita Families both wear it (MESITA-2932). */
+// A STEP SMALLER (Pato, MESITA-3325: "make the text tags in the header a
+// bit smaller, just a bit"): 12px on a 28px chip; it was 14px on 32px from
+// MESITA-2636. Families and Tags wear the same box, so they follow.
 export const PLACE_OUTLINE_CHIP_CLASS =
-  "border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums";
+  "border-border text-foreground inline-flex h-7 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap tabular-nums";
 /** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";

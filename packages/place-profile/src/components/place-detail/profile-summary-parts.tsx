@@ -14,8 +14,8 @@ import { SizedImg } from "../SizedPhoto";
 // sizes"): the photo's frame and a stat column's three classes are read here
 // and by ProfileSummarySkeleton, which draws its bones inside them.
 
-/** ProfilePhoto's frame: 88px, rounded-2xl. */
-export const PROFILE_PHOTO_FRAME_CLASS = "h-[88px] w-[88px] shrink-0 rounded-2xl";
+/** ProfilePhoto's frame: 88px, rounded-xl. */
+export const PROFILE_PHOTO_FRAME_CLASS = "h-[88px] w-[88px] shrink-0 rounded-xl";
 /** A ProfileStat column. */
 export const PROFILE_STAT_CLASS =
   "flex min-w-0 flex-col items-center justify-center px-0.5 text-center";
@@ -151,7 +151,7 @@ export function ProfileFact({
       {...rest}
     >
       {emoji ? (
-        <span className="shrink-0 text-base leading-none" aria-hidden>
+        <span className="shrink-0 text-sm leading-none" aria-hidden>
           {emoji}
         </span>
       ) : Icon ? (

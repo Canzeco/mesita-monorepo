@@ -27,7 +27,7 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
 export function PlaceEmptyScreen({ icon: Icon, title, line }: PlaceEmptyScreenProps) {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
-      <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
+      <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-xl">
         <Icon className="h-7 w-7" strokeWidth={2} aria-hidden />
       </span>
       <h3 className={cn(PLACE_SCREEN_TITLE_CLASS, "mt-4")}>{title}</h3>

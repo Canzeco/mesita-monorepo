@@ -27,7 +27,9 @@ export function Box({
   return (
     <section
       className={cn(
-        "border-border bg-card flex flex-col rounded-2xl border",
+        // 12px corners since MESITA-3325 (Pato: "the borders are just
+        // extremely rounded. Maybe can be a bit less"); 16px from MESITA-2636.
+        "border-border bg-card flex flex-col rounded-xl border",
         bare ? "overflow-hidden" : "gap-3 p-4",
         className,
       )}
