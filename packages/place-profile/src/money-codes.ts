@@ -14,6 +14,9 @@ export const MONEY_CODES = [
   "currency_mismatch",
   "paused",
   "not_available",
+  // The owner switched Credits off here (MESITA-3396): no voucher sells and
+  // no credit is spent at this place
+  "credits_off",
   "welcome_used",
   "place_code_required",
   // The amount

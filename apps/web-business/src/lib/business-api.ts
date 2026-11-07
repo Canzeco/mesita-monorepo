@@ -415,7 +415,8 @@ export async function decideVerification(
 
 // ── Payments (MESITA-3296) ──────────────────────────────────────────────
 
-export type PaymentKey = "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
+/** The ways to pay (MESITA-3396: pay_cash, pay_cards, pay_credits; default on) and the money products. */
+export type PaymentKey = "pay_cash" | "pay_cards" | "pay_credits" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
 export type PaymentSettings = Record<PaymentKey, boolean>;
 export type PaymentAccount = {
   state: "none" | "onboarding" | "ready" | "restricted";

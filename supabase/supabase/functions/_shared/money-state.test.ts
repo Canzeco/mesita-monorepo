@@ -47,6 +47,23 @@ Deno.test("a switch off is off, whatever the account", () => {
   assertEquals(s.cashback, false);
 });
 
+Deno.test("ways to pay (MESITA-3396): Cards off drops card pay and cashback; Credits off drops credit pay and keeps every voucher off sale", () => {
+  const noCards = { ...allOn, pay_cards: false };
+  assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
+  assertEquals(moneyState(noCards, can, null).pay, "none");
+  assertEquals(moneyState(noCards, can, null).cashback, false);
+  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
+  const noCredits = { ...allOn, pay_credits: false };
+  assertEquals(moneyState(noCredits, can, { spendable_cents: 100 }).pay, "card");
+  assertEquals(moneyState(noCredits, cannot, { spendable_cents: 100 }).pay, "none");
+  assertEquals(moneyState(noCredits, can, null).sell, []);
+  assertEquals(moneyState(noCredits, can, null).unavailable.voucher_200, "credits_off");
+  // A switch that is off stays "off", whatever Credits reads.
+  assertEquals(moneyState({ ...off, pay_credits: false }, can, null).unavailable.voucher_200, "off");
+  // Absent reads on: a reader from before the columns is unchanged.
+  assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
+});
+
 Deno.test("pay: both with a balance and an account, credit with a balance only, card with an account only, else none", () => {
   assertEquals(moneyState(off, can, { spendable_cents: 100 }).pay, "both");
   assertEquals(moneyState(off, cannot, { spendable_cents: 100 }).pay, "credit");

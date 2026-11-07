@@ -80,7 +80,9 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     else if (k === "voucher_welcome" && i.welcomeUsed) unavailable[k] = "used";
     else sell.push(k);
   }
-  const { cashback: _c, ...vouchers } = i.settings;
+  // The guest's offer carries the voucher switches alone; the ways to pay
+  // (MESITA-3396) are already folded into `sell` and `unavailable`.
+  const { cashback: _c, pay_cash: _pc, pay_cards: _pd, pay_credits: _pr, ...vouchers } = i.settings;
   return {
     test_mode: !i.livemode,
     currency: i.currency,
@@ -157,6 +159,7 @@ export type BuyOk = { ok: true; url: string; purchase_id: string };
 
 const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   off: { code: "not_available", error: "This place does not sell that voucher" },
+  credits_off: { code: "credits_off", error: "This place is not taking credit right now" },
   needs_account: { code: "no_account", error: "This place has not connected payments yet" },
   not_yet: { code: "not_yet", error: "This voucher is not on sale yet" },
   needs_card_payments: { code: "needs_card_payments", error: "This voucher needs card payments, which are not on yet" },
