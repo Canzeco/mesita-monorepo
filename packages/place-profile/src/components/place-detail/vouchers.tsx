@@ -103,10 +103,13 @@ type Product = {
 // amber (coins coming back). Business › Payments' rows wear the same.
 const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
 
+// THE STANDARD THREE ARE NAMED, NOT PRICED (Pato, MESITA-3362: "the name
+// of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
+// Large Standard"): the exchange line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "MX$200", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_1000", name: "MX$1,000", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_5000", name: "MX$5,000", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
 ];
 
 const SPECIAL: Product[] = [
