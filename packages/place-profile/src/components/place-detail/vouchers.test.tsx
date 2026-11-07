@@ -36,9 +36,9 @@ describe("Vouchers tab", () => {
 
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
     const html = render(OFFER, () => {});
-    expect(html).toContain('aria-label="Buy the MX$200 voucher"');
-    expect(html).toContain('aria-label="Buy the MX$1,000 voucher"');
-    expect(html).toContain('aria-label="Buy the MX$5,000 voucher"'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).toContain('aria-label="Buy the Standard voucher"');
+    expect(html).toContain('aria-label="Buy the Standard Medium voucher"');
+    expect(html).toContain('aria-label="Buy the Standard Large voucher"'); // test mode: buyable, the server decides at the tap (MESITA-3342)
     expect(html).not.toContain('aria-label="Buy the Welcome voucher"');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
