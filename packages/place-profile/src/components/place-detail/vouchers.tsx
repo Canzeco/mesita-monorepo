@@ -146,9 +146,9 @@ function creditLine(product: Product, line: VoucherCatalogLine | undefined, curr
 }
 /** What you pay, on its own line in the grid: "Pay MX$100"; Story adds the
  *  post (Pato, MESITA-3364: "Pay X & post story, get Y"). */
-function payLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
+function forLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   const pay = priceValue(product, line, currency);
-  return product.key === "voucher_story" ? `Pay ${pay} & post a story` : `Pay ${pay}`;
+  return product.key === "voucher_story" ? `for ${pay} & a story` : `for ${pay}`;
 }
 /** The exchange in words: "Pay MX$100, get MX$130"; Story adds the post
  *  (Pato, MESITA-3364: "Pay X & post story, get Y"). The aria label. */
@@ -203,7 +203,7 @@ const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl bo
 const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
 /** A small gift card in the 3×2 grid (MESITA-3370). */
 const GRID_CARD = "relative flex min-h-40 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-3";
-const GRID_BADGE = "bg-card/85 text-foreground self-start rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
+const GRID_BADGE = "bg-card/85 text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
@@ -239,18 +239,21 @@ function VoucherCard({
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      {/* A SMALL GIFT CARD (MESITA-3370): the name, the bonus badge, "Pay
-          MX$100" over "Get MX$130" (the words of MESITA-3364 on two lines
-          so they fit a third of the page), the limit, a full-width Buy and
-          the state. No watermark at this size. */}
-      <p className="text-foreground truncate text-sm font-semibold">{product.name}</p>
-      <span className={GRID_BADGE}>{product.bonus}</span>
-      <p className="text-foreground mt-1 text-sm leading-snug tabular-nums">{payLine(product, line, currency)}</p>
-      <p className="text-foreground text-base leading-snug font-semibold tabular-nums" data-voucher-credit>
+      {/* SIMPLER (Pato, MESITA-3373: "redesign the boxes, make them simpler
+          and clearer"): the name with the badge beside it, "Get MX$130"
+          big, "for MX$100" under it (Story: "& a story"), the limit, then
+          Buy OR the state, never both. MESITA-3370's card stacked the
+          badge, "Pay MX$100", "Get MX$130", the limit, Buy and the state. */}
+      <div className="flex items-start justify-between gap-1.5">
+        <p className="text-foreground min-w-0 truncate text-sm font-semibold">{product.name}</p>
+        <span className={GRID_BADGE}>{product.bonus}</span>
+      </div>
+      <p className="text-foreground mt-2 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
         Get {creditValue(product, line, currency)}
       </p>
-      <p className="text-foreground/70 line-clamp-2 text-xs leading-snug">{product.limit}</p>
-      <div className="mt-auto flex flex-col gap-1.5 pt-2">
+      <p className="text-foreground/80 text-sm leading-snug tabular-nums">{forLine(product, line, currency)}</p>
+      <p className="text-foreground/70 mt-1 line-clamp-2 text-xs leading-snug">{product.limit}</p>
+      <div className="mt-auto pt-2">
         {buyable ? (
           <button
             type="button"
@@ -262,8 +265,9 @@ function VoucherCard({
           >
             {buying ? "Opening…" : "Buy"}
           </button>
-        ) : null}
-        {forSale ? null : <p className="text-foreground/70 text-xs leading-snug font-medium">{tag(reason)}</p>}
+        ) : (
+          <p className="text-foreground/70 text-xs leading-snug font-medium">{tag(reason)}</p>
+        )}
       </div>
     </li>
   );
