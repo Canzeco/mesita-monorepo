@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { cn } from "../../lib/format";
+import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 import { ChevronDown, MessageSquare } from "lucide-react";
 
 import { GoogleLogo } from "../BrandLogos";
@@ -86,7 +88,7 @@ function LeaveGoogleReview({
     <OutboundLink
       url={url}
       onOpenLink={onOpenLink}
-      className="bg-card text-card-foreground hover:bg-card/80 mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold"
+      className={cn(PLACE_BUTTON_CLASS, "bg-card text-card-foreground hover:bg-card/80 mt-3 w-full")}
     >
       <GoogleLogo compact />
       Leave a review on Google
@@ -134,10 +136,16 @@ export function GoogleReviewsBox({
   }
   return (
     <section className="flex flex-col pb-4" aria-label="Reviews">
-      <div className="text-muted-foreground flex items-center gap-1.5 pt-5 text-xs">
+      {/* 16px under the strip like every tab (the column's gap-3 plus the
+          strip's mb-1, MESITA-3379); this row sat 32px down until then. */}
+      <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
         <GoogleLogo tiny />
         <span className="flex-1">Names hidden for privacy</span>
         {sorted.length > 1 && (
+          // A 44px hit area on a 16px row: the select is pulled 14px above
+          // and below. At rest its top reaches 2px under the strip's
+          // hairline; pinned, it scrolls under the strip like any content.
+          // Do not add padding back to "fix" it (MESITA-3379).
           <div className="text-foreground relative -my-3.5 flex items-center">
             <select
               aria-label="Sort reviews"
@@ -162,7 +170,7 @@ export function GoogleReviewsBox({
           </div>
         )}
       </div>
-      <div className="bg-card divide-border mt-3 flex flex-col divide-y overflow-hidden rounded-xl">
+      <div className="bg-card border-border divide-border mt-3 flex flex-col divide-y overflow-hidden rounded-xl border">
         <ul className="divide-border divide-y">
           {sorted.slice(0, shown).map((review, i) => (
             <li key={`google-${review.date}-${i}`} className="p-4">
@@ -174,7 +182,7 @@ export function GoogleReviewsBox({
           <button
             type="button"
             onClick={() => setShown((n) => n + REVIEW_PAGE)}
-            className="text-foreground hover:bg-muted/50 min-h-12 w-full text-sm font-semibold"
+            className="text-foreground hover:bg-muted/50 h-11 w-full text-sm font-semibold"
           >
             Show more
           </button>

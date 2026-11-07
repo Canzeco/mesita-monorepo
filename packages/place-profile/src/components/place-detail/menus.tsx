@@ -1,6 +1,8 @@
 "use client";
 
 import { ChevronRight, Info, Utensils } from "lucide-react";
+import { cn } from "../../lib/format";
+import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS, PLACE_EMPTY_ICON_CLASS } from "../../lib/ui";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -33,8 +35,8 @@ export function MenusBox({
     return (
       <Box title="Menu" icon={Utensils} iconColor="text-muted-foreground">
         <div className="flex flex-col items-center gap-3 py-3 text-center">
-          <span className="bg-muted text-muted-foreground flex h-12 w-12 items-center justify-center rounded-full">
-            <Utensils className="h-5 w-5" strokeWidth={2} />
+          <span className={cn(PLACE_EMPTY_ICON_CLASS, "rounded-lg")}>
+            <Utensils className="h-7 w-7" strokeWidth={2} />
           </span>
           <div className="flex flex-col gap-1">
             <p className="text-foreground text-sm font-semibold">
@@ -56,7 +58,7 @@ export function MenusBox({
             className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
             strokeWidth={2.25}
           />
-          <p className="type-body leading-snug font-medium text-foreground">
+          <p className="text-[13px] leading-snug font-medium text-foreground">
             Reference only — current product prices may differ at the place.
           </p>
         </div>
@@ -81,12 +83,12 @@ function ProductRow({
 }) {
   const facts = nutritionLine(product.nutrition);
   return (
-    <div className="bg-background flex items-center gap-3 rounded-xl p-3">
-      <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-full">
+    <div className="bg-background flex items-center gap-3 rounded-lg p-3">
+      <div className="bg-muted flex h-9 w-9 items-center justify-center rounded-lg">
         <Utensils className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="font-display truncate text-base font-semibold">
+        <p className="font-sans truncate text-base font-semibold">
           {product.name}
         </p>
         {facts ? (
@@ -103,10 +105,10 @@ function ProductRow({
       <button
         type="button"
         {...(onView ? { onClick: onView } : inertButtonProps(false))}
-        className="bg-foreground text-paper inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-4 text-xs font-semibold transition hover:opacity-90 active:scale-[0.97]"
+        className={cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper")}
       >
         View
-        <ChevronRight className="h-3.5 w-3.5" />
+        <ChevronRight className={PLACE_BUTTON_ICON_CLASS} />
       </button>
     </div>
   );

@@ -48,7 +48,11 @@ export function PlaceTopBar({
   backOnly?: boolean;
 }) {
   return (
-    <header className="bg-card z-20 flex h-14 shrink-0 items-center gap-1 px-1">
+    // px-1.5: 6 + (44 − 24) / 2 = 16, the back chevron's glyph box on the
+    // column's edge, where the photo under it starts (MESITA-3379; px-1 put
+    // it at 14). The stroke itself begins ~8px inside its box; that is the
+    // optical call, no px-* step lands the stroke at 16.
+    <header className="bg-card z-20 flex h-14 shrink-0 items-center gap-1 px-1.5">
       <button
         type="button"
         aria-label="Back"

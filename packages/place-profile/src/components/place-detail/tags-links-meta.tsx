@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, Heart, Link2, Phone, Tags } from "lucide-react";
+import { cn } from "../../lib/format";
 
 import type { ComponentType } from "react";
 import type { PlaceActions } from "../../actions";
@@ -12,7 +13,10 @@ import {
   RESERVATION_DEFS,
   REVIEW_DEFS,
 } from "../place-detail-links";
-import { PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
+import {
+  PLACE_FIGURE_CLASS,
+  PLACE_OUTLINE_CHIP_CLASS,
+} from "../../lib/ui";
 import { Box } from "./box";
 import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 
@@ -84,12 +88,12 @@ export function StatsBox({ place }: { place: PlaceDetail }) {
     <Box title="Stats">
       <div className="grid grid-cols-2 gap-2">
         {cells.map(({ key, label, n, Icon }) => (
-          <div key={key} className="bg-muted flex flex-col gap-1 rounded-xl p-3">
+          <div key={key} className="bg-muted flex flex-col gap-1 rounded-lg p-3">
             <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <Icon className="h-3.5 w-3.5" strokeWidth={2} />
               {label}
             </span>
-            <span className="text-foreground text-2xl font-semibold tabular-nums">
+            <span className={cn(PLACE_FIGURE_CLASS, "text-foreground")}>
               {n.toLocaleString("en-US")}
             </span>
           </div>
@@ -237,7 +241,7 @@ export function LinksBox({
   // never a wrapping pill cluster that leaves a ragged last row.
   return (
     <Box title="Links" icon={Link2} iconColor="text-muted-foreground">
-      <ChannelChips chips={chips} onOpenLink={onOpenLink} grid />
+      <ChannelChips chips={chips} onOpenLink={onOpenLink} />
     </Box>
   );
 }

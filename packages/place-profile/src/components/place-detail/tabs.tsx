@@ -69,7 +69,9 @@ export function PlaceTabBar({
             onClick={() => onChange(t.key)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "type-body -mb-px flex items-center justify-center border-b-[3px] px-0.5 py-3 text-center tracking-wide transition",
+              // 13px on a normal line, what the host's type-body utility was; the
+              // package draws no host utility (MESITA-3379).
+              "-mb-px flex items-center justify-center border-b-[3px] px-0.5 py-3 text-center text-[13px] leading-normal tracking-wide transition",
               // THE SELECTED TAB IS UNMISTAKABLE (Pato, MESITA-2671: "it must
               // be a lot clearer that one screen is selected, it's too
               // light"): a 3px underline (2px until MESITA-2675) and a bold

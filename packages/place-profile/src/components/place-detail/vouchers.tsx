@@ -6,7 +6,13 @@ import { Coins, Crown, Hand, Wallet } from "lucide-react";
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
-import { PLACE_BUTTON_CLASS, PLACE_META_CLASS } from "../../lib/ui";
+import {
+  PLACE_BUTTON_CLASS,
+  PLACE_FIGURE_CLASS,
+  PLACE_META_CLASS,
+  PLACE_PILL_CLASS,
+  PLACE_SCREEN_TITLE_CLASS,
+} from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { TestBand } from "../TestBand";
@@ -181,7 +187,7 @@ function tag(reason: VoucherReason | undefined): string {
   return "Coming soon";
 }
 
-const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
+const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
 
 /** EVERY PROMO IS A GIFT CARD (Pato, MESITA-3342: "must look like gift
  *  cards"; "clearer fucking text"; "add buy buttons ... the vouchers must
@@ -197,16 +203,18 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
 // or something to the products"); `border-current` reads the tone's text
 // colour, the mark's.
 const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/50 p-3";
-// The bonus badge is BIG (Pato, MESITA-3363: "mention the percentage
-// fucking bigger"): 18px bold on the card's white chip; 12px until then.
-/** A Rewards section title: 18px, two steps over the boxes' 16px. The tab
- *  is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or Perks";
- *  Promos from MESITA-3322, Vouchers before). */
-const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
+/** A Rewards section title: 18px, the screen title's size, on a tight line.
+ *  The tab is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or
+ *  Perks"; Promos from MESITA-3322, Vouchers before). */
+const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
 /** A small gift card in the 3×2 grid (MESITA-3370). */
 const GRID_CARD = "relative flex min-h-40 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-3";
-const GRID_BADGE = "bg-card/85 text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
-const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
+// ONE BADGE (MESITA-3379): the grid cards' 12px pill, on the cashback card
+// too. MESITA-3363 had made the cashback badge 18px ("mention the percentage
+// fucking bigger") when every gift card was full-width; the grid cards went
+// to 12px with MESITA-3370 and the card's own "5% back" line is the big one.
+const GRID_BADGE = cn(PLACE_PILL_CLASS, "bg-card/85 text-foreground shrink-0");
+const GIFT_BADGE = GRID_BADGE;
 
 function Watermark({ Mark }: { Mark: Mark }) {
   return <Mark className="absolute -right-5 -bottom-5 h-32 w-32 opacity-20" strokeWidth={1.25} aria-hidden />;
@@ -265,7 +273,7 @@ function VoucherCard({
             onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
             disabled={buying || (actions?.buyingVoucher != null && !buying)}
             aria-label={`Buy the ${product.name} voucher`}
-            className={cn(buyButton, "mt-0 h-9 w-full px-2")}
+            className={cn(buyButton, "w-full px-2")}
           >
             {buying ? "Opening…" : "Buy"}
           </button>
@@ -317,10 +325,12 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   return (
     // A WHITE PAGE FOR PROMOS ALONE (Pato, MESITA-3366: "only in the case of
     // promos, either use white background or stronger borders for the
-    // products"): the pane undoes the body's 16px sides and the gap under
-    // the sticky block and paints itself white; the cards' hairline is
-    // twice as strong (border-current/50). The other tabs keep the grey.
-    <div className="bg-card -mx-4 -mt-3 flex flex-col gap-4 px-4 pt-4 pb-6" data-promos-page>
+    // products"): the pane undoes the body's 16px sides and the 16px under
+    // the sticky strip (the column's gap-3 plus the strip's mb-1,
+    // MESITA-3379) and paints itself white; the cards' hairline is twice as
+    // strong (border-current/50). The other tabs keep the grey. Sections sit
+    // 12px apart, the column's rhythm, with the hairline between them.
+    <div className="bg-card -mx-4 -mt-4 flex flex-col gap-3 px-4 pt-4 pb-6" data-promos-page>
       {money?.test_mode ? <TestBand /> : null}
       {hasCredit && balance ? (
         <Box title="Your credit here">
@@ -359,7 +369,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
             <p className="text-foreground text-sm font-semibold">Cashback</p>
             <span className={GIFT_BADGE}>5% Back</span>
           </div>
-          <p className="text-foreground relative mt-3 text-2xl leading-none font-semibold tabular-nums">5% back</p>
+          <p className={cn(PLACE_FIGURE_CLASS, "text-foreground relative mt-3")}>5% back</p>
           <p className="text-foreground/80 relative mt-1 text-sm">Pay by card here and 5% of it comes back as credit.</p>
           {/* PAY, LIKE THE GIFT CARDS' BUY (Pato, MESITA-3352: "use Pay
               button to redirect to pay page"): the host's Pay page; a host
@@ -371,7 +381,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
                 type="button"
                 onClick={actions.onPay}
                 aria-label="Pay here with Mesita"
-                className={cn(buyButton, "mt-0 shrink-0")}
+                className={buyButton}
               >
                 Pay
               </button>
@@ -381,7 +391,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
       </section>
       {/* A HAIRLINE BETWEEN THE TWO (Pato, MESITA-3369: "add some line or
           something dividing payments deals from prepayments deals"). */}
-      <hr className="border-border my-1" aria-hidden />
+      <hr className="border-border my-0" aria-hidden />
       <section className="flex flex-col gap-3" data-promos="prepayment">
         <div>
           <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Rewards</h3>

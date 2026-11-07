@@ -18,9 +18,27 @@ export const PLACE_BUTTON_ICON_CLASS = "h-4 w-4 shrink-0";
  * THE PLACE PROFILE'S SCALE (Pato, MESITA-2636: "standardize everything
  * there, the colors the fonts the styles the sizes the spacings"). Inter only
  * on the place screen (an <h3> would otherwise inherit the app's serif
- * display face); achromatic (a brand's own logo is the only colour); cards
- * rounded-xl (12px, one step down from 16px, MESITA-3325) with p-4 and 12px
- * inside, everything inside a card rounded-lg.
+ * display face), and no host `type-*` utility: the three apps define them,
+ * but this package must not depend on host CSS (MESITA-3379); achromatic (a
+ * brand's own logo is the only colour).
+ *
+ * THE RADIUS LADDER (MESITA-3379, after ~60 one-card PRs had drifted it):
+ *   card      rounded-xl (12px, one step down from 16px, MESITA-3325), p-4,
+ *             12px inside; the gift cards on Rewards are cards too
+ *   inside    rounded-lg: every button, tile, list, map and icon box inside
+ *             a card; the one labelled button above is one of these
+ *   pill      rounded-md: a small badge on a tile or card (PLACE_PILL_CLASS),
+ *             a 20px mark; never a card's or a button's corner
+ *   screen    the empty-state tile (PLACE_EMPTY_ICON_CLASS) is a screen-level
+ *             element and keeps rounded-xl; inside a Box the caller adds
+ *             rounded-lg
+ * Type: 12 (meta, pill) · 13 (chip, strip) · 14 (body, button) · 16 (title)
+ * · 18 (screen title) · 24 (PLACE_FIGURE_CLASS, the one big number). A
+ * component never adds a size of its own.
+ * Spacing: 16px sides; 16px under the sticky strip (12 + the strip's mb-1,
+ * ProfileActions.tsx); 12px between cards. One row literal lives outside
+ * this file: HOURS_ROW_CLASS in location-hours.tsx, next to the summary and
+ * tile constants the skeleton already reads (MESITA-2701).
  */
 /** A card's title: sentence case, 16px semibold ink. */
 export const PLACE_TITLE_CLASS =
@@ -40,6 +58,22 @@ export const PLACE_OUTLINE_CHIP_CLASS =
 /** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";
+/** The small badge on a tile or card (the ink pill under Prepay and Pay, a
+ *  gift card's bonus): 12px bold, 2px vertical pad, rounded-md. No fill of
+ *  its own; the site adds it. ONE SHAPE (MESITA-3379; three until then). */
+export const PLACE_PILL_CLASS =
+  "rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
+/** The one big number a card may show (Stats, the cashback figure, the
+ *  no-photo initial): 24px, one line box, no ink of its own, like
+ *  PLACE_BUTTON_CLASS carries no fill; the site adds the colour (MESITA-3379;
+ *  the initial was 30px, the Stats line 32px tall). */
+export const PLACE_FIGURE_CLASS = "text-2xl leading-none font-semibold tabular-nums";
+/** The empty state's tile: a 56px grey square with a 28px ink glyph
+ *  (MESITA-3379; the failed-create band and the Menu box drew 48px circles).
+ *  Screen-level, so rounded-xl; the one site inside a Box (menus.tsx) adds
+ *  rounded-lg, the ladder's in-card corner. */
+export const PLACE_EMPTY_ICON_CLASS =
+  "bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-xl";
 
 /**
  * A block of the place screen that has not loaded yet (Pato, MESITA-2701:

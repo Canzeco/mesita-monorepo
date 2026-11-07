@@ -34,6 +34,7 @@ import {
   PROFILE_STAT_LINE_CLASS,
   PROFILE_STAT_MARK_CLASS,
 } from "./profile-summary-parts";
+import { HOURS_ROW_CLASS } from "./location-hours";
 import { PlaceTabBar } from "./tabs";
 
 // THE PLACE SCREEN WHILE IT LOADS, BLOCK FOR BLOCK (Pato, MESITA-2701: "the
@@ -175,15 +176,13 @@ function OverviewSkeleton() {
           <Bone className={PLACE_BUTTON_CLASS} />
         </div>
       </Box>
-      {/* HoursBox: the week in one outlined list of 44px rows. */}
+      {/* HoursBox: the week in one outlined list of 32px rows, the real
+          row's class (MESITA-3379). */}
       <Box>
         <BoxTitleBar width="w-16" />
         <div className="border-border overflow-hidden rounded-lg border">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="border-border flex min-h-11 items-center justify-between gap-3 border-b px-3 last:border-b-0"
-            >
+            <div key={i} className={HOURS_ROW_CLASS}>
               <Bone className="h-3 w-20" />
               <Bone className="h-3 w-24" />
             </div>

@@ -88,7 +88,7 @@ export function PlaceDetailBody({
               what Mesita does not hold yet. */}
           {tab === "place" && create && (
             create.error ? (
-              <div className="-mx-4 -mt-3">
+              <div className="-mx-4 -mt-4">
                 <PlaceCreateFailedPanel error={create.error} onRetry={create.onRetry} />
               </div>
             ) : (

@@ -47,19 +47,18 @@ export type ChannelChip = {
   logoAsIs?: boolean;
 };
 
+/** Two equal columns of the 44px place button (the Links box, MESITA-2619).
+ *  The wrapping 32px pill cluster it could also draw had no caller since
+ *  then and left with MESITA-3379: one chip, one size. */
 export function ChannelChips({
   chips,
   onOpenLink,
-  grid = false,
 }: {
   chips: ChannelChip[];
   onOpenLink?: PlaceActions["onOpenLink"];
-  /** Two equal columns of 44px buttons instead of a wrapping pill cluster
-   *  (the Links box, MESITA-2619). */
-  grid?: boolean;
 }) {
   return (
-    <div className={grid ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
+    <div className="grid grid-cols-2 gap-2">
       {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, mark, logoAsIs }) => {
         // decision: trailing SquareArrowOutUpRight on web destinations so
         // chips read as "leaves the app" — skip tel: (Phone opens dialer).
@@ -74,12 +73,7 @@ export function ChannelChips({
         // colors"; MESITA-3320's tints and MESITA-3333's solid fills are
         // gone: "too strong buttons is an incentive for them to leave the
         // app").
-        const className = cn(
-          grid
-            ? PLACE_BUTTON_CLASS
-            : "inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition",
-          "bg-muted text-foreground hover:bg-muted/70",
-        );
+        const className = cn(PLACE_BUTTON_CLASS, "bg-muted text-foreground hover:bg-muted/70");
         const body = (
           <>
             {logo && mark && !logoAsIs ? (
@@ -89,7 +83,7 @@ export function ChannelChips({
               // Decorative: the label carries the name.
               <span
                 aria-hidden
-                className={cn("shrink-0 bg-current", mark, grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5")}
+                className={cn("shrink-0 bg-current", mark, PLACE_BUTTON_ICON_CLASS)}
                 style={{
                   maskImage: `url(${logo})`,
                   WebkitMaskImage: `url(${logo})`,
@@ -110,16 +104,10 @@ export function ChannelChips({
                 src={logo}
                 alt=""
                 aria-hidden
-                className={cn(
-                  logoWide
-                    ? "h-4 w-auto"
-                    : grid
-                      ? PLACE_BUTTON_ICON_CLASS
-                      : "h-3.5 w-3.5",
-                )}
+                className={logoWide ? "h-4 w-auto" : PLACE_BUTTON_ICON_CLASS}
               />
             ) : (
-              <Icon className={cn(grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5", mark)} />
+              <Icon className={cn(PLACE_BUTTON_ICON_CLASS, mark)} />
             )}
             {!logoOnly && <span className="truncate">{label}</span>}
             {leavesApp && (

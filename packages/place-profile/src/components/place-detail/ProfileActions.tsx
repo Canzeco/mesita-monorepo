@@ -17,6 +17,7 @@ import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
@@ -317,8 +318,12 @@ export function MesitaActions({
 }
 
 /** The sticky block the Mesita row and the tab strip share: white, full
- *  width (the body's 16px sides undone), above the boxes (MESITA-3330). */
-export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 flex flex-col";
+ *  width (the body's 16px sides undone), above the boxes (MESITA-3330).
+ *  mb-1: 12 (the column's gap-3) + 4 = 16px under the strip's hairline on
+ *  every tab at rest, the same as the 16px sides (MESITA-3379; Overview had
+ *  12, Rewards 16, Reviews 32). The margin is not painted: pinned, content
+ *  meets the hairline as under any sticky header. */
+export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 mb-1 flex flex-col";
 /** The Mesita row inside it: 16px sides, 16px under, a hairline, then the
  *  strip. */
 export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
@@ -327,8 +332,9 @@ export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
 /** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
-/** The amount in an ink pill under the label (MESITA-3367). */
-const MESITA_TILE_PILL = "bg-foreground text-paper rounded-md px-1.5 py-[3px] text-xs leading-none font-bold tabular-nums";
+/** The amount in an ink pill under the label (MESITA-3367): the one pill
+ *  shape (MESITA-3379; it had py-[3px], 1px more than the gift cards'). */
+const MESITA_TILE_PILL = cn(PLACE_PILL_CLASS, "bg-foreground text-paper");
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
  *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.

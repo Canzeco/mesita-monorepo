@@ -106,7 +106,9 @@ export function CarouselSlideCounter({
   count: number;
 }) {
   return (
-    <div className="shadow-media type-meta pointer-events-none absolute top-3 right-3 z-10 rounded-full bg-black/60 px-2 py-0.5 font-semibold text-white backdrop-blur">
+    // The pill corner and the scale's 12px floor (MESITA-3379; it was a
+    // rounded-full pill on the host's 10px type-meta utility).
+    <div className="shadow-media pointer-events-none absolute top-3 right-3 z-10 rounded-md bg-black/60 px-2 py-0.5 text-xs leading-none font-semibold text-white backdrop-blur">
       {idx + 1} / {count}
     </div>
   );
