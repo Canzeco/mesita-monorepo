@@ -3,6 +3,7 @@
 import { FlaskConical } from "lucide-react";
 
 import { cn } from "../lib/format";
+import { TEST_BAND_TEXT } from "../lib/test-band";
 
 // THE ONE BAND EVERY MONEY SURFACE WEARS WHILE STRIPE IS IN TEST MODE
 // (MESITA-3303): the Wallet, the place screen's Vouchers tab and Business ›
@@ -11,7 +12,7 @@ import { cn } from "../lib/format";
 // the test card). It disappears the day Pato flips the key; nothing else
 // changes. Contract tests in each app pin that the surface renders it.
 
-export const TEST_BAND_TEXT = "TEST: no real money moves";
+export { TEST_BAND_TEXT };
 
 export function TestBand({ detail, className }: { detail?: string; className?: string }) {
   return (

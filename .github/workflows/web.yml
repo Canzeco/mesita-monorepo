@@ -62,12 +62,16 @@ jobs:
               - '.github/actions/pnpm-check/**'
             web-visit:
               - 'apps/web-visit/**'
+              # The proof page imports packages/place-profile (MESITA-3304).
+              - 'packages/place-profile/**'
               - '.github/workflows/web.yml'
               - '.github/actions/pnpm-check/**'
             place-profile:
               - 'packages/place-profile/**'
               - 'apps/web-consumer/package.json'
               - 'apps/web-consumer/pnpm-lock.yaml'
+              - 'apps/web-visit/package.json'
+              - 'apps/web-visit/pnpm-lock.yaml'
               - '.github/workflows/web.yml'
               - '.github/actions/pnpm-check/**'
 
