@@ -15,7 +15,6 @@ import { Box } from "./box";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./empty-screen";
 import {
   PROFILE_ACTIONS_CLASS,
-  PROFILE_MESITA_BUTTON_CLASS,
   PROFILE_MESITA_ROW_CLASS,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
@@ -116,9 +115,9 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: five tiles, then Reserve · Prepay · Pay in one row
-          (MESITA-3314; Reserve live or disabled, never missing — MESITA-3078),
-          the 44px place button. */}
+      {/* ProfileActions: five tiles, then Reserve · Prepay · Pay, three
+          tiles of the same box (MESITA-3315; Reserve live or disabled, never
+          missing — MESITA-3078). */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
           {[0, 1, 2, 3, 4].map((i) => (
@@ -127,10 +126,7 @@ function ProfileSummarySkeleton() {
         </div>
         <div className={PROFILE_MESITA_ROW_CLASS}>
           {[0, 1, 2].map((i) => (
-            <Bone
-              key={i}
-              className={cn(PLACE_BUTTON_CLASS, PROFILE_MESITA_BUTTON_CLASS, "flex-1")}
-            />
+            <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
           ))}
         </div>
       </div>

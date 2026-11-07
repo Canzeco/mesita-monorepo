@@ -19,15 +19,18 @@ import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
-import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 
-// TWO ROWS (Pato, MESITA-3314: "the three buttons instead of lines
-// buttons, in one line: Reserve, Prepay, Pay"; MESITA-2690 had three rows,
-// Mesita Reserve full width over Mesita Prepay and Mesita Pay halved;
-// MESITA-2688/2689 had Reserve and Pay side by side):
+
+// TWO ROWS OF TILES (Pato, MESITA-3315: "make those 3 buttons the same
+// height of the other 5 buttons, but wider because are three instead of 5.
+// and keep the dark colors"; MESITA-3314 had them as one row of 44px
+// buttons, "the three buttons instead of lines buttons, in one line:
+// Reserve, Prepay, Pay"; MESITA-2690 had three rows, Mesita Reserve full
+// width over Mesita Prepay and Mesita Pay halved; MESITA-2688/2689 had
+// Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [ ▣ Reserve        ] [ ▤ Prepay  Soon   ] [ ▦ Pay  Soon      ]
+//   [ ▣ Reserve         ] [ ▤ Prepay          ] [ ▦ Pay             ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -39,22 +42,19 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // host's sheet, never Checkout, on every place: a Google-only one gets that
 // sheet's not-open-yet screen, so the row never changes width.
 //
-// ROW 2 is three ink buttons (Pato, MESITA-2689: "kinda like this button
-// but half and half, but same height and colour"): 44px, 8px apart every
-// way, the labels without "Mesita " (three across leave no room for it).
-// Each takes the width its words need and the three share what is left
-// (flex-auto), since Reserve with its Walk-in chip is wider than Pay with
-// Soon; the glyph shows only when the row is 400px or wider (@container,
-// measured on the row so admin's phone frame reads the same), so a phone's
-// ~326px row holds the words and the chips. NO TIMES ON THE PROFILE (Pato,
-// MESITA-2633: fixed hours "can be confused with confirmed availability"):
-// the guest picks day, party and a preferred time in the sheet, then the
-// agent calls and confirms. Pay is Soon ("pay is as soon but leave it there
-// for the moment") until W2b (MESITA-3305), and so is Prepay: since W1b
-// (MESITA-3303) buying a voucher lives on the Vouchers tab, and W1b had
-// taken the Prepay button off, but Pato's row names it (MESITA-3314), so it
-// stays, inert, each wearing the consumer bar's grey Soon tag. MESITA-2618
-// had taken Pay off.
+// ROW 2 is three ink tiles, the grey tiles' box (56px, icon over a 12px
+// label, 8px apart) in the ink (Pato, MESITA-2689: "same height and
+// colour"), three equal widths, the labels without "Mesita ". The chip that
+// says why a tile is blocked sits beside the icon. NO TIMES ON THE PROFILE
+// (Pato, MESITA-2633: fixed hours "can be confused with confirmed
+// availability"): the guest picks day, party and a preferred time in the
+// sheet, then the agent calls and confirms. Pay waits for W2b (MESITA-3305)
+// and Prepay for its own wave: since W1b (MESITA-3303) buying a voucher
+// lives on the Vouchers tab, and W1b had taken the Prepay button off, but
+// Pato's row names it (MESITA-3314), so it stays. Both are inert and wear
+// NO Soon chip (Pato, MESITA-3315: "remove the soon btw"; the consumer
+// bar's grey Soon tag sat on them from MESITA-2690). MESITA-2618 had taken
+// Pay off.
 //
 // No "I went" (MESITA-2567), no pinned bar. Every button is 44px or more
 // (MESITA-2324). A missing callback leaves its button visible and inert, so
@@ -66,29 +66,17 @@ import { PLACE_BUTTON_CLASS, PLACE_BUTTON_ICON_CLASS } from "../../lib/ui";
 // button is the ink button, `disabled`, no hover, no press. Reserve varies by
 // place ("reserve can vary depending on the place"): live where it takes
 // bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
-// both blocked with Soon: the free-amount prepay left with the discount
+// both blocked, with no chip: the free-amount prepay left with the discount
 // product (MESITA-3299), vouchers sell on their tab (MESITA-3303) and paying
 // arrives with W2b (MESITA-3305).
 
 // THE TILES ARE ONE STEP DARKER THAN --fill (Pato, MESITA-2647: "make the
 // four gray buttons a bit darker, just a bit, minimum"): the border grey at
 // 60% over the white band ≈ #e9e9e9 (bg-muted is #efefef); hover 80%.
-// Row 2 is the old Reserve with Mesita button (MESITA-2689), three across.
-const inkButton = cn(
-  PLACE_BUTTON_CLASS,
-  "bg-foreground text-paper text-sm hover:opacity-90",
-);
-// A blocked Mesita button: still the ink, but `disabled`: no hover, no
-// press, the not-allowed cursor (MESITA-3081).
-const blockedInkButton = cn(
-  PLACE_BUTTON_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-sm active:scale-100",
-);
-
 // THE ROWS' LAYOUT AND A TILE'S BOX ARE WRITTEN ONCE (Pato, MESITA-2701:
 // "the placeholders must be similar to the page you are loading, like the
 // sizes"): read here and by ProfileSummarySkeleton, which lays its bones
-// out in them. The ink row is PLACE_BUTTON_CLASS's 44px.
+// out in them. The ink row is the tiles' 56px.
 
 /** The two rows: tiles, 8px, then the Mesita row. ONE GAP EVERY WAY (Pato,
  *  MESITA-2823: "fix spacing here"): the 12px under the tiles was the only
@@ -99,15 +87,21 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
 /** A tile's box: 56px, rounded-lg, icon over label. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2: Reserve · Prepay · Pay in one line, 8px apart (MESITA-3314); a
- *  container, so the buttons' glyphs can answer to the row's width. */
-export const PROFILE_MESITA_ROW_CLASS = "@container flex gap-2";
-/** A Mesita button in that row: its words' width, then an equal share of
- *  the rest; 8px sides instead of the place button's 12px, so three fit a
- *  phone. */
-export const PROFILE_MESITA_BUTTON_CLASS = "min-w-0 flex-auto px-2";
-/** The glyph before a Mesita button's word: only from a 400px row up. */
-const mesitaGlyph = cn(PLACE_BUTTON_ICON_CLASS, "hidden @min-[25rem]:block");
+/** Row 2: Reserve · Prepay · Pay, three equal tiles, 8px apart
+ *  (MESITA-3314, MESITA-3315). */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
+
+// Row 2 is the grey tile's box in the ink (MESITA-3315), three across.
+const inkTile = cn(
+  PROFILE_TILE_BOX_CLASS,
+  "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
+);
+// A blocked Mesita tile: still the ink, but `disabled`: no hover, no press,
+// the not-allowed cursor (MESITA-3081).
+const blockedInkTile = cn(
+  PROFILE_TILE_BOX_CLASS,
+  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
+);
 
 const tileBtn = cn(
   PROFILE_TILE_BOX_CLASS,
@@ -265,36 +259,37 @@ export function ProfileActions({
               ? "Reserve a table"
               : "Reserve a table, not available at this place"
           }
-          className={cn(
-            takesReservations ? inkButton : blockedInkButton,
-            PROFILE_MESITA_BUTTON_CLASS,
-          )}
+          className={takesReservations ? inkTile : blockedInkTile}
         >
-          <CalendarCheck className={mesitaGlyph} strokeWidth={2.25} />
-          <span className="truncate">Reserve</span>
-          {!takesReservations && <BlockedChip>Walk-in</BlockedChip>}
+          <span className="flex shrink-0 items-center gap-1.5">
+            <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+            {!takesReservations && <BlockedChip>Walk-in</BlockedChip>}
+          </span>
+          <span className="max-w-full truncate">Reserve</span>
         </button>
-        <SoonInkButton Icon={Wallet} label="Prepay" />
-        <SoonInkButton Icon={QrCode} label="Pay" />
+        <InertInkTile Icon={Wallet} label="Prepay" />
+        <InertInkTile Icon={QrCode} label="Pay" />
       </div>
     </div>
   );
 }
 
-/** A Mesita money button that is not built yet: the blocked ink button
- *  with the bar's Soon tag (BottomNav, MESITA-2079). */
-function SoonInkButton({ Icon, label }: { Icon: LucideIcon; label: string }) {
+/** The glyph on an ink tile: the grey tiles' 18px. */
+const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
+
+/** A Mesita money tile that is not built yet: the blocked ink tile, no chip
+ *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it. */
+function InertInkTile({ Icon, label }: { Icon: LucideIcon; label: string }) {
   return (
     <button
       type="button"
       {...inertButtonProps(false)}
       disabled
       aria-label={`${label}, Soon`}
-      className={cn(blockedInkButton, PROFILE_MESITA_BUTTON_CLASS)}
+      className={blockedInkTile}
     >
-      <Icon className={mesitaGlyph} strokeWidth={2.25} />
-      <span className="truncate">{label}</span>
-      <BlockedChip>Soon</BlockedChip>
+      <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }
