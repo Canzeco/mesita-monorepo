@@ -1,7 +1,7 @@
 "use client";
 
 import { type ComponentType, useEffect } from "react";
-import { Coins, Crown, Hand, Wallet } from "lucide-react";
+import { ArrowRight, Coins, Crown, Hand, Wallet } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -178,7 +178,7 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
 // hold their edge on the grey page (Pato, MESITA-3357: "maybe add borders
 // or something to the products"); `border-current` reads the tone's text
 // colour, the mark's.
-const GIFT_CARD = "relative flex min-h-36 flex-col overflow-hidden rounded-xl border border-current/25 p-3";
+const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/25 p-3";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
@@ -219,14 +219,17 @@ function VoucherCard({
         <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <span className={GIFT_BADGE}>{product.bonus}</span>
       </div>
-      {/* THE EXCHANGE, TOP TO BOTTOM (Pato, MESITA-3346: "the bonus must be
-          clearer ... like buy $100 get $130"): what you pay small, what you
-          get big; "MX$130 / credit for MX$100" until then. */}
-      <p className="text-foreground/80 relative mt-3 text-sm leading-none tabular-nums">
-        Buy {priceValue(product, line, currency)}
-      </p>
-      <p className="text-foreground relative mt-1.5 text-2xl leading-none font-semibold tabular-nums" data-voucher-credit>
-        Get {creditValue(product, line, currency)}
+      {/* THE EXCHANGE IN ONE BIG LINE (Pato, MESITA-3360: "this is not super
+          clear. Make it clear, and maybe even shorter"): what you pay at
+          60%, an arrow, what you get in full ink, "MX$100 → MX$130"; the
+          two lines "Buy MX$100 / Get MX$130" (MESITA-3346) until then. */}
+      <p
+        className="text-foreground relative mt-3 flex items-center gap-1.5 text-2xl leading-none font-semibold tabular-nums"
+        data-voucher-credit
+      >
+        <span className="text-foreground/60">{priceValue(product, line, currency)}</span>
+        <ArrowRight className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
+        <span>{creditValue(product, line, currency)}</span>
       </p>
       <p className="text-foreground/70 relative mt-1 text-xs">
         {product.when ? `${product.when} ` : null}
