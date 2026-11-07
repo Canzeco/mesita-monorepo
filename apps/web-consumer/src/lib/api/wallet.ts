@@ -1,12 +1,12 @@
-// Wallet — prepaid balances (MESITA-3097/3098). A guest prepays money at one
-// place (Mesita Prepay); Mesita collects it and the balance sits in the
-// Wallet. Every amount and outcome comes from the server: this file never
-// computes money, it only formats it.
+// Wallet — the guest's credit at each place (MESITA-3097/3098; on the
+// place's own Stripe Connect account since MESITA-3302). Every amount and
+// outcome comes from the server: this file never computes money, it only
+// formats it. Buying a voucher arrives with MESITA-3303 (W1b).
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { invokeEF } from "./_invoke";
 
-export type WalletEntry = { kind: string; amount_cents: number; at: string };
+export type WalletEntry = { kind: string; amount_cents: number; at: string; pending: boolean };
 
 export type WalletBalance = {
   place_id: string;
@@ -14,7 +14,10 @@ export type WalletBalance = {
   place: { id: string; slug: string | null; name: string | null; photo: string | null } | null;
   /** Lowercase ISO 4217 ("mxn"). */
   currency: string;
+  /** Everything, Available and Pending. */
   balance_cents: number;
+  available_cents: number;
+  pending_cents: number;
   last_at: string;
   entries: WalletEntry[];
 };
@@ -24,8 +27,6 @@ export type PrepayOutcome = "credited" | "already_paid" | "pending" | "expired" 
 
 export type Wallet = {
   balances: WalletBalance[];
-  /** The amounts the Prepay sheet offers first, per currency, in cents. */
-  presets: Record<string, number[]>;
   outcome?: PrepayOutcome;
 };
 
@@ -34,26 +35,6 @@ export async function apiGetWallet(client: SupabaseClient, sessionId?: string): 
     ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
-
-/** Opens Stripe Checkout for a prepayment; resolves to the page to send the
- *  guest to. */
-export async function apiStartPrepay(
-  client: SupabaseClient,
-  input: { placeId: string; amountCents: number; returnUrl: string },
-): Promise<{ url: string }> {
-  return await invokeEF<{ url: string }>(client, "consumer-web-start-prepay", {
-    place_id: input.placeId,
-    amount_cents: input.amountCents,
-    return_url: input.returnUrl,
-  });
-}
-
-/** The amounts the sheet offers before the Wallet has been read once. Kept
- *  equal to `PREPAY_PRESETS` in supabase/functions/_shared/wallet.ts. */
-export const PREPAY_PRESETS_FALLBACK: Record<string, number[]> = {
-  mxn: [200_00, 500_00, 1_000_00],
-  usd: [10_00, 25_00, 50_00],
-};
 
 /** "MX$500" / "$25" — whole amounts drop the cents. */
 export function money(cents: number, currency: string): string {
@@ -76,4 +57,11 @@ export function entryDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export const ENTRY_LABEL: Record<string, string> = { prepay: "Prepaid" };
+export const ENTRY_LABEL: Record<string, string> = {
+  prepay: "Prepaid",
+  voucher: "Voucher",
+  bonus: "Bonus",
+  cashback: "Cashback",
+  spend: "Paid",
+  reversal: "Refund",
+};

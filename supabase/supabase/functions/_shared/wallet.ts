@@ -1,113 +1,42 @@
-// Wallet — prepaid balances (MESITA-3097).
+// Wallet — the guest's credit at a place (MESITA-3097, on the place's own
+// Stripe Connect account since MESITA-3302).
 //
-// A guest prepays money at one place; Mesita collects it on its own Stripe
-// account (the same keys as Premier, test until Pato flips STRIPE_MODE and
-// STRIPE_ALLOW_LIVE) and owes the place. A purchase is one Checkout
-// (wallet_purchases); once Stripe says paid, wallet_credit_purchase writes
-// its entry (wallet_entries) and the balance is the sum of entries.
-//
-// No webhook: a purchase is settled when its guest opens the Wallet
-// (consumer-web-get-wallet settles every open purchase of theirs first).
+// A voucher purchase is one Checkout on the place's connected account
+// (wallet_purchases.stripe_account_id), with Mesita's fee as the application
+// fee; once Stripe says paid, wallet_credit_purchase writes its voucher and
+// bonus entries (wallet_entries), Pending until available_at. The balance is
+// wallet_balance(). Settlement has three paths that call the same RPCs: the
+// webhook receiver (W2b), the cron (W2b) and this read-time settle, which
+// runs when the guest opens the Wallet.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { isAllowedReturnUrl, type StripeCall } from "./boost.ts";
+import type { StripeCall } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
-import { isUuid } from "./place-id.ts";
 
 export { classifySession } from "./checkout-session.ts";
 
 /** Checkout stays open this long (Stripe's minimum is 30 minutes). */
 export const WALLET_CHECKOUT_TTL_SEC = 31 * 60;
 
-/** What one prepayment may be, in cents of the place's currency. A currency
- *  not listed here is not sold. */
-export const PREPAY_BOUNDS: Record<string, { min: number; max: number }> = {
-  mxn: { min: 100_00, max: 10_000_00 },
-  usd: { min: 5_00, max: 500_00 },
-};
-
-/** The amounts the Prepay sheet offers first. */
-export const PREPAY_PRESETS: Record<string, number[]> = {
-  mxn: [200_00, 500_00, 1_000_00],
-  usd: [10_00, 25_00, 50_00],
-};
-
-export type PrepayStart = { placeId: string; amountCents: number; returnUrl: string };
-
-export function parsePrepayStart(body: Record<string, unknown>): { ok: true; start: PrepayStart } | { ok: false; error: string } {
-  const placeId = body.place_id;
-  if (!isUuid(placeId)) return { ok: false, error: "place_id must be a Mesita place id" };
-  const amount = body.amount_cents;
-  if (typeof amount !== "number" || !Number.isInteger(amount) || amount <= 0) {
-    return { ok: false, error: "amount_cents must be a positive whole number" };
-  }
-  const returnUrl = body.return_url;
-  if (typeof returnUrl !== "string" || !isAllowedReturnUrl(returnUrl)) {
-    return { ok: false, error: "return_url is not a Mesita address" };
-  }
-  return { ok: true, start: { placeId, amountCents: amount, returnUrl } };
-}
-
-/** The amount checked against the place's currency: whole units, in bounds. */
-export function checkPrepayAmount(amountCents: number, currency: string): string | null {
-  const bounds = PREPAY_BOUNDS[currency];
-  if (!bounds) return "This place doesn't take prepayments yet";
-  if (amountCents % 100 !== 0) return "Prepay a whole amount";
-  if (amountCents < bounds.min || amountCents > bounds.max) {
-    return `Prepay between ${bounds.min / 100} and ${bounds.max / 100} ${currency.toUpperCase()}`;
-  }
-  return null;
-}
-
-export function prepayCheckoutParams(args: {
-  customer: string;
-  purchaseId: string;
-  placeId: string;
-  consumerId: string;
-  amountCents: number;
-  currency: string;
-  placeName: string;
-  returnUrl: string;
-  nowSec: number;
-}): Record<string, unknown> {
-  const sep = args.returnUrl.includes("?") ? "&" : "?";
-  const metadata = {
-    mesita_kind: "wallet_prepay",
-    purchase_id: args.purchaseId,
-    place_id: args.placeId,
-    consumer_id: args.consumerId,
-    amount_cents: String(args.amountCents),
-  };
-  return {
-    mode: "payment",
-    customer: args.customer,
-    client_reference_id: args.purchaseId,
-    success_url: `${args.returnUrl}${sep}prepay={CHECKOUT_SESSION_ID}`,
-    cancel_url: args.returnUrl,
-    expires_at: args.nowSec + WALLET_CHECKOUT_TTL_SEC,
-    metadata,
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: args.currency,
-        unit_amount: args.amountCents,
-        product_data: { name: `Mesita Prepay · ${args.placeName}`.slice(0, 250) },
-      },
-    }],
-    payment_intent_data: { metadata },
-  };
-}
-
 export type SettleOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch";
 
-export type OpenPurchase = { id: string; stripe_checkout_session_id: string | null; created_at: string };
+export type OpenPurchase = {
+  id: string;
+  stripe_checkout_session_id: string | null;
+  stripe_account_id: string;
+  created_at: string;
+  /** When the credit turns Available; null credits at once. */
+  available_at?: string | null;
+};
 
-/** Settles one open purchase against Stripe. Idempotent: the RPC credits once. */
+/** Settles one open purchase against Stripe, on the purchase's own connected
+ *  account. Idempotent: the RPC credits once. */
 export async function settlePurchase(
   admin: SupabaseClient,
   stripe: StripeCall,
   purchase: OpenPurchase,
   nowMs: number,
+  opts?: { signal?: AbortSignal },
 ): Promise<SettleOutcome> {
   const sessionId = purchase.stripe_checkout_session_id;
   if (!sessionId) {
@@ -119,7 +48,10 @@ export async function settlePurchase(
     }
     return "pending";
   }
-  const c = await readCheckoutSession(stripe, sessionId, purchase.id);
+  const c = await readCheckoutSession(stripe, sessionId, purchase.id, undefined, {
+    stripeAccount: purchase.stripe_account_id,
+    signal: opts?.signal,
+  });
   if (c.kind === "mismatch") {
     console.error("[wallet] session_mismatch", JSON.stringify({ purchase_id: purchase.id, session_id: sessionId }));
     return "mismatch";
@@ -132,6 +64,7 @@ export async function settlePurchase(
   const { data, error } = await admin.rpc("wallet_credit_purchase", {
     p_purchase_id: purchase.id,
     p_payment_intent: c.paymentIntent,
+    p_available_at: purchase.available_at ?? null,
   });
   if (error) throw new Error(`wallet_credit: ${error.message}`);
   const res = data as { ok?: boolean; outcome?: SettleOutcome; code?: string } | null;
@@ -144,7 +77,7 @@ async function expirePurchase(admin: SupabaseClient, id: string): Promise<void> 
     .from("wallet_purchases")
     .update({ status: "expired", updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("status", "open");
+    .in("status", ["opening", "open"]);
   if (error) throw new Error(`wallet_expire: ${error.message}`);
 }
 
@@ -154,30 +87,46 @@ export type Entry = {
   amount_cents: number;
   currency: string;
   created_at: string;
+  /** Pending until this moment; missing reads as Available. */
+  available_at?: string | null;
 };
 
 export type Balance = {
   place_id: string;
   currency: string;
+  /** Everything, Available and Pending. */
   balance_cents: number;
+  available_cents: number;
+  pending_cents: number;
   last_at: string;
-  entries: Array<{ kind: string; amount_cents: number; at: string }>;
+  entries: Array<{ kind: string; amount_cents: number; at: string; pending: boolean }>;
 };
 
 /** One balance per (place, currency), newest activity first; entries newest
  *  first. A place whose entries sum to zero still shows (its history). */
-export function balancesOf(entries: Entry[]): Balance[] {
+export function balancesOf(entries: Entry[], nowMs: number = Date.now()): Balance[] {
   const byKey = new Map<string, Balance>();
   for (const e of entries) {
     const key = `${e.place_id}:${e.currency}`;
     let b = byKey.get(key);
     if (!b) {
-      b = { place_id: e.place_id, currency: e.currency, balance_cents: 0, last_at: e.created_at, entries: [] };
+      b = {
+        place_id: e.place_id,
+        currency: e.currency,
+        balance_cents: 0,
+        available_cents: 0,
+        pending_cents: 0,
+        last_at: e.created_at,
+        entries: [],
+      };
       byKey.set(key, b);
     }
+    const pending = !!e.available_at && Date.parse(e.available_at) > nowMs;
     b.balance_cents += e.amount_cents;
+    if (pending) b.pending_cents += e.amount_cents;
+    else b.available_cents += e.amount_cents;
     if (e.created_at > b.last_at) b.last_at = e.created_at;
-    b.entries.push({ kind: e.kind, amount_cents: e.amount_cents, at: e.created_at });
+    b.entries.push({ kind: e.kind, amount_cents: e.amount_cents, at: e.created_at, pending });
   }
   const out = [...byKey.values()];
   for (const b of out) b.entries.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));
@@ -187,22 +136,6 @@ export function balancesOf(entries: Entry[]): Balance[] {
 
 // ── Place reads (kept last: the write-surface scan reads 2000 characters
 // after a `.from("profiles")`) ─────────────────────────────────────────────
-
-export type PrepayPlace = { id: string; name: string | null; state: string | null; currency: string | null; prepay_enabled: boolean | null };
-
-/** The place a guest prepays at: whether it sells, and in what currency. */
-export async function readPrepayPlace(
-  admin: SupabaseClient,
-  placeId: string,
-): Promise<{ ok: true; place: PrepayPlace | null } | { ok: false; error: string }> {
-  const { data, error } = await admin
-    .from("profiles")
-    .select("id, name, state, currency, prepay_enabled")
-    .eq("id", placeId)
-    .maybeSingle();
-  if (error) return { ok: false, error: `place_read: ${error.message}` };
-  return { ok: true, place: (data as PrepayPlace | null) ?? null };
-}
 
 export type WalletPlace = { id: string; slug: string | null; name: string | null; photo: string | null };
 

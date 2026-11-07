@@ -275,9 +275,6 @@ verify_jwt = true
 [functions.consumer-web-get-premier-refill]
 verify_jwt = true
 
-[functions.consumer-web-start-prepay]
-verify_jwt = true
-
 [functions.consumer-web-get-wallet]
 verify_jwt = true
 

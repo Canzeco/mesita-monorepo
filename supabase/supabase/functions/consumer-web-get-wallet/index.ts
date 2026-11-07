@@ -1,17 +1,18 @@
 // Supabase Edge Function — consumer-web-get-wallet
 //
-// MESITA-3097: the signed-in guest's Wallet — one balance per place they
-// prepaid at, with its history. Every open purchase of theirs is settled
-// with Stripe first (paid → credited, expired → closed), so money paid by a
-// guest who never came back from Checkout shows the next time they look.
-// With `session_id` (Checkout's return, `?prepay=`) it also says what
-// happened to that one purchase (`outcome`).
+// MESITA-3097 / MESITA-3302: the signed-in guest's Wallet — one balance per
+// place they hold credit at, Available and Pending, with its history. Every
+// open purchase of theirs is settled with Stripe first, on the purchase's
+// own connected account (paid → credited, expired → closed), so money paid
+// by a guest who never came back from Checkout shows the next time they
+// look. With `session_id` (Checkout's return) it also says what happened to
+// that one purchase (`outcome`).
 //
 // Body: { session_id?: string }
 // Response: { ok: true,
-//             balances: [{ place: { id, slug, name, photo } | null, currency,
-//                          balance_cents, last_at, entries: [{ kind, amount_cents, at }] }],
-//             presets: Record<currency, number[]>,
+//             balances: [{ place: { id, slug, name, photo } | null, place_id, currency,
+//                          balance_cents, available_cents, pending_cents, last_at,
+//                          entries: [{ kind, amount_cents, at, pending }] }],
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none" }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -22,7 +23,6 @@ import {
   balancesOf,
   type Entry,
   type OpenPurchase,
-  PREPAY_PRESETS,
   readWalletPlaces,
   type SettleOutcome,
   settlePurchase,
@@ -48,10 +48,10 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
     .from("wallet_purchases")
-    .select("id, stripe_checkout_session_id, created_at")
+    .select("id, stripe_checkout_session_id, stripe_account_id, created_at")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
-    .eq("status", "open")
+    .in("status", ["opening", "open"])
     .order("created_at", { ascending: true })
     .limit(20);
   if (openErr) return json({ ok: false, error: `purchases: ${openErr.message}` }, 500);
@@ -87,7 +87,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Balances ───────────────────────────────────────────────────────────
   const { data: rows, error: entriesErr } = await admin
     .from("wallet_entries")
-    .select("place_id, kind, amount_cents, currency, created_at")
+    .select("place_id, kind, amount_cents, currency, created_at, available_at")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .order("created_at", { ascending: false })
@@ -102,7 +102,6 @@ serveJson("consumer-web-get-wallet", async (req) => {
   return json({
     ok: true,
     balances: balances.map(({ place_id, ...b }) => ({ place: places.get(place_id) ?? null, place_id, ...b })),
-    presets: PREPAY_PRESETS,
     ...(outcome === undefined ? {} : { outcome }),
   });
 });

@@ -1,7 +1,8 @@
 // A one-off Checkout `payment` and what Stripe says about it — shared by the
-// Wallet (wallet_purchases, MESITA-3097) and Premier Refill packs
-// (premier_refill_purchases, MESITA-3168). Neither has a webhook: each reads
-// its own purchase's session back from Stripe and trusts only that.
+// Wallet (wallet_purchases, MESITA-3097, on the place's connected account
+// since MESITA-3302) and Premier Refill packs (premier_refill_purchases,
+// MESITA-3168, on Mesita's own account). Each reads its own purchase's
+// session back from Stripe and trusts only that.
 
 import type { StripeCall } from "./boost.ts";
 
@@ -38,13 +39,16 @@ export function classifySession(
   return { kind: "pending" };
 }
 
-/** Reads a purchase's own session from Stripe and classifies it. */
+/** Reads a purchase's own session from Stripe and classifies it. A session
+ *  created on a connected account is read there (`opts.stripeAccount`);
+ *  Premier passes none. */
 export async function readCheckoutSession(
   stripe: StripeCall,
   sessionId: string,
   purchaseId: string,
   expect?: { amountCents: number; currency: string; livemode: boolean },
+  opts?: { stripeAccount?: string; signal?: AbortSignal },
 ): Promise<SessionVerdict> {
-  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`);
+  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, undefined, opts);
   return classifySession(session, purchaseId, expect);
 }
