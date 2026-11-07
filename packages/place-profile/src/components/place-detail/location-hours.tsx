@@ -135,9 +135,11 @@ function HoursDayRow({
   return (
     <li
       className={cn(
-        // 44px rows at 14px, the place scale (MESITA-2636); today on the
-        // grey fill.
-        "border-border flex min-h-11 min-w-0 items-center justify-between gap-3 border-b px-3 text-sm leading-tight last:border-b-0",
+        // 32px rows at 12px, the place scale's meta size (MESITA-3316,
+        // Pato: "make the hours smaller"; 44px at 14px from MESITA-2636):
+        // the week table is secondary, the facts row up top already says
+        // Open until X. Today on the grey fill.
+        "border-border flex min-h-8 min-w-0 items-center justify-between gap-3 border-b px-2.5 text-xs leading-tight last:border-b-0",
         isToday && "bg-muted",
       )}
       data-today={isToday ? "" : undefined}
