@@ -97,11 +97,13 @@ export const PROFILE_TILE_BOX_CLASS =
 /** Row 2: Reserve · Prepay · Pay, three equal tiles, 8px apart
  *  (MESITA-3314, MESITA-3315). */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A Mesita tile's box: 64px, 8px taller than the grey tiles, so the glyph,
- *  the label and the amount line breathe (Pato, MESITA-3328: "this looks
- *  like shit the amount you mentioned ... maybe buttons a bit taller"). */
+/** A Mesita tile's box: 72px, 16px taller than the grey tiles, the glyph,
+ *  the label and the amount line 6px apart (Pato, MESITA-3328: "this looks
+ *  like shit the amount you mentioned ... maybe buttons a bit taller", then
+ *  MESITA-3331: "the text is just tooooo joined"; 64px with 2px between the
+ *  lines until then). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "flex h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
+  "flex h-18 min-w-0 flex-col items-center justify-center gap-1.5 rounded-lg px-1";
 
 // Row 2 is the grey tile's box in the ink (MESITA-3315), three across.
 const inkTile = cn(
@@ -321,7 +323,7 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       {...inertButtonProps(false)}
       disabled
       aria-label={`${label}, ${amount}, Soon`}
-      className={cn(blockedInkTile, "gap-0.5")}
+      className={blockedInkTile}
     >
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="max-w-full truncate leading-none">{label}</span>
