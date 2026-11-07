@@ -105,7 +105,7 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-orange-100 text-orange-700" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", when: "After an Instagram story here.", limit: "One per day.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
   { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "+30%", mark: Crown, tone: "bg-yellow-100 text-yellow-700" },
 ];
