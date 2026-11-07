@@ -207,8 +207,9 @@ const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl bo
  *  The tab is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or
  *  Perks"; Promos from MESITA-3322, Vouchers before). */
 const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
-/** A small gift card in the 3×2 grid (MESITA-3370). */
-const GRID_CARD = "relative flex min-h-40 flex-col gap-0.5 overflow-hidden rounded-xl border border-current/50 p-3";
+/** One full-width card in the list of six, laid out sideways (MESITA-3387):
+ *  the words on the left, Buy on the right. */
+const GRID_CARD = "relative flex items-center gap-3 overflow-hidden rounded-xl border border-current/50 p-3";
 // ONE BADGE (MESITA-3379): the grid cards' 12px pill, on the cashback card
 // too. MESITA-3363 had made the cashback badge 18px ("mention the percentage
 // fucking bigger") when every gift card was full-width; the grid cards went
@@ -249,23 +250,23 @@ function VoucherCard({
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
-      {/* SIMPLER (Pato, MESITA-3373: "redesign the boxes, make them simpler
-          and clearer"): the name with the badge beside it, "Get MX$130"
-          big, "for MX$100" under it (Story: "& a story"), the limit, then
-          Buy OR the state, never both. MESITA-3370's card stacked the
-          badge, "Pay MX$100", "Get MX$130", the limit, Buy and the state. */}
-      <div className="flex items-start justify-between gap-1.5">
-        {/* The name wraps rather than truncates ("Standard Medium" read
-            "Standard M…" beside its badge, MESITA-3375). */}
-        <p className="text-foreground min-w-0 text-sm leading-tight font-semibold">{product.name}</p>
-        <span className={GRID_BADGE}>{product.bonus}</span>
+      {/* SIDEWAYS (Pato, MESITA-3387: "do this credits boxes horizontal.
+          thus vertical list of 6 items"): on the left the name with the
+          badge beside it, "Get MX$130" big, "for MX$100" under it (Story:
+          "& a story") and the limit (MESITA-3373's words); on the right Buy
+          OR the state, never both. */}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <p className="text-foreground text-sm leading-tight font-semibold">{product.name}</p>
+          <span className={GRID_BADGE}>{product.bonus}</span>
+        </div>
+        <p className="text-foreground mt-1 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
+          Get {creditValue(product, line, currency)}
+        </p>
+        <p className="text-foreground/80 text-sm leading-snug tabular-nums">{forLine(product, line, currency)}</p>
+        <p className="text-foreground/70 text-xs leading-snug">{product.limit}</p>
       </div>
-      <p className="text-foreground mt-2 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
-        Get {creditValue(product, line, currency)}
-      </p>
-      <p className="text-foreground/80 text-sm leading-snug tabular-nums">{forLine(product, line, currency)}</p>
-      <p className="text-foreground/70 mt-1 line-clamp-2 text-xs leading-snug">{product.limit}</p>
-      <div className="mt-auto pt-2">
+      <div className="w-24 shrink-0">
         {buyable ? (
           <button
             type="button"
@@ -278,7 +279,7 @@ function VoucherCard({
             {buying ? "Opening…" : "Buy"}
           </button>
         ) : (
-          <p className="text-foreground/70 text-xs leading-snug font-medium">{tag(reason)}</p>
+          <p className="text-foreground/70 text-right text-xs leading-snug font-medium">{tag(reason)}</p>
         )}
       </div>
     </li>
@@ -404,15 +405,11 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         <p className={PLACE_META_CLASS}>
           Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
         </p>
-        {/* TWO ACROSS, THREE ROWS (Pato, MESITA-3371: "two columns, three
-            rows, let's optimize space"; three across for half an hour,
-            MESITA-3370; one full-width card each from MESITA-3326 before). */}
-        <ul className="grid grid-cols-2 gap-2" data-voucher-catalog>
-          {/* SPECIALS IN THE LEFT COLUMN, STANDARD IN THE RIGHT (Pato,
-              MESITA-3372: "sort standard at the right"): the rows pair
-              Welcome · Standard, Story · Standard Medium, VIP · Standard
-              Large. Specials first then standard (MESITA-3328) until then. */}
-          {SPECIAL.flatMap((p, i) => [p, STANDARD[i]]).map((p) => (
+        {/* ONE COLUMN OF SIX (Pato, MESITA-3387: "vertical list of 6
+            items"; the 2×3 grid of MESITA-3371 before). Specials first,
+            then the standard three (MESITA-3328). */}
+        <ul className="flex flex-col gap-2" data-voucher-catalog>
+          {[...SPECIAL, ...STANDARD].map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
         </ul>
