@@ -38,11 +38,11 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: "/reservation/",
   },
-  // PAY IS ONE PAGE, AND IT IS THE SOON STATE (Pato, MESITA-2087: "Keep pay
-  // but delete everything else. just the empty page with soon."). The tab
-  // links here and lights here. Every former Pay, Visit, Wallet, Credits and
-  // Order address 308s to this page. Under it now: the reward steps,
-  // /pay/<place>/<step> (MESITA-3254), see rewardStepPath.
+  // PAY IS ONE PAGE (Pato, MESITA-2087: "Keep pay but delete everything
+  // else"). The tab links here and lights here. Every former Pay, Visit,
+  // Wallet, Credits and Order address 308s to this page. The reward steps
+  // that hung under it (/pay/<place>/<step>, MESITA-3254) left with the
+  // discount product (MESITA-3299); paying a bill arrives with MESITA-3272.
   pay: "/pay",
   // WALLET IS BACK ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search
   // Pay Wallet Me", settled at the fourth gate on MESITA-3272). One page: the
@@ -82,9 +82,8 @@ export const CONSUMER_ROUTES = {
     // (MESITA-2561), and before that the bar's /saved.
     favorites: "/me/favorites",
     reservations: "/me/reservations",
-    // The guest's history of visits (MESITA-3264). A Second Stage page of the same
-    // name was retired in MESITA-2087 and this address 308'd to Me until now.
-    visits: "/me/visits",
+    // Me › Visits (MESITA-3264) left with the discount product (MESITA-3299);
+    // the `/me/[tab]` catch-all 308s its address onto the hub.
   },
   // Every address that shipped to production and no longer renders a page.
   // Each one has a next.config.ts redirect (route-structure T4 proves the
@@ -203,19 +202,6 @@ export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
 
 export function placePath(idOrSlug: string): string {
   return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
-}
-
-/** The steps of using a reward, each an address under Pay (MESITA-3254). The QR opens
- *  the shared visit; the other four run on both phones (MESITA-3270). */
-export const REWARD_STEPS = ["qr", "bill", "reward", "task", "pay"] as const;
-export type RewardStep = (typeof REWARD_STEPS)[number];
-
-export function isRewardStep(step: string): step is RewardStep {
-  return (REWARD_STEPS as readonly string[]).includes(step);
-}
-
-export function rewardStepPath(placeId: string, step: RewardStep = "qr"): string {
-  return `${CONSUMER_ROUTES.pay}/${placeId}/${step}`;
 }
 
 export function reservationPath(id: string): string {

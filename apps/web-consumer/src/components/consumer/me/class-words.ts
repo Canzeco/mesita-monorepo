@@ -22,18 +22,18 @@ export type ClassRowWords = {
 /** The one line over the card: what a class is for, in plain words (Pato,
  *  MESITA-3100: "clearer explanation"). */
 export const CLASS_LEAD =
-  "Coming soon. There are two classes, and VIP members get better Rewards than Regular members.";
+  "Coming soon. There are two classes, and VIP members get the VIP voucher where a place offers it.";
 
 export const CLASS_ROWS = {
   regular: {
     title: "Regular Class",
-    subtitle: "Everyone on Mesita. You get the standard Rewards.",
+    subtitle: "Everyone on Mesita. You get the standard vouchers.",
     soon: true,
   },
   vip: {
     title: "VIP Class",
     subtitle:
-      "Invite only, through our partners like modeling agencies and creators. Better Rewards. You can't buy it.",
+      "Invite only, through our partners like modeling agencies and creators. The VIP voucher too. You can't buy it.",
     soon: true,
   },
 } as const satisfies Record<"regular" | "vip", ClassRowWords>;

@@ -130,7 +130,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         // were Saved's two tabs (MESITA-2521, MESITA-2561).
         favorites: "/me/favorites",
         reservations: "/me/reservations",
-        visits: "/me/visits",
       },
       legacy: {
         profile: "/profile",

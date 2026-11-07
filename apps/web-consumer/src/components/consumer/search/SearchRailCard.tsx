@@ -6,14 +6,12 @@ import {
   isGoogleOnlyPlace,
   placePlaceholder,
 } from "@/lib/place-placeholder";
-import { useRewardLabel } from "@/lib/use-reward-label";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/shared";
 import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
   CardActions,
-  CouponRow,
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
@@ -43,18 +41,10 @@ import {
  *  same size on every page. */
 export const RAIL_CARD_HEIGHT_CLASS = "h-[8.375rem]";
 
-/** A card with a discount: the same card under a 32px strip (Pato, MESITA-3246:
- *  "put on top … so some are going to be a bit taller"). The rail aligns to its
- *  foot, so only the strips stand up. */
-const RAIL_CARD_WITH_COUPON_HEIGHT_CLASS = "h-[10.375rem]";
-
 /** The photo and text row: the card's 132px inner height, explicit so the square
- *  photo's h-full holds with a strip above it. */
+ *  photo's h-full holds. The discount strip that stood above it left with the
+ *  discount product (MESITA-3299). */
 const RAIL_CARD_ROW = "flex h-[8.25rem] shrink-0 items-stretch";
-
-/** The discount as the card's top edge, its dashed line a ticket's tear. */
-const RAIL_CARD_COUPON =
-  "border-fact-reward/40 shrink-0 rounded-none border-b border-dashed outline-none";
 
 /** The card's frame, its text column and where Save · Share sit: one set
  *  for RailCard and RailCardSkeleton, so the loading card cannot drift
@@ -143,13 +133,12 @@ export function RailCard({
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
-  const coupon = useRewardLabel(place.id);
 
   return (
     <div
       className={cn(
         RAIL_CARD_FRAME,
-        coupon ? RAIL_CARD_WITH_COUPON_HEIGHT_CLASS : RAIL_CARD_HEIGHT_CLASS,
+        RAIL_CARD_HEIGHT_CLASS,
         selected && "border-primary ring-primary/30 ring-2 ring-inset",
       )}
     >
@@ -162,7 +151,6 @@ export function RailCard({
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <CouponRow label={coupon} className={RAIL_CARD_COUPON} />
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card

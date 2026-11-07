@@ -184,12 +184,15 @@ export async function getPlaceAndRole(
   role: PlaceRole;
   profile: ProfileRead;
   manager: { method: string; expires_at: string; role: "owner" | "editor" } | null;
+  /** Whether the place code is set (MESITA-3299: it lives on Settings). */
+  codeSet: boolean;
 }>> {
   const r = await efInvoke<{
     place: AdminPlace | null;
     role?: PlaceRole;
     profile?: unknown;
     manager?: { method: string; expires_at: string; role: "owner" | "editor" } | null;
+    code_set?: boolean;
   }>("business-web-get-place", { place_id: placeId });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   const place = r.data.place ?? null;
@@ -208,6 +211,7 @@ export async function getPlaceAndRole(
       role: r.data.role === "superadmin" ? "superadmin" : r.data.role === "editor" ? "editor" : "owner",
       profile,
       manager: r.data.manager ?? null,
+      codeSet: r.data.code_set === true,
     },
   };
 }

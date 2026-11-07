@@ -581,21 +581,10 @@ verify_jwt = true
 [functions.business-web-boost-place]
 verify_jwt = true
 
-# MESITA-3202: Visits and Rewards. Business sets the rewards and logs the visit;
-# a guest reads the offers and asks for the code they show staff.
-[functions.business-web-get-place-rewards]
-verify_jwt = true
-
-[functions.business-web-set-place-reward]
-verify_jwt = true
-
+# The place code (MESITA-3226; on Settings since MESITA-3299, when the discount
+# product of MESITA-3202 left: its Rewards, Visits, visit code and staff close
+# functions are gone).
 [functions.business-web-set-place-code]
-verify_jwt = true
-
-[functions.business-web-list-place-visits]
-verify_jwt = true
-
-[functions.business-web-void-place-visit]
 verify_jwt = true
 
 # Business › Payments (MESITA-3296): the Stripe account and the money switches.
@@ -611,47 +600,6 @@ verify_jwt = true
 [functions.business-web-open-payment-dashboard]
 verify_jwt = true
 
-[functions.consumer-web-get-place-rewards]
-verify_jwt = true
-
-[functions.consumer-web-create-visit-code]
-verify_jwt = true
-
-[functions.consumer-web-get-visit-result]
-verify_jwt = true
-
-[functions.consumer-web-list-visits]
-verify_jwt = true
-
-# MESITA-3270: the shared visit, the guest's phone. By account, never by the QR's secret.
-[functions.consumer-web-get-visit]
-verify_jwt = true
-
-[functions.consumer-web-confirm-bill]
-verify_jwt = true
-
-[functions.consumer-web-skip-task]
-verify_jwt = true
-
-# MESITA-3240: visit.mesita.ai has no sign-in. The QR link's secret and the place
-# code are the keys, checked inside each function.
-[functions.visit-web-get-visit]
-verify_jwt = false
-
-[functions.visit-web-close-visit]
-verify_jwt = false
-
-# MESITA-3270: the shared visit, staff's stamps. The place code is the key.
-[functions.visit-web-set-bill]
-verify_jwt = false
-
-[functions.visit-web-set-task]
-verify_jwt = false
-
-# MESITA-3262: the QR won't scan. The member number and the place code together.
-[functions.visit-web-find-visit]
-verify_jwt = false
-
 # MESITA-3206: Business Views, and the share it counts.
 [functions.business-web-get-place-views]
 verify_jwt = true
@@ -660,8 +608,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.consumer-web-track-place-share]
-verify_jwt = true
-
-# MESITA-3217: the Reward tab's "Up to N% off for you".
-[functions.consumer-web-list-reward-percents]
 verify_jwt = true

@@ -24,13 +24,8 @@ export type PlaceActions = {
    *  (MESITA-2692; they opened Report alone, MESITA-2684). */
   onMore?: () => void;
   onReserve?: () => void;
-  /** Mesita Prepay (MESITA-3098): live only where the place takes prepayments. */
-  onPrepay?: () => void;
   /** The fifth tile, Upgrade (MESITA-3200): opens the host's sheet (MESITA-3201). */
   onBoost?: () => void;
-  /** The discount summary after the price ("Up to 20% OFF for you", MESITA-3288). The consumer
-   *  passes it; admin and Business Preview show none. */
-  rewardLabel?: string | null;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
 };

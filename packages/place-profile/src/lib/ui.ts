@@ -32,13 +32,6 @@ export const PLACE_META_CLASS = "text-muted-foreground text-xs leading-snug";
  *  Mesita Families both wear it (MESITA-2932). */
 export const PLACE_OUTLINE_CHIP_CLASS =
   "border-border text-foreground inline-flex h-8 min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums";
-/** The discount: deep pink on pale pink, a faint dashed line stitched inside its
- *  edge like a coupon, on one line, the same 32px box and 14px type as the chips
- *  and buttons beside it (Pato, MESITA-3246: "ticket must be same height";
- *  MESITA-3249: "more suave, more light"). Only the consumer defines the
- *  fact-reward colours, and only the consumer passes a discount. */
-export const PLACE_REWARD_COUPON_CLASS =
-  "bg-fact-reward-bg text-fact-reward outline-fact-reward/40 inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium whitespace-nowrap tabular-nums outline-1 -outline-offset-3 outline-dashed";
 /** A screen-level title (Soon, vote, creating): Inter 18px semibold. */
 export const PLACE_SCREEN_TITLE_CLASS =
   "text-foreground font-sans text-lg font-semibold tracking-tight";

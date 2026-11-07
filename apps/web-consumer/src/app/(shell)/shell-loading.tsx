@@ -12,10 +12,9 @@ import NotificationsLoading from "./me/notifications/loading";
 import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
 import ReservationsLoading from "./me/reservations/loading";
-import VisitsLoading from "./me/visits/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
-import PayLoading from "@/components/consumer/rewards/PayLoading";
+import PayLoading from "./pay/loading";
 import ShareLoading from "./share/loading";
 import WalletLoading from "./wallet/loading";
 
@@ -55,7 +54,6 @@ export function ShellLoadingFor({ bare }: { bare: string }) {
   if (at("/me/notifications")) return <NotificationsLoading />;
   if (at("/me/reservations")) return <ReservationsLoading />;
   if (at("/me/favorites")) return <FavoritesLoading />;
-  if (at("/me/visits")) return <VisitsLoading />;
   if (at("/me/connector")) return <ConnectorLoading />;
   if (at("/pay")) return <PayLoading />;
   if (at("/wallet")) return <WalletLoading />;

@@ -1,14 +1,13 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, Navigation, Tag, Ticket } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
 import { cn, formatDistanceKm } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
-import { PLACE_REWARD_COUPON_CLASS } from "../../lib/ui";
 
 import { profileChannelStats } from "./channel-stats";
 import { channelStatIcon } from "./channel-stat-icons";
@@ -132,13 +131,6 @@ export function ProfileSummary({
         aria-label="About this place"
         data-profile-facts
       >
-        {/* The reward is the first tag (Pato, MESITA-3246). */}
-        {actions?.rewardLabel && (
-          <li className={PLACE_REWARD_COUPON_CLASS}>
-            <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-            {actions.rewardLabel}
-          </li>
-        )}
         {creating ? (
           <RunningFact label="Creating" tone="blue" />
         ) : place.is_enriching ? (

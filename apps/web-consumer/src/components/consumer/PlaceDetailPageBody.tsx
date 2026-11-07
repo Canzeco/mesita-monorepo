@@ -19,7 +19,7 @@ export function PlaceDetailPageBody({
   const measured = useMeasuredPlace(fetched);
   const router = useRouter();
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, actions, sheets, social, rewards } = useMemberPlaceActions(measured);
+  const { place, actions, sheets, social } = useMemberPlaceActions(measured);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
@@ -36,7 +36,6 @@ export function PlaceDetailPageBody({
         onBack={onBack}
         actions={actions}
         social={social}
-        rewards={rewards}
       />
       {sheets}
     </div>

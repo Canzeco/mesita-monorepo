@@ -1,8 +1,7 @@
-import { Clock, Heart, Navigation, Share2, Sparkles, Star, Ticket } from "lucide-react";
+import { Clock, Heart, Navigation, Share2, Sparkles, Star } from "lucide-react";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
-import { PLACE_REWARD_COUPON_CLASS } from "@mesita/place-profile/lib/ui";
 import { cn, formatCompactCount, formatKm, formatRating } from "@/lib/utils";
 
 // THE PREVIEW CARD'S ROWS AND BUTTONS, ONE SOURCE (MESITA-2668): the Home
@@ -126,34 +125,6 @@ export function HoursRow({ facts }: { facts: CardFacts }) {
           {facts.distance}
         </span>
       ) : null}
-    </p>
-  );
-}
-
-/** The discount under Save and Share, as wide as the two, its words centred
- *  (Pato, MESITA-3233: "below the buttons and centered, or as wide of the buttons,
- *  but only if it has reward"), as tall as they are (MESITA-3241). The Search
- *  card wears it as a strip on its top (MESITA-3246), through `className`.
- *  The words are useRewardLabel's: only what this guest would really get (MESITA-3288).
- *  Display only: a tap falls through to the card's own link beneath it. */
-export function CouponRow({
-  label,
-  className,
-}: {
-  label: string | null;
-  className?: string;
-}) {
-  if (!label) return null;
-  return (
-    <p
-      className={cn(
-        PLACE_REWARD_COUPON_CLASS,
-        "pointer-events-none flex w-full justify-center font-sans font-semibold",
-        className,
-      )}
-    >
-      <Ticket className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      {label}
     </p>
   );
 }
