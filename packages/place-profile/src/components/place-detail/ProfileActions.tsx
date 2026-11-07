@@ -86,9 +86,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // sizes"): read here and by ProfileSummarySkeleton, which lays its bones
 // out in them. The ink row is the tiles' 56px.
 
-/** The two rows: tiles, 8px, then the Mesita row. ONE GAP EVERY WAY (Pato,
- *  MESITA-2823: "fix spacing here"): the 12px under the tiles was the only
- *  step that was not the tiles' and the buttons' 8px. */
+/** The tiles row's wrapper in the band (the Mesita row rides in the sticky
+ *  block since MESITA-3330; ONE GAP EVERY WAY, Pato, MESITA-2823). */
 export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
 /** Row 1: five equal tiles, 8px apart. */
 export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
@@ -188,10 +187,7 @@ export function ProfileActions({
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
   const onOpenLink = actions?.onOpenLink;
-  const onReserve = actions?.onReserve;
   const onBoost = actions?.onBoost;
-  const takesReservations = isReserveActionEnabled(place);
-  const reserveLive = takesReservations && Boolean(onReserve);
   const directionsUrl = buildDirectionsUrl(place);
 
   return (
@@ -260,7 +256,28 @@ export function ProfileActions({
         />
       </div>
 
-      <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
+    </div>
+  );
+}
+
+/** THE MESITA ROW, PINNED (Pato, MESITA-3330: "the dark buttons must not be
+ *  scrollable, those stuck at the top"): Reserve · Prepay · Pay leave the
+ *  summary band and ride in PlaceDetailBody's sticky block with the tab
+ *  strip, so they stay reachable while the body scrolls; the grey tiles
+ *  scroll away with the summary. Same tiles, same wiring. */
+export function MesitaActions({
+  place,
+  actions,
+}: {
+  place: PlaceDetail;
+  actions?: PlaceActions;
+}) {
+  const onReserve = actions?.onReserve;
+  const takesReservations = isReserveActionEnabled(place);
+  const reserveLive = takesReservations && Boolean(onReserve);
+  return (
+    <>
+    <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
         <button
           type="button"
           {...(reserveLive
@@ -280,9 +297,16 @@ export function ProfileActions({
         <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 25% OFF" />
         <InertInkTile Icon={QrCode} label="Pay" amount="5% Cashback" />
       </div>
-    </div>
+    </>
   );
 }
+
+/** The sticky block the Mesita row and the tab strip share: white, full
+ *  width (the body's 16px sides undone), above the boxes (MESITA-3330). */
+export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 flex flex-col";
+/** The Mesita row inside it: 16px sides, 16px under, a hairline, then the
+ *  strip. */
+export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 
 /** The glyph on an ink tile: the grey tiles' 18px. */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";

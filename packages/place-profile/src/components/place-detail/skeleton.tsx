@@ -15,6 +15,8 @@ import { Box } from "./box";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./empty-screen";
 import {
   PROFILE_ACTIONS_CLASS,
+  PLACE_STICKY_BLOCK_CLASS,
+  PLACE_STICKY_ROW_CLASS,
   PROFILE_MESITA_ROW_CLASS,
   PROFILE_MESITA_TILE_BOX_CLASS,
   PROFILE_TILE_BOX_CLASS,
@@ -116,18 +118,12 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: five tiles, then Reserve · Prepay · Pay, three
-          tiles of the same box (MESITA-3315; Reserve live or disabled, never
-          missing — MESITA-3078). */}
+      {/* ProfileActions: the five grey tiles. Reserve · Prepay · Pay ride in
+          the sticky block under the band (MESITA-3330). */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
-          ))}
-        </div>
-        <div className={PROFILE_MESITA_ROW_CLASS}>
-          {[0, 1, 2].map((i) => (
-            <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
+            <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
           ))}
         </div>
       </div>
@@ -237,10 +233,16 @@ export function PlaceDetailBodySkeleton({
       <span className="sr-only">Loading place</span>
       <ProfileSummarySkeleton />
       <div aria-hidden className="flex flex-col gap-3 px-4">
-        {/* The strip itself, not a copy: its labels, its 3px blue
-            underline. `contents` keeps it a child of this column, so it
-            sticks the way the loaded one does. */}
-        <div inert className="contents">
+        {/* The sticky block (MESITA-3330): three Mesita bones, then the strip
+            itself, not a copy: its labels, its 3px blue underline. */}
+        <div inert className={PLACE_STICKY_BLOCK_CLASS}>
+          <div className={PLACE_STICKY_ROW_CLASS}>
+            <div className={PROFILE_MESITA_ROW_CLASS}>
+              {[0, 1, 2].map((i) => (
+                <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
+              ))}
+            </div>
+          </div>
           <PlaceTabBar tab="place" onChange={noop} />
         </div>
         {creating ? <PlaceEmptyScreen {...NO_OVERVIEW} /> : <OverviewSkeleton />}

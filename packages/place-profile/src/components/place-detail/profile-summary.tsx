@@ -27,8 +27,10 @@ import {
 // and by ProfileSummarySkeleton.
 
 /** The white band: p-4, 16px between its groups. */
+// No hairline under the band since MESITA-3330: the sticky block with the
+// Mesita row and the strip follows it on the same white, 8px under the tiles.
 export const PROFILE_SUMMARY_BAND_CLASS =
-  "border-border bg-card flex flex-col gap-4 border-b p-4";
+  "bg-card flex flex-col gap-4 p-4 pb-2";
 /** The photo, then the three counts, 12px apart. */
 export const PROFILE_IDENTITY_ROW_CLASS = "flex items-center gap-3";
 /** The three counts: equal columns, 8px apart. */
