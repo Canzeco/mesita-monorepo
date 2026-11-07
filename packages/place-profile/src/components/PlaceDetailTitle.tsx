@@ -2,7 +2,7 @@
 
 import { cn } from "../lib/format";
 import { PLACE_BONE_CLASS } from "../lib/ui";
-import { PremierBadge } from "./PremierBadge";
+import { PlaceMarks } from "./PlaceMarks";
 
 // The place-name title for the detail header (page + modal). Since
 // MESITA-2619 it sits at the LEFT beside the back chevron in bold sans, the
@@ -21,11 +21,14 @@ import { PremierBadge } from "./PremierBadge";
 export function PlaceDetailTitle({
   placeName,
   premierTier = 0,
+  mesitaPay = false,
   className,
 }: {
   placeName: string | null;
   /** `boost_tier`: 1..3 draws the Premier mark, 0 nothing (MESITA-2925). */
   premierTier?: number;
+  /** The green Mesita Pay mark after the Premier one (MESITA-3321). */
+  mesitaPay?: boolean;
   className?: string;
 }) {
   return (
@@ -42,7 +45,7 @@ export function PlaceDetailTitle({
           {/* The name truncates and the mark is shrink-0, so a long name
               ends in an ellipsis and the mark stays whole right after it. */}
           <span className="truncate">{placeName}</span>
-          <PremierBadge tier={premierTier} />
+          <PlaceMarks tier={premierTier} mesitaPay={mesitaPay} />
         </>
       )}
     </div>

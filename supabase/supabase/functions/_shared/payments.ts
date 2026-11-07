@@ -73,19 +73,22 @@ export async function readPlaceMoney(
 }
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
- *  voucher, draw the ... voucher icon at the bottom of the buttons"): on each
- *  row of a page, `vouchers_up_to_pct`, the best bonus among the vouchers
- *  moneyState says the place sells now, or null. Two batched reads for the
- *  whole page (the switches and the accounts by id), never one per tile; a
- *  read failure reads as nothing for sale, and the page still answers. */
+ *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
+ *  THE MESITA PAY MARK (MESITA-3321, Pato: "if the product is mesita pay
+ *  ... put an extra icon in green"): on each row of a page,
+ *  `vouchers_up_to_pct`, the best bonus among the vouchers moneyState says
+ *  the place sells now, or null, and `mesita_pay`, whether the place's
+ *  account can charge. Two batched reads for the whole page (the switches
+ *  and the accounts by id), never one per tile; a read failure reads as
+ *  nothing for sale and no Pay, and the page still answers. */
 export async function withVouchersUpTo<T extends { id: string }>(
   admin: SupabaseClient | null,
   places: T[],
-): Promise<(T & { vouchers_up_to_pct: number | null })[]> {
+): Promise<(T & { vouchers_up_to_pct: number | null; mesita_pay: boolean })[]> {
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false }));
   const [settingsRes, accountsRes] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
     admin.from("place_payment_accounts").select("place_id, charges_enabled").in("place_id", ids),
@@ -103,7 +106,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   return places.map((p) => {
     const s = settings.get(p.id);
     const sell = s ? moneyState(s, charges.has(p.id) ? { charges_enabled: true } : null, null).sell : [];
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell) };
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: charges.has(p.id) };
   });
 }
 
