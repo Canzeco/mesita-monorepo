@@ -7,8 +7,8 @@
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Operations (MESITA-3202) ────────────────────┐
-//   │ Views                                        │  Visits left, MESITA-3299
-//   └──────────────────────────────────────────────┘
+//   │ Views · Visits · Transactions                │  MESITA-3301; the pages
+//   └──────────────────────────────────────────────┘  stand before payments
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
 //   │ Profile · Reviews · Premier · Payments · All │  All: MESITA-3238, every
 //   └──────────────────────────────────────────────┘  product, current and future
@@ -86,7 +86,7 @@ function menu(
     account,
     switcher,
     place: {
-      operations: [tab("views")],
+      operations: [tab("views"), tab("visits"), tab("transactions")],
       products: [
         tab("profile"),
         tab("reviews"),
