@@ -101,7 +101,7 @@ const SocialFeed = dynamic(
 // the skeleton that draws the same column (MESITA-2701).
 
 const ROW_BASE =
-  "relative flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
+  "flex w-full items-center gap-1.5 rounded-lg px-2.5 py-3.5 text-left text-xs leading-tight transition";
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
@@ -447,8 +447,11 @@ export function CatalogRails() {
   // horizontal chip row. Top first, then every family, one scrolling list (MESITA-2534) — no group colours (Pato, MESITA-2521: "remove the
   // stupid blue and orange color from the sidebar menu"; they were
   // MESITA-2484/2492). Each row a line icon
-  // and a name, never an emoji (MESITA-2478); the chosen row white, bold,
-  // an ink bar on its left edge and a heavier stroke.
+  // and a name, never an emoji (MESITA-2478); the chosen row a white rounded
+  // row inset in the grey rail, bold and a heavier stroke (Pato, MESITA-3337:
+  // "the categorical border gray area at the left of selected category looks
+  // like shit": the 3px ink bar on its left edge is gone, and the row no
+  // longer runs edge to edge).
   const chips = placesChips();
   const categoryRow = (c: { key: string; label: string }) => {
     const on = chip === c.key;
@@ -464,12 +467,6 @@ export function CatalogRails() {
           aria-pressed={on}
           className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
         >
-          {on ? (
-            <span
-              className="bg-foreground absolute inset-y-0 left-0 w-[3px]"
-              aria-hidden
-            />
-          ) : null}
           <FamilyIcon
             name={c.key}
             className="h-4 w-4 shrink-0"
@@ -492,7 +489,7 @@ export function CatalogRails() {
       <ul
         role="list"
         aria-label="Families"
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-1.5"
         data-places-group="families"
       >
         {chips.map(categoryRow)}
