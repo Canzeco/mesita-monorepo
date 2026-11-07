@@ -300,20 +300,8 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Box title="Pre-Payment Promos">
-        {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
-            before the bill. All but the Instagram one"): every voucher's
-            credit turns Available one hour after the charge except Story,
-            ready at once (the catalog's available_after_sec, MESITA-3302). */}
-        <p className={PLACE_META_CLASS}>
-          Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
-        </p>
-        <ul className="flex flex-col gap-3" data-voucher-catalog>
-          {[...SPECIAL, ...STANDARD].map((p) => (
-            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
-          ))}
-        </ul>
-      </Box>
+      {/* PAYMENT PROMOS FIRST (Pato, MESITA-3350: "move payments to the
+          top"): the cashback card, then the six gift cards. */}
       <Box title="Payment Promos">
         <div
           className={cn(GIFT_CARD, CASHBACK_TONE, !state.cashback && dim && "opacity-50 grayscale")}
@@ -329,6 +317,20 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           <p className="text-foreground/80 relative mt-1 text-sm">Pay by card here and 5% of it comes back as credit.</p>
           <p className="text-foreground/70 relative mt-auto pt-3 text-xs font-medium">{cashbackTag}</p>
         </div>
+      </Box>
+      <Box title="Pre-Payment Promos">
+        {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
+            before the bill. All but the Instagram one"): every voucher's
+            credit turns Available one hour after the charge except Story,
+            ready at once (the catalog's available_after_sec, MESITA-3302). */}
+        <p className={PLACE_META_CLASS}>
+          Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
+        </p>
+        <ul className="flex flex-col gap-3" data-voucher-catalog>
+          {[...SPECIAL, ...STANDARD].map((p) => (
+            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
+          ))}
+        </ul>
       </Box>
     </div>
   );
