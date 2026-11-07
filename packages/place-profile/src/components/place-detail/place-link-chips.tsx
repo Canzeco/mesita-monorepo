@@ -39,8 +39,12 @@ export type ChannelChip = {
   logoWide?: boolean;
   logoOnly?: boolean;
   url: string;
-  /** The brand's own background and ink (MESITA-3320); grey without one. */
+  /** The brand's own solid colour under white (MESITA-3320, MESITA-3333);
+   *  grey without one. */
   tone?: string;
+  /** Draw the logo as the file paints it (Google's four-colour G) instead
+   *  of white through a mask. */
+  logoAsIs?: boolean;
 };
 
 export function ChannelChips({
@@ -56,7 +60,7 @@ export function ChannelChips({
 }) {
   return (
     <div className={grid ? "grid grid-cols-2 gap-2" : "flex flex-wrap gap-2"}>
-      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, tone }) => {
+      {chips.map(({ key, label, Icon, logo, logoWide, logoOnly, url, tone, logoAsIs }) => {
         // decision: trailing SquareArrowOutUpRight on web destinations so
         // chips read as "leaves the app" — skip tel: (Phone opens dialer).
         const leavesApp = !url.startsWith("tel:");
@@ -65,9 +69,10 @@ export function ChannelChips({
             ? `${label} (opens externally)`
             : label
           : undefined;
-        // EACH LINK ON ITS BRAND'S TINT (Pato, MESITA-3320: "Uber Eats must
-        // be green and so on"); a link with no tone keeps MESITA-2636's one
-        // grey button.
+        // EACH LINK ON ITS BRAND'S SOLID COLOUR, WORDS AND MARK WHITE (Pato,
+        // MESITA-3320: "Uber Eats must be green and so on"; MESITA-3333:
+        // "darker with color ... uber eats with the fucking uber eats
+        // logo"); a link with no tone keeps MESITA-2636's one grey button.
         const className = cn(
           grid
             ? PLACE_BUTTON_CLASS
@@ -77,7 +82,26 @@ export function ChannelChips({
         );
         const body = (
           <>
-            {logo ? (
+            {logo && tone && !logoAsIs ? (
+              // The brand mark painted white: the SVGs in /public/channels
+              // are one colour, so a mask takes their shape and the chip's
+              // text colour fills it (MESITA-3333). Decorative: the label
+              // carries the name.
+              <span
+                aria-hidden
+                className={cn("shrink-0 bg-current", grid ? PLACE_BUTTON_ICON_CLASS : "h-3.5 w-3.5")}
+                style={{
+                  maskImage: `url(${logo})`,
+                  WebkitMaskImage: `url(${logo})`,
+                  maskSize: "contain",
+                  WebkitMaskSize: "contain",
+                  maskRepeat: "no-repeat",
+                  WebkitMaskRepeat: "no-repeat",
+                  maskPosition: "center",
+                  WebkitMaskPosition: "center",
+                }}
+              />
+            ) : logo ? (
               // Real brand mark (SVG in /public/channels, brand colour baked
               // in). The chip label carries the accessible name, so the glyph
               // is decorative. next/image adds nothing for a 14px static SVG.
@@ -100,7 +124,7 @@ export function ChannelChips({
             {!logoOnly && <span className="truncate">{label}</span>}
             {leavesApp && (
               <SquareArrowOutUpRight
-                className="h-3 w-3 opacity-55"
+                className={cn("h-3 w-3", tone ? "opacity-80" : "opacity-55")}
                 aria-hidden
                 strokeWidth={2}
               />

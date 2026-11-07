@@ -150,6 +150,7 @@ type LinkChipDef = {
   logoWide?: boolean;
   logoOnly?: boolean;
   tone?: string;
+  logoAsIs?: boolean;
 };
 
 function linkChipLogo(def: LinkChipDef) {
@@ -158,6 +159,7 @@ function linkChipLogo(def: LinkChipDef) {
     logoWide: def.logoWide,
     logoOnly: def.logoOnly,
     tone: def.tone,
+    logoAsIs: def.logoAsIs,
   };
 }
 
@@ -229,7 +231,8 @@ export function LinksBox({
   }
   if (chips.length === 0) return null;
   // decision: light like Location / About — drop the inverted Channels surface.
-  // Each button on its brand's tint since MESITA-3320 (MESITA-2636 had one
+  // Each button its brand's solid colour, words and mark white, since
+  // MESITA-3333 (MESITA-3320's tints lasted an hour; MESITA-2636 had one
   // grey button with the logo the only colour).
   // TWO COLUMNS OF BUTTONS (Pato, MESITA-2619: "for links make buttons in a
   // grid with 2 columns"): every link is a full-width cell of one height,
