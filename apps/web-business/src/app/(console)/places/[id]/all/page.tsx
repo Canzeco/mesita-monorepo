@@ -29,11 +29,7 @@ export const metadata = { title: "All" };
 const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   {
     tab: "profile",
-    line: "What guests read about your place: basics, hours, location and links. Edit it here and preview it the way guests see it.",
-  },
-  {
-    tab: "reviews",
-    line: "What guests say on Google, Instagram and Facebook, all in one place to read.",
+    line: "What guests read about your place: basics, hours, location and links, and what they say on Google, Instagram and Facebook. Edit it here and preview it the way guests see it.",
   },
   {
     tab: "premier",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { Star } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
+import { Star, X } from "lucide-react";
 import { SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 
@@ -9,7 +9,8 @@ import { usePlaceContext } from "../PlaceContext";
 // Instagram or Facebook link changes on Profile, every N views, or from
 // Admin › Special actions (MESITA-3161: the Sync button is gone). Found flags
 // are not profile fields. The four boxes are separate cards (MESITA-2261).
-// Google Reviews lists every stored review, sortable, 10 a page (MESITA-2832).
+// Google Reviews shows the newest three; "See all" opens every stored review
+// in a modal, sortable, 10 a page (MESITA-2832, MESITA-3393).
 
 type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
 
@@ -248,6 +249,8 @@ function storedReviews(raw: unknown): StoredReview[] {
 type ReviewSort = "newest" | "highest" | "lowest";
 
 const PAGE = 10;
+// Reviews on the card before "See all" (MESITA-3393).
+const PREVIEW = 3;
 
 const SORTS: { key: ReviewSort; label: string }[] = [
   { key: "newest", label: "Newest" },
@@ -284,26 +287,106 @@ function reviewDate(raw: string | null): string | null {
   return new Date(t).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+/** One review: stars, date, the quote clamped to three lines with More. */
+function ReviewItem({ review }: { review: StoredReview }) {
+  const [expanded, setExpanded] = useState(false);
+  const long = review.quote.length > 240 || review.quote.includes("\n");
+  const when = reviewDate(review.date);
+  return (
+    <li className="flex min-w-0 flex-col gap-1 py-3">
+      <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+        {review.rating != null ? <Stars value={review.rating} /> : null}
+        {when ? <span className="text-muted-foreground type-label">{when}</span> : null}
+      </p>
+      <p
+        className={
+          "text-muted-foreground text-sm leading-relaxed whitespace-pre-line " + (expanded ? "" : "line-clamp-3")
+        }
+      >
+        {review.quote}
+      </p>
+      {long ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="text-foreground self-start text-xs font-semibold"
+        >
+          {expanded ? "Less" : "More"}
+        </button>
+      ) : null}
+    </li>
+  );
+}
+
+/** Not every review at once (Pato, MESITA-3393: "don't show all the google
+ *  Reviews in one run … click a button to show more and then open modal"):
+ *  the card shows the newest few; the button opens a native <dialog> with
+ *  the sort and 10 a page. showModal() makes the page behind inert and
+ *  Escape closes it. */
 function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
+  const dialog = useRef<HTMLDialogElement | null>(null);
+  // The full list renders only while the modal is open.
+  const [open, setOpen] = useState(false);
+  const preview = sortReviews(reviews, "newest").slice(0, PREVIEW);
+
+  return (
+    <div className="mt-3 flex min-w-0 flex-col gap-3">
+      <ul className="divide-border flex min-w-0 flex-col divide-y">
+        {preview.map((review, i) => (
+          <ReviewItem key={i} review={review} />
+        ))}
+      </ul>
+      {reviews.length > PREVIEW ? (
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            dialog.current?.showModal();
+          }}
+          className="inline-flex h-9 items-center self-start rounded-full border px-4 text-sm font-semibold"
+        >
+          See all {reviews.length} reviews
+        </button>
+      ) : null}
+      <dialog
+        ref={dialog}
+        aria-label="Google Reviews"
+        onClose={() => setOpen(false)}
+        onClick={(e) => {
+          // p-0 + inner wrapper: a click on the <dialog> itself is the backdrop.
+          if (e.target === e.currentTarget) dialog.current?.close();
+        }}
+        className="bg-background m-auto h-[min(48rem,calc(100dvh-2rem))] w-[min(40rem,calc(100vw-2rem))] rounded-3xl border-0 p-0 shadow-elev backdrop:bg-black/40"
+      >
+        <div className="flex h-full flex-col gap-3 p-4 sm:p-5">
+          <div className="flex shrink-0 items-center justify-between gap-3">
+            <p className="font-semibold">Google Reviews · {reviews.length}</p>
+            <button
+              type="button"
+              onClick={() => dialog.current?.close()}
+              aria-label="Close reviews"
+              className="hover:bg-muted inline-flex size-9 items-center justify-center rounded-full"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+          {open ? <AllReviews reviews={reviews} /> : null}
+        </div>
+      </dialog>
+    </div>
+  );
+}
+
+function AllReviews({ reviews }: { reviews: StoredReview[] }) {
   const [sort, setSort] = useState<ReviewSort>("newest");
   const [limit, setLimit] = useState(PAGE);
-  const [open, setOpen] = useState<Set<number>>(() => new Set());
   const sorted = sortReviews(reviews, sort);
   const shown = sorted.slice(0, limit);
   const rest = sorted.length - shown.length;
 
-  function toggle(i: number) {
-    setOpen((current) => {
-      const next = new Set(current);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
-    });
-  }
-
   return (
-    <div className="mt-3 flex min-w-0 flex-col gap-3">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Sort reviews">
+    <>
+      <div className="flex shrink-0 flex-wrap gap-2" role="group" aria-label="Sort reviews">
         {SORTS.map((option) => (
           <button
             key={option.key}
@@ -311,7 +394,7 @@ function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
             aria-pressed={sort === option.key}
             onClick={() => {
               setSort(option.key);
-              setOpen(new Set());
+              setLimit(PAGE);
             }}
             className={
               "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium " +
@@ -324,64 +407,23 @@ function GoogleReviewList({ reviews }: { reviews: StoredReview[] }) {
           </button>
         ))}
       </div>
-      <ul className="divide-border flex min-w-0 flex-col divide-y">
-        {shown.map((review, i) => {
-          const expanded = open.has(i);
-          const long = review.quote.length > 240 || review.quote.includes("\n");
-          const when = reviewDate(review.date);
-          return (
-            <li key={`${sort}-${i}`} className="flex min-w-0 flex-col gap-1 py-3">
-              <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                {review.rating != null ? <Stars value={review.rating} /> : null}
-                {when ? <span className="text-muted-foreground type-label">{when}</span> : null}
-              </p>
-              <p
-                className={
-                  "text-muted-foreground text-sm leading-relaxed whitespace-pre-line " +
-                  (expanded ? "" : "line-clamp-3")
-                }
-              >
-                {review.quote}
-              </p>
-              {long ? (
-                <button
-                  type="button"
-                  onClick={() => toggle(i)}
-                  className="text-foreground self-start text-xs font-semibold"
-                >
-                  {expanded ? "Less" : "More"}
-                </button>
-              ) : null}
-            </li>
-          );
-        })}
-      </ul>
-      {rest > 0 || limit > PAGE ? (
-        <div className="flex flex-wrap gap-2">
-          {rest > 0 ? (
-            <button
-              type="button"
-              onClick={() => setLimit((n) => n + PAGE)}
-              className="inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
-            >
-              Show {Math.min(PAGE, rest)} more · {rest} left
-            </button>
-          ) : null}
-          {limit > PAGE ? (
-            <button
-              type="button"
-              onClick={() => {
-                setLimit(PAGE);
-                setOpen(new Set());
-              }}
-              className="text-muted-foreground inline-flex h-9 items-center rounded-full px-4 text-sm font-semibold"
-            >
-              Show less
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ul className="divide-border flex min-w-0 flex-col divide-y">
+          {shown.map((review, i) => (
+            <ReviewItem key={`${sort}-${i}`} review={review} />
+          ))}
+        </ul>
+        {rest > 0 ? (
+          <button
+            type="button"
+            onClick={() => setLimit((n) => n + PAGE)}
+            className="my-2 inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
+          >
+            Show {Math.min(PAGE, rest)} more · {rest} left
+          </button>
+        ) : null}
+      </div>
+    </>
   );
 }
 
