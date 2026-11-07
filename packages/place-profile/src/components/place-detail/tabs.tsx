@@ -15,9 +15,13 @@ import { cn } from "../../lib/format";
 // admin Preview and consumer.
 // Every place has the four, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
-// OVERVIEW · REVIEWS · MENU · VOUCHERS: Menu is the Soon screen and
-// Vouchers lists the money products the place has on (MESITA-3299; it read
-// Rewards from MESITA-3201 until the discount product left). The paid tier was
+// OVERVIEW · REVIEWS · MENU · PERKS: Menu is the Soon screen and Perks
+// lists the money products the place has on, cashback and the six vouchers
+// (the key stays `vouchers`). It read Vouchers from MESITA-3299, when the
+// discount product left, until MESITA-3322 (Pato: "don't call that page
+// Voucher. call it Deals or something better ... Vouchers its just too
+// boring"; decision: Perks, since Deals and Promos say discount and Rewards
+// was retired), and Rewards from MESITA-3201 before that. The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's
 // Upgrade sheet now, off the Upgrade tile.
 export type PlaceTab = "place" | "reviews" | "products" | "vouchers";
@@ -32,7 +36,7 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "reviews", label: "Reviews" },
   { key: "products", label: "Menu", soon: true },
-  { key: "vouchers", label: "Vouchers" },
+  { key: "vouchers", label: "Perks" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {

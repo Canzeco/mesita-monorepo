@@ -106,7 +106,7 @@ export function WalletPage() {
             <EmptyState
               icon={WalletIcon}
               title="No credit yet"
-              description="Open a place's Vouchers tab to buy one. The credit shows up here."
+              description="Open a place's Perks tab to buy one. The credit shows up here."
               action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
             />
           ) : (
