@@ -18,6 +18,7 @@ import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { VouchersPane } from "./place-detail/vouchers";
 import { FamiliesBox, LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
+import { MesitaActions, PLACE_STICKY_BLOCK_CLASS, PLACE_STICKY_ROW_CLASS } from "./place-detail/ProfileActions";
 
 // Pure presentation for the place detail surface, laid out like an
 // Instagram profile. Callers render their own top bar above this; there is
@@ -71,7 +72,15 @@ export function PlaceDetailBody({
         creating={create != null && create.error == null}
       />
       <div className="flex flex-col gap-3 px-4">
-        <PlaceTabBar tab={tab} onChange={setTab} />
+        {/* PINNED (Pato, MESITA-3330: "the dark buttons must not be
+            scrollable, those stuck at the top"): the Mesita row and the
+            strip stick together to the top of the scroll container. */}
+        <div className={PLACE_STICKY_BLOCK_CLASS}>
+          <div className={PLACE_STICKY_ROW_CLASS} data-profile-section="mesita">
+            <MesitaActions place={place} actions={actions} />
+          </div>
+          <PlaceTabBar tab={tab} onChange={setTab} />
+        </div>
           {/* NO EMPTY BOXES WHILE IT IS CREATED (Pato, MESITA-2685: "if a
               place is being created, better at the bottom write, no
               overview yet, following the same style of reviews and products
