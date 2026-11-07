@@ -16,6 +16,7 @@ import { NO_OVERVIEW, PlaceEmptyScreen } from "./empty-screen";
 import {
   PROFILE_ACTIONS_CLASS,
   PROFILE_MESITA_ROW_CLASS,
+  PROFILE_MESITA_TILE_BOX_CLASS,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
 } from "./ProfileActions";
@@ -121,12 +122,12 @@ function ProfileSummarySkeleton() {
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
           {[0, 1, 2, 3, 4].map((i) => (
-            <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
+            <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
           ))}
         </div>
         <div className={PROFILE_MESITA_ROW_CLASS}>
           {[0, 1, 2].map((i) => (
-            <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
+            <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
           ))}
         </div>
       </div>

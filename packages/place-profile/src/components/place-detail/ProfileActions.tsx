@@ -98,16 +98,21 @@ export const PROFILE_TILE_BOX_CLASS =
 /** Row 2: Reserve · Prepay · Pay, three equal tiles, 8px apart
  *  (MESITA-3314, MESITA-3315). */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
+/** A Mesita tile's box: 64px, 8px taller than the grey tiles, so the glyph,
+ *  the label and the amount line breathe (Pato, MESITA-3328: "this looks
+ *  like shit the amount you mentioned ... maybe buttons a bit taller"). */
+export const PROFILE_MESITA_TILE_BOX_CLASS =
+  "flex h-16 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
 
 // Row 2 is the grey tile's box in the ink (MESITA-3315), three across.
 const inkTile = cn(
-  PROFILE_TILE_BOX_CLASS,
+  PROFILE_MESITA_TILE_BOX_CLASS,
   "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
 );
 // A blocked Mesita tile: still the ink, but `disabled`: no hover, no press,
 // the not-allowed cursor (MESITA-3081).
 const blockedInkTile = cn(
-  PROFILE_TILE_BOX_CLASS,
+  PROFILE_MESITA_TILE_BOX_CLASS,
   "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
 );
 
@@ -273,7 +278,7 @@ export function ProfileActions({
           <span className="max-w-full truncate">Reserve</span>
         </button>
         <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 25% OFF" />
-        <InertInkTile Icon={QrCode} label="Pay" amount="5% cashback" />
+        <InertInkTile Icon={QrCode} label="Pay" amount="5% Cashback" />
       </div>
     </div>
   );
@@ -295,8 +300,8 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       className={cn(blockedInkTile, "gap-0.5")}
     >
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="max-w-full truncate leading-tight">{label}</span>
-      <span className="text-paper/80 max-w-full truncate text-[11px] leading-tight font-medium">{amount}</span>
+      <span className="max-w-full truncate leading-none">{label}</span>
+      <span className="text-paper/75 max-w-full truncate text-[11px] leading-none font-medium">{amount}</span>
     </button>
   );
 }
