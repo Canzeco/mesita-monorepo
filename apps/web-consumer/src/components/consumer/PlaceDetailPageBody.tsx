@@ -6,6 +6,7 @@ import { PlaceProfile } from "@mesita/place-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useMeasuredPlace } from "@/lib/place-distance";
+import { usePlaceScore } from "@/lib/place-score";
 import { HideShellNav } from "./HideShellNav";
 import { useMemberPlaceActions } from "./member-place-actions";
 
@@ -18,9 +19,11 @@ export function PlaceDetailPageBody({
 }) {
   // The distance after the zone (MESITA-2644).
   const measured = useMeasuredPlace(fetched);
+  // The ranking breakdown for Overview's Score box (MESITA-3319).
+  const scored = usePlaceScore(measured);
   const router = useRouter();
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, actions, sheets, social } = useMemberPlaceActions(measured);
+  const { place, actions, sheets, social } = useMemberPlaceActions(scored);
   const onBack = useCallback(() => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();

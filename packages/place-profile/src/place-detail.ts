@@ -46,6 +46,17 @@ export type PlaceMoney = {
   balance: PlaceBalance | null;
 };
 
+/** The Catalog's score for one place, the server's numbers (MESITA-2379):
+ *  Proximity × Popularity × Premier = Final. null is "n/a", never 0. */
+export type PlaceScore = {
+  proximity: number | null;
+  distance_km: number | null;
+  popularity: number | null;
+  /** Premier's tier number (2 · 5), else 1. */
+  premier: number;
+  final: number;
+};
+
 export type PlaceDetail = {
   /** Description/Actions — false only when this place has opted out of bookings. */
   reservations_enabled?: boolean;
@@ -132,6 +143,13 @@ export type PlaceDetail = {
    *  profile and who liked (saved) it, from place_activity. Absent when the
    *  payload carries no counts (admin Preview, an older EF): no box. */
   profile_stats?: { viewed: number; saved: number };
+
+  /** Overview's Score box (MESITA-3319), under Stats: the server's ranking
+   *  breakdown for this guest's location, as the consumer read it from
+   *  consumer-web-list-catalog for this one place. Absent or null (no
+   *  location, no answer, admin Preview): no box. The client prints, never
+   *  computes. */
+  score?: PlaceScore | null;
 
   // 3. External reputation — the three outside channels the summary reads.
   // Google carries a rating and a count; Facebook and Instagram carry reach.

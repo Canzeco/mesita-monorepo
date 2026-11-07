@@ -5,12 +5,15 @@ import { PlaceDetailModalShell } from "@/components/consumer/PlaceDetailModalShe
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useMemberPlaceActions } from "@/components/consumer/member-place-actions";
 import { useMeasuredPlace } from "@/lib/place-distance";
+import { usePlaceScore } from "@/lib/place-score";
 
 export function MemberPlaceModal({ place: fetched }: { place: PlaceDetail }) {
   // The distance after the zone (MESITA-2644).
   const measured = useMeasuredPlace(fetched);
+  // The ranking breakdown for Overview's Score box (MESITA-3319).
+  const scored = usePlaceScore(measured);
   // Enriching once this view starts the run (MESITA-2952).
-  const { place, actions, sheets, social } = useMemberPlaceActions(measured);
+  const { place, actions, sheets, social } = useMemberPlaceActions(scored);
   return (
     <>
       <PlaceDetailModalShell place={place} onMore={actions.onMore}>
