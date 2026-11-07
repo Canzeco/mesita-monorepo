@@ -38,7 +38,7 @@ describe("Vouchers tab", () => {
     const html = render(OFFER, () => {});
     expect(html).toContain('aria-label="Buy the MX$200 voucher"');
     expect(html).toContain('aria-label="Buy the MX$1,000 voucher"');
-    expect(html).not.toContain('aria-label="Buy the MX$5,000 voucher"');
+    expect(html).toContain('aria-label="Buy the MX$5,000 voucher"'); // test mode: buyable, the server decides at the tap (MESITA-3342)
     expect(html).not.toContain('aria-label="Buy the Welcome voucher"');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
@@ -58,7 +58,7 @@ describe("Vouchers tab", () => {
     expect(pesos(22000, "mxn")).toBe("MX$220");
     expect(pesos(120000, "mxn")).toBe("MX$1,200");
     expect(pesos(1050, "mxn")).toBe("MX$10.50");
-    expect(render(OFFER)).toContain("Get MX$1,200 of credit.");
+    expect(render(OFFER)).toContain("credit for MX$1,000");
   });
 });
 
