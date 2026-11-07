@@ -203,8 +203,18 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           MESITA-3343). */}
       {stateValue ? (
         <div className="flex" data-hours-today>
-          <span className={PLACE_OUTLINE_CHIP_CLASS}>
-            <Clock className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+          {/* THE STATE IN COLOUR (Pato, MESITA-3368: "add color to time
+              status, green/red background with white clock"): the chip
+              fills emerald when open and red when closed, words and clock
+              in white; outlined in ink (MESITA-3359) until then. */}
+          <span
+            className={cn(
+              PLACE_OUTLINE_CHIP_CLASS,
+              "text-white",
+              place.open_now ? "border-emerald-600 bg-emerald-600" : "border-red-600 bg-red-600",
+            )}
+          >
+            <Clock className="h-4 w-4 shrink-0" aria-hidden />
             <span className="truncate">
               {today ? `${today} · ` : ""}
               {stateValue}
