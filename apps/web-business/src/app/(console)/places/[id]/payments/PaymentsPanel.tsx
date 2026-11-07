@@ -10,7 +10,12 @@ import { useState } from "react";
 import { moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
+  ArrowSquareOutIcon,
+  CheckCircleIcon,
+  ClockIcon,
   CoinsIcon,
+  DeviceMobileIcon,
+  StripeLogoIcon,
   CrownIcon,
   WalletIcon,
   HandWavingIcon,
@@ -30,10 +35,11 @@ import {
   startPaymentOnboarding,
 } from "@/lib/business-api";
 
-const ROW = "flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm sm:px-6";
 // A switch row with a mark: tile, name and line, the value, the switch. The
 // last column is the Switch's own width, as on Discounts.
 const MARK_ROW = "grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto_3rem] items-center gap-4 px-5 py-3 text-sm sm:px-6";
+// Digital Payments: the same row with a status word where the switch goes.
+const STATUS_ROW = "grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
 const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
 
 /** A money product: its mark in its own colour, always shown (Pato,
@@ -77,6 +83,24 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_instagram: "On sale once the Instagram connection is on.",
 };
 
+/** Where the account was opened. Permanent on the account (Stripe). */
+const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
+
+/** A connected account's three checks (MESITA-3390, Pato: "when Stripe is
+ *  connected, use a better UI"): each green when Stripe says so, otherwise
+ *  waiting. The words are the owner's, never Stripe's field names. */
+function accountChecks(a: PaymentAccount): { label: string; done: boolean }[] {
+  return [
+    { label: "Card payments", done: a.charges_enabled },
+    { label: "Payouts to your bank", done: a.payouts_enabled },
+    { label: "Details verified", done: a.details_submitted && a.requirements_due === 0 },
+  ];
+}
+
+/** Open Stripe leaves the app, so it is the quiet grey button (outbound links
+ *  stay quiet); Connect and Continue stay the black one. */
+const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
+
 /** The account row: one line and one button per state. */
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
@@ -101,6 +125,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
   const { account, can_edit: canEdit, test_mode: testMode } = initial;
   const copy = accountCopy(account);
+  const ready = account.state === "ready";
   const pending = !canEdit || busy !== null;
   // Which switched-on vouchers a guest can buy right now, and why the others
   // cannot: the same rule the server sells by (money-state, one source).
@@ -151,28 +176,47 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
       {testMode ? <TestBand detail="Mesita's fee: 5% on vouchers, 5% on card payments. Guests pay with Stripe's test card." /> : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">
-          <li className={ROW}>
-            <div className="min-w-0">
-              <p className="font-medium">
-                Stripe account
-                {testMode ? <span className="text-muted-foreground font-normal"> · Test mode</span> : null}
-              </p>
-              <p className="text-muted-foreground">{copy.line}</p>
+          <li className="flex flex-col gap-4 px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-4 text-sm">
+              <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", ready ? "bg-indigo-100 text-indigo-700" : "bg-muted text-muted-foreground")}>
+                <StripeLogoIcon size={22} weight={ready ? "fill" : "regular"} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{ready ? "Stripe connected" : "Stripe account"}</p>
+                <p className="text-muted-foreground">
+                  {ready
+                    ? [account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Test mode" : "Live"].filter(Boolean).join(" · ")
+                    : `${copy.line}${testMode ? " Test mode." : ""}`}
+                </p>
+              </div>
+              {copy.button ? (
+                <button type="button" className={cn(PILL_BUTTON_CLASS, ready && QUIET_PILL_CLASS, "shrink-0")} disabled={pending} onClick={() => void stripe()}>
+                  {busy === "stripe" ? "Opening…" : copy.button}
+                  {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
+                </button>
+              ) : null}
             </div>
-            {copy.button ? (
-              <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => void stripe()}>
-                {busy === "stripe" ? "Opening…" : copy.button}
-              </button>
+            {ready ? (
+              <ul className="grid gap-2 sm:grid-cols-3">
+                {accountChecks(account).map(({ label, done }) => (
+                  <li key={label} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium", done ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800")}>
+                    {done ? <CheckCircleIcon size={18} weight="fill" aria-hidden /> : <ClockIcon size={18} weight="bold" aria-hidden />}
+                    <span>{label}</span>
+                    <span className="sr-only">{done ? ": done" : ": waiting on Stripe"}</span>
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </li>
-          <li className={ROW}>
+          <li className={STATUS_ROW}>
+            <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", ready ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground")}>
+              <DeviceMobileIcon size={22} weight={ready ? "fill" : "regular"} aria-hidden />
+            </span>
             <div className="min-w-0">
               <p className="font-medium">Digital Payments</p>
               <p className="text-muted-foreground">Guests pay the bill from their phone by card, Apple Pay or Google Pay.</p>
             </div>
-            <span className={cn("shrink-0 font-medium", account.state !== "ready" && "text-muted-foreground")}>
-              {account.state === "ready" ? "On" : "Needs Stripe"}
-            </span>
+            <span className={cn("shrink-0 font-medium", !ready && "text-muted-foreground")}>{ready ? "On" : "Needs Stripe"}</span>
           </li>
         </ul>
       </Card>
