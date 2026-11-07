@@ -5,13 +5,14 @@ import { PlaceCode } from "./PlaceCode";
 import { RewardsCard } from "./RewardsCard";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Rewards" };
+export const metadata = { title: "Discounts" };
 
-// Rewards (MESITA-3202, Pato: "On or off, not in between points"): four
+// Discounts (Rewards until MESITA-3296; the data, EFs and guest screens keep
+// "reward"; MESITA-3202, Pato: "On or off, not in between points"): four
 // switches, the Cap and the total (MESITA-3228), then the place code (MESITA-3226). A visit is never
 // registered here: Pato, "never. there they only set the fucking number". The log
 // is Visits.
-export default async function RewardsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DiscountsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const rewards = await getPlaceRewards(id);
   return (
@@ -24,7 +25,7 @@ export default async function RewardsPage({ params }: { params: Promise<{ id: st
         </>
       ) : (
         <Card>
-          <p className="font-semibold">Rewards didn&apos;t load.</p>
+          <p className="font-semibold">Discounts didn&apos;t load.</p>
           <p className="text-muted-foreground mt-1 text-sm">{rewards.error}</p>
         </Card>
       )}

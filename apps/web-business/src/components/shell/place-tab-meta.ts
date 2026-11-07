@@ -3,7 +3,7 @@
 // entry.
 
 import type { Icon } from "@phosphor-icons/react";
-import { DotsThreeCircleIcon, EyeIcon, FootprintsIcon, GearIcon, GiftIcon, MegaphoneIcon, ReceiptIcon, ShieldCheckIcon, StarIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
+import { CreditCardIcon, DotsThreeCircleIcon, EyeIcon, FootprintsIcon, GearIcon, GiftIcon, MegaphoneIcon, ReceiptIcon, ShieldCheckIcon, StarIcon, StorefrontIcon } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
 
 export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: string }> = {
@@ -12,7 +12,8 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   reviews: { label: "Reviews", icon: StarIcon, sub: "What guests say on Google, Instagram and Facebook." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
-  rewards: { label: "Rewards", icon: GiftIcon, sub: "Discounts guests get on today's bill. Your place gives them." },
+  discounts: { label: "Discounts", icon: GiftIcon, sub: "What guests get off today's bill. Your place gives it." },
+  payments: { label: "Payments", icon: CreditCardIcon, sub: "How guests pay you, earn credit and pay ahead." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
   // line is about Mesita, not the page (Pato, MESITA-3237).
   all: {

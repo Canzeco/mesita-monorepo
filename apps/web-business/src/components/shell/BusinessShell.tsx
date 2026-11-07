@@ -10,8 +10,9 @@
 //   │ Views · Visits                               │  online and walk-ins
 //   └──────────────────────────────────────────────┘
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Reviews · Premier · Rewards · All  │  All: MESITA-3238, every
-//   └──────────────────────────────────────────────┘  product, current and future
+//   │ Profile · Reviews · Premier · Discounts ·    │  All: MESITA-3238, every
+//   │ Payments · All                               │  product, current and future
+//   └──────────────────────────────────────────────┘
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -91,7 +92,8 @@ function menu(
         tab("profile"),
         tab("reviews"),
         tab("premier"),
-        tab("rewards"),
+        tab("discounts"),
+        tab("payments"),
         // Last: every product, current and future (MESITA-3238).
         tab("all"),
       ],

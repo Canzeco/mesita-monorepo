@@ -598,6 +598,19 @@ verify_jwt = true
 [functions.business-web-void-place-visit]
 verify_jwt = true
 
+# Business › Payments (MESITA-3296): the Stripe account and the money switches.
+[functions.business-web-get-payments]
+verify_jwt = true
+
+[functions.business-web-set-payment]
+verify_jwt = true
+
+[functions.business-web-start-payment-onboarding]
+verify_jwt = true
+
+[functions.business-web-open-payment-dashboard]
+verify_jwt = true
+
 [functions.consumer-web-get-place-rewards]
 verify_jwt = true
 
