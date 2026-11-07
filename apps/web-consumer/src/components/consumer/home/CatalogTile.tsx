@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { PremierBadge, SizedImage } from "@mesita/place-profile";
+import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
 import { sharePlace } from "@/lib/share-place";
@@ -215,7 +215,7 @@ export function CatalogTile({
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
-              <PremierBadge tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} />
+              <PlaceMarks tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} mesitaPay={place.mesita_pay === true} />
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />
