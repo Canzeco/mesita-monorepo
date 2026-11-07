@@ -169,12 +169,15 @@ function VoucherCard({
   line,
   currency,
   actions,
+  dim,
 }: {
   product: Product;
   reason: VoucherReason | undefined;
   line: VoucherCatalogLine | undefined;
   currency: string;
   actions?: PlaceActions;
+  /** Grey a card the place does not sell: live mode only (MESITA-3334). */
+  dim: boolean;
 }) {
   const forSale = !reason;
   const live = Boolean(actions?.onBuyVoucher);
@@ -182,7 +185,7 @@ function VoucherCard({
   const text = creditLine(product, line, currency);
   return (
     <li
-      className={cn(PRODUCT_CARD, !forSale && "opacity-50 grayscale")}
+      className={cn(PRODUCT_CARD, !forSale && dim && "opacity-50 grayscale")}
       aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${tag(reason)}`}
       data-voucher={product.key}
     >
@@ -245,6 +248,11 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   const balance = money?.balance ?? null;
   const hasCredit = !!balance && balance.available_cents + balance.pending_cents + balance.held_cents > 0;
   const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
+  // IN TEST MODE EVERY CARD KEEPS ITS COLOUR (Pato, MESITA-3334: "since is
+  // test, use fucking colors for the promos, why is like light representing
+  // blocked or disabled buttons"): the tag alone says where a voucher
+  // stands; the dimmed, greyed card is for live mode.
+  const dim = money?.test_mode !== true;
   return (
     <div className="flex flex-col gap-3">
       {money?.test_mode ? <TestBand /> : null}
@@ -271,13 +279,13 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         </p>
         <ul className="flex flex-col gap-3" data-voucher-catalog>
           {[...SPECIAL, ...STANDARD].map((p) => (
-            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
+            <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
         </ul>
       </Box>
       <Box title="Payment Promos">
         <div
-          className={cn(PRODUCT_CARD, !state.cashback && "opacity-50 grayscale")}
+          className={cn(PRODUCT_CARD, !state.cashback && dim && "opacity-50 grayscale")}
           aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
           data-cashback
         >
