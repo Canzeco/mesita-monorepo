@@ -245,7 +245,14 @@ serveJson("consumer-web-list-places", async (req) => {
   }));
   // The Search card's promo strip (MESITA-3327): `vouchers_up_to_pct` per
   // row, two batched reads for the page, as list-catalog does (MESITA-3312).
-  const rows = places.map(({ area: a, ...p }) => {
+  // No EF env (a local run with no service key): the strip just stays off.
+  const money = efEnv.ok ? adminClient(efEnv.env) : null;
+  return json({
+    ok: true,
+    places: withFamilyKeysList(
+      await withVouchersUpTo(
+        money,
+        places.map(({ area: a, ...p }) => {
         const wired = wireMapPlace(p as PlaceProfileRow);
         return {
           ...wired,
@@ -257,12 +264,9 @@ serveJson("consumer-web-list-places", async (req) => {
             distanceKm: a.distanceKm,
           } satisfies WireScore,
         };
-      }) as CardRow[];
-  // No EF env (a local run with no service key): the strip just stays off.
-  const cards = efEnv.ok ? await withVouchersUpTo(adminClient(efEnv.env), rows) : rows;
-  return json({
-    ok: true,
-    places: withFamilyKeysList(cards),
+      }) as CardRow[],
+      ),
+    ),
     radiusKm,
     // The Map's reload throttle (MESITA-2444) plus min screen move (MESITA-2732);
     // the dead km/sec pair is not sent.

@@ -79,11 +79,13 @@ export async function readPlaceMoney(
  *  whole page (the switches and the accounts by id), never one per tile; a
  *  read failure reads as nothing for sale, and the page still answers. */
 export async function withVouchersUpTo<T extends { id: string }>(
-  admin: SupabaseClient,
+  admin: SupabaseClient | null,
   places: T[],
 ): Promise<(T & { vouchers_up_to_pct: number | null })[]> {
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
+  // No admin client (a run with no service key): nothing for sale, no line.
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null }));
   const [settingsRes, accountsRes] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
     admin.from("place_payment_accounts").select("place_id, charges_enabled").in("place_id", ids),
