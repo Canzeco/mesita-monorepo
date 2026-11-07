@@ -44,8 +44,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 //
 // ROW 2 is three ink tiles, the grey tiles' box (56px, icon over a 12px
 // label, 8px apart) in the ink (Pato, MESITA-2689: "same height and
-// colour"), three equal widths, the labels without "Mesita ". The chip that
-// says why a tile is blocked sits beside the icon. NO TIMES ON THE PROFILE
+// colour"), three equal widths, the labels without "Mesita ", and no chip
+// on any of them (MESITA-3317, Pato: "remove the stupid walk-in icon. just
+// put the button blocked if it doesn't work"): a blocked tile is the same
+// dark tile, disabled, and only the screen reader hears why. NO TIMES ON
+// THE PROFILE
 // (Pato, MESITA-2633: fixed hours "can be confused with confirmed
 // availability"): the guest picks day, party and a preferred time in the
 // sheet, then the agent calls and confirms. Pay waits for W2b (MESITA-3305)
@@ -65,8 +68,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // dark", "same for mesita prepay and mesita pay"): every blocked Mesita
 // button is the ink button, `disabled`, no hover, no press. Reserve varies by
 // place ("reserve can vary depending on the place"): live where it takes
-// bookings, blocked with a Walk-in chip where it doesn't. Prepay and Pay are
-// both blocked, with no chip: the free-amount prepay left with the discount
+// bookings, blocked where it doesn't (its Walk-in chip left with
+// MESITA-3317). Prepay and Pay are both blocked, with no chip: the free-amount prepay left with the discount
 // product (MESITA-3299), vouchers sell on their tab (MESITA-3303) and paying
 // arrives with W2b (MESITA-3305).
 
@@ -261,10 +264,7 @@ export function ProfileActions({
           }
           className={takesReservations ? inkTile : blockedInkTile}
         >
-          <span className="flex shrink-0 items-center gap-1.5">
-            <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-            {!takesReservations && <BlockedChip>Walk-in</BlockedChip>}
-          </span>
+          <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
         <InertInkTile Icon={Wallet} label="Prepay" />
@@ -291,14 +291,5 @@ function InertInkTile({ Icon, label }: { Icon: LucideIcon; label: string }) {
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="max-w-full truncate">{label}</span>
     </button>
-  );
-}
-
-/** Why a blocked ink button is blocked: a quiet chip white on the ink. */
-function BlockedChip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="bg-card text-muted-foreground flex h-4 shrink-0 items-center rounded-full px-1.5 text-[10px] leading-none font-semibold">
-      {children}
-    </span>
   );
 }
