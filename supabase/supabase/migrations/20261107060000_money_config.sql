@@ -14,9 +14,11 @@ alter table public.app_config
 comment on column public.app_config.money_config is
   'MESITA-3303: the money section. buying_paused (boolean): every voucher sale refused while true. Read by the consumer money EFs; written by the admin console (W3).';
 
+-- The live table holds one row; a fresh database (pgTAP) holds none until the
+-- console writes one, and no row reads as not paused (money-config.ts).
 do $$
 begin
-  if (select money_config ->> 'buying_paused' from public.app_config limit 1) is distinct from 'false' then
+  if exists (select 1 from public.app_config where money_config ->> 'buying_paused' is distinct from 'false') then
     raise exception 'money_config did not land with buying_paused false';
   end if;
 end $$;
