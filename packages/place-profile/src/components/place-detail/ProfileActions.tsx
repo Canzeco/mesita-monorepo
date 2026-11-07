@@ -30,9 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [   ▣   ] [ ▤ Mesita Prepay   ] [ ▦ Mesita Pay      ]
-//   [ Mesita] [   Up to 30% Bonus ] [   5% Back         ]
-//   [Reserve]
+//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
+//   [Reserve] [   Up to 30% Bonus ] [   5% Back         ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -44,7 +43,10 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // host's sheet, never Checkout, on every place: a Google-only one gets that
 // sheet's not-open-yet screen, so the row never changes width.
 //
-// ROW 2 is three ink tiles, the grey tiles' height (56px) in the ink, the
+// ROW 2 is three GREEN tiles (Pato, MESITA-3348: "dark is not the best
+// color at all, try some green or blue": Mesita's emerald, the Mesita Pay
+// mark's green, white words; the ink from MESITA-3315 until then), the grey
+// tiles' height (56px), the
 // glyph at the left of a 12px label (MESITA-3335; it sat over the label
 // until then), 8px apart (Pato, MESITA-2689: "same height and
 // colour"), three equal widths, the labels without "Mesita ". PREPAY AND
@@ -106,25 +108,24 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph at the left and the words at its right, the 14px label over the
  *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1";
+  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
-// Reserve is the grey tile's own box in the ink (MESITA-3315): one column,
+// Reserve is the grey tile's own box in the green (MESITA-3348): one column,
 // the glyph over a 12px label.
 const inkReserve = cn(
   PROFILE_TILE_BOX_CLASS,
-  "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
+  "bg-emerald-600 text-white text-xs font-semibold transition hover:bg-emerald-700 active:scale-[0.99]",
 );
-// A blocked Reserve: still the ink, but `disabled`: no hover, no press,
+// A blocked Reserve: still the green, but `disabled`: no hover, no press,
 // the not-allowed cursor (MESITA-3081).
 const blockedInkReserve = cn(
   PROFILE_TILE_BOX_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
+  "bg-emerald-600 text-white cursor-not-allowed text-xs font-semibold",
 );
-// A blocked wide Mesita tile (Prepay, Pay): the ink, `disabled`, 13px so
-// "Mesita Prepay" fits two columns on a 375px phone (MESITA-3344).
+// A blocked wide Mesita tile (Prepay, Pay): the green, `disabled`, 14px.
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-[13px] font-semibold",
+  "bg-emerald-600 text-white cursor-not-allowed text-sm font-semibold",
 );
 
 const tileBtn = cn(
@@ -304,17 +305,10 @@ export function MesitaActions({
           className={takesReservations ? inkReserve : blockedInkReserve}
         >
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
-          {/* "Mesita Reserve" on two lines: one column is too narrow for
-              the words side by side (Pato, MESITA-3344: "call it Mesita
-              Reserve, Mesita Prepay, Mesita Pay"). */}
-          <span className="max-w-full text-center leading-[1.15]">
-            Mesita
-            <br />
-            Reserve
-          </span>
+          <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Mesita Prepay" amount="Up to 30% Bonus" />
-        <InertInkTile Icon={QrCode} label="Mesita Pay" amount="5% Back" />
+        <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 30% Bonus" />
+        <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
       </div>
     </>
   );
@@ -350,7 +344,7 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="flex min-w-0 flex-col items-start gap-1 text-left">
         <span className="max-w-full truncate leading-none">{label}</span>
-        <span className="text-paper/80 max-w-full truncate text-xs leading-none font-medium">{amount}</span>
+        <span className="max-w-full truncate text-xs leading-none font-medium text-white/85">{amount}</span>
       </span>
     </button>
   );
