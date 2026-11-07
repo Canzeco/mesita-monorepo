@@ -6,7 +6,7 @@ import { Coins, Crown, Hand, Wallet } from "lucide-react";
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
-import { PLACE_BUTTON_CLASS, PLACE_META_CLASS, PLACE_TITLE_CLASS } from "../../lib/ui";
+import { PLACE_BUTTON_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { TestBand } from "../TestBand";
@@ -190,9 +190,11 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
 // hold their edge on the grey page (Pato, MESITA-3357: "maybe add borders
 // or something to the products"); `border-current` reads the tone's text
 // colour, the mark's.
-const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/25 p-3";
+const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/50 p-3";
 // The bonus badge is BIG (Pato, MESITA-3363: "mention the percentage
 // fucking bigger"): 18px bold on the card's white chip; 12px until then.
+/** A Promos section title: 18px, two steps over the boxes' 16px. */
+const PROMOS_TITLE_CLASS = "text-foreground text-lg leading-tight font-semibold tracking-tight";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
@@ -302,7 +304,12 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   // stands; the dimmed, greyed card is for live mode.
   const dim = money?.test_mode !== true;
   return (
-    <div className="flex flex-col gap-3">
+    // A WHITE PAGE FOR PROMOS ALONE (Pato, MESITA-3366: "only in the case of
+    // promos, either use white background or stronger borders for the
+    // products"): the pane undoes the body's 16px sides and the gap under
+    // the sticky block and paints itself white; the cards' hairline is
+    // twice as strong (border-current/50). The other tabs keep the grey.
+    <div className="bg-card -mx-4 -mt-3 flex flex-col gap-4 px-4 pt-4 pb-6" data-promos-page>
       {money?.test_mode ? <TestBand /> : null}
       {hasCredit && balance ? (
         <Box title="Your credit here">
@@ -323,8 +330,14 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           then white and then the vouchers boxes of different colors ...
           double margins"): the title and the note sit on the grey page and
           the coloured cards on it, one surface fewer. */}
+      {/* EACH SECTION SAYS WHAT IT IS (Pato, MESITA-3366: "must be clear
+          that something is Prepayments and other things is Payments"):
+          an 18px title and one grey line. */}
       <section className="flex flex-col gap-3" data-promos="payment">
-        <h3 className={PLACE_TITLE_CLASS}>Payment Promos</h3>
+        <div>
+          <h3 className={PROMOS_TITLE_CLASS}>Payment Promos</h3>
+          <p className={PLACE_META_CLASS}>When you pay the bill here.</p>
+        </div>
         <div
           className={cn(GIFT_CARD, CASHBACK_TONE, !state.cashback && dim && "opacity-50 grayscale")}
           aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
@@ -356,7 +369,10 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         </div>
       </section>
       <section className="flex flex-col gap-3" data-promos="prepayment">
-        <h3 className={PLACE_TITLE_CLASS}>Pre-Payment Promos</h3>
+        <div>
+          <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Promos</h3>
+          <p className={PLACE_META_CLASS}>Credit you buy before you go.</p>
+        </div>
         {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
             before the bill. All but the Instagram one"): every voucher's
             credit turns Available one hour after the charge except Story,
