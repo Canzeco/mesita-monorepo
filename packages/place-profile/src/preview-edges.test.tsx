@@ -33,7 +33,7 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Menu", "Reviews", "Promos"]) {
+    for (const label of ["Overview", "Menu", "Reviews", "Rewards"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
@@ -163,7 +163,7 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");
-    expect(html).toContain("Promos");
+    expect(html).toContain("Rewards");
     // No Soon pill in the strip (MESITA-2631); the screen says it.
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
