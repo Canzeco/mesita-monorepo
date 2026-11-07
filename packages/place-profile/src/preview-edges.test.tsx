@@ -92,7 +92,7 @@ describe("member preview edges", () => {
     // One row of three since MESITA-3314: Reserve · Prepay · Pay, no "Mesita".
     // The amount rides in the name (MESITA-3324).
     expect(html).toContain('aria-label="Prepay, Up to 25% OFF, Soon"');
-    expect(html).toContain('aria-label="Pay, 5% cashback, Soon"');
+    expect(html).toContain('aria-label="Pay, 5% Cashback, Soon"');
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
   });

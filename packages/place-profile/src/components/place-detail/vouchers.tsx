@@ -24,11 +24,16 @@ import { Box } from "./box";
 // catalog, like it must feel e commerce like products"; MESITA-3326: "use
 // vertical list catalog with e-commerce vibes here. Not 2*3 but 1*6"): six
 // full-width product cards stacked down the page (the 2×3 grid lasted an
-// hour; MESITA-3310's card of rows read boring), Standard first: each card
+// hour; MESITA-3310's card of rows read boring), specials first: each card
 // a square face on the left, the mark big on its colour with the bonus in
 // a corner, and on the right the price as the product's name, the credit it
 // buys in one objective line (Pato: "be super objective"), the condition,
-// and Buy or the tag. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
+// how many a guest can have (MESITA-3328, Pato: "mention the inventory,
+// like one or renews each visit"), and Buy or the tag. SPECIALS FIRST
+// (MESITA-3328, Pato: "Welcome, Instagram, VIP, normal shit then"). The
+// titles are Title Case, Pato's spelling (MESITA-3328: "Pre-Payment
+// Promos", "Payment Promos", "5% Cashback"), over the screen's sentence
+// case. THE STANDARD THREE SHARE ONE MARK AND ONE COLOUR, the
 // wallet on emerald (MESITA-3326, Pato: "the standard deals/promos must
 // have the same icon and the same color. the deals that have different
 // colors are welcome and story VIP"); the specials keep their own. The
@@ -83,6 +88,8 @@ type Product = {
   line: string;
   /** The condition, when the voucher has one. */
   when?: string;
+  /** How many a guest can have (Pato, MESITA-3328: "mention the inventory"). */
+  limit: string;
   bonus: string;
   mark: Mark;
   /** The mark's tile and the mark on it. */
@@ -92,15 +99,15 @@ type Product = {
 const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
 
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "MX$200", line: "Get MX$220 of credit.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_1000", name: "MX$1,000", line: "Get MX$1,200 of credit.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_5000", name: "MX$5,000", line: "Get MX$6,500 of credit.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_200", name: "MX$200", line: "Get MX$220 of credit.", limit: "As many as you like.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_1000", name: "MX$1,000", line: "Get MX$1,200 of credit.", limit: "As many as you like.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_5000", name: "MX$5,000", line: "Get MX$6,500 of credit.", limit: "As many as you like.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130 of credit.", when: "Once, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-orange-100 text-orange-700" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130 of credit.", when: "After an Instagram story here.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130 of credit.", when: "VIP guests only.", bonus: "+30%", mark: Crown, tone: "bg-yellow-100 text-yellow-700" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130 of credit.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-orange-100 text-orange-700" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130 of credit.", when: "After an Instagram story here.", limit: "One per story.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130 of credit.", when: "VIP guests only.", limit: "Every visit.", bonus: "+30%", mark: Crown, tone: "bg-yellow-100 text-yellow-700" },
 ];
 
 const CASHBACK_TONE = "bg-amber-100 text-amber-700";
@@ -186,6 +193,7 @@ function VoucherCard({
           {text}
           {product.when ? ` ${product.when}` : null}
         </p>
+        <p className={cn(PLACE_META_CLASS, "font-medium")}>{product.limit}</p>
         {forSale ? (
           <button
             type="button"
@@ -253,7 +261,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Box title="Prepayment promos">
+      <Box title="Pre-Payment Promos">
         {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
             before the bill. All but the Instagram one"): every voucher's
             credit turns Available one hour after the charge except Story,
@@ -262,20 +270,20 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           Buy at least an hour before you pay the bill: the credit takes an hour to be ready. Story is ready at once.
         </p>
         <ul className="flex flex-col gap-3" data-voucher-catalog>
-          {[...STANDARD, ...SPECIAL].map((p) => (
+          {[...SPECIAL, ...STANDARD].map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
           ))}
         </ul>
       </Box>
-      <Box title="Payment promos">
+      <Box title="Payment Promos">
         <div
           className={cn(PRODUCT_CARD, !state.cashback && "opacity-50 grayscale")}
-          aria-label={`5% cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
+          aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
           data-cashback
         >
           <ProductFace Mark={Coins} tone={CASHBACK_TONE} badge="5%" />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5 p-3">
-            <p className="text-foreground text-sm font-semibold">5% cashback</p>
+            <p className="text-foreground text-sm font-semibold">5% Cashback</p>
             <p className={PLACE_META_CLASS}>Pay by card here and 5% of it comes back as credit.</p>
             <p className={cn(PLACE_META_CLASS, "mt-auto pt-2 font-medium", state.cashback && "text-foreground")}>{cashbackTag}</p>
           </div>
