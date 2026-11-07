@@ -36,6 +36,9 @@ export type PlaceActions = {
   /** The Vouchers tab opened: the host refreshes `place.money` (the offer and
    *  the guest's credit) from consumer-web-list-vouchers. */
   onLoadVouchers?: () => void;
+  /** The host's list-vouchers read has not answered yet (MESITA-3388): the
+   *  Rewards rows keep their colour and show a bone where Buy goes. */
+  vouchersLoading?: boolean;
   /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
    *  Absent, the card draws no button (admin's preview). */
   onPay?: () => void;

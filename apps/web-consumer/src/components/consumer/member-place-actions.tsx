@@ -118,6 +118,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onBuyVoucher: vouchers.buy,
     buyingVoucher: vouchers.buying,
     onLoadVouchers: vouchers.load,
+    vouchersLoading: vouchers.loading,
     // The Cashback card's Pay (MESITA-3352): the bar's Pay page.
     onPay: () => navigateTo(router, "/pay"),
   };
@@ -194,6 +195,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 function usePlaceVouchers(placeId: string): {
   money: PlaceMoney | null;
   buying: VoucherKey | null;
+  /** The first list-vouchers for this place has not answered (MESITA-3388). */
+  loading: boolean;
   load: () => void;
   buy: (key: VoucherKey) => void;
 } {
@@ -201,6 +204,9 @@ function usePlaceVouchers(placeId: string): {
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
+  // The place whose list-vouchers answered, either way; set only in the
+  // promise callbacks, never synchronously in an effect (Next 16 lint).
+  const [settled, setSettled] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (!mesita) return;
@@ -210,7 +216,8 @@ function usePlaceVouchers(placeId: string): {
       })
       .catch(() => {
         // The place read's offer stays on screen.
-      });
+      })
+      .finally(() => setSettled(placeId));
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesita, placeId]);
@@ -243,6 +250,7 @@ function usePlaceVouchers(placeId: string): {
   return {
     money: state?.placeId === placeId ? state.money : null,
     buying,
+    loading: mesita && settled !== placeId,
     load,
     buy,
   };
