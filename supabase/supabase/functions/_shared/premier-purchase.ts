@@ -18,12 +18,15 @@ import { isUuid } from "./place-id.ts";
 
 export type RefillTier = 1 | 2;
 
-/** One pack per tier: 3 months (Pato, MESITA-3203: "sell 3 months packages, not
- *  1 month"). $30 / $300 is the Subscription's $10 / $100 a month, three times,
- *  so a pack never undercuts subscribing. A purchase keeps the days it stored
- *  when it opened. A price change is a PR. */
-export const REFILL_PACK_DAYS = 90;
-export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 30_00, 2: 300_00 };
+/** One pack per tier: one year (Pato, MESITA-3386: "Upgrade plan must be one
+ *  year. $100 USD. $1000 USD. Not three months"; 90 days at $30 / $300 from
+ *  MESITA-3203 until then). $100 / $1,000 is the Subscription's yearly price
+ *  (ten months for twelve, boost.ts), so a pack never undercuts subscribing.
+ *  A purchase keeps the days it stored when it opened. A price change is a
+ *  PR. The 366-day queue cap in premier_refill_check means one pack at a
+ *  time per place. */
+export const REFILL_PACK_DAYS = 365;
+export const REFILL_PACK_CENTS: Record<RefillTier, number> = { 1: 100_00, 2: 1000_00 };
 
 /** The level guests read (MESITA-3174): Pro is Premier 2X, Max Premier 5X. */
 export const refillLabel = (tier: number): string => (tier === 2 ? "Premier 5X" : "Premier 2X");
