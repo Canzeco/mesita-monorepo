@@ -12,10 +12,11 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 // THE WALLET IS FOR PREPAYMENTS (Pato, 2026-11-01; MESITA-3098). The bar's
-// Pay tab: every balance a guest prepaid, one row per place, in one card of
-// rows (Pato prefers one card of rows to tiles). A tap opens that place's
-// history under its row. Money comes from consumer-web-get-wallet only;
-// this screen never adds anything up.
+// Wallet tab, /wallet (MESITA-3295; it rendered only on /pay?prepay= before):
+// every balance a guest prepaid, one row per place, in one card of rows (Pato
+// prefers one card of rows to tiles). A tap opens that place's history under
+// its row. Money comes from consumer-web-get-wallet only; this screen never
+// adds anything up.
 //
 // Checkout comes back here with `?prepay=<session>`: the read credits it,
 // the toast says what the server said, and the parameter is dropped so a
@@ -74,7 +75,7 @@ export function WalletPage() {
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
       <p className="text-muted-foreground type-body mt-1">
         What you prepaid at each place, ready for your next visit.
       </p>
@@ -105,7 +106,7 @@ export function WalletPage() {
         ) : failed ? (
           <EmptyState
             icon={WalletIcon}
-            title="Couldn't load Pay"
+            title="Couldn't load Wallet"
             description="Check your connection and try again."
             action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
           />

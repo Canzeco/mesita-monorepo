@@ -44,6 +44,13 @@ export const CONSUMER_ROUTES = {
   // Order address 308s to this page. Under it now: the reward steps,
   // /pay/<place>/<step> (MESITA-3254), see rewardStepPath.
   pay: "/pay",
+  // WALLET IS BACK ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search
+  // Pay Wallet Me", settled at the fourth gate on MESITA-3272). One page: the
+  // balances a guest prepaid, one row per place (MESITA-3098), which showed
+  // only on /pay?prepay= until this. A Mesita Prepay checkout returns here.
+  // The old tab's children (/wallet/buy, /wallet/balance/<id>) are in
+  // `legacy` and land here.
+  wallet: "/wallet",
   // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
   // redirect to /me until this.
@@ -117,11 +124,14 @@ export const CONSUMER_ROUTES = {
     // The Second Stage tab and everything under it (MESITA-2087). The QR
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every
-    // /rewards, /pay/<sub> and /ticket era address. All 308 to `pay`.
+    // /rewards, /pay/<sub> and /ticket era address. All 308 to `pay`, except
+    // what hung under the old Wallet tab: /wallet is live again
+    // (MESITA-3295), so its children land on it.
     newVisit: "/new-visit",
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
-    wallet: "/wallet",
+    walletBalancePrefix: "/wallet/balance/",
+    walletTabPrefix: "/wallet/",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
     order: "/order",
@@ -183,6 +193,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   // disambiguate from, so BottomNav matches CONSUMER_ROUTES.
   place: "/place",
   pay: "/pay",
+  wallet: "/wallet",
   me: "/me",
 } as const;
 
