@@ -96,6 +96,11 @@ type Product = {
   tone: string;
 };
 
+// FIVE HUES, ONE PER KIND (Pato, MESITA-3347: "think colour psychology ...
+// five different colours"): Welcome sky (trust, a first hello; MESITA-3346),
+// Story pink (Instagram), VIP violet (exclusivity; yellow read as a warning
+// tint beside amber), the standard three emerald (money, credit), Cashback
+// amber (coins coming back). Business › Payments' rows wear the same.
 const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
 
 const STANDARD: Product[] = [
@@ -107,7 +112,7 @@ const STANDARD: Product[] = [
 const SPECIAL: Product[] = [
   { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", when: "After an Instagram story here.", limit: "One per day.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "+30%", mark: Crown, tone: "bg-yellow-100 text-yellow-700" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "+30%", mark: Crown, tone: "bg-violet-100 text-violet-700" },
 ];
 
 const CASHBACK_TONE = "bg-amber-100 text-amber-700";
