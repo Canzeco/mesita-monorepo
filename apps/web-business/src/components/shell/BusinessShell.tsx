@@ -86,7 +86,7 @@ function menu(
     account,
     switcher,
     place: {
-      operations: [tab("views"), tab("visits"), tab("money"), tab("wallet")],
+      operations: [tab("views"), tab("visits"), tab("money")],
       products: [
         tab("profile"),
         tab("reviews"),
