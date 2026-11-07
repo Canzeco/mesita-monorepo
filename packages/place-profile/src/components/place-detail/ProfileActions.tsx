@@ -30,8 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
-//   [Reserve] [   30% Bonus       ] [   5% Back         ]
+//   [   ▣   ] [ ▤ Prepay   [+30%] ] [ ▦ Pay       [5%] ]
+//   [Reserve] [                   ] [                   ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -110,7 +110,7 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph at the left and the words at its right, the 14px label over the
  *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
+  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-between gap-1.5 rounded-lg px-2";
 
 // Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
 // the glyph over a 12px label.
@@ -309,8 +309,8 @@ export function MesitaActions({
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
-        <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
+        <InertInkTile Icon={Wallet} label="Prepay" amount="+30%" />
+        <InertInkTile Icon={QrCode} label="Pay" amount="5%" />
       </div>
     </>
   );
@@ -326,7 +326,9 @@ export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 /** Reserve's glyph: the grey tiles' 18px. */
 const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
 /** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
-const MESITA_TILE_ICON = "h-5 w-5 shrink-0";
+const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
+/** The amount's ink pill at the tile's right edge (MESITA-3361). */
+const MESITA_TILE_PILL = "bg-foreground text-paper shrink-0 rounded-md px-1.5 py-1 text-xs leading-none font-bold tabular-nums";
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
  *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
@@ -344,14 +346,16 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       aria-label={`${label}, ${amount}, Soon`}
       className={blockedInkTile}
     >
-      <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="flex min-w-0 flex-col items-start gap-1 text-left">
-        <span className="max-w-full truncate leading-none">{label}</span>
-        {/* The amount weighs the same as the label (Pato, MESITA-3356: "bonus
-            and back must be as thin/gross as the top text, maybe even size"),
-            one weight like Link's button; 12px medium at 70% until then. */}
-        <span className="max-w-full truncate leading-none">{amount}</span>
+      {/* ONE LINE, THE AMOUNT AN INK PILL AT THE RIGHT (Pato, MESITA-3361,
+          over a board of five layouts: "I like this one ... I like them
+          inside a black box"): glyph, label, then the pill; the label
+          truncates before the pill can overlap it on a 360px phone. The
+          label over the amount (MESITA-3335/3339/3356) until then. */}
+      <span className="flex min-w-0 items-center gap-1.5">
+        <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
+        <span className="truncate leading-none">{label}</span>
       </span>
+      <span className={MESITA_TILE_PILL}>{amount}</span>
     </button>
   );
 }
