@@ -25,9 +25,10 @@ export const ACCOUNT = "/account";
 // Visits and Transactions. Keep the pages even if Mesita Payments is not
 // enabled yet"; MESITA-3308: "call the Transactions page Money"); Visits is
 // back as a page, not the MESITA-3202 log.
-// Wallet (MESITA-3377): the place's credits, from Pato's sketch, a mock
-// under the TEST band until the credit products ship.
-export const PLACE_TABS = ["views", "visits", "money", "wallet", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
+// No Wallet (MESITA-3391, Pato: "wallet is for consumers, not for
+// businesses"; the MESITA-3377 mock is gone): credits are the guest's, and
+// a place's ways to pay live on Payments.
+export const PLACE_TABS = ["views", "visits", "money", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

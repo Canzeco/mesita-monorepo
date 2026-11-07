@@ -15,6 +15,7 @@ import {
   ClockIcon,
   CoinsIcon,
   DeviceMobileIcon,
+  MoneyIcon,
   StripeLogoIcon,
   CrownIcon,
   WalletIcon,
@@ -38,7 +39,7 @@ import {
 // A switch row with a mark: tile, name and line, the value, the switch. The
 // last column is the Switch's own width, as on Discounts.
 const MARK_ROW = "grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto_3rem] items-center gap-4 px-5 py-3 text-sm sm:px-6";
-// Digital Payments: the same row with a status word where the switch goes.
+// A Ways to pay row: the mark, name and line, a status word where a switch would go.
 const STATUS_ROW = "grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
 const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
 
@@ -73,6 +74,14 @@ const SPECIAL: Product[] = [
   { key: "voucher_story", name: "Story voucher", line: "Guest pays MX$100, gets MX$130 of credit after posting an Instagram story at your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
   { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
+
+/** WAYS TO PAY (MESITA-3391, moved from the Business Wallet mock, Pato:
+ *  "if you are talking about the capabilities for your consumers, move those
+ *  fields to payments"): how a guest can settle the bill here. Three states,
+ *  never switches: each reads what is true now. Cash is always taken (Mesita
+ *  never touches it); Cards is Digital Payments, on once Stripe can charge;
+ *  Credits is on while the place sells a voucher or Cashback. */
+type Way = { key: string; name: string; line: string; icon: Icon; tone: string; on: boolean; state: string };
 
 /** Why a switched-on voucher is not for sale yet, beside its switch
  *  (MESITA-3303). The guest sees the same reason on the Vouchers tab. */
@@ -130,6 +139,21 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
   // Which switched-on vouchers a guest can buy right now, and why the others
   // cannot: the same rule the server sells by (money-state, one source).
   const selling = moneyState(settings, { charges_enabled: account.charges_enabled }, null);
+
+  const credits = selling.sell.length > 0 || (settings.cashback && account.charges_enabled);
+  const ways: Way[] = [
+    { key: "cash", name: "Cash", line: "At the table, as always.", icon: MoneyIcon, tone: "bg-lime-100 text-lime-700", on: true, state: "Always" },
+    {
+      key: "cards",
+      name: "Cards",
+      line: "Digital Payments: guests pay the bill from their phone by card, Apple Pay or Google Pay.",
+      icon: DeviceMobileIcon,
+      tone: "bg-sky-100 text-sky-700",
+      on: ready,
+      state: ready ? "On" : "Needs Stripe",
+    },
+    { key: "credits", name: "Credits", line: "Credit a guest bought or earned here, spent on the bill.", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700", on: credits, state: credits ? "On" : "Off" },
+  ];
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -208,16 +232,23 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
               </ul>
             ) : null}
           </li>
-          <li className={STATUS_ROW}>
-            <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", ready ? "bg-sky-100 text-sky-700" : "bg-muted text-muted-foreground")}>
-              <DeviceMobileIcon size={22} weight={ready ? "fill" : "regular"} aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <p className="font-medium">Digital Payments</p>
-              <p className="text-muted-foreground">Guests pay the bill from their phone by card, Apple Pay or Google Pay.</p>
-            </div>
-            <span className={cn("shrink-0 font-medium", !ready && "text-muted-foreground")}>{ready ? "On" : "Needs Stripe"}</span>
-          </li>
+        </ul>
+      </Card>
+      <Card className="flex flex-col p-0 sm:p-0">
+        <h2 className={HEAD}>Ways to pay</h2>
+        <ul className="divide-border divide-y">
+          {ways.map(({ key, name, line, icon: Mark, tone, on, state }) => (
+            <li key={key} className={STATUS_ROW}>
+              <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", on ? tone : "bg-muted text-muted-foreground")}>
+                <Mark size={22} weight={on ? "fill" : "regular"} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="font-medium">{name}</p>
+                <p className="text-muted-foreground">{line}</p>
+              </div>
+              <span className={cn("shrink-0 font-medium", !on && "text-muted-foreground")}>{state}</span>
+            </li>
+          ))}
         </ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
