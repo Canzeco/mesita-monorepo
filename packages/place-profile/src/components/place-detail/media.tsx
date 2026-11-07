@@ -9,7 +9,7 @@ import { Box } from "./box";
 
 export function MediaBox({ place }: { place: PlaceDetail }) {
   // decision: Pato — gallery in the same bordered card as Location/Time
-  // (not full-bleed). bare Box = border + rounded-2xl, no title chrome;
+  // (not full-bleed). bare Box = border + rounded-xl, no title chrome;
   // carousel fills the card edge-to-edge inside the clip.
   if (place.photos.length === 0) return null;
   return (
