@@ -47,8 +47,8 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ico
 const CASHBACK: Product = {
   key: "cashback",
   name: "Payments Cashback",
-  line: "A share of each card payment comes back to the guest as credit at your place.",
-  value: "Credit",
+  line: "Guest pays by card, gets 5% of it back as credit at your place.",
+  value: "5%",
   icon: CoinsIcon,
   tone: "bg-amber-100 text-amber-700",
 };
