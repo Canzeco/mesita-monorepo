@@ -1,10 +1,10 @@
 // State — two boxes (Pato, 2026-08-25 · Profile States + Enrichment Steps, 2026-10-13).
 //
-//   PROFILE STATES (5)  One box (Pato, 2026-10-13, MESITA-2176; Requested
+//   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176; Requested
 //                 dropped MESITA-2735 / discovery overhaul uc1b; Selected
-//                 died MESITA-2925):
+//                 died MESITA-2925; Stripe added MESITA-3394):
 //                 Created · Pulsing (Google active) · Enriching · Enriched ·
-//                 Disabled.
+//                 Disabled · Stripe (can take payments).
 //   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
 //                 members from place_activity. No request count.
 //                 Premier (MESITA-2925, was Boost) is a tier, not a bool —
@@ -15,8 +15,10 @@
 //
 //                 The MVP First Stage cut the commercial facts: Verified
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
-//                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
-//                 pays or redeems yet.
+//                 Pay · Mesita Credits (MESITA-2115). Money came back as
+//                 one fact, Stripe (Pato, 2026-11-07, MESITA-3394): the
+//                 place's Stripe account can take payments in the server's
+//                 Stripe mode, as of the account's last refresh.
 //   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
 //                 8. Vectors Enriched, each a bool (called or not).
 //                 Seed is Create-only and is not a step on this box.
@@ -86,16 +88,20 @@ export function profileStatCountChip(value: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The five profile states, in the order the Profile States box prints them.
+/** The six profile states, in the order the Profile States box prints them.
  *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
- *  with the MVP First Stage cut (MESITA-2106, MESITA-2115): nobody holds,
- *  proves, pays or redeems yet. Wire key `seeded` stays; the label is Created. */
+ *  with the MVP First Stage cut (MESITA-2106, MESITA-2115); Stripe came back
+ *  on Pato's instruction of 2026-11-07 (MESITA-3394, "add as one general
+ *  state if Stripe is connected"): yes = can take payments, and a no reads
+ *  rose like every other state (MESITA-1684). Wire key `seeded` stays; the
+ *  label is Created. */
 export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "pulsing", label: "Pulsing" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
   { key: "disabled", label: "Disabled" },
+  { key: "stripe_connected", label: "Stripe" },
 ] as const;
 
 /** Profile Stats — unique member counts, read-only (MESITA-2735). */

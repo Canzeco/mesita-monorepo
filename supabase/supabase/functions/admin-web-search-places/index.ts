@@ -17,6 +17,8 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
+import { boostLivemode } from "../_shared/boost.ts";
+import { chargesEnabledByPlace } from "../_shared/payments.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   isPlaceEnriched,
@@ -156,11 +158,20 @@ serveJson("admin-web-search-places", async (req) => {
   // Found flags live on place_profiles, not the profiles view. Same read as
   // the enrichment map so a catalog row can show the three Reviews states.
   const reviewFound = new Map<string, ReviewFoundFlags>();
+  // The "Stripe" general state (MESITA-3394): can the place take payments in
+  // the current Stripe mode. Read per chunk beside the enrichment read; a
+  // chunk whose read fails leaves its places unknown ("?"), never "no".
+  const stripeConnected = new Map<string, boolean | null>();
+  const livemode = boostLivemode();
   for (const idPart of chunked(ids, ID_CHUNK)) {
-    const enrichmentRes = await admin
-      .from("place_profiles")
-      .select("id, enrichment, google_found, instagram_found, facebook_found")
-      .in("id", idPart);
+    const [enrichmentRes, charging] = await Promise.all([
+      admin
+        .from("place_profiles")
+        .select("id, enrichment, google_found, instagram_found, facebook_found")
+        .in("id", idPart),
+      chargesEnabledByPlace(admin, idPart, livemode),
+    ]);
+    for (const id of idPart) stripeConnected.set(id, charging ? charging.has(id) : null);
     // Best-effort: this lookup must never 500 the catalog. A failed read
     // or a missing/null row falls back to the CREATED-floor default below,
     // which reads as "less done than it is" — the safe direction for a state
@@ -224,6 +235,8 @@ serveJson("admin-web-search-places", async (req) => {
       // Premier (MESITA-2925, was Boost MESITA-2809): the paid tier,
       // 0 · 1 · 2 = Off · 2X · 5X. Selected is no longer read.
       boost_tier: typeof v.boost_tier === "number" ? v.boost_tier : null,
+      // Stripe (MESITA-3394): true · false · null when its chunk's read failed.
+      stripe_connected: stripeConnected.get(id) ?? null,
       // Missing when the read failed — the table says "?", never a false 0.
       viewed: stats.get(id)?.viewed ?? null,
       saved: stats.get(id)?.saved ?? null,
