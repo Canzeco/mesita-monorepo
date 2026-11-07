@@ -174,7 +174,11 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
  *  server has not used up or paused, and the state reads beside it; the
  *  server still decides at the tap. The face-and-words row of MESITA-3326
  *  is gone. */
-const GIFT_CARD = "relative flex min-h-36 flex-col overflow-hidden rounded-xl p-3";
+// A hairline in the card's own hue, a quarter strength, so the pale tints
+// hold their edge on the grey page (Pato, MESITA-3357: "maybe add borders
+// or something to the products"); `border-current` reads the tone's text
+// colour, the mark's.
+const GIFT_CARD = "relative flex min-h-36 flex-col overflow-hidden rounded-xl border border-current/25 p-3";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
