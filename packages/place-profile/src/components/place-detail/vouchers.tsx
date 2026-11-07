@@ -390,7 +390,11 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
             rows, let's optimize space"; three across for half an hour,
             MESITA-3370; one full-width card each from MESITA-3326 before). */}
         <ul className="grid grid-cols-2 gap-2" data-voucher-catalog>
-          {[...SPECIAL, ...STANDARD].map((p) => (
+          {/* SPECIALS IN THE LEFT COLUMN, STANDARD IN THE RIGHT (Pato,
+              MESITA-3372: "sort standard at the right"): the rows pair
+              Welcome · Standard, Story · Standard Medium, VIP · Standard
+              Large. Specials first then standard (MESITA-3328) until then. */}
+          {SPECIAL.flatMap((p, i) => [p, STANDARD[i]]).map((p) => (
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
         </ul>
