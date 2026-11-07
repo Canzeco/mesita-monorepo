@@ -1,6 +1,6 @@
 "use client";
 
-import { Gift, Store, type LucideIcon } from "lucide-react";
+import { Store, Ticket, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/format";
 import { PLACE_SCREEN_TITLE_CLASS } from "../../lib/ui";
 
@@ -21,11 +21,11 @@ export const NO_OVERVIEW: PlaceEmptyScreenProps = {
   line: "The overview of this place will show up here.",
 };
 
-/** The Rewards tab where the host draws no pane (admin Preview). */
-export const NO_REWARDS: PlaceEmptyScreenProps = {
-  icon: Gift,
-  title: "Rewards",
-  line: "Guests see this place's rewards here in the Mesita app.",
+/** The Vouchers tab of a place with nothing on (MESITA-3299). */
+export const NO_VOUCHERS: PlaceEmptyScreenProps = {
+  icon: Ticket,
+  title: "Vouchers",
+  line: "Not available yet at this place.",
 };
 
 // A tab with nothing to show draws this one screen: the Soon tab (Products), a place with no reviews yet (MESITA-2682) and Overview while the

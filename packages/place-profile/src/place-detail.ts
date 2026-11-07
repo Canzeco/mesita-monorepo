@@ -3,11 +3,28 @@
 // it; every field is null-safe on the adapter side, so the view never guards
 // against a missing column — an empty list simply hides its box.
 
+/** The six vouchers and the cashback a place can switch on (MESITA-3296). */
+export const VOUCHER_KEYS = ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story", "voucher_vip"] as const;
+export type VoucherKey = (typeof VOUCHER_KEYS)[number];
+
+export type PlaceMoney = {
+  /** Stripe lets the place's account take payments. */
+  charges_enabled: boolean;
+  /** Payments Cashback, the standard 5%, on. */
+  cashback: boolean;
+  vouchers: Record<VoucherKey, boolean>;
+};
+
 export type PlaceDetail = {
   /** Description/Actions — false only when this place has opted out of bookings. */
   reservations_enabled?: boolean;
-  /** Mesita Prepay — true only where admin turned Prepayments on (MESITA-3098). */
+  /** Mesita Prepay — true only where admin turned Prepayments on (MESITA-3098).
+   *  Nothing reads it since MESITA-3299; it leaves with the free-amount prepay. */
   prepay_enabled?: boolean;
+  /** The money products the place has on (MESITA-3299): the owner's switches
+   *  (Business › Payments) and whether its Stripe account can charge. The
+   *  Vouchers tab reads it. Absent on a Google-only card and on older EFs. */
+  money?: PlaceMoney;
   // Stable identifier — matches public.places.id once the real fetch lands.
   // Used as the key in the localStorage saved-places store, share URLs, and
   // any future per-place persistence.

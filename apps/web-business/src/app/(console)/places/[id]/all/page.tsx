@@ -22,7 +22,7 @@ export const metadata = { title: "All" };
 // Every product, current and future (MESITA-3238, Pato: "call that page (All)
 // ... mention current and future and divide"; a catalog since MESITA-3237, was
 // Soon, MESITA-3197). A current tile is a Capabilities row of the rail, same name
-// and icon, and opens its page; Views and Visits stay out as Operations (Pato,
+// and icon, and opens its page; Views stays out as Operations (Pato,
 // MESITA-3243). A future tile is copy only: no links, forms, dates or sign-up,
 // so it has no hover. One card of rows on a phone; tiles from `sm`, four across
 // only from `2xl`, where "Reservations Management" still fits one line.
@@ -38,10 +38,6 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   {
     tab: "premier",
     line: "Rank higher on Home and the Map, marked as an ad. See your level here and how it works.",
-  },
-  {
-    tab: "discounts",
-    line: "What your place gives guests off today's bill. Turn each one on or off, and set the Cap and your place code.",
   },
   {
     tab: "payments",

@@ -8,7 +8,7 @@
 // client-side later.
 
 import { googleTypeEmoji } from "./lib/google-type-emoji";
-import type { PlaceDetail } from "./place-detail";
+import { VOUCHER_KEYS, type PlaceDetail, type VoucherKey } from "./place-detail";
 import { detectMenuKind } from "./lib/menu-url";
 import { parseMenuNutrition } from "./lib/nutrition";
 import { resolvePlaceCategoryName } from "./lib/place-category";
@@ -48,6 +48,17 @@ function profileStats(raw: unknown): PlaceDetail["profile_stats"] {
   if (typeof viewed !== "number" || typeof saved !== "number") return undefined;
   if (!Number.isFinite(viewed) || !Number.isFinite(saved)) return undefined;
   return { viewed: Math.max(0, viewed), saved: Math.max(0, saved) };
+}
+
+// consumer-web-get-place's `money` (MESITA-3299): the owner's switches and the
+// account's state. Any missing flag reads as off; no object reads as absent.
+function placeMoney(raw: unknown): PlaceDetail["money"] {
+  if (!raw || typeof raw !== "object") return undefined;
+  const m = raw as Record<string, unknown>;
+  const v = (m.vouchers && typeof m.vouchers === "object" ? m.vouchers : {}) as Record<string, unknown>;
+  const vouchers = {} as Record<VoucherKey, boolean>;
+  for (const k of VOUCHER_KEYS) vouchers[k] = v[k] === true;
+  return { charges_enabled: m.charges_enabled === true, cashback: m.cashback === true, vouchers };
 }
 
 // Google's documented write-review link (MESITA-2916).
@@ -129,6 +140,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     is_enriched: row.is_enriched === true ||
       (typeof row.enriched_at === "string" && row.enriched_at.trim() !== ""),
     boost_tier: num(row.boost_tier) ?? 0,
+    money: placeMoney(row.money),
     request_count: num(row.request_count) ?? 0,
     request_threshold: num(row.request_threshold) ?? 5,
     requested: row.requested === true,

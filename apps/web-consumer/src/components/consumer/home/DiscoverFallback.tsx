@@ -3,11 +3,9 @@ import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
 } from "@/components/consumer/place-card";
-import { cn } from "@/lib/utils";
 import {
   TILE_ACTIONS,
   TILE_BAND,
-  TILE_FOOT,
   TILE_FRAME,
   TILE_PHOTO,
   TILE_TEXT,
@@ -48,7 +46,7 @@ function CatalogTileSkeleton() {
           </div>
         </div>
       </div>
-      <div className={cn(TILE_ACTIONS, TILE_FOOT)}>
+      <div className={TILE_ACTIONS}>
         <div className={CARD_ACTIONS_ROW}>
           <Skeleton className={CARD_BUTTON_BOX} />
           <Skeleton className={CARD_BUTTON_BOX} />

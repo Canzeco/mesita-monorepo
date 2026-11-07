@@ -1,9 +1,9 @@
 "use client";
 
-// The place code (MESITA-3226, Pato: "there they only set the fucking number").
-// Six digits typed at visit.mesita.ai to close a visit. Only a hash is kept, so it
-// is never shown again and a forgotten one is replaced. The server refuses anyone
-// who can't change rewards.
+// The place code (MESITA-3226, Pato: "there they only set the fucking number";
+// on Settings since MESITA-3299). Six digits staff type at visit.mesita.ai.
+// Only a hash is kept, so it is never shown again and a forgotten one is
+// replaced. The server refuses editors.
 
 import { useState } from "react";
 import { Card } from "@/components/shell/Page";
@@ -50,7 +50,7 @@ export function PlaceCode({ placeId, initialSet, canEdit }: { placeId: string; i
                 ? "Saved. It won't be shown again."
                 : isSet
                   ? "Set. It won't be shown again; type six new digits to replace it."
-                  : "Not set. Six digits your staff type at visit.mesita.ai to close a visit."}
+                  : "Not set. Six digits your staff type at visit.mesita.ai."}
             </p>
           </div>
           {canEdit ? (

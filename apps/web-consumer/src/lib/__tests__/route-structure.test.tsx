@@ -580,7 +580,6 @@ describe("T6 — Activity's sections are pages on Me", () => {
 
   it("routes each box to its page: notifications, reservations and favorites on Me", () => {
     expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.visits");
     // Each its own page again (MESITA-2565); they were Saved's two tabs
     // (MESITA-2521, MESITA-2561).
     expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
@@ -634,7 +633,6 @@ describe("T8 — Me's grid is eleven live cells", () => {
       "Notifications",
       "Reservations",
       "Favorites",
-      "Visits",
       "Connector",
       "Share",
       "Settings",
@@ -662,11 +660,11 @@ describe("T8 — Me's grid is eleven live cells", () => {
     expect(gridTitles()).not.toContain("Support");
   });
 
-  it("rows are pairs, Settings alone last; nothing spans", () => {
-    // Five pairs, then Settings alone, as it stood from MESITA-2562: Visits made
-    // the cells odd (MESITA-3264). Each row is one DestGrid (MeHubFrame), and
-    // DestGrid has no `cols`.
-    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2, 1]);
+  it("rows are pairs, Settings last; nothing spans", () => {
+    // Five pairs since Visits left (MESITA-3299; it had made the cells odd,
+    // MESITA-3264). Each row is one DestGrid (MeHubFrame), and DestGrid has
+    // no `cols`.
+    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2]);
     expect(HUB).toContain("<DestGrid key=");
     expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
     expect(HUB).not.toMatch(/<DestGrid cols=/);
@@ -843,18 +841,18 @@ describe("T7 — every former url still resolves after the move", () => {
 
 // ── T9 — Pay is one page ────────────────────────────────────────────────────
 //
-// Pay is a list plus the reward steps (MESITA-3254), and the Second Stage route
-// trees are deleted, not emptied. A change that grows Pay another child or brings
-// a tree back has to delete these lines to do it, which is the review moment.
-describe("T9 — Pay holds only the reward steps, and the Second Stage trees are gone", () => {
-  it("(shell)/pay is a page with only [id]/[step] under it", () => {
+// Pay is one page with nothing under it (the reward steps of MESITA-3254 left
+// with the discount product, MESITA-3299), and the Second Stage route trees are
+// deleted, not emptied. A change that grows Pay a child or brings a tree back
+// has to delete these lines to do it, which is the review moment.
+describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
+  it("(shell)/pay is a page with no subdirectory", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
     const children = readdirSync(pay).filter((e) =>
       statSync(join(pay, e)).isDirectory(),
     );
-    expect(children).toEqual(["[id]"]);
-    expect(readdirSync(join(pay, "[id]")).sort()).toEqual(["[step]", "layout.tsx"]);
+    expect(children).toEqual([]);
   });
 
   it("no Second Stage route tree exists", () => {

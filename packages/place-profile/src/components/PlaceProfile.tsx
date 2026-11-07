@@ -30,7 +30,6 @@ export function PlaceProfile({
   actions,
   creating,
   social,
-  rewards,
 }: {
   place: PlaceDetail;
   onBack?: () => void;
@@ -42,8 +41,6 @@ export function PlaceProfile({
   /** Social v1's line (MESITA-2442), under the chips like Instagram's
    *  "Followed by". */
   social?: React.ReactNode;
-  /** The Rewards tab's body (MESITA-3202). */
-  rewards?: React.ReactNode;
 }) {
   return (
     <div className="bg-background relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -63,7 +60,6 @@ export function PlaceProfile({
           actions={actions}
           creating={creating}
           social={social}
-          rewards={rewards}
         />
       </div>
     </div>

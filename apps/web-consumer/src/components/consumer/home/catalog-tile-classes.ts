@@ -28,13 +28,7 @@ export const TILE_BAND = "bg-paper overflow-hidden rounded-b-2xl";
  *  MESITA-2645: equal margins). */
 export const TILE_TEXT = "relative flex flex-col gap-0.5 px-3 pt-3 pb-14";
 
-/** The text's foot on a tile with a discount: pb-24 adds the 32px coupon and its
- *  8px gap (MESITA-3241). */
-export const TILE_TEXT_WITH_COUPON = "pb-24";
-
 /** Save · Share, 12px from the tile's sides AND its foot (MESITA-2668: "its
- *  not the same vertical margin as horizontal margin"). */
+ *  not the same vertical margin as horizontal margin"). The coupon that sat
+ *  under them left with the discount product (MESITA-3299). */
 export const TILE_ACTIONS = "absolute inset-x-3 bottom-3";
-
-/** Save · Share, then the coupon under them, 8px apart (MESITA-3233). */
-export const TILE_FOOT = "flex flex-col gap-2";

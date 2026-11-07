@@ -7,7 +7,6 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { PlaceActions, PlaceMenuItem } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
-import { PrepaySheet } from "@/components/consumer/wallet/PrepaySheet";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -17,7 +16,6 @@ import {
 import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
-import { useRewardLabel } from "@/lib/use-reward-label";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
@@ -40,11 +38,6 @@ const ReportSheet = dynamic(() =>
 );
 const MenuViewer = dynamic(() =>
   import("@/components/consumer/MenuViewer").then((m) => m.MenuViewer),
-);
-const RewardsPane = dynamic(() =>
-  import("@/components/consumer/place-detail/RewardsPane").then(
-    (m) => m.RewardsPane,
-  ),
 );
 const BoostSheet = dynamic(() =>
   import("@/components/consumer/place-detail/BoostSheet").then(
@@ -70,14 +63,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
-  /** The Rewards tab's body (MESITA-3202). */
-  rewards: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
-  const [prepayOpen, setPrepayOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
@@ -87,7 +77,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [menu, setMenu] = useState<PlaceMenuItem | null>(null);
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
-  const coupon = useRewardLabel(place.id);
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -115,10 +104,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
     onReserve: () => setReserveOpen(true),
-    // Mesita Prepay (MESITA-3098): only a Mesita place can take money.
-    onPrepay: isMesitaPlaceId(place.id) ? () => setPrepayOpen(true) : undefined,
+    // No Prepay sheet since MESITA-3299: the free-amount prepay left with the
+    // discount product; vouchers and paying arrive with MESITA-3272.
     onBoost,
-    rewardLabel: coupon,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
   };
@@ -134,11 +122,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={reserveOpen}
         onClose={() => setReserveOpen(false)}
-      />
-      <PrepaySheet
-        place={place}
-        open={prepayOpen}
-        onClose={() => setPrepayOpen(false)}
       />
       <BoostSheet
         place={place}
@@ -181,8 +164,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     actions,
     sheets,
     social: activity.social,
-    // A Google-only card is not a place row yet: it has no rewards to read.
-    rewards: isMesitaPlaceId(place.id) ? <RewardsPane key={place.id} place={place} /> : undefined,
   };
 }
 

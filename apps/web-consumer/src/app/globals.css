@@ -204,8 +204,6 @@
   --fact-price: oklch(0.527 0.154 150.069);
   /* The discount (MESITA-3249, Pato: "make it more suave, more light, less
      dark"): pink-700 words, ~5:1, on a pink-100 fill. */
-  --fact-reward: oklch(0.525 0.223 3.958);
-  --fact-reward-bg: oklch(0.948 0.028 342.258);
 }
 
 /* No `.dark` overrides: consumer is locked to the light theme to match
@@ -259,8 +257,6 @@
   --color-fact-distance: var(--fact-distance);
   --color-fact-star: var(--fact-star);
   --color-fact-price: var(--fact-price);
-  --color-fact-reward: var(--fact-reward);
-  --color-fact-reward-bg: var(--fact-reward-bg);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

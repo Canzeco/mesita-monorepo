@@ -8,7 +8,8 @@
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, role: "owner" | "superadmin", place, profile,
-//             manager: { method, expires_at, role } | null }
+//             manager: { method, expires_at, role } | null,
+//             code_set: boolean }   whether the place code is set (MESITA-3299), never the code
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -34,6 +35,9 @@ serveJson("business-web-get-place", async (req) => {
   const res = await buildPlaceOverview(admin, placeId, { internal: access.role === "superadmin" });
   if (!res.ok) return json({ ok: false, error: res.error }, res.status);
 
+  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
+  if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
+
   return json({
     ok: true,
     role: access.role,
@@ -42,5 +46,6 @@ serveJson("business-web-get-place", async (req) => {
     place: { ...res.overview.place, google_reviews: anonymousReviews(res.overview.place.google_reviews) },
     profile: res.overview.profile,
     manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at, role: access.manager.role } : null,
+    code_set: !!code,
   });
 });

@@ -7,12 +7,11 @@
 //   <place> ⌄ — Places: the current place by photo and name; opens /places
 //               to switch, claim or (staff) open any place
 //   ┌ Operations (MESITA-3202) ────────────────────┐
-//   │ Views · Visits                               │  online and walk-ins
+//   │ Views                                        │  Visits left, MESITA-3299
 //   └──────────────────────────────────────────────┘
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Reviews · Premier · Discounts ·    │  All: MESITA-3238, every
-//   │ Payments · All                               │  product, current and future
-//   └──────────────────────────────────────────────┘
+//   │ Profile · Reviews · Premier · Payments · All │  All: MESITA-3238, every
+//   └──────────────────────────────────────────────┘  product, current and future
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -87,12 +86,11 @@ function menu(
     account,
     switcher,
     place: {
-      operations: [tab("views"), tab("visits")],
+      operations: [tab("views")],
       products: [
         tab("profile"),
         tab("reviews"),
         tab("premier"),
-        tab("discounts"),
         tab("payments"),
         // Last: every product, current and future (MESITA-3238).
         tab("all"),

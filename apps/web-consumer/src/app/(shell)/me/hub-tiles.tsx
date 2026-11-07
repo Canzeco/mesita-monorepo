@@ -6,7 +6,6 @@ import {
   Crown,
   Heart,
   Plug,
-  QrCode,
   Settings as SettingsIcon,
   Share2,
   UserRound,
@@ -114,7 +113,9 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
   ],
   // Favorites and Reservations are each their own page (MESITA-2565); they
   // were the two tabs of Saved (MESITA-2561). Connector is Mesita in an AI
-  // assistant; it is not built, so its page says Soon (MESITA-2562).
+  // assistant; it is not built, so its page says Soon (MESITA-2562). Visits
+  // sat beside Favorites (MESITA-3264) until the discount product left
+  // (MESITA-3299), so Connector is back in that cell.
   [
     {
       Icon: Heart,
@@ -123,30 +124,21 @@ export const ME_HUB_ROWS: readonly (readonly HubTile[])[] = [
       href: CONSUMER_ROUTES.mePages.favorites,
     },
     {
-      Icon: QrCode,
-      title: "Visits",
-      summary: "Places you visited",
-      href: CONSUMER_ROUTES.mePages.visits,
-    },
-  ],
-  // Share wears the three joined dots it wore on the bar (MESITA-2568,
-  // MESITA-2887). Visits took Connector's cell (MESITA-3264).
-  [
-    {
       Icon: Plug,
       title: "Connector",
       summary: "ChatGPT or Claude",
       href: CONSUMER_ROUTES.mePages.connector,
     },
+  ],
+  // Share wears the three joined dots it wore on the bar (MESITA-2568,
+  // MESITA-2887). Settings closes the page (Pato, MESITA-2562).
+  [
     {
       Icon: Share2,
       title: "Share",
       summary: "Invite your friends",
       href: CONSUMER_ROUTES.share,
     },
-  ],
-  // Settings closes the page (Pato, MESITA-2562), alone since the cells went odd.
-  [
     {
       Icon: SettingsIcon,
       title: "Settings",

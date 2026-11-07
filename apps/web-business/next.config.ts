@@ -36,8 +36,11 @@ const REDIRECTS: Array<{ source: string; destination: string }> = [
   { source: "/places/:id/future", destination: "/places/:id/all" },
   { source: "/places/:id/products", destination: "/places/:id/all" },
   { source: "/places/:id/soon", destination: "/places/:id/all" },
-  // Rewards is Discounts (MESITA-3296).
-  { source: "/places/:id/rewards", destination: "/places/:id/discounts" },
+  // Rewards, Discounts and Visits left with the discount product
+  // (MESITA-3299): money is Payments, walk-ins have no log.
+  { source: "/places/:id/rewards", destination: "/places/:id/payments" },
+  { source: "/places/:id/discounts", destination: "/places/:id/payments" },
+  { source: "/places/:id/visits", destination: "/places/:id/views" },
   { source: "/places/:id/preview", destination: "/places/:id/profile" },
   // Admin, never "internal", and only a place's (Pato, MESITA-3143: "its
   // only admin, and only at the place level"): the cross-place Claim

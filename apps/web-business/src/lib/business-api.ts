@@ -413,29 +413,6 @@ export async function decideVerification(
   return { ok: true, data: null };
 }
 
-// ── Rewards and Visits (MESITA-3202) ─────────────
-
-export type RewardKind = "welcome_visit" | "returning_visit" | "instagram_story" | "vip_class";
-export type PaymentMethod = "cash" | "card" | "transfer" | "other";
-
-export type PlaceRewards = {
-  rewards: { kind: RewardKind; percent: number; enabled: boolean }[];
-  cap: { cents: number; enabled: boolean };
-};
-
-export async function getPlaceRewards(placeId: string): Promise<Result<PlaceRewards & { can_edit: boolean; code_set: boolean }>> {
-  const r = await efInvoke<PlaceRewards & { can_edit: boolean; code_set: boolean }>("business-web-get-place-rewards", { place_id: placeId });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap, can_edit: r.data.can_edit, code_set: r.data.code_set === true } };
-}
-
-/** One switch: a reward or the Cap. Returns the whole page as it now stands. */
-export async function setPlaceReward(placeId: string, key: RewardKind | "cap", enabled: boolean): Promise<Result<PlaceRewards>> {
-  const r = await efInvoke<PlaceRewards>("business-web-set-place-reward", { place_id: placeId, key, enabled });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: { rewards: r.data.rewards, cap: r.data.cap } };
-}
-
 // ── Payments (MESITA-3296) ──────────────────────────────────────────────
 
 export type PaymentKey = "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
@@ -479,41 +456,12 @@ export async function openPaymentDashboard(placeId: string): Promise<Result<{ ur
   return { ok: true, data: { url: r.data.url } };
 }
 
-/** The place code (MESITA-3226): six digits, stored only as a hash. */
+/** The place code (MESITA-3226, on Settings since MESITA-3299): six digits,
+ *  stored only as a hash, typed by staff at visit.mesita.ai. */
 export async function setPlaceCode(placeId: string, code: string): Promise<Result<true>> {
   const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });
   if (!r.ok) return fail(r);
   return { ok: true, data: true };
-}
-
-export type PlaceVisit = {
-  id: string;
-  guest_name: string | null;
-  member_number: string | null;
-  bill_cents: number;
-  currency: string;
-  /** Null on a visit closed at visit.mesita.ai, which does not ask (MESITA-3240). */
-  payment_method: PaymentMethod | null;
-  reward_kinds: RewardKind[];
-  reward_percent: number | null;
-  discount_cents: number;
-  total_cents: number;
-  created_at: string;
-  voided_at: string | null;
-};
-
-export type PlaceVisits = { visits: PlaceVisit[]; next: string | null; can_void: boolean; timezone: string | null };
-
-export async function listPlaceVisits(placeId: string, before?: string): Promise<Result<PlaceVisits>> {
-  const r = await efInvoke<PlaceVisits>("business-web-list-place-visits", { place_id: placeId, ...(before ? { before } : {}) });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: { visits: r.data.visits ?? [], next: r.data.next ?? null, can_void: r.data.can_void, timezone: r.data.timezone ?? null } };
-}
-
-export async function voidPlaceVisit(placeId: string, visitId: string): Promise<Result<{ voided_at: string | null }>> {
-  const r = await efInvoke<{ voided_at: string | null }>("business-web-void-place-visit", { place_id: placeId, visit_id: visitId });
-  if (!r.ok) return fail(r);
-  return { ok: true, data: { voided_at: r.data.voided_at } };
 }
 
 // ── Views (MESITA-3206) ──────────────────────────

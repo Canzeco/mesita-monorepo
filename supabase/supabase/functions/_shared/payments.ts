@@ -51,6 +51,25 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
   return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
 }
 
+/** What a guest sees on the place screen's Vouchers tab (MESITA-3299): the
+ *  owner's switches and whether the account can charge. Nothing else of the
+ *  account reaches guests. A read failure reads as everything off. */
+export async function readPlaceMoney(
+  admin: SupabaseClient,
+  placeId: string,
+): Promise<{ charges_enabled: boolean; cashback: boolean; vouchers: Record<Exclude<PaymentKey, "cashback">, boolean> }> {
+  const [settingsRes, accountRes] = await Promise.all([
+    admin.from("place_payment_settings").select(PAYMENT_KEYS.join(", ")).eq("place_id", placeId).maybeSingle(),
+    admin.from("place_payment_accounts").select("charges_enabled").eq("place_id", placeId).maybeSingle(),
+  ]);
+  if (settingsRes.error) console.error(`[payments] settings read: ${settingsRes.error.message}`);
+  if (accountRes.error) console.error(`[payments] account read: ${accountRes.error.message}`);
+  const s = settingsFromRow(settingsRes.error ? null : (settingsRes.data as Partial<Record<PaymentKey, unknown>> | null));
+  const account = accountRes.error ? null : (accountRes.data as { charges_enabled?: unknown } | null);
+  const { cashback, ...vouchers } = s;
+  return { charges_enabled: account?.charges_enabled === true, cashback, vouchers };
+}
+
 // ── The account ────────────────────────────────────────────────────────────
 
 /** The controller Stripe keeps on the account for good. Frozen by payments.test.ts. */

@@ -1,8 +1,8 @@
 // Supabase Edge Function — business-web-set-place-code
 //
-// MESITA-3226: Business › Rewards, the place code: six digits that close a visit
-// at visit.mesita.ai. Only the hash is stored, so it is never shown again
-// and a forgotten one is replaced. The owner and Mesita staff only.
+// MESITA-3226 (on Settings since MESITA-3299): the place code, six digits
+// staff type at visit.mesita.ai. Only the hash is stored, so it is never shown
+// again and a forgotten one is replaced. The owner and Mesita staff only.
 //
 // Body: { place_id: uuid, code: "123456" }
 // Response: { ok: true, code_set: true }
@@ -12,7 +12,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { hashPlaceCode, readPlaceCode } from "../_shared/place-visits.ts";
+import { hashPlaceCode, readPlaceCode } from "../_shared/place-code.ts";
 
 serveJson("business-web-set-place-code", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -30,13 +30,12 @@ serveJson("business-web-set-place-code", async (req) => {
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();
 
-  // Only the code is named, so the reward switches keep what they were.
-  const { error } = await admin.from("place_rewards").upsert({
+  const { error } = await admin.from("place_codes").upsert({
     place_id: placeId,
-    place_code_hash: await hashPlaceCode(placeId, code),
+    code_hash: await hashPlaceCode(placeId, code),
     updated_at: new Date().toISOString(),
     updated_by: user.id,
   });
-  if (error) return json({ ok: false, error: `place_rewards: ${error.message}` }, 500);
+  if (error) return json({ ok: false, error: `place_codes: ${error.message}` }, 500);
   return json({ ok: true, code_set: true });
 });

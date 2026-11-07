@@ -26,6 +26,7 @@ import {
   placeRequestState,
 } from "../_shared/place-requests.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { readPlaceMoney } from "../_shared/payments.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -87,7 +88,7 @@ serveJson("consumer-web-get-place", async (req) => {
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
 
-  const [tags, profileStats, requested] = await Promise.all([
+  const [tags, profileStats, requested, money] = await Promise.all([
     // The place's tag slugs (places.tags) as ordered, labelled catalog
     // entries, so the detail renders chips without a second round-trip or a
     // client-side tag dictionary. Unknown slugs are dropped. Clients display
@@ -105,6 +106,9 @@ serveJson("consumer-web-get-place", async (req) => {
           .maybeSingle()
           .then((mine) => !mine.error && mine.data != null)
       : Promise.resolve(false),
+    // The Vouchers tab (MESITA-3299): the owner's switches and whether the
+    // account can charge; never the account itself.
+    readPlaceMoney(admin, placeId),
   ]);
   const request = placeRequestState({
     requestCount: Number(row.request_count) || 0,
@@ -120,6 +124,7 @@ serveJson("consumer-web-get-place", async (req) => {
     profile_stats: profileStats,
     // Overview's Mesita Families box (MESITA-2924): the keys, named.
     families: familyChips(row.family_keys),
+    money,
   };
 
   return json({ ok: true, place, tags });

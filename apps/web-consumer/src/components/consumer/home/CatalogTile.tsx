@@ -5,7 +5,6 @@ import Link from "next/link";
 import { PremierBadge, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
-import { useRewardLabel } from "@/lib/use-reward-label";
 import { sharePlace } from "@/lib/share-place";
 import {
   cardPhoto,
@@ -15,7 +14,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   CardActions,
-  CouponRow,
   HoursRow,
   KindRow,
   cardFacts,
@@ -23,11 +21,9 @@ import {
 import {
   TILE_ACTIONS,
   TILE_BAND,
-  TILE_FOOT,
   TILE_FRAME,
   TILE_PHOTO,
   TILE_TEXT,
-  TILE_TEXT_WITH_COUPON,
 } from "./catalog-tile-classes";
 
 /**
@@ -120,7 +116,6 @@ export function CatalogTile({
   // $$ · category · stars; Open or Closed · distance. No zone on the tile. Each
   // cell hides when the place has none.
   const facts = cardFacts(place);
-  const coupon = useRewardLabel(place.id);
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
@@ -169,7 +164,8 @@ export function CatalogTile({
   // THE PHOTO ABOUT 60%, THE TEXT THE REST (Pato, MESITA-3233: "return to 60%
   // image and 40% text or whatever"), every tile, a Google-only card too
   // (MESITA-2663): name; $$ · category · stars; Open or Closed · distance; then
-  // Save and Share side by side (32px, 44px hit area), then the coupon. 20px
+  // Save and Share side by side (32px, 44px hit area). The coupon under them
+  // left with the discount product (MESITA-3299). 20px
   // lines and a 2px gap. The
   // photo is fully
   // shown and centred, nothing over it (MESITA-2369); the band under it is
@@ -203,13 +199,7 @@ export function CatalogTile({
               on a 20px line, full ink (place-card.tsx). TILE_TEXT leaves
               room for Save and Share. The mark follows the
               name. */}
-          <div
-            className={cn(
-              "text-foreground",
-              TILE_TEXT,
-              coupon && TILE_TEXT_WITH_COUPON,
-            )}
-          >
+          <div className={cn("text-foreground", TILE_TEXT)}>
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
               <PremierBadge tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} />
@@ -223,9 +213,9 @@ export function CatalogTile({
           Share (Pato, MESITA-2843, reversing MESITA-2663): the tap is the
           card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
           foot (MESITA-2668); it was 8px at the foot. */}
-      {/* The foot lets taps through, so the coupon opens the place like the rest
-          of the card (Pato, MESITA-3246); only the buttons catch their own. */}
-      <div className={cn(TILE_ACTIONS, TILE_FOOT, "pointer-events-none")}>
+      {/* The foot lets taps through to the card's own link; only the buttons
+          catch their own (MESITA-3246). */}
+      <div className={cn(TILE_ACTIONS, "pointer-events-none")}>
         <CardActions
           className="pointer-events-auto"
           name={place.name}
@@ -241,7 +231,6 @@ export function CatalogTile({
               : undefined
           }
         />
-        <CouponRow label={coupon} />
       </div>
     </li>
   );

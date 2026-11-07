@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getManagePlace } from "@/lib/place-view";
 import { Card } from "@/components/shell/Page";
 import { LeavePlace } from "./LeavePlace";
+import { PlaceCode } from "./PlaceCode";
 import { TeamCard } from "@/components/team/TeamCard";
 import { ActionStatesCard } from "@/components/place-manage/sections/ActionStatesCard";
 
@@ -16,7 +17,8 @@ const METHOD: Record<string, string> = {
   review: "Mesita reviewed your request",
 };
 
-// The place's settings only: Place (with Leave), Actions (staff, MESITA-3236)
+// The place's settings only: Place (with Leave), the Place code (MESITA-3299,
+// from the Discounts page that left), Actions (staff, MESITA-3236)
 // and Team (MESITA-3171, Pato: "use standard names for the boxes. short"), as
 // cards of rows like Billing and Premier (MESITA-3196). The header already says the place's name and "Mesita
 // staff". Your email and sign-out live in Account alone (MESITA-3154).
@@ -50,6 +52,7 @@ export default async function PlaceSettingsPage({ params }: { params: Promise<{ 
           ) : null}
         </ul>
       </Card>
+      <PlaceCode placeId={id} initialSet={manage.codeSet} canEdit={manage.role !== "editor"} />
       {manage.role === "superadmin" ? <ActionStatesCard /> : null}
       <TeamCard placeId={id} />
     </div>
