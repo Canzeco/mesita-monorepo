@@ -105,7 +105,7 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-orange-100 text-orange-700" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", when: "After an Instagram story here.", limit: "One per day.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
   { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "+30%", mark: Crown, tone: "bg-yellow-100 text-yellow-700" },
 ];
@@ -210,10 +210,15 @@ function VoucherCard({
         <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <span className={GIFT_BADGE}>{product.bonus}</span>
       </div>
-      <p className="text-foreground relative mt-3 text-2xl leading-none font-semibold tabular-nums" data-voucher-credit>
-        {creditValue(product, line, currency)}
+      {/* THE EXCHANGE, TOP TO BOTTOM (Pato, MESITA-3346: "the bonus must be
+          clearer ... like buy $100 get $130"): what you pay small, what you
+          get big; "MX$130 / credit for MX$100" until then. */}
+      <p className="text-foreground/80 relative mt-3 text-sm leading-none tabular-nums">
+        Buy {priceValue(product, line, currency)}
       </p>
-      <p className="text-foreground/80 relative mt-1 text-sm">credit for {priceValue(product, line, currency)}</p>
+      <p className="text-foreground relative mt-1.5 text-2xl leading-none font-semibold tabular-nums" data-voucher-credit>
+        Get {creditValue(product, line, currency)}
+      </p>
       <p className="text-foreground/70 relative mt-1 text-xs">
         {product.when ? `${product.when} ` : null}
         {product.limit}
