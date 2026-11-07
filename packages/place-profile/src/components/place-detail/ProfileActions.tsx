@@ -43,9 +43,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // host's sheet, never Checkout, on every place: a Google-only one gets that
 // sheet's not-open-yet screen, so the row never changes width.
 //
-// ROW 2 is three GREEN tiles (Pato, MESITA-3348: "dark is not the best
-// color at all, try some green or blue": Mesita's emerald, the Mesita Pay
-// mark's green, white words; the ink from MESITA-3315 until then), the grey
+// ROW 2 is Reserve in the INK and the money tiles in LINK GREEN (Pato,
+// MESITA-3353: "reserve with dark button"; "use the green color of Link to
+// psychologically give trust: green background, black text"): green-400
+// under near-black words, Stripe Link's pay button; all three emerald for
+// an hour, MESITA-3348, and the ink from MESITA-3315 before that), the grey
 // tiles' height (56px), the
 // glyph at the left of a 12px label (MESITA-3335; it sat over the label
 // until then), 8px apart (Pato, MESITA-2689: "same height and
@@ -110,22 +112,22 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
 export const PROFILE_MESITA_TILE_BOX_CLASS =
   "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
-// Reserve is the grey tile's own box in the green (MESITA-3348): one column,
+// Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
 // the glyph over a 12px label.
 const inkReserve = cn(
   PROFILE_TILE_BOX_CLASS,
-  "bg-emerald-600 text-white text-xs font-semibold transition hover:bg-emerald-700 active:scale-[0.99]",
+  "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
 );
-// A blocked Reserve: still the green, but `disabled`: no hover, no press,
+// A blocked Reserve: still the ink, but `disabled`: no hover, no press,
 // the not-allowed cursor (MESITA-3081).
 const blockedInkReserve = cn(
   PROFILE_TILE_BOX_CLASS,
-  "bg-emerald-600 text-white cursor-not-allowed text-xs font-semibold",
+  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
 );
-// A blocked wide Mesita tile (Prepay, Pay): the green, `disabled`, 14px.
+// A blocked wide Mesita tile (Prepay, Pay): Link green, `disabled`, 14px.
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
-  "bg-emerald-600 text-white cursor-not-allowed text-sm font-semibold",
+  "bg-green-400 text-neutral-950 cursor-not-allowed text-sm font-semibold",
 );
 
 const tileBtn = cn(
@@ -345,7 +347,7 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="flex min-w-0 flex-col items-start gap-1 text-left">
         <span className="max-w-full truncate leading-none">{label}</span>
-        <span className="max-w-full truncate text-xs leading-none font-medium text-white/85">{amount}</span>
+        <span className="max-w-full truncate text-xs leading-none font-medium text-neutral-950/70">{amount}</span>
       </span>
     </button>
   );
