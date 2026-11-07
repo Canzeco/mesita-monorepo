@@ -23,9 +23,11 @@ import { Box } from "./box";
 // everywhere). A guest sees them as one card of six rows, Standard first:
 // a row per voucher, its mark on its colour, the name, the bonus, the price
 // and the credit it buys, in one objective line (Pato: "be super objective").
-// CASHBACK LEADS (Pato, MESITA-3322: "write cashback at the top, not the
-// bottom, and clearer"): the standard 5%, one card drawn the same way,
-// above the six, its one line the plain fact. Nothing scrolls sideways.
+// TWO CARDS, DEALS (Pato, MESITA-3322: "call the section up Prepayments
+// Deals: Bonus 10% or whatever. Payments Deals: Cashback"): "Prepayment
+// deals" is the six rows, "Payment deals" is the standard 5% cashback, one
+// row drawn the same way, its one line the plain fact (Pato, a minute
+// before: "write cashback ... clearer"). Nothing scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
@@ -224,7 +226,14 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Box title="Cashback">
+      <Box title="Prepayment deals">
+        <ul className="divide-border divide-y">
+          {[...STANDARD, ...SPECIAL].map((p) => (
+            <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
+          ))}
+        </ul>
+      </Box>
+      <Box title="Payment deals">
         <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
           <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>
             <Coins className="h-6 w-6" strokeWidth={1.75} aria-hidden />
@@ -235,13 +244,6 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
             <p className={cn(PLACE_META_CLASS, "mt-1 font-medium", state.cashback && "text-foreground")}>{cashbackTag}</p>
           </div>
         </div>
-      </Box>
-      <Box title="Vouchers">
-        <ul className="divide-border divide-y">
-          {[...STANDARD, ...SPECIAL].map((p) => (
-            <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
-          ))}
-        </ul>
       </Box>
     </div>
   );
