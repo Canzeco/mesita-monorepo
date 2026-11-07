@@ -194,7 +194,7 @@ const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl bo
 // The bonus badge is BIG (Pato, MESITA-3363: "mention the percentage
 // fucking bigger"): 18px bold on the card's white chip; 12px until then.
 /** A Promos section title: 18px, two steps over the boxes' 16px. */
-const PROMOS_TITLE_CLASS = "text-foreground text-lg leading-tight font-semibold tracking-tight";
+const PROMOS_TITLE_CLASS = "text-foreground font-sans text-lg leading-tight font-semibold tracking-tight";
 const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
@@ -368,6 +368,9 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </div>
         </div>
       </section>
+      {/* A HAIRLINE BETWEEN THE TWO (Pato, MESITA-3369: "add some line or
+          something dividing payments deals from prepayments deals"). */}
+      <hr className="border-border my-1" aria-hidden />
       <section className="flex flex-col gap-3" data-promos="prepayment">
         <div>
           <h3 className={PROMOS_TITLE_CLASS}>Pre-Payment Promos</h3>
