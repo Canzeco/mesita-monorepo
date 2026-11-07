@@ -33,7 +33,7 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Reviews", "Products", "Vouchers"]) {
+    for (const label of ["Overview", "Reviews", "Menu", "Vouchers"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
@@ -159,13 +159,13 @@ describe("member preview edges", () => {
     expect(shareAt).toBeGreaterThan(contactAt);
     expect(reserveAt).toBeGreaterThan(shareAt);
     expect(html).not.toContain("Save, Soon");
-    expect(html).toContain("Products");
-    expect(html).not.toContain(">Menu<");
+    expect(html).toContain("Menu");
+    expect(html).not.toContain(">Products<");
     expect(html).toContain("Vouchers");
     // No Soon pill in the strip (MESITA-2631); the screen says it.
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
-    expect(soon).toContain("Products are coming soon");
+    expect(soon).toContain("The menu is coming soon");
   });
 
   it("renders no outbound href when links and callbacks are absent", () => {

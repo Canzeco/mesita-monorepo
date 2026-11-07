@@ -10,11 +10,11 @@ describe("section strip", () => {
     expect(placeTabs().map((t) => t.label)).toEqual([
       "Overview",
       "Reviews",
-      "Products",
+      "Menu",
       "Vouchers",
     ]);
     expect(placeTabs().filter((t) => t.soon).map((t) => t.label)).toEqual([
-      "Products",
+      "Menu",
     ]);
   });
 
@@ -24,8 +24,8 @@ describe("section strip", () => {
     );
     expect(html).toContain("Overview");
     expect(html).toContain("Reviews");
-    expect(html).toContain("Products");
-    expect(html).not.toContain(">Menu<");
+    expect(html).toContain("Menu");
+    expect(html).not.toContain(">Products<");
     expect(html).toContain("Vouchers");
     expect(html).not.toContain("Soon");
     expect(html).not.toContain("Enrich");
