@@ -58,7 +58,8 @@ describe("Vouchers tab", () => {
     expect(pesos(22000, "mxn")).toBe("MX$220");
     expect(pesos(120000, "mxn")).toBe("MX$1,200");
     expect(pesos(1050, "mxn")).toBe("MX$10.50");
-    expect(render(OFFER)).toContain("credit for MX$1,000");
+    expect(render(OFFER)).toContain("Buy MX$1,000");
+    expect(render(OFFER)).toContain("Get MX$1,200");
   });
 });
 

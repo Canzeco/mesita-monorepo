@@ -210,10 +210,15 @@ function VoucherCard({
         <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <span className={GIFT_BADGE}>{product.bonus}</span>
       </div>
-      <p className="text-foreground relative mt-3 text-2xl leading-none font-semibold tabular-nums" data-voucher-credit>
-        {creditValue(product, line, currency)}
+      {/* THE EXCHANGE, TOP TO BOTTOM (Pato, MESITA-3346: "the bonus must be
+          clearer ... like buy $100 get $130"): what you pay small, what you
+          get big; "MX$130 / credit for MX$100" until then. */}
+      <p className="text-foreground/80 relative mt-3 text-sm leading-none tabular-nums">
+        Buy {priceValue(product, line, currency)}
       </p>
-      <p className="text-foreground/80 relative mt-1 text-sm">credit for {priceValue(product, line, currency)}</p>
+      <p className="text-foreground relative mt-1.5 text-2xl leading-none font-semibold tabular-nums" data-voucher-credit>
+        Get {creditValue(product, line, currency)}
+      </p>
       <p className="text-foreground/70 relative mt-1 text-xs">
         {product.when ? `${product.when} ` : null}
         {product.limit}
