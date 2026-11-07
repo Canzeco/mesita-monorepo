@@ -1,7 +1,7 @@
 "use client";
 
-import { type ComponentType, type ReactNode, useEffect } from "react";
-import { Crown, Hand, QrCode, Wallet } from "lucide-react";
+import { type ComponentType, useEffect, useState } from "react";
+import { QrCode, Wallet } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -72,23 +72,20 @@ import { Box } from "./box";
 // voucher is a product with its own face, as a brand's logo is, and the same
 // face the owner sees on Payments.
 
-/** A card's mark: a lucide glyph, or the Instagram one drawn here (lucide
- *  carries no brand glyphs; the same paths as the Business views log). */
-type Mark = ComponentType<{ className?: string; strokeWidth?: number }>;
-
-function InstagramMark({ className, strokeWidth = 2 }: { className?: string; strokeWidth?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect width="20" height="20" x="2" y="2" rx="5" />
-      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-      <path d="M17.5 6.5h.01" />
-    </svg>
-  );
-}
+//
+// A LIST LIKE INKIND'S (Pato, MESITA-3397, with inKind's "Load your wallet"
+// screen: "more like this"; MESITA-3397 before it: "make the text clearer,
+// Pay X, Get Y. easy peasy."): one card of rows split by hairlines, each row
+// a radio, the deal in one line, "Pay MX$100, Get MX$130", the name and the
+// limit small under it, and the bonus as a green pill on the right. ONE Buy
+// under the card buys the chosen row; the first row for sale starts chosen.
+// The coloured product faces of MESITA-3347 went: the screen is the list.
+// The cashback is the same card with one row and its Pay under it (Pato:
+// "say go or pay ... maybe change button from side").
 
 type Product = {
   key: MoneyVoucherKey;
-  /** The product's name on the row: the amount, or the special's name. */
+  /** The product's name, small under the deal. */
   name: string;
   /** What the guest gets, in one line (the copy when the read has no catalog). */
   line: string;
@@ -97,34 +94,22 @@ type Product = {
   /** How many a guest can have (Pato, MESITA-3328: "mention the inventory"). */
   limit: string;
   bonus: string;
-  mark: Mark;
-  /** The mark's tile and the mark on it. */
-  tone: string;
 };
-
-// FIVE HUES, ONE PER KIND (Pato, MESITA-3347: "think colour psychology ...
-// five different colours"): Welcome sky (trust, a first hello; MESITA-3346),
-// Story pink (Instagram), VIP violet (exclusivity; yellow read as a warning
-// tint beside amber), the standard three emerald (money, credit), Cashback
-// amber (coins coming back). Business › Payments' rows wear the same.
-const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
 
 // THE STANDARD THREE ARE NAMED, NOT PRICED (Pato, MESITA-3362: "the name
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
-// Large Standard"): the exchange line carries the amounts.
+// Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% Bonus", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% Bonus", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% Bonus", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% Bonus" },
+  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% Bonus" },
+  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% Bonus" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% Bonus", mark: Hand, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% Bonus", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% Bonus", mark: Crown, tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% Bonus" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% Bonus" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% Bonus" },
 ];
-
-const CASHBACK_TONE = "bg-amber-100 text-amber-700";
 
 /** "MX$1,200" from cents. Formatting only, never arithmetic. */
 export function pesos(cents: number, currency: string): string {
@@ -143,35 +128,13 @@ export function pesos(cents: number, currency: string): string {
   }
 }
 
-/** The deal in one line, "Pay X, get Y.", from the server's catalog, else
- *  the copy (Pato, MESITA-3342: "clearer text"; "Get Y of credit" until
- *  then, which hid what a guest pays). */
-function creditLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
-  if (!line) return product.line;
-  return `Pay ${pesos(line.price_cents, currency)}, get ${pesos(line.credit_cents, currency)}.`;
-}
-/** What you pay, on its own line in the grid: "Pay MX$100"; Story adds the
- *  post (Pato, MESITA-3364: "Pay X & post story, get Y"). */
-function forLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
-  const pay = priceValue(product, line, currency);
-  return product.key === "voucher_story" ? `for ${pay} & a story` : `for ${pay}`;
-}
-/** The exchange in words: "Pay MX$100, get MX$130"; Story adds the post
- *  (Pato, MESITA-3364: "Pay X & post story, get Y"). The aria label. */
-function exchangeLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
-  const pay = priceValue(product, line, currency);
-  const get = creditValue(product, line, currency);
-  return product.key === "voucher_story"
-    ? `Pay ${pay} & post a story, get ${get}`
-    : `Pay ${pay}, get ${get}`;
-}
-/** The credit alone, big on the card: the server's, else from the copy. */
+/** The credit: the server's, else from the copy. */
 function creditValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.credit_cents, currency);
   const m = /get (MX\$[\d,]+)/.exec(product.line);
   return m ? m[1] : product.name;
 }
-/** What a guest pays, "for MX$100": the server's, else from the copy. */
+/** What a guest pays: the server's, else from the copy. */
 function priceValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.price_cents, currency);
   const m = /Pay (MX\$[\d,]+)/.exec(product.line);
@@ -181,144 +144,56 @@ function priceValue(product: Product, line: VoucherCatalogLine | undefined, curr
 /** One tag per state, objective: where it stands for this guest at this place. */
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
-  if (reason === "off" || reason === "needs_account" || reason === "credits_off") return "Not at this place yet";
+  if (reason === "off" || reason === "needs_account") return "Not at this place yet";
+  if (reason === "credits_off") return "No credit at this place";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
   return "Coming soon";
 }
 
-const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper shrink-0 px-4 hover:opacity-90 disabled:opacity-60");
+/** The full-width action under a card: 44px, ink on paper. */
+const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px-4 hover:opacity-90 disabled:opacity-60");
 
-/** A Rewards section title: 18px, the screen title's size, on a tight line.
- *  The tab is Rewards since MESITA-3376 (Pato: "rename Promos to Rewards or
- *  Perks"; Promos from MESITA-3322, Vouchers before). */
+/** A Rewards section title: 18px, the screen title's size, on a tight line. */
 const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
-/** ONE ROW CARD for every reward (MESITA-3387, Pato: "do this credits boxes
- *  horizontal"; MESITA-3388 put the cashback on it too, "symmetry and
- *  modularity"): the words on the left, the action in a 96px slot on the
- *  right. A hairline in the card's own hue at half strength holds the pale
- *  tint's edge (MESITA-3357/3366); `border-current` reads the tone's ink. */
-const ROW_CARD = "relative flex items-center gap-3 overflow-hidden rounded-xl border border-current/50 p-3";
-// ONE BADGE (MESITA-3379): the 12px pill on every row.
-const ROW_BADGE = cn(PLACE_PILL_CLASS, "bg-card/85 text-foreground shrink-0");
+/** The card of rows: one hairline edge, rows split by hairlines (inKind). */
+const LIST_CARD = "divide-border overflow-hidden rounded-xl border divide-y";
+/** The bonus: a green pill, white ink (inKind's "25% Bonus"). */
+const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 bg-green-600 py-1 text-white");
 
-/** The row's shell: name and badge, "Get X" big, the line under it, a small
- *  last line, and the right slot. */
-function RowCard({
-  tone,
-  dimmed,
-  name,
-  badge,
-  get,
-  sub,
-  small,
-  right,
-  ...rest
-}: {
-  tone: string;
-  dimmed: boolean;
-  name: string;
-  badge: string;
-  get: string;
-  sub: string;
-  small?: string;
-  right: ReactNode;
-  "aria-label": string;
-  "data-voucher"?: string;
-  "data-cashback"?: boolean;
-}) {
+/** The radio's circle: hollow, filled with an ink dot when chosen. */
+function RadioDot({ on, hidden }: { on: boolean; hidden?: boolean }) {
   return (
-    <li className={cn(ROW_CARD, tone, dimmed && "opacity-50 grayscale")} {...rest}>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="text-foreground text-sm leading-tight font-semibold">{name}</p>
-          <span className={ROW_BADGE}>{badge}</span>
-        </div>
-        <p className="text-foreground mt-1 text-lg leading-tight font-bold tabular-nums" data-voucher-credit>
-          {get}
-        </p>
-        <p className="text-foreground/80 text-sm leading-snug tabular-nums">{sub}</p>
-        {small ? <p className="text-foreground/70 text-xs leading-snug">{small}</p> : null}
-      </div>
-      <div className="w-24 shrink-0">{right}</div>
-    </li>
+    <span
+      aria-hidden
+      className={cn(
+        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+        on ? "border-foreground" : "border-foreground/30",
+        hidden && "invisible",
+      )}
+    >
+      {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
+    </span>
   );
 }
 
-/** The right slot while list-vouchers has not answered (MESITA-3388): a
- *  44px bone, so no card flashes grey with "Not at this place yet". */
-function SlotBone() {
-  return <div className={cn(PLACE_BONE_CLASS, "h-11 w-full")} aria-hidden data-reward-loading />;
-}
-
-/** The state where Buy or Pay would be, right-aligned, objective. */
-function SlotTag({ children }: { children: string }) {
-  return <p className="text-foreground/70 text-right text-xs leading-snug font-medium">{children}</p>;
-}
-
-function VoucherCard({
-  product,
-  reason,
-  line,
-  currency,
-  actions,
-  dim,
-  loading,
-}: {
-  product: Product;
-  reason: VoucherReason | undefined;
-  line: VoucherCatalogLine | undefined;
-  currency: string;
-  actions?: PlaceActions;
-  /** Grey out a card not for sale (live mode); test mode keeps the colour. */
-  dim: boolean;
-  /** The offer is still loading: colour, and a bone in the slot. */
-  loading: boolean;
-}) {
-  const forSale = reason === undefined;
-  const live = Boolean(actions?.onBuyVoucher);
-  const buying = actions?.buyingVoucher === product.key;
-  const text = creditLine(product, line, currency);
-  // Buyable: for sale, or in test mode any card the server has not used up
-  // or paused (Pato, MESITA-3342: "must be buyable or whatever").
-  const buyable = forSale || (!dim && reason !== "used" && reason !== "paused");
+/** One row's words: the deal big, the small line under it. */
+function RowWords({ deal, small }: { deal: string; small: string }) {
   return (
-    <RowCard
-      tone={product.tone}
-      dimmed={!loading && !forSale && dim}
-      name={product.name}
-      badge={product.bonus}
-      get={`Get ${creditValue(product, line, currency)}`}
-      sub={forLine(product, line, currency)}
-      small={product.limit}
-      aria-label={`${product.name} voucher, ${product.bonus}, ${text} ${product.when ?? ""} ${loading ? "" : tag(reason)}`}
-      data-voucher={product.key}
-      right={
-        loading ? (
-          <SlotBone />
-        ) : buyable ? (
-          <button
-            type="button"
-            {...inertButtonProps(live)}
-            onClick={live ? () => actions?.onBuyVoucher?.(product.key) : undefined}
-            disabled={buying || (actions?.buyingVoucher != null && !buying)}
-            aria-label={`Buy the ${product.name} voucher`}
-            className={cn(buyButton, "w-full px-2")}
-          >
-            {buying ? "Opening…" : "Buy"}
-          </button>
-        ) : (
-          <SlotTag>{tag(reason)}</SlotTag>
-        )
-      }
-    />
+    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span className="text-foreground text-base leading-snug font-semibold tabular-nums" data-voucher-deal>
+        {deal}
+      </span>
+      <span className="text-muted-foreground text-xs leading-snug">{small}</span>
+    </span>
   );
 }
+
+const ROW = "flex items-center gap-3 px-3 py-3.5";
 
 /** A section's head (MESITA-3388, Pato: "clearly divide sections"): the
- *  hero tile's mark on the hero tile's green (ProfileActions: green-400,
- *  neutral-950 ink), so Pay and Prepay up top name the section they open,
- *  then the 18px title over one grey line. */
+ *  hero tile's mark on the hero tile's green, then the 18px title over one
+ *  grey line. */
 function SectionHead({ id, Mark, title, subtitle }: { id: string; Mark: Mark; title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -335,15 +210,23 @@ function SectionHead({ id, Mark, title, subtitle }: { id: string; Mark: Mark; ti
   );
 }
 
+type Mark = ComponentType<{ className?: string; strokeWidth?: number }>;
+
+/** The action's place while list-vouchers has not answered (MESITA-3388). */
+function ActionBone() {
+  return <div className={cn(PLACE_BONE_CLASS, "h-11 w-full")} aria-hidden data-reward-loading />;
+}
+
 export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?: PlaceActions }) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
     onLoad?.();
   }, [onLoad]);
+  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
 
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
-  // offer: draw the colour and bones, never a guess (MESITA-3388).
+  // offer: draw the rows and a bone, never a guess (MESITA-3388).
   const loading = actions?.vouchersLoading === true && !money;
   // A Google-only card or an older read has no money: every switch reads off.
   const state = moneyState(
@@ -369,23 +252,31 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   const currency = money?.currency ?? "mxn";
   const balance = money?.balance ?? null;
   const hasCredit = !!balance && balance.available_cents + balance.pending_cents + balance.held_cents > 0;
-  const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
-  // IN TEST MODE EVERY CARD KEEPS ITS COLOUR (Pato, MESITA-3334: "since is
-  // test, use fucking colors for the promos, why is like light representing
-  // blocked or disabled buttons"): the tag alone says where a voucher
-  // stands; the dimmed, greyed card is for live mode.
+  // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
+  // not for sale.
   const dim = money?.test_mode !== true;
+  const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
+  // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
+  // Pay at a place without cashback promised 5% that never comes.
+  const canPay = Boolean(actions?.onPay) && (state.cashback || !dim);
+
+  const products = [...SPECIAL, ...STANDARD];
+  // Buyable: for sale, or in test mode any row the server has not used up or
+  // paused (Pato, MESITA-3342: "must be buyable or whatever").
+  const buyable = (k: MoneyVoucherKey) => {
+    const reason = unavailable[k];
+    return reason === undefined || (!dim && reason !== "used" && reason !== "paused");
+  };
+  const firstBuyable = products.find((p) => buyable(p.key))?.key ?? null;
+  const chosenKey = picked && buyable(picked) ? picked : firstBuyable;
+  const chosen = products.find((p) => p.key === chosenKey) ?? null;
+  const live = Boolean(actions?.onBuyVoucher);
+  const buying = actions?.buyingVoucher != null;
+
   return (
-    // A WHITE PAGE FOR REWARDS ALONE (Pato, MESITA-3366): the pane undoes
-    // the body's 16px sides and the 16px under the sticky strip
-    // (MESITA-3379) and paints itself white.
-    //
-    // TWO SECTIONS, CLEARLY DIVIDED (Pato, MESITA-3388: "Payment Rewards /
-    // Prepayment Rewards — clearly divide sections"): each section on the
-    // white with its own head, and between them an 8px band of the page's
-    // grey, edge to edge, the grouped-list gap a guest already reads as "a
-    // new section". A 1px hairline (MESITA-3369) read as one more card edge.
-    // PAYMENT FIRST (Pato, MESITA-3350: "move payments to the top").
+    // A WHITE PAGE FOR REWARDS ALONE (Pato, MESITA-3366), two sections split
+    // by an 8px band of the page's grey (MESITA-3388). PAYMENT FIRST (Pato,
+    // MESITA-3350: "move payments to the top").
     <div className="bg-card -mx-4 -mt-4 flex flex-col pb-2" data-promos-page>
       {money?.test_mode || hasCredit ? (
         <div className="flex flex-col gap-3 px-4 pt-4">
@@ -407,64 +298,91 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
       ) : null}
       <section className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionHead id="rewards-payment" Mark={QrCode} title="Payment Rewards" subtitle="When you pay the bill here." />
-        <ul className="flex flex-col gap-2">
-          {/* THE CASHBACK IS A ROW LIKE THE SIX (MESITA-3388): "Get 5% back"
-              at the vouchers' "Get MX$130" size, Pay in the same slot as
-              Buy (MESITA-3352: the host's Pay page; a host without onPay
-              draws the state). The coin watermark and the 24px figure of
-              MESITA-3363 went with the gift-card face. */}
-          <RowCard
-            tone={CASHBACK_TONE}
-            dimmed={!loading && !state.cashback && dim}
-            name="Cashback"
-            badge="5% Back"
-            get="Get 5% back"
-            sub="Pay by card here, 5% comes back as credit."
-            aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${loading ? "" : cashbackTag}`}
-            data-cashback
-            right={
-              loading ? (
-                <SlotBone />
-              ) : actions?.onPay ? (
-                <button type="button" onClick={actions.onPay} aria-label="Pay here with Mesita" className={cn(buyButton, "w-full px-2")}>
-                  Pay
-                </button>
-              ) : (
-                <SlotTag>{cashbackTag}</SlotTag>
-              )
-            }
-          />
-        </ul>
+        <div
+          className={cn(LIST_CARD, !loading && !state.cashback && dim && "opacity-50")}
+          aria-label={`5% Cashback: pay here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
+          data-cashback
+        >
+          <div className={ROW}>
+            <RowWords deal="Pay here, Get 5% back" small={canPay || loading ? "By card, back as credit." : `By card, back as credit. ${cashbackTag}.`} />
+            <span className={BONUS_PILL}>5% Back</span>
+          </div>
+        </div>
+        {loading ? (
+          <ActionBone />
+        ) : canPay ? (
+          <button type="button" onClick={actions?.onPay} aria-label="Pay here with Mesita" className={ACTION_BUTTON}>
+            Pay
+          </button>
+        ) : null}
       </section>
       <div className="bg-background h-2" aria-hidden data-rewards-divider />
       <section className="flex flex-col gap-3 px-4 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
-        {/* ONE GREY LINE (MESITA-3388): the hour (Pato, MESITA-3323:
-            "Prepayments must be one [hour] before the bill. All but the
-            Instagram one"; the catalog's available_after_sec, MESITA-3302)
-            folds into the subtitle; it was a second paragraph. */}
         <SectionHead
           id="rewards-prepayment"
           Mark={Wallet}
           title="Pre-Payment Rewards"
           subtitle="Credit you buy before you go. Ready in an hour, Story at once."
         />
-        {/* ONE COLUMN OF SIX (Pato, MESITA-3387: "vertical list of 6
-            items"; the 2×3 grid of MESITA-3371 before). Specials first,
-            then the standard three (MESITA-3328). */}
-        <ul className="flex flex-col gap-2" data-voucher-catalog>
-          {[...SPECIAL, ...STANDARD].map((p) => (
-            <VoucherCard
-              key={p.key}
-              product={p}
-              reason={unavailable[p.key]}
-              line={catalog[p.key]}
-              currency={currency}
-              actions={actions}
-              dim={dim}
-              loading={loading}
-            />
-          ))}
-        </ul>
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="sr-only">Choose a voucher</legend>
+          <ul className={LIST_CARD} data-voucher-catalog>
+            {products.map((p) => {
+              const line = catalog[p.key];
+              const pay = priceValue(p, line, currency);
+              const get = creditValue(p, line, currency);
+              const deal = p.key === "voucher_story" ? `Pay ${pay} & post a story, Get ${get}` : `Pay ${pay}, Get ${get}`;
+              const reason = unavailable[p.key];
+              const can = !loading && buyable(p.key);
+              const on = can && chosenKey === p.key;
+              const small = [p.name, p.when, loading || can ? p.limit : tag(reason)].filter(Boolean).join(" · ");
+              const inner = (
+                <>
+                  <RadioDot on={on} hidden={!can} />
+                  <RowWords deal={deal} small={small} />
+                  <span className={BONUS_PILL}>{p.bonus}</span>
+                </>
+              );
+              return (
+                <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
+                  {can ? (
+                    <label className={cn(ROW, "cursor-pointer", on && "bg-muted/60")}>
+                      <input
+                        type="radio"
+                        name="voucher"
+                        value={p.key}
+                        checked={on}
+                        onChange={() => setPicked(p.key)}
+                        aria-label={`Choose the ${p.name} voucher, ${deal}`}
+                        className="sr-only"
+                      />
+                      {inner}
+                    </label>
+                  ) : (
+                    <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
+                      {inner}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+        {loading ? (
+          <ActionBone />
+        ) : chosen ? (
+          <button
+            type="button"
+            {...inertButtonProps(live)}
+            onClick={live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
+            disabled={buying}
+            aria-label={`Buy the ${chosen.name} voucher`}
+            className={ACTION_BUTTON}
+            data-voucher-buy
+          >
+            {actions?.buyingVoucher === chosen.key ? "Opening…" : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`}
+          </button>
+        ) : null}
       </section>
     </div>
   );
