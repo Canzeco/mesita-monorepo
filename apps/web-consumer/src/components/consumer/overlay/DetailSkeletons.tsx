@@ -8,6 +8,7 @@ import {
   PlaceTopBarSkeleton,
 } from "@mesita/place-profile";
 import { Skeleton } from "@/components/shared";
+import { HideShellNav } from "@/components/consumer/HideShellNav";
 import {
   RESERVATION_META_LABELS,
   type ReservationMetaLabel,
@@ -52,7 +53,7 @@ export function PlacePageSkeleton() {
   }, [router]);
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <style>{`nav[data-shell-nav]{display:none}`}</style>
+      <HideShellNav />
       <PlaceProfileSkeleton onBack={onBack} />
     </div>
   );

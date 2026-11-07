@@ -6,6 +6,7 @@ import { PlaceProfile } from "@mesita/place-profile";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useMeasuredPlace } from "@/lib/place-distance";
+import { HideShellNav } from "./HideShellNav";
 import { useMemberPlaceActions } from "./member-place-actions";
 
 export function PlaceDetailPageBody({
@@ -30,7 +31,7 @@ export function PlaceDetailPageBody({
 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <style>{`nav[data-shell-nav]{display:none}`}</style>
+      <HideShellNav />
       <PlaceProfile
         place={place}
         onBack={onBack}

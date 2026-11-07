@@ -146,7 +146,8 @@ export function BottomNav() {
   return (
     <nav
       // Hook for surfaces that own their whole frame and suppress the tab
-      // bar in CSS (place detail — see PlaceDetailPageBody). A data attribute
+      // bar in CSS (HideShellNav: the place profile as a page, as a
+      // slide-over and while generating, MESITA-3300). A data attribute
       // rather than a route list here: whether the nav belongs on a screen is
       // that screen's statement, and the pathname alone can't tell the
       // hard-nav place PAGE from the intercepted place MODAL, which share it.
