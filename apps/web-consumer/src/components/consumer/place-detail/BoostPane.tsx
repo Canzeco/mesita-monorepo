@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { PremierRosette } from "@mesita/place-profile";
-import { BadgeCheck, Loader2 } from "lucide-react";
+import { BadgeCheck, ChevronRight, Loader2, Mail, Rocket } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiStartRefill,
@@ -16,6 +16,8 @@ import {
   type RefillPack,
   type TierRank,
 } from "@/lib/api/boost";
+import { businessClaimHref } from "@/lib/business-url";
+import { MESITA_HELLO_EMAIL } from "@/lib/mesita-contact";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import {
@@ -35,16 +37,30 @@ import { cn, errMsg } from "@/lib/utils";
 // It reads top to bottom (MESITA-3257, Pato picked the rows and every line): who
 // it's for, one spot for messages, one card with a row per plan in Business ›
 // the plans' names (Mesita Free, Pro, Max, MESITA-3329; the perk is Premier: visibility
-// and the red tag), then the terms. Buy and Now share one slot, and a
-// reason a plan can't be bought stays in that plan's row. Every amount, date and
-// refusal is the server's (consumer-web-get-premier-refill); nothing here computes
-// money. Premier is paid ranking priority: it never verifies the place.
+// and the red tag), the terms in small type, then the owner box. Buy and Now
+// share one slot, and a reason a plan can't be bought stays in that plan's
+// row. Every amount, date and refusal is the server's
+// (consumer-web-get-premier-refill); nothing here computes money. Premier is
+// paid ranking priority: it never verifies the place.
+//
+// EACH ROW IS A CATALOG CARD (Pato, MESITA-3336: "better design for this
+// promotions"), the Promos tab's shape (MESITA-3326): a square face at the
+// left with the plan's level as a badge (grey rocket for Free, the red Premier
+// rosette on red for Pro and Max), the name, the perk line, and the price in
+// bold, since the price is what a guest decides on; the button at the right.
 
 /** A Premier level as visibility: 0 is where every place starts. */
 const VISIBILITY: Record<number, string> = { 0: "1X", 1: "2X", 2: "5X" };
 
-const BOX_CLASS = "border-border bg-card overflow-hidden rounded-2xl border";
+const BOX_CLASS = "border-border bg-card overflow-hidden rounded-xl border";
 const ROW_CLASS = "flex items-center gap-3 p-3";
+/** A plan's face: 56px square, the level badge on its corner. */
+const FACE_CLASS =
+  "relative flex h-14 w-14 shrink-0 items-center justify-center rounded-lg";
+const FACE_BADGE_CLASS =
+  "absolute -top-1.5 -right-1.5 type-meta rounded-md px-1.5 py-0.5 leading-none font-semibold tabular-nums";
+/** The Premier red (PremierBadge.tsx), for the face's badge. */
+const PREMIER_RED = "bg-[#F4212E] text-white";
 /** One width for Buy and Now, so the column reads as one edge. */
 const SLOT_CLASS = "w-[76px] shrink-0";
 
@@ -121,10 +137,11 @@ export function BoostPane({
 
       <div className={cn(BOX_CLASS, "divide-border divide-y")}>
         <div className={ROW_CLASS}>
+          <PlanFace rank={0} />
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold">{suitePlanName(0)}</p>
             <p className="text-muted-foreground">{VISIBILITY[0]} visibility</p>
-            <p className="text-muted-foreground tabular-nums">$0 USD</p>
+            <p className="font-semibold tabular-nums">$0 USD</p>
           </div>
           {level === 0 ? (
             <span
@@ -144,13 +161,14 @@ export function BoostPane({
           const name = suitePlanName(t.rank);
           return (
             <div key={t.rank} className={ROW_CLASS}>
+              <PlanFace rank={t.rank} />
               <div className="min-w-0 flex-1 text-sm">
                 <p className="font-semibold">{name}</p>
                 <p className="text-muted-foreground flex items-center gap-1.5">
                   <PremierRosette />
                   <span className="min-w-0">{VISIBILITY[t.rank]} visibility, Premier red tag</span>
                 </p>
-                <p className="text-muted-foreground tabular-nums">
+                <p className="font-semibold tabular-nums">
                   {p ? (
                     `${money(p.price_cents)} USD for 3 months`
                   ) : (
@@ -178,9 +196,32 @@ export function BoostPane({
         })}
       </div>
 
-      <p className="text-muted-foreground text-sm">{TERMS}</p>
+      <p className="text-muted-foreground text-xs leading-relaxed">{TERMS}</p>
 
+      {boost ? <OwnerBox place={place} owner={boost.owner ?? "none"} /> : null}
     </section>
+  );
+}
+
+/** A plan's face: the level as a badge on the corner, the Premier rosette on
+ *  red for a paid plan, a grey rocket for Free. Decorative: the row's text
+ *  says the level. */
+function PlanFace({ rank }: { rank: number }) {
+  const premier = rank > 0;
+  return (
+    <span
+      className={cn(FACE_CLASS, premier ? "bg-red-100" : "bg-muted text-muted-foreground")}
+      aria-hidden
+    >
+      {premier ? (
+        <PremierRosette className="h-7 w-7" />
+      ) : (
+        <Rocket className="h-6 w-6" strokeWidth={1.75} />
+      )}
+      <span className={cn(FACE_BADGE_CLASS, premier ? PREMIER_RED : "bg-foreground text-paper")}>
+        {VISIBILITY[rank]}
+      </span>
+    </span>
   );
 }
 
@@ -191,10 +232,49 @@ function packReason(p: RefillPack | undefined): string | null {
   return p.notice ? `${p.notice}.` : null;
 }
 
-// NO OWNER CARD HERE (Pato, MESITA-3329: "remove is this your place from
-// here for clarity"): MESITA-3203's "Is this your place?" / "This place has
-// an owner" / "You run this place" box left this sheet; the claim page and
-// Business keep their own doors.
+/** Who runs the place, small, under the terms (Pato, MESITA-3336: "a box
+ *  below: is this business yours??? below in small"; MESITA-3203's bigger
+ *  box left the sheet in MESITA-3329 "for clarity"). The claim door lands an
+ *  owner on the place and lets anyone else claim it. */
+function OwnerBox({
+  place,
+  owner,
+}: {
+  place: PlaceDetail;
+  owner: NonNullable<PlaceBoost["owner"]>;
+}) {
+  const other = owner === "other";
+  const Icon = other ? Mail : ChevronRight;
+  return (
+    <a
+      href={
+        other
+          ? `mailto:${MESITA_HELLO_EMAIL}?subject=${encodeURIComponent(`Ownership of ${place.name}`)}`
+          : businessClaimHref(place.id)
+      }
+      {...(other ? {} : { target: "_blank", rel: "noopener" })}
+      className={cn(BOX_CLASS, "flex items-center gap-3 px-3 py-2.5")}
+    >
+      <span className="min-w-0 flex-1 text-xs">
+        <span className="text-foreground block font-semibold">
+          {other
+            ? "This business has an owner"
+            : owner === "you"
+              ? "You run this business"
+              : "Is this business yours?"}
+        </span>
+        <span className="text-muted-foreground block">
+          {other
+            ? `Think that's wrong? Write to ${MESITA_HELLO_EMAIL}`
+            : owner === "you"
+              ? "Open it in Mesita Business."
+              : "Claim it in Mesita Business to edit its page, reviews and plan."}
+        </span>
+      </span>
+      <Icon className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+    </a>
+  );
+}
 
 /** A refused start in one line, from the server's code. */
 function refusal(err: unknown, fallback: string): string {
@@ -233,7 +313,7 @@ function statusLines(boost: PlaceBoost | null): string[] {
 export function BoostUnavailable() {
   return (
     <div className="flex flex-col items-center px-6 py-16 text-center">
-      <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-2xl">
+      <span className="bg-muted text-foreground flex h-14 w-14 items-center justify-center rounded-xl">
         <BadgeCheck className="h-7 w-7" aria-hidden />
       </span>
       <h3 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
