@@ -315,7 +315,22 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </div>
           <p className="text-foreground relative mt-3 text-2xl leading-none font-semibold tabular-nums">5% back</p>
           <p className="text-foreground/80 relative mt-1 text-sm">Pay by card here and 5% of it comes back as credit.</p>
-          <p className="text-foreground/70 relative mt-auto pt-3 text-xs font-medium">{cashbackTag}</p>
+          {/* PAY, LIKE THE GIFT CARDS' BUY (Pato, MESITA-3352: "use Pay
+              button to redirect to pay page"): the host's Pay page; a host
+              without onPay draws the state alone. */}
+          <div className="relative mt-auto flex items-end justify-between gap-2 pt-3">
+            <p className="text-foreground/70 min-w-0 text-xs font-medium">{cashbackTag}</p>
+            {actions?.onPay ? (
+              <button
+                type="button"
+                onClick={actions.onPay}
+                aria-label="Pay here with Mesita"
+                className={cn(buyButton, "mt-0 shrink-0")}
+              >
+                Pay
+              </button>
+            ) : null}
+          </div>
         </div>
       </Box>
       <Box title="Pre-Payment Promos">

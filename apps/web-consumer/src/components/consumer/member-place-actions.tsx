@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -21,6 +22,7 @@ import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
+import { navigateTo } from "@/lib/navigate";
 import { toast } from "@/lib/toast";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
@@ -67,6 +69,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   social: ReactNode;
 } {
   const { isSaved, toggle } = useSavedPlaces();
+  const router = useRouter();
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -115,6 +118,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onBuyVoucher: vouchers.buy,
     buyingVoucher: vouchers.buying,
     onLoadVouchers: vouchers.load,
+    // The Cashback card's Pay (MESITA-3352): the bar's Pay page.
+    onPay: () => navigateTo(router, "/pay"),
   };
 
   const sheets = (

@@ -36,6 +36,9 @@ export type PlaceActions = {
   /** The Vouchers tab opened: the host refreshes `place.money` (the offer and
    *  the guest's credit) from consumer-web-list-vouchers. */
   onLoadVouchers?: () => void;
+  /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
+   *  Absent, the card draws no button (admin's preview). */
+  onPay?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {
