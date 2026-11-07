@@ -31,6 +31,7 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
 //   [ ▣ Reserve         ] [ ▤ Prepay          ] [ ▦ Pay             ]
+//   [                   ] [   Up to 25% OFF   ] [   5% cashback     ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -44,7 +45,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 //
 // ROW 2 is three ink tiles, the grey tiles' box (56px, icon over a 12px
 // label, 8px apart) in the ink (Pato, MESITA-2689: "same height and
-// colour"), three equal widths, the labels without "Mesita ", and no chip
+// colour"), three equal widths, the labels without "Mesita ". PREPAY AND
+// PAY SAY THE AMOUNT under the label, always, blocked or not (Pato,
+// MESITA-3324: "Prepay, Up to 25% OFF / Pay, 5% Cashback ... BUT ALWAYS
+// MENTION THE AMOUNT"): his fixed sentences (MESITA-3313; cashback is the
+// standard 5%, MESITA-3299), never a number computed here. No chip
 // on any of them (MESITA-3317, Pato: "remove the stupid walk-in icon. just
 // put the button blocked if it doesn't work"): a blocked tile is the same
 // dark tile, disabled, and only the screen reader hears why. NO TIMES ON
@@ -267,8 +272,8 @@ export function ProfileActions({
           <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" />
-        <InertInkTile Icon={QrCode} label="Pay" />
+        <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 25% OFF" />
+        <InertInkTile Icon={QrCode} label="Pay" amount="5% cashback" />
       </div>
     </div>
   );
@@ -278,18 +283,20 @@ export function ProfileActions({
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
- *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it. */
-function InertInkTile({ Icon, label }: { Icon: LucideIcon; label: string }) {
+ *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
+ *  `amount` is the second line, always shown (MESITA-3324). */
+function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string; amount: string }) {
   return (
     <button
       type="button"
       {...inertButtonProps(false)}
       disabled
-      aria-label={`${label}, Soon`}
-      className={blockedInkTile}
+      aria-label={`${label}, ${amount}, Soon`}
+      className={cn(blockedInkTile, "gap-0.5")}
     >
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="max-w-full truncate">{label}</span>
+      <span className="max-w-full truncate leading-tight">{label}</span>
+      <span className="text-paper/80 max-w-full truncate text-[11px] leading-tight font-medium">{amount}</span>
     </button>
   );
 }
