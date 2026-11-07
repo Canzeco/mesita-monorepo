@@ -347,7 +347,10 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
       <span className="flex min-w-0 flex-col items-start gap-1 text-left">
         <span className="max-w-full truncate leading-none">{label}</span>
-        <span className="max-w-full truncate text-xs leading-none font-medium text-neutral-950/70">{amount}</span>
+        {/* The amount weighs the same as the label (Pato, MESITA-3356: "bonus
+            and back must be as thin/gross as the top text, maybe even size"),
+            one weight like Link's button; 12px medium at 70% until then. */}
+        <span className="max-w-full truncate leading-none">{amount}</span>
       </span>
     </button>
   );
