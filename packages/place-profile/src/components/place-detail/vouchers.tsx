@@ -22,9 +22,12 @@ import { Box } from "./box";
 // Story · VIP, each with the same mark and colour on both sides (one mark
 // everywhere). A guest sees them as one card of six rows, Standard first:
 // a row per voucher, its mark on its colour, the name, the bonus, the price
-// and the credit it buys, in one objective line (Pato: "be super objective");
-// then Cashback, the standard 5%, as one more card drawn the same way.
-// Nothing scrolls sideways.
+// and the credit it buys, in one objective line (Pato: "be super objective").
+// TWO CARDS, DEALS (Pato, MESITA-3322: "call the section up Prepayments
+// Deals: Bonus 10% or whatever. Payments Deals: Cashback"): "Prepayment
+// deals" is the six rows, "Payment deals" is the standard 5% cashback, one
+// row drawn the same way, its one line the plain fact (Pato, a minute
+// before: "write cashback ... clearer"). Nothing scrolls sideways.
 //
 // Every row is always there, so the tab never reads as empty and never
 // pretends: a voucher this place sells is lit and carries Buy (MESITA-3303),
@@ -223,21 +226,21 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           </p>
         </Box>
       ) : null}
-      <Box title="Vouchers">
+      <Box title="Prepayment deals">
         <ul className="divide-border divide-y">
           {[...STANDARD, ...SPECIAL].map((p) => (
             <VoucherRow key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} />
           ))}
         </ul>
       </Box>
-      <Box title="Cashback">
+      <Box title="Payment deals">
         <div className={cn("flex items-center gap-3", !state.cashback && "opacity-50 grayscale")}>
           <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-xl", CASHBACK_TONE)}>
             <Coins className="h-6 w-6" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-foreground text-sm font-semibold">5% back</p>
-            <p className={PLACE_META_CLASS}>Pay by card, get 5% of it back as credit here.</p>
+            <p className="text-foreground text-sm font-semibold">5% cashback</p>
+            <p className={PLACE_META_CLASS}>Pay by card here and 5% of it comes back as credit.</p>
             <p className={cn(PLACE_META_CLASS, "mt-1 font-medium", state.cashback && "text-foreground")}>{cashbackTag}</p>
           </div>
         </div>
