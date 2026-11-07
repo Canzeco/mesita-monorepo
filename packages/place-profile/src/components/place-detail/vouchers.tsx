@@ -6,7 +6,7 @@ import { Coins, Crown, Hand, Wallet } from "lucide-react";
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
-import { PLACE_BUTTON_CLASS, PLACE_META_CLASS } from "../../lib/ui";
+import { PLACE_BUTTON_CLASS, PLACE_META_CLASS, PLACE_TITLE_CLASS } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { TestBand } from "../TestBand";
@@ -302,7 +302,12 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
       ) : null}
       {/* PAYMENT PROMOS FIRST (Pato, MESITA-3350: "move payments to the
           top"): the cashback card, then the six gift cards. */}
-      <Box title="Payment Promos">
+      {/* NO WHITE BOX AROUND THE CARDS (Pato, MESITA-3354: "it's gray and
+          then white and then the vouchers boxes of different colors ...
+          double margins"): the title and the note sit on the grey page and
+          the coloured cards on it, one surface fewer. */}
+      <section className="flex flex-col gap-3" data-promos="payment">
+        <h3 className={PLACE_TITLE_CLASS}>Payment Promos</h3>
         <div
           className={cn(GIFT_CARD, CASHBACK_TONE, !state.cashback && dim && "opacity-50 grayscale")}
           aria-label={`5% Cashback, pay by card here and 5% of it comes back as credit. ${cashbackTag}`}
@@ -332,8 +337,9 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
             ) : null}
           </div>
         </div>
-      </Box>
-      <Box title="Pre-Payment Promos">
+      </section>
+      <section className="flex flex-col gap-3" data-promos="prepayment">
+        <h3 className={PLACE_TITLE_CLASS}>Pre-Payment Promos</h3>
         {/* The hour (Pato, MESITA-3323: "Prepayments must be one [hour]
             before the bill. All but the Instagram one"): every voucher's
             credit turns Available one hour after the charge except Story,
@@ -346,7 +352,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
             <VoucherCard key={p.key} product={p} reason={unavailable[p.key]} line={catalog[p.key]} currency={currency} actions={actions} dim={dim} />
           ))}
         </ul>
-      </Box>
+      </section>
     </div>
   );
 }
