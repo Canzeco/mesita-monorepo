@@ -42,12 +42,14 @@ export const BOOST_TIERS = [
 
 const SUITE_PLAN: Record<number, string> = { 0: "Free", 1: "Pro", 2: "Max" };
 
-/** A level by its plan's name ("Mesita Suite Pro", MESITA-3257); a tier this
- *  build does not know reads plain "Mesita Suite", never `undefined`
- *  (MESITA-3041). */
+/** A level by its plan's name: "Mesita Free", "Mesita Pro", "Mesita Max"
+ *  (MESITA-3329, Pato: "don't mention mesita suite pro ... just mention
+ *  Mesita Free and Mesita Pro and Mesita Max for clarity"; "Mesita Suite
+ *  Pro" from MESITA-3257 until then); a tier this build does not know reads
+ *  plain "Mesita", never `undefined` (MESITA-3041). */
 export function suitePlanName(tier: number): string {
   const plan = SUITE_PLAN[tier];
-  return plan ? `Mesita Suite ${plan}` : "Mesita Suite";
+  return plan ? `Mesita ${plan}` : "Mesita";
 }
 
 export type RefillPack = {
