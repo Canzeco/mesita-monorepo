@@ -37,27 +37,33 @@ const ROW = "flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm 
 const MARK_ROW = "grid min-h-16 grid-cols-[auto_minmax(0,1fr)_auto_3rem] items-center gap-4 px-5 py-3 text-sm sm:px-6";
 const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
 
-/** A money product: its mark in its own colour, what it gives, in the
- *  sentence Pato chose ("MX$130 credit for MX$100", MESITA-3272). The
- *  bonuses are the plan's; nothing here sells one. */
+/** A money product: its mark in its own colour, always shown (Pato,
+ *  MESITA-3298: "use different colors for each type"), and one objective
+ *  line: what the guest pays and what they get, nothing else (Pato: "be super
+ *  objective"). The bonuses are the plan's (MESITA-3272); nothing here sells
+ *  one. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; icon: Icon; tone: string };
 
 const CASHBACK: Product = {
   key: "cashback",
   name: "Payments Cashback",
-  line: "Part of each card payment comes back to the guest as credit at your place.",
-  value: "Credit",
+  line: "Guest pays by card, gets 5% of it back as credit at your place.",
+  value: "5%",
   icon: CoinsIcon,
   tone: "bg-amber-100 text-amber-700",
 };
 
-const VOUCHERS: Product[] = [
-  { key: "voucher_200", name: "MX$200 voucher", line: "MX$220 of credit for MX$200. A coffee or a lunch, paid ahead.", value: "+10%", icon: CoffeeIcon, tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "MX$1,000 voucher", line: "MX$1,200 of credit for MX$1,000. A dinner, paid ahead.", value: "+20%", icon: ForkKnifeIcon, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_5000", name: "MX$5,000 voucher", line: "MX$6,500 of credit for MX$5,000. A regular's month, paid ahead.", value: "+30%", icon: ChampagneIcon, tone: "bg-violet-100 text-violet-700" },
-  { key: "voucher_welcome", name: "Welcome voucher", line: "MX$130 of credit for MX$100, once, on a guest's first visit.", value: "+30%", icon: HandWavingIcon, tone: "bg-orange-100 text-orange-700" },
-  { key: "voucher_story", name: "Story voucher", line: "MX$130 of credit for MX$100 after the guest posts an Instagram story from your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP voucher", line: "MX$130 of credit for MX$100, for guests Mesita marks as VIP.", value: "+30%", icon: CrownIcon, tone: "bg-yellow-100 text-yellow-700" },
+// Standard: any guest, any time. Special: one condition each (MESITA-3298).
+const STANDARD: Product[] = [
+  { key: "voucher_200", name: "MX$200 voucher", line: "Guest pays MX$200, gets MX$220 of credit.", value: "+10%", icon: CoffeeIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_1000", name: "MX$1,000 voucher", line: "Guest pays MX$1,000, gets MX$1,200 of credit.", value: "+20%", icon: ForkKnifeIcon, tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_5000", name: "MX$5,000 voucher", line: "Guest pays MX$5,000, gets MX$6,500 of credit.", value: "+30%", icon: ChampagneIcon, tone: "bg-violet-100 text-violet-700" },
+];
+
+const SPECIAL: Product[] = [
+  { key: "voucher_welcome", name: "Welcome voucher", line: "Guest pays MX$100, gets MX$130 of credit. Once, on the first visit.", value: "+30%", icon: HandWavingIcon, tone: "bg-orange-100 text-orange-700" },
+  { key: "voucher_story", name: "Story voucher", line: "Guest pays MX$100, gets MX$130 of credit after posting an Instagram story at your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
+  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-yellow-100 text-yellow-700" },
 ];
 
 /** The account row: one line and one button per state. */
@@ -110,7 +116,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
     const on = settings[key];
     return (
       <li key={key} className={MARK_ROW}>
-        <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl transition", on ? tone : "bg-muted text-muted-foreground")}>
+        <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", tone)}>
           <Mark size={22} weight={on ? "fill" : "regular"} aria-hidden />
         </span>
         <div className="min-w-0">
@@ -156,8 +162,12 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <ul className="divide-border divide-y">{row(CASHBACK)}</ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
-        <h2 className={HEAD}>Prepaid Vouchers</h2>
-        <ul className="divide-border divide-y">{VOUCHERS.map(row)}</ul>
+        <h2 className={HEAD}>Standard vouchers</h2>
+        <ul className="divide-border divide-y">{STANDARD.map(row)}</ul>
+      </Card>
+      <Card className="flex flex-col p-0 sm:p-0">
+        <h2 className={HEAD}>Special vouchers</h2>
+        <ul className="divide-border divide-y">{SPECIAL.map(row)}</ul>
       </Card>
       {back === "return" && account.state !== "ready" && !error ? (
         <p className="text-muted-foreground text-sm">Stripe is still checking your details. This page updates when it answers.</p>
