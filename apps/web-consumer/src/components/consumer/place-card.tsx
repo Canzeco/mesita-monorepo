@@ -316,13 +316,14 @@ export function CardActions({
  * sells now, decides only whether the line shows; nothing for sale, no line.
  * Display only: a tap falls through to the card's own link beneath it.
  */
-export function VouchersLine({ pct }: { pct: number | null | undefined }) {
+export function VouchersLine({ pct, className }: { pct: number | null | undefined; className?: string }) {
   if (typeof pct !== "number" || pct <= 0) return null;
   return (
     <p
       className={cn(
         CARD_BUTTON_BOX,
         "bg-fact-price/10 text-fact-price pointer-events-none flex w-full items-center justify-center gap-1.5 px-2.5 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+        className,
       )}
       data-tile-vouchers
     >

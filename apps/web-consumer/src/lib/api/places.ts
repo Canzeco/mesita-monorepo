@@ -100,9 +100,10 @@ export type Place = {
   products?: Record<string, unknown> | null;
   /** Guest Reserve CTA. Absent or true offers Reserve; false = Not / walk-in. */
   reservations_enabled?: boolean | null;
-  /** The Home tile's voucher line (MESITA-3312): the best bonus among the
-   *  vouchers the place sells now, a whole percent from the server; null or
-   *  absent = no line. Only list-catalog sends it. */
+  /** The Home tile's voucher line (MESITA-3312) and the Search card's promo
+   *  strip (MESITA-3327): the best bonus among the vouchers the place sells
+   *  now, a whole percent from the server; null or absent = no line.
+   *  list-catalog and list-places send it. */
   vouchers_up_to_pct?: number | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
