@@ -238,9 +238,9 @@ export function PlaceDetailBodySkeleton({
         <div inert className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS}>
             <div className={PROFILE_MESITA_ROW_CLASS}>
-              {[0, 1, 2].map((i) => (
-                <Bone key={i} className={PROFILE_MESITA_TILE_BOX_CLASS} />
-              ))}
+              <Bone className={PROFILE_TILE_BOX_CLASS} />
+              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
+              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
             </div>
           </div>
           <PlaceTabBar tab="place" onChange={noop} />

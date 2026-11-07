@@ -91,8 +91,8 @@ describe("member preview edges", () => {
     // Pay is back as a Soon button under Reserve (MESITA-2688), full width since MESITA-3303.
     // One row of three since MESITA-3314: Reserve · Prepay · Pay, no "Mesita".
     // The amount rides in the name (MESITA-3324).
-    expect(html).toContain('aria-label="Prepay, Up to 25% OFF, Soon"');
-    expect(html).toContain('aria-label="Pay, 5% Cashback, Soon"');
+    expect(html).toContain('aria-label="Prepay, 30% Bonus, Soon"');
+    expect(html).toContain('aria-label="Pay, 5% Back, Soon"');
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
   });
