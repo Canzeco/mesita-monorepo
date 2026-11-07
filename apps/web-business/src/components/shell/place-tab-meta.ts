@@ -15,6 +15,7 @@ import {
   ShieldCheckIcon,
   StarIcon,
   StorefrontIcon,
+  WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import type { PlaceTab } from "@/lib/routes";
 
@@ -28,6 +29,8 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   views: { label: "Views", icon: EyeIcon, sub: "Who saw your place online." },
   visits: { label: "Visits", icon: FootprintsIcon, sub: "Who came and paid with Mesita." },
   money: { label: "Money", icon: MoneyIcon, sub: "Every payment, voucher and cashback at your place." },
+  // A mock from Pato's sketch (MESITA-3377) until the credit products ship.
+  wallet: { label: "Wallet", icon: WalletIcon, sub: "Credits you buy, gift and redeem." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   reviews: { label: "Reviews", icon: StarIcon, sub: "What guests say on Google, Instagram and Facebook." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
