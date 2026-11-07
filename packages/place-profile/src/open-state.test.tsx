@@ -62,7 +62,8 @@ describe("placeRowToDetail open_now", () => {
 });
 
 describe("HoursBox", () => {
-  // The open line lives in the facts row only (MESITA-2911); the box is the week.
+  // The box opens with today's status since MESITA-3343 (the facts row's own
+  // words, after today's name); with no weekly hours it still draws nothing.
   it("draws nothing without weekly hours, even with a known open state", () => {
     expect(renderToStaticMarkup(<HoursBox place={row({ open_now: false })} />))
       .toBe("");
@@ -74,12 +75,17 @@ describe("HoursBox", () => {
     expect(html).not.toContain("data-today");
   });
 
-  it("highlights today when the place has a timezone, and prints no open line", () => {
+  it("highlights today when the place has a timezone, and leads with today's status", () => {
     const html = renderToStaticMarkup(
       <HoursBox place={row({ hours: OPEN_ALWAYS, timezone: "America/Mexico_City" })} />,
     );
     expect(html).toContain("data-today");
-    expect(html).not.toContain(">Open<");
-    expect(html).not.toContain("until");
+    expect(html).toContain("data-hours-today");
+    expect(html).toContain("Open until");
+  });
+
+  it("prints no status line when the open state is unknown", () => {
+    const html = renderToStaticMarkup(<HoursBox place={row({ hours: OPEN_ALWAYS })} />);
+    expect(html).not.toContain("data-hours-today");
   });
 });
