@@ -30,8 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [   ▣   ] [        ▤          ] [        ▦          ]
-//   [Reserve] [Prepay · 30% Bonus ] [  Pay · 5% Back    ]
+//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
+//   [Reserve] [   [30% Bonus]     ] [   [5% Back]       ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -110,7 +110,7 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph at the left and the words at its right, the 14px label over the
  *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "col-span-2 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
+  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
 // Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
 // the glyph over a 12px label.
@@ -127,7 +127,7 @@ const blockedInkReserve = cn(
 // A blocked wide Mesita tile (Prepay, Pay): Link green, `disabled`, 14px.
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
-  "bg-green-400 text-neutral-950 cursor-not-allowed text-xs font-semibold",
+  "bg-green-400 text-neutral-950 cursor-not-allowed text-sm font-semibold",
 );
 
 const tileBtn = cn(
@@ -327,6 +327,8 @@ export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
 /** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
+/** The amount in an ink pill under the label (MESITA-3367). */
+const MESITA_TILE_PILL = "bg-foreground text-paper rounded-md px-1.5 py-[3px] text-xs leading-none font-bold tabular-nums";
 
 /** A Mesita money tile that is not built yet: the blocked ink tile, no chip
  *  (Pato, MESITA-3315: "remove the soon"); the screen reader still hears it.
@@ -344,14 +346,17 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       aria-label={`${label}, ${amount}, Soon`}
       className={blockedInkTile}
     >
-      {/* RESERVE'S SHAPE (Pato, MESITA-3365: "try same as Reserve: icon on
-          top, text below ... actually mention back and bonus"): the glyph
-          over one 12px line, "Prepay · 30% Bonus"; a middle dot, not his
-          parentheses, so the line fits two columns on a 360px phone. The
-          ink pills of MESITA-3361 lasted an hour. */}
+      {/* THE WORDS IN THE BLACK BOX (Pato, MESITA-3367: "mention bonus and
+          back, but bonus and back in those black boxes"): the glyph at the
+          left, the 14px label over an ink pill that reads "30% Bonus" or
+          "5% Back" in white. The pill sits under the label, not beside it,
+          because two columns on a 360px phone hold no more than glyph +
+          "Prepay" + a 40px pill on one line (MESITA-3361). Reserve's shape
+          (MESITA-3365) lasted half an hour. */}
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="max-w-full truncate leading-none">
-        {label} · {amount}
+      <span className="flex min-w-0 flex-col items-start gap-1 text-left">
+        <span className="max-w-full truncate leading-none">{label}</span>
+        <span className={MESITA_TILE_PILL}>{amount}</span>
       </span>
     </button>
   );
