@@ -210,7 +210,9 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           <span
             className={cn(
               PLACE_OUTLINE_CHIP_CLASS,
-              "text-white",
+              // 14px on 32px, a step above the 13px chip (Pato, MESITA-3378:
+              // "the text in hours just a bit larger, but just a bit").
+              "h-8 text-sm text-white",
               place.open_now ? "border-emerald-600 bg-emerald-600" : "border-red-600 bg-red-600",
             )}
           >
