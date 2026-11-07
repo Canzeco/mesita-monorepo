@@ -7,6 +7,7 @@ import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
+import { toAmPm } from "../../lib/place-time";
 import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
@@ -179,6 +180,16 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
   // (Pato, MESITA-2700: "Hide a box entirely when it has nothing").
   if (place.hours_table.length === 0) return null;
   const today = place.timezone ? todayWeekdayLabel(place.timezone) : "";
+  // TODAY'S STATUS LEADS THE BOX (Pato, MESITA-3343: "in hours, like
+  // highlight the day or mention the day at the beginning, like the status,
+  // like open or closed"): the header's own words, "Open until 4 AM" or
+  // "Closed until 1 PM" (MESITA-3246), after today's name; the word in
+  // green or red. Unknown hours draw no line.
+  const untilAt = place.open_now ? place.closes_at : place.opens_at;
+  const stateWord =
+    place.open_now === true ? "Open" : place.open_now === false ? "Closed" : null;
+  const stateValue =
+    stateWord && untilAt ? `${stateWord} until ${toAmPm(untilAt)}` : stateWord;
 
   return (
     <Box
@@ -186,6 +197,20 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
+      {stateValue ? (
+        <p className="mb-2 flex items-center gap-2 text-sm font-semibold" data-hours-today>
+          <span
+            aria-hidden
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              place.open_now ? "bg-emerald-600" : "bg-red-600",
+            )}
+          />
+          {today ? <span className="text-foreground">{today}</span> : null}
+          {today ? <span className="text-muted-foreground">·</span> : null}
+          <span className={place.open_now ? "text-emerald-600" : "text-red-600"}>{stateValue}</span>
+        </p>
+      ) : null}
       <ul className="border-border overflow-hidden rounded-lg border">
         {place.hours_table.map((row) => (
           <HoursDayRow key={row.day} row={row} today={today} />
