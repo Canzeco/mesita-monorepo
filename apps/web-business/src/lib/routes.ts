@@ -12,7 +12,7 @@
 // Old addresses (the phone's More, Products, top-level Payments/Rewards/
 // Settings, a place's Billing, Future and Preview, "internal" for admin
 // (MESITA-3143), a place's Products and Soon, now All (MESITA-3238), and a
-// place's Rewards, Discounts and Visits, gone with the discount product
+// place's Rewards and Discounts, gone with the discount product
 // (MESITA-3299)) redirect in one hop from next.config.ts `redirects()`.
 
 export const PLACES = "/places";
@@ -21,7 +21,10 @@ export const ACCOUNT = "/account";
 // Preview is a modal on Profile (MESITA-3136). All is the one page listing
 // every product, current and future (MESITA-3238; was Soon, MESITA-3197).
 // Payments (MESITA-3296) holds the place's Stripe account and money switches.
-export const PLACE_TABS = ["views", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
+// Operations is Views · Visits · Transactions (Pato, MESITA-3301: "include
+// Views and Visits and Transactions. Keep the pages even if Mesita Payments
+// is not enabled yet"); Visits is back as a page, not the MESITA-3202 log.
+export const PLACE_TABS = ["views", "visits", "transactions", "profile", "reviews", "premier", "payments", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {

@@ -20,13 +20,15 @@ function tipAlign(index: number, length: number): string {
   return "left-1/2 -translate-x-1/2";
 }
 
-export function ViewsChart({ days }: { days: PlaceViewsDay[] }) {
+/** `line` names the series under "Last 30 days"; Visits and Transactions draw
+ *  this same frame with no days yet (MESITA-3301). */
+export function ViewsChart({ days, line = "Every view, like and share." }: { days: PlaceViewsDay[]; line?: string }) {
   const totals = days.map((d) => d.views + d.likes + d.shares);
   const peak = Math.max(0, ...totals);
   return (
     <div className="px-5 py-4 sm:px-6">
       <p className="text-sm font-medium">Last 30 days</p>
-      <p className="text-muted-foreground text-sm">Every view, like and share.</p>
+      <p className="text-muted-foreground text-sm">{line}</p>
       <div className="mt-4 flex gap-2">
         <div className="min-w-0 flex-1">
           <div className={cn("border-border relative h-28 border-b", peak > 0 && "border-t")}>
