@@ -9,9 +9,11 @@
 //
 // A REDIRECT WHOSE SOURCE IS A LIVE ROUTE SHADOWS IT ENTIRELY — the page
 // never renders and typecheck, build and the whole vitest suite stay green.
-// Nothing here may name /home/places, /home/social, /pay, /search,
+// Nothing here may name /home/places, /home/social, /pay, /wallet, /search,
 // /search/chat, /me or any live /me/<box>. /pay/:tab is one segment on purpose:
-// the live reward steps are two, /pay/<place>/<step> (MESITA-3254).
+// the live reward steps are two, /pay/<place>/<step> (MESITA-3254). /wallet's
+// rows are one and two segments for the same reason: `/wallet/:path*` would
+// match bare /wallet and loop (MESITA-3295).
 //
 // BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
 // SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and
@@ -47,7 +49,9 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // hop. Deepest sources first so the intent survives a `:param` rewrite.
   { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
   { source: "/new-visit", destination: "/pay", permanent: true },
-  { source: "/wallet/:path*", destination: "/pay", permanent: true },
+  // The old Wallet tab's children land on the live /wallet (MESITA-3295).
+  { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
+  { source: "/wallet/:tab", destination: "/wallet", permanent: true },
   { source: "/credits", destination: "/pay", permanent: true },
   { source: "/inbox/credits", destination: "/pay", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },

@@ -38,9 +38,10 @@ const SHELL = join(__dirname, "..", "..", "app", "(shell)");
 type Redirect = { source: string; destination: string };
 
 /** Next's matcher, reduced to what this table uses: `:name` is ONE segment,
- *  `:name*` is ZERO OR MORE (path-to-regexp's `*` modifier — `/wallet/:path*`
- *  catches bare `/wallet` too, which is why the exact `/wallet` row beneath it
- *  never fires and why "exactly one entry" is the wrong invariant). */
+ *  `:name*` is ZERO OR MORE (path-to-regexp's `*` modifier — `/inbox/:path*`
+ *  catches bare `/inbox` too, which is why an exact `/inbox` row beneath it
+ *  would never fire and why "exactly one entry" is the wrong invariant; it is
+ *  also why the live /wallet's rows are `/wallet/:tab`, never `:path*`). */
 function matches(source: string, address: string): boolean {
   const re = source
     .split("/")
@@ -80,6 +81,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
+    CONSUMER_ROUTES.wallet,
     CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
@@ -107,6 +109,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
       // default, no sections: the tab links here and lights here.
       pay: "/pay",
+      // The Wallet tab's page: the prepaid balances (MESITA-3295).
+      wallet: "/wallet",
       // The Share tab's page (MESITA-2566).
       share: "/share",
       // Me's six boxes, each a route. NO diamond / diamondInvite / plan /
@@ -149,7 +153,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         newVisit: "/new-visit",
         newVisitWallet: "/new-visit/wallet",
         visitPrefix: "/visit/",
-        wallet: "/wallet",
+        walletBalancePrefix: "/wallet/balance/",
+        walletTabPrefix: "/wallet/",
         credits: "/credits",
         inboxCredits: "/inbox/credits",
         order: "/order",
@@ -199,6 +204,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       home: "/home/",
       place: "/place",
       pay: "/pay",
+      // The Wallet tab (MESITA-3295); its old children 308 onto it.
+      wallet: "/wallet",
       // NO `saved` key: Saved is a Me page (MESITA-2561), lit by Me's prefix.
       // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
       // the middleware never sees one.
@@ -385,7 +392,8 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/new-visit", destination: "/pay", permanent: true },
-      { source: "/wallet/:path*", destination: "/pay", permanent: true },
+      { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
+      { source: "/wallet/:tab", destination: "/wallet", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
       { source: "/inbox/credits", destination: "/pay", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },
@@ -540,6 +548,10 @@ describe("middleware auth wall (shouldGate)", () => {
     // Pay is a tab: a signed-out tap gets the edge redirect with its own
     // `next`, like every other personal surface.
     "/pay",
+    "/wallet",
+    // Gated although it only 308s to /wallet: middleware runs before the
+    // redirect, so the signed-out `next` keeps what the guest asked for.
+    "/wallet/buy",
     "/reservations",
     "/reservation/r1",
     "/inbox/mine",
@@ -566,8 +578,6 @@ describe("middleware auth wall (shouldGate)", () => {
     // canonical destination that IS gated.
     "/new-visit",
     "/visit/t1",
-    "/wallet",
-    "/wallet/buy",
     "/order",
     "/gift/1234567890",
     "/qr",

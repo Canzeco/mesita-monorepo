@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User } from "lucide-react";
+import { QrCode, Search, User, Wallet as WalletIcon } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -24,12 +24,17 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 
-// FOUR tabs, in this order (Pato, MESITA-2076 — "BOTTOM BAR MUST ONLY BE.
-// Home. Search. Pay(Soon). Me."; MESITA-2518 added Bookings, MESITA-2521
-// renamed it Saved; MESITA-2561 moved Saved under Me and made the fourth a
-// Share tab, MESITA-2566 gave it its own page):
+// FIVE tabs, in this order (Pato, 2026-11-06, MESITA-3295: "Home Search Pay
+// Wallet Me", settled at the fourth gate on MESITA-3272). It was four from
+// MESITA-2076 ("BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.";
+// MESITA-2518 added Bookings, MESITA-2521 renamed it Saved; MESITA-2561
+// moved Saved under Me and made the fourth a Share tab, MESITA-2566 gave it
+// its own page):
 //
-//   Home · Search · Pay · Me
+//   Home · Search · Pay · Wallet · Me
+//
+//   WALLET IS THE BALANCES PAGE (MESITA-3098): what a guest prepaid, one row
+//   per place, at /wallet. It showed only on /pay?prepay= until MESITA-3295.
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
@@ -93,6 +98,12 @@ const ITEMS: Item[] = [
     // Reward from MESITA-3211 until then).
     label: "Pay",
     matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
+  },
+  {
+    href: CONSUMER_ROUTES.wallet,
+    Icon: WalletIcon,
+    label: "Wallet",
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.wallet],
   },
   {
     href: CONSUMER_ROUTES.me,

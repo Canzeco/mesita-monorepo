@@ -17,6 +17,7 @@ import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import PayLoading from "@/components/consumer/rewards/PayLoading";
 import ShareLoading from "./share/loading";
+import WalletLoading from "./wallet/loading";
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
 // "why spinning and then placeholder, don't do that. just use the
@@ -57,6 +58,7 @@ export function ShellLoadingFor({ bare }: { bare: string }) {
   if (at("/me/visits")) return <VisitsLoading />;
   if (at("/me/connector")) return <ConnectorLoading />;
   if (at("/pay")) return <PayLoading />;
+  if (at("/wallet")) return <WalletLoading />;
   if (at("/share")) return <ShareLoading />;
   return <div className="bg-background min-h-0 flex-1" aria-busy />;
 }

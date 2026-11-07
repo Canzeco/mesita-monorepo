@@ -272,6 +272,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search", "Search"],
     // Pay is one page and lights its own tab there.
     ["/pay", "Pay"],
+    // Wallet is one page and lights its own tab there (MESITA-3295).
+    ["/wallet", "Wallet"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -305,7 +307,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   it.each([
     "/new-visit",
     "/visit/t1",
-    "/wallet",
+    // /wallet itself is live again (MESITA-3295); its old children land on it.
     "/wallet/buy",
     "/wallet/balance/bal_1",
     "/credits",
@@ -330,11 +332,11 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// The bar is Home · Search · Pay · Me (Pato, MESITA-2076), and Pay is a LINK
-// like the other three — its page is the Soon state, the tab wears no tag
-// (MESITA-3124). Two things MESITA-1119 cared about are unchanged below: no
-// class stamped into Me, and no Agents tab.
-describe("the bar is Home · Search · Pay · Me", () => {
+// The bar is Home · Search · Pay · Wallet · Me (Pato, MESITA-3295; four tabs
+// from MESITA-2076 until then), and Pay is a LINK like the other four — the
+// tab wears no tag (MESITA-3124). Two things MESITA-1119 cared about are
+// unchanged below: no class stamped into Me, and no Agents tab.
+describe("the bar is Home · Search · Pay · Wallet · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -350,8 +352,8 @@ describe("the bar is Home · Search · Pay · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me (MESITA-2871)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Home · Search · Pay · Wallet · Me (MESITA-3295)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Wallet", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -367,18 +369,18 @@ describe("the bar is Home · Search · Pay · Me", () => {
     );
   });
 
-  it("keeps Wallet, Visit and Order off the bar", async () => {
+  it("keeps Visit, Order and Share off the bar", async () => {
     const labels = await tabLabels();
-    expect(labels).not.toContain("Wallet");
     expect(labels).not.toContain("Visit");
     expect(labels).not.toContain("Order");
+    expect(labels).not.toContain("Share");
   });
 
-  // Four <a> tabs and no <button>: Pay navigates to its page like every
+  // Five <a> tabs and no <button>: Pay navigates to its page like every
   // other link.
-  it("draws four links and no button", async () => {
+  it("draws five links and no button", async () => {
     const html = await renderNav("/search");
-    expect(html.split("<a ").slice(1)).toHaveLength(4);
+    expect(html.split("<a ").slice(1)).toHaveLength(5);
     expect(html.split("<button").slice(1)).toHaveLength(0);
   });
 
@@ -400,6 +402,7 @@ describe("the bar is Home · Search · Pay · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.wallet,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -858,7 +861,8 @@ describe("T9 — Pay holds only the reward steps, and the Second Stage trees are
     for (const rel of [
       ["(shell)", "(visit)"],
       ["(shell)", "new-visit"],
-      ["(shell)", "wallet"],
+      // NOT ["(shell)", "wallet"]: the Buy · Gift · Redeem tab stays gone, but
+      // /wallet is the balances page and the bar's tab (MESITA-3295).
       ["(shell)", "visit"],
       ["(shell)", "order"],
       // NOT ["(shell)", "share"]: the referral deck stays gone, but /share is
