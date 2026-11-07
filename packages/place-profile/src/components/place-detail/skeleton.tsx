@@ -31,6 +31,7 @@ import {
 import {
   PROFILE_PHOTO_FRAME_CLASS,
   PROFILE_STAT_CLASS,
+  PROFILE_STAT_DETAIL_CLASS,
   PROFILE_STAT_LINE_CLASS,
   PROFILE_STAT_MARK_CLASS,
 } from "./profile-summary-parts";
@@ -103,6 +104,7 @@ function ProfileSummarySkeleton() {
               <div className={PROFILE_STAT_LINE_CLASS}>
                 <Bone className="h-4 w-12" />
               </div>
+              <div className={PROFILE_STAT_DETAIL_CLASS} />
             </div>
           ))}
         </div>

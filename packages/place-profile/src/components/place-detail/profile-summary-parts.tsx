@@ -24,6 +24,10 @@ export const PROFILE_STAT_MARK_CLASS = "mb-1.5 flex shrink-0";
 /** The number line: 24px for every column (MESITA-2623). */
 export const PROFILE_STAT_LINE_CLASS =
   "flex h-6 items-center justify-center leading-none";
+/** The small muted line under a column's value (Google's "4.7 ★"); 16px
+ *  tall on every column so the three keep one baseline (MESITA-3351). */
+export const PROFILE_STAT_DETAIL_CLASS =
+  "text-muted-foreground flex h-4 items-center justify-center text-xs leading-none font-medium whitespace-nowrap tabular-nums";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   return (
@@ -95,8 +99,9 @@ export function ProfileStat({
           {icon}
         </span>
       ) : null}
-      {/* One line, like Maps: "4.9 ★" bold, "(13.8K)" small and muted
-          beside it (MESITA-2315). "-" is muted, not shouted. */}
+      {/* The value bold, the detail small and muted UNDER it (MESITA-3351:
+          Google's "8.6K" over "4.7 ★"; beside it, "4.9 ★ (13.8K)", from
+          MESITA-2315 until then). "-" is muted, not shouted. */}
       <span
         className={
           // ONE LINE HEIGHT FOR EVERY COLUMN (MESITA-2623): 24px, so the
@@ -111,12 +116,10 @@ export function ProfileStat({
         }
       >
         {value}
-        {detail ? (
-          <span className="text-muted-foreground ml-1 text-xs font-medium">
-            {` ${detail}`}
-          </span>
-        ) : null}
       </span>
+      {/* The detail slot is drawn for every column, empty or not, so the
+          three keep one baseline (MESITA-2623). */}
+      <span className={PROFILE_STAT_DETAIL_CLASS}>{detail ?? ""}</span>
       {/* NO NETWORK NAME UNDER THE NUMBER (Pato, MESITA-2623: "don't mention
           google instagram facebook with text. its obvious"): the mark above
           already says which network. The name stays for screen readers. */}

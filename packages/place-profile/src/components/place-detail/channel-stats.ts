@@ -76,24 +76,22 @@ function googleStat(
  * screen reader hears "not connected" or "no count". The icon is drawn
  * either way.
  *
- * Google reads the way Maps does, stars then the review count on one line:
- * "4.9 ★ (13.8K)" (Pato, MESITA-2312). The label under it is just "Google".
- * The count is the smaller, muted detail so the line never wraps (MESITA-2315).
+ * Google reads like the other two columns since MESITA-3351 (Pato: "move
+ * the number of reviews to the top, and then stars at the bottom smaller.
+ * Icon, total revs, star average"): the review count is the bold value and
+ * "4.9 ★" the small muted line under it. One line, "4.9 ★ (13.8K)", from
+ * MESITA-2312/2315 until then. The label under it is just "Google".
  */
 export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
   const googleRating = formatRating(place.google.rating);
   const googleCount = place.google.count;
   const count =
     googleCount != null ? formatCompactCount(googleCount, false) : null;
+  const stars = googleRating != null ? `${googleRating} ★` : null;
   const google =
-    googleRating != null
-      ? googleStat(
-          place,
-          `${googleRating} ★`,
-          "Google",
-          count != null ? `(${count})` : undefined,
-        )
-      : googleStat(place, count != null ? `(${count})` : null, "Google");
+    count != null
+      ? googleStat(place, count, "Google", stars ?? undefined)
+      : googleStat(place, stars, "Google");
 
   return [
     google,
