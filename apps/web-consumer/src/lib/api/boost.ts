@@ -1,7 +1,7 @@
 // Mesita Premier on the place screen (MESITA-3168; Premier MESITA-2925,
 // Boost MESITA-2789, Spotlight MESITA-1998): any signed-in guest buys an
-// Upgrade for a place (Refill until MESITA-3175, Boost until MESITA-3199) — 3 months of Premier 2X or
-// Premier 5X, paid once, no renewal and no owner check. The recurring Premier
+// Upgrade for a place (Refill until MESITA-3175, Boost until MESITA-3199) — one year of Premier 2X or
+// Premier 5X (MESITA-3386; 3 months until then), paid once, no renewal and no owner check. The recurring Premier
 // Subscription is the Business app's. Every amount, date and line here comes
 // from the server (consumer-web-get-premier-refill): this file never
 // computes money. Tier on the wire is the integer 1 = 2X, 2 = 5X.

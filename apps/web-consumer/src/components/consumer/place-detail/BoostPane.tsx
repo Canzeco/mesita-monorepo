@@ -30,8 +30,8 @@ import { cn, errMsg } from "@/lib/utils";
 
 // THE UPGRADE SHEET'S BODY (MESITA-3168; Premier MESITA-2925; the place's fourth
 // tab from MESITA-2861 until the sheet, MESITA-3201, see BoostSheet). A guest buys
-// an Upgrade for any place (MESITA-3175): 3 months of Premier 2X or Premier 5X
-// (MESITA-3203), paid once, no renewal, no owner check. The recurring Subscription
+// an Upgrade for any place (MESITA-3175): one year of Premier 2X or Premier 5X
+// (MESITA-3386; 3 months from MESITA-3203 until then), paid once, no renewal, no owner check. The recurring Subscription
 // is the Business app's.
 //
 // It reads top to bottom (MESITA-3257, Pato picked the rows and every line): who
@@ -64,7 +64,7 @@ const SLOT_CLASS = "w-[76px] shrink-0";
 
 /** What a guest should know before paying. The last two sentences are Billing's. */
 const TERMS =
-  "3 months. Charged once by Stripe, in US dollars. Nothing renews. Starts after any days already running. Visibility is ranking priority on Home and the Map. It doesn't guarantee more views.";
+  "One year. Charged once by Stripe, in US dollars. Nothing renews. Starts after any days already running. Visibility is ranking priority on Home and the Map. It doesn't guarantee more views.";
 
 const ORIGIN: Record<RefillDays["source"], string> = {
   admin: "Added by Mesita",
@@ -167,7 +167,7 @@ export function BoostPane({
                 <p className="text-muted-foreground">{VISIBILITY[t.rank]} visibility, Premier red tag</p>
                 <p className="font-semibold tabular-nums">
                   {p ? (
-                    `${money(p.price_cents)} USD for 3 months`
+                    `${money(p.price_cents)} USD for one year`
                   ) : (
                     <span className="bg-muted inline-block h-3.5 w-24 rounded align-middle" />
                   )}
@@ -178,7 +178,7 @@ export function BoostPane({
                 type="button"
                 onClick={() => void start(t.rank)}
                 disabled={loading || !p || off || starting !== null || !boost?.signed_in}
-                aria-label={p ? `Buy 3 months of ${name}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
+                aria-label={p ? `Buy one year of ${name}, ${VISIBILITY[t.rank]} visibility, for ${money(p.price_cents)} USD` : undefined}
                 className={cn(
                   PRIMARY_BUTTON_CLASS,
                   SLOT_CLASS,
