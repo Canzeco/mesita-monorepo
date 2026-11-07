@@ -1,8 +1,12 @@
 // Supabase Edge Function — business-web-get-place-views
 //
-// MESITA-3206: Business › Views. How many signed-in guests viewed, liked and
-// shared this place. Each is people, not taps. A failed count is an error here,
+// MESITA-3206: Business › Views. How many times signed-in guests viewed this
+// place, and how many liked and shared it. A failed count is an error here,
 // never a false 0: an owner reads these numbers as fact.
+//
+// MESITA-3392 (Pato: "every click on your profile is one view"): Views counts
+// every open, from place_events, so it agrees with the chart and the log. Likes
+// and Shares still count guests.
 //
 // MESITA-3213: and the chart's 30 days, in the place's timezone. The log is
 // business-web-list-place-views-log.
@@ -49,11 +53,10 @@ serveJson("business-web-get-place-views", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const timezone = usableTimezone(placeRes.place?.timezone);
 
-  const activity = (kind: "viewed" | "saved") =>
-    admin.from("place_activity").select("*", { count: "exact", head: true }).eq("place_id", placeId).eq("kind", kind);
   const [views, likes, shares, days] = await Promise.all([
-    activity("viewed"),
-    activity("saved"),
+    // place_views_events drops closed accounts, as the chart does.
+    admin.rpc("place_views_events", { p_place_id: placeId }, { count: "exact", head: true }).eq("kind", "viewed"),
+    admin.from("place_activity").select("*", { count: "exact", head: true }).eq("place_id", placeId).eq("kind", "saved"),
     admin.from("place_shares").select("*", { count: "exact", head: true }).eq("place_id", placeId),
     admin.rpc("place_views_days", { p_place_id: placeId, p_timezone: timezone, p_days: CHART_DAYS }),
   ]);
