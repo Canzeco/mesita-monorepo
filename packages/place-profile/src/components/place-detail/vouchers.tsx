@@ -1,7 +1,7 @@
 "use client";
 
 import { type ComponentType, useEffect } from "react";
-import { ArrowRight, Coins, Crown, Hand, Wallet } from "lucide-react";
+import { Coins, Crown, Hand, Wallet } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -107,15 +107,15 @@ const STANDARD_TONE = "bg-emerald-100 text-emerald-700";
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the exchange line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "+10%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "+20%", mark: Wallet, tone: STANDARD_TONE },
-  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "+30%", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% Bonus", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% Bonus", mark: Wallet, tone: STANDARD_TONE },
+  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% Bonus", mark: Wallet, tone: STANDARD_TONE },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "+30%", mark: Hand, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", when: "After an Instagram story here.", limit: "One per day.", bonus: "+30%", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "+30%", mark: Crown, tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% Bonus", mark: Hand, tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% Bonus", mark: InstagramMark, tone: "bg-pink-100 text-pink-700" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% Bonus", mark: Crown, tone: "bg-violet-100 text-violet-700" },
 ];
 
 const CASHBACK_TONE = "bg-amber-100 text-amber-700";
@@ -143,6 +143,15 @@ export function pesos(cents: number, currency: string): string {
 function creditLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (!line) return product.line;
   return `Pay ${pesos(line.price_cents, currency)}, get ${pesos(line.credit_cents, currency)}.`;
+}
+/** The exchange in words: "Pay MX$100, get MX$130"; Story adds the post
+ *  (Pato, MESITA-3364: "Pay X & post story, get Y"). */
+function exchangeLine(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
+  const pay = priceValue(product, line, currency);
+  const get = creditValue(product, line, currency);
+  return product.key === "voucher_story"
+    ? `Pay ${pay} & post a story, get ${get}`
+    : `Pay ${pay}, get ${get}`;
 }
 /** The credit alone, big on the card: the server's, else from the copy. */
 function creditValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
@@ -224,17 +233,13 @@ function VoucherCard({
         <p className="text-foreground text-sm font-semibold">{product.name}</p>
         <span className={GIFT_BADGE}>{product.bonus}</span>
       </div>
-      {/* THE EXCHANGE IN ONE BIG LINE (Pato, MESITA-3360: "this is not super
-          clear. Make it clear, and maybe even shorter"): what you pay at
-          60%, an arrow, what you get in full ink, "MX$100 → MX$130"; the
-          two lines "Buy MX$100 / Get MX$130" (MESITA-3346) until then. */}
-      <p
-        className="text-foreground relative mt-3 flex items-center gap-1.5 text-2xl leading-none font-semibold tabular-nums"
-        data-voucher-credit
-      >
-        <span className="text-foreground/60">{priceValue(product, line, currency)}</span>
-        <ArrowRight className="h-5 w-5 shrink-0" strokeWidth={2.5} aria-hidden />
-        <span>{creditValue(product, line, currency)}</span>
+      {/* THE EXCHANGE IN WORDS (Pato, MESITA-3364, with inKind's "Pay $499,
+          Get $625 · 25% Bonus" rows beside: "something easy to understand
+          in each box: Pay X, get Y, and then the bonus. And for the story:
+          Pay X & post story, get Y"): one 18px line; the arrow line
+          "MX$100 → MX$130" (MESITA-3360) until then. */}
+      <p className="text-foreground relative mt-3 text-lg leading-snug font-semibold tabular-nums" data-voucher-credit>
+        {exchangeLine(product, line, currency)}
       </p>
       <p className="text-foreground/70 relative mt-1 text-xs">
         {product.when ? `${product.when} ` : null}
@@ -328,7 +333,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
           <Watermark Mark={Coins} />
           <div className="relative flex items-start justify-between gap-2">
             <p className="text-foreground text-sm font-semibold">Cashback</p>
-            <span className={GIFT_BADGE}>5%</span>
+            <span className={GIFT_BADGE}>5% Back</span>
           </div>
           <p className="text-foreground relative mt-3 text-2xl leading-none font-semibold tabular-nums">5% back</p>
           <p className="text-foreground/80 relative mt-1 text-sm">Pay by card here and 5% of it comes back as credit.</p>
