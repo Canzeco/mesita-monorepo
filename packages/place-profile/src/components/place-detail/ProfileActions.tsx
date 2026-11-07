@@ -30,8 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [ ▣ Reserve         ] [ ▤ Prepay          ] [ ▦ Pay             ]
-//   [                   ] [   Up to 25% OFF   ] [   5% cashback     ]
+//   [ ▣ Reserve ] [ ▤ Prepay        ] [ ▦ Pay           ]
+//   [           ] [   Up to 25% OFF ] [   5% Cashback   ]
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -43,8 +43,9 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // host's sheet, never Checkout, on every place: a Google-only one gets that
 // sheet's not-open-yet screen, so the row never changes width.
 //
-// ROW 2 is three ink tiles, the grey tiles' box (56px, icon over a 12px
-// label, 8px apart) in the ink (Pato, MESITA-2689: "same height and
+// ROW 2 is three ink tiles, the grey tiles' height (56px) in the ink, the
+// glyph at the left of a 12px label (MESITA-3335; it sat over the label
+// until then), 8px apart (Pato, MESITA-2689: "same height and
 // colour"), three equal widths, the labels without "Mesita ". PREPAY AND
 // PAY SAY THE AMOUNT under the label, always, blocked or not (Pato,
 // MESITA-3324: "Prepay, Up to 25% OFF / Pay, 5% Cashback ... BUT ALWAYS
@@ -97,13 +98,13 @@ export const PROFILE_TILE_BOX_CLASS =
 /** Row 2: Reserve · Prepay · Pay, three equal tiles, 8px apart
  *  (MESITA-3314, MESITA-3315). */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A Mesita tile's box: 72px, 16px taller than the grey tiles, the glyph,
- *  the label and the amount line 6px apart (Pato, MESITA-3328: "this looks
- *  like shit the amount you mentioned ... maybe buttons a bit taller", then
- *  MESITA-3331: "the text is just tooooo joined"; 64px with 2px between the
- *  lines until then). */
+/** A Mesita tile's box: the grey tiles' 56px, the glyph at the left and
+ *  the words at its right (Pato, MESITA-3335: "put the logo at the left.
+ *  icon Reserve, icon Prepay, icon Pay"); two text lines fit beside a glyph,
+ *  so the taller tiles of MESITA-3328/3331 (64px, then 72px, the glyph over
+ *  the words) are not needed. */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "flex h-18 min-w-0 flex-col items-center justify-center gap-1.5 rounded-lg px-1";
+  "flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
 // Row 2 is the grey tile's box in the ink (MESITA-3315), three across.
 const inkTile = cn(
@@ -294,7 +295,7 @@ export function MesitaActions({
           className={takesReservations ? inkTile : blockedInkTile}
         >
           <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
-          <span className="max-w-full truncate">Reserve</span>
+          <span className="min-w-0 truncate">Reserve</span>
         </button>
         <InertInkTile Icon={Wallet} label="Prepay" amount="Up to 25% OFF" />
         <InertInkTile Icon={QrCode} label="Pay" amount="5% Cashback" />
@@ -326,8 +327,10 @@ function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string
       className={blockedInkTile}
     >
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="max-w-full truncate leading-none">{label}</span>
-      <span className="text-paper/75 max-w-full truncate text-[11px] leading-none font-medium">{amount}</span>
+      <span className="flex min-w-0 flex-col items-start gap-1 text-left">
+        <span className="max-w-full truncate leading-none">{label}</span>
+        <span className="text-paper/75 max-w-full truncate text-[11px] leading-none font-medium">{amount}</span>
+      </span>
     </button>
   );
 }
