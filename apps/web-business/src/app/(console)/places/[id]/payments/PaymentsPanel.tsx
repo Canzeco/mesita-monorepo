@@ -10,11 +10,9 @@ import { useState } from "react";
 import { moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
-  ChampagneIcon,
-  CoffeeIcon,
   CoinsIcon,
   CrownIcon,
-  ForkKnifeIcon,
+  WalletIcon,
   HandWavingIcon,
   InstagramLogoIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -56,9 +54,12 @@ const CASHBACK: Product = {
 
 // Standard: any guest, any time. Special: one condition each (MESITA-3298).
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "MX$200 voucher", line: "Guest pays MX$200, gets MX$220 of credit.", value: "+10%", icon: CoffeeIcon, tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "MX$1,000 voucher", line: "Guest pays MX$1,000, gets MX$1,200 of credit.", value: "+20%", icon: ForkKnifeIcon, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_5000", name: "MX$5,000 voucher", line: "Guest pays MX$5,000, gets MX$6,500 of credit.", value: "+30%", icon: ChampagneIcon, tone: "bg-violet-100 text-violet-700" },
+  // One mark and one colour for the standard three (MESITA-3326, Pato: "the
+  // standard deals/promos must have the same icon and the same color"): the
+  // wallet on emerald, as the guest's Promos catalog draws them.
+  { key: "voucher_200", name: "MX$200 voucher", line: "Guest pays MX$200, gets MX$220 of credit.", value: "+10%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_1000", name: "MX$1,000 voucher", line: "Guest pays MX$1,000, gets MX$1,200 of credit.", value: "+20%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_5000", name: "MX$5,000 voucher", line: "Guest pays MX$5,000, gets MX$6,500 of credit.", value: "+30%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
 ];
 
 const SPECIAL: Product[] = [
