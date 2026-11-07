@@ -182,7 +182,9 @@ const buyButton = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper mt-2 shrink-0
 // or something to the products"); `border-current` reads the tone's text
 // colour, the mark's.
 const GIFT_CARD = "relative flex min-h-32 flex-col overflow-hidden rounded-xl border border-current/25 p-3";
-const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums";
+// The bonus badge is BIG (Pato, MESITA-3363: "mention the percentage
+// fucking bigger"): 18px bold on the card's white chip; 12px until then.
+const GIFT_BADGE = "bg-card/85 text-foreground shrink-0 rounded-lg px-2 py-1 text-lg leading-none font-bold tabular-nums";
 
 function Watermark({ Mark }: { Mark: Mark }) {
   return <Mark className="absolute -right-5 -bottom-5 h-32 w-32 opacity-20" strokeWidth={1.25} aria-hidden />;
