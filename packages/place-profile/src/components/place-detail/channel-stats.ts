@@ -76,18 +76,22 @@ function googleStat(
  * screen reader hears "not connected" or "no count". The icon is drawn
  * either way.
  *
- * Google reads like the other two columns since MESITA-3351 (Pato: "move
- * the number of reviews to the top, and then stars at the bottom smaller.
- * Icon, total revs, star average"): the review count is the bold value and
- * "4.9 ★" the small muted line under it. One line, "4.9 ★ (13.8K)", from
- * MESITA-2312/2315 until then. The label under it is just "Google".
+ * Google reads count first since MESITA-3351 (Pato: "move the number of
+ * reviews to the top ... Icon, total revs, star average"), on ONE bold line
+ * since MESITA-3355: the count, then the rating with a yellow star glyph,
+ * "11K 4.7★", the same size (a small line under the count for an hour;
+ * "4.9 ★ (13.8K)" from MESITA-2312/2315 before). The label is "Google".
  */
 export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
   const googleRating = formatRating(place.google.rating);
   const googleCount = place.google.count;
   const count =
     googleCount != null ? formatCompactCount(googleCount, false) : null;
-  const stars = googleRating != null ? `${googleRating} ★` : null;
+  // The rating alone; ProfileStat draws the yellow star glyph hugging it
+  // on the same line as the count, "11K 4.7★" (Pato, MESITA-3355: "stars
+  // must be together to text, just like K is ... in the same line, not
+  // below ... an actual star, yellow").
+  const stars = googleRating != null ? `${googleRating}` : null;
   const google =
     count != null
       ? googleStat(place, count, "Google", stars ?? undefined)

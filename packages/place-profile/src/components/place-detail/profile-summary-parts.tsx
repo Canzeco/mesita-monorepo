@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import type { LucideIcon } from "lucide-react";
+import { Star, type LucideIcon } from "lucide-react";
 
 import type { PlaceDetail } from "../../place-detail";
 import { cn, firstInitial } from "../../lib/format";
@@ -24,10 +24,6 @@ export const PROFILE_STAT_MARK_CLASS = "mb-1.5 flex shrink-0";
 /** The number line: 24px for every column (MESITA-2623). */
 export const PROFILE_STAT_LINE_CLASS =
   "flex h-6 items-center justify-center leading-none";
-/** The small muted line under a column's value (Google's "4.7 ★"); 16px
- *  tall on every column so the three keep one baseline (MESITA-3351). */
-export const PROFILE_STAT_DETAIL_CLASS =
-  "text-muted-foreground flex h-4 items-center justify-center text-xs leading-none font-medium whitespace-nowrap tabular-nums";
 
 export function ProfilePhoto({ place }: { place: PlaceDetail }) {
   return (
@@ -79,7 +75,7 @@ export function ProfileStat({
   spokenValue?: string;
   name?: string;
 }) {
-  const shown = detail ? `${value} ${detail}` : value;
+  const shown = detail ? `${value} ${detail} stars` : value;
   const spoken = mention
     ? `${name ?? label}, ${spokenValue ?? value}`
     : `${shown} ${label}`;
@@ -99,9 +95,11 @@ export function ProfileStat({
           {icon}
         </span>
       ) : null}
-      {/* The value bold, the detail small and muted UNDER it (MESITA-3351:
-          Google's "8.6K" over "4.7 ★"; beside it, "4.9 ★ (13.8K)", from
-          MESITA-2315 until then). "-" is muted, not shouted. */}
+      {/* ONE BOLD LINE (MESITA-3355): the value, then the detail at the same
+          size with a filled yellow star hugging it, Google's "11K 4.7★"
+          (Pato: "same text for stars ... in the same line, not below ...
+          an actual star, yellow"); a small line under the value for an
+          hour (MESITA-3351), "4.9 ★ (13.8K)" before. "-" is muted. */}
       <span
         className={
           // ONE LINE HEIGHT FOR EVERY COLUMN (MESITA-2623): 24px, so the
@@ -116,10 +114,13 @@ export function ProfileStat({
         }
       >
         {value}
+        {detail ? (
+          <span className="ml-1.5 inline-flex items-center gap-0.5">
+            {detail}
+            <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+          </span>
+        ) : null}
       </span>
-      {/* The detail slot is drawn for every column, empty or not, so the
-          three keep one baseline (MESITA-2623). */}
-      <span className={PROFILE_STAT_DETAIL_CLASS}>{detail ?? ""}</span>
       {/* NO NETWORK NAME UNDER THE NUMBER (Pato, MESITA-2623: "don't mention
           google instagram facebook with text. its obvious"): the mark above
           already says which network. The name stays for screen readers. */}
