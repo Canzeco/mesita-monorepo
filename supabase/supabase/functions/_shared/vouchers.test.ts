@@ -46,7 +46,9 @@ Deno.test("W1b sells MX$200, MX$1,000 and Welcome; the rest say why", () => {
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
-  assertEquals(o.catalog.voucher_welcome.available_after_sec, 0);
+  // Every voucher waits an hour except Story (MESITA-3323).
+  assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
+  assertEquals(o.catalog.voucher_story.available_after_sec, 0);
 });
 
 Deno.test("the catalog the client shows is the server's, credit = price + bonus", () => {
