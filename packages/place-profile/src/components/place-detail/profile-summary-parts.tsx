@@ -68,6 +68,8 @@ export function ProfileStat({
   detail,
   label,
   icon,
+  unitIcon: UnitIcon,
+  unit,
   mention = false,
   spokenValue,
   name,
@@ -76,6 +78,13 @@ export function ProfileStat({
   detail?: string;
   label: string;
   icon?: React.ReactNode;
+  /** What the count counts, drawn hugging the number on its left (Pato,
+   *  MESITA-3447: "icons at the left, k or amount at the right, not
+   *  spaces"): a reviews mark for Google, a followers mark for Instagram
+   *  and Facebook. */
+  unitIcon?: LucideIcon;
+  /** The word read aloud after the count: "reviews", "followers". */
+  unit?: string;
   mention?: boolean;
   spokenValue?: string;
   name?: string;
@@ -83,7 +92,7 @@ export function ProfileStat({
   const shown = detail ? `${value} ${detail} stars` : value;
   const spoken = mention
     ? `${name ?? label}, ${spokenValue ?? value}`
-    : `${shown} ${label}`;
+    : `${shown} ${label}${unit ? ` ${unit}` : ""}`;
   return (
     <div className={PROFILE_STAT_CLASS} aria-label={spoken}>
       {/* NOT CONNECTED IS GREY (Pato, MESITA-2676: "if no Instagram or no
@@ -120,6 +129,9 @@ export function ProfileStat({
             : "text-foreground text-base font-bold whitespace-nowrap tabular-nums")
         }
       >
+        {UnitIcon ? (
+          <UnitIcon className="mr-0.5 h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+        ) : null}
         {value}
         {detail ? (
           <span className="ml-1.5 inline-flex items-center gap-0.5">
