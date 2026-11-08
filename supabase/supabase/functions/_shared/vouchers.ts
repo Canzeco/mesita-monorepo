@@ -27,6 +27,9 @@ export type VoucherOffer = {
   currency: string;
   charges_enabled: boolean;
   cashback: boolean;
+  /** The green Mesita Pay mark, moneyState's, before the pause and
+   *  Welcome-used filters so the place screen and the list rows agree. */
+  mesita_pay: boolean;
   /** The owner's switches, as before (MESITA-3299 readers keep working). */
   vouchers: Record<MoneyVoucherKey, boolean>;
   /** The vouchers a guest can buy here now. */
@@ -80,14 +83,15 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     else if (k === "voucher_welcome" && i.welcomeUsed) unavailable[k] = "used";
     else sell.push(k);
   }
-  // The guest's offer carries the voucher switches alone; the ways to pay
-  // (MESITA-3396) are already folded into `sell` and `unavailable`.
-  const { cashback: _c, pay_cash: _pc, pay_cards: _pd, pay_credits: _pr, ...vouchers } = i.settings;
+  // The guest's offer carries the voucher switches alone; Pay by phone
+  // (MESITA-3396) is already folded into `cashback` and the mark.
+  const { cashback: _c, pay_cards: _pd, ...vouchers } = i.settings;
   return {
     test_mode: !i.livemode,
     currency: i.currency,
     charges_enabled: usable,
     cashback: state.cashback,
+    mesita_pay: state.mesita_pay,
     vouchers,
     sell,
     unavailable,
@@ -159,7 +163,6 @@ export type BuyOk = { ok: true; url: string; purchase_id: string };
 
 const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   off: { code: "not_available", error: "This place does not sell that voucher" },
-  credits_off: { code: "credits_off", error: "This place is not taking credit right now" },
   needs_account: { code: "no_account", error: "This place has not connected payments yet" },
   not_yet: { code: "not_yet", error: "This voucher is not on sale yet" },
   needs_card_payments: { code: "needs_card_payments", error: "This voucher needs card payments, which are not on yet" },

@@ -15,9 +15,7 @@ const REQUEST = "00000000-0000-4000-8000-0000000c3303";
 const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
-  pay_cash: true,
   pay_cards: true,
-  pay_credits: true,
   cashback: true,
   voucher_200: true,
   voucher_1000: true,
@@ -48,6 +46,8 @@ Deno.test("W1b sells MX$200, MX$1,000 and Welcome; the rest say why", () => {
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
+  assertEquals(o.mesita_pay, true);
+  assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
@@ -255,4 +255,15 @@ Deno.test("any other insert error is thrown, so the EF answers 500 and nothing r
   const fake = fakeAdmin({ insertError: { code: "42501", message: "denied" } });
   const stripe: StripeCall = () => Promise.reject(new Error("never called"));
   await assertRejects(() => openVoucherCheckout(fake.admin, stripe, BUY), Error, "purchase_insert");
+});
+
+Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so it matches the list rows", () => {
+  const onlyWelcome: PaymentSettings = { ...ALL_ON, voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_story: false, voucher_vip: false };
+  const used = offerFrom({ ...base, settings: onlyWelcome, welcomeUsed: true });
+  assertEquals(used.sell, []);
+  assertEquals(used.mesita_pay, true);
+  assertEquals(offerFrom({ ...base, paused: true }).mesita_pay, true);
+  // Nothing on: no mark.
+  const nothing: PaymentSettings = { ...onlyWelcome, voucher_welcome: false };
+  assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });

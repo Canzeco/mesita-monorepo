@@ -4,10 +4,26 @@
 // drift. It imports nothing, so it compiles under Deno and under the
 // package's TypeScript alike.
 //
-// What a place sells, whether cashback applies and how a guest can pay,
-// from the owner's switches, the account's state and the guest's balance.
-// It gates selling, never settling: credit lands whenever Stripe says a
-// session is paid, whatever the switches read by then.
+// MoneySettings are the owner's switches; MoneyState is what they mean for a
+// guest now, given the account and the guest's balance. It gates selling,
+// never settling: credit lands whenever Stripe says a session is paid,
+// whatever the switches read by then.
+//
+// Credit is the place's debt (MESITA-3408): no switch stops a guest spending
+// it. `pay` is credit or both whenever spendable > 0.
+//
+// `mesita_pay` is the green Mesita Pay mark: on when a guest can do something
+// on Mesita Pay here now. Today that is buying a voucher; card payment of the
+// bill joins when W2b flips CARD_BILL_PAY_LIVE:
+//   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
+// Two blind spots on purpose, because the list rows cannot see them: the
+// admin pause and Welcome-used do not turn the mark off.
+// CARD_BILL_PAY_LIVE is code, not config, on purpose: W2b flips it in one
+// edit (it also removes the "arrives soon" notes on Business › Payments). A
+// staged W2b rollout would make it config then.
+
+/** Card payment of the bill (W2b) is live. Flipped by MESITA-3305. */
+export const CARD_BILL_PAY_LIVE = false;
 
 export const MONEY_VOUCHER_KEYS = [
   "voucher_200",
@@ -19,10 +35,10 @@ export const MONEY_VOUCHER_KEYS = [
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
-/** The owner's switches. `pay_cards` and `pay_credits` are the ways to pay
- *  (MESITA-3396); absent reads ON, so a reader from before them keeps
- *  working and a place is never switched off by a missing field. */
-export type MoneySettings = { cashback: boolean; pay_cards?: boolean; pay_credits?: boolean } & Record<MoneyVoucherKey, boolean>;
+/** The owner's switches. `pay_cards` is Pay by phone (MESITA-3396, the key is
+ *  never renamed: renaming resets live config); absent reads ON, so a reader
+ *  from before it keeps working. */
+export type MoneySettings = { cashback: boolean; pay_cards?: boolean } & Record<MoneyVoucherKey, boolean>;
 
 /** The place's connected account as the ledger last saw it; null = none. */
 export type MoneyAccount = { charges_enabled: boolean } | null;
@@ -33,8 +49,6 @@ export type MoneyBalance = { spendable_cents: number } | null;
 /** Why a voucher is not for sale right now. */
 export type VoucherReason =
   | "off"
-  /** The owner switched Credits off: nothing sells, since nobody could spend it here. */
-  | "credits_off"
   | "needs_account"
   | "not_yet"
   | "needs_card_payments"
@@ -64,25 +78,25 @@ export type MoneyState = {
   cashback: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
+  /** The green Mesita Pay mark (see the header). */
+  mesita_pay: boolean;
 };
 
 export function moneyState(settings: MoneySettings, account: MoneyAccount, balance: MoneyBalance): MoneyState {
   const charges = account?.charges_enabled === true;
-  // The ways to pay (MESITA-3396): Cards needs the account too; Credits is
-  // the owner's word alone. Absent means on.
+  // Pay by phone (MESITA-3396) needs the account too. Absent means on.
   const cards = charges && settings.pay_cards !== false;
-  const credits = settings.pay_credits !== false;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
     if (settings[key] !== true) unavailable[key] = "off";
-    else if (!credits) unavailable[key] = "credits_off";
     else if (!charges) unavailable[key] = "needs_account";
     else if (NOT_YET_SELLABLE[key]) unavailable[key] = NOT_YET_SELLABLE[key];
     else sell.push(key);
   }
-  const credit = credits && (balance?.spendable_cents ?? 0) > 0;
+  const credit = (balance?.spendable_cents ?? 0) > 0;
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
   // Cashback lands on the card part, so it needs Cards on, not just the account.
-  return { sell, unavailable, cashback: settings.cashback === true && cards, pay };
+  const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
+  return { sell, unavailable, cashback: settings.cashback === true && cards, pay, mesita_pay };
 }

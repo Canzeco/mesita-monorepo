@@ -24,7 +24,6 @@ import { boostLivemode } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readPayBody, startPayment } from "../_shared/pay.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { readSettings } from "../_shared/payments.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
@@ -50,13 +49,6 @@ serveJson("consumer-web-start-payment", async (req) => {
   const place = placeRes.place;
   if (!place || place.state !== "active") {
     return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
-  }
-  // The owner's Credits switch (MESITA-3396): off means no credit is spent
-  // here, whatever the guest holds. Read before the lock, so a refusal costs
-  // no money move; the balance itself is untouched.
-  const settings = await readSettings(admin, input.placeId);
-  if (settings.pay_credits === false) {
-    return json({ ok: false, code: "credits_off", error: "This place isn't taking credit right now" }, 409);
   }
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();

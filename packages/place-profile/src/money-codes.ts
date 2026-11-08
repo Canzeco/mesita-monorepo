@@ -14,9 +14,6 @@ export const MONEY_CODES = [
   "currency_mismatch",
   "paused",
   "not_available",
-  // The owner switched Credits off here (MESITA-3396): no voucher sells and
-  // no credit is spent at this place
-  "credits_off",
   "welcome_used",
   "place_code_required",
   // The amount
@@ -35,6 +32,8 @@ export const MONEY_CODES = [
   "checkout_failed",
   "bad_signature",
   "not_configured",
+  // A stale Business › Payments tab sent a switch that no longer exists (MESITA-3408)
+  "unknown_switch",
   // Why a voucher is not sellable yet
   "not_yet",
   "needs_card_payments",
