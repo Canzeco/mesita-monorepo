@@ -11,6 +11,11 @@ import { Face, VERB, feedWho, shortAgo } from "@/components/consumer/home/Social
 // that profile"): Home › Social's rows for this one place, newest first. The
 // place is the screen, so a row is the face, who did what, and when; no place
 // photo. Who is named follows Home › Social (consumer-web-list-activity).
+// IN A CARD LIKE REVIEWS (Pato, MESITA-3418: "put social in a box, same as
+// with google review"): a white rounded card on the page's grey, rows split
+// by hairlines, Show more its last row; every state sits in the same card.
+
+const CARD = "bg-card border-border divide-border flex flex-col divide-y overflow-hidden rounded-xl border";
 
 type State =
   | { status: "loading" }
@@ -48,9 +53,9 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
 
   if (state.status === "loading") {
     return (
-      <ul className="bg-card -mx-4 -mt-4 flex flex-col" aria-busy data-place-social="loading">
+      <ul className={CARD} aria-busy data-place-social="loading">
         {[0, 1, 2].map((i) => (
-          <li key={i} className="flex items-center gap-3 px-4 py-3.5">
+          <li key={i} className="flex items-center gap-3 p-4">
             <span className="bg-muted h-11 w-11 shrink-0 animate-pulse rounded-full" />
             <span className="bg-muted h-4 flex-1 animate-pulse rounded" />
           </li>
@@ -60,23 +65,27 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
   }
   if (state.status === "failed") {
     return (
-      <p className="text-muted-foreground py-10 text-center text-sm" data-place-social="failed">
-        Couldn&apos;t load this place&apos;s activity.
-      </p>
+      <div className={CARD}>
+        <p className="text-muted-foreground p-6 text-center text-sm" data-place-social="failed">
+          Couldn&apos;t load this place&apos;s activity.
+        </p>
+      </div>
     );
   }
   if (state.items.length === 0 && !state.next) {
     return (
-      <p className="text-muted-foreground py-10 text-center text-sm" data-place-social="empty">
-        No one has viewed or liked this place yet.
-      </p>
+      <div className={CARD}>
+        <p className="text-muted-foreground p-6 text-center text-sm" data-place-social="empty">
+          No one has viewed or liked this place yet.
+        </p>
+      </div>
     );
   }
   return (
-    <div className="bg-card -mx-4 -mt-4 flex flex-col" data-place-social="list">
+    <div className={CARD} data-place-social="list">
       <ul className="divide-border flex flex-col divide-y">
         {state.items.map((item) => (
-          <li key={`${item.at}-${item.kind}-${feedWho(item.person)}`} className="flex items-center gap-3 px-4 py-3.5">
+          <li key={`${item.at}-${item.kind}-${feedWho(item.person)}`} className="flex items-center gap-3 p-4">
             <Face person={item.person} />
             <span className="min-w-0 flex-1">
               <span className="text-foreground line-clamp-2 text-sm leading-snug">
@@ -95,7 +104,7 @@ export function PlaceSocialList({ placeId }: { placeId: string }) {
           type="button"
           onClick={loadMore}
           disabled={state.more}
-          className="text-foreground border-border h-12 border-t text-sm font-semibold disabled:opacity-60"
+          className="text-foreground hover:bg-muted/50 h-11 w-full text-sm font-semibold disabled:opacity-60"
         >
           {state.more ? "Loading…" : "Show more"}
         </button>
