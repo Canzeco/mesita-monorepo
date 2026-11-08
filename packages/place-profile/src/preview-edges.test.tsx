@@ -81,8 +81,9 @@ describe("member preview edges", () => {
     // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="More options"');
-    // Reserve is hidden for now (MESITA-3413): the row is Prepay · Pay.
-    expect(html).not.toContain('aria-label="Reserve a table"');
+    // Reserve is the grey row's fifth tile (MESITA-3416); Upgrade left it.
+    expect(html).toContain('aria-label="Reserve a table"');
+    expect(html).not.toContain('aria-label="Upgrade this place"');
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
