@@ -96,6 +96,7 @@ export type Database = {
           id: number
           memo_config: Json
           models_config: Json
+          money_config: Json
           reservations_config: Json
           updated_at: string
           updated_by: string | null
@@ -108,6 +109,7 @@ export type Database = {
           id?: number
           memo_config?: Json
           models_config?: Json
+          money_config?: Json
           reservations_config?: Json
           updated_at?: string
           updated_by?: string | null
@@ -120,6 +122,7 @@ export type Database = {
           id?: number
           memo_config?: Json
           models_config?: Json
+          money_config?: Json
           reservations_config?: Json
           updated_at?: string
           updated_by?: string | null
@@ -1199,6 +1202,9 @@ export type Database = {
       place_payment_settings: {
         Row: {
           cashback: boolean
+          pay_cards: boolean
+          pay_cash: boolean
+          pay_credits: boolean
           place_id: string
           updated_at: string
           updated_by: string | null
@@ -1211,6 +1217,9 @@ export type Database = {
         }
         Insert: {
           cashback?: boolean
+          pay_cards?: boolean
+          pay_cash?: boolean
+          pay_credits?: boolean
           place_id: string
           updated_at?: string
           updated_by?: string | null
@@ -1223,6 +1232,9 @@ export type Database = {
         }
         Update: {
           cashback?: boolean
+          pay_cards?: boolean
+          pay_cash?: boolean
+          pay_credits?: boolean
           place_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -2229,11 +2241,36 @@ export type Database = {
           },
         ]
       }
+      sign_in_codes: {
+        Row: {
+          calls: number
+          code: string
+          created_at: string
+          expires_at: string
+          phone: string
+        }
+        Insert: {
+          calls?: number
+          code: string
+          created_at?: string
+          expires_at: string
+          phone: string
+        }
+        Update: {
+          calls?: number
+          code?: string
+          created_at?: string
+          expires_at?: string
+          phone?: string
+        }
+        Relationships: []
+      }
       stripe_connect_events: {
         Row: {
           account: string | null
           created: number
           id: string
+          processed_at: string | null
           received_at: string
           type: string
         }
@@ -2241,6 +2278,7 @@ export type Database = {
           account?: string | null
           created: number
           id: string
+          processed_at?: string | null
           received_at?: string
           type: string
         }
@@ -2248,6 +2286,7 @@ export type Database = {
           account?: string | null
           created?: number
           id?: string
+          processed_at?: string | null
           received_at?: string
           type?: string
         }
@@ -2385,15 +2424,20 @@ export type Database = {
           amount_cents: number
           application_fee_cents: number
           card_cents: number
+          cashback_bps: number
           cashback_cents: number
           consumer_id: string | null
           created_at: string
           credit_cents: number
           currency: string
+          expires_at: string | null
+          fee_refunded_cents: number
           id: string
           livemode: boolean
           paid_at: string | null
           place_id: string
+          proof_seen_at: string | null
+          proof_token: string | null
           refunded_cents: number
           request_id: string | null
           settle_tries: number
@@ -2404,6 +2448,7 @@ export type Database = {
           stripe_payment_intent_id: string | null
           ticket: string | null
           tip_cents: number
+          tip_refunded_cents: number
           uncovered_cents: number
           updated_at: string
         }
@@ -2411,15 +2456,20 @@ export type Database = {
           amount_cents: number
           application_fee_cents?: number
           card_cents?: number
+          cashback_bps?: number
           cashback_cents?: number
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           currency: string
+          expires_at?: string | null
+          fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
           place_id: string
+          proof_seen_at?: string | null
+          proof_token?: string | null
           refunded_cents?: number
           request_id?: string | null
           settle_tries?: number
@@ -2430,6 +2480,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           ticket?: string | null
           tip_cents?: number
+          tip_refunded_cents?: number
           uncovered_cents?: number
           updated_at?: string
         }
@@ -2437,15 +2488,20 @@ export type Database = {
           amount_cents?: number
           application_fee_cents?: number
           card_cents?: number
+          cashback_bps?: number
           cashback_cents?: number
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
           currency?: string
+          expires_at?: string | null
+          fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
           place_id?: string
+          proof_seen_at?: string | null
+          proof_token?: string | null
           refunded_cents?: number
           request_id?: string | null
           settle_tries?: number
@@ -2456,6 +2512,7 @@ export type Database = {
           stripe_payment_intent_id?: string | null
           ticket?: string | null
           tip_cents?: number
+          tip_refunded_cents?: number
           uncovered_cents?: number
           updated_at?: string
         }
@@ -2484,6 +2541,7 @@ export type Database = {
           consumer_id: string | null
           created_at: string
           currency: string
+          fee_refunded_cents: number
           id: string
           livemode: boolean
           paid_at: string | null
@@ -2507,6 +2565,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency: string
+          fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
@@ -2530,6 +2589,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           currency?: string
+          fee_refunded_cents?: number
           id?: string
           livemode?: boolean
           paid_at?: string | null
@@ -2919,6 +2979,7 @@ export type Database = {
         Args: { c: Database["public"]["Tables"]["consumers"]["Row"] }
         Returns: boolean
       }
+      place_charges_sweep: { Args: never; Returns: number }
       place_code_check: {
         Args: { p_hash: string; p_place_id: string }
         Returns: boolean
@@ -3067,6 +3128,10 @@ export type Database = {
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
+      sign_in_code_take_call: {
+        Args: { p_max: number; p_phone: string }
+        Returns: string
+      }
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
@@ -3086,6 +3151,17 @@ export type Database = {
           spendable_cents: number
         }[]
       }
+      wallet_balances: {
+        Args: { p_consumer_id: string; p_livemode: boolean; p_now?: string }
+        Returns: {
+          available_cents: number
+          currency: string
+          held_cents: number
+          pending_cents: number
+          place_id: string
+          spendable_cents: number
+        }[]
+      }
       wallet_credit_purchase: {
         Args: {
           p_available_at?: string
@@ -3094,9 +3170,57 @@ export type Database = {
         }
         Returns: Json
       }
+      wallet_give_up: {
+        Args: { p_error: string; p_kind: string; p_row_id: string }
+        Returns: Json
+      }
+      wallet_hold_payment: {
+        Args: {
+          p_application_fee_cents: number
+          p_card_cents: number
+          p_cashback_bps: number
+          p_consumer_id: string
+          p_credit_cents: number
+          p_currency: string
+          p_expires_at: string
+          p_livemode: boolean
+          p_place_id: string
+          p_proof_token: string
+          p_request_id: string
+          p_stripe_account_id: string
+          p_ticket: string
+          p_tip_cents: number
+        }
+        Returns: Json
+      }
       wallet_lock: {
         Args: { p_consumer_id: string; p_place_id: string }
         Returns: undefined
+      }
+      wallet_note_fee_refund: {
+        Args: { p_fee_refunded_cents: number; p_kind: string; p_row_id: string }
+        Returns: Json
+      }
+      wallet_open_payment: {
+        Args: { p_payment_id: string; p_session_id: string }
+        Returns: Json
+      }
+      wallet_pay_credit: {
+        Args: {
+          p_amount_cents: number
+          p_consumer_id: string
+          p_currency: string
+          p_livemode: boolean
+          p_place_id: string
+          p_proof_token: string
+          p_request_id: string
+          p_ticket?: string
+        }
+        Returns: Json
+      }
+      wallet_place_outstanding: {
+        Args: { p_currency: string; p_livemode: boolean; p_place_id: string }
+        Returns: number
       }
       wallet_refund_payment: {
         Args: { p_amount_refunded: number; p_payment_id: string }
@@ -3104,6 +3228,35 @@ export type Database = {
       }
       wallet_refund_purchase: {
         Args: { p_amount_refunded: number; p_purchase_id: string }
+        Returns: Json
+      }
+      wallet_release_payment: {
+        Args: { p_error?: string; p_payment_id: string; p_status: string }
+        Returns: Json
+      }
+      wallet_reopen_settle: {
+        Args: { p_kind: string; p_row_id: string }
+        Returns: Json
+      }
+      wallet_settle_batch: {
+        Args: { p_limit: number }
+        Returns: {
+          consumer_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          kind: string
+          livemode: boolean
+          place_id: string
+          settle_tries: number
+          status: string
+          stripe_account_id: string
+          stripe_checkout_session_id: string
+          voucher: string
+        }[]
+      }
+      wallet_settle_payment: {
+        Args: { p_payment_id: string; p_payment_intent: string }
         Returns: Json
       }
     }

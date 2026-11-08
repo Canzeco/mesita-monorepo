@@ -295,7 +295,7 @@ export async function startCardPayment(
     );
   } catch (err) {
     const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : "stripe_unreachable";
-    console.error("[pay-card] checkout_failed", JSON.stringify({ payment_id: paymentId, code }));
+    console.error("[pay-card] checkout_failed", JSON.stringify({ payment_id: paymentId, code, message: err instanceof Error ? err.message : String(err) }));
     await admin.rpc("wallet_release_payment", { p_payment_id: paymentId, p_status: "failed", p_error: code });
     return refuse(502, `Stripe refused the checkout: ${code}`, "checkout_failed");
   }

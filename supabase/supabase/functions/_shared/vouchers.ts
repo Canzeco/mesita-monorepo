@@ -356,7 +356,7 @@ export async function openVoucherCheckout(
     );
   } catch (err) {
     const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : "stripe_unreachable";
-    console.error("[vouchers] checkout_failed", JSON.stringify({ purchase_id: purchaseId, code }));
+    console.error("[vouchers] checkout_failed", JSON.stringify({ purchase_id: purchaseId, code, message: err instanceof Error ? err.message : String(err) }));
     await admin.from("wallet_purchases")
       .update({ status: "failed", stripe_error: code, updated_at: new Date().toISOString() })
       .eq("id", purchaseId).eq("status", "opening");
