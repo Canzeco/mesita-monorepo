@@ -1,13 +1,15 @@
 "use client";
 
-// Payments (MESITA-3296): three cards of rows. The Stripe account first, with
-// the one button its state calls for; then Payments Cashback, one switch; then
-// Prepaid Vouchers, six. The owner and Mesita staff change them; the server
-// refuses anyone else. No number is set here: rates, bonuses and prices are
-// still open with owners.
+// Payments (MESITA-3296, four sections since MESITA-3408): Mesita Pay, the
+// place's own Stripe account, with the one button its state calls for; Visit
+// Checkout, the bill in its order (House Credits, Pay by phone, Outside
+// Mesita), one switch; Payments Cashback, one switch; Prepaid Vouchers, six.
+// A guest's credit is the place's debt, so no switch refuses it. The owner and
+// Mesita staff change them; the server refuses anyone else. No number is set
+// here: rates, bonuses and prices are Mesita's.
 
 import { useState } from "react";
-import { moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
+import { CARD_BILL_PAY_LIVE, moneyState, TestBand, type VoucherReason } from "@mesita/place-profile";
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
@@ -16,6 +18,7 @@ import {
   CoinsIcon,
   DeviceMobileIcon,
   MoneyIcon,
+  PiggyBankIcon,
   StripeLogoIcon,
   CrownIcon,
   WalletIcon,
@@ -73,19 +76,31 @@ const SPECIAL: Product[] = [
   { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
 
-/** WAYS TO PAY (MESITA-3391, moved from the Business Wallet mock, Pato:
- *  "if you are talking about the capabilities for your consumers, move those
- *  fields to payments"): how a guest can settle the bill here. Three states,
- *  never switches: each reads what is true now. Cash is always taken (Mesita
- *  never touches it); Cards is Digital Payments, on once Stripe can charge;
- *  Credits is on while the place sells a voucher or Cashback. */
-/** The three ways, as switches since MESITA-3396 (Pato: "Update the fields
- *  asked here then"): stored per place, default on. */
-const WAYS: Product[] = [
-  { key: "pay_cash", name: "Cash", line: "At the table, as always.", value: "", icon: MoneyIcon, tone: "bg-lime-100 text-lime-700" },
-  { key: "pay_cards", name: "Cards", line: "Digital Payments: guests pay the bill from their phone by card, Apple Pay or Google Pay.", value: "", icon: DeviceMobileIcon, tone: "bg-sky-100 text-sky-700" },
-  { key: "pay_credits", name: "Credits", line: "Credit a guest bought or earned here, spent on the bill.", value: "", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
-];
+/** Pay by phone (MESITA-3396's Cards, renamed on the page by MESITA-3408;
+ *  the key stays `pay_cards`). */
+const PAY_BY_PHONE: Product = {
+  key: "pay_cards",
+  name: "Pay by phone",
+  line: "Guests pay the bill from their phone by card, Apple Pay or Google Pay.",
+  value: "",
+  icon: DeviceMobileIcon,
+  tone: "bg-sky-100 text-sky-700",
+};
+
+/** A row with no switch: what holds, stated. Muted, so only switches read as
+ *  controls (MESITA-3408). */
+type InfoRow = { name: string; line: string; icon: Icon };
+
+const HOUSE_CREDITS: InfoRow = {
+  name: "House Credits",
+  line: "Spent on the bill whenever a guest holds credit here. It is your debt, always honoured.",
+  icon: PiggyBankIcon,
+};
+const OUTSIDE: InfoRow = { name: "Outside Mesita", line: "Cash or your own terminal. Mesita never touches it.", icon: MoneyIcon };
+
+/** Card payment of the bill is W2b; the note leaves when it flips the flag. */
+const ARRIVES_SOON = "Card payment of the bill arrives soon.";
+const NOTE = "text-muted-foreground text-xs";
 
 /** The six voucher switches, the keys moneyState reports a reason for. */
 type VoucherKey = Extract<PaymentKey, `voucher_${string}`>;
@@ -95,7 +110,6 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
  *  (MESITA-3303). The guest sees the same reason on the Vouchers tab. */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_account: "Not for sale until Stripe setup is complete.",
-  credits_off: "Not for sale while Credits is off.",
   not_yet: "Not on sale yet.",
   needs_card_payments: "On sale once card payments are on.",
   needs_instagram: "On sale once the Instagram connection is on.",
@@ -172,6 +186,12 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
   const row = ({ key, name, line, value, icon: Mark, tone }: Product) => {
     const on = settings[key];
     const reason = isVoucherKey(key) ? selling.unavailable[key] : undefined;
+    // One state note at most, then the W2b note last.
+    let note: string | null = null;
+    if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
+    if (key === "pay_cards") note = on ? (account.charges_enabled ? null : "Needs Stripe: on once the account can charge.") : "Guests still pay from credit here.";
+    if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Pay by phone on and Stripe ready.";
+    const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
       <li key={key} className={MARK_ROW}>
         <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", tone)}>
@@ -180,19 +200,29 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <div className="min-w-0">
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
-          {on && reason && NOT_SELLING[reason] ? <p className="text-muted-foreground text-xs">{NOT_SELLING[reason]}</p> : null}
-          {on && key === "pay_cards" && !account.charges_enabled ? (
-            <p className="text-muted-foreground text-xs">Needs Stripe: on once the account can charge.</p>
-          ) : null}
-          {on && key === "cashback" && !settings.pay_cards ? (
-            <p className="text-muted-foreground text-xs">Cashback lands on card payments, which are off.</p>
-          ) : null}
+          {note ? <p className={NOTE}>{note}</p> : null}
+          {soon ? <p className={NOTE}>{ARRIVES_SOON}</p> : null}
         </div>
         {value ? <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p> : <span />}
         <Switch on={on} pending={pending} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
       </li>
     );
   };
+
+  // The same four cells as a switch row, so the text lines up; nothing to flip.
+  const infoRow = ({ name, line, icon: Mark }: InfoRow) => (
+    <li key={name} className={MARK_ROW}>
+      <span className="bg-muted text-muted-foreground grid size-10 shrink-0 place-items-center rounded-xl">
+        <Mark size={22} weight="regular" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="font-medium">{name}</p>
+        <p className="text-muted-foreground">{line}</p>
+      </div>
+      <span />
+      <span />
+    </li>
+  );
 
   return (
     <>
@@ -230,12 +260,19 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
                 ))}
               </ul>
             ) : null}
+            {ready && !CARD_BILL_PAY_LIVE && !selling.mesita_pay ? (
+              <p className={NOTE}>The green Mesita Pay mark shows on your place once a voucher is on sale.</p>
+            ) : null}
           </li>
         </ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
-        <h2 className={HEAD}>Ways to pay</h2>
-        <ul className="divide-border divide-y">{WAYS.map(row)}</ul>
+        <h2 className={HEAD}>Visit Checkout</h2>
+        <ul className="divide-border divide-y">
+          {infoRow(HOUSE_CREDITS)}
+          {row(PAY_BY_PHONE)}
+          {infoRow(OUTSIDE)}
+        </ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">{row(CASHBACK)}</ul>

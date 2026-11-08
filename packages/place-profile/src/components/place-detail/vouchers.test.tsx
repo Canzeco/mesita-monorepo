@@ -11,6 +11,7 @@ import { pesos, VouchersPane } from "./vouchers";
 
 const OFFER: PlaceMoney = {
   charges_enabled: true,
+  mesita_pay: true,
   cashback: true,
   vouchers: { voucher_200: true, voucher_1000: true, voucher_5000: true, voucher_welcome: true, voucher_story: false, voucher_vip: false },
   test_mode: true,
@@ -47,6 +48,13 @@ describe("Vouchers tab", () => {
     const older = placeMoneyFrom({ charges_enabled: true, cashback: true, vouchers: { voucher_200: true } });
     expect(render(older, () => {})).not.toContain("Buy the");
     expect(render(older, () => {})).not.toContain("Choose the");
+  });
+
+  it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
+    expect(placeMoneyFrom({ charges_enabled: true, mesita_pay: false })?.mesita_pay).toBe(false);
+    expect(placeMoneyFrom({ charges_enabled: false, mesita_pay: true })?.mesita_pay).toBe(true);
+    expect(placeMoneyFrom({ charges_enabled: true })?.mesita_pay).toBe(true);
+    expect(placeMoneyFrom({ charges_enabled: false })?.mesita_pay).toBe(false);
   });
 
   it("shows the guest's credit from the server's balance, Available and Pending", () => {

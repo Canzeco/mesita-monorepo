@@ -76,7 +76,6 @@ export const BUY_REFUSAL: Record<string, string> = {
   currency_mismatch: "This place can't sell vouchers in its currency yet.",
   paused: "Voucher sales are paused for a moment. Try again later.",
   not_available: "This place doesn't sell that voucher.",
-  credits_off: "This place isn't taking credit right now.",
   not_yet: "This voucher isn't on sale yet.",
   needs_card_payments: "This voucher arrives with card payments.",
   needs_instagram: "This voucher arrives with the Instagram connection.",
@@ -171,7 +170,6 @@ export const PAY_REFUSAL: Record<string, string> = {
   amount_required: "Type an amount to pay.",
   above_cap: "That's more than one payment can be.",
   gone: "This place can't take payments.",
-  credits_off: "This place isn't taking credit right now.",
   taken: "This payment already went through.",
 };
 

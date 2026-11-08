@@ -145,7 +145,6 @@ function priceValue(product: Product, line: VoucherCatalogLine | undefined, curr
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
   if (reason === "off" || reason === "needs_account") return "Not at this place yet";
-  if (reason === "credits_off") return "No credit at this place";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
   return "Coming soon";
@@ -229,6 +228,9 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   // offer: draw the rows and a bone, never a guess (MESITA-3388).
   const loading = actions?.vouchersLoading === true && !money;
   // A Google-only card or an older read has no money: every switch reads off.
+  // Only `unavailable` is valid from this local call: the read strips
+  // `pay_cards`, so its cashback and mesita_pay are not the server's. The
+  // cashback row reads the server's word, `money.cashback` (MESITA-3408).
   const state = moneyState(
     {
       cashback: money?.cashback === true,
@@ -255,10 +257,11 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
   // not for sale.
   const dim = money?.test_mode !== true;
-  const cashbackTag = state.cashback ? "Available here" : "Not at this place yet";
+  const cashback = money?.cashback === true;
+  const cashbackTag = cashback ? "Available here" : "Not at this place yet";
   // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
   // Pay at a place without cashback promised 5% that never comes.
-  const canPay = Boolean(actions?.onPay) && (state.cashback || !dim);
+  const canPay = Boolean(actions?.onPay) && (cashback || !dim);
 
   const products = [...SPECIAL, ...STANDARD];
   // Buyable: for sale, or in test mode any row the server has not used up or
@@ -299,7 +302,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
       <section className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionHead id="rewards-payment" Mark={QrCode} title="Payment Rewards" subtitle="When you pay the bill here." />
         <div
-          className={cn(LIST_CARD, !loading && !state.cashback && dim && "opacity-50")}
+          className={cn(LIST_CARD, !loading && !cashback && dim && "opacity-50")}
           aria-label={`5% Cashback: pay here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
           data-cashback
         >

@@ -30,6 +30,8 @@ export type PlaceBalance = {
 export type PlaceMoney = {
   /** Stripe lets the place's account take payments. */
   charges_enabled: boolean;
+  /** The green Mesita Pay mark, the server's (moneyState, MESITA-3408). */
+  mesita_pay: boolean;
   /** Payments Cashback, the standard 5%, on. */
   cashback: boolean;
   vouchers: Record<VoucherKey, boolean>;

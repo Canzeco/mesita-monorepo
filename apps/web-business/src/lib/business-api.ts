@@ -415,8 +415,10 @@ export async function decideVerification(
 
 // ── Payments (MESITA-3296) ──────────────────────────────────────────────
 
-/** The ways to pay (MESITA-3396: pay_cash, pay_cards, pay_credits; default on) and the money products. */
-export type PaymentKey = "pay_cash" | "pay_cards" | "pay_credits" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
+/** The owner's switches. `pay_cards` is Pay by phone (MESITA-3396; the key is
+ *  never renamed, renaming resets live config). Cash and Credits left with
+ *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
+export type PaymentKey = "pay_cards" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
 export type PaymentSettings = Record<PaymentKey, boolean>;
 export type PaymentAccount = {
   state: "none" | "onboarding" | "ready" | "restricted";

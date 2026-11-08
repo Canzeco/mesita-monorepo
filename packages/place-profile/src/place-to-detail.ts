@@ -92,6 +92,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     : null;
   return {
     charges_enabled: m.charges_enabled === true,
+    // An older EF answer has no mark: fall back to the old rule, never drop it.
+    mesita_pay: typeof m.mesita_pay === "boolean" ? m.mesita_pay : m.charges_enabled === true,
     cashback: m.cashback === true,
     vouchers,
     test_mode: m.test_mode === true,
