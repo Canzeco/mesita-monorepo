@@ -120,9 +120,18 @@ Deno.test("startPayment: an RPC error or an unknown answer is a 5xx, never a ref
 });
 
 const ROW: PaymentRow = {
-  id: "p1", place_id: PLACE, status: "paid", amount_cents: 5000, credit_cents: 5000, currency: "mxn",
-  paid_at: "2026-11-07T12:00:00Z", proof_token: TOKEN, proof_seen_at: null, ticket: "T-12", livemode: false,
+  id: "p1", place_id: PLACE, status: "paid", amount_cents: 5000, credit_cents: 5000, card_cents: 0, tip_cents: 0, cashback_cents: 0,
+  currency: "mxn", paid_at: "2026-11-07T12:00:00Z", proof_token: TOKEN, proof_seen_at: null, ticket: "T-12", livemode: false,
+  stripe_checkout_session_id: null, stripe_account_id: null, created_at: "2026-11-07T11:59:00Z", expires_at: null,
 };
+
+Deno.test("paymentView (MESITA-3305): an open card part has no proof yet, a paid one does", () => {
+  const open = paymentView({ ...ROW, status: "open", paid_at: null, card_cents: 500, amount_cents: 5500 }, "Casa");
+  assertEquals(open.proof, null);
+  assertEquals(open.status, "open");
+  assertEquals(open.card_cents, 500);
+  assertEquals(paymentView(ROW, "Casa").proof?.token, TOKEN);
+});
 
 Deno.test("proofView: what the staff page reads, and nothing about who paid", () => {
   const v = proofView(ROW, "Casa", "2026-11-07T12:01:00Z");

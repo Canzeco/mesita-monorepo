@@ -63,6 +63,32 @@ export function readPayBody(b: Record<string, unknown>): { ok: true; input: PayI
   return { ok: true, input: { placeId: b.place_id, amountCents: a, requestId: b.request_id, ticket } };
 }
 
+/** The card part of the body (MESITA-3305): `card_cents` (0 or absent is a
+ *  credit-only payment), `tip_cents` by card only, and `return_url`, a
+ *  Mesita address, needed whenever there is a card part. The card part
+ *  never exceeds the bill. The caller checks the address. */
+export function readCardPart(
+  b: Record<string, unknown>,
+  amountCents: number,
+): { ok: true; cardCents: number; tipCents: number; returnUrl: string | null } | PayRefusal {
+  const c = b.card_cents;
+  const cardCents = c === undefined || c === null ? 0 : c;
+  if (typeof cardCents !== "number" || !Number.isInteger(cardCents) || cardCents < 0) {
+    return refuse(400, "card_cents must be a whole number of centavos");
+  }
+  if (cardCents > amountCents) return refuse(400, "card_cents cannot exceed amount_cents");
+  const t = b.tip_cents;
+  const tipCents = t === undefined || t === null ? 0 : t;
+  if (typeof tipCents !== "number" || !Number.isInteger(tipCents) || tipCents < 0) {
+    return refuse(400, "tip_cents must be a whole number of centavos");
+  }
+  if (tipCents > MAX_PAYMENT_INPUT_CENTS) return refuse(400, "That is more than one tip can be", "above_cap", { cap_cents: MAX_PAYMENT_INPUT_CENTS });
+  if (cardCents === 0 && tipCents > 0) return refuse(400, "A tip goes with a card part");
+  const returnUrl = typeof b.return_url === "string" ? b.return_url : null;
+  if (cardCents > 0 && !returnUrl) return refuse(400, "return_url is needed with a card part");
+  return { ok: true, cardCents, tipCents, returnUrl };
+}
+
 /** "MX$170" or "MX$170.50": the one sentence the server writes with money in it. */
 export function moneyText(cents: number, currency: string): string {
   const whole = cents % 100 === 0;
@@ -165,19 +191,30 @@ export type PaymentRow = {
   status: string;
   amount_cents: number;
   credit_cents: number;
+  /** The card part and the tip (MESITA-3305); 0 on a credit-only payment. */
+  card_cents: number;
+  tip_cents: number;
+  cashback_cents: number;
   currency: string;
-  paid_at: string;
+  /** Null while a card part's Checkout is still open. */
+  paid_at: string | null;
   proof_token: string | null;
   proof_seen_at: string | null;
   ticket: string | null;
   livemode: boolean;
+  stripe_checkout_session_id: string | null;
+  stripe_account_id: string | null;
+  created_at: string;
+  expires_at: string | null;
 };
 
 const PAYMENT_COLUMNS =
-  "id, place_id, status, amount_cents, credit_cents, currency, paid_at, proof_token, proof_seen_at, ticket, livemode";
+  "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, cashback_cents, currency, paid_at, " +
+  "proof_token, proof_seen_at, ticket, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
 
-/** What the guest's Pay page shows for one of their payments: the proof,
- *  the seen stamp, the status as it stands (a refund reads Refunded). */
+/** What the guest's Pay page shows for one of their payments: the proof
+ *  (once paid), the seen stamp, the status as it stands (a refund reads
+ *  Refunded; an open card part reads open). */
 export function paymentView(row: PaymentRow, placeName: string | null) {
   return {
     payment_id: row.id,
@@ -185,16 +222,20 @@ export function paymentView(row: PaymentRow, placeName: string | null) {
     status: row.status,
     amount_cents: row.amount_cents,
     credit_cents: row.credit_cents,
+    card_cents: row.card_cents,
+    tip_cents: row.tip_cents,
+    cashback_cents: row.cashback_cents,
     currency: row.currency,
     paid_at: row.paid_at,
     proof_seen_at: row.proof_seen_at,
-    proof: row.proof_token ? { token: row.proof_token, url: proofUrl(row.proof_token) } : null,
+    proof: row.proof_token && row.paid_at ? { token: row.proof_token, url: proofUrl(row.proof_token) } : null,
     test_mode: !row.livemode,
   };
 }
 
-/** The guest's own paid payment, or null. A row that is not theirs and a row
- *  that never got paid both read as null: the door answers 404 gone. */
+/** The guest's own payment in any state, or null when it is not theirs:
+ *  the door answers 404 gone. An open card part is read so the Pay page
+ *  can settle it or resume its Checkout (MESITA-3305). */
 export async function readPayment(
   admin: SupabaseClient,
   consumerId: string,
@@ -205,7 +246,6 @@ export async function readPayment(
     .select(PAYMENT_COLUMNS)
     .eq("id", paymentId)
     .eq("consumer_id", consumerId)
-    .not("paid_at", "is", null)
     .maybeSingle();
   if (error) return { ok: false, error: `payment: ${error.message}` };
   const row = (data as PaymentRow | null) ?? null;

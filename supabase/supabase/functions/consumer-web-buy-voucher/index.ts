@@ -14,7 +14,9 @@
 // Response: { ok: true, url, purchase_id }
 //   401 sign_in · 404 place · 409 no_account | currency_mismatch | paused |
 //   not_available | not_yet | needs_card_payments | needs_instagram |
-//   welcome_used | below_minimum · 502 checkout_failed
+//   welcome_used | below_minimum | place_cap (MESITA-3305: the test-mode
+//   cap on a place's outstanding credit) | in_progress (+url: a second
+//   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -76,6 +78,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     livemode,
     nowSec: Math.floor(Date.now() / 1000),
   });
-  if (!res.ok) return json({ ok: false, code: res.code, error: res.error }, res.status);
+  if (!res.ok) return json({ ok: false, code: res.code, error: res.error, ...(res.url ? { url: res.url } : {}) }, res.status);
   return json({ ok: true, url: res.url, purchase_id: res.purchase_id });
 });

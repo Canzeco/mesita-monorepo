@@ -301,6 +301,18 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
+# MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
+# holds no Supabase JWT; the signature on the raw body with
+# STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato
+# sets it). The `stripe` actor of Rules §2.
+[functions.stripe-connect-receive-event]
+verify_jwt = false
+
+# MESITA-3305 (W2b): the money ledger's backstop, every 5 minutes.
+# Kill switch: select cron.unschedule('settle-wallet');
+[functions.supabase-cron-settle-wallet]
+verify_jwt = true
+
 # Kill switch: select cron.unschedule('sync-premier');
 [functions.supabase-cron-sync-premier]
 verify_jwt = true

@@ -7,7 +7,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
-import { buyRefusal, CATALOG_LINES, offerFrom, openVoucherCheckout, voucherCheckoutParams } from "./vouchers.ts";
+import { buyRefusal, CATALOG_LINES, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
 const GUEST = "00000000-0000-4000-8000-0000000b3303";
@@ -134,11 +134,16 @@ type Fake = {
   updates: Array<{ patch: Record<string, unknown>; eq: Record<string, unknown> }>;
 };
 
-/** A wallet_purchases table of one insert and its updates. */
-function fakeAdmin(opts: { insertError?: { code: string; message: string }; existing?: Record<string, unknown> | null }): Fake {
+/** A wallet_purchases table of one insert and its updates; the place's
+ *  outstanding credit (MESITA-3305's cap) answers `outstanding`, 0 by default. */
+function fakeAdmin(opts: { insertError?: { code: string; message: string }; existing?: Record<string, unknown> | null; outstanding?: number }): Fake {
   const inserts: Fake["inserts"] = [];
   const updates: Fake["updates"] = [];
   const admin = {
+    rpc: (name: string) => {
+      assertEquals(name, "wallet_place_outstanding");
+      return Promise.resolve({ data: opts.outstanding ?? 0, error: null });
+    },
     from: (table: string) => {
       assertEquals(table, "wallet_purchases");
       return {
@@ -255,4 +260,52 @@ Deno.test("any other insert error is thrown, so the EF answers 500 and nothing r
   const fake = fakeAdmin({ insertError: { code: "42501", message: "denied" } });
   const stripe: StripeCall = () => Promise.reject(new Error("never called"));
   await assertRejects(() => openVoucherCheckout(fake.admin, stripe, BUY), Error, "purchase_insert");
+});
+
+// ── MESITA-3305: the test-mode cap and a second Welcome buy ─────────────────
+
+Deno.test("place_cap: a buy that would push the place past MX$20,000 of outstanding credit is refused in test mode, never live", async () => {
+  // MX$19,790 outstanding + MX$220 of credit from a MX$200 voucher = MX$20,010.
+  const fake = fakeAdmin({ outstanding: 19_790_00 });
+  const stripe: StripeCall = () => Promise.reject(new Error("never called"));
+  const r = await openVoucherCheckout(fake.admin, stripe, BUY);
+  assertEquals(r.ok, false);
+  assertEquals((r as { code: string }).code, "place_cap");
+  assertEquals(fake.inserts.length, 0);
+  assertEquals(overPlaceCap(19_790_00, "voucher_200", false), true);
+  assertEquals(overPlaceCap(19_780_00, "voucher_200", false), false);
+  assertEquals(overPlaceCap(19_790_00, "voucher_200", true), false);
+  assertEquals(PLACE_CAP_CENTS, 20_000_00);
+});
+
+Deno.test("a second Welcome buy while the first one's Checkout is open answers in_progress with that url, never a 500", async () => {
+  const fake = fakeAdmin({ insertError: { code: "23505", message: "welcome once" }, existing: null });
+  // The request_id read finds nothing; the Welcome read finds the open row.
+  let reads = 0;
+  const admin = {
+    rpc: fake.admin.rpc,
+    from: (table: string) => {
+      assertEquals(table, "wallet_purchases");
+      return {
+        insert: (fake.admin.from(table) as unknown as { insert: unknown }).insert,
+        select: () => {
+          const chain = {
+            eq: () => chain,
+            in: () => chain,
+            maybeSingle: () => {
+              reads++;
+              return Promise.resolve({ data: reads === 1 ? null : { id: ROW, status: "open", stripe_checkout_session_id: "cs_w" }, error: null });
+            },
+          };
+          return chain;
+        },
+      };
+    },
+  } as unknown as SupabaseClient;
+  const stripe: StripeCall = (_m, path) => {
+    assertEquals(path, "checkout/sessions/cs_w");
+    return Promise.resolve({ status: "open", url: "https://checkout.stripe.com/c/w" });
+  };
+  const r = await openVoucherCheckout(admin, stripe, { ...BUY, voucher: "voucher_welcome", requestId: "00000000-0000-4000-8000-0000000e3303" });
+  assertEquals(r, { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open", url: "https://checkout.stripe.com/c/w" });
 });
