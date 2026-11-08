@@ -65,6 +65,7 @@ type Brand = {
     minSize: Record<string, number>;
   };
   targets: { web: string[] };
+  appIcons: Record<string, string>;
 };
 
 const brand: Brand = JSON.parse(
@@ -419,13 +420,50 @@ for (const app of brand.targets.web) {
       );
     }
   }
-  // favicon — the bare mark, sized to fill the tab square with a little air
+}
+
+// App icons (MESITA-3402): the white mark on each app's own tile colour, so
+// tabs, home screens and the Vercel dashboard tell the apps apart. icon.svg is
+// the rounded tab tile; apple-icon.tsx renders the 180x180 full-bleed square
+// (the OS rounds it) at build time, so no binary PNG can drift from brand.json.
+for (const [app, tile] of Object.entries(brand.appIcons)) {
+  if (app === "_") continue;
   await write(
     `apps/${app}/src/app/icon.svg`,
     `<!-- ${FILE_NOTICE} -->\n` +
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Mesita">\n` +
-      `  <g transform="translate(50 50) scale(1.18) translate(-50 -50)" fill="${PINK}">\n` +
+      `  <rect width="100" height="100" rx="22" fill="${tile}"/>\n` +
+      `  <g transform="translate(50 50) scale(0.74) translate(-50 -50)" fill="#ffffff">\n` +
       `    <path d="${mark.d}"/>\n  </g>\n</svg>\n`,
+  );
+  await write(
+    `apps/${app}/src/app/apple-icon.tsx`,
+    `// ${FILE_NOTICE}\n` +
+      `import { ImageResponse } from "next/og";\n\n` +
+      `export const size = { width: 180, height: 180 };\n` +
+      `export const contentType = "image/png";\n\n` +
+      `const MARK =\n  "${mark.d}";\n\n` +
+      `export default function AppleIcon() {\n` +
+      `  return new ImageResponse(\n` +
+      `    (\n` +
+      `      <div\n` +
+      `        style={{\n` +
+      `          width: "100%",\n` +
+      `          height: "100%",\n` +
+      `          display: "flex",\n` +
+      `          alignItems: "center",\n` +
+      `          justifyContent: "center",\n` +
+      `          background: "${tile}",\n` +
+      `        }}\n` +
+      `      >\n` +
+      `        <svg width={124} height={124} viewBox="${mark.viewBox}">\n` +
+      `          <path fill="#ffffff" d={MARK} />\n` +
+      `        </svg>\n` +
+      `      </div>\n` +
+      `    ),\n` +
+      `    size,\n` +
+      `  );\n` +
+      `}\n`,
   );
 }
 
