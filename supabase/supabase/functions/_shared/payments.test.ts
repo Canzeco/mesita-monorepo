@@ -85,20 +85,20 @@ Deno.test("Stripe's Account object becomes the row, missing fields read as off",
   assertEquals(s.requirements_due, ["a"]);
 });
 
-Deno.test("settings: eight switches; no row is products off and Pay by phone on; unknown keys refused", () => {
+Deno.test("settings: seven switches; no row is products off and Pay by phone on; unknown keys refused", () => {
   const off = settingsFromRow(null);
-  assertEquals(Object.keys(off).length, 8);
+  assertEquals(Object.keys(off).length, 7);
   assertEquals(Object.entries(off).filter(([k]) => k !== "pay_cards").every(([, v]) => v === false), true);
   // Pay by phone (MESITA-3396) defaults on, and only an outright false turns it
   // off: a row from before the column must never switch a place off.
   assertEquals(off.pay_cards, true);
   assertEquals(settingsFromRow({ pay_cards: false }).pay_cards, false);
   assertEquals(settingsFromRow({ pay_cards: "no" }).pay_cards, true);
-  assertEquals(settingsFromRow({ cashback: true, voucher_vip: "yes" }).cashback, true);
-  assertEquals(settingsFromRow({ cashback: true, voucher_vip: "yes" }).voucher_vip, false);
+  assertEquals(settingsFromRow({ voucher_200: true, voucher_vip: "yes" }).voucher_200, true);
+  assertEquals(settingsFromRow({ voucher_200: true, voucher_vip: "yes" }).voucher_vip, false);
   // A row still carrying the dead columns (MESITA-3408, dropped by MESITA-3409) reads past them.
-  const old = settingsFromRow({ pay_cash: false, pay_credits: false, voucher_200: true } as Record<string, unknown>);
-  assertEquals("pay_cash" in old || "pay_credits" in old, false);
+  const old = settingsFromRow({ pay_cash: false, pay_credits: false, cashback: false, voucher_200: true } as Record<string, unknown>);
+  assertEquals("pay_cash" in old || "pay_credits" in old || "cashback" in old, false);
   assertEquals(old.voucher_200, true);
   assertEquals(isPaymentKey("voucher_200"), true);
   assertEquals(isPaymentKey("prepay_enabled"), false);
@@ -115,7 +115,7 @@ Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by car
   // Pay by phone off, MX$200 on, charging: sells and shows the mark.
   assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true });
   // Pay by phone off, nothing on: no mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, cashback: true }, true), { sell: [], mesita_pay: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false }, true), { sell: [], mesita_pay: false });
 });
 
 // The "Stripe" general state and the guest Pay mark read one rule

@@ -16,7 +16,6 @@ const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
   pay_cards: true,
-  cashback: true,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -47,7 +46,7 @@ Deno.test("W1b sells MX$200, MX$1,000 and Welcome; the rest say why", () => {
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
   assertEquals(o.mesita_pay, true);
-  assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
+  assertEquals("pay_cards" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
