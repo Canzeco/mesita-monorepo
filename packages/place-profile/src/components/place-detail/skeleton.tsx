@@ -155,9 +155,10 @@ function BoxTitleBar({ width, meta = false }: { width: string; meta?: boolean })
 function OverviewSkeleton() {
   return (
     <>
-      {/* MediaBox: the square carousel inside a bare Box. */}
-      <Box bare>
-        <Bone className="aspect-square w-full rounded-none" />
+      {/* MediaBox: "Photos" over the square carousel (MESITA-3429). */}
+      <Box>
+        <BoxTitleBar width="w-16" />
+        <Bone className="aspect-square w-full rounded-lg" />
       </Box>
       <Box>
         <BoxTitleBar width="w-28" />

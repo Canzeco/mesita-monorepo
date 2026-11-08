@@ -8,17 +8,18 @@ import { Box } from "./box";
 // ── 2. Media (Place tab) ────────────────────────────────────────────────
 
 export function MediaBox({ place }: { place: PlaceDetail }) {
-  // decision: Pato — gallery in the same bordered card as Location/Time
-  // (not full-bleed). bare Box = border + rounded-xl, no title chrome;
-  // carousel fills the card edge-to-edge inside the clip.
+  // A TITLED BOX, "PHOTOS" (Pato, MESITA-3429: "put media inside a box,
+  // call it photos ... i know that will require double margin, but thats
+  // okey"): the same white card as every other box, its 16px padding round
+  // the square carousel. It filled a bare card edge to edge until then.
   if (place.photos.length === 0) return null;
   return (
-    <Box bare>
+    <Box title="Photos">
       <ImageCarousel
         photos={place.photos}
         alt={place.name}
         aspect="aspect-square"
-        rounded="rounded-none"
+        rounded="rounded-lg"
       />
     </Box>
   );
