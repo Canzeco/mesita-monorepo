@@ -146,11 +146,15 @@ export function ProfileFact({
   icon: Icon,
   emoji,
   strong = false,
+  iconClassName,
   className,
   children,
   ...rest
 }: {
   icon?: LucideIcon;
+  /** The icon's own colour (MESITA-3440: money green, star amber, clock
+   *  green or red, zone red, distance blue, as on the Home tile). */
+  iconClassName?: string;
   /** Drawn where the icon goes (a category's own emoji, MESITA-2813). */
   emoji?: string | null;
   strong?: boolean;
@@ -167,10 +171,10 @@ export function ProfileFact({
         </span>
       ) : Icon ? (
         <Icon
-          className={
-            "h-4 w-4 shrink-0 " +
-            (strong ? "text-foreground" : "text-muted-foreground")
-          }
+          className={cn(
+            "h-4 w-4 shrink-0",
+            iconClassName ?? (strong ? "text-foreground" : "text-muted-foreground"),
+          )}
           strokeWidth={2}
           aria-hidden
         />

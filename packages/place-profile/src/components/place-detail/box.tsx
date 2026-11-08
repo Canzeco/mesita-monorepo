@@ -39,18 +39,14 @@ export function Box({
           behind a muted glyph; the `icon` props stay so callers need not
           change, and draw nothing. */}
       {(title || right) && (
-        // CENTERED TITLES (Pato, MESITA-3438: "try centralizing the titles
-        // ... lets test it"): three columns, the title in the middle and any
-        // note (Location's km) at the right; left-aligned until then.
-        <header className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
-          <span aria-hidden />
-          {title ? <BoxLabel>{title}</BoxLabel> : <span />}
-          {right ? (
+        // TITLES AT THE LEFT AGAIN (Pato, MESITA-3440: "maybe return
+        // subsections titles to the left"; centered for an evening, MESITA-3438).
+        <header className="flex items-baseline justify-between gap-3">
+          {title && <BoxLabel>{title}</BoxLabel>}
+          {right && (
             <span className={cn(PLACE_META_CLASS, "min-w-0 shrink text-right")}>
               {right}
             </span>
-          ) : (
-            <span aria-hidden />
           )}
         </header>
       )}

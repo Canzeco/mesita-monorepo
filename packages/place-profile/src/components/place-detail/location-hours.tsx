@@ -201,7 +201,9 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
-      <ul className="divide-border divide-y" data-hours-week>
+      {/* IN THE GREY PANEL (Pato, MESITA-3440: "hours must go inside a gray
+          box too ... what we did with presentation"): the AboutBox panel. */}
+      <ul className="divide-border bg-muted divide-y rounded-lg px-4 py-3" data-hours-week>
         {/* NOW IS THE FIRST ROW (Pato, MESITA-3436: "time must be on top of
             all days as an eighth row ... joined, same size, but with the text
             ... at the right, and in green"): the same row as the days, the
