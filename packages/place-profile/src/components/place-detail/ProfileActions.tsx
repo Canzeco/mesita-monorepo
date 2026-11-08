@@ -30,9 +30,9 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // width over Mesita Prepay and Mesita Pay halved; MESITA-2688/2689 had
 // Reserve and Pay side by side):
 //
-//   [ ♡ Save    ] [ ▣ Reserve ] [ ⇪ Share   ]
-//   [ ▱ Maps    ] [ ✆ Contact ] [ ⇧ Upgrade ]   (MESITA-3425)
-//   [ ▤ Prepay   (30% Bonus) ] [ ▦ Pay     (5% Back) ]   green, pinned (MESITA-3423)
+//   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      grey, glyph over label
+//   [ Reserve ] [ Prepay / 30% Bonus ] [ Pay / 5% Back ]    grey · green · green, pinned
+//   (MESITA-3426)
 //
 // That is Pato's 3×3 sketch (MESITA-3419); layout D (MESITA-3416) before.
 //
@@ -98,18 +98,19 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 /** The tiles row's wrapper in the band (the Mesita row rides in the sticky
  *  block since MESITA-3330; ONE GAP EVERY WAY, Pato, MESITA-2823). */
 export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
-/** Rows 1–2: six grey tiles, three a row, 8px apart (Pato, MESITA-3419: his
- *  3×3 sketch, "try this grid instead"). Five in one row until then. */
-export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A tile's box: 40px (Pato, MESITA-3423: "even shorter, just a bit"; 44px, rounded-lg, the glyph beside the label (Pato,
- *  MESITA-3421: "the icons must be horizontal now ... and make the buttons
- *  shorter"), the tap floor of MESITA-2324, from MESITA-3421 until then;
- *  56px with the glyph over the label before that). */
+/** Row 1: five grey tiles, 8px apart, Save · Maps · Contact · Share ·
+ *  Upgrade (Pato, MESITA-3426: "maybe do return the 5 and 3 buttons grid";
+ *  three a row from MESITA-3419 to MESITA-3425). */
+export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
+/** A tile's box: 52px, the glyph over the label (MESITA-3426: five a row is
+ *  ~59px wide on a 360px phone, too narrow for them side by side). It was
+ *  40px with the glyph beside the label (MESITA-3421, MESITA-3423) and 56px
+ *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
-  "flex h-10 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
-/** Row 3, pinned: Prepay · Pay, half each (MESITA-3423; Prepay · Card · Pay
- *  from MESITA-3419). */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
+  "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
+/** Row 2, pinned: Reserve · Prepay · Pay, a third each (MESITA-3426; Prepay
+ *  · Pay halves in MESITA-3423, Prepay · Card · Pay in MESITA-3419). */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -181,7 +182,7 @@ function ActionTile({
             strokeWidth={2.25}
           />
         ) : null)}
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="max-w-full truncate">{label}</span>
     </button>
   );
 }
@@ -201,9 +202,7 @@ export function ProfileActions({
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
   const onOpenLink = actions?.onOpenLink;
-  const onReserve = actions?.onReserve;
   const onBoost = actions?.onBoost;
-  const takesReservations = isReserveActionEnabled(place);
   const directionsUrl = buildDirectionsUrl(place);
 
   return (
@@ -223,27 +222,6 @@ export function ProfileActions({
           // red is just too red"): the tile stays grey like its neighbours
           // and only the glyph fills, the way Instagram marks a like.
           iconClassName={cn(saved && "fill-destructive text-destructive")}
-        />
-        {/* THE GREY GRID (Pato, MESITA-3425: "save reserve share / maps contact
-            upgrade"; Save · Maps · Share first in MESITA-3419): Save · Reserve · Share
-            over Reserve · Contact · Upgrade. Reserve joined the grey tiles in
-            MESITA-3416; a place that takes no bookings keeps it, blocked
-            (MESITA-3078: "never fucking disapearing"). */}
-        <ActionTile
-          Icon={CalendarCheck}
-          label="Reserve"
-          live={takesReservations && Boolean(onReserve)}
-          onClick={onReserve}
-          disabled={!takesReservations}
-          dialog
-          ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
-        />
-        <ActionTile
-          Icon={Share2}
-          label="Share"
-          live={Boolean(onShare)}
-          onClick={onShare}
-          ariaLabel="Share"
         />
         <ActionTile
           // The folded map again (Pato, MESITA-2669: "MAYBE for directions do
@@ -278,6 +256,13 @@ export function ProfileActions({
           )}
         </ActionTile>
         <ActionTile
+          Icon={Share2}
+          label="Share"
+          live={Boolean(onShare)}
+          onClick={onShare}
+          ariaLabel="Share"
+        />
+        <ActionTile
           Icon={Rocket}
           label="Upgrade"
           live={Boolean(onBoost)}
@@ -308,13 +293,25 @@ export function MesitaActions({
   // (admin's Preview) both stay the inert green tile. Always drawn: the tab
   // that hid them (MESITA-3398) is gone.
   const onOpenRewards = actions?.onOpenRewards;
+  const onReserve = actions?.onReserve;
+  const takesReservations = isReserveActionEnabled(place);
   const open = (section: "payment" | "prepayment") =>
     onOpenRewards ? () => onOpenRewards(section) : undefined;
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
+      {/* RESERVE LEADS THE PINNED ROW again (MESITA-3426), the grey tile; a
+          place that takes no bookings keeps it, inert and never faded
+          (MESITA-3078, MESITA-3423). */}
+      <ActionTile
+        Icon={CalendarCheck}
+        label="Reserve"
+        live={takesReservations && Boolean(onReserve)}
+        onClick={onReserve}
+        disabled={!takesReservations}
+        dialog
+        ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
+      />
       <MoneyTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
-      {/* CARD LEFT (Pato, MESITA-3423: "remove card from there ... last row is
-          only two columns: prepay and pay"); the credit is in the Rewards sheet. */}
       <MoneyTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
     </div>
   );
@@ -377,11 +374,14 @@ function MoneyTile({
           fucking bonus"): a third of the row holds glyph and "Prepay" but not
           "30% Bonus" beside them, so the ink pill rode the top-right corner; INSIDE
           THE GREEN (Pato, MESITA-3424: "bonus and back must go inside the green
-          boxes"): with two halves, glyph · label · pill fit one line. */}
-      <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="shrink-0 whitespace-nowrap">{label}</span>
+          boxes"): with two halves, glyph · label · pill fit one line. A THIRD
+          AGAIN (MESITA-3426, "A"): glyph and label over the pill. */}
+      <span className="flex min-w-0 items-center gap-1">
+        <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
+        <span className="truncate">{label}</span>
+      </span>
       {badge ? (
-        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper shrink-0")} aria-hidden>
+        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper")} aria-hidden>
           {badge}
         </span>
       ) : null}

@@ -119,11 +119,11 @@ function ProfileSummarySkeleton() {
           />
         ))}
       </div>
-      {/* ProfileActions: the six grey tiles, three a row (MESITA-3419). Reserve · Prepay · Pay ride in
+      {/* ProfileActions: the five grey tiles (MESITA-3426). Reserve · Prepay · Pay ride in
           the sticky block under the band (MESITA-3330). */}
       <div className={PROFILE_ACTIONS_CLASS}>
         <div className={PROFILE_TILES_ROW_CLASS}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => (
             <Bone key={i} className={PROFILE_TILE_BOX_CLASS} />
           ))}
         </div>
@@ -237,6 +237,7 @@ export function PlaceDetailBodySkeleton({
         <div inert className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS}>
             <div className={PROFILE_MESITA_ROW_CLASS}>
+              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
             </div>
