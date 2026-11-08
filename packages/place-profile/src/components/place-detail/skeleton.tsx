@@ -181,7 +181,7 @@ function OverviewSkeleton() {
           (MESITA-3434). */}
       <Box>
         <BoxTitleBar width="w-16" />
-        <div className="divide-border divide-y">
+        <div className="divide-border bg-muted divide-y rounded-lg px-4 py-3">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className={HOURS_ROW_CLASS}>
               <Bone className="h-3 w-20" />

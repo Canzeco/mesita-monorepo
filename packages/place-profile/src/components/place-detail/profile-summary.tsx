@@ -1,12 +1,12 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, Navigation, Tag } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Star, Tag } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { formatPlacePriceChip } from "../../lib/place-price";
-import { cn, formatDistanceKm } from "../../lib/format";
+import { cn, formatCompactCount, formatDistanceKm, formatRating } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
 
 import { profileChannelStats } from "./channel-stats";
@@ -82,6 +82,12 @@ export function ProfileSummary({
   const stateValue =
     stateWord && untilAt ? `${stateWord} until ${toAmPm(untilAt)}` : stateWord;
   const isOpen = place.open_now === true;
+  // GOOGLE'S STARS AND REVIEWS IN THE FACTS TOO (Pato, MESITA-3440: "also
+  // mention the number of reviews of google and the stars, even if its
+  // redundant with the top"): "4.7 (8.6K)" behind an amber star.
+  const googleRating = formatRating(place.google.rating);
+  const googleCount = place.google.count != null ? formatCompactCount(place.google.count, false) : null;
+  const ratingLabel = googleRating ? (googleCount ? `${googleRating} (${googleCount})` : googleRating) : null;
 
   return (
     // Full-bleed white band under the top chrome so the summary reads as
@@ -146,19 +152,32 @@ export function ProfileSummary({
             {place.category}
           </ProfileFact>
         )}
-        {priceLabel && <ProfileFact icon={Banknote}>{priceLabel}</ProfileFact>}
+        {priceLabel && (
+          <ProfileFact icon={Banknote} iconClassName="text-green-600">
+            {priceLabel}
+          </ProfileFact>
+        )}
+        {ratingLabel && (
+          <ProfileFact icon={Star} iconClassName="fill-amber-400 text-amber-400" data-profile-rating>
+            {ratingLabel}
+          </ProfileFact>
+        )}
         {stateValue && (
-          <ProfileFact icon={Clock} strong={isOpen}>
+          <ProfileFact
+            icon={Clock}
+            strong={isOpen}
+            iconClassName={place.open_now === false ? "text-red-600" : isOpen ? "text-green-600" : undefined}
+          >
             {stateValue}
           </ProfileFact>
         )}
         {place.zone && (
-          <ProfileFact icon={MapPin}>
+          <ProfileFact icon={MapPin} iconClassName="text-red-500">
             <span className="max-w-[180px] truncate">{place.zone}</span>
           </ProfileFact>
         )}
         {place.distance_km != null && place.distance_km > 0 && (
-          <ProfileFact icon={Navigation}>
+          <ProfileFact icon={Navigation} iconClassName="text-blue-600">
             {formatDistanceKm(place.distance_km)}
           </ProfileFact>
         )}
