@@ -7,6 +7,7 @@ import {
   Star,
   TicketPercent,
 } from "lucide-react";
+import Link from "next/link";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
@@ -316,6 +317,29 @@ export function CardActions({
  * sells now, decides only whether the line shows; nothing for sale, no line.
  * Display only: a tap falls through to the card's own link beneath it.
  */
+/** THE BONUS BUTTON (Pato, MESITA-3439: "add the button to Bonus, below save
+ *  and share, wide button, just saying bonus x% don't mention prepay ... keep
+ *  the sexy green button"): the place screen's Link green, full width, "30%
+ *  Bonus" (its Prepay figure). It opens the place with its Rewards sheet up
+ *  at Pre-Payment Rewards. */
+export const BONUS_PCT = 30;
+export function BonusButton({ href, name, className }: { href: string; name: string; className?: string }) {
+  return (
+    <Link
+      href={`${href}?rewards=prepayment`}
+      aria-label={`${BONUS_PCT}% Bonus at ${name}`}
+      className={cn(
+        CARD_BUTTON_BOX,
+        "flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-sm font-semibold text-neutral-950 transition hover:opacity-90 active:scale-[0.99]",
+        className,
+      )}
+      data-tile-bonus
+    >
+      {BONUS_PCT}% Bonus
+    </Link>
+  );
+}
+
 export function VouchersLine({ pct, className }: { pct: number | null | undefined; className?: string }) {
   if (typeof pct !== "number" || pct <= 0) return null;
   return (
