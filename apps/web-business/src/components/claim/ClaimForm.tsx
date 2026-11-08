@@ -4,8 +4,8 @@
 //   1. Get a call at the place — when the listing has a phone. A Twilio call
 //      to that phone says a 6-digit code; the right code makes you run the
 //      place at once (business-web-call-place-code → -check-place-code).
-//      Calls are off for now (MESITA-3148): the server answers `test` and the
-//      code is 123456, which the code step says.
+//      Calls are live (MESITA-3400). Were they off, the server would answer
+//      `test` and the code step would say 123456.
 //   A place someone else already owns (MESITA-3155) shows neither: it says
 //   whose it is (their email, masked) and offers Report to Mesita, the hand
 //   check below with the note filled in.
