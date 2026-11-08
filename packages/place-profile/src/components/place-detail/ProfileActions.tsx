@@ -106,12 +106,19 @@ export const PROFILE_TILE_BOX_CLASS =
  *  Save Maps Contact Share Upgrade / Reserve Prepay Prepay Pay Pay"):
  *  Reserve takes the first column, Prepay and Pay two each. Three equal
  *  tiles from MESITA-3314 until then. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-5 gap-2";
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
+
+/** RESERVE IS HIDDEN FOR NOW (Pato, MESITA-3413, 2026-11-08: "for the moment
+ *  hide the reservations button ... only two buttons. prepay and pay"): the
+ *  row is Prepay · Pay, half each. The button and its sheet stay in code;
+ *  bring it back by setting this to true, the row to grid-cols-5 and the
+ *  wide tile back to col-span-2. */
+export const SHOW_RESERVE = false;
 /** A wide Mesita tile's box: two columns, the grey tiles' 56px, a 20px
  *  glyph at the left and the words at its right, the 14px label over the
  *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "col-span-2 flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
+  "flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
 
 // Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
 // the glyph over a 12px label.
@@ -306,6 +313,7 @@ export function MesitaActions({
   return (
     <>
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
+        {SHOW_RESERVE ? (
         <button
           type="button"
           {...(reserveLive
@@ -322,6 +330,7 @@ export function MesitaActions({
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
+        ) : null}
         <MoneyTile
           Icon={Wallet}
           label="Prepay"

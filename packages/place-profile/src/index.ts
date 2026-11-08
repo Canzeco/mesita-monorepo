@@ -29,6 +29,7 @@ export {
   PlaceTopBarSkeleton,
 } from "./components/place-detail/skeleton";
 export { VouchersPane } from "./components/place-detail/vouchers";
+export { SHOW_RESERVE } from "./components/place-detail/ProfileActions";
 export type {
   PlaceActions,
   RewardsSection,

@@ -3,6 +3,7 @@
  */
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { SHOW_RESERVE } from "@mesita/place-profile";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlaceDetailPageBody } from "@/components/consumer/PlaceDetailPageBody";
 import { APP_CARD_ID } from "@/components/consumer/MobileFrame";
@@ -53,7 +54,8 @@ function drainFrames() {
 }
 
 describe("Reserve still opens the sheet", () => {
-  it("opens ReservationSheet from the shared profile", () => {
+  // Reserve is hidden for now (MESITA-3413); the pin comes back with it.
+  it.skipIf(!SHOW_RESERVE)("opens ReservationSheet from the shared profile", () => {
     document.body.innerHTML = `<div id="${APP_CARD_ID}"></div><div id="host"></div>`;
     const host = document.getElementById("host");
     if (!host) throw new Error("missing host");

@@ -71,7 +71,6 @@ describe("member preview edges", () => {
   it("puts two action rows in the header and no pinned bar (MESITA-2321, MESITA-2633)", () => {
     const html = renderToStaticMarkup(<PlaceProfile place={detail()} />);
     for (const label of [
-      "Reserve a table",
       "Directions in Google Maps",
       'aria-label="Add to favorites"',
       'aria-label="Contact"',
@@ -82,9 +81,8 @@ describe("member preview edges", () => {
     // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="More options"');
-    // Reserve is a tile, no times on the profile (MESITA-2633, MESITA-2688):
-    // fixed times read as confirmed availability.
-    expect(html).toContain('aria-label="Reserve a table"');
+    // Reserve is hidden for now (MESITA-3413): the row is Prepay · Pay.
+    expect(html).not.toContain('aria-label="Reserve a table"');
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
@@ -149,17 +147,17 @@ describe("member preview edges", () => {
     expect(nav).toContain('aria-label="Place sections"');
     expect(nav).toContain("bg-card");
     expect(nav).not.toContain("bg-background");
-    const reserveAt = html.indexOf("Reserve a table");
+    const prepayAt = html.indexOf('aria-label="Prepay');
     const directionsAt = html.indexOf("Directions in Google Maps");
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
     const shareAt = html.indexOf('aria-label="Share"');
-    // Row 1: Like · Directions · Contact · Share; row 2: Reserve (MESITA-2633).
+    // Row 1: Like · Directions · Contact · Share; row 2: Prepay · Pay (MESITA-3413).
     expect(saveAt).toBeGreaterThan(-1);
     expect(directionsAt).toBeGreaterThan(saveAt);
     expect(contactAt).toBeGreaterThan(directionsAt);
     expect(shareAt).toBeGreaterThan(contactAt);
-    expect(reserveAt).toBeGreaterThan(shareAt);
+    expect(prepayAt).toBeGreaterThan(shareAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");
