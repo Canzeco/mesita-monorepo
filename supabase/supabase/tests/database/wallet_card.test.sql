@@ -109,7 +109,7 @@ select is(
 
 select is(
   (select spendable_cents from wallet_balance('00000000-0000-4000-8000-0000000a3305', '00000000-0000-4000-8000-000000013305', 'mxn', false)),
-  2000,
+  20000,
   'the hold takes MX$20 of the MX$220 out of spendable'
 );
 
@@ -133,7 +133,7 @@ select is(
   wallet_hold_payment('00000000-0000-4000-8000-0000000a3305', '00000000-0000-4000-8000-000000013305', 30000, 500, 0,
                       'MXN', false, '00000000-0000-4000-8000-00000000a002', 'aaaaaaaaaaaaaaaaaaaaa4', null,
                       'acct_test_3305', 25, 500, now() + interval '31 minutes'),
-  '{"ok": false, "code": "insufficient", "spendable_cents": 2000}'::jsonb,
+  '{"ok": false, "code": "insufficient", "spendable_cents": 20000}'::jsonb,
   'more credit than spendable is insufficient, counting the hold'
 );
 
@@ -236,13 +236,16 @@ select is(
 );
 
 -- A cashback already spent cannot be reversed: uncovered, needs_review.
+-- The entries table is append-only, so the paid payment and its cashback
+-- entry (Available an hour ago) are written directly, then the cashback is
+-- spent before the refund arrives.
 insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, tip_cents, currency, status,
-                                    stripe_account_id, cashback_bps, request_id)
+                                    stripe_account_id, cashback_bps, cashback_cents, request_id, paid_at)
 values ('00000000-0000-4000-8000-0000000e3305', '00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305',
-        10000, 0, 10000, 0, 'mxn', 'open', 'acct_test_3305', 500, '00000000-0000-4000-8000-00000000b001');
-do $$ begin perform wallet_settle_payment('00000000-0000-4000-8000-0000000e3305', 'pi_b_3305'); end $$;
--- The MX$5 cashback is spent as soon as it is Available (the clock is moved by paying it out).
-update public.wallet_entries set available_at = now() - interval '1 minute' where payment_id = '00000000-0000-4000-8000-0000000e3305';
+        10000, 0, 10000, 0, 'mxn', 'paid', 'acct_test_3305', 500, 500, '00000000-0000-4000-8000-00000000b001', now() - interval '2 hours');
+insert into public.wallet_entries (consumer_id, place_id, kind, amount_cents, currency, payment_id, livemode, available_at)
+values ('00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305', 'cashback', 500, 'mxn',
+        '00000000-0000-4000-8000-0000000e3305', false, now() - interval '1 hour');
 do $$ begin
   perform wallet_pay_credit('00000000-0000-4000-8000-0000000b3305', '00000000-0000-4000-8000-000000013305', 500, 'mxn', false,
                             '00000000-0000-4000-8000-00000000b002', 'bbbbbbbbbbbbbbbbbbbbb1', null);
