@@ -30,8 +30,8 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // width over Mesita Prepay and Mesita Pay halved; MESITA-2688/2689 had
 // Reserve and Pay side by side):
 //
-//   [ ♡ Save    ] [ ▱ Maps    ] [ ⇪ Share   ]
-//   [ ▣ Reserve ] [ ✆ Contact ] [ ⇧ Upgrade ]
+//   [ ♡ Save    ] [ ▣ Reserve ] [ ⇪ Share   ]
+//   [ ▱ Maps    ] [ ✆ Contact ] [ ⇧ Upgrade ]   (MESITA-3425)
 //   [ ▤ Prepay   (30% Bonus) ] [ ▦ Pay     (5% Back) ]   green, pinned (MESITA-3423)
 //
 // That is Pato's 3×3 sketch (MESITA-3419); layout D (MESITA-3416) before.
@@ -224,6 +224,27 @@ export function ProfileActions({
           // and only the glyph fills, the way Instagram marks a like.
           iconClassName={cn(saved && "fill-destructive text-destructive")}
         />
+        {/* THE GREY GRID (Pato, MESITA-3425: "save reserve share / maps contact
+            upgrade"; Save · Maps · Share first in MESITA-3419): Save · Reserve · Share
+            over Reserve · Contact · Upgrade. Reserve joined the grey tiles in
+            MESITA-3416; a place that takes no bookings keeps it, blocked
+            (MESITA-3078: "never fucking disapearing"). */}
+        <ActionTile
+          Icon={CalendarCheck}
+          label="Reserve"
+          live={takesReservations && Boolean(onReserve)}
+          onClick={onReserve}
+          disabled={!takesReservations}
+          dialog
+          ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
+        />
+        <ActionTile
+          Icon={Share2}
+          label="Share"
+          live={Boolean(onShare)}
+          onClick={onShare}
+          ariaLabel="Share"
+        />
         <ActionTile
           // The folded map again (Pato, MESITA-2669: "MAYBE for directions do
           // use a map"), first worn in MESITA-2649. The car (MESITA-2640,
@@ -236,26 +257,6 @@ export function ProfileActions({
           onClick={onOpenLink ? () => onOpenLink(directionsUrl) : undefined}
           ariaLabel="Directions in Google Maps"
           dataDirectionsUrl={directionsUrl}
-        />
-        <ActionTile
-          Icon={Share2}
-          label="Share"
-          live={Boolean(onShare)}
-          onClick={onShare}
-          ariaLabel="Share"
-        />
-        {/* THE GREY GRID (Pato, MESITA-3419, his sketch): Save · Maps · Share
-            over Reserve · Contact · Upgrade. Reserve joined the grey tiles in
-            MESITA-3416; a place that takes no bookings keeps it, blocked
-            (MESITA-3078: "never fucking disapearing"). */}
-        <ActionTile
-          Icon={CalendarCheck}
-          label="Reserve"
-          live={takesReservations && Boolean(onReserve)}
-          onClick={onReserve}
-          disabled={!takesReservations}
-          dialog
-          ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
         />
         <ActionTile
           label="Contact"
