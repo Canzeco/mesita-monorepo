@@ -6,7 +6,6 @@ import {
   Map as MapIcon,
   Phone,
   QrCode,
-  CreditCard,
   Rocket,
   Share2,
   Wallet,
@@ -33,7 +32,7 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 //
 //   [ ♡ Save    ] [ ▱ Maps    ] [ ⇪ Share   ]
 //   [ ▣ Reserve ] [ ✆ Contact ] [ ⇧ Upgrade ]
-//   [ ▤ Prepay  ] [ ▭ Card    ] [ ▦ Pay     ]   green · ink · green, pinned
+//   [ ▤ Prepay   (30% Bonus) ] [ ▦ Pay     (5% Back) ]   green, pinned (MESITA-3423)
 //
 // That is Pato's 3×3 sketch (MESITA-3419); layout D (MESITA-3416) before.
 //
@@ -102,21 +101,21 @@ export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
 /** Rows 1–2: six grey tiles, three a row, 8px apart (Pato, MESITA-3419: his
  *  3×3 sketch, "try this grid instead"). Five in one row until then. */
 export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A tile's box: 44px, rounded-lg, the glyph beside the label (Pato,
+/** A tile's box: 40px (Pato, MESITA-3423: "even shorter, just a bit"; 44px, rounded-lg, the glyph beside the label (Pato,
  *  MESITA-3421: "the icons must be horizontal now ... and make the buttons
- *  shorter"); 44px is the tap floor (MESITA-2324). 56px with the glyph over
- *  the label until then. */
+ *  shorter"), the tap floor of MESITA-2324, from MESITA-3421 until then;
+ *  56px with the glyph over the label before that). */
 export const PROFILE_TILE_BOX_CLASS =
-  "flex h-11 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
-/** Row 3, pinned: Prepay · Card · Pay on the grey rows' three columns
- *  (MESITA-3419). Prepay · Pay halves with their pills from MESITA-3413. */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
+  "flex h-10 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
+/** Row 3, pinned: Prepay · Pay, half each (MESITA-3423; Prepay · Card · Pay
+ *  from MESITA-3419). */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 
-/** A Mesita tile's box: the grey tile's own, icon over label (MESITA-3419). */
+/** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-// Prepay and Pay are Link green, Card is the ink (Pato picked "1" of three
-// mocks, MESITA-3419: the black Card reads apart from the two ways to pay).
+// Prepay and Pay are Link green; the ink tone was Card's (MESITA-3419) until
+// Card left (MESITA-3423).
 const MONEY_TONE = {
   green: "bg-green-400 text-neutral-950",
   ink: "bg-foreground text-paper",
@@ -170,7 +169,10 @@ function ActionTile({
       aria-label={ariaLabel}
       data-directions-url={dataDirectionsUrl}
       disabled={disabled}
-      className={cn(tileBtn, disabled && "hover:bg-border/60 cursor-not-allowed opacity-50 active:scale-100", className)}
+      // NEVER LOOKS BLOCKED (Pato, MESITA-3423: "don't make the reserve button
+      // look blocked. make it gray too"): a tile with nothing behind it is the
+      // same grey tile; only the screen reader hears why (aria-label).
+      className={cn(tileBtn, disabled && "hover:bg-border/60 active:scale-100", className)}
     >
       {children ??
         (Icon ? (
@@ -310,10 +312,8 @@ export function MesitaActions({
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       <MoneyTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
-      {/* CARD (MESITA-3419): the guest's credit here, in the Rewards sheet's
-          top box; it replaced MESITA-3416's credit line and shows on every
-          place. */}
-      <MoneyTile Icon={CreditCard} label="Card" amount="your credit here" tone="ink" onClick={open("payment")} />
+      {/* CARD LEFT (Pato, MESITA-3423: "remove card from there ... last row is
+          only two columns: prepay and pay"); the credit is in the Rewards sheet. */}
       <MoneyTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
     </div>
   );

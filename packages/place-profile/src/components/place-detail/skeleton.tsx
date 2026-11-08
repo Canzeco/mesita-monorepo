@@ -239,7 +239,6 @@ export function PlaceDetailBodySkeleton({
             <div className={PROFILE_MESITA_ROW_CLASS}>
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
-              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
             </div>
           </div>
           <PlaceTabBar tab="place" onChange={noop} />
