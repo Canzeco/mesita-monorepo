@@ -22,9 +22,7 @@ const ROW = "00000000-0000-4000-8000-0000000d3305";
 const T0 = Date.parse("2026-11-08T12:00:00Z");
 
 const ALL_ON: PaymentSettings = {
-  pay_cash: true,
   pay_cards: true,
-  pay_credits: true,
   cashback: true,
   voucher_200: true,
   voucher_1000: true,

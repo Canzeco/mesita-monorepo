@@ -15,9 +15,7 @@ const REQUEST = "00000000-0000-4000-8000-0000000c3303";
 const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
-  pay_cash: true,
   pay_cards: true,
-  pay_credits: true,
   cashback: true,
   voucher_200: true,
   voucher_1000: true,
@@ -48,6 +46,8 @@ Deno.test("W1b sells MX$200, MX$1,000 and Welcome; the rest say why", () => {
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
+  assertEquals(o.mesita_pay, true);
+  assertEquals("pay_cards" in o.vouchers || "cashback" in o.vouchers, false);
   assertEquals(o.catalog.voucher_200, { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 3600 });
   // Every voucher waits an hour except Story (MESITA-3323).
   assertEquals(o.catalog.voucher_welcome.available_after_sec, 3600);
@@ -308,4 +308,16 @@ Deno.test("a second Welcome buy while the first one's Checkout is open answers i
   };
   const r = await openVoucherCheckout(admin, stripe, { ...BUY, voucher: "voucher_welcome", requestId: "00000000-0000-4000-8000-0000000e3303" });
   assertEquals(r, { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open", url: "https://checkout.stripe.com/c/w" });
+});
+
+Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so it matches the list rows", () => {
+  // Pay by phone off, so only the voucher can light the mark.
+  const onlyWelcome: PaymentSettings = { ...ALL_ON, pay_cards: false, voucher_200: false, voucher_1000: false, voucher_5000: false, voucher_story: false, voucher_vip: false };
+  const used = offerFrom({ ...base, settings: onlyWelcome, welcomeUsed: true });
+  assertEquals(used.sell, []);
+  assertEquals(used.mesita_pay, true);
+  assertEquals(offerFrom({ ...base, settings: onlyWelcome, paused: true }).mesita_pay, true);
+  // Nothing on: no mark.
+  const nothing: PaymentSettings = { ...onlyWelcome, voucher_welcome: false };
+  assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
 });

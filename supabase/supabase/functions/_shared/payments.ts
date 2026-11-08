@@ -16,25 +16,18 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { boostLivemode, type StripeCall } from "./boost.ts";
-import { moneyState, type MoneySettings } from "./money-state.ts";
+import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { vouchersUpToPct } from "./money.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
-/** WAYS TO PAY (MESITA-3396, Pato: "Update the fields asked here then", the
- *  Wallet mock's switches moved to Payments by MESITA-3391): how a guest may
- *  settle the bill here. Default ON (no row, or a row from before the
- *  column): nothing changes for a place until its owner flips one. Cash is
- *  informational; moneyState reads Cards and Credits. */
-export const PAY_WAY_KEYS = ["pay_cash", "pay_cards", "pay_credits"] as const;
-export type PayWayKey = (typeof PAY_WAY_KEYS)[number];
-export function isPayWayKey(v: unknown): v is PayWayKey {
-  return typeof v === "string" && (PAY_WAY_KEYS as readonly string[]).includes(v);
-}
-
-/** The switches an owner has, in the order the page shows them. */
+/** The switches an owner has, in the order the page shows them.
+ *  `pay_cards` is Pay by phone (MESITA-3396; the key is never renamed:
+ *  renaming resets live config). Cash and Credits left with MESITA-3408: Cash
+ *  changed nothing, and a guest's credit is the place's debt, never switched
+ *  off. Their columns stay until MESITA-3409 drops them; nothing reads them. */
 export const PAYMENT_KEYS = [
-  ...PAY_WAY_KEYS,
+  "pay_cards",
   "cashback",
   "voucher_200",
   "voucher_1000",
@@ -51,12 +44,12 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
 
 export type PaymentSettings = Record<PaymentKey, boolean>;
 
-/** No row = every product off and every way to pay on. A way to pay reads
- *  off only when the row says `false` outright, so a row from before the
- *  column (or a failed select of it) never switches a place off. */
+/** No row = Pay by phone on, every product off. Pay by phone reads off only
+ *  when the row says `false` outright, so a row from before the column never
+ *  switches a place off. */
 export function settingsFromRow(row: Partial<Record<PaymentKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
-  for (const k of PAYMENT_KEYS) out[k] = isPayWayKey(k) ? row?.[k] !== false : row?.[k] === true;
+  for (const k of PAYMENT_KEYS) out[k] = k === "pay_cards" ? row?.[k] !== false : row?.[k] === true;
   return out;
 }
 
@@ -100,10 +93,11 @@ export async function chargesEnabledByPlace(
  *  THE MESITA PAY MARK (MESITA-3321, Pato: "if the product is mesita pay
  *  ... put an extra icon in green"): on each row of a page,
  *  `vouchers_up_to_pct`, the best bonus among the vouchers moneyState says
- *  the place sells now, or null, and `mesita_pay`, whether the place's
- *  account can charge. Two batched reads for the whole page (the switches
- *  and the accounts by id), never one per tile; a read failure reads as
- *  nothing for sale and no Pay, and the page still answers. */
+ *  the place sells now, or null, and `mesita_pay`, moneyState's mark
+ *  (MESITA-3408). Two batched reads for the whole page (the switches and the
+ *  accounts by id), never one per tile; a failed settings read reads as no
+ *  row (nothing for sale; the mark follows the account), is logged, and the
+ *  page still answers. */
 export async function withVouchersUpTo<T extends { id: string }>(
   admin: SupabaseClient | null,
   places: T[],
@@ -118,18 +112,26 @@ export async function withVouchersUpTo<T extends { id: string }>(
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
     chargesEnabledByPlace(admin, ids, boostLivemode()),
   ]);
-  if (settingsRes.error) console.error(`[payments] settings page read: ${settingsRes.error.message}`);
+  if (settingsRes.error) {
+    console.error("[payments] settings_read_failed", JSON.stringify({ code: settingsRes.error.code, message: settingsRes.error.message, places: ids.length }));
+  }
   // via unknown: a template-string select widens `data` to supabase-js's
   // GenericStringError union, as in get-place.
   const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[];
-  const settings = new Map<string, MoneySettings>();
+  const settings = new Map<string, PaymentSettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
-    const s = settings.get(p.id);
-    const sell = s ? moneyState(s, charges.has(p.id) ? { charges_enabled: true } : null, null).sell : [];
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay: charges.has(p.id) };
+    const { sell, mesita_pay } = listRowMoney(settings.get(p.id), charges.has(p.id));
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay };
   });
+}
+
+/** One list row's money, pure: what sells and whether the mark shows. A
+ *  place with no settings row reads as `settingsFromRow(null)`. */
+export function listRowMoney(settings: PaymentSettings | undefined, charges: boolean): { sell: MoneyVoucherKey[]; mesita_pay: boolean } {
+  const state = moneyState(settings ?? settingsFromRow(null), charges ? { charges_enabled: true } : null, null);
+  return { sell: state.sell, mesita_pay: state.mesita_pay };
 }
 
 // ── The account ────────────────────────────────────────────────────────────

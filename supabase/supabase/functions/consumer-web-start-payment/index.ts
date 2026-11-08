@@ -23,7 +23,7 @@
 //           currency, test_mode }
 //   400 (a malformed call) · 400 amount_required | above_cap (+cap_cents) ·
 //   401 sign_in · 404 gone (no such active place) ·
-//   409 insufficient (+spendable_cents) | taken (+payment_id) | credits_off |
+//   409 insufficient (+spendable_cents) | taken (+payment_id) |
 //       no_account | cards_off | currency_mismatch | below_minimum |
 //       in_progress (+url, expires_at, payment_id) | locked (+retry_after_s) ·
 //   502 checkout_failed ·
@@ -70,15 +70,9 @@ serveJson("consumer-web-start-payment", async (req) => {
   if (!place || place.state !== "active") {
     return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
   }
-  // The owner's Credits switch (MESITA-3396): off means no credit is spent
-  // here, whatever the guest holds. Read before the lock, so a refusal costs
-  // no money move; the balance itself is untouched. A card-only payment
-  // spends no credit, so the switch does not stop it.
+  // A guest's credit is the place's debt (MESITA-3408): no switch refuses
+  // it. The switches still shape a card part (Pay by phone, Cashback).
   const settings = await readSettings(admin, input.placeId);
-  const creditCents = input.amountCents - card.cardCents;
-  if (settings.pay_credits === false && creditCents > 0) {
-    return json({ ok: false, code: "credits_off", error: "This place isn't taking credit right now" }, 409);
-  }
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
   const livemode = boostLivemode();

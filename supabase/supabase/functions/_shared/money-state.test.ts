@@ -2,7 +2,7 @@
 // pinned under the money rule.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { type MoneySettings, moneyState } from "./money-state.ts";
+import { CARD_BILL_PAY_LIVE, type MoneySettings, moneyState } from "./money-state.ts";
 
 const off: MoneySettings = {
   cashback: false,
@@ -47,21 +47,42 @@ Deno.test("a switch off is off, whatever the account", () => {
   assertEquals(s.cashback, false);
 });
 
-Deno.test("ways to pay (MESITA-3396): Cards off drops card pay and cashback; Credits off drops credit pay and keeps every voucher off sale", () => {
+Deno.test("Pay by phone off (MESITA-3396) drops card pay and cashback, never the vouchers", () => {
   const noCards = { ...allOn, pay_cards: false };
   assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
   assertEquals(moneyState(noCards, can, null).pay, "none");
   assertEquals(moneyState(noCards, can, null).cashback, false);
   assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
-  const noCredits = { ...allOn, pay_credits: false };
-  assertEquals(moneyState(noCredits, can, { spendable_cents: 100 }).pay, "card");
-  assertEquals(moneyState(noCredits, cannot, { spendable_cents: 100 }).pay, "none");
-  assertEquals(moneyState(noCredits, can, null).sell, []);
-  assertEquals(moneyState(noCredits, can, null).unavailable.voucher_200, "credits_off");
-  // A switch that is off stays "off", whatever Credits reads.
-  assertEquals(moneyState({ ...off, pay_credits: false }, can, null).unavailable.voucher_200, "off");
-  // Absent reads on: a reader from before the columns is unchanged.
+  // Absent reads on: a reader from before the column is unchanged.
   assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
+});
+
+Deno.test("credit is the place's debt (MESITA-3408): every switch off, no account, credit still spends", () => {
+  const everythingOff = { ...off, pay_cards: false };
+  assertEquals(moneyState(everythingOff, null, { spendable_cents: 100 }).pay, "credit");
+  assertEquals(moneyState(everythingOff, can, { spendable_cents: 100 }).pay, "credit");
+});
+
+Deno.test("cashback needs its own switch and Pay by phone with a charging account", () => {
+  assertEquals(moneyState({ ...off, cashback: true }, can, null).cashback, true);
+  assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).cashback, false);
+  assertEquals(moneyState({ ...off, cashback: true }, cannot, null).cashback, false);
+  assertEquals(moneyState(off, can, null).cashback, false);
+});
+
+Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by card here or buy a voucher", () => {
+  assertEquals(CARD_BILL_PAY_LIVE, true);
+  // Pay by phone on with a charging account: card bill pay, mark on.
+  assertEquals(moneyState(off, can, null).mesita_pay, true);
+  // A sellable voucher lights it, even with Pay by phone off.
+  assertEquals(moneyState({ ...off, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
+  // Pay by phone off and nothing selling: off.
+  assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).mesita_pay, false);
+  // Vouchers not sellable yet do not light it.
+  assertEquals(moneyState({ ...off, pay_cards: false, voucher_vip: true, voucher_story: true, voucher_5000: true }, can, null).mesita_pay, false);
+  // No account: no mark.
+  assertEquals(moneyState(allOn, null, null).mesita_pay, false);
+  assertEquals(moneyState(allOn, cannot, null).mesita_pay, false);
 });
 
 Deno.test("pay: both with a balance and an account, credit with a balance only, card with an account only, else none", () => {

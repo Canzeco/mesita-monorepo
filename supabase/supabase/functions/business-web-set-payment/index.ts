@@ -24,7 +24,9 @@ serveJson("business-web-set-payment", async (req) => {
   if (!bodyRes.ok) return bodyRes.response;
   const { place_id: placeId, key, enabled } = bodyRes.body;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
-  if (!isPaymentKey(key)) return json({ ok: false, code: "invalid", error: "Unknown switch" }, 400);
+  // A stale Payments tab can still send a switch that left (Cash, Credits;
+  // MESITA-3408): its own code and an owner-facing line, shown as-is.
+  if (!isPaymentKey(key)) return json({ ok: false, code: "unknown_switch", error: "This page changed. Reload to see the new settings." }, 400);
   if (typeof enabled !== "boolean") return json({ ok: false, code: "invalid", error: "enabled must be true or false" }, 400);
 
   const access = await requirePlaceAccess(admin, user, placeId);

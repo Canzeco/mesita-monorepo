@@ -10,7 +10,8 @@ import { PremierBadge } from "./PremierBadge";
 // green Mesita Pay mark, each alone when only one applies, in that order,
 // on every surface that draws a name (the top bar, the Home tile, the
 // Search card). The server says which: `boost_tier`, and `mesita_pay` on a
-// list row or `money.charges_enabled` on the place read; the client never
+// list row or `money.mesita_pay` on the place read (moneyState's mark,
+// MESITA-3408); the client never
 // decides. The Pay mark is the QR, the one Pay mark everywhere (the Pay
 // tile, the bar), in green.
 
