@@ -115,8 +115,8 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
 
-// Prepay and Pay are Link green; the ink tone was Card's (MESITA-3419) until
-// Card left (MESITA-3423).
+// Prepay and Pay are Link green; Reserve is the ink (MESITA-3428, Card's tone
+// in MESITA-3419), its pill inverted to read on the dark.
 const MONEY_TONE = {
   green: "bg-green-400 text-neutral-950",
   ink: "bg-foreground text-paper",
@@ -300,21 +300,21 @@ export function MesitaActions({
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       {/* RESERVE LEADS THE PINNED ROW again (MESITA-3426), IN THE INK (Pato,
-          MESITA-3428: "reserve button must be dark"); a place that takes no
-          bookings keeps it, the same dark tile, inert and never faded
+          MESITA-3428: "reserve button must be dark"), THE SAME SHAPE AS PREPAY
+          AND PAY (MESITA-3431: "instead of mentioning the bonus just mention
+          enabled or disabled"): glyph and Reserve over a white pill. A place
+          that takes no bookings reads Disabled, inert and never faded
           (MESITA-3078, MESITA-3423). */}
-      <ActionTile
+      <MesitaTile
         Icon={CalendarCheck}
         label="Reserve"
-        className="bg-foreground text-paper hover:bg-foreground hover:opacity-90"
-        live={takesReservations && Boolean(onReserve)}
-        onClick={onReserve}
-        disabled={!takesReservations}
-        dialog
+        tone="ink"
+        badge={takesReservations ? "Enabled" : "Disabled"}
+        onClick={takesReservations ? onReserve : undefined}
         ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
       />
-      <MoneyTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
-      <MoneyTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
+      <MesitaTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
+      <MesitaTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
     </div>
   );
 }
@@ -340,18 +340,21 @@ const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
  *  for an hour, MESITA-3345) and
  *  "5% Back" (Pato, MESITA-3339: "its clearer, instead of OFF"; "Up to 25%
  *  OFF" and "5% Cashback" until then). */
-function MoneyTile({
+function MesitaTile({
   Icon,
   label,
   amount,
   tone,
   badge,
   onClick,
+  ariaLabel,
 }: {
   Icon: LucideIcon;
   label: string;
   /** What the screen reader hears after the label ("30% Bonus"). */
-  amount: string;
+  amount?: string;
+  /** The whole spoken name, when label + amount is not it (Reserve). */
+  ariaLabel?: string;
   tone: keyof typeof MONEY_TONE;
   /** The ink pill beside the label ("30% Bonus"). */
   badge?: string;
@@ -363,12 +366,12 @@ function MoneyTile({
       type="button"
       {...(onClick ? { onClick, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
       disabled={!onClick}
-      aria-label={onClick ? `${label}, ${amount}` : `${label}, ${amount}, not available here`}
+      aria-label={ariaLabel ?? (onClick ? `${label}, ${amount}` : `${label}, ${amount}, not available here`)}
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
         MONEY_TONE[tone],
         "text-xs font-semibold",
-        onClick ? "transition hover:opacity-90 active:scale-[0.99]" : "cursor-not-allowed",
+        onClick ? "transition hover:opacity-90 active:scale-[0.99]" : ariaLabel ? "" : "cursor-not-allowed",
       )}
     >
       {/* Glyph beside label, the grey tiles' shape (MESITA-3421). THE BONUS
@@ -383,7 +386,10 @@ function MoneyTile({
         <span className="truncate">{label}</span>
       </span>
       {badge ? (
-        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper")} aria-hidden>
+        <span
+          className={cn(PLACE_PILL_CLASS, tone === "ink" ? "bg-paper text-foreground" : "bg-foreground text-paper")}
+          aria-hidden
+        >
           {badge}
         </span>
       ) : null}
