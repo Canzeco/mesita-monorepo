@@ -17,7 +17,7 @@ import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
 import { Users } from "lucide-react";
-import { FamiliesBox, LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
+import { LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 import { MesitaActions, PLACE_STICKY_BLOCK_CLASS, PLACE_STICKY_ROW_CLASS } from "./place-detail/ProfileActions";
 
 // Pure presentation for the place detail surface, laid out like an
@@ -111,7 +111,6 @@ export function PlaceDetailBody({
               <HoursBox place={place} />
               <PopularTimesBox place={place} />
               <LinksBox place={place} onOpenLink={actions?.onOpenLink} />
-              <FamiliesBox place={place} />
               <TagsBox place={place} />
               <StatsBox place={place} />
               {/* The ranking breakdown, last (MESITA-3319); nothing on a

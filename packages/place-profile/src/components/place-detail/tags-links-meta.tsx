@@ -18,7 +18,7 @@ import {
   PLACE_OUTLINE_CHIP_CLASS,
 } from "../../lib/ui";
 import { Box } from "./box";
-import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
+import { ChannelChips, type ChannelChip } from "./place-link-chips";
 
 // ── 9. About lives in @/components/consumer/AboutBox (client). ──────────
 
@@ -34,13 +34,23 @@ import { ChannelChips, TagChips, type ChannelChip } from "./place-link-chips";
 // The card is titled "Families", not "Mesita Families" (Pato, MESITA-2958:
 // "don't use word mesita families just say families"). Admin keeps the
 // longer name.
-export function FamiliesBox({ place }: { place: PlaceDetail }) {
-  if (place.families.length === 0) return null;
+// ONE TAGS BOX (Pato, MESITA-3427: "put families in tags in the UI. The
+// shit must be called tags, and inside tags please you list the families and
+// then the tags, families have emojis so that you can differentiate"): the
+// families first, each with its emoji, then the Mesita tags (else Google's
+// atmosphere chips, MESITA-2792), all in the one outlined chip. A tag that
+// reads the same as a family ("Dinner") is drawn once, as the family. No
+// families and no tags, no box (MESITA-2700). Families had their own box above
+// Tags from MESITA-2924 until then; admin and Business keep the word.
+export function TagsBox({ place }: { place: PlaceDetail }) {
+  const familyLabels = new Set(place.families.map((f) => f.label.trim().toLowerCase()));
+  const tags = place.tags.filter((t) => !familyLabels.has(t.label.trim().toLowerCase()));
+  if (place.families.length === 0 && tags.length === 0) return null;
   return (
-    <Box title="Families">
-      <div className="flex flex-wrap gap-2" data-place-families>
+    <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
+      <div className="flex flex-wrap gap-2" data-place-tags>
         {place.families.map((f) => (
-          <span key={f.key} className={PLACE_OUTLINE_CHIP_CLASS}>
+          <span key={`family-${f.key}`} className={PLACE_OUTLINE_CHIP_CLASS} data-place-family={f.key}>
             {f.emoji ? (
               <span aria-hidden className="text-base leading-none">
                 {f.emoji}
@@ -49,20 +59,12 @@ export function FamiliesBox({ place }: { place: PlaceDetail }) {
             {f.label}
           </span>
         ))}
+        {tags.map((t) => (
+          <span key={t.slug} className={PLACE_OUTLINE_CHIP_CLASS}>
+            {t.label}
+          </span>
+        ))}
       </div>
-    </Box>
-  );
-}
-
-// ── 10. Tags ────────────────────────────────────────────────────────────
-
-export function TagsBox({ place }: { place: PlaceDetail }) {
-  // Mesita tags, else Google atmosphere chips (MESITA-2792). NO TAGS, NO BOX
-  // (Pato, MESITA-2700).
-  if (place.tags.length === 0) return null;
-  return (
-    <Box title="Tags" icon={Tags} iconColor="text-muted-foreground">
-      <TagChips tags={place.tags} />
     </Box>
   );
 }
