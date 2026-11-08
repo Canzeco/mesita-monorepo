@@ -299,12 +299,14 @@ export function MesitaActions({
     onOpenRewards ? () => onOpenRewards(section) : undefined;
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
-      {/* RESERVE LEADS THE PINNED ROW again (MESITA-3426), the grey tile; a
-          place that takes no bookings keeps it, inert and never faded
+      {/* RESERVE LEADS THE PINNED ROW again (MESITA-3426), IN THE INK (Pato,
+          MESITA-3428: "reserve button must be dark"); a place that takes no
+          bookings keeps it, the same dark tile, inert and never faded
           (MESITA-3078, MESITA-3423). */}
       <ActionTile
         Icon={CalendarCheck}
         label="Reserve"
+        className="bg-foreground text-paper hover:bg-foreground hover:opacity-90"
         live={takesReservations && Boolean(onReserve)}
         onClick={onReserve}
         disabled={!takesReservations}
