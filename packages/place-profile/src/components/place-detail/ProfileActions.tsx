@@ -18,6 +18,7 @@ import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
@@ -101,9 +102,12 @@ export const PROFILE_ACTIONS_CLASS = "flex flex-col gap-2";
 /** Rows 1–2: six grey tiles, three a row, 8px apart (Pato, MESITA-3419: his
  *  3×3 sketch, "try this grid instead"). Five in one row until then. */
 export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-3 gap-2";
-/** A tile's box: 56px, rounded-lg, icon over label. */
+/** A tile's box: 44px, rounded-lg, the glyph beside the label (Pato,
+ *  MESITA-3421: "the icons must be horizontal now ... and make the buttons
+ *  shorter"); 44px is the tap floor (MESITA-2324). 56px with the glyph over
+ *  the label until then. */
 export const PROFILE_TILE_BOX_CLASS =
-  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
+  "flex h-11 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
 /** Row 3, pinned: Prepay · Card · Pay on the grey rows' three columns
  *  (MESITA-3419). Prepay · Pay halves with their pills from MESITA-3413. */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
@@ -175,7 +179,7 @@ function ActionTile({
             strokeWidth={2.25}
           />
         ) : null)}
-      <span className="max-w-full truncate">{label}</span>
+      <span className="min-w-0 truncate">{label}</span>
     </button>
   );
 }
@@ -305,12 +309,12 @@ export function MesitaActions({
     onOpenRewards ? () => onOpenRewards(section) : undefined;
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
-      <MoneyTile Icon={Wallet} label="Prepay" amount="30% Bonus" tone="green" onClick={open("prepayment")} />
+      <MoneyTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
       {/* CARD (MESITA-3419): the guest's credit here, in the Rewards sheet's
           top box; it replaced MESITA-3416's credit line and shows on every
           place. */}
       <MoneyTile Icon={CreditCard} label="Card" amount="your credit here" tone="ink" onClick={open("payment")} />
-      <MoneyTile Icon={QrCode} label="Pay" amount="5% Back" tone="green" onClick={open("payment")} />
+      <MoneyTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
     </div>
   );
 }
@@ -322,9 +326,9 @@ export function MesitaActions({
  *  12, Rewards 16, Reviews 32). The margin is not painted: pinned, content
  *  meets the hairline as under any sticky header. */
 export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 mb-1 flex flex-col";
-/** The Mesita row inside it: 16px sides, 16px under, a hairline, then the
- *  strip. */
-export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
+/** The Mesita row inside it: 16px sides, 8px over (room for the corner
+ *  badges, MESITA-3421), 16px under, a hairline, then the strip. */
+export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pt-2 pb-4";
 
 /** A Mesita tile's glyph: the grey tiles' 18px. */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
@@ -341,6 +345,7 @@ function MoneyTile({
   label,
   amount,
   tone,
+  badge,
   onClick,
 }: {
   Icon: LucideIcon;
@@ -348,6 +353,8 @@ function MoneyTile({
   /** What the screen reader hears after the label ("30% Bonus"). */
   amount: string;
   tone: keyof typeof MONEY_TONE;
+  /** The ink badge on the tile's top-right corner ("30% Bonus"); none on Card. */
+  badge?: string;
   /** Opens the host's Rewards sheet; absent, the tile is inert. */
   onClick?: () => void;
 }) {
@@ -360,14 +367,21 @@ function MoneyTile({
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
         MONEY_TONE[tone],
-        "text-xs font-semibold",
+        "relative text-xs font-semibold",
         onClick ? "transition hover:opacity-90 active:scale-[0.99]" : "cursor-not-allowed",
       )}
     >
-      {/* Icon over label, the grey tiles' shape (MESITA-3419); the bonus and
-          the cashback live in the Rewards sheet, not on the tile. */}
+      {/* Glyph beside label, the grey tiles' shape (MESITA-3421). THE BONUS
+          ON THE CORNER (Pato, MESITA-3421: "in prepay and pay mention the
+          fucking bonus"): a third of the row holds glyph and "Prepay" but not
+          "30% Bonus" beside them, so the ink pill rides the top-right corner. */}
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="max-w-full truncate">{label}</span>
+      <span className="min-w-0 truncate">{label}</span>
+      {badge ? (
+        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper absolute -top-2 -right-1")} aria-hidden>
+          {badge}
+        </span>
+      ) : null}
     </button>
   );
 }
