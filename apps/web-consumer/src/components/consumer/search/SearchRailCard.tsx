@@ -15,7 +15,7 @@ import {
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
-  VouchersLine,
+  BonusStrip,
 } from "@/components/consumer/place-card";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
@@ -141,8 +141,9 @@ export function RailCard({
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
-  // The server's number, or no strip (MESITA-3327).
-  const strip = typeof place.vouchers_up_to_pct === "number" && place.vouchers_up_to_pct > 0;
+  // The Welcome Bonus strip on every Mesita place card, as on the Home tile
+  // (MESITA-3444); a Google-only card sells nothing yet.
+  const strip = !isGoogleOnlyPlace(place);
 
   return (
     <div
@@ -161,7 +162,7 @@ export function RailCard({
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        <VouchersLine pct={place.vouchers_up_to_pct} className={RAIL_CARD_STRIP} />
+        {strip ? <BonusStrip className={RAIL_CARD_STRIP} /> : null}
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card
