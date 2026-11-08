@@ -1,4 +1,4 @@
-# apps/web-consumer — consumer app (consumer.mesita.ai)
+# apps/web-consumer — consumer app (mesita.ai)
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only; Notion Docs › Apps describes every screen.
 

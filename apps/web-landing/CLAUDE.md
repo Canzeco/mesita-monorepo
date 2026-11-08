@@ -1,4 +1,4 @@
-# apps/web-landing — marketing landing (mesita.ai)
+# apps/web-landing — marketing landing (landing.mesita.ai)
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 

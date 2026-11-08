@@ -105,14 +105,14 @@ Deno.test("the Checkout: payment mode, the fee as application fee, the row id in
     voucher: "voucher_200",
     currency: "mxn",
     placeName: "Strana",
-    returnUrl: "https://consumer.mesita.ai/place/strana",
+    returnUrl: "https://mesita.ai/place/strana",
     nowSec: 1_000_000,
   });
   assertEquals(p.mode, "payment");
   assertEquals(p.client_reference_id, ROW);
   assertEquals(p.customer_email, "guest@example.com");
-  assertEquals(p.success_url, "https://consumer.mesita.ai/wallet?prepay={CHECKOUT_SESSION_ID}");
-  assertEquals(p.cancel_url, "https://consumer.mesita.ai/place/strana");
+  assertEquals(p.success_url, "https://mesita.ai/wallet?prepay={CHECKOUT_SESSION_ID}");
+  assertEquals(p.cancel_url, "https://mesita.ai/place/strana");
   assertEquals(p.expires_at, 1_000_000 + 31 * 60);
   const items = p.line_items as Array<{ quantity: number; price_data: { currency: string; unit_amount: number } }>;
   assertEquals(items.length, 1);
@@ -185,7 +185,7 @@ const BUY = {
   voucher: "voucher_200" as const,
   currency: "mxn",
   requestId: REQUEST,
-  returnUrl: "https://consumer.mesita.ai/place/strana",
+  returnUrl: "https://mesita.ai/place/strana",
   livemode: false,
   nowSec: 1_000_000,
 };

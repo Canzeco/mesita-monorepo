@@ -9,7 +9,7 @@
 // (share-place.ts). It is the production address on every deployment, so a
 // preview never hands a friend a preview URL.
 
-export const APP_SHARE_URL = "https://consumer.mesita.ai/";
+export const APP_SHARE_URL = "https://mesita.ai/";
 
 /** The page's one line under the title. Never sent on its own. */
 export const APP_SHARE_TEXT =
@@ -50,5 +50,5 @@ export const SHARE_CARD = {
   src: "/share/mesita-og.png",
   width: 1200,
   height: 630,
-  alt: "Mesita — Discover and reserve. consumer.mesita.ai",
+  alt: "Mesita — Discover and reserve. mesita.ai",
 } as const;

@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
 // One entry per static route; legal-routes.test.ts asserts this list and the
 // page.tsx files under src/app are the same set, so a new route that never
 // reaches the sitemap fails the build's test step rather than shipping unseen.
-const HOST = "https://mesita.ai";
+const HOST = "https://landing.mesita.ai";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();

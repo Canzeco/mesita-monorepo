@@ -642,14 +642,14 @@ describe("?next= threading (safeNextPath / withNext)", () => {
     expect(wall).toBe("/?next=%2Fplace%2Fabc%3Fref%3Dig");
     // …root page hands it to post-signin…
     const afterAuth = consumerAuthDestination(
-      new URL(wall, "https://consumer.mesita.ai").searchParams.get("next") ??
+      new URL(wall, "https://mesita.ai").searchParams.get("next") ??
         undefined,
     );
     expect(afterAuth).toBe("/auth/post-signin?next=%2Fplace%2Fabc%3Fref%3Dig");
     // …which parks it on /onboard for an unfinished profile…
     const target = new URL(
       afterAuth,
-      "https://consumer.mesita.ai",
+      "https://mesita.ai",
     ).searchParams.get("next");
     expect(withNext(CONSUMER_ROUTES.onboard, target)).toBe(
       "/onboard?next=%2Fplace%2Fabc%3Fref%3Dig",

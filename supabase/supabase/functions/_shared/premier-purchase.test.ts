@@ -91,21 +91,21 @@ Deno.test("packs: one year, 2X $100 and 5X $1,000, card only, USD", () => {
     consumerId: "c1",
     tier: 1,
     placeName: "Bar",
-    returnUrl: "https://consumer.mesita.ai/place/x",
+    returnUrl: "https://mesita.ai/place/x",
     nowSec: 1000,
   }) as Record<string, unknown> & { line_items: Array<{ price_data: { unit_amount: number; currency: string } }> };
   assertEquals(p.mode, "payment");
   assertEquals(p.payment_method_types, ["card"]);
   assertEquals(p.line_items[0].price_data.unit_amount, 10000);
   assertEquals(p.line_items[0].price_data.currency, "usd");
-  assertEquals(p.success_url, "https://consumer.mesita.ai/place/x?refill={CHECKOUT_SESSION_ID}");
+  assertEquals(p.success_url, "https://mesita.ai/place/x?refill={CHECKOUT_SESSION_ID}");
 });
 
 Deno.test("parseRefillStart: tier 1 or 2 and a Mesita return address", () => {
   const place_id = "00000000-0000-4000-8000-000000000001";
   assertEquals(parseRefillStart({ place_id, tier: 3, return_url: "https://mesita.ai" }).ok, false);
   assertEquals(parseRefillStart({ place_id, tier: 2, return_url: "https://evil.example" }).ok, false);
-  assertEquals(parseRefillStart({ place_id, tier: 2, return_url: "https://consumer.mesita.ai/p" }).ok, true);
+  assertEquals(parseRefillStart({ place_id, tier: 2, return_url: "https://mesita.ai/p" }).ok, true);
 });
 
 Deno.test("notice: only when the place already runs at or above the tier", () => {

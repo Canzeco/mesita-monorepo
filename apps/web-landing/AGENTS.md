@@ -1,5 +1,5 @@
 <!-- GENERATED — scripts/sync-rules.ts mirrors this file from its sibling CLAUDE.md. Edit CLAUDE.md (root: below its END marker) or scripts/rules-quickstart.md — NEVER this file. -->
-# apps/web-landing — marketing landing (mesita.ai)
+# apps/web-landing — marketing landing (landing.mesita.ai)
 
 > Read root [`CLAUDE.md`](../../CLAUDE.md) first. Package law only.
 

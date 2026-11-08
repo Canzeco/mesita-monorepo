@@ -57,7 +57,7 @@ export const viewport: Viewport = {
 // surface a place, and the agent that books it. The copy promises only what
 // the app does.
 export const metadata: Metadata = {
-  metadataBase: new URL("https://consumer.mesita.ai"),
+  metadataBase: new URL("https://mesita.ai"),
   title: {
     default: "Mesita — discover and reserve",
     template: "%s · Mesita",

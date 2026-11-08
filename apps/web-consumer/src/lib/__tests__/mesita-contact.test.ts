@@ -15,12 +15,12 @@ describe("public Mesita URLs", () => {
   it("carries no www. host", () => {
     for (const url of [MESITA_TERMS_URL, MESITA_PRIVACY_URL]) {
       expect(url).not.toContain("www.");
-      expect(url.startsWith("https://mesita.ai")).toBe(true);
+      expect(url.startsWith("https://landing.mesita.ai/")).toBe(true);
     }
   });
 
   it("points the legal rows at the two web-landing routes", () => {
-    expect(MESITA_TERMS_URL).toBe("https://mesita.ai/terms");
-    expect(MESITA_PRIVACY_URL).toBe("https://mesita.ai/privacy");
+    expect(MESITA_TERMS_URL).toBe("https://landing.mesita.ai/terms");
+    expect(MESITA_PRIVACY_URL).toBe("https://landing.mesita.ai/privacy");
   });
 });
