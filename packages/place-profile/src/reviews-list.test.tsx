@@ -75,9 +75,8 @@ describe("Reviews is a vertical list", () => {
   it("keeps the channel counts on Overview and on Reviews (MESITA-2334)", () => {
     mount();
     const overview = document.body.textContent ?? "";
-    expect(overview).toContain("3.8");
+    // The header's Google column is the count alone (MESITA-3430).
     expect(overview).toContain("484");
-    expect(overview).toContain("3.8");
     expect(overview).toContain("4.3K");
     expect(overview).toContain("8.9K");
     expect(overview).toContain("A short presentation");
@@ -88,7 +87,6 @@ describe("Reviews is a vertical list", () => {
     clickNamed("Reviews");
     const reviews = document.body.textContent ?? "";
     expect(reviews).toContain("484");
-    expect(reviews).toContain("3.8");
     expect(reviews).toContain("4.3K");
     expect(reviews).toContain("8.9K");
     expect(reviews).not.toContain("Google Summary");

@@ -52,7 +52,8 @@ describe("profileChannelStats", () => {
     const stats = profileChannelStats(basePlace());
     expect(stats.map((s) => s.key)).toEqual(["google", "instagram", "facebook"]);
     expect(stats[0]?.value).toBe("411");
-    expect(stats[0]?.detail).toBe("3.9");
+    // The count alone, no star rating (MESITA-3430).
+    expect(stats[0]?.detail).toBeUndefined();
     expect(stats[0]?.label).toBe("Google");
     expect(stats[1]).toMatchObject({
       value: "-",

@@ -1,5 +1,5 @@
 import type { PlaceDetail } from "../../place-detail";
-import { formatCompactCount, formatRating } from "../../lib/format";
+import { formatCompactCount } from "../../lib/format";
 
 export type ChannelStat = {
   key: "google" | "instagram" | "facebook";
@@ -63,7 +63,7 @@ function googleStat(
     key: "google",
     name: "Google",
     value: NONE,
-    spoken: linked ? "no rating" : NOT_CONNECTED,
+    spoken: linked ? "no reviews" : NOT_CONNECTED,
     label: "Google",
     mention: true,
   };
@@ -81,21 +81,15 @@ function googleStat(
  * since MESITA-3355: the count, then the rating with a yellow star glyph,
  * "11K 4.7★", the same size (a small line under the count for an hour;
  * "4.9 ★ (13.8K)" from MESITA-2312/2315 before). The label is "Google".
+ * THE COUNT ALONE (Pato, MESITA-3430: "don't show the rating, just show the
+ * number of reviews. who the fuck cares about the stars. keep the top
+ * cleaner"): "12K", no star; a place with no count reads "-".
  */
 export function profileChannelStats(place: PlaceDetail): ChannelStat[] {
-  const googleRating = formatRating(place.google.rating);
   const googleCount = place.google.count;
   const count =
     googleCount != null ? formatCompactCount(googleCount, false) : null;
-  // The rating alone; ProfileStat draws the yellow star glyph hugging it
-  // on the same line as the count, "11K 4.7★" (Pato, MESITA-3355: "stars
-  // must be together to text, just like K is ... in the same line, not
-  // below ... an actual star, yellow").
-  const stars = googleRating != null ? `${googleRating}` : null;
-  const google =
-    count != null
-      ? googleStat(place, count, "Google", stars ?? undefined)
-      : googleStat(place, stars, "Google");
+  const google = googleStat(place, count, "Google");
 
   return [
     google,
