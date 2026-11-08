@@ -37,17 +37,15 @@ describe("Vouchers tab", () => {
 
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
     const html = render(OFFER, () => {});
-    // One Buy under the list buys the chosen row; the first for sale starts chosen.
-    expect(html).toMatch(/aria-label="Buy the [A-Za-z ]+ voucher"/);
-    expect(html).toContain('aria-label="Choose the Standard voucher');
-    expect(html).toContain('aria-label="Choose the Standard Medium voucher');
-    expect(html).toContain('aria-label="Choose the Standard Large voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
-    expect(html).not.toContain('aria-label="Choose the Welcome voucher');
+    // Every card for sale carries its own Buy (MESITA-3446).
+    expect(html).toContain('aria-label="Buy the Standard voucher');
+    expect(html).toContain('aria-label="Buy the Standard Medium voucher');
+    expect(html).toContain('aria-label="Buy the Standard Large voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).not.toContain('aria-label="Buy the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
     const older = placeMoneyFrom({ charges_enabled: true, cashback: true, vouchers: { voucher_200: true } });
     expect(render(older, () => {})).not.toContain("Buy the");
-    expect(render(older, () => {})).not.toContain("Choose the");
   });
 
   it("the green mark is the server's; an older read without it keeps the old rule (MESITA-3408)", () => {
