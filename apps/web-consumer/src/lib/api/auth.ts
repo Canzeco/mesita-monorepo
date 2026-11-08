@@ -31,3 +31,16 @@ export async function apiConsumerSigninPhone(
     {},
   );
 }
+
+/** "Call me with the code" (MESITA-3405): a call says the sign-in code
+ *  Supabase Auth just texted to `phone` (E.164). No session needed. */
+export async function apiCallSignInCode(
+  client: SupabaseClient,
+  phone: string,
+): Promise<void> {
+  await invokeEF<Record<string, never>>(
+    client,
+    "consumer-web-call-sign-in-code",
+    { phone },
+  );
+}
