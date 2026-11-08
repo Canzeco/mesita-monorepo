@@ -153,14 +153,14 @@ describe("member preview edges", () => {
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
     const shareAt = html.indexOf('aria-label="Share"');
-    // Save · Reserve · Share / Maps · Contact · Upgrade, then Prepay (MESITA-3425).
+    // Save · Maps · Contact · Share · Upgrade / Reserve · Prepay · Pay (MESITA-3426).
     const reserveAt = html.indexOf('aria-label="Reserve a table');
     expect(saveAt).toBeGreaterThan(-1);
-    expect(reserveAt).toBeGreaterThan(saveAt);
-    expect(shareAt).toBeGreaterThan(reserveAt);
-    expect(directionsAt).toBeGreaterThan(shareAt);
+    expect(directionsAt).toBeGreaterThan(saveAt);
     expect(contactAt).toBeGreaterThan(directionsAt);
-    expect(prepayAt).toBeGreaterThan(contactAt);
+    expect(shareAt).toBeGreaterThan(contactAt);
+    expect(reserveAt).toBeGreaterThan(shareAt);
+    expect(prepayAt).toBeGreaterThan(reserveAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");
