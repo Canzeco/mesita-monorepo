@@ -330,7 +330,9 @@ export function BonusButton({ href, name, className }: { href: string; name: str
       aria-label={`${BONUS_PCT}% Bonus at ${name}`}
       className={cn(
         CARD_BUTTON_BOX,
-        "flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-sm font-semibold text-neutral-950 transition hover:opacity-90 active:scale-[0.99]",
+        // The words at Save and Share's size, 12px semibold (Pato, MESITA-3442:
+        // "make the letters same size"), and their 44px hit area.
+        "relative flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950 transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.99]",
         className,
       )}
       data-tile-bonus
