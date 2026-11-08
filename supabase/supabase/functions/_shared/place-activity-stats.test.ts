@@ -1,9 +1,16 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { fetchPlaceProfileStats } from "./place-activity-stats.ts";
 
-Deno.test("fetchPlaceProfileStats queries viewed and saved kinds", async () => {
+// MESITA-3422: views are every open (place_view_counts over place_events);
+// likes stay one per member (place_activity, kind saved).
+Deno.test("fetchPlaceProfileStats counts every open and each like", async () => {
   const calls: string[] = [];
   const admin = {
+    rpc(fn: string, args: { p_place_ids: string[] }) {
+      assertEquals(fn, "place_view_counts");
+      assertEquals(args.p_place_ids, ["p1"]);
+      return Promise.resolve({ data: [{ place_id: "p1", views: "3" }], error: null });
+    },
     from(table: string) {
       assertEquals(table, "place_activity");
       return {
@@ -16,10 +23,7 @@ Deno.test("fetchPlaceProfileStats queries viewed and saved kinds", async () => {
               return {
                 eq(col2: string, kind: string) {
                   calls.push(`${col2}=${kind}`);
-                  return Promise.resolve({
-                    count: kind === "viewed" ? 3 : 1,
-                    error: null,
-                  });
+                  return Promise.resolve({ count: 1, error: null });
                 },
               };
             },
@@ -30,7 +34,15 @@ Deno.test("fetchPlaceProfileStats queries viewed and saved kinds", async () => {
   };
   const stats = await fetchPlaceProfileStats(admin as never, "p1");
   assertEquals(stats, { viewed: 3, saved: 1 });
-  assertEquals(calls.includes("place_id=p1"), true);
-  assertEquals(calls.includes("kind=viewed"), true);
-  assertEquals(calls.includes("kind=saved"), true);
+  assertEquals(calls, ["place_id=p1", "kind=saved"]);
+});
+
+Deno.test("fetchPlaceProfileStats reads 0 views when the place has none", async () => {
+  const admin = {
+    rpc: () => Promise.resolve({ data: [], error: null }),
+    from: () => ({
+      select: () => ({ eq: () => ({ eq: () => Promise.resolve({ count: 0, error: null }) }) }),
+    }),
+  };
+  assertEquals(await fetchPlaceProfileStats(admin as never, "p1"), { viewed: 0, saved: 0 });
 });
