@@ -87,6 +87,7 @@ export function TextField({
   icon,
   leading,
   labelRight,
+  trailing,
   value,
   onChange,
   placeholder,
@@ -101,6 +102,9 @@ export function TextField({
   leading?: React.ReactNode;
   /** Optional trailing accessory in the label row (e.g. an "Open ↗" link). */
   labelRight?: React.ReactNode;
+  /** Optional read-out to the right of the input, same row (a link's
+   *  followers or stars, MESITA-3401). */
+  trailing?: React.ReactNode;
   value: string;
   onChange?: (v: string) => void;
   placeholder?: string;
@@ -117,7 +121,8 @@ export function TextField({
         </span>
         {labelRight}
       </span>
-      <span className="relative block">
+      <span className="flex min-w-0 items-center gap-3">
+      <span className="relative block min-w-0 flex-1">
         {leading ? (
           <span className="pointer-events-none absolute top-1/2 left-3 flex -translate-y-1/2 items-center">
             {leading}
@@ -133,6 +138,8 @@ export function TextField({
           onChange={onChange ? (e) => onChange(e.target.value) : undefined}
           className={INPUT_BASE + " h-10 " + (leading ? "pr-3.5 pl-9" : "px-3.5")}
         />
+      </span>
+      {trailing}
       </span>
     </label>
   );
@@ -405,6 +412,7 @@ export function ReadField({
   auto,
   boxed,
   labelRight,
+  trailing,
   children,
 }: {
   label: string;
@@ -418,6 +426,8 @@ export function ReadField({
    *  same slot as TextField's, so a read-only field's affordances line up with
    *  the editable fields stacked beside it instead of sitting in the box. */
   labelRight?: React.ReactNode;
+  /** Optional read-out to the right of the value box, same row (MESITA-3401). */
+  trailing?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -441,14 +451,17 @@ export function ReadField({
         </span>
         {labelRight}
       </span>
-      <div
-        className={
-          boxed
-            ? "bg-muted/60 border-border/60 flex min-h-10 min-w-0 items-center rounded-xl border px-3.5 text-sm"
-            : "flex min-h-9 items-center text-sm"
-        }
-      >
-        {children}
+      <div className="flex min-w-0 items-center gap-3">
+        <div
+          className={
+            (boxed
+              ? "bg-muted/60 border-border/60 flex min-h-10 min-w-0 items-center rounded-xl border px-3.5 text-sm"
+              : "flex min-h-9 min-w-0 items-center text-sm") + " flex-1"
+          }
+        >
+          {children}
+        </div>
+        {trailing}
       </div>
     </div>
   );
