@@ -114,11 +114,11 @@ export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
  *  bring it back by setting this to true, the row to grid-cols-5 and the
  *  wide tile back to col-span-2. */
 export const SHOW_RESERVE = false;
-/** A wide Mesita tile's box: two columns, the grey tiles' 56px, a 20px
- *  glyph at the left and the words at its right, the 14px label over the
- *  12px amount line (MESITA-3339; the glyph went left in MESITA-3335). */
+/** A wide Mesita tile's box: half the row, the grey tiles' 56px, glyph ·
+ *  14px label · 12px amount pill on one line (MESITA-3414; stacked from
+ *  MESITA-3339, the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
-  "flex h-14 min-w-0 flex-row items-center justify-center gap-2 rounded-lg px-1.5";
+  "flex h-14 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
 
 // Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
 // the glyph over a 12px label.
@@ -363,7 +363,7 @@ export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
 /** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
-/** The amount in an ink pill under the label (MESITA-3367): the one pill
+/** The amount in an ink pill beside the label (MESITA-3367, MESITA-3414): the one pill
  *  shape (MESITA-3379; it had py-[3px], 1px more than the gift cards'). */
 const MESITA_TILE_PILL = cn(PLACE_PILL_CLASS, "bg-foreground text-paper");
 
@@ -397,15 +397,15 @@ function MoneyTile({
       {/* THE WORDS IN THE BLACK BOX (Pato, MESITA-3367: "mention bonus and
           back, but bonus and back in those black boxes"): the glyph at the
           left, the 14px label over an ink pill that reads "30% Bonus" or
-          "5% Back" in white. The pill sits under the label, not beside it,
-          because two columns on a 360px phone hold no more than glyph +
-          "Prepay" + a 40px pill on one line (MESITA-3361). Reserve's shape
-          (MESITA-3365) lasted half an hour. */}
+          "5% Back" in white. ONE LINE (Pato, MESITA-3414: "put the back and
+          pay and that in the same line. icon prepay bonus"): glyph · label ·
+          pill side by side, now that each tile is half the row (MESITA-3413);
+          the pill sat under the label while two tiles shared five columns
+          with Reserve. 6px gaps so "Prepay" and "30% Bonus" fit a 360px
+          phone's 156px tile whole. */}
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="flex min-w-0 flex-col items-start gap-1 text-left">
-        <span className="max-w-full truncate leading-none">{label}</span>
-        <span className={MESITA_TILE_PILL}>{amount}</span>
-      </span>
+      <span className="shrink-0 leading-none whitespace-nowrap">{label}</span>
+      <span className={cn(MESITA_TILE_PILL, "shrink-0")}>{amount}</span>
     </button>
   );
 }
