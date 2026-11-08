@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 //   │ Mesita                       │   the standard Mesita share card, the
 //   │ Discover and reserve.        │   real 1200×630 link preview
 //   │ ──────────────────────────── │   (MESITA-2639); one card since
-//   │ consumer.mesita.ai           │   MESITA-2622, ten before (MESITA-2573)
+//   │ mesita.ai           │   MESITA-2622, ten before (MESITA-2573)
 //   └──────────────────────────────┘
 //   SEND IT  (SMS) (Instagram) (WhatsApp) (Other)
 //

@@ -19,7 +19,7 @@ const DESCRIPTION =
   "Every restaurant, café, bar and club in the city, found your way and booked by an agent that makes the call. For places, a profile that already exists, ready to claim. Launching in Monterrey.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mesita.ai"),
+  metadataBase: new URL("https://landing.mesita.ai"),
   title: {
     default: "Mesita — where are we going?",
     template: "%s · Mesita",
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     siteName: "Mesita",
     locale: "en_US",
     type: "website",
-    url: "https://mesita.ai",
+    url: "https://landing.mesita.ai",
   },
   twitter: {
     card: "summary_large_image",

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 // its `icon` prop is a component — a function, which React cannot serialise
 // from a Server Component into a client one. With "use client" here, every
 // server caller (Pay, the /web "Get the app" screen) died with digest
-// 4172959490 and consumer.mesita.ai showed "This page couldn't load".
+// 4172959490 and mesita.ai showed "This page couldn't load".
 // Without it, EmptyState renders on whichever side imports it.
 // `server-icon-props.test.ts` holds the rule for every component.
 //

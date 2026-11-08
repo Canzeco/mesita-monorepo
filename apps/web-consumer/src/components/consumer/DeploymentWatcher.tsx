@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 // frozen at whenever the page first loaded, so after a new production deploy an
 // already-open tab / installed PWA / bfcache-restored page keeps rendering old
 // code until a FULL reload — which is exactly why shipped changes "don't show
-// up" even though consumer.mesita.ai already serves the new build.
+// up" even though mesita.ai already serves the new build.
 //
 // The pipeline (GitHub → Vercel → domain) delivers new builds within seconds;
 // this makes open sessions actually pick them up. The bundle bakes in its build

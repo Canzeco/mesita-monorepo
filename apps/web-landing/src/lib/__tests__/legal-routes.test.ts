@@ -21,7 +21,7 @@ import { DRAFT_DATE } from "@/components/landing/legal";
 // which is the proof that it is not vacuous.
 
 const APP_DIR = join(__dirname, "..", "..", "app");
-const HOST = "https://mesita.ai";
+const HOST = "https://landing.mesita.ai";
 
 /** Static routes as URL paths ("/" , "/terms"). Dynamic segments excluded. */
 function staticRoutes(): string[] {

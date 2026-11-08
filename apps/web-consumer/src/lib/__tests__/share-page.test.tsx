@@ -20,7 +20,7 @@ const decode = (s: string) => decodeURIComponent(s.replace(/&amp;/g, "&"));
 
 describe("the Share page", () => {
   it("sends the message, then the bare front-door link — nothing else", () => {
-    expect(APP_SHARE_URL).toBe("https://consumer.mesita.ai/");
+    expect(APP_SHARE_URL).toBe("https://mesita.ai/");
     expect(SHARE_BODY).toBe(`${SHARE_MESSAGE} ${APP_SHARE_URL}`);
     for (const href of Object.values(SHARE_LINKS)) {
       const text = decode(href);

@@ -41,7 +41,7 @@ const { NextRequest } = await import("next/server");
 const { updateSupabaseSession } = await import("@/lib/supabase/middleware");
 
 const visit = (path: string) =>
-  updateSupabaseSession(new NextRequest(`https://consumer.mesita.ai${path}`));
+  updateSupabaseSession(new NextRequest(`https://mesita.ai${path}`));
 const location = (res: Response) =>
   new URL(res.headers.get("location") ?? "", "https://x");
 

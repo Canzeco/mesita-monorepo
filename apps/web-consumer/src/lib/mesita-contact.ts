@@ -14,5 +14,5 @@ export const MESITA_HELLO_EMAIL = "hello@mesita.ai";
 export const MESITA_PRIVACY_EMAIL = "privacy@mesita.ai";
 export const MESITA_INSTAGRAM_URL = "https://instagram.com/mesita.ai";
 export const MESITA_INSTAGRAM_HANDLE = "@mesita.ai";
-export const MESITA_TERMS_URL = "https://mesita.ai/terms";
-export const MESITA_PRIVACY_URL = "https://mesita.ai/privacy";
+export const MESITA_TERMS_URL = "https://landing.mesita.ai/terms";
+export const MESITA_PRIVACY_URL = "https://landing.mesita.ai/privacy";

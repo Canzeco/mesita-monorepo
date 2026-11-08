@@ -795,7 +795,7 @@ describe("T8 — Me's grid is eleven live cells", () => {
 // structurally cannot prove a redirect EXISTS: delete the entry and there is
 // simply nothing left for it to check, so it passes.
 //
-// Every address below was live on consumer.mesita.ai, so every set of
+// Every address below was live on mesita.ai, so every set of
 // bookmarks is real. If an entry is ever dropped, this goes red instead of CI
 // going green while those links 404.
 describe("T7 — every former url still resolves after the move", () => {

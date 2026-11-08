@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 // crosses from a Server Component into a "use client" module, and a function
 // cannot be serialised, so the page dies at request time with "Functions
 // cannot be passed directly to Client Components" — digest 4172959490, and
-// consumer.mesita.ai showed "This page couldn't load" on every /web visit.
+// mesita.ai showed "This page couldn't load" on every /web visit.
 //
 // Nothing else catches it: typecheck, lint and `next build` all pass, because
 // every shell route is force-dynamic and only renders on a real request.
