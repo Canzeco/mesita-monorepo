@@ -39,7 +39,7 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 /** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396, the key is
  *  never renamed: renaming resets live config); absent reads ON, so a reader
  *  from before it keeps working. */
-export type MoneySettings = { pay_cards?: boolean } & Record<MoneyVoucherKey, boolean>;
+export type MoneySettings = { cashback: boolean; pay_cards?: boolean } & Record<MoneyVoucherKey, boolean>;
 
 /** The place's connected account as the ledger last saw it; null = none. */
 export type MoneyAccount = { charges_enabled: boolean } | null;
@@ -75,8 +75,7 @@ export type MoneyState = {
   sell: MoneyVoucherKey[];
   /** Every voucher not in `sell`, with its reason. */
   unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>>;
-  /** Cashback lands on the card part of a payment here. Folded into the Mesita
-   *  Pay switch (MESITA-3410): the fee and the 5% are one deal. */
+  /** Cashback lands on the card part of a payment here. */
   cashback: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
@@ -98,6 +97,7 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   }
   const credit = (balance?.spendable_cents ?? 0) > 0;
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
+  // Cashback lands on the card part, so it needs Cards on, not just the account.
   const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
-  return { sell, unavailable, cashback: cards, pay, mesita_pay };
+  return { sell, unavailable, cashback: settings.cashback === true && cards, pay, mesita_pay };
 }

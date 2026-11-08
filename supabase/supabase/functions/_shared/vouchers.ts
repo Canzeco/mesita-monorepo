@@ -84,8 +84,8 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     else sell.push(k);
   }
   // The guest's offer carries the voucher switches alone; the Mesita Pay switch
-  // (MESITA-3396) is already folded into `cashback` (MESITA-3410) and the mark.
-  const { pay_cards: _pd, ...vouchers } = i.settings;
+  // (MESITA-3396) is already folded into `cashback` and the mark.
+  const { cashback: _c, pay_cards: _pd, ...vouchers } = i.settings;
   return {
     test_mode: !i.livemode,
     currency: i.currency,

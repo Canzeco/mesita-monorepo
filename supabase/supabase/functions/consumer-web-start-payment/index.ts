@@ -71,7 +71,7 @@ serveJson("consumer-web-start-payment", async (req) => {
     return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
   }
   // A guest's credit is the place's debt (MESITA-3408): no switch refuses
-  // it. The Mesita Pay switch still gates a card part.
+  // it. The switches still shape a card part (Mesita Pay, Cashback).
   const settings = await readSettings(admin, input.placeId);
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();

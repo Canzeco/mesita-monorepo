@@ -418,7 +418,7 @@ export async function decideVerification(
 /** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is
  *  never renamed, renaming resets live config). Cash and Credits left with
  *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
-export type PaymentKey = "pay_cards" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
+export type PaymentKey = "pay_cards" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
 export type PaymentSettings = Record<PaymentKey, boolean>;
 export type PaymentAccount = {
   state: "none" | "onboarding" | "ready" | "restricted";
