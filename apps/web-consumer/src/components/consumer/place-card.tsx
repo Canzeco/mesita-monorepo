@@ -1,11 +1,11 @@
 import {
+  BadgePercent,
   Clock,
   Heart,
   Navigation,
   Share2,
   Sparkles,
   Star,
-  TicketPercent,
 } from "lucide-react";
 import Link from "next/link";
 import type { Place } from "@/lib/api/places";
@@ -327,7 +327,7 @@ export function BonusButton({ href, name, className }: { href: string; name: str
   return (
     <Link
       href={`${href}?rewards=prepayment`}
-      aria-label={`${BONUS_PCT}% Bonus at ${name}`}
+      aria-label={`Welcome Bonus, ${BONUS_PCT}%, at ${name}`}
       className={cn(
         CARD_BUTTON_BOX,
         // The words at Save and Share's size, 12px semibold (Pato, MESITA-3442:
@@ -337,24 +337,42 @@ export function BonusButton({ href, name, className }: { href: string; name: str
       )}
       data-tile-bonus
     >
-      {BONUS_PCT}% Bonus
+      <BonusWords />
     </Link>
   );
 }
 
-export function VouchersLine({ pct, className }: { pct: number | null | undefined; className?: string }) {
-  if (typeof pct !== "number" || pct <= 0) return null;
+/** WELCOME BONUS (Pato, MESITA-3444, A of four: "mention money too in offer,
+ *  like Welcome bonus, 30% ... mention % icon"): the % glyph, "Welcome Bonus",
+ *  the 30% in the ink pill Prepay wears. The Welcome voucher is MX$100 for
+ *  MX$130, one per guest on a first visit. */
+function BonusWords() {
+  return (
+    <span className="flex items-center gap-1.5">
+      <BadgePercent className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+      Welcome Bonus
+      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
+        {BONUS_PCT}%
+      </span>
+    </span>
+  );
+}
+
+/** The Search map card's top strip (MESITA-3444): the Bonus words on Link
+ *  green, part of the card (its tap opens the place). It was "Up to 25% OFF"
+ *  on the server's voucher number (MESITA-3327). */
+export function BonusStrip({ className }: { className?: string }) {
   return (
     <p
       className={cn(
         CARD_BUTTON_BOX,
-        "bg-fact-price/10 text-fact-price pointer-events-none flex w-full items-center justify-center gap-1.5 px-2.5 font-sans text-xs font-semibold whitespace-nowrap tabular-nums",
+        "pointer-events-none flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950",
         className,
       )}
-      data-tile-vouchers
+      data-tile-bonus
     >
-      <TicketPercent className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      Up to 25% OFF
+      <BonusWords />
     </p>
   );
 }
+
