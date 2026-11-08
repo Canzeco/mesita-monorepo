@@ -70,8 +70,9 @@ export function TagsBox({ place }: { place: PlaceDetail }) {
 // ── 11. Stats ───────────────────────────────────────────────────────────
 
 // Pato, MESITA-2866: "how many people in mesita have viewed that profile and
-// how many people have liked/saved that profile — below tags". Unique members
-// from place_activity; counts only, never who. No counts on the payload, no box.
+// how many people have liked/saved that profile — below tags". Views are
+// every open (MESITA-3422: "if someone sees one profile twice, it counts as
+// two view events"); likes are one per member. Counts only, never who. No counts on the payload, no box.
 // Titled "Mesita Stats" (MESITA-2867): these are Mesita members, not Google.
 // MESITA-2958 (Pato: "same for stats but call them Mesita Views and Mesita
 // Likes"): the card is "Stats" and the cells carry the Mesita word instead.

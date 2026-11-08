@@ -1,7 +1,8 @@
-// Profile Stats (MESITA-2735): unique members who saved or viewed
-// a place. One row per consumer × place × kind in place_activity — count is
-// the member cardinality, not event volume (a re-opened profile bumps
-// created_at but does not add a row).
+// Profile Stats (MESITA-2735): Mesita Views and Mesita Likes of a place.
+// EVERY OPEN IS A VIEW (Pato, MESITA-3422: "if someone sees one profile twice,
+// it counts as two view events"): views come from place_view_counts, which
+// counts place_events (one row per open, the number Business shows). Likes
+// stay one per member (place_activity, kind saved).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
@@ -10,21 +11,34 @@ export type PlaceProfileStats = {
   saved: number;
 };
 
-async function countKind(
-  admin: SupabaseClient,
-  placeId: string,
-  kind: "viewed" | "saved",
-): Promise<number> {
+async function countSaved(admin: SupabaseClient, placeId: string): Promise<number> {
   const { count, error } = await admin
     .from("place_activity")
     .select("*", { count: "exact", head: true })
     .eq("place_id", placeId)
-    .eq("kind", kind);
+    .eq("kind", "saved");
   if (error) {
-    console.error(`[place-activity-stats] ${kind}:`, error.message);
+    console.error("[place-activity-stats] saved:", error.message);
     return 0;
   }
   return typeof count === "number" && count >= 0 ? count : 0;
+}
+
+/** Every open per place (place_view_counts). Null when the read failed. */
+async function viewCounts(
+  admin: SupabaseClient,
+  placeIds: readonly string[],
+): Promise<Map<string, number> | null> {
+  const { data, error } = await admin.rpc("place_view_counts", { p_place_ids: placeIds });
+  if (error) {
+    console.error("[place-activity-stats] views:", error.message);
+    return null;
+  }
+  const out = new Map<string, number>();
+  for (const r of (data ?? []) as { place_id: string; views: number | string }[]) {
+    out.set(r.place_id, Number(r.views) || 0);
+  }
+  return out;
 }
 
 /** Best-effort counts for admin Profile Stats. Errors read as 0. */
@@ -32,16 +46,17 @@ export async function fetchPlaceProfileStats(
   admin: SupabaseClient,
   placeId: string,
 ): Promise<PlaceProfileStats> {
-  const [viewed, saved] = await Promise.all([
-    countKind(admin, placeId, "viewed"),
-    countKind(admin, placeId, "saved"),
+  const [views, saved] = await Promise.all([
+    viewCounts(admin, [placeId]),
+    countSaved(admin, placeId),
   ]);
-  return { viewed, saved };
+  return { viewed: views?.get(placeId) ?? 0, saved };
 }
 
 /** Views and likes for many places at once — the Single Place table
- *  (MESITA-2809). Pages place_activity by 1000 per id chunk, since a capped
- *  read would undercount. Best-effort: a failed read leaves the place out,
+ *  (MESITA-2809). Views from place_view_counts (every open, MESITA-3422);
+ *  likes page place_activity by 1000 per id chunk, since a capped read would
+ *  undercount. Best-effort: a failed read leaves the place out,
  *  and the table says "?" for it rather than a false 0. */
 export async function fetchPlaceProfileStatsMany(
   admin: SupabaseClient,
@@ -54,13 +69,18 @@ export async function fetchPlaceProfileStatsMany(
     const counts = new Map<string, PlaceProfileStats>(
       chunk.map((id) => [id, { viewed: 0, saved: 0 }]),
     );
-    let ok = true;
-    for (let from = 0;; from += PAGE) {
+    const views = await viewCounts(admin, chunk);
+    let ok = views != null;
+    for (const [id, n] of views ?? []) {
+      const c = counts.get(id);
+      if (c) c.viewed = n;
+    }
+    for (let from = 0; ok; from += PAGE) {
       const { data, error } = await admin
         .from("place_activity")
         .select("place_id, kind")
         .in("place_id", chunk)
-        .in("kind", ["viewed", "saved"])
+        .eq("kind", "saved")
         .order("place_id")
         .order("consumer_id")
         .order("kind")
@@ -73,8 +93,7 @@ export async function fetchPlaceProfileStatsMany(
       for (const r of (data ?? []) as { place_id: string; kind: string }[]) {
         const c = counts.get(r.place_id);
         if (!c) continue;
-        if (r.kind === "viewed") c.viewed++;
-        else if (r.kind === "saved") c.saved++;
+        if (r.kind === "saved") c.saved++;
       }
       if (!data || data.length < PAGE) break;
     }

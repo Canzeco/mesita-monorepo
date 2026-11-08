@@ -1,11 +1,12 @@
--- MESITA-3219, MESITA-3392 — the history behind Business Views: what writes a row, and that a
+-- MESITA-3219, MESITA-3392, MESITA-3422 — the history behind Business Views, and the
+-- guest readers that count every open from it: what writes a row, and that a
 -- like taken back is gone. Guests' names in the log are place_views_log.test.sql.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(10);
+select plan(13);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3219');
 insert into public.consumers (id, first_name) values ('00000000-0000-4000-8000-0000000a3219', 'Probe');
@@ -78,6 +79,24 @@ select is(pg_temp.events('saved'), 1, 'liking it again is a new like');
 select pg_temp.share(now() - interval '20 minutes');
 select pg_temp.share(now() - interval '19 minutes');
 select is(pg_temp.events('shared'), 2, 'every share is a row');
+
+-- MESITA-3422: the guest side reads every open too (four views, one like).
+select is(
+  (select count(*)::int from public.place_activity_feed(500, null, '00000000-0000-4000-8000-000000003219')),
+  5,
+  'the place''s Social feed shows each of the four opens and the like'
+);
+select is(
+  (select count(*)::int from public.place_activity_history_by(
+     '00000000-0000-4000-8000-000000003219', 'viewed', now() - interval '2 hours')),
+  5,
+  'the person card opened from the oldest view finds the guest and all their rows'
+);
+select is(
+  (select views::int from public.place_view_counts(array['00000000-0000-4000-8000-000000003219'::uuid])),
+  4,
+  'Mesita Views counts every open'
+);
 
 select * from finish();
 rollback;
