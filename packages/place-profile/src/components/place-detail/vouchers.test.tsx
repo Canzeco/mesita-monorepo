@@ -26,7 +26,7 @@ const OFFER: PlaceMoney = {
 };
 
 function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): string {
-  return renderToStaticMarkup(<VouchersPane place={{ money } as unknown as PlaceDetail} actions={onBuyVoucher ? { onBuyVoucher } : undefined} />);
+  return renderToStaticMarkup(<VouchersPane place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} actions={onBuyVoucher ? { onBuyVoucher } : undefined} />);
 }
 
 describe("Vouchers tab", () => {
@@ -55,12 +55,13 @@ describe("Vouchers tab", () => {
     expect(placeMoneyFrom({ charges_enabled: false })?.mesita_pay).toBe(false);
   });
 
-  it("shows the guest's credit from the server's balance, Available and Pending", () => {
+  it("shows the guest's credit from the server's balance on the House Card, Available and Pending", () => {
     const html = render(OFFER);
     expect(html).toContain("Your credit here");
     expect(html).toContain("MX$220");
     expect(html).toContain("MX$100");
-    expect(render({ ...OFFER, balance: null })).not.toContain("Your credit here");
+    // No credit: the House Card reads MX$0 (MESITA-3448).
+    expect(render({ ...OFFER, balance: null })).toContain("Buy an offer below to load it.");
   });
 
   it("formats cents and never adds", () => {

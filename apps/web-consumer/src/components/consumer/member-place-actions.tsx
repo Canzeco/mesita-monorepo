@@ -184,6 +184,17 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         open={boostOpen}
         onClose={() => setBoostClosedAt(Date.now())}
       />
+      {/* Before the menu and report sheets: the full-screen Offers page
+          (MESITA-3448) opens its ⋯ menu on top of itself. */}
+      <RewardsSheet
+        place={shown}
+        actions={actions}
+        section={rewardsShown}
+        onClose={() => {
+          setRewards(null);
+          setAskDismissed(true);
+        }}
+      />
       <PlaceMoreSheet
         place={place}
         open={moreOpen}
@@ -200,15 +211,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={reportOpen}
         onClose={() => setReportOpen(false)}
-      />
-      <RewardsSheet
-        place={shown}
-        actions={actions}
-        section={rewardsShown}
-        onClose={() => {
-          setRewards(null);
-          setAskDismissed(true);
-        }}
       />
       <MenuViewer
         open={menu != null}
