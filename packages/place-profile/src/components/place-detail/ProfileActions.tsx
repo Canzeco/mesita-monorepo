@@ -130,6 +130,11 @@ const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
   "bg-green-400 text-neutral-950 cursor-not-allowed text-sm font-semibold",
 );
+// A live wide Mesita tile (MESITA-3412): the same green, with hover and press.
+const liveInkTile = cn(
+  PROFILE_MESITA_TILE_BOX_CLASS,
+  "bg-green-400 text-neutral-950 text-sm font-semibold transition hover:opacity-90 active:scale-[0.99]",
+);
 
 const tileBtn = cn(
   PROFILE_TILE_BOX_CLASS,
@@ -284,16 +289,17 @@ export function ProfileActions({
 export function MesitaActions({
   place,
   actions,
-  money = true,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
-  /** Draw Prepay and Pay. Off on the Rewards tab (Pato, MESITA-3398: "the
-   *  prepay and pay buttons are redundant ... but only when in rewards"):
-   *  that tab is the two of them in full. Reserve keeps its place, so the
-   *  row's height never jumps between tabs. */
-  money?: boolean;
 }) {
+  // PREPAY AND PAY OPEN REWARDS (Pato, MESITA-3412: "Rewards modal opens when
+  // you click either prepay or pay, but covering almost full screen"): the
+  // Rewards tab left the strip and became the host's sheet. Prepay lands on
+  // Pre-Payment Rewards, Pay on Payment Rewards. With no host callback
+  // (admin's Preview) both stay the inert green tile. Always drawn: the tab
+  // that hid them (MESITA-3398) is gone.
+  const onOpenRewards = actions?.onOpenRewards;
   const onReserve = actions?.onReserve;
   const takesReservations = isReserveActionEnabled(place);
   const reserveLive = takesReservations && Boolean(onReserve);
@@ -316,12 +322,18 @@ export function MesitaActions({
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
-        {money ? (
-          <>
-            <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
-            <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
-          </>
-        ) : null}
+        <MoneyTile
+          Icon={Wallet}
+          label="Prepay"
+          amount="30% Bonus"
+          onClick={onOpenRewards ? () => onOpenRewards("prepayment") : undefined}
+        />
+        <MoneyTile
+          Icon={QrCode}
+          label="Pay"
+          amount="5% Back"
+          onClick={onOpenRewards ? () => onOpenRewards("payment") : undefined}
+        />
       </div>
     </>
   );
@@ -353,14 +365,25 @@ const MESITA_TILE_PILL = cn(PLACE_PILL_CLASS, "bg-foreground text-paper");
  *  for an hour, MESITA-3345) and
  *  "5% Back" (Pato, MESITA-3339: "its clearer, instead of OFF"; "Up to 25%
  *  OFF" and "5% Cashback" until then). */
-function InertInkTile({ Icon, label, amount }: { Icon: LucideIcon; label: string; amount: string }) {
+function MoneyTile({
+  Icon,
+  label,
+  amount,
+  onClick,
+}: {
+  Icon: LucideIcon;
+  label: string;
+  amount: string;
+  /** Opens the host's Rewards sheet; absent, the tile is inert. */
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
-      {...inertButtonProps(false)}
-      disabled
-      aria-label={`${label}, ${amount}, Soon`}
-      className={blockedInkTile}
+      {...(onClick ? { onClick, "aria-haspopup": "dialog" as const } : inertButtonProps(false))}
+      disabled={!onClick}
+      aria-label={onClick ? `${label}, ${amount}` : `${label}, ${amount}, not available here`}
+      className={onClick ? liveInkTile : blockedInkTile}
     >
       {/* THE WORDS IN THE BLACK BOX (Pato, MESITA-3367: "mention bonus and
           back, but bonus and back in those black boxes"): the glyph at the

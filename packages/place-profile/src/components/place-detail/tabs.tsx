@@ -13,7 +13,10 @@ import { cn } from "../../lib/format";
 // this is for soon"). `soon` still marks the tab whose screen is the
 // Soon screen; the strip draws only the four labels. The same strip on
 // admin Preview and consumer.
-// Every place has the four, Enriched or not; the Enrich vote is the top of
+// REWARDS LEFT THE STRIP (Pato, MESITA-3412: "Remove rewards from the
+// view. Rewards modal opens when you click either prepay or pay"): the
+// Rewards page is the host's sheet off Prepay and Pay now, so the strip is
+// three. Every place has the three, Enriched or not; the Enrich vote is the top of
 // Overview, never a tab of its own (MESITA-2332).
 // OVERVIEW · MENU · REVIEWS · PROMOS (Pato, MESITA-3323: "change order:
 // Overview Menu Reviews Promos/Deals (maybe Promos is the best)"; Reviews
@@ -24,7 +27,7 @@ import { cn } from "../../lib/format";
 // discount product left, and Rewards from MESITA-3201 before that. The paid tier was
 // the fourth tab (MESITA-2861, called Premier, then Business); it is the host's
 // Upgrade sheet now, off the Upgrade tile.
-export type PlaceTab = "place" | "reviews" | "products" | "vouchers";
+export type PlaceTab = "place" | "reviews" | "products";
 
 export type PlaceTabDef = {
   key: PlaceTab;
@@ -36,7 +39,6 @@ const CORE_TABS = [
   { key: "place", label: "Overview" },
   { key: "products", label: "Menu", soon: true },
   { key: "reviews", label: "Reviews" },
-  { key: "vouchers", label: "Rewards" },
 ] as const satisfies ReadonlyArray<PlaceTabDef>;
 
 export function placeTabs(): readonly PlaceTabDef[] {
@@ -57,7 +59,7 @@ export function PlaceTabBar({
     // the user is deep in a tab's content; the block is solid bg-card so
     // scrolled content can't bleed through. The page wash stays below.
     <nav
-      className="bg-card border-border grid grid-cols-4 border-b px-1"
+      className="bg-card border-border grid grid-cols-3 border-b px-1"
       aria-label="Place sections"
     >
       {tabs.map((t) => {

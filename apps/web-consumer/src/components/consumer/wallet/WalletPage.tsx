@@ -108,7 +108,7 @@ export function WalletPage() {
             <EmptyState
               icon={WalletIcon}
               title="No credit yet"
-              description="Open a place's Rewards tab to buy one. The credit shows up here."
+              description="Tap Prepay on a place to buy one. The credit shows up here."
               action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
             />
           ) : (

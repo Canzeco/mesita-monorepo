@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import type { PlaceActions, PlaceMenuItem, PlaceMoney, VoucherKey } from "@mesita/place-profile";
+import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
 import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL } from "@/lib/api/wallet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
+import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -75,6 +76,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reserveOpen, setReserveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  // Prepay and Pay open the Rewards sheet at their section (MESITA-3412).
+  const [rewards, setRewards] = useState<RewardsSection | null>(null);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
   const [boostAskedAt, setBoostAskedAt] = useState(0);
   const [boostClosedAt, setBoostClosedAt] = useState(0);
@@ -113,16 +116,32 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
-    // The Vouchers tab (MESITA-3303): Buy opens Stripe Checkout on the
-    // place's account; opening the tab refreshes the offer and the credit.
+    // Prepay and Pay (MESITA-3412): the Rewards sheet, once the fourth tab.
+    onOpenRewards: setRewards,
+    // The Rewards sheet (MESITA-3303): Buy opens Stripe Checkout on the
+    // place's account; opening the sheet refreshes the offer and the credit.
     onBuyVoucher: vouchers.buy,
     buyingVoucher: vouchers.buying,
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // The Cashback card's Pay (MESITA-3352): the bar's Pay page.
-    onPay: () => navigateTo(router, "/pay"),
+    // The Cashback card's Pay (MESITA-3352): the bar's Pay page; the sheet
+    // closes on the way out.
+    onPay: () => {
+      setRewards(null);
+      navigateTo(router, "/pay");
+    },
   };
 
+  const enriching =
+    activity.enriching && !place.is_enriched && !place.is_enriching;
+  const shown =
+    enriching || vouchers.money
+      ? {
+          ...place,
+          ...(enriching ? { is_enriching: true } : {}),
+          ...(vouchers.money ? { money: vouchers.money } : {}),
+        }
+      : place;
   const sheets = (
     <>
       <PlaceContactSheet
@@ -161,6 +180,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         open={reportOpen}
         onClose={() => setReportOpen(false)}
       />
+      <RewardsSheet
+        place={shown}
+        actions={actions}
+        section={rewards}
+        onClose={() => setRewards(null)}
+      />
       <MenuViewer
         open={menu != null}
         onClose={() => setMenu(null)}
@@ -169,16 +194,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     </>
   );
 
-  const enriching =
-    activity.enriching && !place.is_enriched && !place.is_enriching;
-  const shown =
-    enriching || vouchers.money
-      ? {
-          ...place,
-          ...(enriching ? { is_enriching: true } : {}),
-          ...(vouchers.money ? { money: vouchers.money } : {}),
-        }
-      : place;
   return {
     place: shown,
     actions,
