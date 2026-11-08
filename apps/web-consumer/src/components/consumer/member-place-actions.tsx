@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
@@ -63,6 +63,15 @@ const BoostSheet = dynamic(() =>
 // being enriched"). With "Enrich after N views" at 1, this open is the view
 // that starts the run, after the page loaded `ready`. The `viewed` answer
 // says so, and `place` comes back Enriching until the place is Enriched.
+function noopSubscribe() {
+  return () => {};
+}
+
+function readRewardsAsk(): RewardsSection | null {
+  const v = new URLSearchParams(window.location.search).get("rewards");
+  return v === "prepayment" || v === "payment" ? v : null;
+}
+
 export function useMemberPlaceActions(place: PlaceDetail): {
   /** The place to draw: Enriching once a view found it mid-run. */
   place: PlaceDetail;
@@ -79,6 +88,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reportOpen, setReportOpen] = useState(false);
   // Prepay and Pay open the Rewards sheet at their section (MESITA-3412).
   const [rewards, setRewards] = useState<RewardsSection | null>(null);
+  // ?rewards=prepayment|payment (the Home tile's Bonus button, MESITA-3439)
+  // opens the sheet on arrival, once: closing it drops the ask.
+  const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);
+  const [askDismissed, setAskDismissed] = useState(false);
+  const rewardsShown = rewards ?? (askDismissed ? null : askedRewards);
   // When the Upgrade tile or ⋯ › Upgrade last asked for the Upgrade sheet (ms).
   const [boostAskedAt, setBoostAskedAt] = useState(0);
   const [boostClosedAt, setBoostClosedAt] = useState(0);
@@ -134,6 +148,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // closes on the way out.
     onPay: () => {
       setRewards(null);
+      setAskDismissed(true);
       navigateTo(router, "/pay");
     },
   };
@@ -189,8 +204,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       <RewardsSheet
         place={shown}
         actions={actions}
-        section={rewards}
-        onClose={() => setRewards(null)}
+        section={rewardsShown}
+        onClose={() => {
+          setRewards(null);
+          setAskDismissed(true);
+        }}
       />
       <MenuViewer
         open={menu != null}
