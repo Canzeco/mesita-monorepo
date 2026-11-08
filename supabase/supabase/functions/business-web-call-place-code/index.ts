@@ -5,8 +5,8 @@
 // into business-web-check-place-code. 3 calls per place and 5 per guest a
 // rolling day (place_take_verification_send). Refuses `claimed` while
 // someone else holds the owner seat (MESITA-3155).
-// While CALLS_LIVE is false (MESITA-3148) no call goes out: the code is
-// TEST_CODE and the reply says `test: true`.
+// Calls are live (MESITA-3400). Were CALLS_LIVE false, no call would go out:
+// the code would be TEST_CODE and the reply would say `test: true`.
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, outcome: "calling", masked_phone, minutes, test } | { ok: true, outcome: "already_owner" }

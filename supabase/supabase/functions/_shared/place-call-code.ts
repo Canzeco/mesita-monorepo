@@ -11,10 +11,10 @@ export const CODE_MINUTES = 10;
 /** Wrong tries before the code is spent. */
 export const CODE_TRIES = 5;
 
-/** Calls are off for now (Pato, MESITA-3148: "don't make call and just accept
- *  code 123456"): Call the place stores TEST_CODE and dials no one. Flip to
- *  true to call places again. */
-export const CALLS_LIVE = false;
+/** Calls are live (MESITA-3400, reversing MESITA-3148): each claim gets a
+ *  fresh random code said by a real call. False makes Call the place store
+ *  TEST_CODE and dial no one. */
+export const CALLS_LIVE = true;
 export const TEST_CODE = "123456";
 
 /** Six random digits, leading zeros kept. */
