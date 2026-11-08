@@ -5,7 +5,7 @@ import { BadgePercent } from "lucide-react";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
 import { inertButtonProps } from "../../actions";
-import { cn } from "../../lib/format";
+import { cn, firstInitial } from "../../lib/format";
 import {
   PLACE_BONE_CLASS,
   PLACE_BUTTON_CLASS,
@@ -15,8 +15,9 @@ import {
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
+import { MesitaPayMark } from "../PlaceMarks";
+import { SizedImg } from "../SizedPhoto";
 import { TestBand } from "../TestBand";
-import { Box } from "./box";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
 // MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
@@ -224,6 +225,53 @@ function OfferCard({
   );
 }
 
+/** THE HOUSE CARD (Pato, MESITA-3448: "show a preview of the House Card for
+ *  that place like how many credits you have"): the guest's credit at this
+ *  place as a dark card, the place's photo and name, "House Card" and the
+ *  Mesita Pay mark on top, the server's available balance big, its pending
+ *  line under it. No credit reads MX$0 with how to load it. The numbers are
+ *  list-vouchers' balance; this file formats cents and never adds. */
+function HouseCard({ place, currency }: { place: PlaceDetail; currency: string }) {
+  const balance = place.money?.balance ?? null;
+  const available = balance?.available_cents ?? 0;
+  const pending = balance?.pending_cents ?? 0;
+  return (
+    <div
+      className="relative flex aspect-[1.7] flex-col justify-between overflow-hidden rounded-2xl bg-neutral-950 p-5 text-white"
+      data-house-card
+    >
+      <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-green-400/20" aria-hidden />
+      <div className="relative flex items-center gap-3">
+        <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/30 bg-white/10">
+          {place.photos.length > 0 ? (
+            <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-sm font-semibold">
+              {firstInitial(place.name)}
+            </span>
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">{place.name}</span>
+          <span className="block text-xs text-white/60">House Card</span>
+        </span>
+        {place.money?.mesita_pay ? <MesitaPayMark className="h-6 w-6 shrink-0" /> : null}
+      </div>
+      <div className="relative" data-place-credit>
+        <p className="text-xs text-white/60">Your credit here</p>
+        <p className="text-4xl leading-tight font-bold tabular-nums">{pesos(available, currency)}</p>
+        <p className="mt-1 text-xs text-white/70">
+          {pending > 0
+            ? `+ ${pesos(pending, currency)} pending · ready within the hour`
+            : available > 0
+              ? "Spend it when you pay the bill here."
+              : "Buy an offer below to load it."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** The action's place while list-vouchers has not answered (MESITA-3388). */
 function ActionBone() {
   return <div className={cn(PLACE_BONE_CLASS, "h-11 w-full")} aria-hidden data-reward-loading />;
@@ -286,8 +334,6 @@ export function VouchersPane({
   }
   const catalog = money?.catalog ?? {};
   const currency = money?.currency ?? "mxn";
-  const balance = money?.balance ?? null;
-  const hasCredit = !!balance && balance.available_cents + balance.pending_cents + balance.held_cents > 0;
   // IN TEST MODE NOTHING IS GREYED (Pato, MESITA-3334); live mode dims a row
   // not for sale.
   const dim = money?.test_mode !== true;
@@ -312,24 +358,14 @@ export function VouchersPane({
     // by an 8px band of the page's grey (MESITA-3388). PAYMENT FIRST (Pato,
     // MESITA-3350: "move payments to the top").
     <div className="bg-card -mx-4 -mt-4 flex flex-col pb-2" data-promos-page>
-      {money?.test_mode || hasCredit ? (
-        <div className="flex flex-col gap-3 px-4 pt-4">
-          {money?.test_mode ? <TestBand /> : null}
-          {hasCredit && balance ? (
-            <Box title="Your credit here">
-              <p className="text-foreground text-sm" data-place-credit>
-                <span className="font-semibold tabular-nums">{pesos(balance.available_cents, currency)}</span> available
-                {balance.pending_cents > 0 ? (
-                  <>
-                    {" · "}
-                    <span className="font-semibold tabular-nums">{pesos(balance.pending_cents, currency)}</span> pending
-                  </>
-                ) : null}
-              </p>
-            </Box>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-3 px-4 pt-4">
+        {money?.test_mode ? <TestBand /> : null}
+        {loading ? (
+          <div className={cn(PLACE_BONE_CLASS, "aspect-[1.7] w-full rounded-2xl")} aria-hidden data-reward-loading />
+        ) : (
+          <HouseCard place={place} currency={currency} />
+        )}
+      </div>
       <section className="flex flex-col gap-3 px-4 pt-5 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionHead id="rewards-payment" title="Payment Offers" />
         <div

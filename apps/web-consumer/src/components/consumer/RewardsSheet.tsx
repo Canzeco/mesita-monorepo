@@ -1,6 +1,6 @@
 "use client";
 
-import { VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
+import { PlaceTopBar, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import type { PlaceDetail } from "@/lib/place-detail";
 
@@ -23,7 +23,14 @@ export function RewardsSheet({
   onClose: () => void;
 }) {
   return (
-    <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} rewards`}>
+    <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen>
+      <PlaceTopBar
+        name={place.name}
+        premierTier={place.boost_tier ?? 0}
+        mesitaPay={place.money?.mesita_pay === true}
+        onBack={onClose}
+        onMore={actions.onMore}
+      />
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4">
         {section != null ? <VouchersPane place={place} actions={actions} focus={section} /> : null}
       </div>
