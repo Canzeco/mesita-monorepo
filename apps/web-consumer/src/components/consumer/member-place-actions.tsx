@@ -11,6 +11,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL } from "@/lib/api/wallet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { RewardsSheet } from "@/components/consumer/RewardsSheet";
+import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
 import {
   apiPlaceActivity,
   apiTrackActivity,
@@ -116,6 +117,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
+    // The Social tab (MESITA-3417): this place's activity; a Google-only
+    // card has none, so it keeps the package's empty screen.
+    ...(isMesitaPlaceId(place.id)
+      ? { renderSocial: () => <PlaceSocialList placeId={place.id} /> }
+      : {}),
     // Prepay and Pay (MESITA-3412): the Rewards sheet, once the fourth tab.
     onOpenRewards: setRewards,
     // The Rewards sheet (MESITA-3303): Buy opens Stripe Checkout on the
