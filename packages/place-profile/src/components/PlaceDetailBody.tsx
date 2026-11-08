@@ -16,7 +16,6 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
-import { VouchersPane } from "./place-detail/vouchers";
 import { FamiliesBox, LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 import { MesitaActions, PLACE_STICKY_BLOCK_CLASS, PLACE_STICKY_ROW_CLASS } from "./place-detail/ProfileActions";
 
@@ -77,7 +76,7 @@ export function PlaceDetailBody({
             strip stick together to the top of the scroll container. */}
         <div className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS} data-profile-section="mesita">
-            <MesitaActions place={place} actions={actions} money={tab !== "vouchers"} />
+            <MesitaActions place={place} actions={actions} />
           </div>
           <PlaceTabBar tab={tab} onChange={setTab} />
         </div>
@@ -123,9 +122,6 @@ export function PlaceDetailBody({
             <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
           )}
           {tab === "products" && <SoonScreen />}
-          {/* Vouchers (MESITA-3299): what the place has on, from the row itself,
-              the same on the consumer and on Preview. */}
-          {tab === "vouchers" && <VouchersPane place={place} actions={actions} />}
       </div>
     </div>
   );

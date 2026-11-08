@@ -28,17 +28,20 @@ export type PlaceActions = {
   onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;
   onOpenLink?: (url: string) => void;
-  /** The Vouchers tab's Buy (MESITA-3303): opens Stripe Checkout on the
+  /** The Rewards sheet's Buy (MESITA-3303; a tab until MESITA-3412): opens Stripe Checkout on the
    *  place's account. Absent, the button is inert (admin's preview). */
   onBuyVoucher?: (key: VoucherKey) => void;
   /** The voucher whose Checkout is opening; its button reads Opening…. */
   buyingVoucher?: VoucherKey | null;
-  /** The Vouchers tab opened: the host refreshes `place.money` (the offer and
+  /** The Rewards sheet opened: the host refreshes `place.money` (the offer and
    *  the guest's credit) from consumer-web-list-vouchers. */
   onLoadVouchers?: () => void;
   /** The host's list-vouchers read has not answered yet (MESITA-3388): the
    *  Rewards rows keep their colour and show a bone where Buy goes. */
   vouchersLoading?: boolean;
+  /** Prepay and Pay (MESITA-3412): open the host's Rewards sheet at that
+   *  section. Absent, both tiles are inert (admin's preview). */
+  onOpenRewards?: (section: RewardsSection) => void;
   /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
    *  Absent, the card draws no button (admin's preview). */
   onPay?: () => void;
@@ -56,3 +59,7 @@ export function inertButtonProps(live: boolean): {
     onClick: (event) => event.preventDefault(),
   };
 }
+
+/** The two halves of the Rewards page (MESITA-3412): Pay opens at
+ *  `payment`, Prepay at `prepayment`. */
+export type RewardsSection = "payment" | "prepayment";

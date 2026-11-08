@@ -1,9 +1,9 @@
 "use client";
 
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 import { QrCode, Wallet } from "lucide-react";
 
-import type { PlaceActions } from "../../actions";
+import type { PlaceActions, RewardsSection } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import { cn } from "../../lib/format";
 import {
@@ -216,11 +216,33 @@ function ActionBone() {
   return <div className={cn(PLACE_BONE_CLASS, "h-11 w-full")} aria-hidden data-reward-loading />;
 }
 
-export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?: PlaceActions }) {
+/** The Rewards page (MESITA-3412: the host's sheet off Prepay and Pay; it
+ *  was the fourth tab). `focus` scrolls its scroller to that section once, on
+ *  open: Pay's section is first, so only Prepay moves. */
+export function VouchersPane({
+  place,
+  actions,
+  focus = "payment",
+}: {
+  place: PlaceDetail;
+  actions?: PlaceActions;
+  focus?: RewardsSection;
+}) {
   const onLoad = actions?.onLoadVouchers;
   useEffect(() => {
     onLoad?.();
   }, [onLoad]);
+  const prepaymentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (focus !== "prepayment") return;
+    const el = prepaymentRef.current;
+    // The nearest scroller only: scrollIntoView would also move the app
+    // card behind the sheet, whose overflow is hidden but still scrollable.
+    let box = el?.parentElement ?? null;
+    while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+    if (!el || !box) return;
+    box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
+  }, [focus]);
   const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
 
   const money = place.money;
@@ -320,7 +342,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         ) : null}
       </section>
       <div className="bg-background h-2" aria-hidden data-rewards-divider />
-      <section className="flex flex-col gap-3 px-4 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
+      <section ref={prepaymentRef} className="flex flex-col gap-3 px-4 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <SectionHead
           id="rewards-prepayment"
           Mark={Wallet}

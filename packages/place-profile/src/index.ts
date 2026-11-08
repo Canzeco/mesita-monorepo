@@ -28,8 +28,10 @@ export {
   PlaceProfileSkeleton,
   PlaceTopBarSkeleton,
 } from "./components/place-detail/skeleton";
+export { VouchersPane } from "./components/place-detail/vouchers";
 export type {
   PlaceActions,
+  RewardsSection,
   PlaceCreatingView,
   PlaceMenuItem,
 } from "./actions";

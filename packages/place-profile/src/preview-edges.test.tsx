@@ -28,12 +28,12 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Phone emulator");
   });
 
-  it("keeps the four sections when not enriched, with no vote (MESITA-2332, MESITA-2642)", () => {
+  it("keeps the three sections when not enriched, with no vote (MESITA-2332, MESITA-2642)", () => {
     const html = renderToStaticMarkup(
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Menu", "Reviews", "Rewards"]) {
+    for (const label of ["Overview", "Menu", "Reviews"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
@@ -91,8 +91,8 @@ describe("member preview edges", () => {
     // Pay is back as a Soon button under Reserve (MESITA-2688), full width since MESITA-3303.
     // One row of three since MESITA-3314: Reserve · Prepay · Pay, no "Mesita".
     // The amount rides in the name (MESITA-3324).
-    expect(html).toContain('aria-label="Prepay, 30% Bonus, Soon"');
-    expect(html).toContain('aria-label="Pay, 5% Back, Soon"');
+    expect(html).toContain('aria-label="Prepay, 30% Bonus, not available here"');
+    expect(html).toContain('aria-label="Pay, 5% Back, not available here"');
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");
   });
@@ -163,7 +163,7 @@ describe("member preview edges", () => {
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");
-    expect(html).toContain("Rewards");
+    expect(html).toContain("Reviews");
     // No Soon pill in the strip (MESITA-2631); the screen says it.
     expect(html.slice(html.indexOf('aria-label="Place sections"'), html.indexOf("</nav>"))).not.toContain("Soon");
     const soon = renderToStaticMarkup(<SoonScreen />);
