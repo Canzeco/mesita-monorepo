@@ -81,9 +81,9 @@ describe("member preview edges", () => {
     // (MESITA-2684).
     expect(html).toContain('aria-label="Share"');
     expect(html).toContain('aria-label="More options"');
-    // Reserve is the grey row's fifth tile (MESITA-3416); Upgrade left it.
+    // The grey grid (MESITA-3419): Reserve and Upgrade are both tiles.
     expect(html).toContain('aria-label="Reserve a table"');
-    expect(html).not.toContain('aria-label="Upgrade this place"');
+    expect(html).toContain('aria-label="Upgrade this place"');
     expect(html).not.toContain("data-reserve-slot");
     // Directions routes to the place (lib/maps-link.ts).
     expect(html).toContain("google.com/maps/dir/?api=1&amp;destination=");
@@ -153,12 +153,12 @@ describe("member preview edges", () => {
     const saveAt = html.indexOf('aria-label="Add to favorites"');
     const contactAt = html.indexOf('aria-label="Contact"');
     const shareAt = html.indexOf('aria-label="Share"');
-    // Row 1: Like · Directions · Contact · Share; row 2: Prepay · Pay (MESITA-3413).
+    // Save · Maps · Share / Reserve · Contact · Upgrade, then Prepay (MESITA-3419).
     expect(saveAt).toBeGreaterThan(-1);
     expect(directionsAt).toBeGreaterThan(saveAt);
-    expect(contactAt).toBeGreaterThan(directionsAt);
-    expect(shareAt).toBeGreaterThan(contactAt);
-    expect(prepayAt).toBeGreaterThan(shareAt);
+    expect(shareAt).toBeGreaterThan(directionsAt);
+    expect(contactAt).toBeGreaterThan(shareAt);
+    expect(prepayAt).toBeGreaterThan(contactAt);
     expect(html).not.toContain("Save, Soon");
     expect(html).toContain("Menu");
     expect(html).not.toContain(">Products<");
