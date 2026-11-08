@@ -415,7 +415,7 @@ export async function decideVerification(
 
 // ── Payments (MESITA-3296) ──────────────────────────────────────────────
 
-/** The owner's switches. `pay_cards` is Pay by phone (MESITA-3396; the key is
+/** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is
  *  never renamed, renaming resets live config). Cash and Credits left with
  *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
 export type PaymentKey = "pay_cards" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";

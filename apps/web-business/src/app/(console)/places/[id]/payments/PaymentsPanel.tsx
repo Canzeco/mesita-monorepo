@@ -2,7 +2,7 @@
 
 // Payments (MESITA-3296, four sections since MESITA-3408): Mesita Pay, the
 // place's own Stripe account, with the one button its state calls for; Visit
-// Checkout, the bill in its order (House Credits, Pay by phone, Outside
+// Checkout, the bill in its order (House Credits, Mesita Pay, Outside
 // Mesita), one switch; Payments Cashback, one switch; Prepaid Vouchers, six.
 // A guest's credit is the place's debt, so no switch refuses it. The owner and
 // Mesita staff change them; the server refuses anyone else. No number is set
@@ -54,7 +54,7 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ico
 const CASHBACK: Product = {
   key: "cashback",
   name: "Payments Cashback",
-  line: "Guest pays by card, gets 5% of it back as credit at your place.",
+  line: "Guest pays with Mesita Pay, gets 5% of it back as credit at your place. Optional: Mesita's fee is the same either way.",
   value: "5%",
   icon: CoinsIcon,
   tone: "bg-amber-100 text-amber-700",
@@ -76,11 +76,12 @@ const SPECIAL: Product[] = [
   { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
 
-/** Pay by phone (MESITA-3396's Cards, renamed on the page by MESITA-3408;
- *  the key stays `pay_cards`). */
-const PAY_BY_PHONE: Product = {
+/** Mesita Pay (MESITA-3396's Cards; named by MESITA-3410, Pato: "Mesita Pay,
+ *  that's the whole concept"): guests pay the bill on Mesita. Cashback is a
+ *  separate, optional switch (MESITA-3411). The key stays `pay_cards`. */
+const MESITA_PAY: Product = {
   key: "pay_cards",
-  name: "Pay by phone",
+  name: "Mesita Pay",
   line: "Guests pay the bill from their phone by card, Apple Pay or Google Pay.",
   value: "",
   icon: DeviceMobileIcon,
@@ -191,7 +192,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
     let note: string | null = null;
     if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
     if (key === "pay_cards") note = on ? (account.charges_enabled ? null : "Needs Stripe: on once the account can charge.") : "Guests still pay from credit here.";
-    if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Pay by phone on and Stripe ready.";
+    if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Mesita Pay on and Stripe ready.";
     const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
       <li key={key} className={MARK_ROW}>
@@ -271,7 +272,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <h2 className={HEAD}>Visit Checkout</h2>
         <ul className="divide-border divide-y">
           {infoRow(HOUSE_CREDITS)}
-          {row(PAY_BY_PHONE)}
+          {row(MESITA_PAY)}
           {infoRow(OUTSIDE)}
         </ul>
       </Card>
