@@ -82,7 +82,7 @@ describe("Reviews is a vertical list", () => {
     expect(overview).toContain("8.9K");
     expect(overview).toContain("A short presentation");
     expect(overview).not.toContain("Show more");
-    expect(document.body.innerHTML).toContain("Reserve a table");
+    expect(document.body.innerHTML).toContain('aria-label="Prepay');
     expect(document.body.innerHTML).toContain("Directions in Google Maps");
 
     clickNamed("Reviews");
@@ -94,7 +94,7 @@ describe("Reviews is a vertical list", () => {
     expect(reviews).not.toContain("Google Summary");
     expect(reviews).not.toContain("Instagram Summary");
     expect(reviews).not.toContain("Facebook Summary");
-    expect(document.body.innerHTML).toContain("Reserve a table");
+    expect(document.body.innerHTML).toContain('aria-label="Prepay');
     expect(document.body.innerHTML).toContain("Directions in Google Maps");
     // No count above the list (MESITA-2618): the header's Google column
     // already says how many.

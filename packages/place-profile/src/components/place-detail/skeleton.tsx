@@ -19,6 +19,7 @@ import {
   PLACE_STICKY_ROW_CLASS,
   PROFILE_MESITA_ROW_CLASS,
   PROFILE_MESITA_TILE_BOX_CLASS,
+  SHOW_RESERVE,
   PROFILE_TILE_BOX_CLASS,
   PROFILE_TILES_ROW_CLASS,
 } from "./ProfileActions";
@@ -237,7 +238,7 @@ export function PlaceDetailBodySkeleton({
         <div inert className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS}>
             <div className={PROFILE_MESITA_ROW_CLASS}>
-              <Bone className={PROFILE_TILE_BOX_CLASS} />
+              {SHOW_RESERVE ? <Bone className={PROFILE_TILE_BOX_CLASS} /> : null}
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
             </div>
