@@ -98,7 +98,8 @@ const HOUSE_CREDITS: InfoRow = {
 };
 const OUTSIDE: InfoRow = { name: "Outside Mesita", line: "Cash or your own terminal. Mesita never touches it.", icon: MoneyIcon };
 
-/** Card payment of the bill is W2b; the note leaves when it flips the flag. */
+/** Card payment of the bill is W2b. Live since MESITA-3305 (the flag is
+ *  true), so the note shows only if the flag is ever turned back off. */
 const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 const NOTE = "text-muted-foreground text-xs";
 
