@@ -8,7 +8,7 @@ import type { PlaceDetail } from "../../place-detail";
 import { buildUberDropoffUrl } from "../../lib/uber-link";
 import { cn, formatDistanceKm } from "../../lib/format";
 import { toAmPm } from "../../lib/place-time";
-import { PLACE_BODY_CLASS, PLACE_META_CLASS, PLACE_OUTLINE_CHIP_CLASS } from "../../lib/ui";
+import { PLACE_BODY_CLASS, PLACE_META_CLASS } from "../../lib/ui";
 import { PLACE_BUTTON_CLASS } from "../../lib/ui";
 
 import { GoogleMapsMark } from "../BrandLogos";
@@ -201,34 +201,28 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
       icon={Clock}
       iconColor="text-muted-foreground"
     >
-      {/* THE FACTS ROW'S OWN CHIP (Pato, MESITA-3359: "hours looks like
-          shit"): the clock, then "Saturday · Closed until 10 AM" in ink, no
-          dot and no red or green (a coloured line with a dot for an hour,
-          MESITA-3343). */}
-      {stateValue ? (
-        <div className="flex" data-hours-today>
-          {/* THE STATE IN COLOUR (Pato, MESITA-3368: "add color to time
-              status, green/red background with white clock"): the chip
-              fills emerald when open and red when closed, words and clock
-              in white; outlined in ink (MESITA-3359) until then. */}
-          <span
-            className={cn(
-              PLACE_OUTLINE_CHIP_CLASS,
-              // 14px on 32px, a step above the 13px chip (Pato, MESITA-3378:
-              // "the text in hours just a bit larger, but just a bit").
-              "text-white",
-              place.open_now ? "border-emerald-600 bg-emerald-600" : "border-red-600 bg-red-600",
-            )}
-          >
-            <Clock className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="truncate">
-              {today ? `${today} · ` : ""}
+      <ul className="divide-border divide-y" data-hours-week>
+        {/* NOW IS THE FIRST ROW (Pato, MESITA-3436: "time must be on top of
+            all days as an eighth row ... joined, same size, but with the text
+            ... at the right, and in green"): the same row as the days, the
+            state at the right, green when open and red when closed. The
+            coloured chip above the list (MESITA-3368) left. */}
+        {stateValue ? (
+          <li className={HOURS_ROW_CLASS} data-hours-today>
+            <span className="text-muted-foreground flex shrink-0 items-center gap-1.5">
+              <Clock className="h-4 w-4 shrink-0" aria-hidden />
+              Now
+            </span>
+            <span
+              className={cn(
+                "min-w-0 truncate text-right font-semibold",
+                place.open_now ? "text-emerald-600" : "text-red-600",
+              )}
+            >
               {stateValue}
             </span>
-          </span>
-        </div>
-      ) : null}
-      <ul className="divide-border divide-y" data-hours-week>
+          </li>
+        ) : null}
         {place.hours_table.map((row) => (
           <HoursDayRow key={row.day} row={row} today={today} />
         ))}
