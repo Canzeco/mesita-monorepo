@@ -191,5 +191,13 @@
       "web-landing",
       "web-business"
     ]
+  },
+  "appIcons": {
+    "_": "One tile colour per app so tabs, home screens and the Vercel dashboard tell them apart (MESITA-3402). The mark is always the white M; consumer keeps the brand pink.",
+    "web-consumer": "#fb2b7b",
+    "web-business": "#6366f1",
+    "web-admin": "#1e293b",
+    "web-landing": "#f59e0b",
+    "web-visit": "#10b981"
   }
 }
