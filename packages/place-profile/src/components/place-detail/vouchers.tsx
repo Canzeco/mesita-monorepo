@@ -311,8 +311,8 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
         {loading ? (
           <ActionBone />
         ) : canPay ? (
-          <button type="button" onClick={actions?.onPay} aria-label="Pay here with Mesita" className={ACTION_BUTTON}>
-            Pay
+          <button type="button" onClick={actions?.onPay} aria-label="Pay the bill here with Mesita" className={ACTION_BUTTON}>
+            Pay bill
           </button>
         ) : null}
       </section>

@@ -284,9 +284,15 @@ export function ProfileActions({
 export function MesitaActions({
   place,
   actions,
+  money = true,
 }: {
   place: PlaceDetail;
   actions?: PlaceActions;
+  /** Draw Prepay and Pay. Off on the Rewards tab (Pato, MESITA-3398: "the
+   *  prepay and pay buttons are redundant ... but only when in rewards"):
+   *  that tab is the two of them in full. Reserve keeps its place, so the
+   *  row's height never jumps between tabs. */
+  money?: boolean;
 }) {
   const onReserve = actions?.onReserve;
   const takesReservations = isReserveActionEnabled(place);
@@ -310,8 +316,12 @@ export function MesitaActions({
           <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
           <span className="max-w-full truncate">Reserve</span>
         </button>
-        <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
-        <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
+        {money ? (
+          <>
+            <InertInkTile Icon={Wallet} label="Prepay" amount="30% Bonus" />
+            <InertInkTile Icon={QrCode} label="Pay" amount="5% Back" />
+          </>
+        ) : null}
       </div>
     </>
   );
