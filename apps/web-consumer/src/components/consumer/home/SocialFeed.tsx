@@ -222,7 +222,9 @@ const MARK_CLASS =
  *  never a lucide glyph. No verb badge (MESITA-2604). Two marks: Instagram
  *  bottom-left when verified, a VIP crown bottom-right (never for Regular,
  *  never Plan). */
-function Face({ person }: { person: ActivityPerson }) {
+/** A member's face with its Instagram and VIP marks; the place screen's
+ *  Social tab draws the same (MESITA-3417). */
+export function Face({ person }: { person: ActivityPerson }) {
   const vip = person.guestClass === "vip";
   return (
     <span className="relative block h-11 w-11 shrink-0">

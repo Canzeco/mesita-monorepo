@@ -105,6 +105,8 @@ export async function apiListActivityFeed(
   client: SupabaseClient,
   from: { lat: number; lng: number } | null,
   before?: string,
+  /** One place's events alone, no circle (the Social tab, MESITA-3417). */
+  placeId?: string,
 ): Promise<ActivityFeedPage> {
   const { items, next } = await invokeEF<ActivityFeedPage>(
     client,
@@ -112,6 +114,7 @@ export async function apiListActivityFeed(
     {
       ...(from ? { lat: from.lat, lng: from.lng } : {}),
       ...(before ? { before } : {}),
+      ...(placeId ? { place_id: placeId } : {}),
     },
   );
   return { items, next };

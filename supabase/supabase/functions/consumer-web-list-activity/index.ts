@@ -19,7 +19,12 @@
 // (consumer-web-list-place-likes) and the guest's saves
 // (consumer-web-list-saved-places).
 //
-// Body: { lat?, lng?, before? }
+// ONE PLACE (MESITA-3417, Pato: "social is just the notifications for one
+// given place"): with `place_id`, the feed is that place's events alone, the
+// place screen's Social tab, and the 15 km circle does not apply (the guest
+// is already looking at the place). Who is named is unchanged.
+//
+// Body: { lat?, lng?, before?, place_id? }
 //   → { items: [{ placeId, kind, at, person, distanceKm, place }], next }
 //   distanceKm is the guest to the PLACE (it draws the circle and is the
 //   row's "0.7 km away"). Nothing about where the EVENT happened leaves
@@ -37,7 +42,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, anonClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { haversineKm } from "../_shared/geo.ts";
-import { type ActivityRow, type FeedEvent, feedEvents, nearYou } from "../_shared/place-activity.ts";
+import { type ActivityRow, type FeedEvent, feedEvents, isMesitaPlaceId, nearYou } from "../_shared/place-activity.ts";
 import { type Card, readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
 import { NO_SCREEN_RADIUS_KM } from "../_shared/discovery-config.ts";
 import { finiteOrNull } from "../_shared/input.ts";
@@ -46,7 +51,7 @@ const PAGE_ITEMS = 20;
 const SCAN_ROWS = 50;
 const MAX_SCANS = 6;
 
-type Body = { lat?: number; lng?: number; before?: string };
+type Body = { lat?: number; lng?: number; before?: string; place_id?: string };
 
 serveJson("consumer-web-list-activity", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -66,6 +71,10 @@ serveJson("consumer-web-list-activity", async (req) => {
   if (before != null && (typeof before !== "string" || !Number.isFinite(Date.parse(before)))) {
     return json({ ok: false, error: "before must be a time" }, 400);
   }
+  const placeId = body.place_id ?? null;
+  if (placeId != null && !isMesitaPlaceId(placeId)) {
+    return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+  }
   const admin = adminClient(envRes.env);
   const anon = anonClient(envRes.env);
   const lat = finiteOrNull(body.lat);
@@ -79,6 +88,7 @@ serveJson("consumer-web-list-activity", async (req) => {
     const feedRes = await admin.rpc("place_activity_feed", {
       p_limit: SCAN_ROWS,
       ...(cursor ? { p_before: cursor } : {}),
+      ...(placeId ? { p_place_id: placeId } : {}),
     });
     if (feedRes.error) return json({ ok: false, error: `feed: ${feedRes.error.message}` }, 500);
     const rows = (feedRes.data ?? []) as ActivityRow[];
@@ -92,7 +102,7 @@ serveJson("consumer-web-list-activity", async (req) => {
         ? haversineKm(lat, lng, finiteOrNull(place.lat), finiteOrNull(place.lng))
         : Number.POSITIVE_INFINITY;
       const distanceKm = Number.isFinite(km) ? km : null;
-      if (!nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) continue;
+      if (!placeId && !nearYou(distanceKm, NO_SCREEN_RADIUS_KM, hasPoint)) continue;
       items.push({ ...e, distanceKm, place });
       if (items.length === PAGE_ITEMS) return json({ ok: true, items, next: e.at });
     }

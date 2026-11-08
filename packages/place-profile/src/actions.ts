@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { MouseEvent, ReactNode } from "react";
 
 import type { PlaceDetail, VoucherKey } from "./place-detail";
 
@@ -39,6 +39,10 @@ export type PlaceActions = {
   /** The host's list-vouchers read has not answered yet (MESITA-3388): the
    *  Rewards rows keep their colour and show a bone where Buy goes. */
   vouchersLoading?: boolean;
+  /** The Social tab's body (MESITA-3417): this place's activity, read and
+   *  drawn by the host; called only while the tab is open. Absent (admin's
+   *  Preview, a Google-only card), the tab shows an empty screen. */
+  renderSocial?: () => ReactNode;
   /** Prepay and Pay (MESITA-3412): open the host's Rewards sheet at that
    *  section. Absent, both tiles are inert (admin's preview). */
   onOpenRewards?: (section: RewardsSection) => void;

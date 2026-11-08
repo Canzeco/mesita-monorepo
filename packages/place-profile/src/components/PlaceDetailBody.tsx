@@ -16,6 +16,7 @@ import { PlaceCreateFailedPanel } from "./place-detail/PlaceCreateFailedPanel";
 import { NO_OVERVIEW, PlaceEmptyScreen } from "./place-detail/empty-screen";
 import { PlaceTabBar, type PlaceTab } from "./place-detail/tabs";
 import { SoonScreen } from "./place-detail/soon-screen";
+import { Users } from "lucide-react";
 import { FamiliesBox, LinksBox, ScoreBox, StatsBox, TagsBox } from "./place-detail/tags-links-meta";
 import { MesitaActions, PLACE_STICKY_BLOCK_CLASS, PLACE_STICKY_ROW_CLASS } from "./place-detail/ProfileActions";
 
@@ -122,6 +123,16 @@ export function PlaceDetailBody({
             <GoogleReviewsBox place={place} onOpenLink={actions?.onOpenLink} />
           )}
           {tab === "products" && <SoonScreen />}
+          {tab === "social" &&
+            (actions?.renderSocial ? (
+              actions.renderSocial()
+            ) : (
+              <PlaceEmptyScreen
+                icon={Users}
+                title="No activity here"
+                line="Who viewed and saved this place shows here."
+              />
+            ))}
       </div>
     </div>
   );

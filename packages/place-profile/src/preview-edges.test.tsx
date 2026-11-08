@@ -33,7 +33,7 @@ describe("member preview edges", () => {
       <PlaceProfile place={detail({ enriched_at: null, is_enriched: false })} />,
     );
     expect(html).toContain('aria-label="Place sections"');
-    for (const label of ["Overview", "Menu", "Reviews"]) {
+    for (const label of ["Overview", "Menu", "Reviews", "Social"]) {
       expect(html).toContain(label);
     }
     expect(html).not.toContain(">Enrich<");
