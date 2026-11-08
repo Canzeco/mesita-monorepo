@@ -177,11 +177,11 @@ function OverviewSkeleton() {
           <Bone className={PLACE_BUTTON_CLASS} />
         </div>
       </Box>
-      {/* HoursBox: the week in one outlined list of 32px rows, the real
-          row's class (MESITA-3379). */}
+      {/* HoursBox: the week as hairline rows, the real row's class
+          (MESITA-3434). */}
       <Box>
         <BoxTitleBar width="w-16" />
-        <div className="border-border overflow-hidden rounded-lg border">
+        <div className="divide-border divide-y">
           {[0, 1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className={HOURS_ROW_CLASS}>
               <Bone className="h-3 w-20" />

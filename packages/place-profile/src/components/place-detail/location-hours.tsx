@@ -127,8 +127,11 @@ function todayWeekdayLabel(tz: string): string {
  *  table is secondary, the facts row up top already says Open until X. Read
  *  here and by the skeleton's bones (MESITA-3379; they stayed 44px when the
  *  rows shrank). The today fill is the caller's add. */
+/** A day of the week: the Score box's row (Pato, MESITA-3434: "it doesn't
+ *  look design standardized with respect to the other boxes"), 14px, split by
+ *  the list's hairlines; 32px rows in an outlined table until then. */
 export const HOURS_ROW_CLASS =
-  "border-border flex min-h-8 min-w-0 items-center justify-between gap-3 border-b px-2.5 text-xs leading-tight last:border-b-0";
+  "flex min-w-0 items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0";
 
 function HoursDayRow({
   row,
@@ -143,13 +146,13 @@ function HoursDayRow({
   const closed = row.range.toLowerCase() === "closed";
   return (
     <li
-      className={cn(HOURS_ROW_CLASS, isToday && "bg-muted")}
+      className={HOURS_ROW_CLASS}
       data-today={isToday ? "" : undefined}
     >
       <span
         className={cn(
           "shrink-0",
-          isToday ? "text-foreground font-semibold" : "text-muted-foreground font-medium",
+          isToday ? "text-foreground font-semibold" : "text-muted-foreground",
         )}
       >
         {row.day}
@@ -213,7 +216,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
               PLACE_OUTLINE_CHIP_CLASS,
               // 14px on 32px, a step above the 13px chip (Pato, MESITA-3378:
               // "the text in hours just a bit larger, but just a bit").
-              "h-8 text-sm text-white",
+              "text-white",
               place.open_now ? "border-emerald-600 bg-emerald-600" : "border-red-600 bg-red-600",
             )}
           >
@@ -225,7 +228,7 @@ export function HoursBox({ place }: { place: PlaceDetail }) {
           </span>
         </div>
       ) : null}
-      <ul className="border-border overflow-hidden rounded-lg border">
+      <ul className="divide-border divide-y" data-hours-week>
         {place.hours_table.map((row) => (
           <HoursDayRow key={row.day} row={row} today={today} />
         ))}
