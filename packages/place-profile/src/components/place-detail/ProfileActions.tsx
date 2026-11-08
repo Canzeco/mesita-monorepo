@@ -326,9 +326,9 @@ export function MesitaActions({
  *  12, Rewards 16, Reviews 32). The margin is not painted: pinned, content
  *  meets the hairline as under any sticky header. */
 export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 mb-1 flex flex-col";
-/** The Mesita row inside it: 16px sides, 8px over (room for the corner
- *  badges, MESITA-3421), 16px under, a hairline, then the strip. */
-export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pt-2 pb-4";
+/** The Mesita row inside it: 16px sides, 16px under, a hairline, then the
+ *  strip (8px over for the corner badges from MESITA-3421 to MESITA-3424). */
+export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 
 /** A Mesita tile's glyph: the grey tiles' 18px. */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
@@ -353,7 +353,7 @@ function MoneyTile({
   /** What the screen reader hears after the label ("30% Bonus"). */
   amount: string;
   tone: keyof typeof MONEY_TONE;
-  /** The ink badge on the tile's top-right corner ("30% Bonus"); none on Card. */
+  /** The ink pill beside the label ("30% Bonus"). */
   badge?: string;
   /** Opens the host's Rewards sheet; absent, the tile is inert. */
   onClick?: () => void;
@@ -367,18 +367,20 @@ function MoneyTile({
       className={cn(
         PROFILE_MESITA_TILE_BOX_CLASS,
         MONEY_TONE[tone],
-        "relative text-xs font-semibold",
+        "text-xs font-semibold",
         onClick ? "transition hover:opacity-90 active:scale-[0.99]" : "cursor-not-allowed",
       )}
     >
       {/* Glyph beside label, the grey tiles' shape (MESITA-3421). THE BONUS
           ON THE CORNER (Pato, MESITA-3421: "in prepay and pay mention the
           fucking bonus"): a third of the row holds glyph and "Prepay" but not
-          "30% Bonus" beside them, so the ink pill rides the top-right corner. */}
+          "30% Bonus" beside them, so the ink pill rode the top-right corner; INSIDE
+          THE GREEN (Pato, MESITA-3424: "bonus and back must go inside the green
+          boxes"): with two halves, glyph · label · pill fit one line. */}
       <Icon className={MESITA_TILE_ICON} strokeWidth={2.25} />
-      <span className="min-w-0 truncate">{label}</span>
+      <span className="shrink-0 whitespace-nowrap">{label}</span>
       {badge ? (
-        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper absolute -top-2 -right-1")} aria-hidden>
+        <span className={cn(PLACE_PILL_CLASS, "bg-foreground text-paper shrink-0")} aria-hidden>
           {badge}
         </span>
       ) : null}
