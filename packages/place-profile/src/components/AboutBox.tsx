@@ -48,24 +48,30 @@ export function AboutBox({ text }: { text: string }) {
   const folded = body.length > FOLD_OVER && !expanded;
   return (
     <Box title={HEADING}>
-      <p
-        className={cn(
-          PLACE_BODY_CLASS,
-          "whitespace-pre-wrap",
-          folded && "line-clamp-6",
-        )}
-      >
-        {body}
-      </p>
-      {folded && (
-        <button
-          type="button"
-          onClick={() => setExpanded(true)}
-          className="text-foreground mt-1 min-h-11 text-sm font-semibold hover:underline"
+      {/* THE TEXT IN ITS OWN PANEL (Pato, MESITA-3435: "put presentation text
+          inside another box"): a grey rounded panel inside the white card, as
+          the photos and the map sit inside theirs. */}
+      <div className="bg-muted flex flex-col rounded-lg px-4 pt-4 pb-2" data-about-panel>
+        <p
+          className={cn(
+            PLACE_BODY_CLASS,
+            "whitespace-pre-wrap",
+            folded && "line-clamp-6",
+            !folded && "pb-2",
+          )}
         >
-          Show more
-        </button>
-      )}
+          {body}
+        </p>
+        {folded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="text-foreground min-h-11 text-left text-sm font-semibold hover:underline"
+          >
+            Show more
+          </button>
+        )}
+      </div>
     </Box>
   );
 }
