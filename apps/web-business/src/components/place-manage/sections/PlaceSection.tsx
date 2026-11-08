@@ -143,7 +143,9 @@ function compactCount(n: number): string {
 /** The number a link earns, in its own box beside it (Pato, MESITA-3401 and
  *  MESITA-3404: "two boxes per line … in their own boxes, not floating in
  *  the parent box"). The box shows even with no number, a muted "—", so the
- *  three rows keep one width. Update Reviews fills the numbers. */
+ *  three rows keep one width. Update Reviews fills the numbers. HALF THE ROW
+ *  (Pato, MESITA-3433: "the left must be 50% and right 50%"): flex-1 beside
+ *  the field's flex-1; a fixed 128/168px box until then. */
 function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: AdminPlace }) {
   let body: ReactNode = null;
   let spoken = "";
@@ -190,7 +192,7 @@ function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: Adm
       role="img"
       aria-label={spoken || "No number yet"}
       title={spoken || undefined}
-      className="bg-muted/60 border-border/60 text-muted-foreground flex h-10 w-32 shrink-0 items-center gap-1.5 overflow-hidden rounded-xl border px-3.5 text-sm whitespace-nowrap tabular-nums sm:w-42"
+      className="bg-muted/60 border-border/60 text-muted-foreground flex h-10 min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-xl border px-3.5 text-sm whitespace-nowrap tabular-nums"
     >
       {body ?? <span className="text-muted-foreground/60">—</span>}
     </span>
