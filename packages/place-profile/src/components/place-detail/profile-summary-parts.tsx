@@ -17,8 +17,9 @@ import { SizedImg } from "../SizedPhoto";
 // sizes"): the photo's frame and a stat column's three classes are read here
 // and by ProfileSummarySkeleton, which draws its bones inside them.
 
-/** ProfilePhoto's frame: 88px, rounded-xl. */
-export const PROFILE_PHOTO_FRAME_CLASS = "h-[88px] w-[88px] shrink-0 rounded-xl";
+/** ProfilePhoto's frame: 88px, a circle (Pato, MESITA-3432: "make the
+ *  profile picture circular"; rounded-xl until then). */
+export const PROFILE_PHOTO_FRAME_CLASS = "h-[88px] w-[88px] shrink-0 rounded-full";
 /** A ProfileStat column. */
 export const PROFILE_STAT_CLASS =
   "flex min-w-0 flex-col items-center justify-center px-0.5 text-center";
