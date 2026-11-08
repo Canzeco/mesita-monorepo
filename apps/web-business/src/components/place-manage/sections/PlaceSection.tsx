@@ -23,6 +23,7 @@ import {
   TextField,
 } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
+import { ReviewsSummary } from "./ReviewsSummary";
 import { useSectionSaver } from "../useSectionDirty";
 import {
   formatPlacePriceRange,
@@ -329,7 +330,8 @@ function sliceEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-export function PlaceSection({ place }: { place: AdminPlace }) {
+/** `staff`: read by the Google Reviews card (Google's id is staff-only). */
+export function PlaceSection({ place, staff = false }: { place: AdminPlace; staff?: boolean }) {
   const { savePending, profile, setPlace } = usePlaceContext();
   // Basics' Reset (MESITA-2829): hand an operator-owned field back to Enrich.
   const [resetting, setResetting] = useState<string | null>(null);
@@ -456,7 +458,8 @@ export function PlaceSection({ place }: { place: AdminPlace }) {
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
           Basics → Location → Hours → Links. The gallery has no editor (MESITA-2794).
-          Reviews is its own tab (MESITA-2183).
+          Google Reviews is the last card, one column like the rest (Pato,
+          MESITA-3403: "google must be one column, not two").
           Menus is unwired (MESITA-2175). Mesita-internal cards live on Admin,
           Actions on Settings (MESITA-3236);
           Team on Controls; the reputation rail on Activity. */}
@@ -735,6 +738,8 @@ export function PlaceSection({ place }: { place: AdminPlace }) {
           />
         </div>
       </SectionCard>
+
+      <ReviewsSummary staff={staff} />
     </div>
   );
 }

@@ -87,6 +87,7 @@ export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
 
   return (
     <ReviewBox
+      id="reviews"
       mark="/channels/google.svg"
       title="Google Reviews"
       state={reviewsState}
@@ -372,6 +373,7 @@ function AllReviews({ reviews }: { reviews: StoredReview[] }) {
 }
 
 function ReviewBox({
+  id,
   mark,
   title,
   state,
@@ -380,6 +382,7 @@ function ReviewBox({
   muted,
   extra,
 }: {
+  id?: string;
   mark: string;
   title: string;
   state: BoxState;
@@ -390,6 +393,7 @@ function ReviewBox({
 }) {
   return (
     <SectionCard
+      id={id}
       icon={
         // eslint-disable-next-line @next/next/no-img-element
         <img src={mark} alt="" aria-hidden className="size-5" />

@@ -10,7 +10,7 @@
 import { PlaceSection } from "@/components/place-manage/sections/PlaceSection";
 import { usePlaceContext } from "@/components/place-manage/PlaceContext";
 
-export function ProfileTab() {
+export function ProfileTab({ staff = false }: { staff?: boolean } = {}) {
   const { place } = usePlaceContext();
-  return <PlaceSection place={place} />;
+  return <PlaceSection place={place} staff={staff} />;
 }
