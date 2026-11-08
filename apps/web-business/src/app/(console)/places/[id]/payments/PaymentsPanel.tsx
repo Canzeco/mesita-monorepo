@@ -2,8 +2,8 @@
 
 // Payments (MESITA-3296, four sections since MESITA-3408): Mesita Pay, the
 // place's own Stripe account, with the one button its state calls for; Visit
-// Checkout, the bill in its order (House Credits, Mesita Pay with its 5%
-// cashback, Outside Mesita), one switch; Prepaid Vouchers, six.
+// Checkout, the bill in its order (House Credits, Pay by phone, Outside
+// Mesita), one switch; Payments Cashback, one switch; Prepaid Vouchers, six.
 // A guest's credit is the place's debt, so no switch refuses it. The owner and
 // Mesita staff change them; the server refuses anyone else. No number is set
 // here: rates, bonuses and prices are Mesita's.
@@ -15,6 +15,7 @@ import {
   ArrowSquareOutIcon,
   CheckCircleIcon,
   ClockIcon,
+  CoinsIcon,
   DeviceMobileIcon,
   MoneyIcon,
   PiggyBankIcon,
@@ -50,6 +51,14 @@ const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
  *  one. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; icon: Icon; tone: string };
 
+const CASHBACK: Product = {
+  key: "cashback",
+  name: "Payments Cashback",
+  line: "Guest pays by card, gets 5% of it back as credit at your place.",
+  value: "5%",
+  icon: CoinsIcon,
+  tone: "bg-amber-100 text-amber-700",
+};
 
 // Standard: any guest, any time. Special: one condition each (MESITA-3298).
 const STANDARD: Product[] = [
@@ -67,15 +76,13 @@ const SPECIAL: Product[] = [
   { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
 
-/** Mesita Pay (MESITA-3396's Cards; named for what it is by MESITA-3408/3410,
- *  Pato: "Mesita Pay, that's the whole concept"): guests pay the bill on
- *  Mesita, and Payments Cashback comes with it (MESITA-3410). The key stays
- *  `pay_cards`. */
-const MESITA_PAY: Product = {
+/** Pay by phone (MESITA-3396's Cards, renamed on the page by MESITA-3408;
+ *  the key stays `pay_cards`). */
+const PAY_BY_PHONE: Product = {
   key: "pay_cards",
-  name: "Mesita Pay",
-  line: "Guests pay the bill from their phone by card, Apple Pay or Google Pay, and get 5% back as credit here.",
-  value: "5% back",
+  name: "Pay by phone",
+  line: "Guests pay the bill from their phone by card, Apple Pay or Google Pay.",
+  value: "",
   icon: DeviceMobileIcon,
   tone: "bg-sky-100 text-sky-700",
 };
@@ -184,7 +191,8 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
     let note: string | null = null;
     if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
     if (key === "pay_cards") note = on ? (account.charges_enabled ? null : "Needs Stripe: on once the account can charge.") : "Guests still pay from credit here.";
-    const soon = !CARD_BILL_PAY_LIVE && key === "pay_cards";
+    if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Pay by phone on and Stripe ready.";
+    const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
       <li key={key} className={MARK_ROW}>
         <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", tone)}>
@@ -263,9 +271,12 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <h2 className={HEAD}>Visit Checkout</h2>
         <ul className="divide-border divide-y">
           {infoRow(HOUSE_CREDITS)}
-          {row(MESITA_PAY)}
+          {row(PAY_BY_PHONE)}
           {infoRow(OUTSIDE)}
         </ul>
+      </Card>
+      <Card className="flex flex-col p-0 sm:p-0">
+        <ul className="divide-border divide-y">{row(CASHBACK)}</ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
         <h2 className={HEAD}>Standard vouchers</h2>

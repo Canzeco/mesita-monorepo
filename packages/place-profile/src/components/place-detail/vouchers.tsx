@@ -233,6 +233,7 @@ export function VouchersPane({ place, actions }: { place: PlaceDetail; actions?:
   // cashback row reads the server's word, `money.cashback` (MESITA-3408).
   const state = moneyState(
     {
+      cashback: money?.cashback === true,
       voucher_200: money?.vouchers.voucher_200 === true,
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,

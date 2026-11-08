@@ -25,11 +25,12 @@ import { vouchersUpToPct } from "./money.ts";
  *  `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is never renamed:
  *  renaming resets live config). Cash and Credits left with MESITA-3408: Cash
  *  changed nothing, and a guest's credit is the place's debt, never switched
- *  off. Payments Cashback folded into the Mesita Pay switch with MESITA-3410: the 5%
- *  comes with every card part. The three columns stay until MESITA-3409
- *  drops them; nothing reads them. */
+ *  off. Their columns stay until MESITA-3409 drops them; nothing reads them.
+ *  Cashback stays its own switch (MESITA-3411, Pato: "cashback must be
+ *  optional"); Mesita's fee is charged either way. */
 export const PAYMENT_KEYS = [
   "pay_cards",
+  "cashback",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
