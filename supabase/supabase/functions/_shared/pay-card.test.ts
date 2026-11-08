@@ -23,7 +23,6 @@ const T0 = Date.parse("2026-11-08T12:00:00Z");
 
 const ALL_ON: PaymentSettings = {
   pay_cards: true,
-  cashback: true,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -157,13 +156,13 @@ Deno.test("start: hold (credit = bill − card, fee and cashback rate stored) �
   assertEquals(fake.rpcs.find((x) => x.name === "wallet_open_payment")?.args, { p_payment_id: ROW, p_session_id: "cs_new" });
 });
 
-Deno.test("start: the cashback switch off stores rate 0; settle never re-reads the switch", async () => {
+Deno.test("start: Cashback is folded into Pay by phone (MESITA-3410): every card part stores the 5% rate", async () => {
   const fake = fakeAdmin({
     table: () => ({ data: [] }),
     rpc: (name) => name === "wallet_hold_payment" ? { data: { ok: true, outcome: "held", payment_id: ROW, expires_at: "x" } } : { data: { ok: true } },
   });
-  await startCardPayment(fake.client, () => Promise.resolve({ id: "cs", url: "u" }), startArgs({ settings: { ...ALL_ON, cashback: false } }));
-  assertEquals(fake.rpcs.find((x) => x.name === "wallet_hold_payment")!.args.p_cashback_bps, 0);
+  await startCardPayment(fake.client, () => Promise.resolve({ id: "cs", url: "u" }), startArgs({ settings: ALL_ON }));
+  assertEquals(fake.rpcs.find((x) => x.name === "wallet_hold_payment")!.args.p_cashback_bps, 500);
 });
 
 Deno.test("start: Stripe refuses → the hold is released as failed with Stripe's code, 502 checkout_failed", async () => {

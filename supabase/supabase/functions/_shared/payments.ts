@@ -22,13 +22,14 @@ import { vouchersUpToPct } from "./money.ts";
 // ── Settings ───────────────────────────────────────────────────────────────
 
 /** The switches an owner has, in the order the page shows them.
- *  `pay_cards` is Pay by phone (MESITA-3396; the key is never renamed:
+ *  `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is never renamed:
  *  renaming resets live config). Cash and Credits left with MESITA-3408: Cash
  *  changed nothing, and a guest's credit is the place's debt, never switched
- *  off. Their columns stay until MESITA-3409 drops them; nothing reads them. */
+ *  off. Payments Cashback folded into the Mesita Pay switch with MESITA-3410: the 5%
+ *  comes with every card part. The three columns stay until MESITA-3409
+ *  drops them; nothing reads them. */
 export const PAYMENT_KEYS = [
   "pay_cards",
-  "cashback",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -44,7 +45,7 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
 
 export type PaymentSettings = Record<PaymentKey, boolean>;
 
-/** No row = Pay by phone on, every product off. Pay by phone reads off only
+/** No row = the Mesita Pay switch on, every product off. the Mesita Pay switch reads off only
  *  when the row says `false` outright, so a row from before the column never
  *  switches a place off. */
 export function settingsFromRow(row: Partial<Record<PaymentKey, unknown>> | null): PaymentSettings {
