@@ -100,8 +100,10 @@ const SocialFeed = dynamic(
 // The tile list's classes (PLACES_LIST) live in DiscoverFallback.tsx, beside
 // the skeleton that draws the same column (MESITA-2701).
 
+// 8px in from the left (Pato, MESITA-3445: "put the families a bit more to
+// the left, reduce the left margin"); 12px from MESITA-3441.
 const ROW_BASE =
-  "flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
+  "flex w-full items-center gap-1.5 py-3.5 pr-1.5 pl-2 text-left text-xs leading-tight transition";
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
