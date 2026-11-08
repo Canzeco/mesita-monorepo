@@ -101,7 +101,7 @@ const SocialFeed = dynamic(
 // the skeleton that draws the same column (MESITA-2701).
 
 const ROW_BASE =
-  "flex w-full items-center gap-1.5 rounded-lg px-2.5 py-3.5 text-left text-xs leading-tight transition";
+  "flex w-full items-center gap-1.5 px-3 py-3.5 text-left text-xs leading-tight transition";
 const ROW_ON = "bg-card text-foreground font-semibold";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
@@ -450,8 +450,11 @@ export function CatalogRails() {
   // and a name, never an emoji (MESITA-2478); the chosen row a white rounded
   // row inset in the grey rail, bold and a heavier stroke (Pato, MESITA-3337:
   // "the categorical border gray area at the left of selected category looks
-  // like shit": the 3px ink bar on its left edge is gone, and the row no
-  // longer runs edge to edge).
+  // like shit": the 3px ink bar on its left edge is gone). EDGE TO EDGE
+  // AGAIN, NO BOX (Pato, MESITA-3441: "the families must be at the left, not
+  // in a box ... all white and it touches both left and right border"): the
+  // list has no inset and the rows no rounding; the chosen row is plain
+  // white across the whole column, still with no bar.
   const chips = placesChips();
   const categoryRow = (c: { key: string; label: string }) => {
     const on = chip === c.key;
@@ -489,7 +492,7 @@ export function CatalogRails() {
       <ul
         role="list"
         aria-label="Families"
-        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-1.5"
+        className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-places-group="families"
       >
         {chips.map(categoryRow)}
