@@ -77,7 +77,7 @@ export function PlaceDetailBody({
             strip stick together to the top of the scroll container. */}
         <div className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS} data-profile-section="mesita">
-            <MesitaActions place={place} actions={actions} />
+            <MesitaActions place={place} actions={actions} money={tab !== "vouchers"} />
           </div>
           <PlaceTabBar tab={tab} onChange={setTab} />
         </div>
