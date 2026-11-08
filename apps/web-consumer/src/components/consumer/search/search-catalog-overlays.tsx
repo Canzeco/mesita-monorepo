@@ -14,9 +14,11 @@ import { RailCard, RailCardSkeleton } from "./SearchRailCard";
  *  MESITA-3018's 64px, "its tooo wide, the other options must be kinda
  *  partially visible too"; MESITA-3008's 18px): a 6px gap between cards
  *  (px-[3px] each side), the first and last pages padded 48px, so the
- *  centred card sits 48px in and each neighbour peeks ~42px. The carousel spans the map's full width, floating over its
+ *  centred card sits 48px in and each neighbour peeks ~42px. A LITTLE WIDER
+ *  (Pato, MESITA-3443: "a bit wide, just a bit"): 36px in, the card 24px
+ *  wider, each neighbour peeking ~30px. The carousel spans the map's full width, floating over its
  *  foot. The scroll math in SearchClient reads `railPageWidth`. */
-export const RAIL_PAGE_INSET_PX = 96;
+export const RAIL_PAGE_INSET_PX = 72;
 
 /** One card page's width in px for a carousel `clientWidth` wide. */
 export function railPageWidth(clientWidth: number): number {
@@ -24,7 +26,7 @@ export function railPageWidth(clientWidth: number): number {
 }
 
 const RAIL_PAGE =
-  "flex w-[calc(100%-96px)] shrink-0 snap-center flex-col gap-1.5 px-[3px] first:ml-[48px] last:mr-[48px]";
+  "flex w-[calc(100%-72px)] shrink-0 snap-center flex-col gap-1.5 px-[3px] first:ml-[36px] last:mr-[36px]";
 
 /** Cards per carousel page: the rail is ONE card tall (Pato, MESITA-2885:
  *  "the carousel must be one item tall, not two, its a horizontal
