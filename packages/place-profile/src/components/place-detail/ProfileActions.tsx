@@ -6,7 +6,8 @@ import {
   Map as MapIcon,
   Phone,
   QrCode,
-  Rocket,
+  ChevronRight,
+  CreditCard,
   Share2,
   Wallet,
   type LucideIcon,
@@ -18,6 +19,7 @@ import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
+import { pesos } from "./vouchers";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 
@@ -30,9 +32,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // width over Mesita Prepay and Mesita Pay halved; MESITA-2688/2689 had
 // Reserve and Pay side by side):
 //
-//   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ⇧ Upgrade ]
-//   [   ▣   ] [ ▤ Prepay          ] [ ▦ Pay             ]
-//   [Reserve] [   [30% Bonus]     ] [   [5% Back]       ]
+//   [ ♡ Save ] [ ▱ Maps ] [ ✆ Contact ] [ ⇪ Share ] [ ▣ Reserve ]
+//   [ ▤ Prepay [30% Bonus]       ] [ ▦ Pay [5% Back]           ]
+//   [ ▭ Your credit here                          MX$120  ›   ]  (only with credit)
+//
+// That is layout D (Pato, MESITA-3416); Upgrade lives in the ⋯ menu.
 //
 // ROW 1 is five equal grey tiles, icon over a 12px label. Save is the heart
 // (MESITA-2521's favorite); once saved only the heart turns red, never the
@@ -101,37 +105,16 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
 /** A tile's box: 56px, rounded-lg, icon over label. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2: Reserve · Prepay · Pay on the grey tiles' five columns, 8px
- *  apart (Pato, MESITA-3339: "reserve button is not as large, this way:
- *  Save Maps Contact Share Upgrade / Reserve Prepay Prepay Pay Pay"):
- *  Reserve takes the first column, Prepay and Pay two each. Three equal
- *  tiles from MESITA-3314 until then. */
+/** Row 2, pinned: Prepay · Pay, half each (MESITA-3413). Reserve sat in its
+ *  first column from MESITA-3339 until it joined the grey row (MESITA-3416). */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-2 gap-2";
 
-/** RESERVE IS HIDDEN FOR NOW (Pato, MESITA-3413, 2026-11-08: "for the moment
- *  hide the reservations button ... only two buttons. prepay and pay"): the
- *  row is Prepay · Pay, half each. The button and its sheet stay in code;
- *  bring it back by setting this to true, the row to grid-cols-5 and the
- *  wide tile back to col-span-2. */
-export const SHOW_RESERVE = false;
 /** A wide Mesita tile's box: half the row, the grey tiles' 56px, glyph ·
  *  14px label · 12px amount pill on one line (MESITA-3414; stacked from
  *  MESITA-3339, the glyph went left in MESITA-3335). */
 export const PROFILE_MESITA_TILE_BOX_CLASS =
   "flex h-14 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg px-1.5";
 
-// Reserve is the grey tile's own box in the ink (MESITA-3353): one column,
-// the glyph over a 12px label.
-const inkReserve = cn(
-  PROFILE_TILE_BOX_CLASS,
-  "bg-foreground text-paper text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
-);
-// A blocked Reserve: still the ink, but `disabled`: no hover, no press,
-// the not-allowed cursor (MESITA-3081).
-const blockedInkReserve = cn(
-  PROFILE_TILE_BOX_CLASS,
-  "bg-foreground text-paper cursor-not-allowed text-xs font-semibold",
-);
 // A blocked wide Mesita tile (Prepay, Pay): Link green, `disabled`, 14px.
 const blockedInkTile = cn(
   PROFILE_MESITA_TILE_BOX_CLASS,
@@ -159,6 +142,7 @@ function ActionTile({
   className,
   iconClassName,
   dataDirectionsUrl,
+  disabled = false,
   children,
 }: {
   Icon?: LucideIcon;
@@ -172,6 +156,9 @@ function ActionTile({
   iconClassName?: string;
   /** The Directions tile carries its Google Maps link for inspection. */
   dataDirectionsUrl?: string;
+  /** A blocked tile (Reserve where the place takes no bookings): drawn,
+   *  never hidden (MESITA-3078), `disabled`, faded, no hover. */
+  disabled?: boolean;
   children?: React.ReactNode;
 }) {
   return (
@@ -186,7 +173,8 @@ function ActionTile({
         : inertButtonProps(false))}
       aria-label={ariaLabel}
       data-directions-url={dataDirectionsUrl}
-      className={cn(tileBtn, className)}
+      disabled={disabled}
+      className={cn(tileBtn, disabled && "hover:bg-border/60 cursor-not-allowed opacity-50 active:scale-100", className)}
     >
       {children ??
         (Icon ? (
@@ -215,7 +203,8 @@ export function ProfileActions({
   const onContact = actions?.onContact;
   const onShare = actions?.onShare;
   const onOpenLink = actions?.onOpenLink;
-  const onBoost = actions?.onBoost;
+  const onReserve = actions?.onReserve;
+  const takesReservations = isReserveActionEnabled(place);
   const directionsUrl = buildDirectionsUrl(place);
 
   return (
@@ -275,12 +264,18 @@ export function ProfileActions({
           onClick={onShare}
           ariaLabel="Share"
         />
+        {/* RESERVE JOINS THE GREY ROW (Pato, MESITA-3416, layout D of five:
+            "include reserve too"): fifth, where Upgrade was; Upgrade's door is
+            the ⋯ menu's Upgrade row. A place that takes no bookings keeps the
+            tile, blocked (MESITA-3078: "never fucking disapearing"). */}
         <ActionTile
-          Icon={Rocket}
-          label="Upgrade"
-          live={Boolean(onBoost)}
-          onClick={onBoost}
-          ariaLabel="Upgrade this place"
+          Icon={CalendarCheck}
+          label="Reserve"
+          live={takesReservations && Boolean(onReserve)}
+          onClick={onReserve}
+          disabled={!takesReservations}
+          dialog
+          ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
         />
       </div>
 
@@ -307,30 +302,16 @@ export function MesitaActions({
   // (admin's Preview) both stay the inert green tile. Always drawn: the tab
   // that hid them (MESITA-3398) is gone.
   const onOpenRewards = actions?.onOpenRewards;
-  const onReserve = actions?.onReserve;
-  const takesReservations = isReserveActionEnabled(place);
-  const reserveLive = takesReservations && Boolean(onReserve);
+  // THE CREDIT LINE (Pato, MESITA-3416, layout D): under Prepay · Pay, only
+  // while the guest holds credit at this place (available or pending); it
+  // opens the Rewards sheet, whose top shows the same credit. Inert on
+  // admin's Preview, which holds no guest.
+  const balance = place.money?.balance ?? null;
+  const creditCents = balance ? balance.available_cents + balance.pending_cents : 0;
+  const currency = place.money?.currency ?? "mxn";
   return (
-    <>
+    <div className="flex flex-col gap-2">
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
-        {SHOW_RESERVE ? (
-        <button
-          type="button"
-          {...(reserveLive
-            ? { onClick: onReserve, "aria-haspopup": "dialog" as const }
-            : inertButtonProps(false))}
-          disabled={!takesReservations}
-          aria-label={
-            takesReservations
-              ? "Reserve a table"
-              : "Reserve a table, not available at this place"
-          }
-          className={takesReservations ? inkReserve : blockedInkReserve}
-        >
-          <CalendarCheck className={RESERVE_ICON} strokeWidth={2.25} />
-          <span className="max-w-full truncate">Reserve</span>
-        </button>
-        ) : null}
         <MoneyTile
           Icon={Wallet}
           label="Prepay"
@@ -344,7 +325,23 @@ export function MesitaActions({
           onClick={onOpenRewards ? () => onOpenRewards("payment") : undefined}
         />
       </div>
-    </>
+      {creditCents > 0 ? (
+        <button
+          type="button"
+          {...(onOpenRewards
+            ? { onClick: () => onOpenRewards("payment"), "aria-haspopup": "dialog" as const }
+            : inertButtonProps(false))}
+          className="border-border text-foreground hover:bg-muted flex h-11 items-center gap-2 rounded-lg border px-3 text-sm transition"
+          aria-label={`Your credit here, ${pesos(creditCents, currency)}`}
+          data-place-credit-line
+        >
+          <CreditCard className="h-[18px] w-[18px] shrink-0" strokeWidth={2.25} />
+          <span className="min-w-0 flex-1 truncate text-left">Your credit here</span>
+          <span className="font-semibold tabular-nums">{pesos(creditCents, currency)}</span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -359,8 +356,6 @@ export const PLACE_STICKY_BLOCK_CLASS = "bg-card sticky top-0 z-20 -mx-4 mb-1 fl
  *  strip. */
 export const PLACE_STICKY_ROW_CLASS = "border-border border-b px-4 pb-4";
 
-/** Reserve's glyph: the grey tiles' 18px. */
-const RESERVE_ICON = "h-[18px] w-[18px] shrink-0";
 /** A wide tile's glyph: 20px beside two lines (MESITA-3339). */
 const MESITA_TILE_ICON = "h-[18px] w-[18px] shrink-0";
 /** The amount in an ink pill beside the label (MESITA-3367, MESITA-3414): the one pill
