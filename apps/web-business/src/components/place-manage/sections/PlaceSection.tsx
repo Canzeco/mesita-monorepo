@@ -228,6 +228,23 @@ function PriceDisplay({
   );
 }
 
+/** THE TIMEZONE UNDER HOURS (Pato, MESITA-3437: "in business profile mention
+ *  timezone too"): the times are the place's local times, so the card says
+ *  which zone, "America/Monterrey (CST)". No zone, the plain line. */
+function hoursSubtitle(timezone: string | null): string {
+  if (!timezone) return "When it opens.";
+  let short = "";
+  try {
+    short =
+      new Intl.DateTimeFormat("en-US", { timeZone: timezone, timeZoneName: "short" })
+        .formatToParts(new Date())
+        .find((p) => p.type === "timeZoneName")?.value ?? "";
+  } catch {
+    return "When it opens.";
+  }
+  return `When it opens. Times in ${timezone.replace(/_/g, " ")}${short ? ` (${short})` : ""}.`;
+}
+
 function locationAddress(place: AdminPlace): string {
   return (
     googleFormattedAddress(place.google_address) ||
@@ -585,7 +602,7 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
       <SectionCard
         icon={<ClockIcon size={20} />}
         title="Hours"
-        subtitle="When it opens."
+        subtitle={hoursSubtitle(place.timezone)}
       >
         <div className="border-border/60 divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
           {DAYS.map((d) => {
