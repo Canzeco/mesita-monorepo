@@ -5,12 +5,13 @@ import { Star, X } from "lucide-react";
 import { SectionCard } from "@/components/ui/manage";
 import { usePlaceContext } from "../PlaceContext";
 
-// Reviews: the four boxes, read-only. Update Reviews refills them when the
-// Instagram or Facebook link changes on Profile, every N views, or from
-// Admin › Special actions (MESITA-3161: the Sync button is gone). Found flags
-// are not profile fields. The four boxes are separate cards (MESITA-2261).
-// Google Reviews shows the newest three; "See all" opens every stored review
-// in a modal, sortable, 10 a page (MESITA-2832, MESITA-3393).
+// Reviews: one box, Google Reviews, read-only (Pato, MESITA-3401: "just
+// leave Google Reviews box and don't separate by sections"). Google's rating
+// and the Instagram and Facebook followers sit beside their links in the
+// Links card. Update Reviews refills it from Admin › Special actions or every
+// N views (MESITA-3161: no Sync button). It shows the newest three; "See all"
+// opens every stored review in a modal, sortable, 10 a page (MESITA-2832,
+// MESITA-3393).
 
 type BoxState = "no-link" | "never-synced" | "syncing" | "synced" | "error";
 
@@ -21,16 +22,6 @@ function num(v: unknown): number | null {
     if (Number.isFinite(n)) return n;
   }
   return null;
-}
-
-function compact(n: number): string {
-  if (n < 1_000) return n.toLocaleString();
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  return `${(n / 1_000).toFixed(1)}K`;
-}
-
-function reviewWord(n: number): string {
-  return `${compact(n)} review${n === 1 ? "" : "s"}`;
 }
 
 export function syncSubtitle(input: {
@@ -84,73 +75,26 @@ function Stars({ value }: { value: number }) {
   );
 }
 
-/** No Sync button (Pato, MESITA-3161): Update Reviews runs when the
- *  Instagram or Facebook link changes, every N views, or from Admin ›
- *  Special actions; this page only reads. `staff`: Google's id is
- *  staff-only, so for the team a box with data reads as synced and an empty
- *  one as never synced. */
+/** `staff`: Google's id is staff-only, so for the team a box with data
+ *  reads as synced and an empty one as never synced. */
 export function ReviewsSummary({ staff = true }: { staff?: boolean } = {}) {
   const { place } = usePlaceContext();
   const stored = storedSync(place.source_sync);
-  const errors = stored.errors;
   const hasGoogle = staff ? !!place.google_place_id?.trim() : true;
-  const googleState = reviewBoxState(hasGoogle, stored.google);
-  const igState = reviewBoxState(!!place.instagram_url?.trim(), stored.instagram);
-  const fbState = reviewBoxState(!!place.facebook_url?.trim(), stored.facebook);
   const reviewsState = reviewBoxState(hasGoogle, stored.google_reviews);
   const shownAt = stored.lastSyncedAt;
   const reviews = storedReviews(place.google_reviews);
 
   return (
-    <div className="flex flex-col gap-4 pb-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        {/* The page title (PlaceTabTitle, MESITA-3151) names Reviews; this
-            line says how fresh it is. */}
-        <p className="text-muted-foreground min-w-0 text-sm">{syncSubtitle({ syncedAt: shownAt, failures: [], syncing: false, errors })}</p>
-      </header>
-      {/* Two columns at lg (Pato, MESITA-3144: "left column for summaries,
-          right column just for google reviews"). */}
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2 lg:gap-5">
-        <div className="flex min-w-0 flex-col gap-4">
-      <ReviewBox
-        mark="/channels/google.svg"
-        title="Google Summary"
-        state={googleState}
-        hint={hintFor(googleState, num(place.google_review_count) != null ? reviewWord(num(place.google_review_count)!) : "No rating yet.", errors.google, shownAt)}
-        value={num(place.google_stars_overall) == null ? "—" : num(place.google_stars_overall)!.toFixed(1)}
-        muted={num(place.google_stars_overall) == null}
-        stars={num(place.google_stars_overall)}
-      />
-      <ReviewBox
-        mark="/channels/instagram.svg"
-        title="Instagram Summary"
-        state={igState}
-        hint={hintFor(igState, "followers", errors.instagram, shownAt)}
-        value={num(place.instagram_followers_count) == null ? "—" : compact(num(place.instagram_followers_count)!)}
-        muted={num(place.instagram_followers_count) == null}
-      />
-      <ReviewBox
-        mark="/channels/facebook.svg"
-        title="Facebook Summary"
-        state={fbState}
-        hint={hintFor(fbState, "followers", errors.facebook, shownAt)}
-        value={num(place.facebook_followers) == null ? "—" : compact(num(place.facebook_followers)!)}
-        muted={num(place.facebook_followers) == null}
-      />
-        </div>
-        <div className="min-w-0">
-      <ReviewBox
-        mark="/channels/google.svg"
-        title="Google Reviews"
-        state={reviewsState}
-        hint={hintFor(reviewsState, reviews.length > 0 ? "on file" : "No reviews on file.", errors.google_reviews, shownAt)}
-        value={reviews.length > 0 ? String(reviews.length) : "—"}
-        muted={reviews.length === 0}
-        extra={reviews.length > 0 ? <GoogleReviewList reviews={reviews} /> : null}
-      />
-        </div>
-      </div>
-    </div>
+    <ReviewBox
+      mark="/channels/google.svg"
+      title="Google Reviews"
+      state={reviewsState}
+      hint={hintFor(reviewsState, reviews.length > 0 ? "on file" : "No reviews on file.", stored.errors.google_reviews, shownAt)}
+      value={reviews.length > 0 ? String(reviews.length) : "—"}
+      muted={reviews.length === 0}
+      extra={reviews.length > 0 ? <GoogleReviewList reviews={reviews} /> : null}
+    />
   );
 }
 
@@ -434,7 +378,6 @@ function ReviewBox({
   hint,
   value,
   muted,
-  stars,
   extra,
 }: {
   mark: string;
@@ -443,7 +386,6 @@ function ReviewBox({
   hint: string;
   value: string;
   muted: boolean;
-  stars?: number | null;
   extra?: ReactNode;
 }) {
   return (
@@ -457,16 +399,13 @@ function ReviewBox({
       action={<span className="text-muted-foreground type-label">{boxStateLabel(state)}</span>}
     >
       <div className="mt-5 flex min-w-0 flex-col gap-1.5">
-        <p className="flex items-center gap-2">
-          <span
-            className={
-              "text-2xl leading-none font-semibold tracking-tight tabular-nums " +
-              (muted ? "text-muted-foreground" : "text-foreground")
-            }
-          >
-            {value}
-          </span>
-          {stars != null ? <Stars value={stars} /> : null}
+        <p
+          className={
+            "text-2xl leading-none font-semibold tracking-tight tabular-nums " +
+            (muted ? "text-muted-foreground" : "text-foreground")
+          }
+        >
+          {value}
         </p>
         {extra}
       </div>
