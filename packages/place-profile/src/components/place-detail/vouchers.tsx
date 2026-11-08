@@ -1,7 +1,7 @@
 "use client";
 
-import { type ComponentType, useEffect, useRef, useState } from "react";
-import { QrCode, Wallet } from "lucide-react";
+import { type ReactNode, useEffect, useRef } from "react";
+import { BadgePercent } from "lucide-react";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -83,6 +83,16 @@ import { Box } from "./box";
 // The cashback is the same card with one row and its Pay under it (Pato:
 // "say go or pay ... maybe change button from side").
 
+//
+// TWO SECTIONS OF OFFERS (Pato, MESITA-3446: "list all the offers better ...
+// Payment Offers: the cashback offer. Prepayment Offers: horizontal carrousel
+// of vouchers"): Payment Offers is one card, the green % mark and "5%
+// Cashback" over the plain fact, Pay bill under it. Prepayment Offers is the
+// six vouchers as cards that swipe sideways (snap), specials first; each card
+// is the name and its bonus pill, Pay over Get with Get big in green, the
+// limit, and its own Buy. The radio list and its one Buy went. A voucher not
+// for sale keeps its card, dimmed outside test mode, its tag where Buy goes.
+
 type Product = {
   key: MoneyVoucherKey;
   /** The product's name, small under the deal. */
@@ -155,61 +165,64 @@ const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px
 
 /** A Rewards section title: 18px, the screen title's size, on a tight line. */
 const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
-/** The card of rows: one hairline edge, rows split by hairlines (inKind). */
-const LIST_CARD = "divide-border overflow-hidden rounded-xl border divide-y";
-/** The bonus: a green pill, white ink (inKind's "25% Bonus"). */
-const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 bg-green-600 py-1 text-white");
+/** The bonus: the hero tile's green pill, ink text (MESITA-3446). */
+const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 bg-green-400 py-0.5 text-neutral-950");
 
-/** The radio's circle: hollow, filled with an ink dot when chosen. */
-function RadioDot({ on, hidden }: { on: boolean; hidden?: boolean }) {
+/** A card: one hairline edge, white, rounded. */
+const CARD = "border-border bg-card rounded-2xl border";
+
+/** A section's head: the 18px title, an optional grey line under it. */
+function SectionHead({ id, title, subtitle }: { id: string; title: string; subtitle?: string }) {
   return (
-    <span
-      aria-hidden
-      className={cn(
-        "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-        on ? "border-foreground" : "border-foreground/30",
-        hidden && "invisible",
-      )}
-    >
-      {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
-    </span>
-  );
-}
-
-/** One row's words: the deal big, the small line under it. */
-function RowWords({ deal, small }: { deal: string; small: string }) {
-  return (
-    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span className="text-foreground text-base leading-snug font-semibold tabular-nums" data-voucher-deal>
-        {deal}
-      </span>
-      <span className="text-muted-foreground text-xs leading-snug">{small}</span>
-    </span>
-  );
-}
-
-const ROW = "flex items-center gap-3 px-3 py-3.5";
-
-/** A section's head (MESITA-3388, Pato: "clearly divide sections"): the
- *  hero tile's mark on the hero tile's green, then the 18px title over one
- *  grey line. */
-function SectionHead({ id, Mark, title, subtitle }: { id: string; Mark: Mark; title: string; subtitle: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-400 text-neutral-950" aria-hidden>
-        <Mark className="h-[18px] w-[18px]" />
-      </span>
-      <div className="min-w-0">
-        <h3 id={id} className={PROMOS_TITLE_CLASS}>
-          {title}
-        </h3>
-        <p className={PLACE_META_CLASS}>{subtitle}</p>
-      </div>
+    <div className="min-w-0">
+      <h3 id={id} className={PROMOS_TITLE_CLASS}>
+        {title}
+      </h3>
+      {subtitle ? <p className={PLACE_META_CLASS}>{subtitle}</p> : null}
     </div>
   );
 }
 
-type Mark = ComponentType<{ className?: string; strokeWidth?: number }>;
+/** One voucher in the carousel: name and bonus, Pay over Get, the limit, Buy. */
+function OfferCard({
+  name,
+  bonus,
+  pay,
+  get,
+  small,
+  label,
+  faded,
+  action,
+}: {
+  name: string;
+  bonus: string;
+  pay: string;
+  get: string;
+  small: string;
+  label: string;
+  faded: boolean;
+  action: ReactNode;
+}) {
+  return (
+    <li
+      className={cn(CARD, "flex w-52 shrink-0 snap-start flex-col gap-3 p-4", faded && "opacity-50")}
+      aria-label={label}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground truncate text-xs font-semibold tracking-wide uppercase">{name}</span>
+        <span className={BONUS_PILL}>{bonus}</span>
+      </div>
+      <div className="flex flex-col tabular-nums" aria-hidden>
+        <span className="text-muted-foreground text-xs">Pay</span>
+        <span className="text-foreground text-xl leading-tight font-semibold">{pay}</span>
+        <span className="text-muted-foreground mt-1 text-xs">Get</span>
+        <span className="text-2xl leading-tight font-bold text-green-700">{get}</span>
+      </div>
+      <p className="text-muted-foreground min-h-8 flex-1 text-xs leading-snug">{small}</p>
+      {action}
+    </li>
+  );
+}
 
 /** The action's place while list-vouchers has not answered (MESITA-3388). */
 function ActionBone() {
@@ -243,7 +256,6 @@ export function VouchersPane({
     if (!el || !box) return;
     box.scrollTop += el.getBoundingClientRect().top - box.getBoundingClientRect().top;
   }, [focus]);
-  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
 
   const money = place.money;
   // The host is still asking list-vouchers and the place read carried no
@@ -292,9 +304,6 @@ export function VouchersPane({
     const reason = unavailable[k];
     return reason === undefined || (!dim && reason !== "used" && reason !== "paused");
   };
-  const firstBuyable = products.find((p) => buyable(p.key))?.key ?? null;
-  const chosenKey = picked && buyable(picked) ? picked : firstBuyable;
-  const chosen = products.find((p) => p.key === chosenKey) ?? null;
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
 
@@ -321,17 +330,24 @@ export function VouchersPane({
           ) : null}
         </div>
       ) : null}
-      <section className="flex flex-col gap-3 px-4 pt-4 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
-        <SectionHead id="rewards-payment" Mark={QrCode} title="Payment Rewards" subtitle="When you pay the bill here." />
+      <section className="flex flex-col gap-3 px-4 pt-5 pb-6" aria-labelledby="rewards-payment" data-promos="payment">
+        <SectionHead id="rewards-payment" title="Payment Offers" />
         <div
-          className={cn(LIST_CARD, !loading && !cashback && dim && "opacity-50")}
-          aria-label={`5% Cashback: pay here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
+          className={cn(CARD, "flex items-center gap-3 p-4", !loading && !cashback && dim && "opacity-50")}
+          aria-label={`5% Cashback: pay the bill here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
           data-cashback
         >
-          <div className={ROW}>
-            <RowWords deal="Pay here, Get 5% back" small={canPay || loading ? "By card, back as credit." : `By card, back as credit. ${cashbackTag}.`} />
-            <span className={BONUS_PILL}>5% Back</span>
-          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-400 text-neutral-950" aria-hidden>
+            <BadgePercent className="h-6 w-6" />
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5" aria-hidden>
+            <span className="text-foreground text-base leading-snug font-semibold">5% Cashback</span>
+            <span className="text-muted-foreground text-xs leading-snug">
+              {canPay || loading
+                ? "Pay the bill here by card. 5% comes back as credit."
+                : `Pay the bill here by card. 5% comes back as credit. ${cashbackTag}.`}
+            </span>
+          </span>
         </div>
         {loading ? (
           <ActionBone />
@@ -342,72 +358,62 @@ export function VouchersPane({
         ) : null}
       </section>
       <div className="bg-background h-2" aria-hidden data-rewards-divider />
-      <section ref={prepaymentRef} className="flex flex-col gap-3 px-4 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
-        <SectionHead
-          id="rewards-prepayment"
-          Mark={Wallet}
-          title="Pre-Payment Rewards"
-          subtitle="Credit you buy before you go. Ready in an hour, Story at once."
-        />
-        <fieldset className="m-0 min-w-0 border-0 p-0">
-          <legend className="sr-only">Choose a voucher</legend>
-          <ul className={LIST_CARD} data-voucher-catalog>
-            {products.map((p) => {
-              const line = catalog[p.key];
-              const pay = priceValue(p, line, currency);
-              const get = creditValue(p, line, currency);
-              const deal = p.key === "voucher_story" ? `Pay ${pay} & post a story, Get ${get}` : `Pay ${pay}, Get ${get}`;
-              const reason = unavailable[p.key];
-              const can = !loading && buyable(p.key);
-              const on = can && chosenKey === p.key;
-              const small = [p.name, p.when, loading || can ? p.limit : tag(reason)].filter(Boolean).join(" · ");
-              const inner = (
-                <>
-                  <RadioDot on={on} hidden={!can} />
-                  <RowWords deal={deal} small={small} />
-                  <span className={BONUS_PILL}>{p.bonus}</span>
-                </>
-              );
-              return (
-                <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
-                  {can ? (
-                    <label className={cn(ROW, "cursor-pointer", on && "bg-muted/60")}>
-                      <input
-                        type="radio"
-                        name="voucher"
-                        value={p.key}
-                        checked={on}
-                        onChange={() => setPicked(p.key)}
-                        aria-label={`Choose the ${p.name} voucher, ${deal}`}
-                        className="sr-only"
-                      />
-                      {inner}
-                    </label>
-                  ) : (
-                    <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
-                      {inner}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </fieldset>
-        {loading ? (
-          <ActionBone />
-        ) : chosen ? (
-          <button
-            type="button"
-            {...inertButtonProps(live)}
-            onClick={live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
-            disabled={buying}
-            aria-label={`Buy the ${chosen.name} voucher`}
-            className={ACTION_BUTTON}
-            data-voucher-buy
-          >
-            {actions?.buyingVoucher === chosen.key ? "Opening…" : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`}
-          </button>
-        ) : null}
+      <section ref={prepaymentRef} className="flex flex-col gap-3 pt-6 pb-4" aria-labelledby="rewards-prepayment" data-promos="prepayment">
+        <div className="px-4">
+          <SectionHead
+            id="rewards-prepayment"
+            title="Prepayment Offers"
+            subtitle="Credit you buy before you go. Ready in an hour, Story at once."
+          />
+        </div>
+        <ul
+          className="flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Vouchers"
+          data-voucher-catalog
+        >
+          {products.map((p) => {
+            const line = catalog[p.key];
+            const pay = priceValue(p, line, currency);
+            const get = creditValue(p, line, currency);
+            const deal = p.key === "voucher_story" ? `Pay ${pay} & post a story, Get ${get}` : `Pay ${pay}, Get ${get}`;
+            const reason = unavailable[p.key];
+            const can = !loading && buyable(p.key);
+            const limit = p.key === "voucher_story" ? `Post a story · ${p.limit}` : p.limit;
+            const small = [p.when, loading || can ? limit : tag(reason)].filter(Boolean).join(" · ");
+            const action = loading ? (
+              <ActionBone />
+            ) : can ? (
+              <button
+                type="button"
+                {...inertButtonProps(live)}
+                onClick={live ? () => actions?.onBuyVoucher?.(p.key) : undefined}
+                disabled={buying}
+                aria-label={`Buy the ${p.name} voucher, ${deal}`}
+                className={ACTION_BUTTON}
+                data-voucher-buy={p.key}
+              >
+                {actions?.buyingVoucher === p.key ? "Opening…" : `Buy for ${pay}`}
+              </button>
+            ) : (
+              <div className="bg-muted text-muted-foreground flex h-11 items-center justify-center rounded-lg px-2 text-center text-xs font-semibold">
+                {tag(reason)}
+              </div>
+            );
+            return (
+              <OfferCard
+                key={p.key}
+                name={p.name}
+                bonus={p.bonus}
+                pay={pay}
+                get={get}
+                small={small}
+                label={`${p.name} voucher, ${deal}. ${small}`}
+                faded={!loading && !can && dim}
+                action={action}
+              />
+            );
+          })}
+        </ul>
       </section>
     </div>
   );
