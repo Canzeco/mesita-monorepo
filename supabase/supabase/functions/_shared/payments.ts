@@ -95,8 +95,9 @@ export async function chargesEnabledByPlace(
  *  `vouchers_up_to_pct`, the best bonus among the vouchers moneyState says
  *  the place sells now, or null, and `mesita_pay`, moneyState's mark
  *  (MESITA-3408). Two batched reads for the whole page (the switches and the
- *  accounts by id), never one per tile; a failed read reads as no row
- *  (nothing for sale, no mark), is logged, and the page still answers. */
+ *  accounts by id), never one per tile; a failed settings read reads as no
+ *  row (nothing for sale; the mark follows the account), is logged, and the
+ *  page still answers. */
 export async function withVouchersUpTo<T extends { id: string }>(
   admin: SupabaseClient | null,
   places: T[],

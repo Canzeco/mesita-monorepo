@@ -158,7 +158,7 @@ export async function voucherOffer(
 
 // ── Buying ─────────────────────────────────────────────────────────────────
 
-export type BuyRefusal = { ok: false; status: number; code: MoneyCode; error: string };
+export type BuyRefusal = { ok: false; status: number; code: MoneyCode; error: string; url?: string };
 export type BuyOk = { ok: true; url: string; purchase_id: string };
 
 const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
@@ -260,6 +260,23 @@ function pesos(cents: number): string {
 
 export type PurchaseRow = { id: string; status: string; stripe_checkout_session_id: string | null };
 
+/** The test-mode cap on a place's outstanding credit across every guest
+ *  (MESITA-3305 rule 15, d5a): MX$20,000. One global constant, no lock. */
+export const PLACE_CAP_CENTS = 20_000_00;
+
+/** Would this buy push the place past the cap? Pure. Live mode has no cap. */
+export function overPlaceCap(outstandingCents: number, voucher: MoneyVoucherKey, livemode: boolean): boolean {
+  if (livemode) return false;
+  return outstandingCents + CATALOG_LINES[voucher].credit_cents > PLACE_CAP_CENTS;
+}
+
+/** The place's outstanding credit, Available plus Pending, every guest. */
+export async function readPlaceOutstanding(admin: SupabaseClient, placeId: string, currency: string, livemode: boolean): Promise<number> {
+  const { data, error } = await admin.rpc("wallet_place_outstanding", { p_place_id: placeId, p_currency: currency, p_livemode: livemode });
+  if (error) throw new Error(`wallet_place_outstanding: ${error.message}`);
+  return typeof data === "number" ? data : Number(data ?? 0);
+}
+
 /** The buy, after every refusal was checked: one `opening` row under the
  *  guest's request_id, one Checkout on the connected account keyed by the
  *  row id, then the row reads `open` with its session. A Stripe refusal
@@ -282,6 +299,11 @@ export async function openVoucherCheckout(
   },
 ): Promise<BuyOk | BuyRefusal> {
   const line = CATALOG_LINES[args.voucher];
+  // The test-mode cap (rule 15): read once, no lock.
+  const outstanding = await readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode);
+  if (overPlaceCap(outstanding, args.voucher, args.livemode)) {
+    return { ok: false, status: 409, code: "place_cap", error: "This place has reached its test-mode credit cap" };
+  }
   const { data: row, error: insertErr } = await admin
     .from("wallet_purchases")
     .insert({
@@ -301,7 +323,15 @@ export async function openVoucherCheckout(
     .single();
 
   if (insertErr) {
-    if (insertErr.code === "23505") return await resumeRequest(admin, stripe, args);
+    if (insertErr.code === "23505") {
+      return await resumeRequest(admin, stripe, {
+        consumerId: args.consumerId,
+        requestId: args.requestId,
+        account: args.account,
+        place: args.place,
+        voucher: args.voucher,
+      });
+    }
     throw new Error(`purchase_insert: ${insertErr.message}`);
   }
   const purchaseId = String((row as { id: string }).id);
@@ -355,24 +385,43 @@ export async function openVoucherCheckout(
   return { ok: true, url, purchase_id: purchaseId };
 }
 
-/** The same request_id again: the row it made, and its open session if any. */
+/** The same request_id again: the row it made, and its open session if any.
+ *  A second Welcome buy while the first one's Checkout is open (another
+ *  request_id, the once-per-guest index refused it) answers in_progress
+ *  with that session's url, never a 500 (MESITA-3305 rule 16). */
 async function resumeRequest(
   admin: SupabaseClient,
   stripe: StripeCall,
-  args: { consumerId: string; requestId: string; account: AccountRow },
+  args: { consumerId: string; requestId: string; account: AccountRow; place: VoucherPlace; voucher: MoneyVoucherKey },
 ): Promise<BuyOk | BuyRefusal> {
   const { data, error } = await admin.from("wallet_purchases")
     .select("id, status, stripe_checkout_session_id")
     .eq("consumer_id", args.consumerId).eq("request_id", args.requestId)
     .maybeSingle();
   if (error) throw new Error(`purchase_read: ${error.message}`);
-  const row = data as PurchaseRow | null;
+  let row = data as PurchaseRow | null;
+  let inProgress = false;
+  if (!row && args.voucher === "voucher_welcome") {
+    const { data: w, error: wErr } = await admin.from("wallet_purchases")
+      .select("id, status, stripe_checkout_session_id")
+      .eq("consumer_id", args.consumerId).eq("place_id", args.place.id)
+      .eq("voucher", "voucher_welcome").in("status", ["opening", "open"])
+      .maybeSingle();
+    if (wErr) throw new Error(`welcome_read: ${wErr.message}`);
+    row = (w as PurchaseRow | null) ?? null;
+    inProgress = row !== null;
+    if (!row) return { ok: false, status: 409, ...REFUSAL_FOR.used };
+  }
   if (row && row.status === "open" && row.stripe_checkout_session_id) {
     const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(row.stripe_checkout_session_id)}`, undefined, {
       stripeAccount: args.account.stripe_account_id,
     });
-    if (session.status === "open" && typeof session.url === "string") return { ok: true, url: session.url, purchase_id: row.id };
+    if (session.status === "open" && typeof session.url === "string") {
+      if (inProgress) return { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open", url: session.url };
+      return { ok: true, url: session.url, purchase_id: row.id };
+    }
   }
+  if (inProgress) return { ok: false, status: 409, code: "in_progress", error: "Your Welcome voucher's checkout is still open" };
   return { ok: false, status: 409, code: "checkout_failed", error: "That checkout is no longer open. Start again." };
 }
 

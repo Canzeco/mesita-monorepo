@@ -70,9 +70,11 @@ max_frequency = "1s"
 otp_length = 6
 otp_expiry = 3600
 
-# Phone — Twilio Programmable Messaging (NOT Twilio Verify, which an earlier
-# version of this comment claimed): Supabase sends the code itself through
-# the Messaging Service on +16282784122, so the template below is ours.
+# Phone — Twilio Programmable Messaging (NOT Twilio Verify). Since MESITA-3405
+# the cloud texts the code through the Send SMS hook below
+# (supabase-auth-send-sms), which keeps it so "Call me with the code" can say
+# it, and sends it through the same Messaging Service (+16282784122).
+# [auth.sms.twilio] is what Auth uses with the hook off (this local stack).
 # Consumers + staff sign in here; businesses + admins never see this
 # provider. Twilio Verify is the standing fallback if Mexican carriers
 # filter the US long code.
@@ -87,6 +89,14 @@ enabled = true
 account_sid = "env(TWILIO_ACCOUNT_SID)"
 message_service_sid = "env(TWILIO_MESSAGE_SERVICE_SID)"
 auth_token = "env(TWILIO_AUTH_TOKEN)"
+
+# MESITA-3405: on in the cloud (Management API: hook_send_sms_enabled, its
+# uri https://yjalywfzdelacdzccpgb.supabase.co/functions/v1/supabase-auth-send-sms,
+# its secret = the SEND_SMS_HOOK_SECRET EF secret). Off on the local stack,
+# which has no Twilio keys or hook secret.
+[auth.hook.send_sms]
+enabled = false
+uri = "http://host.docker.internal:54321/functions/v1/supabase-auth-send-sms"
 
 # OAuth providers — all explicitly disabled. Spec: no Google, no Apple.
 [auth.external.google]
@@ -180,6 +190,11 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.consumer-web-get-place]
+verify_jwt = false
+
+# MESITA-3405: "Call me with the code" on phone sign-in. Public: the guest has
+# no session yet; it only repeats a code Auth already texted to that number.
+[functions.consumer-web-call-sign-in-code]
 verify_jwt = false
 
 # Memo — the consumer AI concierge (Mesita's third agent, alongside the
@@ -300,6 +315,18 @@ verify_jwt = false
 
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
+
+# MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
+# holds no Supabase JWT; the signature on the raw body with
+# STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato
+# sets it). The `stripe` actor of Rules §2.
+[functions.stripe-connect-receive-event]
+verify_jwt = false
+
+# MESITA-3305 (W2b): the money ledger's backstop, every 5 minutes.
+# Kill switch: select cron.unschedule('settle-wallet');
+[functions.supabase-cron-settle-wallet]
+verify_jwt = true
 
 # Kill switch: select cron.unschedule('sync-premier');
 [functions.supabase-cron-sync-premier]
@@ -504,6 +531,11 @@ verify_jwt = true
 verify_jwt = true
 [functions.eleven-agent-get-reservation]
 verify_jwt = true
+
+# MESITA-3405: Supabase Auth's Send SMS hook. Auth signs the call itself
+# (SEND_SMS_HOOK_SECRET), so no JWT. Cloud points auth.hook.send_sms at it.
+[functions.supabase-auth-send-sms]
+verify_jwt = false
 
 # --- Twilio ---
 #

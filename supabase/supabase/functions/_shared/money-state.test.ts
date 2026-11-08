@@ -70,16 +70,17 @@ Deno.test("cashback needs its own switch and Pay by phone with a charging accoun
   assertEquals(moneyState(off, can, null).cashback, false);
 });
 
-Deno.test("the green mark (MESITA-3408): on only when a voucher sells, while card bill pay is not live", () => {
-  assertEquals(CARD_BILL_PAY_LIVE, false);
+Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by card here or buy a voucher", () => {
+  assertEquals(CARD_BILL_PAY_LIVE, true);
+  // Pay by phone on with a charging account: card bill pay, mark on.
+  assertEquals(moneyState(off, can, null).mesita_pay, true);
   // A sellable voucher lights it, even with Pay by phone off.
   assertEquals(moneyState({ ...off, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
-  assertEquals(moneyState({ ...off, voucher_welcome: true }, can, null).mesita_pay, true);
-  // A charging account with Pay by phone on and nothing selling: off until W2b.
-  assertEquals(moneyState({ ...off, cashback: true }, can, null).mesita_pay, false);
+  // Pay by phone off and nothing selling: off.
+  assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).mesita_pay, false);
   // Vouchers not sellable yet do not light it.
-  assertEquals(moneyState({ ...off, voucher_vip: true, voucher_story: true, voucher_5000: true }, can, null).mesita_pay, false);
-  // No account: nothing sells, no mark.
+  assertEquals(moneyState({ ...off, pay_cards: false, voucher_vip: true, voucher_story: true, voucher_5000: true }, can, null).mesita_pay, false);
+  // No account: no mark.
   assertEquals(moneyState(allOn, null, null).mesita_pay, false);
   assertEquals(moneyState(allOn, cannot, null).mesita_pay, false);
 });

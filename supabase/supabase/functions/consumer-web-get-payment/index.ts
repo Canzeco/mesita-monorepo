@@ -1,21 +1,35 @@
 // Supabase Edge Function — consumer-web-get-payment
 //
-// MESITA-3304 (W2a): one of the signed-in guest's paid payments, so
+// MESITA-3304 (W2a): one of the signed-in guest's payments, so
 // /pay?payment=<id> shows its proof again after a reload or from the
 // Wallet's history, and the Pay page can see when staff marked it seen.
 // A refunded payment still answers and reads Refunded.
 //
+// MESITA-3305 (W2b): a payment with a card part is settled on this read
+// when it is still open: the guest comes back from Checkout to
+// /pay?payment=<id>, the session is read on the place's connected account
+// and, when Stripe says paid, the hold becomes the spend (the same RPC the
+// receiver and the cron call). An open one answers status `open` with the
+// Checkout url to resume and its expiry; an expired or failed one answers
+// its status with no proof.
+//
 // Body: { payment_id: uuid }
 // Response: { ok: true, payment_id, place: { id, name }, status, amount_cents,
-//             credit_cents, currency, paid_at, proof_seen_at,
-//             proof: { token, url } | null, test_mode }
-//   401 sign_in · 404 gone (not theirs, or never paid)
+//             credit_cents, card_cents, tip_cents, cashback_cents, currency,
+//             paid_at | null, proof_seen_at, proof: { token, url } | null,
+//             url?: string | null, expires_at?: string | null, test_mode }
+//   401 sign_in · 404 gone (not theirs)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment } from "../_shared/pay.ts";
+import { settlePayment } from "../_shared/settle-payment.ts";
+
+/** How long one read waits on Stripe for the session. */
+const SETTLE_BUDGET_MS = 3000;
 
 serveJson("consumer-web-get-payment", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -32,8 +46,50 @@ serveJson("consumer-web-get-payment", async (req) => {
   const paymentId = bodyRes.body.payment_id;
   if (!isUuid(paymentId)) return json({ ok: false, error: "payment_id must be a uuid" }, 400);
 
-  const res = await readPayment(adminClient(envRes.env), authRes.user.id, paymentId);
+  const admin = adminClient(envRes.env);
+  let res = await readPayment(admin, authRes.user.id, paymentId);
   if (!res.ok) return json({ ok: false, error: res.error }, 500);
   if (!res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
-  return json({ ok: true, ...paymentView(res.row, res.placeName) });
+
+  // Still open with a card part: ask Stripe now, under a budget.
+  let url: string | null | undefined;
+  if (res.row.status === "open" || res.row.status === "opening") {
+    const key = boostStripeKey();
+    if (key && res.row.stripe_checkout_session_id && res.row.stripe_account_id) {
+      const stripe = stripeClient(key);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), SETTLE_BUDGET_MS);
+      try {
+        const outcome = await settlePayment(admin, stripe, {
+          id: res.row.id,
+          stripe_checkout_session_id: res.row.stripe_checkout_session_id,
+          stripe_account_id: res.row.stripe_account_id,
+          created_at: res.row.created_at,
+          expires_at: res.row.expires_at,
+        }, Date.now(), { signal: controller.signal });
+        if (outcome !== "pending") {
+          const again = await readPayment(admin, authRes.user.id, paymentId);
+          if (again.ok && again.row) res = again;
+        } else {
+          // Still open: the url to resume it, read on the connected account.
+          try {
+            const s = await stripe("GET", `checkout/sessions/${encodeURIComponent(res.row.stripe_checkout_session_id)}`, undefined, {
+              stripeAccount: res.row.stripe_account_id,
+              signal: controller.signal,
+            });
+            url = s.status === "open" && typeof s.url === "string" ? s.url : null;
+          } catch {
+            url = null;
+          }
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) console.error("[consumer-web-get-payment] settle", JSON.stringify({ payment_id: paymentId, error: String(err) }));
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+  }
+  if (!res.ok || !res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
+  const view = paymentView(res.row, res.placeName);
+  return json({ ok: true, ...view, ...(view.status === "open" || view.status === "opening" ? { url: url ?? null, expires_at: res.row.expires_at ?? null } : {}) });
 });

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, MessageCircle } from "lucide-react";
+import { ArrowLeft, MessageCircle, Phone } from "lucide-react";
 import { Spinner } from "@/components/shared";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { apiCallSignInCode } from "@/lib/api/auth";
 import { PhoneInputWithCountry } from "./PhoneInputWithCountry";
 import {
   OTP_LENGTH,
@@ -28,6 +29,9 @@ import { cn } from "@/lib/utils";
 // The number is normalized + length-checked before it leaves the browser
 // (see lib/phone-otp.ts): every send is a real SMS we pay Twilio for, and
 // a malformed one comes back as an unreadable provider string.
+//
+// The code also comes by phone call (MESITA-3405): "Call me with the code"
+// on the code step has a call say the same code Auth just texted.
 
 type Step = "phone" | "code";
 
@@ -46,6 +50,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   // below so "Resend" states the wait instead of failing into a raw
   // "you can only request this after 60 seconds" from the API.
   const [cooldown, setCooldown] = useState(0);
+  const [calling, setCalling] = useState(false);
 
   const parsed = useMemo(
     () => parsePhone(countryCode, localPhone),
@@ -99,6 +104,20 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
     }
   };
 
+  const callMe = async () => {
+    setError(null);
+    setInfo(null);
+    setCalling(true);
+    try {
+      await apiCallSignInCode(supabase, e164);
+      setInfo("We're calling you now. Answer to hear your code.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't call you. Try again.");
+    } finally {
+      setCalling(false);
+    }
+  };
+
   const verifyCode = async () => {
     setError(null);
     setInfo(null);
@@ -147,8 +166,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         </label>
 
         <p className="text-muted-foreground type-body">
-          We&apos;ll text you a {OTP_LENGTH}-digit code. Standard SMS rates may
-          apply.
+          We&apos;ll text you a {OTP_LENGTH}-digit code. You can also get it
+          by phone call. Standard SMS rates may apply.
         </p>
 
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
@@ -228,6 +247,16 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         ) : (
           "Verify"
         )}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => void callMe()}
+        disabled={loading || calling}
+        className="text-muted-foreground hover:text-foreground inline-flex h-9 items-center justify-center gap-1.5 text-xs font-semibold transition disabled:opacity-50"
+      >
+        <Phone className="h-3.5 w-3.5" />
+        {calling ? "Calling…" : "Call me with the code"}
       </button>
 
       <button

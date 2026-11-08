@@ -107,9 +107,9 @@ Deno.test("settings: eight switches; no row is products off and Pay by phone on;
   assertEquals(isPaymentKey("pay_credits"), false);
 });
 
-Deno.test("list rows (MESITA-3408): the mark lights only where a voucher sells", () => {
-  // No settings row, charging account: nothing sells, no mark (card bill pay is not live).
-  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: false });
+Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by card or buy a voucher", () => {
+  // No settings row, charging account: Pay by phone defaults on, so card bill pay, mark on.
+  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: true });
   // No charging account: nothing.
   assertEquals(listRowMoney({ ...settingsFromRow(null), voucher_200: true }, false), { sell: [], mesita_pay: false });
   // Pay by phone off, MX$200 on, charging: sells and shows the mark.

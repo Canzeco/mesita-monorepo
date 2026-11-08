@@ -54,12 +54,20 @@ export function toE164(raw: string | null | undefined): string | null {
   return digits.length >= 10 && digits.length <= 15 ? `+${digits}` : null;
 }
 
+/** What a code is for: claiming a place, or signing in (MESITA-3405). */
+export type CodePurpose = "claim" | "sign_in";
+
+const HELLO: Record<CodePurpose, { es: string; en: string }> = {
+  claim: { es: "Hola, le llama Mesita. Su código para reclamar este lugar es:", en: "Hello, this is Mesita. Your code to claim this place is:" },
+  sign_in: { es: "Hola, le llama Mesita. Su código para entrar es:", en: "Hello, this is Mesita. Your sign-in code is:" },
+};
+
 /** What the call says: Spanish for a Mexican number, English otherwise. */
-export function callTwiml(code: string, e164: string): string {
+export function callTwiml(code: string, e164: string, purpose: CodePurpose = "claim"): string {
   const spoken = code.split("").join(". ");
   const es = e164.startsWith("+52");
   const voice = es ? 'language="es-MX" voice="Polly.Mia"' : 'language="en-US" voice="Polly.Joanna"';
-  const hello = es ? "Hola, le llama Mesita. Su código para reclamar este lugar es:" : "Hello, this is Mesita. Your code to claim this place is:";
+  const hello = es ? HELLO[purpose].es : HELLO[purpose].en;
   const again = es ? "Repito:" : "Again:";
   const bye = es ? "Gracias." : "Thank you.";
   return `<Response><Pause length="1"/><Say ${voice}>${hello} ${spoken}.</Say><Pause length="1"/>` +
@@ -70,11 +78,11 @@ export type CallResult = { ok: true; sid: string | null } | { ok: false; error: 
 
 /** Places the call. Twilio answers 201 once it is queued; whether anyone
  *  picks up is not known here (no status webhook). */
-export async function placeCodeCall(to: string, code: string): Promise<CallResult> {
+export async function placeCodeCall(to: string, code: string, purpose: CodePurpose = "claim"): Promise<CallResult> {
   const sid = Deno.env.get("TWILIO_ACCOUNT_SID")?.trim();
   const token = Deno.env.get("TWILIO_AUTH_TOKEN")?.trim();
   if (!sid || !token) return { ok: false, error: "Twilio is not configured" };
-  const form = new URLSearchParams({ To: to, From: reservationFromNumber(), Twiml: callTwiml(code, to) });
+  const form = new URLSearchParams({ To: to, From: reservationFromNumber(), Twiml: callTwiml(code, to, purpose) });
   let r: Response;
   try {
     r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(sid)}/Calls.json`, {

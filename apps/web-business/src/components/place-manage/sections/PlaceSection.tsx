@@ -140,45 +140,59 @@ function compactCount(n: number): string {
   return `${(n / 1_000).toFixed(1)}K`;
 }
 
-/** The number a link earns, read beside it (Pato, MESITA-3401: "left side
- *  the link, right side the number of followers or stars"). It replaces the
- *  Google, Instagram and Facebook summary boxes; Update Reviews fills it. */
+/** The number a link earns, in its own box beside it (Pato, MESITA-3401 and
+ *  MESITA-3404: "two boxes per line … in their own boxes, not floating in
+ *  the parent box"). The box shows even with no number, a muted "—", so the
+ *  three rows keep one width. Update Reviews fills the numbers. */
 function ChannelStat({ channel, place }: { channel: keyof AdminPlace; place: AdminPlace }) {
   let body: ReactNode = null;
+  let spoken = "";
   if (channel === "google_maps_url") {
     const stars = statNum(place.google_stars_overall);
     const count = statNum(place.google_review_count);
-    if (stars == null && count == null) return null;
-    body = (
-      <>
-        {stars != null ? (
-          <span className="text-foreground inline-flex items-center gap-1 font-semibold">
-            {stars.toFixed(1)}
-            <Star className="fill-foreground text-foreground h-3.5 w-3.5" aria-hidden />
-          </span>
-        ) : null}
-        {count != null ? (
-          <span>
-            {compactCount(count)} review{count === 1 ? "" : "s"}
-          </span>
-        ) : null}
-      </>
-    );
+    if (stars != null || count != null) {
+      spoken = [
+        stars != null ? `Google rating ${stars.toFixed(1)}` : null,
+        count != null ? `${count.toLocaleString()} reviews` : null,
+      ].filter(Boolean).join(", ");
+      body = (
+        <>
+          {stars != null ? (
+            <span className="text-foreground inline-flex items-center gap-1 font-semibold">
+              {stars.toFixed(1)}
+              <Star className="fill-foreground text-foreground h-3.5 w-3.5" aria-hidden />
+            </span>
+          ) : null}
+          {count != null ? (
+            <span className="truncate">
+              {compactCount(count)} review{count === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </>
+      );
+    }
   } else if (channel === "instagram_url" || channel === "facebook_url") {
     const n = statNum(channel === "instagram_url" ? place.instagram_followers_count : place.facebook_followers);
-    if (n == null) return null;
-    body = (
-      <>
-        <span className="text-foreground font-semibold">{compactCount(n)}</span>
-        <span>follower{n === 1 ? "" : "s"}</span>
-      </>
-    );
+    if (n != null) {
+      spoken = `${channel === "instagram_url" ? "Instagram" : "Facebook"} followers: ${n.toLocaleString()}`;
+      body = (
+        <>
+          <span className="text-foreground font-semibold">{compactCount(n)}</span>
+          <span className="truncate">follower{n === 1 ? "" : "s"}</span>
+        </>
+      );
+    }
   } else {
     return null;
   }
   return (
-    <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1.5 text-sm whitespace-nowrap tabular-nums">
-      {body}
+    <span
+      role="img"
+      aria-label={spoken || "No number yet"}
+      title={spoken || undefined}
+      className="bg-muted/60 border-border/60 text-muted-foreground flex h-10 w-32 shrink-0 items-center gap-1.5 overflow-hidden rounded-xl border px-3.5 text-sm whitespace-nowrap tabular-nums sm:w-42"
+    >
+      {body ?? <span className="text-muted-foreground/60">—</span>}
     </span>
   );
 }

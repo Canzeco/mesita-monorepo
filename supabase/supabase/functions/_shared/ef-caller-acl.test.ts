@@ -44,9 +44,11 @@ const ACTOR_APPS: Record<string, readonly string[]> = {
   // function they owned: `business` (web-business, mobile-business — its two
   // functions admin's Single Place still called were renamed admin-web-*),
   // `validate` (web-validate) and `gift` (the public gift page). The closed
-  // caller set is consumer · admin · enricher · eleven · supabase · meta. Re-adding an actor
-  // takes an entry here — the second test below fails on a *-web-* prefix
-  // with none.
+  // caller set is consumer · admin · business · visit · enricher · eleven ·
+  // supabase · meta · stripe (MESITA-3305: the Connect webhook receiver,
+  // `stripe-connect-receive-event`, signature-gated, no app calls it).
+  // Re-adding an actor with an app takes an entry here — the second test
+  // below fails on a *-web-* prefix with none.
 };
 
 /**

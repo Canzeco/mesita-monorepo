@@ -30,6 +30,9 @@ export type WalletBalance = {
   /** What the Pay tab can spend there now: Available minus credit held by
    *  open payments, from the server (MESITA-3304). */
   spendable_cents: number;
+  /** The place can take a card part (MESITA-3305): its Stripe account
+   *  charges and the owner's Cards switch is on. Absent reads as no. */
+  card_ok?: boolean;
   last_at: string;
   entries: WalletEntry[];
 };
@@ -90,60 +93,112 @@ export const money = moneyLabel;
 
 // ── Paying from credit (MESITA-3304, W2a) ───────────────────────────────────
 
-/** A paid payment as the Pay tab shows its proof. */
+/** A payment as the Pay tab shows it: the proof once paid; while a card
+ *  part's Checkout is open (MESITA-3305), its url to resume and its expiry. */
 export type PayProof = {
   payment_id: string;
   place_name: string | null;
-  /** The row's state: paid, refunded, partly_refunded. */
+  /** The row's state: open (a card part's Checkout is still open), paid,
+   *  refunded, partly_refunded, expired, failed, needs_review. */
   status: string;
   amount_cents: number;
+  /** The parts (MESITA-3305); 0 on a credit-only payment. */
+  credit_cents?: number;
+  card_cents?: number;
+  tip_cents?: number;
+  cashback_cents?: number;
   currency: string;
-  paid_at: string;
+  /** Null while the card part is still open. */
+  paid_at: string | null;
   /** When staff marked the proof seen on visit.mesita.ai. */
   proof_seen_at: string | null;
   proof: { token: string; url: string } | null;
+  /** While open: the Checkout to resume, or null when Stripe no longer has it. */
+  url?: string | null;
+  expires_at?: string | null;
   test_mode: boolean;
 };
 
-type Started = {
-  payment_id: string;
-  status: string;
-  outcome: "paid" | "already_paid";
-  amount_cents: number;
-  credit_cents: number;
-  currency: string;
-  paid_at: string;
-  proof: { token: string; url: string } | null;
-  test_mode: boolean;
-};
+type Started =
+  | {
+    payment_id: string;
+    status: string;
+    outcome: "paid" | "already_paid";
+    amount_cents?: number;
+    credit_cents?: number;
+    currency?: string;
+    paid_at?: string;
+    proof?: { token: string; url: string } | null;
+    test_mode: boolean;
+  }
+  | {
+    payment_id: string;
+    status: "open";
+    url: string;
+    expires_at: string;
+    amount_cents: number;
+    credit_cents: number;
+    card_cents: number;
+    tip_cents: number;
+    currency: string;
+    test_mode: boolean;
+  };
 
-/** Pays the place from the guest's credit there. Refusals arrive as EFError
- *  with a code from PAY_REFUSAL; `insufficient` carries `spendable_cents`,
- *  `taken` the `payment_id` that already went through (EFError.body). */
+/** What a start answers: a paid proof (credit only), a Checkout to open
+ *  (a card part), or a payment already settled under this request id, to
+ *  read back. */
+export type PayStart =
+  | { kind: "paid"; proof: PayProof }
+  | { kind: "checkout"; payment_id: string; url: string; expires_at: string }
+  | { kind: "already_paid"; payment_id: string };
+
+/** Pays the place: from credit alone, or credit plus a card part (and a tip
+ *  by card) through Stripe Checkout on the place's account. Refusals arrive
+ *  as EFError with a code from PAY_REFUSAL; `insufficient` carries
+ *  `spendable_cents`, `taken` the `payment_id` that already went through,
+ *  `in_progress` the open Checkout's `url` (EFError.body). */
 export async function apiStartPayment(
   client: SupabaseClient,
-  args: { place_id: string; place_name: string | null; amount_cents: number; request_id: string; ticket: string | null },
-): Promise<PayProof> {
+  args: {
+    place_id: string;
+    place_name: string | null;
+    amount_cents: number;
+    card_cents?: number;
+    tip_cents?: number;
+    return_url?: string;
+    request_id: string;
+    ticket: string | null;
+  },
+): Promise<PayStart> {
   const r = await invokeEF<Started>(client, "consumer-web-start-payment", {
     place_id: args.place_id,
     amount_cents: args.amount_cents,
     request_id: args.request_id,
+    ...(args.card_cents ? { card_cents: args.card_cents, return_url: args.return_url } : {}),
+    ...(args.tip_cents ? { tip_cents: args.tip_cents } : {}),
     ...(args.ticket ? { ticket: args.ticket } : {}),
   });
+  if (r.status === "open" && "url" in r) return { kind: "checkout", payment_id: r.payment_id, url: r.url, expires_at: r.expires_at };
+  if (!("outcome" in r) || r.paid_at === undefined) return { kind: "already_paid", payment_id: r.payment_id };
   return {
-    payment_id: r.payment_id,
-    place_name: args.place_name,
-    status: r.status,
-    amount_cents: r.amount_cents,
-    currency: r.currency,
-    paid_at: r.paid_at,
-    proof_seen_at: null,
-    proof: r.proof,
-    test_mode: r.test_mode,
+    kind: "paid",
+    proof: {
+      payment_id: r.payment_id,
+      place_name: args.place_name,
+      status: r.status,
+      amount_cents: r.amount_cents ?? args.amount_cents,
+      credit_cents: r.credit_cents,
+      currency: r.currency ?? "mxn",
+      paid_at: r.paid_at,
+      proof_seen_at: null,
+      proof: r.proof ?? null,
+      test_mode: r.test_mode,
+    },
   };
 }
 
-/** One of the guest's paid payments: its proof again, and whether staff saw it. */
+/** One of the guest's payments: its proof again and whether staff saw it;
+ *  an open card part is settled on this read when Stripe says paid. */
 export async function apiGetPayment(client: SupabaseClient, paymentId: string): Promise<PayProof> {
   const r = await invokeEF<Omit<PayProof, "place_name"> & { place: { id: string; name: string | null } }>(
     client,
@@ -155,23 +210,55 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
     place_name: r.place?.name ?? null,
     status: r.status,
     amount_cents: r.amount_cents,
+    credit_cents: r.credit_cents,
+    card_cents: r.card_cents,
+    tip_cents: r.tip_cents,
+    cashback_cents: r.cashback_cents,
     currency: r.currency,
     paid_at: r.paid_at,
     proof_seen_at: r.proof_seen_at,
     proof: r.proof,
+    url: r.url,
+    expires_at: r.expires_at,
     test_mode: r.test_mode,
   };
 }
 
 /** What the guest reads when a payment is refused, by the server's code.
- *  `insufficient` prints the server's spendable_cents instead. */
+ *  `insufficient` prints the server's spendable_cents instead; `in_progress`
+ *  offers the open Checkout. */
 export const PAY_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to pay.",
   amount_required: "Type an amount to pay.",
   above_cap: "That's more than one payment can be.",
   gone: "This place can't take payments.",
   taken: "This payment already went through.",
+  // The card part (MESITA-3305)
+  below_minimum: "The card part is below the card minimum.",
+  no_account: "This place isn't taking card payments yet.",
+  cards_off: "This place isn't taking card payments right now.",
+  currency_mismatch: "This place can't take card payments in its currency yet.",
+  in_progress: "A card payment here is still open.",
+  checkout_failed: "Couldn't open checkout. Try again.",
+  locked: "Card payments here are paused for a few minutes.",
 };
+
+/** How a bill splits between the credit the guest holds and a card part.
+ *  `credit` covers it; `mixed` and `card` put the rest on the card where
+ *  the place takes one; `over` is more than the credit at a place that
+ *  takes no card, so the form says so and offers nothing. The server is the
+ *  last word on every part. */
+export function splitPayment(
+  amountCents: number,
+  spendableCents: number,
+  cardOk: boolean,
+): { credit_cents: number; card_cents: number; kind: "credit" | "mixed" | "card" | "over" } {
+  const credit = Math.min(amountCents, Math.max(spendableCents, 0));
+  const card = amountCents - credit;
+  if (card === 0) return { credit_cents: credit, card_cents: 0, kind: "credit" };
+  if (!cardOk) return { credit_cents: credit, card_cents: card, kind: "over" };
+  return { credit_cents: credit, card_cents: card, kind: credit === 0 ? "card" : "mixed" };
+}
 
 /** One tap's request id. A retry of the same place and amount keeps it (the
  *  server replays it to the payment that went through); a new place or

@@ -13,17 +13,18 @@
 // it. `pay` is credit or both whenever spendable > 0.
 //
 // `mesita_pay` is the green Mesita Pay mark: on when a guest can do something
-// on Mesita Pay here now. Today that is buying a voucher; card payment of the
-// bill joins when W2b flips CARD_BILL_PAY_LIVE:
+// on Mesita Pay here now: pay the bill by card (W2b, CARD_BILL_PAY_LIVE) or
+// buy a voucher:
 //   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
 // Two blind spots on purpose, because the list rows cannot see them: the
 // admin pause and Welcome-used do not turn the mark off.
-// CARD_BILL_PAY_LIVE is code, not config, on purpose: W2b flips it in one
-// edit (it also removes the "arrives soon" notes on Business › Payments). A
-// staged W2b rollout would make it config then.
+// CARD_BILL_PAY_LIVE is code, not config, on purpose: one edit turns card bill
+// pay off the mark and brings back the "arrives soon" notes on Business ›
+// Payments, should W2b ever be pulled.
 
-/** Card payment of the bill (W2b) is live. Flipped by MESITA-3305. */
-export const CARD_BILL_PAY_LIVE = false;
+/** Card payment of the bill (W2b, MESITA-3305) is live: flipped by
+ *  MESITA-3408 once W2b had merged. */
+export const CARD_BILL_PAY_LIVE = true;
 
 export const MONEY_VOUCHER_KEYS = [
   "voucher_200",
