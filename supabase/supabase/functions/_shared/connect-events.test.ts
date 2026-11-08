@@ -1,0 +1,249 @@
+// MESITA-3305 — the Connect receiver's rules: the signature gate, the
+// replay guard, and one fixture per event and per failure class. The
+// database and Stripe are fakes; the RPCs' own arithmetic is pgTAP's
+// (wallet_card.test.sql).
+
+import { assertEquals } from "jsr:@std/assert@1";
+import type { StripeCall } from "./boost.ts";
+import {
+  type ConnectEvent,
+  handleConnectEvent,
+  parseSignatureHeader,
+  signPayload,
+  verifyStripeSignature,
+} from "./connect-events.ts";
+import { type FakeOp, fakeAdmin, type FakeResult } from "./testing/fake-admin.ts";
+
+const SECRET = "whsec_test_3305";
+const ACCT = "acct_place_3305";
+const PLACE = "00000000-0000-4000-8000-0000000a3305";
+const PAYMENT = "00000000-0000-4000-8000-0000000b3305";
+const PURCHASE = "00000000-0000-4000-8000-0000000c3305";
+
+const noStripe: StripeCall = () => Promise.reject(new Error("no stripe call expected"));
+
+function event(type: string, object: Record<string, unknown>, extra: Partial<ConnectEvent> = {}): ConnectEvent {
+  return { id: `evt_${type}_${Math.random().toString(36).slice(2, 8)}`, type, account: ACCT, livemode: false, created: 1_800_000_000, data: { object }, ...extra };
+}
+
+// ── The signature ──────────────────────────────────────────────────────────
+
+Deno.test("signature: Stripe's own scheme verifies, a wrong secret or a mangled header does not", async () => {
+  const raw = JSON.stringify({ id: "evt_1", type: "account.updated" });
+  const header = await signPayload(SECRET, raw, 1_000);
+  assertEquals(parseSignatureHeader(header)?.t, 1_000);
+  assertEquals(await verifyStripeSignature(raw, header, SECRET, 1_100), { ok: true });
+  assertEquals(await verifyStripeSignature(raw, header, "whsec_other", 1_100), { ok: false, code: "bad_signature" });
+  assertEquals(await verifyStripeSignature(raw + " ", header, SECRET, 1_100), { ok: false, code: "bad_signature" });
+  assertEquals(await verifyStripeSignature(raw, null, SECRET, 1_100), { ok: false, code: "bad_signature" });
+  assertEquals(await verifyStripeSignature(raw, "t=abc,v1=zz", SECRET, 1_100), { ok: false, code: "bad_signature" });
+});
+
+Deno.test("signature: a good signature older than 300 s is stale_event, within it is fine either way", async () => {
+  const raw = "{}";
+  const header = await signPayload(SECRET, raw, 10_000);
+  assertEquals(await verifyStripeSignature(raw, header, SECRET, 10_301), { ok: false, code: "stale_event" });
+  assertEquals(await verifyStripeSignature(raw, header, SECRET, 10_300), { ok: true });
+  assertEquals(await verifyStripeSignature(raw, header, SECRET, 9_700), { ok: true });
+});
+
+// ── The guards before any work ─────────────────────────────────────────────
+
+function accountTable(known: boolean, lastEvent: number | null = null) {
+  return (op: FakeOp): FakeResult => {
+    if (op.table === "place_payment_accounts" && op.kind === "select") {
+      return { data: known ? { place_id: PLACE, stripe_account_id: ACCT, livemode: false, last_event_created: lastEvent } : null };
+    }
+    return { data: null };
+  };
+}
+
+Deno.test("an event from the other Stripe universe is acknowledged and ignored before any read", async () => {
+  const fake = fakeAdmin({ table: accountTable(true) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.completed", {}, { livemode: true }));
+  assertEquals(r, { status: 200, body: { ok: true, ignored: "livemode" } });
+  assertEquals(fake.ops.length, 0);
+});
+
+Deno.test("an unknown account is acknowledged and ignored; nothing is inserted", async () => {
+  const fake = fakeAdmin({ table: accountTable(false) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.completed", { id: "cs_1" }));
+  assertEquals(r.body.ignored, "unknown_account");
+  assertEquals(fake.ops.filter((o) => o.table === "stripe_connect_events").length, 0);
+});
+
+Deno.test("a replayed event id is a duplicate insert: 200 ignored replay, no RPC", async () => {
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "stripe_connect_events" && op.kind === "insert") return { error: { code: "23505", message: "duplicate key" } };
+      return accountTable(true)(op);
+    },
+  });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.completed", { id: "cs_1", metadata: { payment_id: PAYMENT }, payment_status: "paid" }));
+  assertEquals(r, { status: 200, body: { ok: true, ignored: "replay" } });
+  assertEquals(fake.rpcs, []);
+});
+
+// ── checkout.session.completed ─────────────────────────────────────────────
+
+Deno.test("completed: metadata names the payment → wallet_settle_payment once, the event row is marked processed", async () => {
+  const fake = fakeAdmin({
+    table: accountTable(true),
+    rpc: (name) => ({ data: name === "wallet_settle_payment" ? { ok: true, outcome: "paid" } : { ok: true } }),
+  });
+  const e = event("checkout.session.completed", { id: "cs_1", metadata: { payment_id: PAYMENT }, payment_status: "paid", payment_intent: "pi_1" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(r, { status: 200, body: { ok: true, payment_id: PAYMENT, outcome: "paid" } });
+  assertEquals(fake.rpcs, [{ name: "wallet_settle_payment", args: { p_payment_id: PAYMENT, p_payment_intent: "pi_1" } }]);
+  const done = fake.ops.find((o) => o.table === "stripe_connect_events" && o.kind === "update");
+  assertEquals(typeof (done?.payload as { processed_at?: unknown })?.processed_at, "string");
+  assertEquals(done?.filters, { id: e.id });
+});
+
+Deno.test("completed: a voucher purchase is credited with its hour from the event's time", async () => {
+  const fake = fakeAdmin({
+    table: accountTable(true),
+    rpc: () => ({ data: { ok: true, outcome: "credited" } }),
+  });
+  const r = await handleConnectEvent(
+    { admin: fake.client, stripe: noStripe, livemode: false },
+    event("checkout.session.completed", { id: "cs_2", metadata: { purchase_id: PURCHASE, voucher: "voucher_200" }, payment_status: "paid", payment_intent: "pi_2" }),
+  );
+  assertEquals(r.body, { ok: true, purchase_id: PURCHASE, outcome: "credited" });
+  assertEquals(fake.rpcs[0].name, "wallet_credit_purchase");
+  assertEquals(fake.rpcs[0].args.p_available_at, new Date((1_800_000_000 + 3600) * 1000).toISOString());
+});
+
+Deno.test("completed before the session id is stored: metadata is missing, the session id finds the row", async () => {
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "wallet_payments" && op.kind === "select" && op.filters.stripe_checkout_session_id === "cs_3") return { data: { id: PAYMENT } };
+      if (op.table === "wallet_purchases" && op.kind === "select") return { data: null };
+      return accountTable(true)(op);
+    },
+    rpc: () => ({ data: { ok: true, outcome: "paid" } }),
+  });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.completed", { id: "cs_3", payment_status: "paid" }));
+  assertEquals(r.body, { ok: true, payment_id: PAYMENT, outcome: "paid" });
+});
+
+Deno.test("completed on a known account with a session no row names answers 5xx and forgets the event, so Stripe retries", async () => {
+  const fake = fakeAdmin({
+    table: (op) => (op.table === "wallet_payments" || op.table === "wallet_purchases") ? { data: null } : accountTable(true)(op),
+  });
+  const e = event("checkout.session.completed", { id: "cs_none", payment_status: "paid" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(r.status, 500);
+  assertEquals(r.body.code, "settle_failed");
+  assertEquals(r.body.event_id, e.id);
+  assertEquals(r.body.account, ACCT);
+  const forgot = fake.ops.find((o) => o.table === "stripe_connect_events" && o.kind === "delete");
+  assertEquals(forgot?.filters, { id: e.id });
+});
+
+Deno.test("an RPC that throws answers 500 and forgets the event; the same event again runs the work once", async () => {
+  let fail = true;
+  const fake = fakeAdmin({
+    table: accountTable(true),
+    rpc: () => fail ? { error: { message: "deadlock detected" } } : { data: { ok: true, outcome: "paid" } },
+  });
+  const e = event("checkout.session.completed", { id: "cs_4", metadata: { payment_id: PAYMENT }, payment_status: "paid" });
+  const first = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(first.status, 500);
+  assertEquals(fake.ops.filter((o) => o.table === "stripe_connect_events" && o.kind === "delete").length, 1);
+  fail = false;
+  const second = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(second.status, 200);
+  assertEquals(fake.rpcs.filter((r) => r.name === "wallet_settle_payment").length, 2);
+});
+
+Deno.test("completed but unpaid credits nothing", async () => {
+  const fake = fakeAdmin({ table: accountTable(true) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.completed", { id: "cs_5", metadata: { payment_id: PAYMENT }, payment_status: "unpaid" }));
+  assertEquals(r.body.ignored, "unpaid");
+  assertEquals(fake.rpcs, []);
+});
+
+// ── checkout.session.expired ───────────────────────────────────────────────
+
+Deno.test("expired: a payment's hold is released through wallet_release_payment; a purchase is closed", async () => {
+  const fake = fakeAdmin({ table: accountTable(true) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("checkout.session.expired", { id: "cs_6", metadata: { payment_id: PAYMENT } }));
+  assertEquals(r.body, { ok: true, payment_id: PAYMENT, outcome: "expired" });
+  assertEquals(fake.rpcs, [{ name: "wallet_release_payment", args: { p_payment_id: PAYMENT, p_status: "expired", p_error: null } }]);
+
+  const fake2 = fakeAdmin({ table: accountTable(true) });
+  await handleConnectEvent({ admin: fake2.client, stripe: noStripe, livemode: false }, event("checkout.session.expired", { id: "cs_7", metadata: { purchase_id: PURCHASE } }));
+  const upd = fake2.ops.find((o) => o.table === "wallet_purchases" && o.kind === "update");
+  assertEquals((upd?.payload as { status: string }).status, "expired");
+  assertEquals(upd?.filters["status:in"], ["opening", "open"]);
+});
+
+// ── charge.refunded ────────────────────────────────────────────────────────
+
+Deno.test("refunded: two partial refunds in reverse order each hand Stripe's cumulative amount to the RPC; the fee's own refund is read on Mesita's account", async () => {
+  const feeReads: string[] = [];
+  const stripe: StripeCall = (_m, path, _p, opts) => {
+    feeReads.push(path);
+    assertEquals(opts?.stripeAccount, undefined);
+    return Promise.resolve({ id: "fee_1", amount_refunded: 7 });
+  };
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "wallet_payments" && op.kind === "select" && op.filters.stripe_payment_intent_id === "pi_9") return { data: { id: PAYMENT } };
+      if (op.table === "wallet_purchases" && op.kind === "select") return { data: null };
+      return accountTable(true)(op);
+    },
+    rpc: (name) => ({ data: name === "wallet_refund_payment" ? { ok: true, outcome: "applied", status: "partly_refunded" } : { ok: true } }),
+  });
+  const deps = { admin: fake.client, stripe, livemode: false };
+  // The later refund (cumulative 300) arrives first, then the earlier one (cumulative 100).
+  await handleConnectEvent(deps, event("charge.refunded", { id: "ch_1", payment_intent: "pi_9", amount_refunded: 300, application_fee: "fee_1" }));
+  await handleConnectEvent(deps, event("charge.refunded", { id: "ch_1", payment_intent: "pi_9", amount_refunded: 100, application_fee: "fee_1" }));
+  const refunds = fake.rpcs.filter((r) => r.name === "wallet_refund_payment").map((r) => r.args.p_amount_refunded);
+  assertEquals(refunds, [300, 100]);
+  const fees = fake.rpcs.filter((r) => r.name === "wallet_note_fee_refund");
+  assertEquals(fees.length, 2);
+  assertEquals(fees[0].args, { p_kind: "payment", p_row_id: PAYMENT, p_fee_refunded_cents: 7 });
+  assertEquals(feeReads, ["application_fees/fee_1", "application_fees/fee_1"]);
+});
+
+Deno.test("refunded: a charge no row names is acknowledged and ignored", async () => {
+  const fake = fakeAdmin({ table: (op) => (op.table === "wallet_payments" || op.table === "wallet_purchases") ? { data: null } : accountTable(true)(op) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.refunded", { id: "ch_2", payment_intent: "pi_x", amount_refunded: 5 }));
+  assertEquals(r.body.ignored, "unknown_charge");
+});
+
+// ── account.updated ────────────────────────────────────────────────────────
+
+Deno.test("account.updated out of order: the newer event writes the snapshot, an older one after it is ignored", async () => {
+  let last: number | null = null;
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "place_payment_accounts" && op.kind === "update") {
+        last = (op.payload as { last_event_created: number }).last_event_created;
+        return { data: null };
+      }
+      return accountTable(true, last)(op);
+    },
+  });
+  const deps = { admin: fake.client, stripe: noStripe, livemode: false };
+  const newer = await handleConnectEvent(deps, event("account.updated", { id: ACCT, charges_enabled: true, details_submitted: true, payouts_enabled: false, country: "MX", requirements: { currently_due: ["x"] } }, { created: 2_000 }));
+  assertEquals(newer.body.outcome, "account_updated");
+  const upd = fake.ops.find((o) => o.table === "place_payment_accounts" && o.kind === "update");
+  const payload = upd?.payload as Record<string, unknown>;
+  assertEquals(payload.charges_enabled, true);
+  assertEquals(payload.requirements_due, ["x"]);
+  assertEquals(payload.account_country, "MX");
+  assertEquals("livemode" in payload, false);
+  assertEquals(upd?.filters, { stripe_account_id: ACCT });
+  const older = await handleConnectEvent(deps, event("account.updated", { id: ACCT, charges_enabled: false }, { created: 1_500 }));
+  assertEquals(older.body.ignored, "stale_account_event");
+  assertEquals(fake.ops.filter((o) => o.table === "place_payment_accounts" && o.kind === "update").length, 1);
+});
+
+Deno.test("an event type outside the four is acknowledged and ignored", async () => {
+  const fake = fakeAdmin({ table: accountTable(true) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.dispute.created", {}));
+  assertEquals(r.body.ignored, "unhandled");
+});

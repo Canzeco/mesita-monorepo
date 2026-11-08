@@ -19,6 +19,7 @@ import {
   PAY_REFUSAL,
   type PayAttempt,
   type PayProof,
+  splitPayment,
   type Wallet,
   type WalletBalance,
 } from "@/lib/api/wallet";
@@ -39,7 +40,14 @@ import { cn } from "@/lib/utils";
 // reload or a Wallet "Paid" row shows the same proof. While the proof is
 // unseen the page asks the server every 5 s (15 s after two minutes, never
 // while the tab is hidden, and only on focus after 30 minutes), so it
-// changes to "Seen" when the waiter taps. The card part is W2b.
+// changes to "Seen" when the waiter taps.
+//
+// The card part (MESITA-3305, W2b): where the place takes cards (the
+// server's `card_ok`), an amount past the credit splits, "MX$X from credit ·
+// MX$Y by card", with an optional tip by card, and the button opens Stripe
+// Checkout on the place's account. Checkout returns to `/pay?payment=<id>`,
+// where the read settles the payment; while it is still open the page says
+// so, offers to resume the Checkout, and asks again every 5 s.
 
 const PAYMENT_PARAM = "payment";
 const POLL_FAST_MS = 5_000;
@@ -50,6 +58,10 @@ const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
 
 const FIELD_CLASS =
   "border-border bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-3 text-base outline-none focus:border-foreground";
+/** The quiet second button under the pink one: Resume a Checkout, Done
+ *  while one is open. The same shape as "Pay all". */
+const QUIET_BUTTON_CLASS =
+  "border-border bg-card hover:bg-muted min-h-12 w-full rounded-2xl border px-4 text-base font-semibold transition";
 
 const noSubscribe = () => () => {};
 
@@ -176,11 +188,15 @@ function PayForm({
   onRefresh: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  const payable = wallet.balances.filter((b) => b.available_cents > 0);
+  // A place pays when the guest holds credit there, or when it takes cards
+  // (a card-only payment where the credit ran out, MESITA-3305).
+  const payable = wallet.balances.filter((b) => b.available_cents > 0 || b.card_ok === true);
   const [picked, setPicked] = useState<string | null>(null);
   const [amount, setAmount] = useState("");
+  const [tip, setTip] = useState("");
   const [ticket, setTicket] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resume, setResume] = useState<string | null>(null);
   const attempt = useRef<PayAttempt | null>(null);
 
   if (payable.length === 0) {
@@ -215,30 +231,48 @@ function PayForm({
   // (balances arrive newest first).
   const place = payable.find((b) => keyOf(b) === picked) ?? payable[0];
   const cents = readAmount(amount);
-  const over = cents !== null && cents > place.spendable_cents;
+  const split = cents === null ? null : splitPayment(cents, place.spendable_cents, place.card_ok === true);
+  const over = split?.kind === "over";
+  const byCard = split !== null && (split.kind === "mixed" || split.kind === "card");
+  const tipCents = byCard ? (readAmount(tip) ?? 0) : 0;
+  const canPay = cents !== null && !over && !busy;
 
   function pick(b: WalletBalance) {
     if (keyOf(b) === keyOf(place)) return;
     setPicked(keyOf(b));
     setAmount("");
+    setTip("");
     setTicket("");
+    setResume(null);
   }
 
   async function pay() {
-    if (cents === null || busy) return;
-    const a = attemptFor(attempt.current, place.place_id, cents);
+    if (cents === null || !split || over || busy) return;
+    const a = attemptFor(attempt.current, place.place_id, cents + (byCard ? tipCents : 0));
     attempt.current = a;
     setBusy(true);
+    setResume(null);
     try {
-      const paid = await apiStartPayment(getSupabase(), {
+      const started = await apiStartPayment(getSupabase(), {
         place_id: place.place_id,
         place_name: place.place?.name ?? null,
         amount_cents: cents,
+        ...(byCard ? { card_cents: split.card_cents, tip_cents: tipCents, return_url: `${window.location.origin}${CONSUMER_ROUTES.pay}` } : {}),
         request_id: a.requestId,
         ticket: ticket.trim() || null,
       });
       attempt.current = null;
-      onPaid(paid);
+      if (started.kind === "checkout") {
+        // The card part: Stripe's page, then back to /pay?payment=<id>.
+        setPaymentParam(started.payment_id);
+        window.location.assign(started.url);
+        return;
+      }
+      if (started.kind === "already_paid") {
+        onTaken(started.payment_id);
+        return;
+      }
+      onPaid(started.proof);
     } catch (e) {
       if (!(e instanceof EFError) || !e.code) {
         // No verdict: the payment may have gone through. Keep the id, so
@@ -257,11 +291,29 @@ function PayForm({
         onRefresh();
         return;
       }
+      if (e.code === "in_progress") {
+        // A Checkout of this guest here is still open: resume it, never
+        // a second one behind it.
+        if (typeof body.url === "string") setResume(body.url);
+        else if (typeof body.payment_id === "string") onTaken(body.payment_id);
+        toast(PAY_REFUSAL.in_progress, { tone: "error" });
+        return;
+      }
+      if (e.code === "locked" && typeof body.retry_after_s === "number") {
+        toast(`${PAY_REFUSAL.locked} Try again in ${Math.ceil(body.retry_after_s / 60)} min.`, { tone: "error" });
+        return;
+      }
       toast(PAY_REFUSAL[e.code] ?? e.message, { tone: "error" });
     } finally {
       setBusy(false);
     }
   }
+
+  const payLabel = cents === null
+    ? "Pay"
+    : split?.kind === "credit"
+    ? `Pay ${money(cents, place.currency)} from credit`
+    : `Pay ${money(cents + tipCents, place.currency)} · continue to card`;
 
   return (
     <div className="flex flex-col">
@@ -295,7 +347,10 @@ function PayForm({
           );
         })}
       </div>
-      <p className="text-muted-foreground mt-2 text-sm">You have {money(place.spendable_cents, place.currency)} here</p>
+      <p className="text-muted-foreground mt-2 text-sm">
+        You have {money(place.spendable_cents, place.currency)} here
+        {place.card_ok ? <span> · cards accepted</span> : null}
+      </p>
 
       <label className="mt-5 block text-sm font-semibold" htmlFor="pay-amount">
         Amount
@@ -320,6 +375,29 @@ function PayForm({
         </button>
       </div>
       {over ? <p className="text-muted-foreground mt-1.5 text-xs">More than you have here</p> : null}
+      {byCard && split ? (
+        <p className="text-muted-foreground mt-1.5 text-xs" data-pay-split>
+          {split.credit_cents > 0 ? `${money(split.credit_cents, place.currency)} from credit · ` : ""}
+          {money(split.card_cents, place.currency)} by card
+        </p>
+      ) : null}
+
+      {byCard ? (
+        <>
+          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-tip">
+            Tip <span className="text-muted-foreground font-normal">(optional, by card)</span>
+          </label>
+          <input
+            id="pay-tip"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="0"
+            value={tip}
+            onChange={(e) => setTip(e.target.value)}
+            className={cn(FIELD_CLASS, "mt-1.5 tabular-nums")}
+          />
+        </>
+      ) : null}
 
       <label className="mt-4 block text-sm font-semibold" htmlFor="pay-ticket">
         Ticket number <span className="text-muted-foreground font-normal">(optional)</span>
@@ -333,9 +411,14 @@ function PayForm({
         className={cn(FIELD_CLASS, "mt-1.5")}
       />
 
-      <Button size="lg" className="mt-6 w-full text-base font-semibold" disabled={cents === null || busy} onClick={() => void pay()}>
-        {busy ? "Paying…" : cents === null ? "Pay from credit" : `Pay ${money(cents, place.currency)} from credit`}
+      <Button size="lg" className="mt-6 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
+        {busy ? "Paying…" : payLabel}
       </Button>
+      {resume ? (
+        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={() => window.location.assign(resume)}>
+          Resume card payment
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -354,8 +437,13 @@ function ProofView({
   const getSupabase = useLazyBrowserSupabase();
   const refunded = proof.status === "refunded";
   const partly = proof.status === "partly_refunded";
+  // The card part's Checkout is still open (MESITA-3305): no proof yet.
+  const open = proof.status === "open" || proof.status === "opening";
+  // Closed with no money: Stripe expired it, or refused it.
+  const closed = proof.status === "expired" || proof.status === "failed";
+  const review = proof.status === "needs_review";
   const seen = proof.proof_seen_at;
-  const watch = !seen && !refunded;
+  const watch = (!seen && !refunded && !closed && !review) || open;
 
   // Re-read while unseen, so the screen turns to Seen when the waiter taps.
   useEffect(() => {
@@ -393,7 +481,13 @@ function ProofView({
     <div className="flex flex-col items-center text-center">
       {proof.test_mode ? <TestBand className="mb-3 w-full text-left" /> : null}
       <div className="border-border bg-card flex w-full flex-col items-center rounded-2xl border px-6 py-6">
-        {refunded ? null : seen ? (
+        {open ? (
+          <p className="text-sm font-semibold" role="status">Confirming your card payment…</p>
+        ) : closed ? (
+          <p className="text-sm font-semibold" role="status">Checkout cancelled. Nothing was charged.</p>
+        ) : review ? (
+          <p className="text-sm font-semibold" role="status">We&apos;re checking this payment.</p>
+        ) : refunded ? null : seen ? (
           <p className="text-foreground flex items-center gap-1.5 text-sm font-semibold" role="status">
             <CheckCircle2 className="h-4 w-4" aria-hidden />
             Seen · {clockTime(seen)}
@@ -407,15 +501,33 @@ function ProofView({
           </div>
         ) : null}
         <p className="font-display mt-5 text-4xl font-semibold tabular-nums">{money(proof.amount_cents, proof.currency)}</p>
+        {proof.card_cents ? (
+          <p className="text-muted-foreground mt-1 text-xs">
+            {proof.credit_cents ? `${money(proof.credit_cents, proof.currency)} from credit · ` : ""}
+            {money(proof.card_cents, proof.currency)} by card
+            {proof.tip_cents ? ` · ${money(proof.tip_cents, proof.currency)} tip` : ""}
+          </p>
+        ) : null}
         {refunded || partly ? (
           <p className="text-muted-foreground mt-1 text-sm font-semibold">{refunded ? "Refunded" : "Partly refunded"}</p>
         ) : null}
         <p className="mt-2 text-sm font-semibold">{proof.place_name ?? "A Mesita place"}</p>
-        <p className="text-muted-foreground mt-0.5 text-sm">Paid · {clockTime(proof.paid_at)}</p>
+        {proof.paid_at ? <p className="text-muted-foreground mt-0.5 text-sm">Paid · {clockTime(proof.paid_at)}</p> : null}
       </div>
-      <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={onDone}>
-        Done
-      </Button>
+      {open && proof.url ? (
+        <>
+          <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
+            Resume card payment
+          </Button>
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={onDone}>
+            Done
+          </button>
+        </>
+      ) : (
+        <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={onDone}>
+          Done
+        </Button>
+      )}
     </div>
   );
 }

@@ -273,18 +273,20 @@ select is(
   'the balance never goes below zero'
 );
 
--- A payment's card part: partial keeps the cashback, full takes it back.
+-- A payment's card part (MESITA-3305): a partial refund takes back the
+-- cashback's refunded share (4000 of 10000 → 200 of 500), a full one the rest.
 select is(
-  wallet_refund_payment('00000000-0000-4000-8000-0000000e3302', 4000) ->> 'status',
-  'partly_refunded',
-  'a partial refund of the card part leaves the cashback'
+  (select r ->> 'status' || ':' || (r ->> 'reversed_cents')
+     from wallet_refund_payment('00000000-0000-4000-8000-0000000e3302', 4000) r),
+  'partly_refunded:200',
+  'a partial refund of the card part reverses the cashback''s refunded share'
 );
 
 select is(
   (select r ->> 'status' || ':' || (r ->> 'reversed_cents')
      from wallet_refund_payment('00000000-0000-4000-8000-0000000e3302', 10000) r),
-  'refunded:500',
-  'a full refund of the card part reverses the cashback'
+  'refunded:300',
+  'a full refund of the card part reverses the rest of the cashback'
 );
 
 -- ━━━ The waiter's charge ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

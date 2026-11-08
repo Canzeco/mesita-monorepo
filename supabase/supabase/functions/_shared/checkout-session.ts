@@ -20,9 +20,12 @@ export function classifySession(
   session: Record<string, unknown>,
   purchaseId: string,
   expect?: { amountCents: number; currency: string; livemode: boolean },
+  /** Which metadata key names the ledger row: `purchase_id` for a voucher
+   *  purchase, `payment_id` for a mixed payment (MESITA-3305). */
+  idKey: "purchase_id" | "payment_id" = "purchase_id",
 ): SessionVerdict {
   const meta = (session.metadata ?? {}) as Record<string, string>;
-  if (meta.purchase_id !== purchaseId) return { kind: "mismatch" };
+  if (meta[idKey] !== purchaseId) return { kind: "mismatch" };
   if (
     expect && (
       session.amount_total !== expect.amountCents ||
@@ -47,8 +50,11 @@ export async function readCheckoutSession(
   sessionId: string,
   purchaseId: string,
   expect?: { amountCents: number; currency: string; livemode: boolean },
-  opts?: { stripeAccount?: string; signal?: AbortSignal },
+  opts?: { stripeAccount?: string; signal?: AbortSignal; idKey?: "purchase_id" | "payment_id" },
 ): Promise<SessionVerdict> {
-  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, undefined, opts);
-  return classifySession(session, purchaseId, expect);
+  const session = await stripe("GET", `checkout/sessions/${encodeURIComponent(sessionId)}`, undefined, {
+    stripeAccount: opts?.stripeAccount,
+    signal: opts?.signal,
+  });
+  return classifySession(session, purchaseId, expect, opts?.idKey ?? "purchase_id");
 }

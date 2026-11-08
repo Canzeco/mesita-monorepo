@@ -17,8 +17,13 @@ export const MONEY_CODES = [
   // The owner switched Credits off here (MESITA-3396): no voucher sells and
   // no credit is spent at this place
   "credits_off",
+  // The owner switched Cards off here (MESITA-3396): no card part, no cashback
+  "cards_off",
   "welcome_used",
   "place_code_required",
+  // Test mode: the place's outstanding credit across guests would pass the
+  // cap after this buy (MESITA-3305, d5a)
+  "place_cap",
   // The amount
   "below_minimum",
   "amount_required",
@@ -35,6 +40,11 @@ export const MONEY_CODES = [
   "checkout_failed",
   "bad_signature",
   "not_configured",
+  // The Connect receiver (MESITA-3305): a signature older than its tolerance,
+  // a body over the cap, an RPC that failed so Stripe retries
+  "stale_event",
+  "body_too_large",
+  "settle_failed",
   // Why a voucher is not sellable yet
   "not_yet",
   "needs_card_payments",

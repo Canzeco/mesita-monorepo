@@ -15,10 +15,12 @@
 // Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
-//                          spendable_cents, last_at,
+//                          spendable_cents, last_at, card_ok,
 //                          entries: [{ kind, amount_cents, at, pending, payment_id }] }],
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
 //   payments, from wallet_balances: what the Pay tab can spend there now.
+//   card_ok (MESITA-3305) says the place can take a card part: its account
+//   charges in this universe and the owner's Cards switch is on.
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
 //             settling?: true, pending_purchases?: [purchase ids] }
 
@@ -26,6 +28,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { chargesEnabledByPlace } from "../_shared/payments.ts";
 import {
   balanceKey,
   balancesOf,
@@ -111,14 +114,35 @@ serveJson("consumer-web-get-wallet", async (req) => {
   }
   const balances = balancesOf((rows ?? []) as Entry[], Date.now(), spendable);
 
-  const placesRes = await readWalletPlaces(admin, [...new Set(balances.map((b) => b.place_id))]);
+  const ids = [...new Set(balances.map((b) => b.place_id))];
+  // card_ok (MESITA-3305): the place's account can charge in this universe
+  // and the owner's Cards switch is on, so the Pay tab may offer a card
+  // part there. A failed read reads as no card; the server is the last word
+  // at start anyway.
+  const [placesRes, charging, settingsRes] = await Promise.all([
+    readWalletPlaces(admin, ids),
+    chargesEnabledByPlace(admin, ids, livemode),
+    ids.length > 0
+      ? admin.from("place_payment_settings").select("place_id, pay_cards").in("place_id", ids)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
   const places = placesRes.places;
+  if (settingsRes.error) console.error(`[consumer-web-get-wallet] settings read: ${settingsRes.error.message}`);
+  const cardsOff = new Set<string>();
+  for (const r of ((settingsRes.error ? [] : settingsRes.data) ?? []) as Array<{ place_id: string; pay_cards: boolean | null }>) {
+    if (r.pay_cards === false) cardsOff.add(r.place_id);
+  }
 
   return json({
     ok: true,
     test_mode: !livemode,
-    balances: balances.map(({ place_id, ...b }) => ({ place: places.get(place_id) ?? null, place_id, ...b })),
+    balances: balances.map(({ place_id, ...b }) => ({
+      place: places.get(place_id) ?? null,
+      place_id,
+      ...b,
+      card_ok: (charging?.has(place_id) ?? false) && !cardsOff.has(place_id),
+    })),
     ...(outcome === undefined ? {} : { outcome }),
     ...(settling.length > 0 ? { settling: true, pending_purchases: settling } : {}),
   });
