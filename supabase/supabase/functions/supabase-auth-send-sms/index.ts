@@ -8,16 +8,19 @@
 //
 // Caller: Supabase Auth only, signed with SEND_SMS_HOOK_SECRET (Standard
 // Webhooks). Body: { user: { phone }, sms: { otp } }.
-// Response: {} | { error: { http_code, message } } — Auth shows the message.
+// Response: always 200: {} | { error: { http_code, message } } — Auth shows the message.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { SIGN_IN_CODE_SECONDS, sendSignInSms, signInPhone, verifyHookSignature } from "../_shared/sign-in-code.ts";
 
+// Auth reads a hook's error only from a 200: any other status becomes a bare
+// "Unexpected status code returned from hook" (MESITA-3406). The real status
+// rides in http_code.
 function hookError(status: number, message: string): Response {
   return new Response(JSON.stringify({ error: { http_code: status, message } }), {
-    status,
+    status: 200,
     headers: { "Content-Type": "application/json" },
   });
 }
