@@ -1,7 +1,5 @@
-import { QrCode } from "lucide-react";
-
 import { cn } from "../lib/format";
-import { PremierBadge } from "./PremierBadge";
+import { PremierBadge, SEAL_PATH } from "./PremierBadge";
 
 // THE TWO MARKS AFTER A PLACE'S NAME (Pato, MESITA-3321: "if the product is
 // premier put a red icon. if the product is mesita pay (meaning it has
@@ -13,20 +11,28 @@ import { PremierBadge } from "./PremierBadge";
 // list row or `money.mesita_pay` on the place read (moneyState's mark,
 // MESITA-3408); the client never
 // decides. The Pay mark is the QR, the one Pay mark everywhere (the Pay
-// tile, the bar), in green.
+// tile, the bar), in green. Since MESITA-3420 both are the same seal: red
+// for Premier, green with a $ for Mesita Pay, and no words beside them.
 
-/** The green Mesita Pay mark alone. Display only. */
+/** The green Mesita Pay mark alone: Premier's seal in green with a white $
+ *  (Pato, MESITA-3420, B of four: "kinda like the verified icon"; a green
+ *  rounded square with the QR until then). Display only. */
 export function MesitaPayMark({ className }: { className?: string }) {
   return (
-    <span
+    <svg
+      viewBox="0 0 24 24"
       role="img"
       aria-label="Mesita Pay"
-      title="Mesita Pay"
-      className={cn("inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white", className)}
+      className={cn("inline-block h-5 w-5 shrink-0", className)}
       data-mesita-pay
     >
-      <QrCode className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-    </span>
+      <title>Mesita Pay</title>
+      <path d={SEAL_PATH} fill="#00BA4A" />
+      <g transform="translate(12 12) scale(0.5) translate(-12 -12)" fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2v20" />
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+      </g>
+    </svg>
   );
 }
 
