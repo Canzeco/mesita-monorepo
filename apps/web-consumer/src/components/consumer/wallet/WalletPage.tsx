@@ -3,12 +3,13 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Wallet as WalletIcon } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { apiFillAreaPool, apiListAreaPool, type Place } from "@/lib/api/places";
-import { apiGetWallet, ENTRY_LABEL, entryDate, money, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, ENTRY_LABEL, entryDate, money, type WaitingStory, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -255,9 +256,15 @@ export function WalletPage() {
         </p>
       ) : null}
 
+      {wallet?.waiting_stories?.length ? (
+        <div className="mt-5 flex flex-col gap-3" data-waiting-stories>
+          {wallet.waiting_stories.map((s) => <WaitingStoryCard key={s.purchase_id} story={s} />)}
+        </div>
+      ) : null}
+
       <div className="flex min-h-0 flex-1 flex-col">
         {groups ? (
-          groups.credit.length === 0 && groups.every.length === 0 && !loadingMore ? (
+          groups.credit.length === 0 && groups.every.length === 0 && !loadingMore && !wallet?.waiting_stories?.length ? (
             <div className="mt-5 flex flex-1 flex-col">
               <EmptyState
                 icon={WalletIcon}
@@ -308,6 +315,26 @@ export function WalletPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** A STORY WAITING FOR STAFF (MESITA-3507, Pato: "first buy it, then ...
+ *  activate it by posting an instagram story tagging the place and showing
+ *  it [to] the waiter"): paid, no credit yet. The QR opens the staff page on
+ *  visit.mesita.ai, where staff see the story and tap Activate. */
+function WaitingStoryCard({ story }: { story: WaitingStory }) {
+  const name = story.place?.name ?? "this place";
+  return (
+    <section className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border p-4 text-center">
+      <div>
+        <h2 className="text-sm font-semibold">Activate your Story voucher at {name}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {money(story.credit_cents, story.currency)} of credit waits for step 2: post an Instagram story at the
+          place, tag it, and show the story and this QR to the staff.
+        </p>
+      </div>
+      <QRCodeSVG value={story.url} size={176} marginSize={0} aria-label="Story voucher activation code" />
+    </section>
   );
 }
 

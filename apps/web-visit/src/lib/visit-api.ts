@@ -34,7 +34,18 @@ export class VisitError extends Error {
   }
 }
 
-async function call<T>(name: string, body: Record<string, unknown>): Promise<T> {
+/** What a refusal says, per page. */
+type Words = { invalid: string; failed: string };
+const PROOF_WORDS: Words = {
+  invalid: "This proof is not valid. Ask the guest to show it again.",
+  failed: "Couldn't check this proof. Try again.",
+};
+const STORY_WORDS: Words = {
+  invalid: "This Story voucher is not valid. Ask the guest to show it again.",
+  failed: "Couldn't check this Story voucher. Try again.",
+};
+
+async function call<T>(name: string, body: Record<string, unknown>, words: Words = PROOF_WORDS): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${name}`, {
@@ -46,7 +57,7 @@ async function call<T>(name: string, body: Record<string, unknown>): Promise<T> 
       body: JSON.stringify(body),
     });
   } catch {
-    throw new VisitError("Couldn't check this proof. Try again.", null, false);
+    throw new VisitError(words.failed, null, false);
   }
   const data = (await res.json().catch(() => null)) as ({ ok?: boolean; error?: string; code?: string } & T) | null;
   if (data?.ok) return data;
@@ -54,7 +65,7 @@ async function call<T>(name: string, body: Record<string, unknown>): Promise<T> 
   // 404 gone and 400 (not a token) both mean this QR is no proof.
   const invalid = code === "gone" || res.status === 400 || res.status === 404;
   throw new VisitError(
-    invalid ? "This proof is not valid. Ask the guest to show it again." : "Couldn't check this proof. Try again.",
+    invalid ? words.invalid : words.failed,
     code,
     invalid,
   );
@@ -66,4 +77,32 @@ export function getProof(token: string): Promise<Proof> {
 
 export function markProofSeen(token: string): Promise<{ seen_at: string }> {
   return call<{ seen_at: string }>("visit-web-mark-proof-seen", { token });
+}
+
+// ── The Story voucher (MESITA-3507) ─────────────────────────────────────────
+
+/** A paid Story voucher waiting for staff. Names the buyer's Instagram so
+ *  staff match the story to the account that bought it. */
+export type StoryVoucher = {
+  place: { name: string | null };
+  instagram_handle: string | null;
+  amount_cents: number;
+  /** What the guest gets once activated: price plus bonus. */
+  credit_cents: number;
+  currency: string;
+  paid_at: string | null;
+  /** Set means already activated. */
+  activated_at: string | null;
+  /** Refunded before activation: it can no longer be activated. */
+  refunded: boolean;
+  test_mode: boolean;
+  server_time: string;
+};
+
+export function getStory(token: string): Promise<StoryVoucher> {
+  return call<StoryVoucher>("visit-web-get-story", { token }, STORY_WORDS);
+}
+
+export function activateStory(token: string): Promise<{ activated_at: string; already: boolean }> {
+  return call<{ activated_at: string; already: boolean }>("visit-web-activate-story", { token }, STORY_WORDS);
 }

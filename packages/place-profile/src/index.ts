@@ -39,7 +39,7 @@ export type { PlaceBalance, PlaceDetail, PlaceMoney, PlaceScore, VoucherCatalogL
 export { VOUCHER_KEYS } from "./place-detail";
 export { placeMoneyFrom } from "./place-to-detail";
 export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";
-export { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, type MoneyState, type VoucherReason } from "./money-state";
+export { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type MoneyState, type VoucherReason } from "./money-state";
 export { MONEY_CODES, type MoneyCode } from "./money-codes";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";

@@ -25,10 +25,10 @@ const allOn: MoneySettings = {
 const can = { charges_enabled: true };
 const cannot = { charges_enabled: false };
 
-Deno.test("a switch on with charges_enabled sells; the three later vouchers say why not", () => {
+Deno.test("a switch on with charges_enabled sells; the two later vouchers say why not", () => {
   const s = moneyState(allOn, can, null);
-  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
-  assertEquals(s.unavailable, { voucher_5000: "not_yet", voucher_vip: "needs_card_payments", voucher_story: "needs_instagram" });
+  assertEquals(s.sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_story"]);
+  assertEquals(s.unavailable, { voucher_5000: "not_yet", voucher_vip: "needs_card_payments" });
   assertEquals(s.cashback, true);
 });
 
@@ -52,7 +52,7 @@ Deno.test("Pay by phone off (MESITA-3396) drops card pay and cashback, never the
   assertEquals(moneyState(noCards, can, { spendable_cents: 100 }).pay, "credit");
   assertEquals(moneyState(noCards, can, null).pay, "none");
   assertEquals(moneyState(noCards, can, null).cashback, false);
-  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
+  assertEquals(moneyState(noCards, can, null).sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_story"]);
   // Absent reads on: a reader from before the column is unchanged.
   assertEquals(moneyState(allOn, can, { spendable_cents: 100 }).pay, "both");
 });
@@ -79,7 +79,9 @@ Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by car
   // Pay by phone off and nothing selling: off.
   assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).mesita_pay, false);
   // Vouchers not sellable yet do not light it.
-  assertEquals(moneyState({ ...off, pay_cards: false, voucher_vip: true, voucher_story: true, voucher_5000: true }, can, null).mesita_pay, false);
+  assertEquals(moneyState({ ...off, pay_cards: false, voucher_vip: true, voucher_5000: true }, can, null).mesita_pay, false);
+  // Story sells since MESITA-3507, so it lights it.
+  assertEquals(moneyState({ ...off, pay_cards: false, voucher_story: true }, can, null).mesita_pay, true);
   // No account: no mark.
   assertEquals(moneyState(allOn, null, null).mesita_pay, false);
   assertEquals(moneyState(allOn, cannot, null).mesita_pay, false);

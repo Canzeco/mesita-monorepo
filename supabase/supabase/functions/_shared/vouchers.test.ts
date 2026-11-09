@@ -7,7 +7,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
-import { buyRefusal, CATALOG_LINES, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
+import { buyRefusal, CATALOG_LINES, storyRefusal, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
 const GUEST = "00000000-0000-4000-8000-0000000b3303";
@@ -39,10 +39,10 @@ const ACCOUNT: AccountRow = {
 
 const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
 
-Deno.test("W1b sells MX$200, MX$1,000 and Welcome; the rest say why", () => {
+Deno.test("MX$200, MX$1,000, Welcome and Story sell (MESITA-3507); the rest say why", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
-  assertEquals(o.unavailable, { voucher_5000: "not_yet", voucher_story: "needs_instagram", voucher_vip: "needs_card_payments" });
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_story"]);
+  assertEquals(o.unavailable, { voucher_5000: "not_yet", voucher_vip: "needs_card_payments" });
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
@@ -66,7 +66,7 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(offerFrom({ ...base, paused: true }).sell, []);
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
   const used = offerFrom({ ...base, welcomeUsed: true });
-  assertEquals(used.sell, ["voucher_200", "voucher_1000"]);
+  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_story"]);
   assertEquals(used.unavailable.voucher_welcome, "used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
@@ -82,7 +82,7 @@ Deno.test("buyRefusal: codes for every closed door, null for an open one", () =>
   assertEquals(buyRefusal(o, "voucher_200", ACCOUNT), null);
   assertEquals(buyRefusal(o, "voucher_5000", ACCOUNT)?.code, "not_yet");
   assertEquals(buyRefusal(o, "voucher_vip", ACCOUNT)?.code, "needs_card_payments");
-  assertEquals(buyRefusal(o, "voucher_story", ACCOUNT)?.code, "needs_instagram");
+  assertEquals(buyRefusal(o, "voucher_story", ACCOUNT), null);
   assertEquals(buyRefusal(offerFrom({ ...base, paused: true }), "voucher_200", ACCOUNT)?.code, "paused");
   assertEquals(buyRefusal(offerFrom({ ...base, welcomeUsed: true }), "voucher_welcome", ACCOUNT)?.code, "welcome_used");
   assertEquals(buyRefusal(offerFrom({ ...base, account: null }), "voucher_200", null)?.code, "no_account");
@@ -320,4 +320,13 @@ Deno.test("the mark (MESITA-3408) is taken before Welcome-used and the pause, so
   // Nothing on: no mark.
   const nothing: PaymentSettings = { ...onlyWelcome, voucher_welcome: false };
   assertEquals(offerFrom({ ...base, settings: nothing }).mesita_pay, false);
+});
+
+Deno.test("storyRefusal: Story needs a linked Instagram with MORE than 1,000 followers; other vouchers pass (MESITA-3507)", () => {
+  assertEquals(storyRefusal("voucher_200", null), null);
+  assertEquals(storyRefusal("voucher_story", null)?.code, "needs_instagram");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: null, instagram_followers_count: 50_000 })?.code, "needs_instagram");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null })?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 })?.code, "few_followers");
+  assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001 }), null);
 });

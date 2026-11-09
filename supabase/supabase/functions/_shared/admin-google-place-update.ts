@@ -4,6 +4,7 @@
 // is still Google's. A longer gallery is Enrich's and Update never touches it.
 // Never writes Mesita editorial fields.
 
+import { readOperatorFields } from "./operator-fields.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { fetchGoogleBasics, type GoogleBasics } from "./enrich-google-basics.ts";
 import { mirrorPlacePhotos } from "./store-place-images.ts";
@@ -165,7 +166,9 @@ export async function runGooglePlaceUpdate(
   }
 
   // Mirror Google's hero only when the gallery will take it.
-  const hero = galleryTakesGoogleHero(profile.photos) ? google.basics.photos.slice(0, 1) : [];
+  // A gallery the place saved (MESITA-3513) is never replaced by Google's hero.
+  const ownedGallery = readOperatorFields(profile.enrichment_sources).includes("photos");
+  const hero = !ownedGallery && galleryTakesGoogleHero(profile.photos) ? google.basics.photos.slice(0, 1) : [];
   const mirrored = hero.length > 0
     ? await mirrorPlacePhotos(admin, opts.supabaseUrl, hero)
     : [];

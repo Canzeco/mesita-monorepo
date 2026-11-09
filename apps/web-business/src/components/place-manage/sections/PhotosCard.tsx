@@ -7,8 +7,9 @@
 // page's one Save sends `photos` (business-web-update-place), so Discard
 // drops it like any other edit.
 //
-// The next Enrich still rebuilds the gallery (Docs › Atlas, one gallery):
-// an owner's order does not stick through Enrich yet.
+// A saved gallery sticks (MESITA-3513, Pato: "make them stick"): it is an
+// operator field, so every Enrich and Google Update writes around it until
+// the card's Reset hands it back to Enrich.
 
 import { useRef, useState } from "react";
 import { ImagesIcon } from "@phosphor-icons/react/dist/ssr";
@@ -16,7 +17,7 @@ import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
 import { photoUrl } from "@mesita/place-profile";
 import { SectionCard } from "@/components/ui/manage";
 import { resizeImageFile } from "@/lib/image-resize";
-import { type AdminPlace, uploadPlacePhoto } from "../actions";
+import { type AdminPlace, updatePlace, uploadPlacePhoto } from "../actions";
 import { usePlaceContext } from "../PlaceContext";
 import { useSectionSaver } from "../useSectionDirty";
 
@@ -31,7 +32,16 @@ const galleryOf = (place: AdminPlace): string[] =>
   );
 
 export function PhotosCard({ place }: { place: AdminPlace }) {
-  const { savePending, profile } = usePlaceContext();
+  const { savePending, profile, setPlace } = usePlaceContext();
+  const owned = (place.operator_fields ?? []).includes("photos");
+  const [resetting, setResetting] = useState(false);
+  const reset = async () => {
+    setResetting(true);
+    const r = await updatePlace({ id: place.id, reset_fields: ["photos"] });
+    setResetting(false);
+    if (r.ok) setPlace((prev) => ({ ...prev, operator_fields: r.data.place.operator_fields ?? [] }));
+    else setError(r.error);
+  };
   const max = profile.fieldLimits.photosMax;
   const [photos, setPhotos] = useState<string[]>(() => galleryOf(place));
   const [saved, setSaved] = useState<string[]>(photos);
@@ -112,8 +122,23 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
       title="Photos"
       subtitle={`What guests swipe through. The first one is the cover. Up to ${max}.`}
       action={
-        <span className="text-muted-foreground type-label tabular-nums">
-          {photos.length} / {max}
+        <span className="inline-flex items-center gap-3">
+          {owned ? (
+            <span className="inline-flex items-center gap-2">
+              <span className="text-muted-foreground type-meta">Enrich keeps it</span>
+              <button
+                type="button"
+                className="text-primary type-meta font-medium underline-offset-4 hover:underline disabled:opacity-50"
+                disabled={busy || resetting || dirty}
+                onClick={() => void reset()}
+              >
+                {resetting ? "Resetting…" : "Reset"}
+              </button>
+            </span>
+          ) : null}
+          <span className="text-muted-foreground type-label tabular-nums">
+            {photos.length} / {max}
+          </span>
         </span>
       }
     >

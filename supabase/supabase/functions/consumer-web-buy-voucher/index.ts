@@ -14,6 +14,7 @@
 // Response: { ok: true, url, purchase_id }
 //   401 sign_in · 404 place · 409 no_account | currency_mismatch | paused |
 //   not_available | not_yet | needs_card_payments | needs_instagram |
+//   few_followers (Story: 1,000 Instagram followers or fewer, MESITA-3507) |
 //   welcome_used | below_minimum | place_cap (MESITA-3305: the test-mode
 //   cap on a place's outstanding credit) | in_progress (+url: a second
 //   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
@@ -26,7 +27,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { buyRefusal, openVoucherCheckout, voucherOffer } from "../_shared/vouchers.ts";
+import { buyRefusal, openVoucherCheckout, readStoryGuest, storyRefusal, voucherOffer } from "../_shared/vouchers.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -62,6 +63,11 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const refusal = buyRefusal(offer, voucher as MoneyVoucherKey, account);
   if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
   if (!account) return json({ ok: false, code: "no_account", error: "This place has not connected payments yet" }, 409);
+  // Story's own gate: the guest's Instagram above the follower floor (MESITA-3507).
+  if (voucher === "voucher_story") {
+    const story = storyRefusal(voucher, await readStoryGuest(admin, userId));
+    if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
+  }
 
   const key = boostStripeKey();
   if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);

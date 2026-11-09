@@ -31,6 +31,14 @@ const envRead: ReadEnv = (n) => Deno.env.get(n);
  *  into its own /proof/<token> by hand, since this env is the Supabase
  *  project's, not a per-deploy value. */
 export function proofUrl(token: string, read: ReadEnv = envRead): string {
-  const origin = (read("VISIT_WEB_URL") ?? "").trim().replace(/\/+$/, "") || PROOF_ORIGIN;
-  return `${origin}/proof/${token}`;
+  return `${visitOrigin(read)}/proof/${token}`;
+}
+
+/** The Story voucher's activation page (MESITA-3507), on the same origin. */
+export function storyUrl(token: string, read: ReadEnv = envRead): string {
+  return `${visitOrigin(read)}/story/${token}`;
+}
+
+function visitOrigin(read: ReadEnv): string {
+  return (read("VISIT_WEB_URL") ?? "").trim().replace(/\/+$/, "") || PROOF_ORIGIN;
 }

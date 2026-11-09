@@ -48,6 +48,8 @@ export const MONEY_CODES = [
   "not_yet",
   "needs_card_payments",
   "needs_instagram",
+  // Story: the guest's Instagram has 1,000 followers or fewer (MESITA-3507)
+  "few_followers",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];
