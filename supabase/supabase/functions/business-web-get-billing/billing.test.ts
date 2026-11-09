@@ -156,24 +156,24 @@ Deno.test("billing: paused — Refill days at or above the paid tier; resumes, t
   assertEquals(v.subscribe_from, {});
 });
 
-Deno.test("billing: ending within 7 days, nobody subscribed — Keep 5X at $100, days left counted", () => {
+Deno.test("billing: ending within 7 days, nobody subscribed — Keep 5X at $999 a year, days left counted", () => {
   const manual = [refill("five", 2, NOW - 25 * DAY, NOW + 5 * DAY)];
   const v = view({ manual });
-  assertEquals(v.keep, { tier: 2, ends_at: iso(NOW + 5 * DAY), price_cents: 10000 });
+  assertEquals(v.keep, { tier: 2, ends_at: iso(NOW + 5 * DAY), price_cents: 99900 });
   assertEquals(v.level, { tier: 2, until: iso(NOW + 5 * DAY), days_left: 5 });
 });
 
 Deno.test("billing: Keep names the highest level whose run ends within 7 days (D11)", () => {
   // 5X ends in 3 days, then 2X runs to day 6: Keep 5X first.
   const both = view({ manual: [refill("five", 2, NOW - DAY, NOW + 3 * DAY), refill("two", 1, NOW + 3 * DAY, NOW + 6 * DAY)] });
-  assertEquals(both.keep, { tier: 2, ends_at: iso(NOW + 3 * DAY), price_cents: 10000 });
+  assertEquals(both.keep, { tier: 2, ends_at: iso(NOW + 3 * DAY), price_cents: 99900 });
   // 5X ends in 3 days, 2X runs 20 more: Keep 5X now; 2X can be kept from its own window.
   const long = view({ manual: [refill("five", 2, NOW - DAY, NOW + 3 * DAY), refill("two", 1, NOW + 3 * DAY, NOW + 23 * DAY)] });
   assertEquals(long.keep?.tier, 2);
   assertEquals(long.subscribe_from, { 1: "2026-11-19" });
   // Only 2X ending in 6 days: Keep 2X at $10.
   const two = view({ manual: [refill("two", 1, NOW - DAY, NOW + 6 * DAY)] });
-  assertEquals(two.keep, { tier: 1, ends_at: iso(NOW + 6 * DAY), price_cents: 1000 });
+  assertEquals(two.keep, { tier: 1, ends_at: iso(NOW + 6 * DAY), price_cents: 9900 });
 });
 
 Deno.test("billing: no Keep while someone pays, even in the last 7 days", () => {

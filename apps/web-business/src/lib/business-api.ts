@@ -230,7 +230,8 @@ export type PlacePremier = {
     has_card: boolean;
     checkout: string | null;
   } | null;
-  quotes: Record<BoostTier, Record<BoostInterval, PremierQuote>> | null;
+  /** Yearly only since MESITA-3285. */
+  quotes: Record<BoostTier, { year: PremierQuote }> | null;
   outcome?: string;
 };
 

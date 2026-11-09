@@ -10,13 +10,17 @@
 // carry no Ad pill (Pato, MESITA-3186: "remove ad icon there"). The small print
 // keeps the claim true: Premier never promises views.
 //
+// Plans are yearly only (MESITA-3285: Pro $99, Max $999 a year), so there is no
+// Monthly/Yearly toggle; a subscription bought monthly before still renews
+// monthly until its payer changes plan or leaves.
+//
 // Every amount and date is the server's (business-web-get-premier's quotes);
 // this file never computes money.
 
 import { PremierRosette } from "@mesita/place-profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { cancelPremier, getPremier, startPremier, type BoostInterval, type BoostTier, type PlacePremier } from "@/lib/business-api";
+import { cancelPremier, getPremier, startPremier, type BoostTier, type PlacePremier } from "@/lib/business-api";
 import { billingHref, returnUrl } from "@/lib/routes";
 import { FREE_PLAN, FREE_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY } from "@/lib/plans";
 
@@ -31,6 +35,7 @@ const REFUSED: Record<string, string> = {
   charging: "A renewal is being charged. Try again in a few minutes.",
   not_payer: "Only the person who pays can update the card.",
   lost: "Your plan changed while you were choosing. Look again.",
+  interval_retired: "Plans are yearly only now. Reload the page and choose again.",
 };
 
 const OUTCOME: Record<string, string> = {
@@ -61,14 +66,14 @@ type Offer = {
   premier: boolean;
   cents: number;
   note: string | null;
-  /** The plan the place is on, whichever interval the toggle shows. */
+  /** The plan the place is on. */
   onIt: boolean;
   picked: boolean;
   word: string;
   action: { label: string; run: () => void; onBlur?: () => void } | null;
 };
 
-function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: BoostInterval; busy: boolean; boxRef?: React.Ref<HTMLLIElement> }) {
+function Box({ offer: o, busy, boxRef }: { offer: Offer; busy: boolean; boxRef?: React.Ref<HTMLLIElement> }) {
   return (
     <li
       ref={boxRef}
@@ -89,7 +94,7 @@ function Box({ offer: o, interval, busy, boxRef }: { offer: Offer; interval: Boo
       <div className="border-border mt-auto border-t pt-4">
         <p>
           <span className="font-semibold tabular-nums">{usd(o.cents)}</span>
-          <span className="text-muted-foreground"> / {interval}</span>
+          <span className="text-muted-foreground"> / year</span>
         </p>
         {o.note ? <p className="text-muted-foreground">{o.note}</p> : null}
       </div>
@@ -122,7 +127,6 @@ export function PlansCard({
 }) {
   const router = useRouter();
   const [data, setData] = useState<PlacePremier | null>(initial);
-  const [interval, setBillingInterval] = useState<BoostInterval>(picked ? "month" : (initial?.mine?.interval ?? "month"));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
@@ -149,7 +153,7 @@ export function PlansCard({
   async function choose(tier: BoostTier) {
     setBusy(true);
     setError(null);
-    const r = await startPremier({ placeId, tier, interval, returnUrl: returnUrl(home) });
+    const r = await startPremier({ placeId, tier, interval: "year", returnUrl: returnUrl(home) });
     setBusy(false);
     if (!r.ok) return setError((r.code && REFUSED[r.code]) || r.error);
     if (r.data.url) return window.location.assign(r.data.url);
@@ -186,9 +190,9 @@ export function PlansCard({
     },
   ];
   for (const plan of PLANS) {
-    const q = quotes[plan.key]?.[interval];
+    const q = quotes[plan.key]?.year;
     if (!q) continue;
-    const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === interval;
+    const current = payer && data.mine?.tier === plan.rank && data.mine?.interval === "year";
     const blocked = q.kind === "blocked" || q.covered;
     // A resume for someone who never paid here is subscribing early, in the
     // last 7 days of an Upgrade (MESITA-3165).
@@ -214,27 +218,11 @@ export function PlansCard({
 
   return (
     <section id="plans" className="flex scroll-mt-6 flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="font-semibold">Plan</h2>
-        <div className="bg-muted inline-flex rounded-full p-1 text-sm" role="radiogroup" aria-label="Billing">
-          {(["month", "year"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="radio"
-              aria-checked={interval === v}
-              onClick={() => setBillingInterval(v)}
-              className={"rounded-full px-3 py-1 font-medium " + (interval === v ? "bg-card shadow-sm" : "text-muted-foreground")}
-            >
-              {v === "month" ? "Monthly" : "Yearly"}
-            </button>
-          ))}
-        </div>
-      </div>
+      <h2 className="font-semibold">Plan</h2>
       {notice ? <p className="text-sm">{notice}</p> : null}
       <ul className="grid gap-4 sm:grid-cols-3">
         {offers.map((o) => (
-          <Box key={o.key} offer={o} interval={interval} busy={busy} boxRef={o.picked ? pickedRef : undefined} />
+          <Box key={o.key} offer={o} busy={busy} boxRef={o.picked ? pickedRef : undefined} />
         ))}
       </ul>
       <p className="text-muted-foreground text-sm">Visibility is ranking priority on Home and the Map. It doesn&apos;t guarantee more views.</p>

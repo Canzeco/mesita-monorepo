@@ -79,7 +79,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     general: { ...live.general, requireActive: !live.general.requireActive },
     deep: { limit: 9, minSimilarity: 0.3 },
     chat: { prompt: "Be brief." },
-    premier: { monthlyCents: { boost_2x: 1500, boost_5x: 20000 } },
+    premier: { yearlyCents: { boost_2x: 15000, boost_5x: 200000 } },
   };
 }
 
@@ -216,8 +216,8 @@ describe("Premier's prices: only the Premier Prices box writes them", () => {
     const live = liveConfig();
     const sent = armed(live);
     await updateDiscoveryConfig(editedEverywhere(live), [...slices]);
-    const want = box === "premier" ? { boost_2x: 1500, boost_5x: 20000 } : live.premier.monthlyCents;
-    expect(sent.config?.premier.monthlyCents).toEqual(want);
+    const want = box === "premier" ? { boost_2x: 15000, boost_5x: 200000 } : live.premier.yearlyCents;
+    expect(sent.config?.premier.yearlyCents).toEqual(want);
   });
 
   it("the Premier Prices box writes nothing else", async () => {

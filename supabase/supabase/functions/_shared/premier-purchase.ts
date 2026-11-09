@@ -20,8 +20,8 @@ export type RefillTier = 1 | 2;
 
 /** One pack per tier: one year (Pato, MESITA-3386: "Upgrade plan must be one
  *  year. $100 USD. $1000 USD. Not three months"; 90 days at $30 / $300 from
- *  MESITA-3203 until then). $100 / $1,000 is the Subscription's yearly price
- *  (ten months for twelve, boost.ts), so a pack never undercuts subscribing.
+ *  MESITA-3203 until then). The yearly-only Subscription is $99 / $999
+ *  (MESITA-3285, boost.ts), so a pack never undercuts subscribing.
  *  A purchase keeps the days it stored when it opened. A price change is a
  *  PR. The 366-day queue cap in premier_refill_check means one pack at a
  *  time per place. */
