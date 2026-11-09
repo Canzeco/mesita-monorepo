@@ -49,6 +49,10 @@ export type PlaceActions = {
   /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
    *  Absent, the card draws no button (admin's preview). */
   onPay?: () => void;
+  /** The pinned row's Wallet tile (MESITA-3574): opens the host's Wallet at
+   *  this place's credit. Absent (admin's preview, business), the tile is
+   *  inert. Its pill reads `place.money.balance`. */
+  onOpenWallet?: () => void;
   /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
    *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
