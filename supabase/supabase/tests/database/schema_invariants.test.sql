@@ -1433,7 +1433,8 @@ select ok(
 );
 
 -- Me › Notifications (MESITA-2080) is kept; its visit-ticket coupling is not.
--- The CHECK must admit exactly what notification-row.tsx RESERVATION_KINDS
+-- The CHECK must admit what notification-row.tsx NOTIFICATION_KINDS (the
+-- reservation kinds and credit_ready, MESITA-3293)
 -- renders and refuse the retired ticket kinds — proved by writing rows.
 select hasnt_column(
   'public', 'consumer_notifications', 'ticket_id',

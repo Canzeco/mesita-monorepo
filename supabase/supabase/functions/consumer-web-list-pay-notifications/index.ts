@@ -2,8 +2,9 @@
 //
 // Authenticated. Returns the caller's Me › Notifications rows, newest first:
 // the reservation updates _shared/reservation-notification.ts writes (kind
-// 'reservation' | 'booking', payload place_name / place_photo_url). The EF's
-// name predates the screen.
+// 'reservation' | 'booking', payload place_name / place_photo_url) and the
+// credit_ready rows wallet_notify_ready_credit writes when Pending credit
+// turns Available (MESITA-3293). The EF's name predates the screen.
 //
 // Body: { limit?: number }  // 1..100, default 100
 
@@ -14,7 +15,7 @@ import {
   getAuthedUser,
   readEFEnv,
 } from "../_shared/auth.ts";
-import { RESERVATION_NOTIFICATION_KINDS } from "../_shared/reservation-notification.ts";
+import { CONSUMER_NOTIFICATION_KINDS } from "../_shared/reservation-notification.ts";
 
 type Body = {
   limit?: number;
@@ -43,7 +44,7 @@ serveJson("consumer-web-list-pay-notifications", async (req) => {
     .from("consumer_notifications")
     .select("id, consumer_id, kind, payload, created_at")
     .eq("consumer_id", consumerId)
-    .in("kind", [...RESERVATION_NOTIFICATION_KINDS])
+    .in("kind", [...CONSUMER_NOTIFICATION_KINDS])
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) {

@@ -14,15 +14,16 @@ import { cn } from "@/lib/utils";
 import {
   NotificationRow,
   NotificationRowSkeleton,
-  RESERVATION_KINDS,
+  NOTIFICATION_KINDS,
 } from "@/components/consumer/notification-row";
 import { EmptyState } from "@/components/shared";
 
 // Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
 // inbox of things that happened to YOU, with no switcher.
 //
-// ONLY RESERVATION ROWS RENDER. The list EF already returns only the kinds a
-// booking writes; filtering on `RESERVATION_KINDS` here keeps a row this
+// ONLY KNOWN ROWS RENDER: reservation updates and credit_ready (Pending
+// credit turned Available, MESITA-3293). The list EF already returns only
+// those kinds; filtering on `NOTIFICATION_KINDS` here keeps a row this
 // screen cannot render off the list.
 
 const FEED_CLASS =
@@ -67,7 +68,7 @@ export function NotificationsClient() {
   const loading = query.loading;
   const error = query.error ? "Couldn't load notifications." : null;
 
-  const visible = rows.filter((n) => RESERVATION_KINDS.has(n.kind));
+  const visible = rows.filter((n) => NOTIFICATION_KINDS.has(n.kind));
 
   return (
     <div className={FEED_CLASS}>

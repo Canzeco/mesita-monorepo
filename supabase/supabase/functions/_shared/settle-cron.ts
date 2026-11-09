@@ -17,6 +17,9 @@
 //   paid waiter's charges are deleted 24 h after paid_at, expired unpaid
 //     ones on the same tick (place_charges_sweep)
 //   each tick logs the needs_review count with console.error
+//   Pending credit that turned Available writes one Me › Notifications row
+//     per guest, place and ready time (wallet_notify_ready_credit,
+//     MESITA-3293), best-effort: a failure is logged, never fails the tick
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
@@ -91,6 +94,8 @@ export type TickReport = {
   outcomes: Record<RowOutcome, number>;
   needs_review_total: number;
   charges_swept: number;
+  /** credit_ready notifications written this tick (MESITA-3293). */
+  credit_ready_notified: number;
   ms: number;
 };
 
@@ -200,6 +205,14 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
   if (sweep.error) console.error("[settle-cron] place_charges_sweep", sweep.error.message);
   else swept = Number(sweep.data ?? 0);
 
+  // Pending credit that turned Available since the last ticks: one
+  // notification per guest, place and ready time, never twice (the
+  // function's unique key). Only this key's universe.
+  let notified = 0;
+  const ready = await deps.admin.rpc("wallet_notify_ready_credit", { p_livemode: deps.livemode });
+  if (ready.error) console.error("[settle-cron] wallet_notify_ready_credit", ready.error.message);
+  else if (typeof ready.data === "number") notified = ready.data;
+
   const [p, y] = await Promise.all([
     deps.admin.from("wallet_purchases").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
     deps.admin.from("wallet_payments").select("id", { count: "exact", head: true }).eq("status", "needs_review"),
@@ -207,5 +220,5 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
   const needsReview = (p.count ?? 0) + (y.count ?? 0);
   if (needsReview > 0) console.error("[settle-cron] needs_review", JSON.stringify({ count: needsReview }));
 
-  return { rows: rows.length, outcomes, needs_review_total: needsReview, charges_swept: swept, ms: deps.now() - started };
+  return { rows: rows.length, outcomes, needs_review_total: needsReview, charges_swept: swept, credit_ready_notified: notified, ms: deps.now() - started };
 }

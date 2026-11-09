@@ -5,7 +5,8 @@
 // voucher purchases and mixed payments against Stripe on their connected
 // accounts (settle-cron.ts), gives up on rows Stripe will never confirm
 // (needs_review), fails stale `opening` rows, sweeps the waiter's charges
-// and logs the needs_review count. The Connect receiver is the primary
+// tells guests whose Pending credit turned Available (Me › Notifications,
+// MESITA-3293) and logs the needs_review count. The Connect receiver is the primary
 // path; the wallet read is the third.
 //
 // Body: {}  (the bounds come from app_config.money_config)
