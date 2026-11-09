@@ -6,6 +6,7 @@ import { CopyIdButton, ReadField } from "@/components/ui/manage";
 import { EnrichmentCard } from "./EnrichmentCard";
 import { SpecialActionsCard } from "./SpecialActionsCard";
 import { StateCard } from "./StateCard";
+import { PlaceStatesCard } from "./PlaceStatesCard";
 import { ReviewsStateCard } from "./ReviewsStateCard";
 import { ReportsCard } from "./ReportsCard";
 import { formatAbsoluteUtc } from "@/lib/format";
@@ -14,9 +15,12 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //
 // Admin — two boxes (Pato, 2026-10-13, MESITA-2176; Partnership States went
 // with the MVP First Stage cut, MESITA-2115):
-//   Profile States      Created · Pulsing · Enriching · Enriched · Owned · Premier ·
+//   Profile States      Created · Pulsing · Enriching · Enriched · Premier ·
 //                         Disabled (Selected died, MESITA-2925). A place is
 //                         enriching or enriched. There is no step ladder.
+//   Place States        Owned · Plan · Billing · Stripe · Reservations · Cash
+//                         Payments (+ Cashback) · Mesita Payments (+ Cashback)
+//                         · Mesita Prepayments (MESITA-3588, Main §10).
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.
 //   Reports             the place's guest reports from the three dots,
@@ -44,6 +48,8 @@ export function AdminSection({ place, children }: { place: AdminPlace; children?
     // Same masonry as the Place tab — columns pack top-down (MESITA-399).
     <div className={ADMIN_COLUMNS_CLASS}>
       <StateCard place={place} />
+      {/* key remounts the reads when the operator switches places. */}
+      <PlaceStatesCard key={`place-states-${place.id}`} place={place} />
       {/* Enrich · Update Google · Update Reviews · Enable · Disable (MESITA-3159). */}
       <SpecialActionsCard place={place} />
       <ReviewsStateCard place={place} />

@@ -14,7 +14,9 @@ import { Switch } from "@/components/ui/config";
 // the moment it flips; the save stores it as the operator's answer so a later
 // Enrich cannot reopen or close bookings. Prepayments saves the moment it flips
 // too (MESITA-3098): on, the place screen's Mesita Prepay sells a balance at
-// this place. Payments is not built: locked off.
+// this place. Reservations has no "Mesita" prefix (MESITA-3588, Main §10:
+// the booking is between the guest and the place); the locked "Mesita
+// Payments Enabled" row went — the real switch is Business › Payments.
 
 const ROW = "flex min-h-14 items-center justify-between gap-4 px-5 py-3 text-sm sm:px-6";
 
@@ -40,17 +42,13 @@ export function ActionStatesCard() {
       <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Actions</h2>
       <ul className="divide-border divide-y">
         <li className={ROW}>
-          <span className="font-medium">Mesita Reservations Enabled</span>
+          <span className="font-medium">Reservations</span>
           <Switch
             on={place.reservations_enabled === true}
             pending={pending === "reservations"}
             onClick={() => void save("reservations", reservationsPatch(place))}
-            label="Mesita Reservations Enabled"
+            label="Reservations"
           />
-        </li>
-        <li className={ROW}>
-          <span className="font-medium">Mesita Payments Enabled</span>
-          <Switch on={false} pending onClick={() => {}} label="Mesita Payments Enabled" />
         </li>
         {error ? <li className={`${ROW} text-destructive`}>{error}</li> : null}
       </ul>
