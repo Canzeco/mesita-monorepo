@@ -30,6 +30,23 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
+  it("locks VIP for a Regular guest and Story without a linked Instagram, even in test mode (MESITA-3502)", () => {
+    const pane = (guest: { vip: boolean; instagramLinked: boolean }) =>
+      renderToStaticMarkup(
+        <VouchersPane
+          place={{ money: OFFER, name: "Probe", photos: [] } as unknown as PlaceDetail}
+          actions={{ onBuyVoucher: () => {}, guest }}
+        />,
+      );
+    const regular = pane({ vip: false, instagramLinked: false });
+    expect(regular).not.toContain('aria-label="Choose the VIP voucher');
+    expect(regular).not.toContain('aria-label="Choose the Story voucher');
+    expect(regular).toContain("VIP Class only");
+    const vip = pane({ vip: true, instagramLinked: true });
+    expect(vip).toContain('aria-label="Choose the VIP voucher');
+    expect(vip).toContain('aria-label="Choose the Story voucher');
+  });
+
   it("shows no test notice on the Offers page, test mode or not (MESITA-3454, Pato's call for now)", () => {
     expect(render(OFFER)).not.toContain(TEST_BAND_TEXT);
     expect(render({ ...OFFER, test_mode: false })).not.toContain(TEST_BAND_TEXT);

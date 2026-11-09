@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Crown, Info, Lock, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, CircleCheck, Crown, Info, Lock, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -215,7 +215,23 @@ function SectionTitle({ id, title }: { id: string; title: string }) {
  *  outside or Escape closes it. It opens in a portal on the body, above the
  *  sheet and out of any dimmed row; it sits inside a row's label, so every click
  *  in it is stopped and its default prevented: reading never picks the row. */
-function InfoButton({ title, text }: { title: string; text: string[] }) {
+/** The (i)'s status strip and its one action (MESITA-3502, Pato: "below show
+ *  the state ... and maybe also an action like request upgrade besides the
+ *  Got it button"). */
+type InfoStatus = { ok: boolean; text: string };
+type InfoAction = { label: string; onClick: () => void };
+
+function InfoButton({
+  title,
+  text,
+  status,
+  action,
+}: {
+  title: string;
+  text: string[];
+  status?: InfoStatus;
+  action?: InfoAction;
+}) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -254,21 +270,58 @@ function InfoButton({ title, text }: { title: string; text: string[] }) {
           >
             <span className="text-foreground text-lg font-semibold">{title}</span>
             {/* SHORT PARAGRAPHS (MESITA-3497, Pato: "use multiple paragraphs"). */}
-            <span className="text-muted-foreground mb-3 flex flex-col gap-3 overflow-y-auto text-base leading-snug font-normal">
+            <span className="text-muted-foreground flex flex-col gap-3 overflow-y-auto text-base leading-snug font-normal">
               {text.map((t) => (
                 <span key={t} className="block">
                   {t}
                 </span>
               ))}
             </span>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              autoFocus
-              className="bg-foreground text-paper h-10 rounded-xl text-sm font-semibold hover:opacity-90"
-            >
-              Got it
-            </button>
+            {status ? (
+              <span
+                className={cn(
+                  "mt-1 flex items-start gap-2.5 rounded-xl px-3 py-2.5",
+                  status.ok ? "bg-green-50 text-green-900" : "bg-amber-50 text-amber-900",
+                )}
+                data-offer-status={status.ok ? "ok" : "locked"}
+              >
+                {status.ok ? (
+                  <CircleCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                ) : (
+                  <Lock className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                )}
+                <span className="flex flex-col">
+                  <span className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Your status</span>
+                  <span className="text-sm leading-snug font-semibold">{status.text}</span>
+                </span>
+              </span>
+            ) : null}
+            <span className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                autoFocus
+                className={cn(
+                  "h-11 rounded-xl text-sm font-semibold hover:opacity-90",
+                  action ? "bg-muted text-foreground w-28 shrink-0" : "bg-foreground text-paper flex-1",
+                )}
+              >
+                Got it
+              </button>
+              {action ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    action.onClick();
+                  }}
+                  className="bg-foreground text-paper h-11 flex-1 rounded-xl text-sm font-semibold hover:opacity-90"
+                  data-offer-action
+                >
+                  {action.label}
+                </button>
+              ) : null}
+            </span>
           </span>
         </span>,
         document.body,
@@ -332,6 +385,25 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
         ...CREDIT_FACTS,
       ];
   }
+}
+
+/** The (i)'s "Your status" line for a prepayment offer (MESITA-3502). */
+function offerStatus(
+  key: MoneyVoucherKey,
+  can: boolean,
+  lock: "vip" | "instagram" | null,
+  reason: VoucherReason | undefined,
+): InfoStatus {
+  if (lock === "vip") return { ok: false, text: "You're not in the VIP Class yet." };
+  if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
+  if (can) {
+    if (key === "voucher_vip") return { ok: true, text: "You're in the VIP Class. You can buy this." };
+    if (key === "voucher_welcome") return { ok: true, text: "Available: your first visit here." };
+    if (key === "voucher_story") return { ok: true, text: "Available. One per visit." };
+    return { ok: true, text: "Available. Buy as many as you like." };
+  }
+  if (reason === "used") return { ok: false, text: "You already had yours here." };
+  return { ok: false, text: `${tag(reason)}.` };
 }
 
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
@@ -434,9 +506,19 @@ export function VouchersPane({
   // Pay at a place without cashback promised 5% that never comes.
   const canPay = Boolean(actions?.onPay) && (cashback || !dim);
 
+  // THE GUEST'S OWN LOCKS (MESITA-3502): VIP is for the VIP Class, Story needs
+  // a linked Instagram. Unknown guest (no profile read), no lock.
+  const guest = actions?.guest;
+  const guestLock = (k: MoneyVoucherKey): "vip" | "instagram" | null => {
+    if (!guest) return null;
+    if (k === "voucher_vip" && !guest.vip) return "vip";
+    if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
+    return null;
+  };
   // Buyable: for sale, or in test mode any row the server has not used up or
   // paused (Pato, MESITA-3342: "must be buyable or whatever").
   const buyable = (k: MoneyVoucherKey) => {
+    if (guestLock(k)) return false;
     const reason = unavailable[k];
     return reason === undefined || (!dim && reason !== "used" && reason !== "paused");
   };
@@ -478,6 +560,7 @@ export function VouchersPane({
             const Mark = face.Mark;
             const opening = actions?.buyingVoucher === p.key;
             const on = chosen?.key === p.key;
+            const lock = guestLock(p.key);
             const inner = (
               <>
                 <span className={cn(CHIP, face.card)} aria-hidden>
@@ -489,10 +572,33 @@ export function VouchersPane({
                       {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
                       {p.short}
                     </span>
-                    <InfoButton title={p.short} text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""))} />
+                    <InfoButton
+                      title={p.short}
+                      text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""))}
+                      status={loading ? undefined : offerStatus(p.key, can, lock, reason)}
+                      action={
+                        loading
+                          ? undefined
+                          : can
+                            ? { label: "Choose this offer", onClick: () => setPicked(p.key) }
+                            : lock === "vip" && actions?.onJoinVip
+                              ? { label: "Request VIP", onClick: actions.onJoinVip }
+                              : lock === "instagram" && actions?.onLinkInstagram
+                                ? { label: "Link Instagram", onClick: actions.onLinkInstagram }
+                                : undefined
+                      }
+                    />
                   </span>
                   <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
-                    {opening ? "Opening…" : loading || can ? `Pay ${pay} · Get ${get} ${readyIn(p.key)}` : tag(reason)}
+                    {opening
+                      ? "Opening…"
+                      : loading || can
+                        ? `Pay ${pay} · Get ${get} ${readyIn(p.key)}`
+                        : lock === "vip"
+                          ? "VIP Class only"
+                          : lock === "instagram"
+                            ? "Link your Instagram first"
+                            : tag(reason)}
                   </span>
                 </span>
               </>
@@ -556,6 +662,14 @@ export function VouchersPane({
                 <span aria-hidden>Mesita Pay Cashback</span>
                 <InfoButton
                   title="Mesita Pay Cashback"
+                  status={
+                    loading
+                      ? undefined
+                      : canPay || cashback
+                        ? { ok: true, text: "On at this place. 5% back on every bill." }
+                        : { ok: false, text: cashbackTag }
+                  }
+                  action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
                   text={[
                     "Pay your bill in the Mesita app and get 5% of it back as credits at this place. Use them whenever you want.",
                     "Any amount, every visit.",
@@ -580,6 +694,7 @@ export function VouchersPane({
                 </span>
                 <InfoButton
                   title="External Pay Cashback"
+                  status={{ ok: true, text: "Always available. Nothing comes back." }}
                   text={[
                     "Pay the place directly: cash or their card terminal.",
                     "Nothing comes back.",
