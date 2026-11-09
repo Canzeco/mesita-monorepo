@@ -16,14 +16,18 @@ import { cn } from "@/lib/utils";
 // the next card always peeks. Add leads each rail. Tapping a method opens
 // its full-screen modal in a later issue; today a tile goes where it went.
 
-/** One tile's width: the next card peeks past the right edge. */
-export const RAIL_TILE = "w-[78%] max-w-[340px] shrink-0 snap-start";
-const TILE_SHAPE = "aspect-[1.586/1] rounded-2xl";
+/** One tile's width: TWO AND A HALF across the screen (Pato, MESITA-3534:
+ *  "2.5 cards width the screen ... make it less wide the cards"). The rail's
+ *  content box is the screen minus its 16px insets; from the left inset to
+ *  the right edge that is 100% + 16px, holding 2.5 tiles and two 12px gaps,
+ *  so a tile is (100% + 16px - 24px) / 2.5. */
+export const RAIL_TILE = "w-[calc((100%-8px)/2.5)] shrink-0 snap-start";
+const TILE_SHAPE = "aspect-[1.586/1] rounded-xl";
 
 export function WalletRail({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mt-6" aria-label={title}>
-      <h2 className="font-display mb-3 text-lg font-semibold tracking-tight">{title}</h2>
+    <section className="mt-5" aria-label={title}>
+      <h2 className="font-display mb-2 text-base font-semibold tracking-tight">{title}</h2>
       {/* Full bleed: the rail runs to the screen edges, its first card on the page's inset. */}
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
         {children}
@@ -46,11 +50,11 @@ export function AddTile({
 }) {
   const face = (
     <>
-      <span className="bg-muted flex h-11 w-11 items-center justify-center rounded-full" aria-hidden>
-        <Plus className="h-5 w-5" strokeWidth={2.25} />
+      <span className="bg-muted flex h-7 w-7 items-center justify-center rounded-full" aria-hidden>
+        <Plus className="h-4 w-4" strokeWidth={2.25} />
       </span>
-      <span className="mt-3 text-base font-semibold">{label}</span>
-      <span className="text-muted-foreground mt-0.5 px-6 text-center text-sm">{line}</span>
+      <span className="mt-1.5 text-sm font-semibold">{label}</span>
+      <span className="sr-only">{line}</span>
     </>
   );
   const cls = cn(
@@ -78,15 +82,13 @@ export function CheckoutMethodTile({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       aria-label="Card, Apple Pay or Google Pay, chosen at checkout"
-      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-white p-5 text-left ring-1 ring-black/10")}
+      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-white p-3 text-left ring-1 ring-black/10")}
       data-wallet-method="checkout"
     >
-      <span className="bg-muted flex h-10 w-10 items-center justify-center rounded-full" aria-hidden>
-        <CreditCard className="h-5 w-5" />
-      </span>
+      <CreditCard className="h-5 w-5" aria-hidden />
       <span>
-        <span className="block text-base font-semibold">Card · Apple Pay · Google Pay</span>
-        <span className="text-muted-foreground mt-0.5 block text-sm">Chosen at checkout, every time you pay</span>
+        <span className="block text-xs leading-tight font-semibold">Card · Apple Pay · Google Pay</span>
+        <span className="text-muted-foreground block type-label">At checkout</span>
       </span>
     </button>
   );
@@ -101,16 +103,16 @@ export function StoryTile({ story, onOpen }: { story: WaitingStory; onOpen: () =
       type="button"
       onClick={onOpen}
       aria-label={`Story voucher at ${name}: ${money(story.credit_cents, story.currency)} waiting for activation. Show the QR`}
-      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-pink-200 p-5 text-left text-neutral-950")}
+      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-pink-200 p-3 text-left text-neutral-950")}
       data-wallet-story
     >
-      <span className="flex items-center gap-2 text-base font-semibold">
-        <Instagram className="h-5 w-5 shrink-0" aria-hidden />
+      <span className="flex items-center gap-1.5 text-xs font-semibold">
+        <Instagram className="h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 truncate">{name}</span>
       </span>
       <span>
-        <span className="block text-2xl font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
-        <span className="block text-sm text-neutral-700">Waiting for your story · show the QR</span>
+        <span className="block text-base leading-tight font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
+        <span className="block truncate type-label text-neutral-700">Show the QR</span>
       </span>
     </button>
   );

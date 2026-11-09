@@ -231,14 +231,17 @@ export function WalletPage() {
   const credits = groups ? [...groups.credit, ...groups.every] : [];
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      {/* THE HEADER (MESITA-3530): Wallet, and Transactions on the right. */}
-      <header className="flex items-center justify-between gap-3">
+    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+      {/* THE HEADER (MESITA-3530): Wallet, and Transactions on the right. Its
+          own colour since MESITA-3534 (Pato: "add a header of different
+          color"): a white bar, full width, a hairline under it, held at the
+          top while the page scrolls. */}
+      <header className="border-border bg-card sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 border-b px-4 pt-5 pb-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
         <Link
           href={CONSUMER_ROUTES.mePages.transactions}
           aria-label="Transactions"
-          className="border-border bg-card hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl border transition"
+          className="border-border bg-paper hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl border transition"
           data-wallet-transactions
         >
           <ReceiptText className="h-5 w-5" aria-hidden />
@@ -267,6 +270,7 @@ export function WalletPage() {
           <div key={row.card.key} className={RAIL_TILE}>
             <WalletCard
               card={row.card}
+              compact
               eager={shown++ < EAGER_CARDS}
               onToggle={() =>
                 setMethod({ kind: "place", card: row.card, balance: row.balance, placeId: row.placeId, placeSlug: row.placeSlug })}
