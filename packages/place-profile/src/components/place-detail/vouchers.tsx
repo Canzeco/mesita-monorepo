@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgePercent, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -115,15 +115,15 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome", brief: "First visit only" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% bonus", short: "Story", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome Bonus", brief: "First visit only" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
 /** "MX$1,200" from cents. Formatting only, never arithmetic. */
@@ -315,7 +315,9 @@ export function VouchersPane({
   const buying = actions?.buyingVoucher != null;
 
   const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
-  const products = [...SPECIAL, ...STANDARD];
+  // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
+  // Welcome Bonus, Story Bonus, VIP Bonus").
+  const products = [...STANDARD, ...SPECIAL];
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   const ROW = "flex items-center gap-3 px-4 py-3";
 
@@ -330,7 +332,10 @@ export function VouchersPane({
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
         <fieldset className="m-0 min-w-0 border-0 p-0">
           <legend className="sr-only">Choose a voucher</legend>
-          <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-voucher-catalog>
+          {/* SQUARE TILES (MESITA-3484, Pato: "make the 6 offers instead some
+              square dimensions, not rectangles"): three across, two rows,
+              each the voucher's light face; picking one rings it in ink. */}
+          <ul className="grid grid-cols-3 gap-2" data-voucher-catalog>
             {products.map((p) => {
               const line = catalog[p.key];
               const pay = priceValue(p, line, currency);
@@ -341,33 +346,49 @@ export function VouchersPane({
               const on = chosen?.key === p.key;
               const face = FACES[p.key];
               const Mark = face.Mark;
-              const small = [p.short, p.when, loading || can ? null : tag(reason)].filter(Boolean).join(" · ");
+              const tile = cn(
+                "flex aspect-square w-full flex-col justify-between rounded-2xl p-2.5 text-left",
+                face.card,
+                on && "ring-foreground ring-2 ring-offset-2",
+              );
               const inner = (
                 <>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                      on ? "border-foreground" : "border-foreground/25",
-                      !can && "invisible",
-                    )}
-                  >
-                    {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-foreground text-sm leading-snug font-semibold tabular-nums">{deal}</span>
-                    <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                  <span className="flex w-full items-center justify-between gap-1">
+                    <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
                       {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
-                      {small}
+                      {p.short}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                        on ? "border-neutral-950" : "border-neutral-950/30",
+                        !can && "invisible",
+                      )}
+                    >
+                      {on ? <span className="h-2 w-2 rounded-full bg-neutral-950" /> : null}
                     </span>
                   </span>
-                  <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", face.card)}>{p.bonus.replace(" bonus", " Bonus")}</span>
+                  <span className="flex flex-col" aria-hidden>
+                    <span className="text-3xl leading-none font-extrabold tabular-nums">+{p.bonus.replace(/ bonus$/, "")}</span>
+                    <span className="text-[11px] font-semibold">bonus</span>
+                  </span>
+                  <span className="flex flex-col text-[11px] leading-tight font-semibold tabular-nums" aria-hidden>
+                    {loading || can ? (
+                      <>
+                        <span className="truncate">Pay {pay}</span>
+                        <span className="truncate">Get {get}</span>
+                      </>
+                    ) : (
+                      <span>{tag(reason)}</span>
+                    )}
+                  </span>
                 </>
               );
               return (
                 <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
                   {can ? (
-                    <label className={cn(ROW, "cursor-pointer", on && "bg-muted/60")}>
+                    <label className={cn(tile, "cursor-pointer")}>
                       <input
                         type="radio"
                         name="voucher"
@@ -380,7 +401,7 @@ export function VouchersPane({
                       {inner}
                     </label>
                   ) : (
-                    <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
+                    <div className={tile} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
                       {inner}
                     </div>
                   )}
@@ -389,31 +410,43 @@ export function VouchersPane({
             })}
           </ul>
         </fieldset>
-        <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
-          Credits are ready in an hour, Story's at once. Welcome: first visit · Story: post a story, 1/day · VIP: VIP guests, 1/day.
-        </p>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-cashback>
+        {/* TWO BOXES, HORIZONTAL RECTANGLES (MESITA-3484, Pato: "Mesita Pay,
+            External ... the others horizontal rectangles"), half and half. */}
+        <ul className="grid grid-cols-2 gap-2" data-cashback>
           <li
-            className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Pay with Mesita: 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            className={cn("flex flex-col gap-1 rounded-2xl p-3", CASHBACK_FACE.card, !loading && !cashback && dim && "opacity-50")}
+            aria-label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-              <span className="text-foreground text-sm leading-snug font-semibold">Pay with Mesita</span>
-              <span className="text-muted-foreground text-[11px]">
-                {canPay || loading ? "Get 5% back in credits, any visit" : cashbackTag}
-              </span>
+            <span className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase", CASHBACK_FACE.muted)} aria-hidden>
+              <BadgePercent className="h-3 w-3" strokeWidth={2.5} />
+              Mesita Pay
             </span>
-            <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", CASHBACK_FACE.card)} aria-hidden>5% Back</span>
+            <span className="flex items-baseline gap-1" aria-hidden>
+              <span className="text-2xl leading-none font-extrabold">+5%</span>
+              <span className="text-[11px] font-semibold">back</span>
+            </span>
+            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
+              {canPay || loading ? "In credits, any visit" : cashbackTag}
+            </span>
           </li>
-          <li className={ROW} aria-label="Pay the place directly, by cash or their terminal: nothing back.">
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-              <span className="text-foreground text-sm leading-snug font-semibold">Pay the place directly</span>
-              <span className="text-muted-foreground text-[11px]">Cash or their terminal, nothing back</span>
+          <li
+            className="bg-muted text-muted-foreground ring-border flex flex-col gap-1 rounded-2xl p-3 ring-1"
+            aria-label="External: pay the place directly, by cash or their terminal. Nothing back."
+          >
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase" aria-hidden>
+              <Banknote className="h-3 w-3" strokeWidth={2.5} />
+              External
             </span>
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-md px-2 py-1 text-xs font-bold" aria-hidden>0% Back</span>
+            <span className="flex items-baseline gap-1" aria-hidden>
+              <span className="text-2xl leading-none font-extrabold">0%</span>
+              <span className="text-[11px] font-semibold">back</span>
+            </span>
+            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
+              Cash or their terminal
+            </span>
           </li>
         </ul>
       </section>
