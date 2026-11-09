@@ -30,6 +30,9 @@ export type VoucherOffer = {
   currency: string;
   charges_enabled: boolean;
   cashback: boolean;
+  /** A bill paid to the waiter through the waiter's code earns 2% here
+   *  (the Cashback switch and a place code; no Stripe; MESITA-3545). */
+  outside_cashback: boolean;
   /** The green Mesita Pay mark, moneyState's, before the pause and
    *  Welcome-used filters so the place screen and the list rows agree. */
   mesita_pay: boolean;
@@ -76,12 +79,14 @@ export type OfferInput = {
   /** Story and VIP, one each new visit (MESITA-3463): true when this guest
    *  already bought one here for every visit they made. Absent reads false. */
   perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
+  /** The place has a place code, so the waiter's charge can open (MESITA-3545). */
+  hasPlaceCode?: boolean;
 };
 
 /** The pure half of the offer. */
 export function offerFrom(i: OfferInput): VoucherOffer {
   const usable = !!i.account && i.account.livemode === i.livemode && i.account.charges_enabled;
-  const state = moneyState(i.settings, { charges_enabled: usable }, i.balance ? { spendable_cents: i.balance.spendable_cents } : null);
+  const state = moneyState({ ...i.settings, has_place_code: i.hasPlaceCode === true }, { charges_enabled: usable }, i.balance ? { spendable_cents: i.balance.spendable_cents } : null);
   const unavailable = { ...state.unavailable };
   const sell: MoneyVoucherKey[] = [];
   for (const k of state.sell) {
@@ -98,6 +103,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     currency: i.currency,
     charges_enabled: usable,
     cashback: state.cashback,
+    outside_cashback: state.outside_cashback,
     mesita_pay: state.mesita_pay,
     vouchers,
     sell,
@@ -176,15 +182,28 @@ export async function voucherOffer(
   livemode: boolean,
 ): Promise<VoucherOffer> {
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const [settings, account, config, balance, welcomeUsed, perVisitUsed] = await Promise.all([
+  const [settings, account, config, balance, welcomeUsed, perVisitUsed, code] = await Promise.all([
     readSettings(admin, place.id),
     readAccount(admin, place.id),
     readMoneyConfig(admin),
     readPlaceBalance(admin, consumerId, place.id, currency, livemode),
     readWelcomeUsed(admin, consumerId, place.id),
     readPerVisitUsed(admin, consumerId, place.id),
+    admin.from("place_codes").select("place_id").eq("place_id", place.id).maybeSingle(),
   ]);
-  return offerFrom({ settings, account, livemode, currency, paused: config.buying_paused, balance, welcomeUsed, perVisitUsed });
+  // A failed read reads no code: Offers never advertises 2% it cannot honour.
+  if (code.error) console.error("[vouchers] place_code_read", JSON.stringify({ place_id: place.id, error: code.error.message }));
+  return offerFrom({
+    settings,
+    account,
+    livemode,
+    currency,
+    paused: config.buying_paused,
+    balance,
+    welcomeUsed,
+    perVisitUsed,
+    hasPlaceCode: !code.error && !!code.data,
+  });
 }
 
 // ── Buying ─────────────────────────────────────────────────────────────────

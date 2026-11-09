@@ -5,8 +5,17 @@
 //
 //   visit-web-open-charge        readOpenChargeBody → openCharge
 //   visit-web-get-charge         getCharge
+//   visit-web-confirm-charge     confirmCharge (the waiter's Received on a
+//                                bill paid outside, MESITA-3545)
 //   consumer-web-start-payment   readChargeCode → findGuestCharge → claim,
 //                                pay, bindCharge (the code path)
+//
+// MESITA-3545 (Payments Flow v2): staff type the tip they asked out loud with
+// the bill; the guest's form starts from it and may change it. Once a payment
+// binds the charge, the payment's tip is the tip. A guest may pay the bill
+// outside Mesita (cash or the place's terminal): the payment opens with an
+// outside part and the staff screen shows one Received button; Received is
+// the confirmer that makes the 2% cashback (wallet_confirm_outside).
 //
 // The secrets: the 4-digit code and the 128-bit token are both stored only
 // as SHA-256 hashes (place_charges.code_hash, token_hash) and never logged.
@@ -27,6 +36,7 @@ import type { MoneyCode } from "./money-codes.ts";
 import { isUuid } from "./place-id.ts";
 import { hashPlaceCode, readPlaceCode } from "./place-code.ts";
 import { isProofToken, mintProofToken } from "./proof.ts";
+import { moneyText } from "./pay.ts";
 
 export const CHARGE_TTL_SEC = 10 * 60;
 export const TRY_WINDOW_SEC = 10 * 60;
@@ -62,7 +72,17 @@ export function readTicket(v: unknown): { ok: true; ticket: string | null } | Re
   return { ok: true, ticket: t === "" ? null : t };
 }
 
-export type OpenChargeInput = { placeId: string; placeCode: string; amountCents: number; ticket: string | null };
+export type OpenChargeInput = { placeId: string; placeCode: string; amountCents: number; tipCents: number; ticket: string | null };
+
+/** A tip: absent is 0; a whole number of centavos, 0 to MAX_PAYMENT_INPUT_CENTS,
+ *  else tip_invalid. */
+export function readTip(v: unknown): { ok: true; tipCents: number } | Refusal {
+  if (v === undefined || v === null) return { ok: true, tipCents: 0 };
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > MAX_PAYMENT_INPUT_CENTS) {
+    return refuse(400, "Type a tip like 30 or 30.50", "tip_invalid", { cap_cents: MAX_PAYMENT_INPUT_CENTS });
+  }
+  return { ok: true, tipCents: v };
+}
 
 export function readOpenChargeBody(b: Record<string, unknown>): { ok: true; input: OpenChargeInput } | Refusal {
   if (!isUuid(b.place_id)) return refuse(400, "place_id must be a Mesita place id");
@@ -75,9 +95,11 @@ export function readOpenChargeBody(b: Record<string, unknown>): { ok: true; inpu
   if (a > MAX_PAYMENT_INPUT_CENTS) {
     return refuse(400, "That is more than one payment can be", "above_cap", { cap_cents: MAX_PAYMENT_INPUT_CENTS });
   }
+  const tip = readTip(b.tip_cents);
+  if (!tip.ok) return tip;
   const t = readTicket(b.ticket);
   if (!t.ok) return t;
-  return { ok: true, input: { placeId: b.place_id, placeCode, amountCents: a, ticket: t.ticket } };
+  return { ok: true, input: { placeId: b.place_id, placeCode, amountCents: a, tipCents: tip.tipCents, ticket: t.ticket } };
 }
 
 /** The guest's 4-digit code, or null. Spaces a person typed do not count. */
@@ -159,6 +181,7 @@ export type ChargeRow = {
   id: string;
   place_id: string;
   amount_cents: number;
+  tip_cents: number;
   currency: string;
   ticket: string | null;
   expires_at: string;
@@ -168,7 +191,20 @@ export type ChargeRow = {
   livemode?: boolean;
 };
 
-export type ChargePayment = { id: string; consumer_id: string | null; status: string; paid_at: string | null; livemode: boolean };
+export type ChargePayment = {
+  id: string;
+  place_id: string;
+  consumer_id: string | null;
+  status: string;
+  paid_at: string | null;
+  livemode: boolean;
+  /** What moves through the ledger: credit + card (+ outside). */
+  amount_cents: number;
+  credit_cents: number;
+  tip_cents: number;
+  outside_cents: number;
+  expires_at: string | null;
+};
 
 export interface ChargeStore {
   /** Tries of this kind at the place in the window, newest first; with a
@@ -185,6 +221,7 @@ export interface ChargeStore {
     code_hash: string;
     token_hash: string;
     amount_cents: number;
+    tip_cents: number;
     currency: string;
     ticket: string | null;
     expires_at: string;
@@ -198,7 +235,17 @@ export interface ChargeStore {
   claim(chargeId: string, consumerId: string): Promise<boolean>;
   /** Gives the charge back when the guest's start moved no money. */
   unclaim(chargeId: string, consumerId: string): Promise<void>;
-  bind(chargeId: string, paymentId: string, paidAt: string | null): Promise<void>;
+  /** Binds the payment to the charge, and copies the waiter's bill onto the
+   *  payment (wallet_payments.charge_amount_cents) so it outlives the sweep.
+   *  Compare-and-set: only when the charge holds no payment or this one;
+   *  false when another payment holds it. */
+  bind(chargeId: string, paymentId: string, paidAt: string | null, chargeAmountCents: number): Promise<boolean>;
+  /** The guest cancelled an outside bill: the charge is free again for its
+   *  remaining minutes (no payment, no claim). Only the charge this guest
+   *  holds under this payment, and only while it is unpaid. */
+  unbind(paymentId: string, consumerId: string): Promise<void>;
+  /** The waiter's Received: wallet_confirm_outside's answer. */
+  confirmOutside(paymentId: string): Promise<Record<string, unknown>>;
 }
 
 // ── Staff: open a charge ────────────────────────────────────────────────────
@@ -207,6 +254,7 @@ export type OpenedCharge = {
   code: string;
   charge_token: string;
   amount_cents: number;
+  tip_cents: number;
   currency: string;
   ticket: string | null;
   expires_at: string;
@@ -245,6 +293,7 @@ export async function openCharge(
       code_hash: await hashChargeCode(input.placeId, code),
       token_hash: await hashChargeToken(token),
       amount_cents: input.amountCents,
+      tip_cents: input.tipCents,
       currency: args.currency,
       ticket: input.ticket,
       expires_at: expiresAt,
@@ -256,6 +305,7 @@ export async function openCharge(
           code,
           charge_token: token,
           amount_cents: input.amountCents,
+          tip_cents: input.tipCents,
           currency: args.currency,
           ticket: input.ticket,
           expires_at: expiresAt,
@@ -271,7 +321,18 @@ export async function openCharge(
 
 export type ChargeView = {
   state: "open" | "paid";
+  /** The waiter's bill. */
   amount_cents: number;
+  /** The charge's tip until a payment binds it; the payment's tip after. */
+  tip_cents: number;
+  /** What moved on Mesita (credit + card) once paid; null before. A card
+   *  part the guest lowered reads less than the bill: the rest was paid at
+   *  the table. */
+  paid_cents: number | null;
+  /** While the bound payment is an outside bill waiting for Received. */
+  outside: { cents: number; tip_cents: number; expires_at: string | null } | null;
+  /** The bound bill was paid outside and confirmed (Received). */
+  paid_outside: boolean;
   currency: string;
   ticket: string | null;
   expires_at: string;
@@ -284,14 +345,23 @@ const RELEASED = new Set(["failed", "expired"]);
 
 /** A charge by its token: open, paid, or null (the door answers 404 gone).
  *  Ten minutes after creation it is gone unless its payment started; then
- *  it follows that payment. Reads only: never a try. */
+ *  it follows that payment (an outside bill: its own 30 minutes). Reads
+ *  only: never a try. */
 export async function getCharge(store: ChargeStore, token: string, nowMs: number): Promise<ChargeView | null> {
   const row = await store.chargeByToken(await hashChargeToken(token));
   if (!row) return null;
   const serverTime = new Date(nowMs).toISOString();
+  const p = row.payment_id ? await store.payment(row.payment_id) : null;
+  const live = p && !RELEASED.has(p.status) ? p : null;
   const view = (state: "open" | "paid", paidAt: string | null): ChargeView => ({
     state,
     amount_cents: row.amount_cents,
+    tip_cents: live ? live.tip_cents : row.tip_cents,
+    paid_cents: state === "paid" && live ? live.amount_cents - live.outside_cents : null,
+    outside: state === "open" && live && live.outside_cents > 0
+      ? { cents: live.outside_cents, tip_cents: live.tip_cents, expires_at: live.expires_at }
+      : null,
+    paid_outside: state === "paid" && !!live && live.outside_cents > 0,
     currency: row.currency,
     ticket: row.ticket,
     expires_at: row.expires_at,
@@ -299,13 +369,54 @@ export async function getCharge(store: ChargeStore, token: string, nowMs: number
     server_time: serverTime,
   });
   if (row.paid_at) return view("paid", row.paid_at);
-  const expired = Date.parse(row.expires_at) <= nowMs;
-  if (row.payment_id) {
-    const p = await store.payment(row.payment_id);
-    if (p && p.paid_at && PAID.has(p.status)) return view("paid", p.paid_at);
-    if (p && !RELEASED.has(p.status)) return view("open", null);
+  if (live) {
+    if (live.paid_at && PAID.has(live.status)) return view("paid", live.paid_at);
+    return view("open", null);
   }
-  return expired ? null : view("open", null);
+  return Date.parse(row.expires_at) <= nowMs ? null : view("open", null);
+}
+
+/** The waiter's Received on the charge's outside bill. Answers what the
+ *  staff screen needs; refusals in words staff read: 404 gone (no such
+ *  charge), 409 not_outside (nothing paying outside yet, or a card or credit
+ *  bill), forbidden (the bill belongs to another place), closed (the guest
+ *  cancelled), expired (its 30 minutes passed). */
+export async function confirmCharge(
+  store: ChargeStore,
+  token: string,
+): Promise<
+  | { ok: true; outcome: "paid" | "already_paid"; payment_id: string; place_id: string; outside_cents: number; cashback_cents: number; paid_at: string }
+  | Refusal
+> {
+  const row = await store.chargeByToken(await hashChargeToken(token));
+  if (!row) return refuse(404, "This charge is over. Open a new charge.", "gone");
+  const p = row.payment_id ? await store.payment(row.payment_id) : null;
+  if (!p || p.outside_cents === 0) return refuse(409, "Not paying outside yet", "not_outside");
+  if (p.place_id !== row.place_id) return refuse(409, "This bill belongs to another place", "forbidden");
+  const r = await store.confirmOutside(p.id);
+  if (r.ok === true) {
+    return {
+      ok: true,
+      outcome: r.outcome === "already_paid" ? "already_paid" : "paid",
+      payment_id: p.id,
+      place_id: row.place_id,
+      outside_cents: Number(r.outside_cents ?? p.outside_cents),
+      cashback_cents: Number(r.cashback_cents ?? 0),
+      paid_at: String(r.paid_at),
+    };
+  }
+  // Either way nothing was paid from credit: the whole bill is the waiter's
+  // to collect.
+  const bill = moneyText(Number(r.bill_cents ?? row.amount_cents), row.currency);
+  if (r.code === "closed") {
+    return refuse(409, `Cancelled by the guest. Collect ${bill}: nothing was paid from credit.`, "closed", { bill_cents: Number(r.bill_cents ?? row.amount_cents) });
+  }
+  if (r.code === "expired") {
+    return refuse(409, `Expired. Collect ${bill}: nothing was paid from credit.`, "expired", { bill_cents: Number(r.bill_cents ?? row.amount_cents) });
+  }
+  if (r.code === "not_outside") return refuse(409, "Not paying outside yet", "not_outside");
+  if (r.code === "not_found") return refuse(404, "This charge is over. Open a new charge.", "gone");
+  throw new Error(`confirm_outside: ${String(r.code ?? "unknown")}`);
 }
 
 // ── The guest: pay by code ──────────────────────────────────────────────────
@@ -346,14 +457,23 @@ export async function findGuestCharge(
   return { ok: true, charge: row };
 }
 
+/** This guest's outside bill on this charge that still waits for Received,
+ *  or null: a second "paying the waiter" tap answers it (in_progress), never
+ *  a second hold under a new request_id (MESITA-3545). */
+export async function openOutsideOf(store: ChargeStore, row: ChargeRow, consumerId: string): Promise<ChargePayment | null> {
+  if (!row.payment_id) return null;
+  const p = await store.payment(row.payment_id);
+  return p && p.consumer_id === consumerId && p.outside_cents > 0 && (p.status === "open" || p.status === "opening") ? p : null;
+}
+
 /** What the guest's form shows once the code is right: the amount, locked. */
 export function chargeLook(row: ChargeRow) {
-  return { amount_cents: row.amount_cents, currency: row.currency, ticket: row.ticket, expires_at: row.expires_at };
+  return { amount_cents: row.amount_cents, tip_cents: row.tip_cents, currency: row.currency, ticket: row.ticket, expires_at: row.expires_at };
 }
 
 // ── The store on Postgres ───────────────────────────────────────────────────
 
-const CHARGE_COLUMNS = "id, place_id, amount_cents, currency, ticket, expires_at, payment_id, consumer_id, paid_at";
+const CHARGE_COLUMNS = "id, place_id, amount_cents, tip_cents, currency, ticket, expires_at, payment_id, consumer_id, paid_at";
 
 export function supabaseChargeStore(admin: SupabaseClient): ChargeStore {
   return {
@@ -418,7 +538,7 @@ export function supabaseChargeStore(admin: SupabaseClient): ChargeStore {
     async payment(paymentId) {
       const { data, error } = await admin
         .from("wallet_payments")
-        .select("id, consumer_id, status, paid_at, livemode")
+        .select("id, place_id, consumer_id, status, paid_at, livemode, amount_cents, credit_cents, tip_cents, outside_cents, expires_at")
         .eq("id", paymentId)
         .maybeSingle();
       if (error) throw new Error(`charge_payment_read: ${error.message}`);
@@ -444,12 +564,32 @@ export function supabaseChargeStore(admin: SupabaseClient): ChargeStore {
         .is("payment_id", null);
       if (error) throw new Error(`charge_unclaim: ${error.message}`);
     },
-    async bind(chargeId, paymentId, paidAt) {
-      const { error } = await admin
+    async bind(chargeId, paymentId, paidAt, chargeAmountCents) {
+      const { data, error } = await admin
         .from("place_charges")
         .update({ payment_id: paymentId, ...(paidAt ? { paid_at: paidAt } : {}) })
-        .eq("id", chargeId);
+        .eq("id", chargeId)
+        .or(`payment_id.is.null,payment_id.eq.${paymentId}`)
+        .select("id");
       if (error) throw new Error(`charge_bind: ${error.message}`);
+      if (((data ?? []) as unknown[]).length !== 1) return false;
+      const w = await admin.from("wallet_payments").update({ charge_amount_cents: chargeAmountCents }).eq("id", paymentId);
+      if (w.error) throw new Error(`charge_bind_bill: ${w.error.message}`);
+      return true;
+    },
+    async unbind(paymentId, consumerId) {
+      const { error } = await admin
+        .from("place_charges")
+        .update({ payment_id: null, consumer_id: null })
+        .eq("payment_id", paymentId)
+        .eq("consumer_id", consumerId)
+        .is("paid_at", null);
+      if (error) throw new Error(`charge_unbind: ${error.message}`);
+    },
+    async confirmOutside(paymentId) {
+      const { data, error } = await admin.rpc("wallet_confirm_outside", { p_payment_id: paymentId });
+      if (error) throw new Error(`confirm_outside: ${error.message}`);
+      return (data ?? {}) as Record<string, unknown>;
     },
   };
 }

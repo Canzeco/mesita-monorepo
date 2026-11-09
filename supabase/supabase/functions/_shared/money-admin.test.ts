@@ -8,7 +8,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
-import { maskGuest, type PaymentRow, planCloseOut, type PurchaseRow, refundPayment, refundPurchase, splitPaymentRefund } from "./money-admin.ts";
+import { maskGuest, paymentNeedsStripe, type PaymentRow, planCloseOut, type PurchaseRow, refundPayment, refundPurchase, splitPaymentRefund } from "./money-admin.ts";
 
 Deno.test("maskGuest: the name when set, else two characters of the email's local part, never the email", () => {
   assertEquals(maskGuest("Ana Ruiz", "ana@example.com"), "Ana Ruiz");
@@ -121,4 +121,30 @@ Deno.test("planCloseOut: two purchases and a half-spent balance refund newest fi
   assertEquals(planCloseOut(purchases, 0), []);
   // All unspent: every purchase back in full.
   assertEquals(planCloseOut(purchases, 142000), [{ id: "new", amount: 100000 }, { id: "old", amount: 20000 }]);
+});
+
+// MESITA-3545: a bill paid to the waiter refunds whole through
+// wallet_refund_outside: no Stripe (its tip was paid at the table), and
+// never the card-part path, even with a tip and no card part.
+Deno.test("refundPayment: an outside bill goes to wallet_refund_outside, never Stripe; its tip never needs Stripe", async () => {
+  const calls: Call[] = [];
+  let stripeCalls = 0;
+  const stripe: StripeCall = () => {
+    stripeCalls++;
+    return Promise.resolve({});
+  };
+  const row: PaymentRow = {
+    id: "py-2", consumer_id: "c-1", place_id: "pl-1", credit_cents: 15000, card_cents: 0, tip_cents: 4500, refunded_cents: 0,
+    credit_refunded_cents: 0, application_fee_cents: 0, fee_collected: "invoice", stripe_account_id: null, stripe_payment_intent_id: null,
+    status: "paid", paid_at: "2026-11-01T00:00:00Z", livemode: false, outside_cents: 30000,
+  };
+  assertEquals(paymentNeedsStripe(row), false);
+  assertEquals(paymentNeedsStripe({ ...row, outside_cents: 0 }), true);
+  const r = await refundPayment({ admin: fakeAdmin(calls), stripe, actor: "op" }, row, 100);
+  assertEquals(r.ok, true);
+  assertEquals(stripeCalls, 0);
+  assertEquals(calls.map((c) => c.fn), ["wallet_refund_outside"]);
+  assertEquals(calls[0].args, { p_payment_id: "py-2" });
+  const done = await refundPayment({ admin: fakeAdmin([]), stripe, actor: "op" }, { ...row, status: "refunded" });
+  assertEquals(done.ok, false);
 });

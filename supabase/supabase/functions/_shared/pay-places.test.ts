@@ -11,7 +11,7 @@ const minCents = (c: string) => MIN_CHARGE_CENTS[c] ?? 0;
 function row(id: string, over: Partial<PayPlaceInput> = {}): PayPlaceInput {
   return {
     place_id: id, name: id, lat: AT.lat, lng: AT.lng, tier: null, mesita_pay: true, currency: "mxn",
-    card_ok: true, available_cents: 0, pending_cents: 0, cashback_bps: 0, paid_recent: null, photo: null, address: null, ...over,
+    card_ok: true, available_cents: 0, pending_cents: 0, cashback_bps: 0, outside_ok: false, outside_bps: 0, paid_recent: null, photo: null, address: null, ...over,
   };
 }
 // ~1 km and ~5 km north of AT.
@@ -62,4 +62,17 @@ Deno.test("location: both or neither, a bad one names its field", () => {
   assertEquals(readLocation({ lat: "25", lng: -100 }), { ok: false, field: "lat" });
   assertEquals(readLocation({ lat: 25 }), { ok: false, field: "lng" });
   assertEquals(readLocation({ lat: 25, lng: 200 }), { ok: false, field: "lng" });
+});
+
+// MESITA-3545: a place with a place code and no card is listed (the guest
+// types the waiter's code there), counts toward the radius rule, and carries
+// its outside rate; with neither, it is not listed.
+Deno.test("payPlaces: an outside-only place is listed with its outside rate and obeys the radius", () => {
+  const out = row("o", { card_ok: false, outside_ok: true, outside_bps: 200, ...north(0.5) });
+  const none = row("n", { card_ok: false, outside_ok: false, ...north(0.5) });
+  const far = row("f", { card_ok: false, outside_ok: true, outside_bps: 200, ...north(9) });
+  const small = payPlaces([out, none, far], { at: AT, cardPlaceCount: 2, testMode: true, minCents: () => 1000 });
+  assertEquals(small.map((p) => [p.place_id, p.outside_ok, p.outside_bps]), [["o", true, 200], ["f", true, 200]]);
+  const big = payPlaces([out, none, far], { at: AT, cardPlaceCount: 25, testMode: true, minCents: () => 1000 });
+  assertEquals(big.map((p) => p.place_id), ["o"]);
 });

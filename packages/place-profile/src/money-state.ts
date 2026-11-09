@@ -39,8 +39,10 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
 /** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396, the key is
  *  never renamed: renaming resets live config); absent reads ON, so a reader
- *  from before it keeps working. */
-export type MoneySettings = { cashback: boolean; pay_cards?: boolean } & Record<MoneyVoucherKey, boolean>;
+ *  from before it keeps working. `has_place_code` is not a switch but a fact
+ *  the caller passes when it read place_codes (MESITA-3545): the waiter's
+ *  charge, and so the outside rate, needs one. Absent reads false. */
+export type MoneySettings = { cashback: boolean; pay_cards?: boolean; has_place_code?: boolean } & Record<MoneyVoucherKey, boolean>;
 
 /** The place's connected account as the ledger last saw it; null = none.
  *  `fee_hold` (MESITA-3461): Mesita's fee invoice is unpaid, so cards are
@@ -86,8 +88,12 @@ export type MoneyState = {
   sell: MoneyVoucherKey[];
   /** Every voucher not in `sell`, with its reason. */
   unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>>;
-  /** Cashback lands on the card part of a payment here. */
+  /** Cashback lands on the card part of a payment here (Mesita Pay, 5%). */
   cashback: boolean;
+  /** Cashback lands on a bill paid outside and confirmed by the waiter's
+   *  Received (2%, MESITA-3545): the Cashback switch and a place code, no
+   *  Stripe needed. */
+  outside_cashback: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
   /** The green Mesita Pay mark (see the header). */
@@ -111,5 +117,6 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
   // Cashback lands on the card part, so it needs Cards on, not just the account.
   const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
-  return { sell, unavailable, cashback: settings.cashback === true && cards, pay, mesita_pay };
+  const outside_cashback = settings.cashback === true && settings.has_place_code === true;
+  return { sell, unavailable, cashback: settings.cashback === true && cards, outside_cashback, pay, mesita_pay };
 }

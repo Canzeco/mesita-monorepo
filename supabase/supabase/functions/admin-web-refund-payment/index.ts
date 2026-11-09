@@ -4,7 +4,8 @@
 // full or partial. A purchase goes back to the card on the place's connected
 // account. A payment refunds its card part (card + tip) through Stripe first,
 // then its credit part as credit at once; a credit-only payment never calls
-// Stripe. Each Stripe refund is keyed by a wallet_refund_attempts row
+// Stripe; an outside bill (MESITA-3545) refunds whole through
+// wallet_refund_outside, no Stripe. Each Stripe refund is keyed by a wallet_refund_attempts row
 // (Idempotency-Key) with Stripe-Account, and refund_application_fee on a
 // charge from before MESITA-3461 that carried one. The
 // operator sees Stripe's decline code; the guest never does. Super-admin only.
@@ -22,6 +23,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
+  paymentNeedsStripe,
   type PaymentRow,
   PURCHASE_COLUMNS,
   type PurchaseRow,
@@ -52,7 +54,8 @@ serveJson("admin-web-refund-payment", async (req) => {
   const table = kind === "purchase" ? "wallet_purchases" : "wallet_payments";
   const { data, error } = await admin
     .from(table)
-    .select(kind === "purchase" ? PURCHASE_COLUMNS : PAYMENT_COLUMNS)
+    // Widened to string: the literal union is too complex for the client's types.
+    .select((kind === "purchase" ? PURCHASE_COLUMNS : PAYMENT_COLUMNS) as string)
     .eq("id", id)
     .maybeSingle();
   if (error) return json({ ok: false, error: `${table}: ${error.message}` }, 500);
@@ -62,7 +65,8 @@ serveJson("admin-web-refund-payment", async (req) => {
     return json({ ok: false, code: "not_configured", error: "This row belongs to the other Stripe mode" }, 409);
   }
 
-  const needsStripe = kind === "purchase" || (row as PaymentRow).card_cents + (row as PaymentRow).tip_cents > (row as PaymentRow).refunded_cents;
+  // An outside bill (MESITA-3545) never needs Stripe: its tip was paid at the table.
+  const needsStripe = kind === "purchase" || paymentNeedsStripe(row as PaymentRow);
   if (needsStripe && !deps.stripe) {
     return json({ ok: false, code: "not_configured", error: "Stripe is not configured" }, 503);
   }

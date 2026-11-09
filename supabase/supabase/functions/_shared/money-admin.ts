@@ -73,10 +73,21 @@ export type PaymentRow = {
   status: string;
   paid_at: string | null;
   livemode: boolean;
+  /** The part paid outside Mesita (MESITA-3545); its tip was paid at the
+   *  table, never on Stripe. */
+  outside_cents?: number;
 };
 
 export const PAYMENT_COLUMNS =
-  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode";
+  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode, outside_cents";
+
+/** Whether refunding this payment needs Stripe: a card part (card + tip)
+ *  not all back yet. An outside bill never does: its tip was paid at the
+ *  table (MESITA-3545). */
+export function paymentNeedsStripe(row: PaymentRow): boolean {
+  if ((row.outside_cents ?? 0) > 0) return false;
+  return row.card_cents + row.tip_cents > row.refunded_cents;
+}
 
 export type RefundResult =
   | { ok: true; card_refunded_cents: number; credit_refunded_cents: number; status: string | null }
@@ -167,6 +178,26 @@ export function splitPaymentRefund(row: PaymentRow, amount?: number): { card: nu
 /** A payment: its card part through Stripe, then its credit part as credit
  *  (a credit-only payment makes no Stripe call). */
 export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: number): Promise<RefundResult> {
+  // An outside bill refunds whole (MESITA-3545): the credit part back, the
+  // cashback reversed, no Stripe. A partial amount is not offered for it.
+  if ((row.outside_cents ?? 0) > 0) {
+    if (!row.paid_at || row.status === "refunded" || row.status === "needs_review") {
+      return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this payment" };
+    }
+    const res = await rpcOk(deps.admin, "wallet_refund_outside", { p_payment_id: row.id });
+    console.log("[money-admin] refund_outside", JSON.stringify({
+      payment_id: row.id,
+      credit_refunded_cents: res.credit_refunded_cents ?? 0,
+      cashback_reversed_cents: res.cashback_reversed_cents ?? 0,
+      uncovered_cents: res.uncovered_cents ?? 0,
+    }));
+    return {
+      ok: true,
+      card_refunded_cents: 0,
+      credit_refunded_cents: Number(res.credit_refunded_cents ?? 0),
+      status: (res.status as string) ?? null,
+    };
+  }
   const { card, credit } = splitPaymentRefund(row, amount);
   if (!row.paid_at || card + credit <= 0) {
     return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this payment" };

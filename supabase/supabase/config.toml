@@ -373,6 +373,11 @@ verify_jwt = false
 [functions.visit-web-get-charge]
 verify_jwt = false
 
+# MESITA-3545: the waiter's Received on a bill the guest pays outside Mesita.
+# No sign-in on visit.mesita.ai: the charge token is the key, as for the poll.
+[functions.visit-web-confirm-charge]
+verify_jwt = false
+
 # MESITA-3462: the staff list of a place's Mesita Pay payments. No sign-in on
 # visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.

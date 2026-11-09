@@ -697,12 +697,9 @@ export function VouchersPane({
               <span className="text-muted-foreground text-sm" aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
-          {/* EXTERNAL PAY EARNS 2% (Pato, MESITA-3547: "external cash is 2%";
-              Payments Flow v2, MESITA-3541): cash or the place's terminal,
-              confirmed by the waiter's Received through the waiter's code. */}
-          <li className={ROW} aria-label="External Pay Cashback: pay the place directly, by cash or their terminal, with the waiter's code. 2% comes back as credits.">
-            <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
-              +2%
+          <li className={ROW} aria-label="External Pay Cashback: pay the place directly, by cash or their terminal. Nothing back.">
+            <span className={cn(CHIP, "bg-muted text-muted-foreground")} aria-hidden>
+              0%
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
@@ -712,16 +709,15 @@ export function VouchersPane({
                 </span>
                 <InfoButton
                   title="External Pay Cashback"
-                  status={{ ok: true, text: "2% back on bills you pay the waiter." }}
+                  status={{ ok: true, text: "Always available. Nothing comes back." }}
                   text={[
-                    "Pay the place directly: cash or their card terminal, and get 2% of the bill back as credits at this place.",
-                    "Ask the waiter for a code. They type the bill and the tip, you choose Pay the waiter in Mesita, and they tap Received when they get your money.",
-                    "The 2% counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
-                    "Paying in the app with Mesita Pay gives 5% instead.",
+                    "Pay the place directly: cash or their card terminal.",
+                    "Nothing comes back.",
+                    "You can still pay part of the bill with your credits in the app and the rest directly to the place.",
                   ]}
                 />
               </span>
-              <span className="text-muted-foreground text-sm" aria-hidden>Cash or their terminal, 2% back</span>
+              <span className="text-muted-foreground text-sm" aria-hidden>Cash or their terminal, nothing back</span>
             </span>
           </li>
         </ul>

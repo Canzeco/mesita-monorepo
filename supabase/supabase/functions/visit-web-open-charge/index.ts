@@ -7,11 +7,14 @@
 // guest types on Pay and a charge_token the staff screen polls with; both are
 // stored only hashed and never logged.
 //
+// MESITA-3545: staff also type the tip they asked the guest (tip_cents);
+// the guest's form starts from it.
+//
 // Body: { place_id: uuid, place_code: 6 digits, amount_cents: integer,
-//         ticket?: string (at most 32, trimmed) }
-// Response: { ok: true, code, charge_token, amount_cents, currency, ticket,
+//         tip_cents?: integer (0 to the cap), ticket?: string (at most 32, trimmed) }
+// Response: { ok: true, code, charge_token, amount_cents, tip_cents, currency, ticket,
 //             expires_at, server_time, place: { name }, test_mode }
-//   400 (a malformed call) · 400 amount_required | above_cap | ticket_too_long ·
+//   400 (a malformed call) · 400 amount_required | above_cap | tip_invalid | ticket_too_long ·
 //   403 forbidden (a wrong place code: one staff try) · 404 gone (no such
 //   active place) · 409 place_code_required | locked (+retry_after_s)
 
@@ -56,6 +59,6 @@ serveJson("visit-web-open-charge", async (req) => {
     return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
   }
   // Never the code or the token in a log line.
-  console.log("[visit-web-open-charge]", JSON.stringify({ outcome: "open", place_id: input.placeId, amount_cents: input.amountCents }));
+  console.log("[visit-web-open-charge]", JSON.stringify({ outcome: "open", place_id: input.placeId, amount_cents: input.amountCents, tip_cents: input.tipCents }));
   return json({ ok: true, ...res.charge, place: { name: place.name ?? null }, test_mode: !paymentsLivemode() });
 });

@@ -28,6 +28,19 @@ export const MONEY_CODES = [
   "above_cap",
   // The waiter's charge (MESITA-3306): a ticket over 32 characters
   "ticket_too_long",
+  // Payments Flow v2 (MESITA-3545): a tip that is not 0 to the cap; an
+  // outside bill without the waiter's charge; credit already covers the bill
+  // (nothing to pay outside); Received on a bill that is not paying outside
+  "tip_invalid",
+  "outside_needs_charge",
+  "credit_covers",
+  "not_outside",
+  // The waiter's Received came after the guest cancelled paying the waiter,
+  // or after that bill's 30 minutes
+  "closed",
+  "expired",
+  // A guest's outside bills at one place in a rolling day passed the limit
+  "outside_limit",
   // The session
   "sign_in",
   "forbidden",
