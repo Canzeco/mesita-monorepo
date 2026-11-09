@@ -375,6 +375,9 @@ verify_jwt = true
 [functions.supabase-edgefunc-start-smoke-enrich]
 verify_jwt = true
 
+[functions.supabase-edgefunc-start-agent-enrich]
+verify_jwt = true
+
 [functions.admin-web-grant-place-premier]
 verify_jwt = true
 
