@@ -170,7 +170,9 @@ serveJson("enricher-edgefunc-write-place", async (req) => {
   if (unowned.skipped.length > 0) {
     console.log(`[enrich] ${commit.placeId}: kept operator ${unowned.skipped.join(", ")}`);
   }
-  let patch = unowned.update;
+  // An owned gallery (MESITA-3513) drops every gallery key, legacy names too,
+  // so neither the photos nor their analyses are written over it.
+  let patch = owned.includes("photos") ? patchWithoutGallery(unowned.update) : unowned.update;
   const gallery = galleryFromPatch(patch);
   let stored: { sourceUrl: string; publicUrl: string }[] = [];
   if (gallery.length === 0) {

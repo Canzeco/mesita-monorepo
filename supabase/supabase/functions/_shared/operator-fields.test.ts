@@ -29,6 +29,9 @@ Deno.test("operatorFieldsInPatch: a typed value is owned, a clearing is not", ()
   assertEquals(operatorFieldsInPatch({ family_keys: ["tacos", "mexican"] }), ["family_keys"]);
   assertEquals(operatorFieldsInPatch({ family_keys: [] }), []);
   assertEquals(operatorFieldsInPatch({ family_keys: null }), []);
+  // The gallery (MESITA-3513): a saved list is owned, an emptied one is not.
+  assertEquals(operatorFieldsInPatch({ photos: ["https://x.co/a.jpg"] }), ["photos"]);
+  assertEquals(operatorFieldsInPatch({ photos: [] }), []);
 });
 
 Deno.test("stripOperatorFields: an Enrich write skips the owned columns and reports them", () => {
@@ -49,4 +52,13 @@ Deno.test("withOperatorFields: carried through a rebuilt bag; none ⇒ no key", 
     operator_fields: ["name", "description"],
   });
   assertEquals(withOperatorFields(rebuilt, []), { synthesis: { ok: true } });
+});
+
+Deno.test("stripOperatorFields: an owned gallery is never written by Enrich (MESITA-3513)", () => {
+  const { update, skipped } = stripOperatorFields(
+    { photos: ["https://machine.example/1.jpg"], description: "Machine prose" },
+    ["photos"],
+  );
+  assertEquals(update, { description: "Machine prose" });
+  assertEquals(skipped, ["photos"]);
 });
