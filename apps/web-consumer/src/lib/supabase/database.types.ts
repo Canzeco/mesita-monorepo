@@ -556,18 +556,21 @@ export type Database = {
         Row: {
           addr_hash: string
           id: number
+          kind: string
           place_id: string
           tried_at: string
         }
         Insert: {
           addr_hash: string
           id?: never
+          kind: string
           place_id: string
           tried_at?: string
         }
         Update: {
           addr_hash?: string
           id?: never
+          kind?: string
           place_id?: string
           tried_at?: string
         }
@@ -585,6 +588,7 @@ export type Database = {
         Row: {
           amount_cents: number
           code_hash: string
+          consumer_id: string | null
           created_at: string
           currency: string
           expires_at: string
@@ -592,11 +596,13 @@ export type Database = {
           paid_at: string | null
           payment_id: string | null
           place_id: string
+          ticket: string | null
           token_hash: string
         }
         Insert: {
           amount_cents: number
           code_hash: string
+          consumer_id?: string | null
           created_at?: string
           currency: string
           expires_at: string
@@ -604,11 +610,13 @@ export type Database = {
           paid_at?: string | null
           payment_id?: string | null
           place_id: string
+          ticket?: string | null
           token_hash: string
         }
         Update: {
           amount_cents?: number
           code_hash?: string
+          consumer_id?: string | null
           created_at?: string
           currency?: string
           expires_at?: string
@@ -616,9 +624,17 @@ export type Database = {
           paid_at?: string | null
           payment_id?: string | null
           place_id?: string
+          ticket?: string | null
           token_hash?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "place_charges_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "place_charges_payment_id_fkey"
             columns: ["payment_id"]
@@ -1203,8 +1219,6 @@ export type Database = {
         Row: {
           cashback: boolean
           pay_cards: boolean
-          pay_cash: boolean
-          pay_credits: boolean
           place_id: string
           updated_at: string
           updated_by: string | null
@@ -1218,8 +1232,6 @@ export type Database = {
         Insert: {
           cashback?: boolean
           pay_cards?: boolean
-          pay_cash?: boolean
-          pay_credits?: boolean
           place_id: string
           updated_at?: string
           updated_by?: string | null
@@ -1233,8 +1245,6 @@ export type Database = {
         Update: {
           cashback?: boolean
           pay_cards?: boolean
-          pay_cash?: boolean
-          pay_credits?: boolean
           place_id?: string
           updated_at?: string
           updated_by?: string | null
@@ -1394,6 +1404,7 @@ export type Database = {
           prepay_enabled: boolean
           price_level: number | null
           products: Json | null
+          profile_photo: string | null
           reddit_url: string | null
           request_count: number
           reservation_channel: string | null
@@ -1463,6 +1474,7 @@ export type Database = {
           prepay_enabled?: boolean
           price_level?: number | null
           products?: Json | null
+          profile_photo?: string | null
           reddit_url?: string | null
           request_count?: number
           reservation_channel?: string | null
@@ -1532,6 +1544,7 @@ export type Database = {
           prepay_enabled?: boolean
           price_level?: number | null
           products?: Json | null
+          profile_photo?: string | null
           reddit_url?: string | null
           request_count?: number
           reservation_channel?: string | null
@@ -2355,6 +2368,7 @@ export type Database = {
           payment_id: string | null
           place_id: string
           purchase_id: string | null
+          reason: string | null
         }
         Insert: {
           amount_cents: number
@@ -2368,6 +2382,7 @@ export type Database = {
           payment_id?: string | null
           place_id: string
           purchase_id?: string | null
+          reason?: string | null
         }
         Update: {
           amount_cents?: number
@@ -2381,6 +2396,7 @@ export type Database = {
           payment_id?: string | null
           place_id?: string
           purchase_id?: string | null
+          reason?: string | null
         }
         Relationships: [
           {
@@ -2544,6 +2560,8 @@ export type Database = {
           request_id: string | null
           settle_tries: number
           status: string
+          story_activated_at: string | null
+          story_token: string | null
           stripe_account_id: string
           stripe_checkout_session_id: string | null
           stripe_error: string | null
@@ -2568,6 +2586,8 @@ export type Database = {
           request_id?: string | null
           settle_tries?: number
           status?: string
+          story_activated_at?: string | null
+          story_token?: string | null
           stripe_account_id: string
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
@@ -2592,6 +2612,8 @@ export type Database = {
           request_id?: string | null
           settle_tries?: number
           status?: string
+          story_activated_at?: string | null
+          story_token?: string | null
           stripe_account_id?: string
           stripe_checkout_session_id?: string | null
           stripe_error?: string | null
@@ -2724,6 +2746,7 @@ export type Database = {
           prepay_enabled: boolean | null
           price_level: number | null
           products: Json | null
+          profile_photo: string | null
           reddit_url: string | null
           request_count: number | null
           reservation_channel: string | null
@@ -2914,7 +2937,7 @@ export type Database = {
         }[]
       }
       place_activity_feed: {
-        Args: { p_before?: string; p_limit?: number }
+        Args: { p_before?: string; p_limit?: number; p_place_id?: string }
         Returns: {
           anonymous: boolean
           avatar_url: string
@@ -3009,6 +3032,13 @@ export type Database = {
           p_reviewer?: string
         }
         Returns: string
+      }
+      place_view_counts: {
+        Args: { p_place_ids: string[] }
+        Returns: {
+          place_id: string
+          views: number
+        }[]
       }
       place_views_days: {
         Args: { p_days?: number; p_place_id: string; p_timezone: string }
@@ -3126,6 +3156,7 @@ export type Database = {
         Args: { older_than?: string }
         Returns: number
       }
+      wallet_activate_story: { Args: { p_token: string }; Returns: Json }
       wallet_balance: {
         Args: {
           p_consumer_id: string
@@ -3213,11 +3244,19 @@ export type Database = {
         Returns: number
       }
       wallet_refund_payment: {
-        Args: { p_amount_refunded: number; p_payment_id: string }
+        Args: {
+          p_amount_refunded: number
+          p_payment_id: string
+          p_reason?: string
+        }
         Returns: Json
       }
       wallet_refund_purchase: {
-        Args: { p_amount_refunded: number; p_purchase_id: string }
+        Args: {
+          p_amount_refunded: number
+          p_purchase_id: string
+          p_reason?: string
+        }
         Returns: Json
       }
       wallet_release_payment: {
