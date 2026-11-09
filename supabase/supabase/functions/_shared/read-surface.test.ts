@@ -166,6 +166,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/google-refetch.ts", // the phone, endpoint and pins the wrong-number refetch compares (MESITA-2420)
   "_shared/admin-google-place-update.ts", // enrichment_sources pins + the gallery length read (MESITA-2794)
   "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
+  "_shared/agent-enrich.ts", // the agent Enrich's place ids by Google id (MESITA-3242)
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
@@ -258,6 +259,7 @@ Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", 
 
 const PLACES_READ_ALLOWLIST = [
   "_shared/smoke-enrich.ts", // the smoke fixture's updated_at, its one-hour cooldown (MESITA-2803)
+  "_shared/agent-enrich.ts", // each place's updated_at, the same one-hour cooldown (MESITA-3242)
   "_shared/google-refetch.ts", // content_state only: no refetch while an Enrich is in flight (MESITA-2420)
   "_shared/admin-google-place-update.ts", // content_state gate before Google refresh (MESITA-2737)
   "_shared/reservation-places.ts",
