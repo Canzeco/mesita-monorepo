@@ -5,12 +5,18 @@
 -- payment back as credit with no Stripe call and replays once; the
 -- needs_review list names what an operator can re-read; nobody but the
 -- service role runs any of it.
+--
+-- MESITA-3548: an outside bill (the waiter's Received) counts in money
+-- received, its cash tip stays out of tips, and its row says the waiter
+-- confirmed it; a Pay at the table card row and cash row under one tab both
+-- count, only the card tip is a tip, and the tab is one bill in
+-- received_share; an outside bill an operator refunded counts nothing.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(19);
+select plan(27);
 
 insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-0000000a3307', 'maria.lopez@example.com'),
@@ -135,6 +141,68 @@ select is(
 );
 select is(wallet_refund_credit('00000000-0000-4000-8000-0000000c3307') ->> 'outcome', 'already_applied',
   'a replayed attempt credits once');
+
+-- ━━━ The cash side (MESITA-3548) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000033548', 'Cash Probe');
+insert into public.places (id, slug, state, content_state, currency) values
+  ('00000000-0000-4000-8000-000000033548', 'mesita-3548-cash', 'active', 'generating', 'MXN');
+insert into public.pay_tabs (id, place_id, consumer_id, token_hash, status, currency, bill_cents, paid_at, expires_at)
+values ('00000000-0000-4000-8000-0000000a3548', '00000000-0000-4000-8000-000000033548',
+        '00000000-0000-4000-8000-0000000b3307', repeat('a', 64), 'paid', 'mxn', 40000, now(), now() + interval '30 minutes');
+
+-- A: the waiter's code, bill MX$300: MX$100 credit, MX$200 in cash, a MX$30
+-- cash tip, Received (paid_at set: the trigger names the waiter).
+insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, outside_cents,
+                                    tip_cents, currency, status, outside_cashback_bps, cashback_cents,
+                                    charge_amount_cents, paid_at, created_at)
+values ('00000000-0000-4000-8000-0000000c3548', '00000000-0000-4000-8000-0000000b3307',
+        '00000000-0000-4000-8000-000000033548', 30000, 10000, 0, 20000, 3000, 'mxn', 'paid', 200, 400,
+        30000, now(), '2026-11-04T10:00:00Z');
+-- B: one tab, bill MX$400: a card row (MX$150 + a MX$20 card tip) and a cash
+-- row (MX$250 + a MX$10 cash tip).
+insert into public.wallet_payments (id, consumer_id, place_id, amount_cents, credit_cents, card_cents, outside_cents,
+                                    tip_cents, currency, status, stripe_account_id, tab_id, part,
+                                    charge_amount_cents, paid_at, created_at)
+values ('00000000-0000-4000-8000-0000000d3548', '00000000-0000-4000-8000-0000000b3307',
+        '00000000-0000-4000-8000-000000033548', 15000, 0, 15000, 0, 2000, 'mxn', 'paid', 'acct_test_3548',
+        '00000000-0000-4000-8000-0000000a3548', 'card', 40000, now(), '2026-11-04T11:00:00Z'),
+       ('00000000-0000-4000-8000-0000000e3548', '00000000-0000-4000-8000-0000000b3307',
+        '00000000-0000-4000-8000-000000033548', 25000, 0, 0, 25000, 1000, 'mxn', 'paid', null,
+        '00000000-0000-4000-8000-0000000a3548', 'outside', 40000, now(), '2026-11-04T11:00:00Z');
+-- C: a card payment of a MX$60 charge (Stripe confirmed it).
+insert into public.wallet_payments (consumer_id, place_id, amount_cents, credit_cents, card_cents, currency, status,
+                                    stripe_account_id, charge_amount_cents, paid_at, created_at)
+values ('00000000-0000-4000-8000-0000000b3307', '00000000-0000-4000-8000-000000033548', 6000, 0, 6000, 'mxn', 'paid',
+        'acct_test_3548', 6000, now(), '2026-11-04T12:00:00Z');
+-- D: an outside bill an operator refunded (the Received was wrong).
+insert into public.wallet_payments (consumer_id, place_id, amount_cents, credit_cents, card_cents, outside_cents,
+                                    currency, status, paid_at, created_at)
+values ('00000000-0000-4000-8000-0000000b3307', '00000000-0000-4000-8000-000000033548', 7000, 0, 0, 7000, 'mxn',
+        'refunded', now(), '2026-11-04T13:00:00Z');
+
+create temp table c as
+  select place_money_summary('00000000-0000-4000-8000-000000033548', '2026-10-01', '2026-12-01', false) as j;
+
+select is((select (j ->> 'received_cents')::int from c), 66000,
+  'money received counts the outside parts and card parts, never a refunded outside bill');
+select is((select (j ->> 'tips_cents')::int from c), 2000, 'only the card tip is a tip; cash tips stay out');
+select is(
+  (select x ->> 'confirmed_by' from c, jsonb_array_elements(j -> 'rows') x where x ->> 'id' = '00000000-0000-4000-8000-0000000c3548'),
+  'waiter', 'the outside bill''s row says the waiter confirmed it');
+select is(
+  (select (x ->> 'outside_cents')::int + (x ->> 'charge_amount_cents')::int
+     from c, jsonb_array_elements(j -> 'rows') x where x ->> 'id' = '00000000-0000-4000-8000-0000000c3548'),
+  50000, 'the row carries its outside part and the waiter''s bill');
+select is(
+  (select string_agg(x ->> 'part' || ':' || (x ->> 'confirmed_by'), ',' order by x ->> 'part')
+     from c, jsonb_array_elements(j -> 'rows') x where x ->> 'tab_id' = '00000000-0000-4000-8000-0000000a3548'),
+  'card:stripe,outside:waiter', 'a tab''s card row and cash row both answer, each with its part and confirmer');
+select is((select j -> 'received_share' from c), '{"received": 2, "total": 3}'::jsonb,
+  'the tab is one bill; two of three waiter''s bills ended in Received');
+select is((select (j ->> 'outside_cashback_today_cents')::int from c), 400,
+  'the place''s outside cashback over the rolling day');
+select ok((select j -> 'rows' -> 1 -> 'confirmed_by' = 'null'::jsonb from s), 'a voucher row has no confirmer');
 
 -- ━━━ The needs_review list ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
