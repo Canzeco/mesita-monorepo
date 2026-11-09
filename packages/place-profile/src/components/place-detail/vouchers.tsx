@@ -278,44 +278,52 @@ function InfoButton({ title, text }: { title: string; text: string[] }) {
   );
 }
 
+/** WHEN THE CREDITS ARRIVE (MESITA-3498, Pato: "Welcome, Story and VIP are
+ *  activated immediately; the other vouchers take one hour ... Pay X, get Y
+ *  in 1 hr ... Pay X, get Y instantly"). */
+function readyIn(key: MoneyVoucherKey): string {
+  return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
+}
+
+/** The lines every prepayment (i) ends with (MESITA-3498, Pato: "credits are
+ *  transferable to friends too"; "you don't need to prepay all the bill";
+ *  MESITA-3496: prepaid credits earn no cashback). */
+const CREDIT_FACTS = [
+  "Spend your credits on your bill here, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
+  "Credits only work at this place. You can send them to a friend.",
+  "The part of a bill you pay with credits doesn't earn the 5% Mesita Pay Cashback.",
+];
+
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
- *  split by MESITA-3497), with the row's own Pay and Get. Prepaid credits
- *  never earn cashback (MESITA-3496). */
+ *  split by MESITA-3497, rewritten clearer by MESITA-3498), with the row's
+ *  own Pay and Get. */
 function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string[] {
-  const noCashback = "Paying with these credits doesn't earn the 5% Mesita Pay Cashback.";
+  const deal = `Pay ${pay}, get ${get} in credits at this place. That's ${bonus} extra.`;
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return [
-        `Pay ${pay} and get ${get} in credits for this place. The place adds ${bonus} on top.`,
-        "Pick it and tap the black button to pay. Your credits are ready within an hour.",
-        "Use them to pay your bill here in the app. They only work at this place.",
-        "Buy as many as you like.",
-        noCashback,
-      ];
+      return [deal, "Your credits are ready 1 hour after you buy.", "Buy as many as you like.", ...CREDIT_FACTS];
     case "voucher_welcome":
       return [
-        `A thank-you for trying this place for the first time: pay ${pay}, get ${get} in credits.`,
-        "One per place. Once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.",
-        "Use the credits to pay your bill here in the app.",
-        noCashback,
+        deal,
+        "Your credits are ready instantly.",
+        "For your first visit to this place: one per place. Every other place on Mesita has its own Welcome for you.",
+        ...CREDIT_FACTS,
       ];
     case "voucher_story":
       return [
-        `Buy the voucher: pay ${pay}.`,
-        "Then activate it by posting an Instagram story at the place.",
-        `Once your story is up, the ${get} in credits arrive right away. Use them to pay your bill here in the app.`,
+        deal,
+        "To get it, post an Instagram story at the place. Your credits are ready instantly.",
         "One per visit.",
-        noCashback,
+        ...CREDIT_FACTS,
       ];
     case "voucher_vip":
       return [
-        "Reserved for Mesita's VIP Class.",
-        "VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see.",
-        `If you're VIP, pay ${pay} and get ${get} in credits here. One per visit.`,
-        "Not VIP? You won't be able to buy this one.",
-        noCashback,
+        deal,
+        "Only for Mesita's VIP Class. VIP guests are added by hand: models, modeling agencies, creators and others places want to see. Not VIP? You can't buy this one.",
+        "Your credits are ready instantly. One per visit.",
+        ...CREDIT_FACTS,
       ];
   }
 }
@@ -478,7 +486,7 @@ export function VouchersPane({
                     <InfoButton title={p.short} text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""))} />
                   </span>
                   <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
-                    {opening ? "Opening…" : loading || can ? `Pay ${pay} · Get ${get}` : tag(reason)}
+                    {opening ? "Opening…" : loading || can ? `Pay ${pay} · Get ${get} ${readyIn(p.key)}` : tag(reason)}
                   </span>
                 </span>
               </>
@@ -543,10 +551,10 @@ export function VouchersPane({
                 <InfoButton
                   title="Mesita Pay Cashback"
                   text={[
-                    "Pay your bill here in the app and get 5% back as credits for your next visit.",
-                    "It works on every visit, whatever the amount: a $100MX bill or a $10,000MX one.",
-                    "The 5% is only on the part of the bill you don't pay with prepaid credits. Credits from Prepayment Offers never earn cashback.",
-                    "Example: a $500MX bill with $200MX paid from credits and $300MX by card gives you $15MX back.",
+                    "Pay your bill in the Mesita app and get 5% of it back as credits at this place, for your next visit.",
+                    "Any amount, every visit.",
+                    "The 5% counts only on the part you don't pay with prepaid credits. Example: a $500MX bill, $200MX from credits and $300MX with Mesita Pay, gives you $15MX back.",
+                    "You can mix: part of the bill with credits, the rest with Mesita Pay.",
                   ]}
                 />
               </span>
@@ -566,8 +574,9 @@ export function VouchersPane({
                 <InfoButton
                   title="External Pay Cashback"
                   text={[
-                    "Pay the place directly, in cash or on their card terminal.",
-                    "That works too, but nothing comes back.",
+                    "Pay the place directly: cash or their card terminal.",
+                    "Nothing comes back.",
+                    "You can still pay part of the bill with your credits in the app and the rest directly to the place.",
                   ]}
                 />
               </span>
