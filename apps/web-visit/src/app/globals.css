@@ -231,3 +231,52 @@ button.quiet {
     animation: none;
   }
 }
+
+/* ── The staff list of payments (MESITA-3462) ──────────────────────────── */
+
+.payments {
+  align-self: stretch;
+}
+
+.payments li {
+  padding: 10px 0;
+}
+
+/* Two failed reads: the list greys under "Reconnecting". */
+.payments.stale {
+  opacity: 0.45;
+}
+
+.payment-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.payment-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+}
+
+.payment-meta {
+  font-size: 14px;
+  color: #525252;
+}
+
+.payment-seen {
+  font-size: 14px;
+  color: #525252;
+}
+
+.payment-unseen {
+  font-size: 14px;
+  font-weight: 700;
+  color: #171717;
+}
+
+.payments-empty {
+  margin-top: 24px;
+}
