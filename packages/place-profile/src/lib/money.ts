@@ -21,7 +21,8 @@ export function amountText(cents: number): string {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }
 
-/** "MX$500" or "MX$170.50": whole amounts drop the cents. */
+/** "$500MX" or "$170.50MX": whole amounts drop the cents; pesos carry MX
+ *  after the amount (MESITA-3491, Pato: "mx at the other side ... everywhere"). */
 export function moneyLabel(cents: number, currency: string): string {
   const code = currency.toUpperCase();
   const whole = cents % 100 === 0;
@@ -31,7 +32,7 @@ export function moneyLabel(cents: number, currency: string): string {
       currency: code,
       minimumFractionDigits: whole ? 0 : 2,
       maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100);
+    }).format(cents / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
   } catch {
     return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
   }

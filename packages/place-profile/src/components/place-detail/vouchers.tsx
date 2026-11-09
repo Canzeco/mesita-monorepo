@@ -12,7 +12,6 @@ import {
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { SizedImg } from "../SizedPhoto";
-import { MesitaPayMark } from "../PlaceMarks";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
 // MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
@@ -486,7 +485,6 @@ export function VouchersPane({
             </span>
             <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
               <span className="flex items-center gap-1 text-base font-semibold">
-                <MesitaPayMark className="h-4 w-4 shrink-0" />
                 Mesita Pay Cashback
               </span>
               <span className="text-muted-foreground text-sm">{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
