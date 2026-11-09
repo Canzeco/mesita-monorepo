@@ -248,3 +248,97 @@ export async function listPayments(
   const retryAfterS = typeof data.retry_after_s === "number" ? data.retry_after_s : null;
   return { kind: data.code === "staff_only" ? "staff_only" : "refused", error, retryAfterS };
 }
+
+// ── Pay at the table: the waiter's side of a tab (MESITA-3565) ─────────────
+
+/** A tab as the waiter reads it at /tab/<token>: the bill's state, never who
+ *  the guest is. Amounts are the guest's split once they chose how to pay. */
+export type TabRead = {
+  place: { id: string; name: string | null };
+  /** waiting_bill · billed · paying · paid · expired · cancelled. */
+  status: string;
+  currency: string;
+  bill_cents: number | null;
+  /** The tip the waiter suggested; the guest decides. */
+  tip_suggested_cents: number;
+  /** The version a change of bill must carry (the server refuses a stale one). */
+  bill_version: number;
+  ticket: string | null;
+  waiter_name: string | null;
+  billed: boolean;
+  credit_cents: number;
+  cash_bill_cents: number;
+  cash_tip_cents: number;
+  /** The cash the waiter collects: cash bill part + cash tip. */
+  cash_due_cents: number;
+  cash_received_cents: number | null;
+  card_bill_cents: number;
+  card_tip_cents: number;
+  cashback_cents: number;
+  paid_at: string | null;
+  expires_at: string;
+  updated_at: string;
+  test_mode: boolean;
+};
+
+/** The poll: the tab, `gone` (no such tab: the screen stops), or `failed`
+ *  (no answer: keep polling, say Reconnecting). Carries the QR token only. */
+export async function getTab(token: string): Promise<TabRead | "gone" | "failed"> {
+  const { res, data } = await post("visit-web-get-tab", { token });
+  if (data?.ok) return data.tab as TabRead;
+  if (res && (res.status === 404 || res.status === 400)) return "gone";
+  return "failed";
+}
+
+/** A refusal on the waiter's tab calls: the server's code and words, plus
+ *  what it attached (missing_cents on `short`, retry_after_s on `locked`). */
+export type TabRefusal = { refused: true; code: string; error: string; detail: Record<string, unknown> };
+
+/** The staff key: the place code (once per device) or the staff token it
+ *  minted. Never both; the code is never kept. */
+export type StaffKey = { place_code: string } | { staff_token: string };
+
+function tabRefusal(data: Record<string, unknown>, fallback: string): TabRefusal {
+  const { code, error, ...detail } = data;
+  delete detail.ok;
+  return {
+    refused: true,
+    code: typeof code === "string" ? code : "refused",
+    error: typeof error === "string" ? error : fallback,
+    detail,
+  };
+}
+
+/** Send (or change) the bill. Answers the new bill_version and, when the
+ *  place code was typed, the staff token to keep. */
+export async function billTab(
+  args: { token: string; bill_cents: number; tip_cents: number; ticket: string | null; bill_version: number } & StaffKey,
+): Promise<{ bill_version: number; staff_token: string | null; staff_expires_at: string | null } | TabRefusal | "failed"> {
+  const { res, data } = await post("visit-web-bill-tab", args);
+  if (data?.ok) {
+    return {
+      bill_version: Number(data.bill_version),
+      staff_token: typeof data.staff_token === "string" ? data.staff_token : null,
+      staff_expires_at: typeof data.staff_expires_at === "string" ? data.staff_expires_at : null,
+    };
+  }
+  if (!res || res.status >= 500 || !data) return "failed";
+  return tabRefusal(data, "Couldn't send the bill. Try again.");
+}
+
+/** The waiter's Received on the cash part. Empty cash_received means
+ *  exactly what is owed. `short` answers missing_cents and writes nothing. */
+export async function cashTab(
+  args: { token: string; cash_received_cents: number | null } & StaffKey,
+): Promise<{ outcome: string; staff_token: string | null; staff_expires_at: string | null } | TabRefusal | "failed"> {
+  const { res, data } = await post("visit-web-cash-tab", args);
+  if (data?.ok) {
+    return {
+      outcome: String(data.outcome),
+      staff_token: typeof data.staff_token === "string" ? data.staff_token : null,
+      staff_expires_at: typeof data.staff_expires_at === "string" ? data.staff_expires_at : null,
+    };
+  }
+  if (!res || res.status >= 500 || !data) return "failed";
+  return tabRefusal(data, "Couldn't confirm. Try again.");
+}
