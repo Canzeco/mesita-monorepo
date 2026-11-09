@@ -186,8 +186,8 @@ export function SettingsLinkRow({
   );
 }
 
-/** A door that opens a dialog, not a page (Settings › Delete account,
- *  MESITA-3049). SettingsLinkRow's chrome; `destructive` inks the label. */
+/** A door that opens a dialog, not a page (Instagram › Disconnect;
+ *  Settings › Delete account until MESITA-3468). SettingsLinkRow's chrome; `destructive` inks the label. */
 export function SettingsActionRow({
   Icon,
   label,
