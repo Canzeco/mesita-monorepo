@@ -39,6 +39,11 @@ export function storyUrl(token: string, read: ReadEnv = envRead): string {
   return `${visitOrigin(read)}/story/${token}`;
 }
 
+/** A table's tab (MESITA-3562): the QR the guest shows the waiter. */
+export function tabUrl(token: string, read: ReadEnv = envRead): string {
+  return `${visitOrigin(read)}/tab/${token}`;
+}
+
 function visitOrigin(read: ReadEnv): string {
   return (read("VISIT_WEB_URL") ?? "").trim().replace(/\/+$/, "") || PROOF_ORIGIN;
 }
