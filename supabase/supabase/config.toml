@@ -319,6 +319,17 @@ verify_jwt = false
 [functions.consumer-web-buy-voucher]
 verify_jwt = true
 
+# MESITA-3523: saved cards on the Wallet's Money rail (signed in): the list,
+# Add (a Stripe setup Checkout) and Remove.
+[functions.consumer-web-list-cards]
+verify_jwt = true
+
+[functions.consumer-web-add-card]
+verify_jwt = true
+
+[functions.consumer-web-remove-card]
+verify_jwt = true
+
 # MESITA-3304 (W2a): pay from credit and read a payment back (signed in);
 # the staff page reads and stamps a payment proof by its token (no sign-in
 # on visit.mesita.ai: the 128-bit token is the key).

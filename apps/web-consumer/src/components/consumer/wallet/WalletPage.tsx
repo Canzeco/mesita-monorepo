@@ -7,6 +7,8 @@ import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { EFError } from "@/lib/api/_invoke";
+import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
 import { apiGetWallet, GIFT_PARAM, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -14,7 +16,7 @@ import { toast } from "@/lib/toast";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
-import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
+import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
 
 // TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
 // page called Wallet, and then at the right that icon for transactions ...
@@ -47,6 +49,18 @@ import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTi
 // place that has since turned Mesita Pay off.
 
 const PREPAY_PARAM = "prepay";
+
+// SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
+// Add on the Money rail opens Stripe's own page in setup mode; it returns
+// here with `?card=<session>`, the page says "Card saved." and drops the
+// parameter. Each saved card is a tile after the checkout one; its sheet
+// removes it. The list is the server's (consumer-web-list-cards), read on
+// mount and after every add or remove.
+
+function cardRefusal(err: unknown): string {
+  const code = err instanceof EFError ? err.code : null;
+  return (code && CARD_REFUSAL[code]) || "Something went wrong. Try again.";
+}
 /** A purchase the server is still confirming is asked about again. */
 const SETTLING_RETRY_MS = 4_000;
 /** Photos of the first cards load eagerly; the rest lazily. */
@@ -117,6 +131,59 @@ export function WalletPage() {
   // A friend's credit link (MESITA-3292): /wallet?gift=<token>. Read with
   // the Wallet and dropped from the address, so a reload does not ask again.
   const [giftToken, setGiftToken] = useState<string | null>(null);
+  const [cards, setCards] = useState<SavedCard[] | null>(null);
+  const [cardsNonce, setCardsNonce] = useState(0);
+  const [adding, setAdding] = useState(false);
+
+  // Saved cards: on mount, on Stripe's return, after a remove.
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has(CARD_RETURN_PARAM)) {
+      params.delete(CARD_RETURN_PARAM);
+      const q = params.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+      toast.success("Card saved.");
+    }
+    void apiListCards(getSupabase())
+      .then((r) => {
+        if (!cancelled) setCards(r.cards);
+      })
+      .catch(() => {
+        // The rail keeps Add and the checkout card; a failed list shows none.
+        if (!cancelled) setCards([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardsNonce]);
+
+  const addCard = useCallback(async () => {
+    if (adding) return;
+    setAdding(true);
+    try {
+      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.wallet}`);
+      window.location.assign(url);
+    } catch (err) {
+      toast.error(cardRefusal(err));
+      setAdding(false);
+    }
+  }, [adding, getSupabase]);
+
+  const removeCard = useCallback(
+    async (card: SavedCard) => {
+      try {
+        await apiRemoveCard(getSupabase(), card.id);
+        toast.success("Card removed.");
+        setMethod(null);
+        setCardsNonce((n) => n + 1);
+      } catch (err) {
+        toast.error(cardRefusal(err));
+      }
+    },
+    [getSupabase],
+  );
 
   // Balances: on mount, on Try again, and again while a purchase settles.
   useEffect(() => {
@@ -206,13 +273,10 @@ export function WalletPage() {
       ) : null}
 
       <WalletRail title="Money Payment Methods">
-        <AddTile
-          label="Add"
-          line="Saving a card comes soon"
-          onClick={() => toast("Saving a card comes soon. Today you pick card, Apple Pay or Google Pay at checkout.")}
-        />
+        <AddTile label={adding ? "Opening…" : "Add"} line="Save a card" onClick={() => void addCard()} />
         <CashTile />
         <CheckoutMethodTile onOpen={() => setMethod({ kind: "checkout" })} />
+        {cards?.map((c) => <SavedCardTile key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
       </WalletRail>
 
       <WalletRail title="Credits Payment Methods">
@@ -251,7 +315,7 @@ export function WalletPage() {
         </div>
       ) : null}
 
-      <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} />
+      <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} onRemoveCard={removeCard} />
       <GiftClaimSheet
         token={giftToken}
         onClose={() => setGiftToken(null)}

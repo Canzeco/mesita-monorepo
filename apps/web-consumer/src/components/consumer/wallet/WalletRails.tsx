@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CreditCard, Plus } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 
@@ -132,9 +133,33 @@ export function CashTile() {
   );
 }
 
-/** Money's card method today: Mesita Pay charges by card, Apple Pay or
- *  Google Pay at Stripe's checkout. No card is saved on Mesita yet, so this
- *  rail never invents one; a saved card will sit beside it with the same line. */
+/** A card the guest saved (MESITA-3523): Stripe's brand, the last four and
+ *  the expiry, never more. It carries the card line; a tap opens its sheet
+ *  (Remove). */
+export function SavedCardTile({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
+  const brand = brandLabel(card.brand);
+  return (
+    <MoneySlot back={CARD_BACK}>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`${brand} ending in ${card.last4}, expires ${expiryLabel(card)}: ${CARD_BACK}`}
+        className={cn(TILE_SHAPE, "flex w-full flex-col justify-between bg-neutral-900 p-3 text-left text-white")}
+        data-wallet-method="saved-card"
+      >
+        <span className="truncate text-xs font-semibold">{brand}</span>
+        <span>
+          <span className="block text-sm leading-tight font-semibold tabular-nums">•••• {card.last4}</span>
+          <span className="block type-label text-white/70 tabular-nums">{expiryLabel(card)}</span>
+        </span>
+      </button>
+    </MoneySlot>
+  );
+}
+
+/** Money's checkout method: Mesita Pay charges by card, Apple Pay or Google
+ *  Pay at Stripe's checkout. Saved cards (MESITA-3523) sit beside it with
+ *  the same line. */
 export function CheckoutMethodTile({ onOpen }: { onOpen: () => void }) {
   return (
     <MoneySlot back={CARD_BACK}>

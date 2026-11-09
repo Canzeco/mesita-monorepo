@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { ENTRY_LABEL, entryDate, money, type SentLink, type WaitingStory, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
@@ -45,6 +46,7 @@ export type Method =
     sentLinks: SentLink[];
   }
   | { kind: "checkout" }
+  | { kind: "card"; card: SavedCard }
   | { kind: "story"; story: WaitingStory };
 
 const PRIMARY =
@@ -56,17 +58,22 @@ export function MethodSheet({
   method,
   onClose,
   onReread,
+  onRemoveCard,
 }: {
   method: Method | null;
   onClose: () => void;
   /** Read the Wallet again (a pending entry's moment has passed). Stable. */
   onReread?: () => void;
+  /** Remove a saved card (MESITA-3523); resolves once the server answered. */
+  onRemoveCard?: (card: SavedCard) => Promise<void>;
 }) {
   const title = method?.kind === "place"
     ? method.card.name
     : method?.kind === "story"
       ? "Story voucher"
-      : "Card · Apple Pay · Google Pay";
+      : method?.kind === "card"
+        ? `${brandLabel(method.card.brand)} •••• ${method.card.last4}`
+        : "Card · Apple Pay · Google Pay";
   return (
     <LocalSheet open={method !== null} onClose={onClose} ariaLabel={title} fullScreen>
       <div className="border-border flex items-center gap-2 border-b px-2 py-2">
@@ -83,6 +90,7 @@ export function MethodSheet({
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "place" ? <PlaceBody method={method} onReread={onReread} /> : null}
         {method?.kind === "checkout" ? <CheckoutBody /> : null}
+        {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} /> : null}
       </div>
     </LocalSheet>
@@ -233,11 +241,47 @@ function CheckoutBody() {
       </div>
       <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed">
         <p>When you pay a bill or buy credits with Mesita Pay, you pick a card, Apple Pay or Google Pay on the checkout page.</p>
-        <p>Mesita doesn&apos;t keep your card. Saving a card for one-tap payments comes soon.</p>
+        <p>Cards you save with Add sit beside this one. Stripe keeps the number; Mesita only sees the last four digits.</p>
       </div>
       <Link href={CONSUMER_ROUTES.pay} className={`${PRIMARY} mt-5`}>
         Pay a bill
       </Link>
+    </>
+  );
+}
+
+/** A saved card (MESITA-3523): what Stripe told us about it, and Remove.
+ *  A card a Premier plan renews with says so and offers no Remove. */
+function CardBody({ card, onRemove }: { card: SavedCard; onRemove?: (card: SavedCard) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const brand = brandLabel(card.brand);
+  return (
+    <>
+      <div className="flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-neutral-900 p-5 text-white">
+        <span className="text-base font-semibold">{brand}</span>
+        <div>
+          <p className="text-xl font-semibold tabular-nums">•••• {card.last4}</p>
+          <p className="mt-0.5 text-sm text-white/70 tabular-nums">Expires {expiryLabel(card)}</p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed">
+        <p>Saved on your Mesita account. Stripe keeps the card number; Mesita only sees the last four digits.</p>
+        {card.in_use ? <p data-card-in-use>This card pays your Premier plan. To remove it, change the plan&apos;s card first.</p> : null}
+      </div>
+      {card.in_use || !onRemove ? null : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void onRemove(card).finally(() => setBusy(false));
+          }}
+          className={`${SECONDARY} mt-5 disabled:opacity-60`}
+          data-card-remove
+        >
+          {busy ? "Removing…" : "Remove card"}
+        </button>
+      )}
     </>
   );
 }
