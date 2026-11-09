@@ -11,7 +11,6 @@ import {
   PLACE_BUTTON_CLASS,
   PLACE_META_CLASS,
   PLACE_PILL_CLASS,
-  PLACE_SCREEN_TITLE_CLASS,
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
@@ -111,19 +110,22 @@ type Product = {
   brief: string;
 };
 
+// SMALL, MEDIUM AND BIG VOUCHER SINCE MESITA-3452 (Pato: "rename the other
+// packages to small voucher, medium voucher, big voucher ... welcome
+// voucher"); Standard, Standard Medium, Standard Large before.
 // THE STANDARD THREE ARE NAMED, NOT PRICED (Pato, MESITA-3362: "the name
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Standard", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% Bonus", short: "Standard", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Standard Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% Bonus", short: "Medium", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Standard Large", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% Bonus", short: "Large", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% Bonus", short: "Small Voucher", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% Bonus", short: "Medium Voucher", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% Bonus", short: "Big Voucher", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% Bonus", short: "Welcome", brief: "First visit only" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% Bonus", short: "Story", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% Bonus", short: "VIP", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% Bonus", short: "Welcome Voucher", brief: "First visit only" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% Bonus", short: "Story Voucher", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% Bonus", short: "VIP Voucher", brief: "VIP guests · 1/day" },
 ];
 
 /** "MX$1,200" from cents. Formatting only, never arithmetic. */
@@ -168,35 +170,23 @@ function tag(reason: VoucherReason | undefined): string {
 /** The full-width action under a card: 44px, ink on paper. */
 const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px-4 hover:opacity-90 disabled:opacity-60");
 
-/** A Rewards section title: 18px, the screen title's size, on a tight line. */
-const PROMOS_TITLE_CLASS = cn(PLACE_SCREEN_TITLE_CLASS, "leading-tight");
+/** A section title on the one-screen Offers page: 16px (MESITA-3452). */
+const OFFERS_TITLE_CLASS = "text-foreground text-base leading-tight font-semibold";
 /** The bonus: the hero tile's green pill, ink text (MESITA-3446). */
-const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 bg-green-400 px-1.5 py-0.5 text-[11px] text-neutral-950");
+const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 bg-green-400 px-1.5 py-0 text-[10px] font-bold text-neutral-950");
 
 /** A card: one hairline edge, white, rounded. */
 const CARD = "border-border bg-card rounded-2xl border";
 
-/** A section's head: the 18px title, an optional grey line under it. */
-function SectionHead({ id, title, subtitle }: { id: string; title: string; subtitle?: string }) {
-  return (
-    <div className="min-w-0">
-      <h3 id={id} className={PROMOS_TITLE_CLASS}>
-        {title}
-      </h3>
-      {subtitle ? <p className={PLACE_META_CLASS}>{subtitle}</p> : null}
-    </div>
-  );
-}
-
-/** One voucher, a third of the row (MESITA-3451, Pato: "not carousel, all
- *  three in one row"): the name, its bonus pill, Pay over Get, the limit,
- *  then Buy or the tag. */
+/** One voucher, a third of the row (MESITA-3451), compact since MESITA-3452
+ *  (Pato: "make this shorter, try to fit all in one screen"): the name and
+ *  "Get MX$Y" big in green, "Pay MX$X" small with the bonus beside it, then
+ *  Buy or the tag. The limits sit in one line under the special row. */
 function OfferCard({
   name,
   bonus,
   pay,
   get,
-  small,
   label,
   faded,
   action,
@@ -205,24 +195,24 @@ function OfferCard({
   bonus: string;
   pay: string;
   get: string;
-  small: string;
   label: string;
   faded: boolean;
   action: ReactNode;
 }) {
   return (
-    <li className={cn(CARD, "flex min-w-0 flex-col gap-2 rounded-xl p-2.5", faded && "opacity-50")} aria-label={label}>
-      <div className="flex flex-col items-start gap-1">
-        <span className="text-muted-foreground w-full truncate text-[11px] font-semibold tracking-wide uppercase">{name}</span>
-        <span className={BONUS_PILL}>{bonus}</span>
+    <li className={cn(CARD, "flex min-w-0 flex-col gap-1.5 rounded-xl p-2", faded && "opacity-50")} aria-label={label}>
+      <span className="text-muted-foreground truncate text-[10px] font-semibold uppercase">{name}</span>
+      <div className="flex flex-col leading-tight tabular-nums">
+        <span className="truncate text-base font-bold text-green-700" aria-hidden>
+          Get {get}
+        </span>
+        <span className="flex items-center justify-between gap-1">
+          <span className="text-muted-foreground min-w-0 truncate text-[11px]" aria-hidden>
+            Pay {pay}
+          </span>
+          <span className={BONUS_PILL}>{bonus}</span>
+        </span>
       </div>
-      <div className="flex flex-col leading-tight tabular-nums" aria-hidden>
-        <span className="text-muted-foreground text-[11px]">Pay</span>
-        <span className="text-foreground text-sm font-semibold">{pay}</span>
-        <span className="text-muted-foreground mt-0.5 text-[11px]">Get</span>
-        <span className="text-base font-bold text-green-700">{get}</span>
-      </div>
-      <p className="text-muted-foreground flex-1 text-[11px] leading-snug">{small}</p>
       {action}
     </li>
   );
@@ -240,43 +230,38 @@ function HouseCard({ place, currency }: { place: PlaceDetail; currency: string }
   const balance = place.money?.balance ?? null;
   const available = balance?.available_cents ?? 0;
   const pending = balance?.pending_cents ?? 0;
+  // ONE STRIP SINCE MESITA-3452 (Pato: "fit all in one screen"); a 1.7:1 card
+  // before.
   return (
-    <div
-      className="relative flex aspect-[1.7] flex-col justify-between overflow-hidden rounded-2xl bg-neutral-950 p-5 text-white"
-      data-house-card
-    >
-      <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-green-400/20" aria-hidden />
-      <div className="relative flex items-center gap-3">
-        <span className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-white/30 bg-white/10">
-          {place.photos.length > 0 ? (
-            <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center text-sm font-semibold">
-              {firstInitial(place.name)}
-            </span>
-          )}
+    <div className="flex items-center gap-3 rounded-xl bg-neutral-950 p-3 text-white" data-house-card data-place-credit>
+      <span className="h-9 w-9 shrink-0 overflow-hidden rounded-full border border-white/30 bg-white/10">
+        {place.photos.length > 0 ? (
+          <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-sm font-semibold">
+            {firstInitial(place.name)}
+          </span>
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-xs text-white/60">
+          Your House Card
+          {place.money?.mesita_pay ? <MesitaPayMark className="h-4 w-4 shrink-0" /> : null}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold">{place.name}</span>
-          <span className="block text-xs text-white/60">House Card</span>
-        </span>
-        {place.money?.mesita_pay ? <MesitaPayMark className="h-6 w-6 shrink-0" /> : null}
-      </div>
-      <div className="relative" data-place-credit>
-        <p className="text-xs text-white/60">Your credit here</p>
-        <p className="text-4xl leading-tight font-bold tabular-nums">{pesos(available, currency)}</p>
-        <p className="mt-1 text-xs text-white/70">
+        <span className="block text-[11px] leading-snug text-white/80">
           {pending > 0
             ? `+ ${pesos(pending, currency)} pending · ready within the hour`
             : available > 0
               ? "Spend it when you pay the bill here."
-              : "You can pay the bill without credit. Credit is optional, for the bonus."}
-        </p>
-      </div>
+              : "No credit needed to pay. Credit adds a bonus."}
+        </span>
+      </span>
+      <span className="shrink-0 text-xl font-bold tabular-nums" aria-label={`Your credit here: ${pesos(available, currency)}`}>
+        {pesos(available, currency)}
+      </span>
     </div>
   );
 }
-
 
 /** The Rewards page (MESITA-3412: the host's sheet off Prepay and Pay; it
  *  was the fourth tab). `focus` scrolls its scroller to that section once, on
@@ -355,7 +340,7 @@ export function VouchersPane({
 
   /** One row of three vouchers (MESITA-3451). */
   const row = (items: Product[], label: string) => (
-    <ul className="grid grid-cols-3 gap-2" aria-label={label} data-voucher-catalog>
+    <ul className="grid grid-cols-3 gap-1.5" aria-label={label} data-voucher-catalog>
       {items.map((p) => {
         const line = catalog[p.key];
         const pay = priceValue(p, line, currency);
@@ -363,9 +348,8 @@ export function VouchersPane({
         const deal = p.key === "voucher_story" ? `Pay ${pay} & post a story, Get ${get}` : `Pay ${pay}, Get ${get}`;
         const reason = unavailable[p.key];
         const can = !loading && buyable(p.key);
-        const small = loading || can ? p.brief : tag(reason);
         const action = loading ? (
-          <div className={cn(PLACE_BONE_CLASS, "h-9 w-full")} aria-hidden data-reward-loading />
+          <div className={cn(PLACE_BONE_CLASS, "h-8 w-full")} aria-hidden data-reward-loading />
         ) : can ? (
           <button
             type="button"
@@ -373,12 +357,16 @@ export function VouchersPane({
             onClick={live ? () => actions?.onBuyVoucher?.(p.key) : undefined}
             disabled={buying}
             aria-label={`Buy the ${p.name} voucher, ${deal}`}
-            className={cn(ACTION_BUTTON, "h-9 min-h-9 px-1 text-xs")}
+            className={cn(ACTION_BUTTON, "h-8 min-h-8 px-1 text-xs")}
             data-voucher-buy={p.key}
           >
             {actions?.buyingVoucher === p.key ? "Opening…" : "Buy"}
           </button>
-        ) : null;
+        ) : (
+          <span className="text-muted-foreground flex h-8 items-center justify-center text-center text-[10px] leading-tight font-semibold">
+            {tag(reason)}
+          </span>
+        );
         return (
           <OfferCard
             key={p.key}
@@ -386,7 +374,6 @@ export function VouchersPane({
             bonus={p.bonus}
             pay={pay}
             get={get}
-            small={small}
             label={`${p.name} voucher, ${deal}. ${[p.when, loading || can ? p.limit : tag(reason)].filter(Boolean).join(" ")}`}
             faded={!loading && !can && dim}
             action={action}
@@ -401,23 +388,21 @@ export function VouchersPane({
     // "Payment Offers all in one row; Prepayment Offers ... all three in one
     // row; Special Prepayment Offers ... all three in one row"), the House
     // Card last ("maybe move the House Card to the bottom").
-    <div className="bg-card -mx-4 -mt-4 flex flex-col pb-4" data-promos-page>
-      {money?.test_mode ? (
-        <div className="px-4 pt-4">
-          <TestBand />
-        </div>
-      ) : null}
-      <section className="flex flex-col gap-3 px-4 pt-5" aria-labelledby="rewards-payment" data-promos="payment">
-        <SectionHead id="rewards-payment" title="Payment Offers" />
+    // ONE SCREEN SINCE MESITA-3452 (Pato: "fit all in one screen"): 16px
+    // titles, no subtitles, 10px between blocks.
+    <div className="bg-card -mx-4 -mt-4 flex flex-col gap-2.5 px-4 pt-3 pb-4" data-promos-page>
+      {money?.test_mode ? <TestBand /> : null}
+      <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
+        <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
         <div
-          className={cn(CARD, "flex items-center gap-3 p-3", !loading && !cashback && dim && "opacity-50")}
+          className={cn(CARD, "flex items-center gap-3 rounded-xl p-2.5", !loading && !cashback && dim && "opacity-50")}
           aria-label={`5% Cashback: pay the bill here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
           data-cashback
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-400 text-neutral-950" aria-hidden>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-400 text-neutral-950" aria-hidden>
             <BadgePercent className="h-5 w-5" />
           </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5" aria-hidden>
+          <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
             <span className="text-foreground text-sm leading-snug font-semibold">5% Cashback</span>
             <span className="text-muted-foreground text-xs leading-snug">
               {canPay || loading ? "Pay by card, 5% back as credit" : cashbackTag}
@@ -437,22 +422,22 @@ export function VouchersPane({
           ) : null}
         </div>
       </section>
-      <section ref={prepaymentRef} className="flex flex-col gap-3 px-4 pt-6" aria-labelledby="rewards-prepayment" data-promos="prepayment">
-        <SectionHead id="rewards-prepayment" title="Prepayment Offers" subtitle="Buy credit, get a bonus. Ready in an hour." />
+      <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
+        <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
         {row(STANDARD, "Prepayment offers")}
       </section>
-      <section className="flex flex-col gap-3 px-4 pt-6" aria-labelledby="rewards-special" data-promos="special">
-        <SectionHead id="rewards-special" title="Special Prepayment Offers" subtitle="Bigger bonuses, limited. Story's credit is ready at once." />
+      <section className="flex flex-col gap-2" aria-labelledby="rewards-special" data-promos="special">
+        <h3 id="rewards-special" className={OFFERS_TITLE_CLASS}>Special Prepayment Offers</h3>
         {row(SPECIAL, "Special prepayment offers")}
+        <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
+          Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credit is ready in an hour.
+        </p>
       </section>
-      <section className="flex flex-col gap-3 px-4 pt-6" aria-labelledby="rewards-house" data-promos="house">
-        <SectionHead id="rewards-house" title="Your House Card" />
-        {loading ? (
-          <div className={cn(PLACE_BONE_CLASS, "aspect-[1.7] w-full rounded-2xl")} aria-hidden data-reward-loading />
-        ) : (
-          <HouseCard place={place} currency={currency} />
-        )}
-      </section>
+      {loading ? (
+        <div className={cn(PLACE_BONE_CLASS, "h-15 w-full rounded-xl")} aria-hidden data-reward-loading />
+      ) : (
+        <HouseCard place={place} currency={currency} />
+      )}
     </div>
   );
 }
