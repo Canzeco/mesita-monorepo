@@ -605,13 +605,13 @@ describe("T6 — Activity's sections are pages on Me", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a 3-up grid and a Settings row (MESITA-1628, MESITA-3450). In a grid a dead cell reads as broken
+// Me is a 3-up grid of twelve cells (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is ten live cells", () => {
+describe("T8 — Me's grid is twelve live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -620,7 +620,7 @@ describe("T8 — Me's grid is ten live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders ten cells in Pato's order", () => {
+  it("renders twelve cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -639,6 +639,10 @@ describe("T8 — Me's grid is ten live cells", () => {
       "Notifications",
       "Reservations",
       "Favorites",
+      // Transactions and Cards made the grid a full 3×4 (MESITA-3465, Pato:
+      // "add two other boxes, maybe some for transactions").
+      "Transactions",
+      "Cards",
       "Connector",
       "Share",
       "Settings",
@@ -653,7 +657,8 @@ describe("T8 — Me's grid is ten live cells", () => {
       "Integrations",
       "Friends",
       "Diamond",
-      "Cards",
+      // "Cards" came back as the guest's saved ways to pay, Soon, at Pato's
+      // ask (MESITA-3465); the Second Stage's card door stays gone.
       "Metrics",
     ]) {
       expect(gridTitles(), gone).not.toContain(gone);
