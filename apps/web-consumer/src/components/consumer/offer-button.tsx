@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
-import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
 import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
 import { useOfferBeat, useReducedMotion } from "@/components/consumer/offer-beat";
 
@@ -54,48 +53,6 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
   if (!offers) return [];
   const sell = new Set(offers.sell);
   return OFFER_SLIDES.filter((s) => (s.key === "cashback" ? offers.cashback : sell.has(s.key)));
-}
-
-/** The best bonus the listed places' vouchers give, in percent, or null
- *  when none of them sells one (MESITA-3380). The same `offers.sell` the
- *  tiles' slides read; a Google-only place sells nothing. */
-export function bestVoucherBonus(places: ReadonlyArray<Pick<Place, "offers" | "googleOnly" | "from_google">>): number | null {
-  let best: number | null = null;
-  for (const place of places) {
-    if (isGoogleOnlyPlace(place)) continue;
-    for (const slide of offerSlides(place)) {
-      if (slide.bonus !== undefined && (best === null || slide.bonus > best)) best = slide.bonus;
-    }
-  }
-  return best;
-}
-
-/** THE VOUCHER BAND (MESITA-3380): one line above Home's tiles and Search's
- *  cards naming what vouchers give, drawn only when a listed place sells
- *  one. It hides nothing: no place is filtered by it, and with no seller it
- *  is not drawn at all. Not a link (each place's own green button opens its
- *  vouchers). */
-export function VoucherBand({
-  places,
-  className,
-}: {
-  places: ReadonlyArray<Pick<Place, "offers" | "googleOnly" | "from_google">>;
-  className?: string;
-}) {
-  const bonus = bestVoucherBonus(places);
-  if (bonus === null) return null;
-  return (
-    <p
-      className={cn("px-2.5 py-1.5 text-center font-sans text-xs font-semibold", GREEN, className)}
-      data-voucher-band
-    >
-      Up to{" "}
-      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
-        +{bonus}% Bonus
-      </span>{" "}
-      at places that sell vouchers
-    </p>
-  );
 }
 
 function offersLabel(name: string, slides: OfferSlide[]): string {

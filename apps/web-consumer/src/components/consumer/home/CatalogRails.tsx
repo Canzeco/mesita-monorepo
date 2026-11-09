@@ -83,7 +83,6 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import { VoucherBand } from "@/components/consumer/offer-button";
 import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
@@ -525,9 +524,6 @@ export function CatalogRails() {
     const page = list;
     return (
       <div className="pb-6">
-        {/* What vouchers give, above the tiles, only when one of them sells
-            some (MESITA-3380); it hides no tile. */}
-        <VoucherBand places={page} className="mx-1.5 mt-1.5 rounded-xl" />
         <ul role="list" aria-label={label} className={PLACES_LIST}>
           {page.map((place, i) => {
             const located = withUserDistance(place, coords);
