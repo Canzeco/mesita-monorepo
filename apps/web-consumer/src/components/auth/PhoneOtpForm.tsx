@@ -30,10 +30,12 @@ import { cn } from "@/lib/utils";
 // (see lib/phone-otp.ts): every send is a real SMS we pay Twilio for, and
 // a malformed one comes back as an unreadable provider string.
 //
-// The code also comes by phone call (MESITA-3405): "Call me with the code"
-// on the code step has a call say the same code Auth just texted.
+// The phone step asks how the code comes, text or call (MESITA-3470). Call
+// marks the number first (consumer-web-call-sign-in-code), so Auth's Send
+// SMS hook calls instead of texting. Resend uses the same way.
 
 type Step = "phone" | "code";
+type Method = "sms" | "call";
 
 export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   const router = useRouter();
@@ -50,7 +52,10 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
   // below so "Resend" states the wait instead of failing into a raw
   // "you can only request this after 60 seconds" from the API.
   const [cooldown, setCooldown] = useState(0);
-  const [calling, setCalling] = useState(false);
+  // The number the cooldown belongs to: another number sends at once.
+  const [cooldownPhone, setCooldownPhone] = useState("");
+  const [method, setMethod] = useState<Method>("sms");
+  const [sending, setSending] = useState<Method | null>(null);
 
   const parsed = useMemo(
     () => parsePhone(countryCode, localPhone),
@@ -64,57 +69,59 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
     return () => window.clearTimeout(timer);
   }, [cooldown]);
 
-  const sendCode = async () => {
+  const sendCode = async (how: Method) => {
     setError(null);
     setInfo(null);
     if (!parsed.ok) {
       setError(parsed.error);
       return false;
     }
-    if (cooldown > 0) {
+    if (cooldown > 0 && cooldownPhone === parsed.e164) {
       setError(`Hold on — you can ask for a new code in ${cooldown}s.`);
       return false;
     }
     setLoading(true);
-    const { error: sendError } = await supabase.auth.signInWithOtp({
-      phone: parsed.e164,
-    });
-    setLoading(false);
-    if (sendError) {
-      setError(otpErrorMessage(sendError));
+    setSending(how);
+    try {
+      if (how === "call") await apiCallSignInCode(supabase, parsed.e164);
+      const { error: sendError } = await supabase.auth.signInWithOtp({
+        phone: parsed.e164,
+      });
+      if (sendError) {
+        setError(otpErrorMessage(sendError));
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't call you. Try again.");
       return false;
+    } finally {
+      setLoading(false);
+      setSending(null);
     }
+    setMethod(how);
     setCooldown(RESEND_COOLDOWN_SECONDS);
+    setCooldownPhone(parsed.e164);
     return true;
   };
 
-  const startVerification = async () => {
-    if (await sendCode()) {
+  const sentMessage = (how: Method) =>
+    how === "call"
+      ? "We're calling you now. Answer to hear your code."
+      : `We just texted you a ${OTP_LENGTH}-digit code.`;
+
+  const startVerification = async (how: Method) => {
+    if (await sendCode(how)) {
       setStep("code");
-      setInfo(`We just sent you a ${OTP_LENGTH}-digit code.`);
+      setInfo(sentMessage(how));
     }
   };
 
-  // Resend stays on the code step and confirms inline, so the user never
+  // Resend stays on the code step, by the same way, so the user never
   // loses the digits they already typed.
   const resendCode = async () => {
-    if (await sendCode()) {
+    if (await sendCode(method)) {
       setCode("");
-      setInfo("We sent you a new code.");
-    }
-  };
-
-  const callMe = async () => {
-    setError(null);
-    setInfo(null);
-    setCalling(true);
-    try {
-      await apiCallSignInCode(supabase, e164);
-      setInfo("We're calling you now. Answer to hear your code.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "We couldn't call you. Try again.");
-    } finally {
-      setCalling(false);
+      setInfo(sentMessage(method));
     }
   };
 
@@ -147,7 +154,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void startVerification();
+          void startVerification("sms");
         }}
         className="flex flex-col gap-3"
       >
@@ -166,8 +173,8 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         </label>
 
         <p className="text-muted-foreground type-body">
-          We&apos;ll text you a {OTP_LENGTH}-digit code. You can also get it
-          by phone call. Standard SMS rates may apply.
+          How should we send your {OTP_LENGTH}-digit code? Standard SMS rates
+          may apply.
         </p>
 
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
@@ -177,12 +184,28 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           disabled={loading || !parsed.ok}
           className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
         >
-          {loading ? (
+          {sending === "sms" ? (
             <Spinner size="sm" className="border-white/40 border-t-white" />
           ) : (
             <>
               <MessageCircle className="h-4 w-4" />
-              Send code
+              Text me the code
+            </>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => void startVerification("call")}
+          disabled={loading || !parsed.ok}
+          className={cn(PRIMARY_BUTTON_CLASS, "bg-card text-foreground border-border border")}
+        >
+          {sending === "call" ? (
+            <Spinner size="sm" />
+          ) : (
+            <>
+              <Phone className="h-4 w-4" />
+              Call me with the code
             </>
           )}
         </button>
@@ -251,23 +274,15 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
 
       <button
         type="button"
-        onClick={() => void callMe()}
-        disabled={loading || calling}
-        className="text-muted-foreground hover:text-foreground inline-flex h-9 items-center justify-center gap-1.5 text-xs font-semibold transition disabled:opacity-50"
-      >
-        <Phone className="h-3.5 w-3.5" />
-        {calling ? "Calling…" : "Call me with the code"}
-      </button>
-
-      <button
-        type="button"
         onClick={() => void resendCode()}
         disabled={loading || cooldown > 0}
         className="text-muted-foreground hover:text-foreground h-9 text-center text-xs font-semibold transition disabled:opacity-50"
       >
         {cooldown > 0
-          ? `Resend code in ${cooldown}s`
-          : "Didn't get it? Resend code"}
+          ? `${method === "call" ? "Call again" : "Resend code"} in ${cooldown}s`
+          : method === "call"
+            ? "Didn't get it? Call me again"
+            : "Didn't get it? Resend code"}
       </button>
     </form>
   );

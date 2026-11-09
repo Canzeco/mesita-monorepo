@@ -2241,27 +2241,21 @@ export type Database = {
           },
         ]
       }
-      sign_in_codes: {
+      sign_in_calls: {
         Row: {
-          calls: number
-          code: string
-          created_at: string
-          expires_at: string
+          called_at: string | null
           phone: string
+          requested_at: string | null
         }
         Insert: {
-          calls?: number
-          code: string
-          created_at?: string
-          expires_at: string
+          called_at?: string | null
           phone: string
+          requested_at?: string | null
         }
         Update: {
-          calls?: number
-          code?: string
-          created_at?: string
-          expires_at?: string
+          called_at?: string | null
           phone?: string
+          requested_at?: string | null
         }
         Relationships: []
       }
@@ -3128,10 +3122,6 @@ export type Database = {
       seed_place_families: { Args: never; Returns: undefined }
       seed_place_tags: { Args: never; Returns: undefined }
       service_elevenlabs_api_key: { Args: never; Returns: string }
-      sign_in_code_take_call: {
-        Args: { p_max: number; p_phone: string }
-        Returns: string
-      }
       unstick_enriching_places: {
         Args: { older_than?: string }
         Returns: number
