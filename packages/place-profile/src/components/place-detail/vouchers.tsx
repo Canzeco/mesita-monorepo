@@ -234,10 +234,10 @@ function InfoButton({ title, text }: { title: string; text: string }) {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-label={`How ${title} works`}
-        className="text-muted-foreground hover:text-foreground relative flex h-5 w-5 items-center justify-center rounded-full after:absolute after:-inset-2.5"
+        className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2"
         data-offer-info
       >
-        <Info className="h-4 w-4" aria-hidden />
+        <Info className="h-5 w-5" aria-hidden />
       </button>
       {open && typeof document !== "undefined" ? createPortal(
         <span
@@ -252,8 +252,8 @@ function InfoButton({ title, text }: { title: string; text: string }) {
             className="bg-card flex max-h-[85vh] w-full max-w-sm cursor-auto flex-col gap-3 rounded-2xl p-5 text-left shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <span className="text-foreground text-base font-semibold">{title}</span>
-            <span className="text-muted-foreground overflow-y-auto text-sm leading-snug font-normal">{text}</span>
+            <span className="text-foreground text-lg font-semibold">{title}</span>
+            <span className="text-muted-foreground overflow-y-auto text-base leading-snug font-normal">{text}</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
