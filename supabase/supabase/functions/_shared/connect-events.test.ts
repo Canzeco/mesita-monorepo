@@ -239,7 +239,7 @@ Deno.test("account.updated out of order: the newer event writes the snapshot, an
   assertEquals(fake.ops.filter((o) => o.table === "place_payment_accounts" && o.kind === "update").length, 1);
 });
 
-Deno.test("an event type outside the six is acknowledged and ignored", async () => {
+Deno.test("an event type outside the handled ones is acknowledged and ignored", async () => {
   const fake = fakeAdmin({ table: accountTable(true) });
   const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.dispute.funds_withdrawn", {}));
   assertEquals(r.body.ignored, "unhandled");
@@ -385,5 +385,62 @@ Deno.test("dispute: a lost charge no row names is acknowledged as dispute_unmatc
   const stripe = disputeStripe({ id: "ch_x", amount: 500, amount_refunded: 0, payment_intent: "pi_x" });
   const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { charge: "ch_x", payment_intent: null })));
   assertEquals(r, { status: 200, body: { ok: true, ignored: "dispute_unmatched" } });
+  assertEquals(fake.rpcs, []);
+});
+
+// ── payment_intent.* (MESITA-3568: an in-app card part) ────────────────────
+
+function paymentRow(sessionId: string | null) {
+  return (op: FakeOp): FakeResult => {
+    if (op.table === "wallet_payments" && op.kind === "select") return { data: { id: PAYMENT, stripe_checkout_session_id: sessionId } };
+    return accountTable(true)(op);
+  };
+}
+
+Deno.test("pi: a PaymentIntent without Mesita's metadata (the place's own sale) is 200 ignored, no ledger read", async () => {
+  const fake = fakeAdmin({ table: accountTable(true) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("payment_intent.succeeded", { id: "pi_own", metadata: {} }));
+  assertEquals(r, { status: 200, body: { ok: true, ignored: "not_mesita" } });
+  assertEquals(fake.rpcs, []);
+  assertEquals(fake.ops.filter((o) => o.table === "wallet_payments").length, 0);
+});
+
+Deno.test("pi: succeeded settles the payment its metadata names, once across a replay", async () => {
+  const seen = new Set<string>();
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "stripe_connect_events" && op.kind === "insert") {
+        const id = (op.payload as { id: string }).id;
+        if (seen.has(id)) return { error: { code: "23505", message: "duplicate key" } };
+        seen.add(id);
+      }
+      return paymentRow(null)(op);
+    },
+    rpc: () => ({ data: { ok: true, outcome: "paid" } }),
+  });
+  const e = event("payment_intent.succeeded", { id: "pi_tab", metadata: { mesita_kind: "wallet_payment", payment_id: PAYMENT } });
+  const first = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(first.body, { ok: true, payment_id: PAYMENT, outcome: "paid" });
+  const again = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(again.body.ignored, "replay");
+  assertEquals(fake.rpcs, [{ name: "wallet_settle_payment", args: { p_payment_id: PAYMENT, p_payment_intent: "pi_tab" } }]);
+});
+
+Deno.test("pi: canceled releases an in-app payment, but leaves a Checkout's own PI to checkout.session.expired", async () => {
+  const inApp = fakeAdmin({ table: paymentRow(null), rpc: () => ({ data: { ok: true, outcome: "released" } }) });
+  const r = await handleConnectEvent({ admin: inApp.client, stripe: noStripe, livemode: false }, event("payment_intent.canceled", { id: "pi_tab", metadata: { mesita_kind: "wallet_payment", payment_id: PAYMENT } }));
+  assertEquals(r.body.outcome, "released");
+  assertEquals(inApp.rpcs, [{ name: "wallet_release_payment", args: { p_payment_id: PAYMENT, p_status: "failed", p_error: "pi_canceled" } }]);
+
+  const checkout = fakeAdmin({ table: paymentRow("cs_1") });
+  const c = await handleConnectEvent({ admin: checkout.client, stripe: noStripe, livemode: false }, event("payment_intent.canceled", { id: "pi_cs", metadata: { mesita_kind: "wallet_payment", payment_id: PAYMENT } }));
+  assertEquals(c.body.ignored, "checkout_owns_it");
+  assertEquals(checkout.rpcs, []);
+});
+
+Deno.test("pi: payment_failed is logged only; the hold stays for a retry", async () => {
+  const fake = fakeAdmin({ table: paymentRow(null) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("payment_intent.payment_failed", { id: "pi_tab", metadata: { mesita_kind: "wallet_payment", payment_id: PAYMENT }, last_payment_error: { code: "card_declined" } }));
+  assertEquals(r.body.outcome, "payment_failed_logged");
   assertEquals(fake.rpcs, []);
 });

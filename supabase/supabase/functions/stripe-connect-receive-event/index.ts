@@ -3,7 +3,9 @@
 // MESITA-3305 (W2b): Stripe's Connect webhook, the primary settlement path
 // for the money ledger. Stripe posts the events of every connected account
 // here (checkout.session.completed, checkout.session.expired,
-// charge.refunded, account.updated); the signature on the raw body with
+// charge.refunded, account.updated, and since MESITA-3568 payment_intent.
+// succeeded / canceled / payment_failed for an in-app card part; a PI
+// without Mesita's metadata is 200 ignored not_mesita); the signature on the raw body with
 // STRIPE_CONNECT_WEBHOOK_SECRET is the gate (verify_jwt = false: Stripe holds
 // no Supabase JWT; never requireInternalCaller). The `stripe` actor is in
 // Rules §2's closed caller set.

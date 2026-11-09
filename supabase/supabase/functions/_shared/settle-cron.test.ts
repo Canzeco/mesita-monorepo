@@ -151,3 +151,57 @@ Deno.test("the tick sweeps the waiter's charges and reports the needs_review cou
   assertEquals(r.charges_swept, 3);
   assertEquals(r.needs_review_total, 3);
 });
+
+// ── An in-app card part settles by its PaymentIntent (MESITA-3568) ─────────
+
+function piRow(createdAgoMs: number): BatchRow {
+  return row(2, { stripe_checkout_session_id: null, created_at: new Date(T0 - createdAgoMs).toISOString() });
+}
+
+function piAdmin(rpcs: string[]) {
+  return fakeAdmin({
+    rpc: (name, args) => {
+      rpcs.push(`${name}:${String(args.p_status ?? args.p_payment_intent ?? "")}`);
+      return { data: { ok: true, outcome: name === "wallet_settle_payment" ? "paid" : "released" } };
+    },
+    table: (op) => op.table === "wallet_payments" ? { data: { stripe_payment_intent_id: "pi_tab" } } : { data: null },
+  }).client;
+}
+
+Deno.test("pi: a succeeded PaymentIntent settles, even long past its ten minutes; never fails", async () => {
+  const rpcs: string[] = [];
+  const stripe: StripeCall = (method, path) => {
+    assertEquals([method, path], ["GET", "payment_intents/pi_tab"]);
+    return Promise.resolve({ id: "pi_tab", status: "succeeded", metadata: { payment_id: row(2).id } });
+  };
+  const out = await settleRow({ admin: piAdmin(rpcs), stripe, livemode: false, now: () => T0 }, SETTLE_DEFAULTS, piRow(60 * 60_000));
+  assertEquals(out, "paid");
+  assertEquals(rpcs, ["wallet_settle_payment:pi_tab"]);
+});
+
+Deno.test("pi: requires_action inside ten minutes waits; past them it is cancelled first, then released", async () => {
+  const calls: string[] = [];
+  const stripe: StripeCall = (method, path) => {
+    calls.push(`${method} ${path}`);
+    return Promise.resolve({ id: "pi_tab", status: method === "POST" ? "canceled" : "requires_action", metadata: { payment_id: row(2).id } });
+  };
+  const young: string[] = [];
+  assertEquals(await settleRow({ admin: piAdmin(young), stripe, livemode: false, now: () => T0 }, SETTLE_DEFAULTS, piRow(5 * 60_000)), "pending");
+  assertEquals(young, []);
+  const old: string[] = [];
+  assertEquals(await settleRow({ admin: piAdmin(old), stripe, livemode: false, now: () => T0 }, SETTLE_DEFAULTS, piRow(11 * 60_000)), "expired");
+  assertEquals(calls.slice(-2), ["GET payment_intents/pi_tab", "POST payment_intents/pi_tab/cancel"]);
+  assertEquals(old, ["wallet_release_payment:failed"]);
+});
+
+Deno.test("pi: a cancel refused because the PI just succeeded settles instead", async () => {
+  const rpcs: string[] = [];
+  let reads = 0;
+  const stripe: StripeCall = (method) => {
+    if (method === "POST") return Promise.reject(new StripeError("payment_intents/pi_tab/cancel", "invalid_request_error", "payment_intent_unexpected_state", 400, "succeeded"));
+    reads++;
+    return Promise.resolve({ id: "pi_tab", status: reads === 1 ? "requires_action" : "succeeded", metadata: { payment_id: row(2).id } });
+  };
+  assertEquals(await settleRow({ admin: piAdmin(rpcs), stripe, livemode: false, now: () => T0 }, SETTLE_DEFAULTS, piRow(20 * 60_000)), "paid");
+  assertEquals(rpcs, ["wallet_settle_payment:pi_tab"]);
+});
