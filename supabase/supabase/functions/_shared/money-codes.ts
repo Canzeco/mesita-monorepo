@@ -66,6 +66,8 @@ export const MONEY_CODES = [
   "own_gift",
   "claimed",
   "taken_back",
+  // Story and VIP, one each new visit (MESITA-3463): bought for every visit
+  "needs_visit",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];

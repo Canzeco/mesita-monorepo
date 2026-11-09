@@ -15,6 +15,7 @@ import { type AccountRow, type PaymentSettings, readAccount, readSettings } from
 import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
 
@@ -71,6 +72,9 @@ export type OfferInput = {
   balance: PlaceBalance | null;
   /** Welcome once: this guest already bought one here, or has paid here. */
   welcomeUsed: boolean;
+  /** Story and VIP, one each new visit (MESITA-3463): true when this guest
+   *  already bought one here for every visit they made. Absent reads false. */
+  perVisitUsed?: Partial<Record<PerVisitVoucher, boolean>>;
 };
 
 /** The pure half of the offer. */
@@ -82,6 +86,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
   for (const k of state.sell) {
     if (i.paused) unavailable[k] = "paused";
     else if (k === "voucher_welcome" && i.welcomeUsed) unavailable[k] = "used";
+    else if (i.perVisitUsed?.[k as PerVisitVoucher]) unavailable[k] = "needs_visit";
     else sell.push(k);
   }
   // The guest's offer carries the voucher switches alone; the Mesita Pay switch
@@ -139,6 +144,29 @@ export async function readWelcomeUsed(admin: SupabaseClient, consumerId: string 
   return (p.data ?? []).length > 0 || (w.data ?? []).length > 0;
 }
 
+/** Story and VIP, one each new visit (MESITA-3463): each is spent when the
+ *  guest's live purchases of it here (not expired or failed) outnumber
+ *  their visits here (visits.ts). */
+export async function readPerVisitUsed(
+  admin: SupabaseClient,
+  consumerId: string | null,
+  placeId: string,
+): Promise<Partial<Record<PerVisitVoucher, boolean>>> {
+  if (!consumerId) return {};
+  const [visits, bought] = await Promise.all([
+    readVisitCount(admin, consumerId, placeId),
+    admin.from("wallet_purchases").select("voucher").eq("consumer_id", consumerId).eq("place_id", placeId)
+      .in("voucher", [...PER_VISIT_VOUCHERS]).not("status", "in", "(expired,failed)"),
+  ]);
+  if (bought.error) throw new Error(`wallet_purchases: ${bought.error.message}`);
+  const rows = (bought.data ?? []) as Array<{ voucher: string }>;
+  const out: Partial<Record<PerVisitVoucher, boolean>> = {};
+  for (const k of PER_VISIT_VOUCHERS) {
+    out[k] = perVisitSpent(rows.filter((r) => r.voucher === k).length, visits);
+  }
+  return out;
+}
+
 /** The whole offer for one place and one (maybe anonymous) guest. */
 export async function voucherOffer(
   admin: SupabaseClient,
@@ -147,14 +175,15 @@ export async function voucherOffer(
   livemode: boolean,
 ): Promise<VoucherOffer> {
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const [settings, account, config, balance, welcomeUsed] = await Promise.all([
+  const [settings, account, config, balance, welcomeUsed, perVisitUsed] = await Promise.all([
     readSettings(admin, place.id),
     readAccount(admin, place.id),
     readMoneyConfig(admin),
     readPlaceBalance(admin, consumerId, place.id, currency, livemode),
     readWelcomeUsed(admin, consumerId, place.id),
+    readPerVisitUsed(admin, consumerId, place.id),
   ]);
-  return offerFrom({ settings, account, livemode, currency, paused: config.buying_paused, balance, welcomeUsed });
+  return offerFrom({ settings, account, livemode, currency, paused: config.buying_paused, balance, welcomeUsed, perVisitUsed });
 }
 
 // ── Buying ─────────────────────────────────────────────────────────────────
@@ -170,6 +199,7 @@ const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   needs_instagram: { code: "needs_instagram", error: "This voucher needs the Instagram connection, which is not on yet" },
   paused: { code: "paused", error: "Voucher sales are paused for a moment" },
   used: { code: "welcome_used", error: "You already had your Welcome voucher here" },
+  needs_visit: { code: "needs_visit", error: "One each visit: pay a bill here by card to buy it again" },
 };
 
 /** Why a voucher cannot be bought right now, or null when it can. */

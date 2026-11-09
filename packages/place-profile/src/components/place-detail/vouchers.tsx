@@ -160,6 +160,7 @@ function tag(reason: VoucherReason | undefined): string {
   if (reason === "off" || reason === "needs_account") return "Not at this place yet";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
+  if (reason === "needs_visit") return "One per visit";
   return "Coming soon";
 }
 
@@ -417,6 +418,8 @@ function offerStatus(
     return { ok: true, text: "Available. Buy as many as you like." };
   }
   if (reason === "used") return { ok: false, text: "You already had yours here." };
+  // MESITA-3463: a visit is a paid bill here with a card part.
+  if (reason === "needs_visit") return { ok: false, text: "One per visit. Pay a bill here by card to buy another." };
   return { ok: false, text: `${tag(reason)}.` };
 }
 
@@ -538,7 +541,7 @@ export function VouchersPane({
   const buyable = (k: MoneyVoucherKey) => {
     if (guestLock(k)) return false;
     const reason = unavailable[k];
-    return reason === undefined || (!dim && reason !== "used" && reason !== "paused");
+    return reason === undefined || (!dim && reason !== "used" && reason !== "paused" && reason !== "needs_visit");
   };
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;

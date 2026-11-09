@@ -57,7 +57,10 @@ export type VoucherReason =
   /** Selling is paused for every place (the admin console's kill switch). */
   | "paused"
   /** Welcome: this guest already had theirs here, or has paid here before. */
-  | "used";
+  | "used"
+  /** Story and VIP, one each new visit (MESITA-3463): this guest already
+   *  bought one here for every visit (a paid bill with a card part). */
+  | "needs_visit";
 
 /** Vouchers in the catalog that no wave sells yet, and why. W1b sells the
  *  other three; MX$5,000 waits for its own wave, VIP for card payments
