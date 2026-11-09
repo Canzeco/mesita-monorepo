@@ -205,7 +205,10 @@ const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, M
  *  dropout that moves shit. modal must not be full screen, it must simply
  *  explain shit quickly"): a centred card over a dimmed page, a few short
  *  lines and Got it; a tap outside or Escape closes it. */
-function SectionTitle({ id, title, lines }: { id: string; title: string; lines: string[] }) {
+/** One paragraph of the (i): a bold lead, then plain words (MESITA-3492). */
+type Para = { lead: string; text: string };
+
+function SectionTitle({ id, title, lines }: { id: string; title: string; lines: Para[] }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -237,17 +240,19 @@ function SectionTitle({ id, title, lines }: { id: string; title: string; lines: 
             role="dialog"
             aria-modal="true"
             aria-labelledby={`${id}-how`}
-            className="bg-card flex w-full max-w-xs flex-col gap-3 rounded-2xl p-5 shadow-xl"
+            className="bg-card flex max-h-[85vh] w-full max-w-sm flex-col gap-3 rounded-2xl p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h4 id={`${id}-how`} className="text-base font-semibold">
               How {title} work
             </h4>
-            <ul className="text-muted-foreground flex flex-col gap-1.5 text-sm leading-snug">
+            <div className="text-muted-foreground -mx-1 flex flex-col gap-3 overflow-y-auto px-1 text-sm leading-snug">
               {lines.map((l) => (
-                <li key={l}>{l}</li>
+                <p key={l.lead}>
+                  <span className="text-foreground font-semibold">{l.lead}.</span> {l.text}
+                </p>
               ))}
-            </ul>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -395,11 +400,22 @@ export function VouchersPane({
           id="rewards-prepayment"
           title="Prepayment Offers"
           lines={[
-            "Load credits for this place before you go, and the place adds a bonus on top.",
-            "Example: pay $1,000MX, get $1,200MX to spend here.",
-            "Pick an offer and tap Buy. Your credits are ready within an hour; Story's arrive right away.",
-            "Use them to pay your bill here in the app. They only work at this place.",
-            "Small, Medium, Big: as many as you like. Welcome: once, on your first visit. Story: post a story about the place, once a day. VIP: for VIP guests, once a day.",
+            {
+              lead: "Standard (Small, Medium, Big)",
+              text: "Buy credits for this place before you go and the place adds a bonus on top: Small adds 10%, Medium 20%, Big 30%. Pick one, tap the black button and pay; your credits are ready within an hour. Use them to pay your bill here in the app. They only work at this place, and you can buy as many as you like.",
+            },
+            {
+              lead: "Welcome",
+              text: "A thank-you for trying this place for the first time: pay $100MX, get $130MX in credits. One per place: once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.",
+            },
+            {
+              lead: "Story",
+              text: "Buy the voucher, then activate it by posting an Instagram story at the place. Once your story is up, the $130MX in credits arrive right away and you pay your bill with them. One per visit.",
+            },
+            {
+              lead: "VIP",
+              text: "Reserved for Mesita's VIP Class. VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see. If you're VIP, pay $100MX and get $130MX in credits here. One per visit. Not VIP? You won't be able to buy this one.",
+            },
           ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
@@ -469,10 +485,14 @@ export function VouchersPane({
           id="rewards-payment"
           title="Payment Offers"
           lines={[
-            "Two ways to pay your bill here.",
-            "Mesita Pay Cashback: pay the bill in the app and 5% comes back as credits for your next visit, on every visit.",
-            "Example: a $500MX bill gives you $25MX back.",
-            "External Pay Cashback: pay the place directly, by cash or their card terminal. Nothing comes back.",
+            {
+              lead: "Mesita Pay Cashback",
+              text: "Pay your bill here in the app and 5% of it comes back as credits for your next visit, every visit. A $500MX bill gives you $25MX back.",
+            },
+            {
+              lead: "External Pay Cashback",
+              text: "Pay the place directly, in cash or on their card terminal. That works too, but nothing comes back.",
+            },
           ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
