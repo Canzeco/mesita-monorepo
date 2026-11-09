@@ -750,6 +750,9 @@ verify_jwt = true
 [functions.business-web-get-place-money]
 verify_jwt = true
 
+[functions.business-web-refund-payment]
+verify_jwt = true
+
 [functions.business-web-start-payment-onboarding]
 verify_jwt = true
 

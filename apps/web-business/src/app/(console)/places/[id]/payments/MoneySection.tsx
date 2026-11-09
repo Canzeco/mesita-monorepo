@@ -5,13 +5,16 @@
 // fee rates and the test-mode cap in one grey note under it, then the rows:
 // what each guest paid, newest first, 50 at a time, with a date range. The
 // owner and Mesita staff only (the server answers editors 403). Who paid is
-// masked by the server; the page never sees an email.
+// masked by the server; the page never sees an email. Each row the guest
+// still has money on carries Refund (MESITA-3381): the owner gives back all
+// of it or part, the card part to the card first, then the credit part as
+// credit; a row given back whole reads Refunded.
 
 import { useState } from "react";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { Card } from "@/components/shell/Page";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
-import { getPlaceMoney, type PlaceMoney } from "@/lib/business-api";
+import { getPlaceMoney, refundPlaceMoneyRow, type PlaceMoney, type PlaceMoneyRow } from "@/lib/business-api";
 
 const CURRENCY = "MXN";
 const ROW = "flex min-h-14 items-center gap-4 px-5 py-3 text-sm sm:px-6";
@@ -44,6 +47,60 @@ function dayStart(day: string, plusDays = 0): string | undefined {
   const d = new Date(`${day}T00:00:00`);
   d.setDate(d.getDate() + plusDays);
   return d.toISOString();
+}
+
+/** Pesos typed by the owner as cents, or null when it is not a positive amount. */
+function centsOf(text: string): number | null {
+  const n = Number(text.replace(/[$,\s]/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
+
+/** The Refund action on one row: Refund opens the amount (all that is left),
+ *  Confirm sends it. */
+function RefundAction({ placeId, row, onDone }: { placeId: string; row: PlaceMoneyRow; onDone: (error: string | null) => void }) {
+  const left = row.amount_cents - row.refunded_cents;
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState((left / 100).toFixed(2));
+  const [busy, setBusy] = useState(false);
+  if (left <= 0) return <p className="text-muted-foreground shrink-0 text-xs font-medium" data-refunded>Refunded</p>;
+  if (!open) {
+    return (
+      <button type="button" className="text-muted-foreground hover:text-foreground shrink-0 text-xs font-medium" onClick={() => setOpen(true)}>
+        Refund
+      </button>
+    );
+  }
+  const cents = centsOf(amount);
+  const valid = cents !== null && cents <= left;
+  return (
+    <form
+      className="flex shrink-0 items-center gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!valid || busy) return;
+        setBusy(true);
+        const r = await refundPlaceMoneyRow(placeId, row, cents === left ? null : cents);
+        setBusy(false);
+        if (r.ok) setOpen(false);
+        onDone(r.ok ? null : r.error);
+      }}
+    >
+      <input
+        aria-label="Amount to refund"
+        inputMode="decimal"
+        className="border-border bg-background h-8 w-24 rounded-lg border px-2 text-sm tabular-nums"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+      />
+      <button type="submit" className="text-foreground text-xs font-semibold disabled:opacity-50" disabled={!valid || busy}>
+        {busy ? "Refunding…" : "Confirm"}
+      </button>
+      <button type="button" className="text-muted-foreground text-xs" disabled={busy} onClick={() => setOpen(false)}>
+        Cancel
+      </button>
+    </form>
+  );
 }
 
 export function MoneySection({ placeId, initial }: { placeId: string; initial: PlaceMoney }) {
@@ -133,15 +190,23 @@ export function MoneySection({ placeId, initial }: { placeId: string; initial: P
         ) : (
           <ul className="divide-border divide-y border-t">
             {money_.rows.map((r) => (
-              <li key={r.id} className={ROW}>
+              <li key={r.id} className={`${ROW} flex-wrap`}>
                 <p className="w-28 shrink-0 font-semibold tabular-nums">{money(r.amount_cents)}</p>
                 <p className="text-muted-foreground min-w-0 flex-1 truncate">
                   {r.kind === "voucher" ? KIND[r.voucher ?? ""] ?? "Voucher" : "Payment"}
                   {r.tip_cents > 0 ? ` (tip ${money(r.tip_cents)})` : ""} · {r.guest}
                   {r.ticket ? ` · ${r.ticket}` : ""}
-                  {r.refunded_cents > 0 ? ` · ${money(r.refunded_cents)} refunded` : ""}
+                  {r.refunded_cents > 0 && r.refunded_cents < r.amount_cents ? ` · ${money(r.refunded_cents)} refunded` : ""}
                 </p>
                 <p className="text-muted-foreground shrink-0 tabular-nums">{when(r.created_at)}</p>
+                <RefundAction
+                  placeId={placeId}
+                  row={r}
+                  onDone={(err) => {
+                    if (err) return setError(err);
+                    void load(false);
+                  }}
+                />
               </li>
             ))}
           </ul>

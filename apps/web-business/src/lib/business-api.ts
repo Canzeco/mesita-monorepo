@@ -508,6 +508,30 @@ export async function getPlaceMoney(
   return { ok: true, data: { ...r.data, rows: r.data.rows ?? [], next: r.data.next ?? null } };
 }
 
+/** What one owner refund gave back (MESITA-3381): the card part through
+ *  Stripe, then the credit part as credit. */
+export type MoneyRefund = { card_refunded_cents: number; credit_refunded_cents: number; status: string | null };
+
+/** The owner refunds one row of their own place, full (no amount) or partial.
+ *  Owners and Mesita staff only; an editor gets `forbidden`. */
+export async function refundPlaceMoneyRow(
+  placeId: string,
+  row: Pick<PlaceMoneyRow, "kind" | "id">,
+  amountCents: number | null,
+): Promise<Result<MoneyRefund>> {
+  const r = await efInvoke<MoneyRefund>("business-web-refund-payment", {
+    place_id: placeId,
+    kind: row.kind === "voucher" ? "purchase" : "payment",
+    id: row.id,
+    ...(amountCents ? { amount_cents: amountCents } : {}),
+  });
+  if (!r.ok) return fail(r);
+  return {
+    ok: true,
+    data: { card_refunded_cents: r.data.card_refunded_cents, credit_refunded_cents: r.data.credit_refunded_cents, status: r.data.status ?? null },
+  };
+}
+
 /** One switch: Cashback or one voucher. Returns every switch as it now stands. */
 export async function setPlacePayment(placeId: string, key: PaymentKey, enabled: boolean): Promise<Result<PaymentSettings>> {
   const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });

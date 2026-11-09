@@ -14,6 +14,8 @@ const DOORS = [
   "business-web-cancel-premier",
   // The owner's money (MESITA-3307): editors get 403 forbidden.
   "business-web-get-place-money",
+  // Owners refund their own place's rows (MESITA-3381).
+  "business-web-refund-payment",
 ];
 
 /** The payer door's call, checked by business-premier-payer-doors.test.ts. */
