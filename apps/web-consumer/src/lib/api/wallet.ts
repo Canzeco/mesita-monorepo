@@ -332,6 +332,10 @@ export const CHARGE_REFUSAL: Record<string, string> = {
 export type PayPlace = {
   place_id: string;
   name: string | null;
+  /** The profile picture, the Wallet cards' round photo (MESITA-3536). */
+  photo: string | null;
+  /** The street address as the place reads it. */
+  address: string | null;
   marks: { tier: number | null; mesita_pay: boolean };
   /** Null without a location, or for a place with no coordinates. */
   distance_m: number | null;

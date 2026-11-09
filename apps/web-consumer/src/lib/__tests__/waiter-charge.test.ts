@@ -13,7 +13,9 @@ describe("the waiter's code on Pay", () => {
   it("draws no code field until the link is tapped", () => {
     expect(PAY).toContain("Waiter gave you a code?");
     expect(PAY).toMatch(/useState\(false\);\s*const \[code, setCode\]/);
-    expect(PAY).toMatch(/charge \? null : codeOpen \? \(/);
+    // The bill step (MESITA-3536): no code field with a charge; the field only once opened.
+    expect(PAY).toMatch(/\{charge \? null : \(/);
+    expect(PAY).toMatch(/\{codeOpen \? \(/);
   });
 
   it("locks the amount to the charge and sends the code with the start", () => {
