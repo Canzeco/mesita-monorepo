@@ -77,6 +77,9 @@ export const CONSUMER_ROUTES = {
     // cells that made Me a full 3×4 grid (MESITA-3465).
     transactions: "/me/transactions",
     cards: "/me/cards",
+    // Mesita refunds credit a place that closed for good can no longer honour.
+    // The view only, empty and with no button (MESITA-3517).
+    refunds: "/me/refunds",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",
