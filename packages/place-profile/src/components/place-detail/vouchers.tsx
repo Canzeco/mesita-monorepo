@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef } from "react";
-import { BadgePercent, Sparkles } from "lucide-react";
+import { BadgePercent, Crown, PartyPopper, type LucideIcon } from "lucide-react";
+import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
 import { inertButtonProps } from "../../actions";
@@ -171,8 +172,6 @@ const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px
 
 /** A section title on the one-screen Offers page: 16px (MESITA-3452). */
 const OFFERS_TITLE_CLASS = "text-foreground font-sans text-base leading-tight font-semibold";
-/** The bonus: the hero tile's green pill, ink text (MESITA-3446). */
-const BONUS_PILL = cn(PLACE_PILL_CLASS, "shrink-0 self-start bg-green-400 px-1.5 py-0 text-[10px] font-bold text-neutral-950");
 /** The small action on an offer (MESITA-3454, Pato: "make the pay buttons
  *  smaller"): 28px, 11px words. */
 const SMALL_ACTION = "h-7 min-h-7 rounded-md text-[11px]";
@@ -180,11 +179,56 @@ const SMALL_ACTION = "h-7 min-h-7 rounded-md text-[11px]";
 /** A card: one hairline edge, white, rounded. */
 const CARD = "border-border bg-card rounded-2xl border";
 
-/** One voucher, a third of the row (MESITA-3451). DESIGN C SINCE MESITA-3454
- *  (Pato: "make the payment and prepayment offers better"): the name small,
- *  the credit it buys big, "for MX$X" under it, the "+N% bonus" pill, then a
- *  28px Buy or the tag. A special voucher sits on ink with a sparkle and a
- *  green Buy, so the specials read as special. */
+/** A voucher's face (MESITA-3466, Pato: "different colors. insta must be
+ *  insta color and background. welcome must be blue. vip must be golden.
+ *  standard must be black"): the card, its words, its pill and its Buy. */
+type Face = {
+  card: string;
+  muted: string;
+  pill: string;
+  buy: string;
+  Mark?: LucideIcon | typeof Instagram;
+};
+const FACES: Record<MoneyVoucherKey, Face> = (() => {
+  const ink: Face = {
+    card: "bg-neutral-950 text-white",
+    muted: "text-white/60",
+    pill: "bg-green-400 text-neutral-950",
+    buy: "bg-white text-neutral-950",
+  };
+  return {
+    voucher_200: ink,
+    voucher_1000: ink,
+    voucher_5000: ink,
+    voucher_welcome: {
+      card: "bg-blue-600 text-white",
+      muted: "text-white/75",
+      pill: "bg-white/25 text-white",
+      buy: "bg-white text-blue-700",
+      Mark: PartyPopper,
+    },
+    // Instagram's own gradient (yellow, pink, purple, blue).
+    voucher_story: {
+      card: "bg-[linear-gradient(45deg,#feda75_0%,#fa7e1e_25%,#d62976_50%,#962fbf_75%,#4f5bd5_100%)] text-white",
+      muted: "text-white/80",
+      pill: "bg-white/25 text-white",
+      buy: "bg-white text-[#d62976]",
+      Mark: Instagram,
+    },
+    voucher_vip: {
+      card: "bg-[linear-gradient(135deg,#fde68a_0%,#f59e0b_55%,#b45309_100%)] text-neutral-950",
+      muted: "text-neutral-950/70",
+      pill: "bg-neutral-950 text-amber-300",
+      buy: "bg-neutral-950 text-amber-300",
+      Mark: Crown,
+    },
+  };
+})();
+
+/** One voucher, a third of the row (MESITA-3451): the name small, the credit
+ *  it buys big, "for MX$X" under it, the "+N% bonus" pill, then a 28px Buy
+ *  or the tag (design C, MESITA-3454). Each voucher wears its own face
+ *  (FACES, MESITA-3466). */
 function OfferCard({
   name,
   bonus,
@@ -192,7 +236,7 @@ function OfferCard({
   get,
   label,
   faded,
-  special,
+  face,
   action,
 }: {
   name: string;
@@ -201,34 +245,23 @@ function OfferCard({
   get: string;
   label: string;
   faded: boolean;
-  special: boolean;
+  face: Face;
   action: ReactNode;
 }) {
+  const Mark = face.Mark;
   return (
-    <li
-      className={cn(
-        "flex min-w-0 flex-col gap-1 rounded-2xl p-2.5",
-        special ? "bg-neutral-950 text-white" : CARD,
-        faded && "opacity-50",
-      )}
-      aria-label={label}
-    >
-      <span
-        className={cn(
-          "flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase",
-          special ? "text-green-400" : "text-muted-foreground",
-        )}
-      >
-        {special ? <Sparkles className="h-3 w-3 shrink-0" aria-hidden /> : null}
+    <li className={cn("flex min-w-0 flex-col gap-1 rounded-2xl p-2.5", face.card, faded && "opacity-50")} aria-label={label}>
+      <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
+        {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
         {name}
       </span>
       <span className="truncate text-lg leading-tight font-extrabold tabular-nums" aria-hidden>
         {get}
       </span>
-      <span className={cn("truncate text-[11px] tabular-nums", special ? "text-white/60" : "text-muted-foreground")} aria-hidden>
+      <span className={cn("truncate text-[11px] tabular-nums", face.muted)} aria-hidden>
         for {pay}
       </span>
-      <span className={BONUS_PILL}>+{bonus}</span>
+      <span className={cn(PLACE_PILL_CLASS, "shrink-0 self-start px-1.5 py-0 text-[10px] font-bold", face.pill)}>+{bonus}</span>
       <div className="mt-1">{action}</div>
     </li>
   );
@@ -355,7 +388,7 @@ export function VouchersPane({
   const buying = actions?.buyingVoucher != null;
 
   /** One row of three vouchers (MESITA-3451). */
-  const row = (items: Product[], label: string, special = false) => (
+  const row = (items: Product[], label: string) => (
     <ul className="grid grid-cols-3 gap-1.5" aria-label={label} data-voucher-catalog>
       {items.map((p) => {
         const line = catalog[p.key];
@@ -373,13 +406,13 @@ export function VouchersPane({
             onClick={live ? () => actions?.onBuyVoucher?.(p.key) : undefined}
             disabled={buying}
             aria-label={`Buy the ${p.name} voucher, ${deal}`}
-            className={cn(ACTION_BUTTON, SMALL_ACTION, "px-1", special && "bg-green-400 font-bold text-neutral-950")}
+            className={cn(ACTION_BUTTON, SMALL_ACTION, "px-1 font-bold", FACES[p.key].buy)}
             data-voucher-buy={p.key}
           >
             {actions?.buyingVoucher === p.key ? "Opening…" : "Buy"}
           </button>
         ) : (
-          <span className={cn("flex h-7 items-center justify-center text-center text-[10px] leading-tight font-semibold", special ? "text-white/60" : "text-muted-foreground")}>
+          <span className={cn("flex h-7 items-center justify-center text-center text-[10px] leading-tight font-semibold", FACES[p.key].muted)}>
             {tag(reason)}
           </span>
         );
@@ -392,7 +425,7 @@ export function VouchersPane({
             get={get}
             label={`${p.name} voucher, ${deal}. ${[p.when, loading || can ? p.limit : tag(reason)].filter(Boolean).join(" ")}`}
             faded={!loading && !can && dim}
-            special={special}
+            face={FACES[p.key]}
             action={action}
           />
         );
@@ -446,7 +479,7 @@ export function VouchersPane({
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-special" data-promos="special">
         <h3 id="rewards-special" className={OFFERS_TITLE_CLASS}>Special Prepayment Offers</h3>
-        {row(SPECIAL, "Special prepayment offers", true)}
+        {row(SPECIAL, "Special prepayment offers")}
         <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
           Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credit is ready in an hour.
         </p>
