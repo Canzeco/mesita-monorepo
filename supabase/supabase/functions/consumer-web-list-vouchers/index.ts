@@ -9,7 +9,8 @@
 //
 // Body: { place_id: uuid }
 // Response: { ok: true, money: { test_mode, currency, charges_enabled, cashback, vouchers,
-//                               sell, unavailable, catalog, balance, paused } }
+//                               sell, unavailable, catalog, balance, paused },
+//            in_wallet?: boolean (MESITA-3582, signed in only) }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -18,6 +19,7 @@ import { paymentsLivemode } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
+import { inWallet } from "../_shared/house-cards.ts";
 
 serveJson("consumer-web-list-vouchers", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -36,6 +38,14 @@ serveJson("consumer-web-list-vouchers", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   if (!placeRes.place) return json({ ok: false, error: "Place not found" }, 404);
 
-  const money = await voucherOffer(admin, placeRes.place, user?.id ?? null, paymentsLivemode());
-  return json({ ok: true, money });
+  const livemode = paymentsLivemode();
+  const [money, card] = await Promise.all([
+    voucherOffer(admin, placeRes.place, user?.id ?? null, livemode),
+    user ? inWallet(admin, user.id, placeId, livemode) : Promise.resolve(null),
+  ]);
+  // in_wallet (MESITA-3582): this place's House Card is in the caller's
+  // Wallet (pinned or holding entries). Absent when signed out; a failed
+  // read omits it rather than claim either way.
+  if (card && !card.ok) console.error("[consumer-web-list-vouchers] in_wallet", JSON.stringify({ error: card.error }));
+  return json({ ok: true, money, ...(card && card.ok ? { in_wallet: card.in_wallet } : {}) });
 });
