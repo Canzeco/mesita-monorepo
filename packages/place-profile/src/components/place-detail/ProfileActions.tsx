@@ -13,12 +13,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 
 import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
 import { MESITA_ROW_LOADING, mesitaRowState, type MesitaTileState } from "../../lib/mesita-row";
+import { OffTileSheet, type OffTile } from "./OffTileSheet";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 
@@ -318,8 +320,23 @@ export function MesitaActions({
   // What the screen reader hears after the label: the pill ("20% Bonus",
   // "Off"), or "loading" while the first read is out.
   const said = (t: MesitaTileState) => (t.pill === MESITA_ROW_LOADING ? "loading" : t.pill);
+  // AN OFF TILE STILL ANSWERS (Pato, MESITA-3583: "still make it clickable,
+  // like open a modal"): a grey "Off" tile opens one sheet saying why; a
+  // green tile does what it always did; "…" (still loading) waits.
+  const [offOpen, setOffOpen] = useState<OffTile | null>(null);
+  const tap = (key: OffTile, t: MesitaTileState, live: (() => void) | undefined) =>
+    t.works ? live : t.pill === MESITA_ROW_LOADING ? undefined : () => setOffOpen(key);
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
+      {offOpen ? (
+        <OffTileSheet
+          tile={offOpen}
+          onClose={() => setOffOpen(null)}
+          inWallet={actions?.houseCardInWallet}
+          onAddHouseCard={actions?.onAddHouseCard}
+          onOpenWallet={actions?.onOpenWallet}
+        />
+      ) : null}
       {/* RESERVE LEADS THE PINNED ROW (MESITA-3426): green "On" where the
           place takes bookings, grey "Off" where it doesn't (On / Off since
           MESITA-3577), inert there and never faded (MESITA-3078, MESITA-3423). */}
@@ -328,21 +345,21 @@ export function MesitaActions({
         label="Reserve"
         tone={tone(row.reserve)}
         badge={row.reserve.pill}
-        onClick={row.reserve.works ? onReserve : undefined}
-        ariaLabel={row.reserve.works ? "Reserve a table" : "Reserve a table, not available at this place"}
+        onClick={tap("reserve", row.reserve, onReserve)}
+        ariaLabel={row.reserve.works ? "Reserve a table" : "Reserve, off: this place doesn't offer reservations"}
       />
       {/* PREPAY (the ticket since MESITA-3574): green with the best bonus among
           the vouchers this place sells now, never a typed "30% Bonus". Opens
-          the Offers page either way, which says why when it's Off. */}
-      <MesitaTile Icon={Ticket} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={open("prepayment")} />
+          the Offers page when it works, the Off sheet when it doesn't. */}
+      <MesitaTile Icon={Ticket} label="Prepay" amount={said(row.prepay)} badge={row.prepay.pill} tone={tone(row.prepay)} onClick={tap("prepay", row.prepay, open("prepayment"))} />
       {/* WALLET (MESITA-3574, Wallet again in MESITA-3577): green with the
           guest's Available credit here, "Off" when none (MESITA-3581, never
           "$0MX"). Opens the Wallet at this place's credit. Prepay comes first,
           then Wallet, then Pay: the order the money moves (MESITA-3577). */}
-      <MesitaTile Icon={Wallet} label="Wallet" amount={said(row.wallet)} badge={row.wallet.pill} tone={tone(row.wallet)} onClick={actions?.onOpenWallet} />
+      <MesitaTile Icon={Wallet} label="Wallet" amount={said(row.wallet)} badge={row.wallet.pill} tone={tone(row.wallet)} onClick={tap("wallet", row.wallet, actions?.onOpenWallet)} />
       {/* PAY GOES TO /pay (MESITA-3501): "5% Back" with card cashback, "2% Back"
           when only the waiter's cash cashback is on (MESITA-3545). */}
-      <MesitaTile Icon={QrCode} label="Pay" amount={said(row.pay)} badge={row.pay.pill} tone={tone(row.pay)} onClick={actions?.onPay} />
+      <MesitaTile Icon={QrCode} label="Pay" amount={said(row.pay)} badge={row.pay.pill} tone={tone(row.pay)} onClick={tap("pay", row.pay, actions?.onPay)} />
     </div>
   );
 }

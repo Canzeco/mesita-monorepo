@@ -53,6 +53,14 @@ export type PlaceActions = {
    *  this place's credit. Absent (admin's preview, business), the tile is
    *  inert. Its pill reads `place.money.balance`. */
   onOpenWallet?: () => void;
+  /** The Wallet tile's Off sheet (MESITA-3583): this place's House Card is
+   *  already in the guest's Wallet (pinned or holding credit), from the
+   *  host's list-vouchers read. Absent: unknown, the sheet offers to add it. */
+  houseCardInWallet?: boolean;
+  /** "Add card to Wallet" (MESITA-3583): pins this place's House Card with
+   *  $0 (consumer-web-add-house-card). Resolves true once it is in the
+   *  Wallet. Absent (admin's preview, business): the sheet has no button. */
+  onAddHouseCard?: () => Promise<boolean>;
   /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
    *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
