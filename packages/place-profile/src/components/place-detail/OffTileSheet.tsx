@@ -13,7 +13,7 @@ export type OffTile = "reserve" | "prepay" | "wallet" | "pay";
  *  Pay, or you currently have no credits, add card"). */
 export const OFF_TILE_TEXT: Record<OffTile, { title: string; text: string }> = {
   reserve: { title: "Reserve", text: "This place doesn't offer reservations." },
-  prepay: { title: "Prepay", text: "This place doesn't currently sell prepaid vouchers." },
+  prepay: { title: "Prepay", text: "This place doesn't accept prepayments." },
   wallet: { title: "Wallet", text: "You have no credits at this place yet." },
   pay: { title: "Pay", text: "This place doesn't currently offer Mesita Pay." },
 };
