@@ -453,7 +453,6 @@ function PlaceList({
           icon={MapPin}
           title={loc.state === "on" ? "No Mesita Pay place near you" : "Turn on location to see Mesita Pay places near you"}
           description=""
-          action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
         />
       ) : (
         <>
@@ -497,12 +496,6 @@ function PlaceList({
               ))}
             </div>
           )}
-          <a
-            href={CONSUMER_ROUTES.search}
-            className="border-border bg-card hover:bg-muted mt-4 flex min-h-12 items-center justify-center rounded-2xl border px-4 text-base font-semibold transition"
-          >
-            Find a place
-          </a>
         </>
       )}
     </div>
@@ -1240,7 +1233,6 @@ function ListSkeleton() {
   return (
     <div aria-busy>
       <RowsSkeleton />
-      <Skeleton className="mt-4 h-12 w-full rounded-2xl" />
     </div>
   );
 }
