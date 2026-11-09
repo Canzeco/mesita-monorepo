@@ -11,7 +11,6 @@ import {
   PLACE_BONE_CLASS,
   PLACE_BUTTON_CLASS,
   PLACE_META_CLASS,
-  PLACE_PILL_CLASS,
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
@@ -118,7 +117,7 @@ type Product = {
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
   { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid", brief: "As many as you like" },
   { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
 ];
 
@@ -185,7 +184,8 @@ const CARD = "border-border bg-card rounded-2xl border";
 type Face = {
   card: string;
   muted: string;
-  pill: string;
+  /** The big bonus number's ink (green on the black cards). */
+  big: string;
   buy: string;
   Mark?: LucideIcon | typeof Instagram;
 };
@@ -193,7 +193,7 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   const ink: Face = {
     card: "bg-neutral-950 text-white",
     muted: "text-white/60",
-    pill: "bg-green-400 text-neutral-950",
+    big: "text-green-400",
     buy: "bg-white text-neutral-950",
   };
   return {
@@ -205,7 +205,7 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_welcome: {
       card: "bg-[#2563EB] text-white",
       muted: "text-white/75",
-      pill: "bg-white text-[#2563EB]",
+      big: "",
       buy: "bg-white text-[#2563EB]",
       Mark: PartyPopper,
     },
@@ -213,14 +213,14 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_story: {
       card: "bg-[#E1306C] text-white",
       muted: "text-white/80",
-      pill: "bg-white text-[#E1306C]",
+      big: "",
       buy: "bg-white text-[#E1306C]",
       Mark: Instagram,
     },
     voucher_vip: {
       card: "bg-[#F5B301] text-neutral-950",
       muted: "text-neutral-950/70",
-      pill: "bg-neutral-950 text-[#F5B301]",
+      big: "",
       buy: "bg-neutral-950 text-[#F5B301]",
       Mark: Crown,
     },
@@ -257,13 +257,16 @@ function OfferCard({
         {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
         {name}
       </span>
-      <span className="truncate text-lg leading-tight font-extrabold tabular-nums" aria-hidden>
-        {get}
+      {/* THE BONUS IS THE BIG THING (MESITA-3472, Pato: "maybe the Bonus
+          must be the big thing. Pay X / Get Y must be same size"). */}
+      <span className={cn("flex flex-col", face.big)}>
+        <span className="text-3xl leading-none font-extrabold tabular-nums">+{bonus.replace(/ bonus$/, "")}</span>
+        <span className="text-[11px] font-semibold">bonus</span>
       </span>
-      <span className={cn("truncate text-[11px] tabular-nums", face.muted)} aria-hidden>
-        for {pay}
+      <span className="mt-1 flex flex-col text-xs leading-snug font-semibold tabular-nums" aria-hidden>
+        <span className="truncate">Pay {pay}</span>
+        <span className="truncate">Get {get}</span>
       </span>
-      <span className={cn(PLACE_PILL_CLASS, "shrink-0 self-start px-1.5 py-0 text-[10px] font-bold", face.pill)}>+{bonus}</span>
       <div className="mt-1">{action}</div>
     </li>
   );
@@ -331,10 +334,10 @@ export function VouchersPane({
     onLoad?.();
   }, [onLoad]);
   const prepaymentRef = useRef<HTMLElement>(null);
-  const specialRef = useRef<HTMLElement>(null);
   useEffect(() => {
     if (focus === "payment") return;
-    const el = focus === "special" ? specialRef.current : prepaymentRef.current;
+    // "special" and "prepayment" open the one catalog (MESITA-3472).
+    const el = prepaymentRef.current;
     // The nearest scroller only: scrollIntoView would also move the app
     // card behind the sheet, whose overflow is hidden but still scrollable.
     let box = el?.parentElement ?? null;
@@ -476,13 +479,12 @@ export function VouchersPane({
           ) : null}
         </div>
       </section>
+      {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
+          ... PREPAYMENTS: Welcome, Story, VIP / Small, Mid, Big. don't
+          divide"): the six vouchers in one section, the specials first. */}
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
-        {row(STANDARD, "Prepayment offers")}
-      </section>
-      <section ref={specialRef} className="flex flex-col gap-2" aria-labelledby="rewards-special" data-promos="special">
-        <h3 id="rewards-special" className={OFFERS_TITLE_CLASS}>Special Prepayment Offers</h3>
-        {row(SPECIAL, "Special prepayment offers")}
+        {row([...SPECIAL, ...STANDARD], "Prepayment offers")}
         <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
           Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credit is ready in an hour.
         </p>

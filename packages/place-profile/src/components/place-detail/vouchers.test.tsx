@@ -39,7 +39,7 @@ describe("Vouchers tab", () => {
     const html = render(OFFER, () => {});
     // Every card for sale carries its own Buy (MESITA-3446).
     expect(html).toContain('aria-label="Buy the Small voucher');
-    expect(html).toContain('aria-label="Buy the Medium voucher');
+    expect(html).toContain('aria-label="Buy the Mid voucher');
     expect(html).toContain('aria-label="Buy the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
     expect(html).not.toContain('aria-label="Buy the Welcome voucher');
     expect(html).toContain("You had yours here");
@@ -69,7 +69,7 @@ describe("Vouchers tab", () => {
     expect(pesos(120000, "mxn")).toBe("MX$1,200");
     expect(pesos(1050, "mxn")).toBe("MX$10.50");
     expect(render(OFFER)).toContain("Pay MX$1,000, Get MX$1,200");
-    expect(render(OFFER)).toContain("30% bonus");
+    expect(render(OFFER)).toContain("+30%");
   });
 });
 
