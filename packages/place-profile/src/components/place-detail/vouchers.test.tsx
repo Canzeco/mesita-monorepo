@@ -37,11 +37,11 @@ describe("Vouchers tab", () => {
 
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
     const html = render(OFFER, () => {});
-    // A row for sale is itself the tap that buys it; no button (MESITA-3486).
-    expect(html).toContain('aria-label="Buy the Small voucher');
-    expect(html).toContain('aria-label="Buy the Mid voucher');
-    expect(html).toContain('aria-label="Buy the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
-    expect(html).not.toContain('aria-label="Buy the Welcome voucher');
+    // A row for sale carries a selector; one Buy at the foot (MESITA-3487).
+    expect(html).toContain('aria-label="Choose the Small voucher');
+    expect(html).toContain('aria-label="Choose the Mid voucher');
+    expect(html).toContain('aria-label="Choose the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).not.toContain('aria-label="Choose the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
     const older = placeMoneyFrom({ charges_enabled: true, cashback: true, vouchers: { voucher_200: true } });
