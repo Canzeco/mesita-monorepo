@@ -45,3 +45,18 @@ export async function apiCallSignInCode(
     { phone },
   );
 }
+
+/** The Pay QR door (MESITA-3526): the name of the place a table QR points
+ *  at, for the sign-in title. Name only; null for an unknown or hidden
+ *  place. No session needed. */
+export async function apiGetPayPlaceName(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<string | null> {
+  const res = await invokeEF<{ name: string | null }>(
+    client,
+    "consumer-web-get-pay-place-name",
+    { place_id: placeId },
+  );
+  return res.name;
+}

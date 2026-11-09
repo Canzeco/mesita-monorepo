@@ -34,3 +34,17 @@ export function withNext(route: string, raw: string | undefined | null): string 
   const target = safeNextPath(raw);
   return target ? `${route}?next=${encodeURIComponent(target)}` : route;
 }
+
+const PAY_PLACE_NEXT = /^\/pay\?(?:.*&)?place=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:&|$)/i;
+
+/**
+ * The Pay QR door (MESITA-3526): when the guest's `?next=` is a table QR's
+ * `/pay?place=<id>`, the place id, so sign-in can say "Sign in to pay at
+ * <name>". Anything else, null.
+ */
+export function payPlaceFromNext(raw: string | undefined | null): string | null {
+  const target = safeNextPath(raw);
+  if (!target) return null;
+  const match = PAY_PLACE_NEXT.exec(target);
+  return match ? match[1].toLowerCase() : null;
+}

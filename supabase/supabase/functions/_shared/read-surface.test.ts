@@ -251,6 +251,8 @@ const PROFILES_READ_ALLOWLIST = [
   // The Pay tab's list (MESITA-3457): name, state, currency, coordinates and
   // tier of the places a guest holds credit at or can pay by card.
   "consumer-web-list-pay-places/index.ts",
+  // The Pay QR door (MESITA-3526): one place's name, anon client, for the sign-in title.
+  "consumer-web-get-pay-place-name/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {
