@@ -94,10 +94,22 @@ export async function apiGetWallet(client: SupabaseClient, sessionId?: string): 
   });
 }
 
-/** The place's offer and the caller's credit there (the Vouchers tab). */
-export async function apiListVouchers(client: SupabaseClient, placeId: string): Promise<PlaceMoney | undefined> {
-  const r = await invokeEF<{ money: unknown }>(client, "consumer-web-list-vouchers", { place_id: placeId });
-  return placeMoneyFrom(r.money);
+/** The place's offer and the caller's credit there (the Vouchers tab).
+ *  `inWallet` (MESITA-3582): this place's House Card is already in the
+ *  signed-in caller's Wallet; undefined when signed out or unknown. */
+export async function apiListVouchers(
+  client: SupabaseClient,
+  placeId: string,
+): Promise<{ money: PlaceMoney | undefined; inWallet: boolean | undefined }> {
+  const r = await invokeEF<{ money: unknown; in_wallet?: unknown }>(client, "consumer-web-list-vouchers", { place_id: placeId });
+  return { money: placeMoneyFrom(r.money), inWallet: typeof r.in_wallet === "boolean" ? r.in_wallet : undefined };
+}
+
+/** Pins a place's House Card to the guest's Wallet with $0 (MESITA-3582).
+ *  `already`: it was pinned before. */
+export async function apiAddHouseCard(client: SupabaseClient, placeId: string): Promise<{ already: boolean }> {
+  const r = await invokeEF<{ already?: boolean }>(client, "consumer-web-add-house-card", { place_id: placeId });
+  return { already: r.already === true };
 }
 
 /** What Stripe.js needs to finish a voucher paid with a saved card
