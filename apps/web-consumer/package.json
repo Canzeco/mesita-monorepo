@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@mesita/place-profile": "file:../../packages/place-profile",
+    "@stripe/stripe-js": "10.1.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@vis.gl/react-google-maps": "^1.10.2",
