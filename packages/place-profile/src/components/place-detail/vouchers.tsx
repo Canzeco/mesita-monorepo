@@ -605,15 +605,7 @@ export function VouchersPane({
                   <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
                     {opening
                       ? "Opening…"
-                      : loading || can
-                        ? `Pay ${pay} · Get ${get} ${readyIn(p.key)}`
-                        : lock === "vip"
-                          ? "VIP Class only"
-                          : lock === "instagram"
-                            ? "Link your Instagram first"
-                            : lock === "followers"
-                              ? `More than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} Instagram followers only`
-                              : tag(reason)}
+                      : `Pay ${pay} · Get ${get} ${readyIn(p.key)}`}
                   </span>
                 </span>
               </>
