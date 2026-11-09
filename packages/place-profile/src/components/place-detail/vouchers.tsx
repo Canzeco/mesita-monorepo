@@ -215,7 +215,7 @@ function SectionTitle({ id, title }: { id: string; title: string }) {
  *  outside or Escape closes it. It opens in a portal on the body, above the
  *  sheet and out of any dimmed row; it sits inside a row's label, so every click
  *  in it is stopped and its default prevented: reading never picks the row. */
-function InfoButton({ title, text }: { title: string; text: string }) {
+function InfoButton({ title, text }: { title: string; text: string[] }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -253,7 +253,14 @@ function InfoButton({ title, text }: { title: string; text: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="text-foreground text-lg font-semibold">{title}</span>
-            <span className="text-muted-foreground mb-3 overflow-y-auto text-base leading-snug font-normal">{text}</span>
+            {/* SHORT PARAGRAPHS (MESITA-3497, Pato: "use multiple paragraphs"). */}
+            <span className="text-muted-foreground mb-3 flex flex-col gap-3 overflow-y-auto text-base leading-snug font-normal">
+              {text.map((t) => (
+                <span key={t} className="block">
+                  {t}
+                </span>
+              ))}
+            </span>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -271,27 +278,46 @@ function InfoButton({ title, text }: { title: string; text: string }) {
   );
 }
 
-/** What each offer's (i) says (MESITA-3492's paragraphs, one per offer),
- *  with the row's own Pay and Get. */
-function offerText(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
+/** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
+ *  split by MESITA-3497), with the row's own Pay and Get. Prepaid credits
+ *  never earn cashback (MESITA-3496). */
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string[] {
+  const noCashback = "Paying with these credits doesn't earn the 5% Mesita Pay Cashback.";
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
     case "voucher_5000":
-      return `Pay ${pay} and get ${get} in credits for this place: the place adds ${bonus} on top. Pick it, tap the black button and pay; your credits are ready within an hour. Use them to pay your bill here in the app. They only work at this place, and you can buy as many as you like.`;
+      return [
+        `Pay ${pay} and get ${get} in credits for this place. The place adds ${bonus} on top.`,
+        "Pick it and tap the black button to pay. Your credits are ready within an hour.",
+        "Use them to pay your bill here in the app. They only work at this place.",
+        "Buy as many as you like.",
+        noCashback,
+      ];
     case "voucher_welcome":
-      return `A thank-you for trying this place for the first time: pay ${pay}, get ${get} in credits. One per place: once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.`;
+      return [
+        `A thank-you for trying this place for the first time: pay ${pay}, get ${get} in credits.`,
+        "One per place. Once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.",
+        "Use the credits to pay your bill here in the app.",
+        noCashback,
+      ];
     case "voucher_story":
-      return `Buy the voucher (pay ${pay}), then activate it by posting an Instagram story at the place. Once your story is up, the ${get} in credits arrive right away and you pay your bill with them. One per visit.`;
+      return [
+        `Buy the voucher: pay ${pay}.`,
+        "Then activate it by posting an Instagram story at the place.",
+        `Once your story is up, the ${get} in credits arrive right away. Use them to pay your bill here in the app.`,
+        "One per visit.",
+        noCashback,
+      ];
     case "voucher_vip":
-      return `Reserved for Mesita's VIP Class. VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see. If you're VIP, pay ${pay} and get ${get} in credits here. One per visit. Not VIP? You won't be able to buy this one.`;
+      return [
+        "Reserved for Mesita's VIP Class.",
+        "VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see.",
+        `If you're VIP, pay ${pay} and get ${get} in credits here. One per visit.`,
+        "Not VIP? You won't be able to buy this one.",
+        noCashback,
+      ];
   }
-}
-
-/** Prepaid credits earn no cashback (MESITA-3496, Pato: "prepayment vouchers
- *  don't give cashbacks"). */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
-  return `${offerText(key, pay, get, bonus)} Paying with these credits doesn't earn the 5% Mesita Pay Cashback.`;
 }
 
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
@@ -516,7 +542,12 @@ export function VouchersPane({
                 <span aria-hidden>Mesita Pay Cashback</span>
                 <InfoButton
                   title="Mesita Pay Cashback"
-                  text="Pay your bill here in the app and get 5% back as credits for your next visit, on every visit, whatever the amount: a $100MX bill or a $10,000MX one. The 5% is on the part of the bill you don't pay with prepaid credits; credits from Prepayment Offers never earn cashback. Example: a $500MX bill with $200MX paid from credits and $300MX by card gives you $15MX back."
+                  text={[
+                    "Pay your bill here in the app and get 5% back as credits for your next visit.",
+                    "It works on every visit, whatever the amount: a $100MX bill or a $10,000MX one.",
+                    "The 5% is only on the part of the bill you don't pay with prepaid credits. Credits from Prepayment Offers never earn cashback.",
+                    "Example: a $500MX bill with $200MX paid from credits and $300MX by card gives you $15MX back.",
+                  ]}
                 />
               </span>
               <span className="text-muted-foreground text-sm" aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
@@ -534,7 +565,10 @@ export function VouchersPane({
                 </span>
                 <InfoButton
                   title="External Pay Cashback"
-                  text="Pay the place directly, in cash or on their card terminal. That works too, but nothing comes back."
+                  text={[
+                    "Pay the place directly, in cash or on their card terminal.",
+                    "That works too, but nothing comes back.",
+                  ]}
                 />
               </span>
               <span className="text-muted-foreground text-sm" aria-hidden>Cash or their terminal, nothing back</span>
