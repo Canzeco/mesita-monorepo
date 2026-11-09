@@ -456,6 +456,29 @@ export async function readClassJoinRow(
   return { ok: true, row: (data as ClassJoinRow | null) ?? null };
 }
 
+/** The buying guest's class for the VIP voucher (MESITA-3550): the class and
+ *  the last day it holds. `row: null` = no live account. */
+export async function readVipStanding(
+  admin: SupabaseClient,
+  consumerId: string,
+): Promise<
+  { ok: true; row: { guest_class: string | null; vip_until: string | null } | null } | { ok: false; message: string }
+> {
+  const { data, error } = await admin
+    .from("consumers")
+    .select("guest_class, vip_until")
+    .eq("id", consumerId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  return {
+    ok: true,
+    row: data
+      ? { guest_class: (data.guest_class as string | null) ?? null, vip_until: (data.vip_until as string | null) ?? null }
+      : null,
+  };
+}
+
 /** Name and member number for each guest id (MESITA-3540: who used a VIP
  *  code, on Admin › Guests). Closed accounts are included: the code was used. */
 export async function readGuestLabels(

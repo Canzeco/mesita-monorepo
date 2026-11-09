@@ -7,7 +7,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
-import { buyRefusal, CATALOG_LINES, storyRefusal, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
+import { buyRefusal, CATALOG_LINES, storyRefusal, vipRefusal, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
 const GUEST = "00000000-0000-4000-8000-0000000b3303";
@@ -39,10 +39,10 @@ const ACCOUNT: AccountRow = {
 
 const base = { settings: ALL_ON, account: ACCOUNT, livemode: false, currency: "mxn", paused: false, balance: null, welcomeUsed: false };
 
-Deno.test("MX$200, MX$1,000, Welcome and Story sell (MESITA-3507); the rest say why", () => {
+Deno.test("every switched-on voucher sells (MX$5,000 and VIP since MESITA-3550)", () => {
   const o = offerFrom(base);
-  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_welcome", "voucher_story"]);
-  assertEquals(o.unavailable, { voucher_5000: "not_yet", voucher_vip: "needs_card_payments" });
+  assertEquals(o.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_story", "voucher_vip"]);
+  assertEquals(o.unavailable, {});
   assertEquals(o.test_mode, true);
   assertEquals(o.charges_enabled, true);
   assertEquals(o.cashback, true);
@@ -66,7 +66,7 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(offerFrom({ ...base, paused: true }).sell, []);
   assertEquals(offerFrom({ ...base, paused: true }).unavailable.voucher_200, "paused");
   const used = offerFrom({ ...base, welcomeUsed: true });
-  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_story"]);
+  assertEquals(used.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_story", "voucher_vip"]);
   assertEquals(used.unavailable.voucher_welcome, "used");
   const live = offerFrom({ ...base, livemode: true });
   assertEquals(live.sell, []);
@@ -79,7 +79,7 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
 
 Deno.test("Story is one each new visit (MESITA-3463): spent reads needs_visit and the buy door refuses it", () => {
   const spent = offerFrom({ ...base, perVisitUsed: { voucher_story: true } });
-  assertEquals(spent.sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
+  assertEquals(spent.sell, ["voucher_200", "voucher_1000", "voucher_5000", "voucher_welcome", "voucher_vip"]);
   assertEquals(spent.unavailable.voucher_story, "needs_visit");
   assertEquals(buyRefusal(spent, "voucher_story", ACCOUNT)?.code, "needs_visit");
   assertEquals(offerFrom({ ...base, perVisitUsed: { voucher_story: false } }).sell.includes("voucher_story"), true);
@@ -88,8 +88,8 @@ Deno.test("Story is one each new visit (MESITA-3463): spent reads needs_visit an
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
   const o = offerFrom(base);
   assertEquals(buyRefusal(o, "voucher_200", ACCOUNT), null);
-  assertEquals(buyRefusal(o, "voucher_5000", ACCOUNT)?.code, "not_yet");
-  assertEquals(buyRefusal(o, "voucher_vip", ACCOUNT)?.code, "needs_card_payments");
+  assertEquals(buyRefusal(o, "voucher_5000", ACCOUNT), null);
+  assertEquals(buyRefusal(o, "voucher_vip", ACCOUNT), null);
   assertEquals(buyRefusal(o, "voucher_story", ACCOUNT), null);
   assertEquals(buyRefusal(offerFrom({ ...base, paused: true }), "voucher_200", ACCOUNT)?.code, "paused");
   assertEquals(buyRefusal(offerFrom({ ...base, welcomeUsed: true }), "voucher_welcome", ACCOUNT)?.code, "welcome_used");
@@ -337,4 +337,16 @@ Deno.test("storyRefusal: Story needs a linked Instagram with MORE than 1,000 fol
   assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: null })?.code, "few_followers");
   assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1000 })?.code, "few_followers");
   assertEquals(storyRefusal("voucher_story", { instagram_handle: "ana", instagram_followers_count: 1001 }), null);
+});
+
+Deno.test("vipRefusal: VIP needs the VIP class, not past vip_until; other vouchers pass (MESITA-3550)", () => {
+  const today = "2026-11-09";
+  const vip = { guest_class: "vip", vip_until: null };
+  assertEquals(vipRefusal("voucher_200", null, today), null);
+  assertEquals(vipRefusal("voucher_vip", null, today)?.code, "not_vip");
+  assertEquals(vipRefusal("voucher_vip", { ...vip, guest_class: "regular" }, today)?.code, "not_vip");
+  assertEquals(vipRefusal("voucher_vip", vip, today), null);
+  // vip_until is the last day VIP holds.
+  assertEquals(vipRefusal("voucher_vip", { ...vip, vip_until: today }, today), null);
+  assertEquals(vipRefusal("voucher_vip", { ...vip, vip_until: "2026-11-08" }, today)?.code, "not_vip");
 });

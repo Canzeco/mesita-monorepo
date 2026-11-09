@@ -15,6 +15,7 @@
 //   401 sign_in · 404 place · 409 no_account | currency_mismatch | paused |
 //   not_available | not_yet | needs_card_payments | needs_instagram |
 //   few_followers (Story: 1,000 Instagram followers or fewer, MESITA-3507) |
+//   not_vip (VIP: the guest is not of the VIP class, MESITA-3550) |
 //   welcome_used | below_minimum | place_cap (MESITA-3305: the test-mode
 //   cap on a place's outstanding credit) | in_progress (+url: a second
 //   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
@@ -27,7 +28,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { buyRefusal, openVoucherCheckout, readStoryGuest, storyRefusal, voucherOffer } from "../_shared/vouchers.ts";
+import { buyRefusal, mexicoToday, openVoucherCheckout, readStoryGuest, readVipGuest, storyRefusal, vipRefusal, voucherOffer } from "../_shared/vouchers.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -67,6 +68,11 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (voucher === "voucher_story") {
     const story = storyRefusal(voucher, await readStoryGuest(admin, userId));
     if (story) return json({ ok: false, code: story.code, error: story.error }, story.status);
+  }
+  // VIP's own gate: the VIP class (MESITA-3550); one each visit is the offer's.
+  if (voucher === "voucher_vip") {
+    const vip = vipRefusal(voucher, await readVipGuest(admin, userId), mexicoToday(new Date()));
+    if (vip) return json({ ok: false, code: vip.code, error: vip.error }, vip.status);
   }
 
   const key = boostStripeKey();

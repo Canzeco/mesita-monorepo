@@ -13,7 +13,7 @@ import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
-import { readInstagramSyncState } from "./consumer-doc.ts";
+import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
 
@@ -250,6 +250,34 @@ export async function readStoryGuest(admin: SupabaseClient, consumerId: string):
   if (!res.ok) throw new Error(`consumers: ${res.error}`);
   if (res.deleted) return null;
   return { instagram_handle: res.handle, instagram_followers_count: res.followers };
+}
+
+/** The buying guest's class (MESITA-3550): the class and the last day it
+ *  holds (null = no end). How often VIP sells is MESITA-3463's, one each
+ *  new visit, in the offer. */
+export type VipGuest = { guest_class: string | null; vip_until: string | null } | null;
+
+/** VIP's guest gate (MESITA-3550): the VIP class, not past `vip_until`
+ *  (compared as YYYY-MM-DD in Mexico City). Null when the guest may buy it.
+ *  Any other voucher passes. */
+export function vipRefusal(voucher: MoneyVoucherKey, guest: VipGuest, today: string): BuyRefusal | null {
+  if (voucher !== "voucher_vip") return null;
+  if (guest?.guest_class !== "vip" || (guest.vip_until !== null && guest.vip_until.slice(0, 10) < today)) {
+    return { ok: false, status: 409, code: "not_vip", error: "The VIP voucher is for VIP guests" };
+  }
+  return null;
+}
+
+/** Today's date in Mexico City, YYYY-MM-DD, for vip_until. */
+export function mexicoToday(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(now);
+}
+
+/** The buying guest's class, for vipRefusal, through the consumer door. */
+export async function readVipGuest(admin: SupabaseClient, consumerId: string): Promise<VipGuest> {
+  const res = await readVipStanding(admin, consumerId);
+  if (!res.ok) throw new Error(`consumers: ${res.message}`);
+  return res.row;
 }
 
 /** Stripe Checkout on the connected account. The ledger row id rides in
