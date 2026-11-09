@@ -14,14 +14,13 @@ import {
 } from "@/lib/call-log";
 import {
   CONSOLE_MODES,
-  readConsoleMode,
-  readConsoleModeOnServer,
   setConsoleMode,
-  subscribeConsoleMode,
   type ConsoleMode,
 } from "@/lib/console-mode";
 import { cn } from "@/lib/utils";
 import { Z_ROUTE_BADGE } from "@/lib/z-index";
+
+import { BESIDE_CARD, useConsoleMode } from "./console-layout";
 
 // Over this a line turns amber: slow enough to feel on a tap.
 const SLOW_MS = 800;
@@ -47,11 +46,7 @@ export function CallLog() {
     readCallLog,
     readCallLogOnServer,
   );
-  const mode = useSyncExternalStore(
-    subscribeConsoleMode,
-    readConsoleMode,
-    readConsoleModeOnServer,
-  );
+  const mode = useConsoleMode();
   const pathname = usePathname() ?? "/";
   const previous = useRef<string | null>(null);
   const [pinnedId, setPinnedId] = useState<number | null>(null);
@@ -105,9 +100,10 @@ export function CallLog() {
         <div
           data-testid="call-log"
           className={cn(
-            // Right of the card (left edge, 1rem in, 30rem wide — MobileFrame),
+            // 0.75rem right of the card (console-layout.ts, MESITA-3580),
             // under the route badge, to 1rem from the window's right edge.
-            "fixed top-10 bottom-2 hidden gap-3 select-none md:right-4 md:left-[31.75rem] md:flex",
+            "fixed top-10 bottom-2 hidden gap-3 select-none md:right-4 md:flex",
+            BESIDE_CARD[mode],
             "type-label font-mono leading-tight tabular-nums",
             Z_ROUTE_BADGE,
           )}
