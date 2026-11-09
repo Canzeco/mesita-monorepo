@@ -16,8 +16,9 @@
 // on Mesita Pay here now: pay the bill by card (W2b, CARD_BILL_PAY_LIVE) or
 // buy a voucher:
 //   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
-// Two blind spots on purpose, because the list rows cannot see them: the
-// admin pause and Welcome-used do not turn the mark off.
+// Three blind spots on purpose, because the list rows cannot see them: the
+// admin pause, Welcome-used and the fee hold (MESITA-3461) do not turn the
+// mark off.
 // CARD_BILL_PAY_LIVE is code, not config, on purpose: one edit turns card bill
 // pay off the mark and brings back the "arrives soon" notes on Business ›
 // Payments, should W2b ever be pulled.
@@ -41,8 +42,10 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
  *  from before it keeps working. */
 export type MoneySettings = { cashback: boolean; pay_cards?: boolean } & Record<MoneyVoucherKey, boolean>;
 
-/** The place's connected account as the ledger last saw it; null = none. */
-export type MoneyAccount = { charges_enabled: boolean } | null;
+/** The place's connected account as the ledger last saw it; null = none.
+ *  `fee_hold` (MESITA-3461): Mesita's fee invoice is unpaid, so cards are
+ *  off until it is paid; absent reads no hold. */
+export type MoneyAccount = { charges_enabled: boolean; fee_hold?: boolean } | null;
 
 /** The guest's balance at the place; null = no account or nothing there. */
 export type MoneyBalance = { spendable_cents: number } | null;
@@ -92,7 +95,8 @@ export type MoneyState = {
 export function moneyState(settings: MoneySettings, account: MoneyAccount, balance: MoneyBalance): MoneyState {
   const charges = account?.charges_enabled === true;
   // the Mesita Pay switch (MESITA-3396) needs the account too. Absent means on.
-  const cards = charges && settings.pay_cards !== false;
+  // An unpaid fee invoice (MESITA-3461) holds cards off without touching it.
+  const cards = charges && account?.fee_hold !== true && settings.pay_cards !== false;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {

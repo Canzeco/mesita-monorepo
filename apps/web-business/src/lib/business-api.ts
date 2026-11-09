@@ -437,6 +437,13 @@ export type PlacePayments = {
   settings: PaymentSettings;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
   code_set: boolean;
+  /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
+   *  it is paid; invoice = the one to pay, on Stripe's page. */
+  fee: PlaceFee;
+};
+export type PlaceFee = {
+  hold: boolean;
+  invoice: null | { amount_cents: number; currency: string; due_at: string | null; url: string | null; overdue: boolean };
 };
 
 /** The Stripe account as Stripe last said it stands, and every switch. */
@@ -445,7 +452,14 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
   if (!r.ok) return fail(r);
   return {
     ok: true,
-    data: { can_edit: r.data.can_edit, test_mode: r.data.test_mode, account: r.data.account, settings: r.data.settings, code_set: r.data.code_set === true },
+    data: {
+      can_edit: r.data.can_edit,
+      test_mode: r.data.test_mode,
+      account: r.data.account,
+      settings: r.data.settings,
+      code_set: r.data.code_set === true,
+      fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
+    },
   };
 }
 

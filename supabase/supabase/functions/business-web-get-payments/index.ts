@@ -9,8 +9,11 @@
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
 //             settings: { cashback, voucher_200, ..., voucher_vip },
-//             code_set }   whether the place code is set: the waiter's charge
+//             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
+//             fee: { hold, invoice } }  Mesita's fee invoice (MESITA-3461):
+//                          hold = cards are off until it is paid; invoice =
+//                          the one to pay (amount, due, Stripe's page)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -19,6 +22,7 @@ import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import { accountView, readAccount, readSettings, refreshAccount } from "../_shared/payments.ts";
+import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -47,6 +51,16 @@ serveJson("business-web-get-payments", async (req) => {
   const settings = await readSettings(admin, placeId);
   const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
+  const { data: invoices, error: feeErr } = await admin
+    .from("place_fee_invoices")
+    .select(FEE_INVOICE_COLUMNS)
+    .eq("place_id", placeId)
+    .eq("livemode", boostLivemode())
+    .in("status", ["open", "uncollectible"])
+    .order("created_at", { ascending: true })
+    .limit(10);
+  if (feeErr) return json({ ok: false, error: `place_fee_invoices: ${feeErr.message}` }, 500);
+  const hold = account?.livemode === boostLivemode() && account?.fee_hold === true;
   return json({
     ok: true,
     can_edit: canManage(access.role),
@@ -54,5 +68,6 @@ serveJson("business-web-get-payments", async (req) => {
     account: accountView(account),
     settings,
     code_set: !!code,
+    fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
   });
 });

@@ -94,3 +94,12 @@ Deno.test("pay: both with a balance and an account, credit with a balance only, 
   assertEquals(moneyState(off, can, null).pay, "card");
   assertEquals(moneyState(off, null, null).pay, "none");
 });
+
+Deno.test("fee_hold (MESITA-3461): an unpaid fee invoice turns cards and cashback off, credit still pays, vouchers still sell", () => {
+  const held = moneyState(allOn, { charges_enabled: true, fee_hold: true }, { spendable_cents: 100 });
+  assertEquals(held.pay, "credit");
+  assertEquals(held.cashback, false);
+  assertEquals(held.sell.includes("voucher_200"), true);
+  assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).pay, "none");
+  assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: false }, null).pay, "card");
+});

@@ -1,8 +1,9 @@
 // Money constants and arithmetic (MESITA-3302). Server only: clients never
 // compute a price, a bonus, a fee or cashback; they show what an EF answered.
 //
-// Mesita's fee is the application fee on a direct charge on the place's
-// connected account; the place pays Stripe. Cashback is credit at the place,
+// Mesita's fee is 5% of each direct charge on the place's connected account,
+// billed to the place apart on a Stripe invoice (charge model d5a,
+// MESITA-3461; the charge carries no application fee); the place pays Stripe. Cashback is credit at the place,
 // never cash. Every number is integer centavos; a rate is basis points,
 // rounded down.
 

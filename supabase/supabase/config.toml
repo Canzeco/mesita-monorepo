@@ -369,6 +369,11 @@ verify_jwt = false
 [functions.stripe-connect-receive-event]
 verify_jwt = false
 
+# MESITA-3461: Mesita's fee billed to places, every hour.
+# Kill switch: select cron.unschedule('bill-fees');
+[functions.supabase-cron-bill-fees]
+verify_jwt = true
+
 # MESITA-3305 (W2b): the money ledger's backstop, every 5 minutes.
 # Kill switch: select cron.unschedule('settle-wallet');
 [functions.supabase-cron-settle-wallet]

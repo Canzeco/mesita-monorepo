@@ -5,7 +5,9 @@
 // (MESITA-3307: totals, the fee note, the rows; owners only); Visit
 // Checkout, the bill in its order (House Credits, Mesita Pay, Outside
 // Mesita), one switch, and the table QR to print (MESITA-3382); Payments Cashback, one switch; Prepaid Vouchers, six.
-// A guest's credit is the place's debt, so no switch refuses it. The owner and
+// An unpaid fee invoice (MESITA-3461) shows a banner on top: cards are off
+// until it is paid, then on again by themselves (the owner's switch is never
+// touched). A guest's credit is the place's debt, so no switch refuses it. The owner and
 // Mesita staff change them; the server refuses anyone else. No number is set
 // here: rates, bonuses and prices are Mesita's.
 
@@ -31,6 +33,7 @@ import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { MoneySection } from "./MoneySection";
 import { TableQr } from "./TableQr";
 import {
@@ -107,6 +110,10 @@ const OUTSIDE: InfoRow = { name: "Outside Mesita", line: "Cash or your own termi
  *  true), so the note shows only if the flag is ever turned back off. */
 const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 const NOTE = "text-muted-foreground text-xs";
+
+/** What a card payment costs the place, under the Mesita Pay switch
+ *  (MESITA-3461; the 5% fee is billed apart, cashback is the guest's credit). */
+const PER_100 = "Per MX$100 by card: Stripe's card fee + MX$5 to Mesita + MX$5 the guest can spend here later.";
 
 /** The waiter's charge (MESITA-3306) and the staff list of payments
  *  (MESITA-3462): staff open both on visit.mesita.ai with the place code, so
@@ -190,7 +197,7 @@ export function PaymentsPanel({
   const [settings, setSettings] = useState(initial.settings);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
-  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSet } = initial;
+  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSet, fee } = initial;
   const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
@@ -198,7 +205,7 @@ export function PaymentsPanel({
   const pending = !canEdit || busy !== null;
   // Which switched-on vouchers a guest can buy right now, and why the others
   // cannot: the same rule the server sells by (money-state, one source).
-  const selling = moneyState(settings, { charges_enabled: account.charges_enabled }, null);
+  const selling = moneyState(settings, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
 
   async function flip(key: PaymentKey, enabled: boolean) {
     setBusy(key);
@@ -230,7 +237,15 @@ export function PaymentsPanel({
       note = accountReason(account);
       needsStripe = true;
     } else if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
-    if (key === "pay_cards") note = on ? (account.charges_enabled ? null : "Needs Stripe: on once the account can charge.") : "Guests still pay from credit here.";
+    if (key === "pay_cards") {
+      note = on
+        ? !account.charges_enabled
+          ? "Needs Stripe: on once the account can charge."
+          : fee.hold
+            ? "Off until Mesita's invoice is paid."
+            : null
+        : "Guests still pay from credit here.";
+    }
     if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Mesita Pay on and Stripe ready.";
     const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
@@ -255,6 +270,7 @@ export function PaymentsPanel({
             </p>
           ) : null}
           {soon ? <p className={NOTE}>{ARRIVES_SOON}</p> : null}
+          {key === "pay_cards" ? <p className={NOTE}>{PER_100}</p> : null}
         </div>
         {value ? <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p> : <span />}
         <Switch on={on} pending={pending} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
@@ -280,6 +296,20 @@ export function PaymentsPanel({
   return (
     <>
       {testMode ? <TestBand detail="Guests pay with Stripe's test card." /> : null}
+      {fee.hold ? (
+        <p className={cn(ERROR_BOX_CLASS, "flex flex-wrap items-center justify-between gap-3")} data-fee-hold>
+          <span>
+            Mesita&apos;s invoice
+            {fee.invoice ? ` of ${moneyLabel(fee.invoice.amount_cents, fee.invoice.currency)}` : ""} is unpaid, so card payments are off. They
+            come back on by themselves once it is paid.
+          </span>
+          {fee.invoice?.url ? (
+            <a className={cn(PILL_BUTTON_CLASS, "shrink-0")} href={fee.invoice.url} target="_blank" rel="noreferrer">
+              Pay invoice
+            </a>
+          ) : null}
+        </p>
+      ) : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">
           <li className="flex flex-col gap-4 px-5 py-4 sm:px-6">

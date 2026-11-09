@@ -1,6 +1,7 @@
 // Selling vouchers (MESITA-3303, W1b). What a place offers a guest right now,
 // and the one Checkout that buys a voucher on the place's own Stripe Connect
-// account with Mesita's fee as the application fee.
+// account: a direct charge with no application fee (charge model d5a,
+// MESITA-3461); Mesita's fee is stored on the row and billed to the place apart.
 //
 // The ledger is W1a's (wallet_purchases, wallet_balance); the gate is
 // moneyState; the catalog and the rates are money.ts. Nothing here computes
@@ -224,7 +225,7 @@ export async function readStoryGuest(admin: SupabaseClient, consumerId: string):
 
 /** Stripe Checkout on the connected account. The ledger row id rides in
  *  metadata and client_reference_id so the receiver (W2b) finds it even
- *  before the session id is stored; the fee is the application fee; no
+ *  before the session id is stored; no application fee (MESITA-3461); no
  *  platform customer (premier_customers stays Premier's). */
 export function voucherCheckoutParams(args: {
   purchaseId: string;
@@ -267,10 +268,7 @@ export function voucherCheckoutParams(args: {
         },
       },
     }],
-    payment_intent_data: {
-      application_fee_amount: voucherFeeCents(args.voucher),
-      metadata,
-    },
+    payment_intent_data: { metadata },
   };
 }
 
