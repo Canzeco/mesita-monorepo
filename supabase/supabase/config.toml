@@ -378,6 +378,31 @@ verify_jwt = false
 [functions.visit-web-confirm-charge]
 verify_jwt = false
 
+# MESITA-3562 (Pay at the table): the guest's tab. Signed-in guest only.
+[functions.consumer-web-open-tab]
+verify_jwt = true
+
+[functions.consumer-web-get-tab]
+verify_jwt = true
+
+[functions.consumer-web-pay-tab]
+verify_jwt = true
+
+[functions.consumer-web-cancel-tab]
+verify_jwt = true
+
+# MESITA-3562: the waiter's side of a tab. No sign-in on visit.mesita.ai: the
+# QR token reads the bill state; billing and Received also need staff (the
+# place code once, then MESITA-3462's 12-hour staff token).
+[functions.visit-web-get-tab]
+verify_jwt = false
+
+[functions.visit-web-bill-tab]
+verify_jwt = false
+
+[functions.visit-web-cash-tab]
+verify_jwt = false
+
 # MESITA-3462: the staff list of a place's Mesita Pay payments. No sign-in on
 # visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.
