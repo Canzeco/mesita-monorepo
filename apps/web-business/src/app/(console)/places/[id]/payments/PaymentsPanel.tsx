@@ -280,12 +280,8 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <ul className="divide-border divide-y">{row(CASHBACK)}</ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
-        <h2 className={HEAD}>Standard vouchers</h2>
-        <ul className="divide-border divide-y">{STANDARD.map(row)}</ul>
-      </Card>
-      <Card className="flex flex-col p-0 sm:p-0">
-        <h2 className={HEAD}>Special vouchers</h2>
-        <ul className="divide-border divide-y">{SPECIAL.map(row)}</ul>
+        <h2 className={HEAD}>Prepaid Vouchers</h2>
+        <ul className="divide-border divide-y">{[...STANDARD, ...SPECIAL].map(row)}</ul>
       </Card>
       {back === "return" && account.state !== "ready" && !error ? (
         <p className="text-muted-foreground text-sm">Stripe is still checking your details. This page updates when it answers.</p>
