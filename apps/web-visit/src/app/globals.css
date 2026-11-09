@@ -280,3 +280,69 @@ button.quiet {
 .payments-empty {
   margin-top: 24px;
 }
+
+/* ── Pay at the table: Paid (MESITA-3565) ──────────────────────────────── */
+
+/* The whole screen turns green-700: the waiter sees it from arm's length. */
+.tab-paid {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #15803d;
+  color: #ffffff;
+  text-align: center;
+}
+
+.tab-paid .test-band {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 16px;
+  margin: 0;
+}
+
+.tab-paid-tick {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #15803d;
+  font-size: 56px;
+  font-weight: 800;
+  animation: charge-tick-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.tab-paid-title {
+  margin: 24px 0 0;
+  font-size: 32px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.tab-paid-amount {
+  margin: 8px 0 0;
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-paid-line {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: #dcfce7;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-paid-tick {
+    animation: none;
+  }
+}
