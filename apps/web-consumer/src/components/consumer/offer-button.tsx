@@ -11,8 +11,8 @@ import { useOfferBeat, useReducedMotion } from "@/components/consumer/offer-beat
  *  have multiple ... a carousel of offers: Pay (5% Back), Prepay $100 (10%
  *  Bonus) ... whatever offers the place is offering"). Only what the place
  *  offers now (the list row's `offers`: cashback and the vouchers on sale),
- *  in this order: Pay first (any guest, any visit), then Welcome, the three
- *  sizes, Story, VIP. The figures are the Rewards sheet's catalog
+ *  in this order: Pay first (any guest, any visit), then the three sizes,
+ *  Story, VIP, Welcome (MESITA-3475). The figures are the Rewards sheet's catalog
  *  (packages/place-profile vouchers.tsx STANDARD and SPECIAL); a change there
  *  changes here. Each slide opens the Rewards sheet at its own section. */
 export type OfferSlide = {
@@ -23,16 +23,24 @@ export type OfferSlide = {
   /** Read aloud in the button's label. */
   spoken: string;
   section: "payment" | "prepayment" | "special";
+  /** The box's colour and ink while this slide shows (MESITA-3475). */
+  tone: string;
 };
 
+// THE WORDS AND COLOURS ARE PATO'S (MESITA-3475: "Pay (5% Back) / Prepay
+// $200 (10% Bonus) / ... / Story Prepay (30% Bonus) / VIP Prepay (30% Bonus) /
+// Welcome Prepay (30% Bonus) ... green for all the offers but blue for welcome
+// and pink for insta and yellow for vip"): the Offers page's voucher colours.
+const GREEN = "bg-green-400 text-neutral-950";
+
 const OFFER_SLIDES: OfferSlide[] = [
-  { key: "cashback", lead: "Pay", pill: "5% Back", spoken: "Pay, 5% back", section: "payment" },
-  { key: "voucher_welcome", lead: "Prepay MX$100 · Welcome", pill: "30%", spoken: "Prepay MX$100, Welcome, 30% bonus", section: "special" },
-  { key: "voucher_200", lead: "Prepay MX$200", pill: "10% Bonus", spoken: "Prepay MX$200, 10% bonus", section: "prepayment" },
-  { key: "voucher_1000", lead: "Prepay MX$1,000", pill: "20% Bonus", spoken: "Prepay MX$1,000, 20% bonus", section: "prepayment" },
-  { key: "voucher_5000", lead: "Prepay MX$5,000", pill: "30% Bonus", spoken: "Prepay MX$5,000, 30% bonus", section: "prepayment" },
-  { key: "voucher_story", lead: "Story", pill: "30% Bonus", spoken: "Story, 30% bonus", section: "special" },
-  { key: "voucher_vip", lead: "VIP", pill: "30% Bonus", spoken: "VIP, 30% bonus", section: "special" },
+  { key: "cashback", lead: "Pay", pill: "5% Back", spoken: "Pay, 5% back", section: "payment", tone: GREEN },
+  { key: "voucher_200", lead: "Prepay $200", pill: "10% Bonus", spoken: "Prepay $200, 10% bonus", section: "prepayment", tone: GREEN },
+  { key: "voucher_1000", lead: "Prepay $1,000", pill: "20% Bonus", spoken: "Prepay $1,000, 20% bonus", section: "prepayment", tone: GREEN },
+  { key: "voucher_5000", lead: "Prepay $5,000", pill: "30% Bonus", spoken: "Prepay $5,000, 30% bonus", section: "prepayment", tone: GREEN },
+  { key: "voucher_story", lead: "Story Prepay", pill: "30% Bonus", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white" },
+  { key: "voucher_vip", lead: "VIP Prepay", pill: "30% Bonus", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950" },
+  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "30% Bonus", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white" },
 ];
 
 /** The place's slides, in the fixed order; none = no button. */
@@ -84,7 +92,7 @@ function OfferTrack({ slides, index, previous }: { slides: OfferSlide[]; index: 
 }
 
 const OFFER_BOX =
-  "relative flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950";
+  "relative flex w-full items-center justify-center px-2.5 font-sans text-xs font-semibold transition-colors duration-300";
 
 /** THE OFFER BUTTON (MESITA-3439's green Bonus button, rotating since
  *  MESITA-3467): full width under Save and Share, the place screen's Link
@@ -121,6 +129,7 @@ export function OfferButton({
       className={cn(
         CARD_BUTTON_BOX,
         OFFER_BOX,
+        slide.tone,
         "transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.99]",
         className,
       )}
@@ -138,7 +147,7 @@ export function OfferStrip({ name, slides, className }: { name: string; slides: 
   if (slides.length === 0) return null;
   return (
     <p
-      className={cn(CARD_BUTTON_BOX, OFFER_BOX, "pointer-events-none", className)}
+      className={cn(CARD_BUTTON_BOX, OFFER_BOX, slides[live.index].tone, "pointer-events-none", className)}
       aria-label={offersLabel(name, slides)}
       data-tile-bonus
     >
