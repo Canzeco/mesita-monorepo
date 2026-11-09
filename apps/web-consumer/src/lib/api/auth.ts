@@ -32,8 +32,9 @@ export async function apiConsumerSigninPhone(
   );
 }
 
-/** "Call me with the code" (MESITA-3405): a call says the sign-in code
- *  Supabase Auth just texted to `phone` (E.164). No session needed. */
+/** "Call me with the code" (MESITA-3470): marks `phone` (E.164) so the
+ *  code Auth sends next comes by call, not text. Call it right before
+ *  signInWithOtp. No session needed. */
 export async function apiCallSignInCode(
   client: SupabaseClient,
   phone: string,

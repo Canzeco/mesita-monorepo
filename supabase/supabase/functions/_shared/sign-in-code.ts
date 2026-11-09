@@ -1,12 +1,13 @@
-// Phone sign-in by SMS or call (MESITA-3405). Supabase Auth makes the code
-// and checks it; its Send SMS hook (supabase-auth-send-sms) hands us the code
-// to text, and we keep it for its 5 minutes so consumer-web-call-sign-in-code
-// can say it by phone. Pure helpers plus the one Twilio Messages call.
+// Phone sign-in by SMS or call (MESITA-3405, MESITA-3470). Supabase Auth
+// makes the code and checks it; its Send SMS hook (supabase-auth-send-sms)
+// hands us the code and we text it, or call with it when the guest picked
+// Call (consumer-web-call-sign-in-code marked the number in sign_in_calls).
+// Pure helpers plus the one Twilio Messages call.
 
-/** Matches Auth's sms_otp_exp (300 s): a kept code dies with Auth's. */
-export const SIGN_IN_CODE_SECONDS = 300;
-/** Calls one code may get. */
-export const SIGN_IN_CODE_CALLS = 3;
+/** How long a Call pick waits for Auth's code. */
+export const SIGN_IN_CALL_PICK_SECONDS = 120;
+/** One call per number per this many seconds. */
+export const SIGN_IN_CALL_GAP_SECONDS = 60;
 
 /** The Messaging Service Supabase Auth sent through before the hook. */
 const DEFAULT_MESSAGING_SERVICE = "MG7e48a98519ee7d81d7cf1e49bb167b61";
