@@ -128,6 +128,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         refunds: "/me/refunds",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
+        settingsFeedback: "/me/settings/feedback",
         notifications: "/me/notifications",
         // Favorites and Reservations, each its own page (MESITA-2565); they
         // were Saved's two tabs (MESITA-2521, MESITA-2561).

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FileText, MessageSquare, ScrollText } from "lucide-react";
+import { FileText, MessageSquare, MessageSquareHeart, ScrollText } from "lucide-react";
 import { MESITA_PRIVACY_URL, MESITA_TERMS_URL } from "@/lib/mesita-contact";
 import { APP_VERSION } from "@/lib/app-version";
 import { MeScreen } from "@/components/consumer/me/MeScreen";
@@ -22,7 +22,8 @@ import { cn } from "@/lib/utils";
 // Delete account went with them (Pato, MESITA-2589: "remove stupid fake
 // buttons from settings"), came back (MESITA-3049) and left again
 // (MESITA-3468: "remove the stupid delete account button"); Contact is the
-// way to ask. The one server write here is Sign out.
+// way to ask, and Send feedback (MESITA-3029) the way to tell us about the
+// app itself. The one server write here is Sign out.
 // Social has one switch, "Public profile" (MESITA-2590, MESITA-2594): off, you
 // still show, by first name, without photo or handle (MESITA-2612). Nothing makes a member disappear from Social
 // (MESITA-2552: "if you connect your … instagram, is because you want to be
@@ -104,6 +105,14 @@ export function SettingsModal() {
             href={CONSUMER_ROUTES.mePages.settingsContact}
             label="Contact"
             sub="Talk to us"
+          />
+          <RowDivider />
+          <SettingsLinkRow
+            Icon={MessageSquareHeart}
+            tint="muted"
+            href={CONSUMER_ROUTES.mePages.settingsFeedback}
+            label="Send feedback"
+            sub="About the app"
           />
         </>
       }

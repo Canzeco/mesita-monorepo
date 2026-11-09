@@ -287,6 +287,9 @@ const CONSUMER_READ_ALLOWLIST = [
   // Single Place › Admin › Reports (MESITA-2686): first name and member
   // number of each reporting guest, error checked. Read-only.
   "_shared/place-reports-handler.ts",
+  // Activity › Feedback › App feedback (MESITA-3029): the same first name and
+  // member number for each guest who sent app feedback. Read-only.
+  "admin-web-list-app-feedback/index.ts",
   "consumer-web-create-reservation/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",

@@ -1,11 +1,16 @@
 "use server";
 
 import type { ActionResult } from "@/lib/action-result";
-import type { AdminPlaceReport } from "@/components/reports/types";
+import type { AdminAppFeedback, AdminPlaceReport } from "@/components/reports/types";
 import { efInvoke } from "@/lib/supabase-ef";
 
 export type ListFeedbackResult = ActionResult<{
   reports: AdminPlaceReport[];
+  capped: boolean;
+}>;
+
+export type ListAppFeedbackResult = ActionResult<{
+  feedback: AdminAppFeedback[];
   capped: boolean;
 }>;
 
@@ -18,4 +23,15 @@ export async function listFeedback(): Promise<ListFeedbackResult> {
   );
   if (!r.ok) return { ok: false, error: r.error };
   return { ok: true, reports: r.data.reports ?? [], capped: r.data.capped === true };
+}
+
+/** Every guest's feedback about the app itself, newest first
+ *  (admin-web-list-app-feedback, MESITA-3029). Read-only. */
+export async function listAppFeedback(): Promise<ListAppFeedbackResult> {
+  const r = await efInvoke<{ feedback?: AdminAppFeedback[]; capped?: boolean }>(
+    "admin-web-list-app-feedback",
+    {},
+  );
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, feedback: r.data.feedback ?? [], capped: r.data.capped === true };
 }
