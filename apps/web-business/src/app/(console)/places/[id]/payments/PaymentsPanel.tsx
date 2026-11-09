@@ -4,7 +4,7 @@
 // Stripe account, with the one button its state calls for; the owner's money
 // (MESITA-3307: totals, the fee note, the rows; owners only); Visit
 // Checkout, the bill in its order (House Credits, Mesita Pay, Outside
-// Mesita), one switch; Payments Cashback, one switch; Prepaid Vouchers, six.
+// Mesita), one switch, and the table QR to print (MESITA-3382); Payments Cashback, one switch; Prepaid Vouchers, six.
 // A guest's credit is the place's debt, so no switch refuses it. The owner and
 // Mesita staff change them; the server refuses anyone else. No number is set
 // here: rates, bonuses and prices are Mesita's.
@@ -32,6 +32,7 @@ import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { MoneySection } from "./MoneySection";
+import { TableQr } from "./TableQr";
 import {
   openPaymentDashboard,
   type PaymentAccount,
@@ -173,11 +174,14 @@ function accountCopy(a: PaymentAccount): { line: string; button: string | null; 
 
 export function PaymentsPanel({
   placeId,
+  placeName,
   initial,
   money,
   back,
 }: {
   placeId: string;
+  /** Printed under the table QR (MESITA-3382). */
+  placeName: string | null;
   initial: PlacePayments;
   /** The owner's money (MESITA-3307); null for an editor or when it failed. */
   money: PlaceMoney | null;
@@ -325,6 +329,7 @@ export function PaymentsPanel({
           {infoRow(HOUSE_CREDITS)}
           {row(MESITA_PAY)}
           {infoRow(OUTSIDE)}
+          <TableQr placeId={placeId} placeName={placeName} live={settings.pay_cards} />
         </ul>
         <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
           {codeSet ? (
