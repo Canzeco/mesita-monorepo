@@ -109,6 +109,10 @@ export type Place = {
    *  account can charge, from the server; absent = no mark. list-catalog and
    *  list-places send it. */
   mesita_pay?: boolean;
+  /** The offer button's slides (MESITA-3467): cashback on a card payment
+   *  and the vouchers the place sells now; absent = no button.
+   *  list-catalog and list-places send it. */
+  offers?: { cashback: boolean; sell: string[] } | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //

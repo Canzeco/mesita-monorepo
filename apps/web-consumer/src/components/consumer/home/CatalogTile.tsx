@@ -16,9 +16,9 @@ import {
   CardActions,
   HoursRow,
   KindRow,
-  BonusButton,
   cardFacts,
 } from "@/components/consumer/place-card";
+import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import {
   TILE_ACTIONS,
   TILE_BAND,
@@ -120,10 +120,11 @@ export function CatalogTile({
   // $$ · category · stars; Open or Closed · distance. No zone on the tile. Each
   // cell hides when the place has none.
   const facts = cardFacts(place);
-  // Every Mesita place wears the Bonus button (MESITA-3439), as its screen
-  // wears Prepay; a Google-only card has none (it sells nothing yet). The
-  // server-gated "Up to 25% OFF" line (MESITA-3312) sat here until then.
-  const vouchers = !google;
+  // The green offer button (MESITA-3439) rotates the place's offers since
+  // MESITA-3467: only what the place offers now, none = no button (a
+  // Google-only card offers nothing).
+  const slides = google ? [] : offerSlides(place);
+  const vouchers = slides.length > 0;
 
   // The photo, or the category's emoji when there is none (MESITA-2667).
   const media = () =>
@@ -246,7 +247,7 @@ export function CatalogTile({
               : undefined
           }
         />
-        {vouchers ? <BonusButton href={href} name={place.name} className="pointer-events-auto" /> : null}
+        {vouchers ? <OfferButton href={href} name={place.name} slides={slides} className="pointer-events-auto" /> : null}
       </div>
     </li>
   );

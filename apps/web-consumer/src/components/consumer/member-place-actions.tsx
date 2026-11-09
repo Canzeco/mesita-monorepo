@@ -69,7 +69,7 @@ function noopSubscribe() {
 
 function readRewardsAsk(): RewardsSection | null {
   const v = new URLSearchParams(window.location.search).get("rewards");
-  return v === "prepayment" || v === "payment" ? v : null;
+  return v === "prepayment" || v === "payment" || v === "special" ? v : null;
 }
 
 export function useMemberPlaceActions(place: PlaceDetail): {
@@ -88,7 +88,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const [reportOpen, setReportOpen] = useState(false);
   // Prepay and Pay open the Rewards sheet at their section (MESITA-3412).
   const [rewards, setRewards] = useState<RewardsSection | null>(null);
-  // ?rewards=prepayment|payment (the Home tile's Bonus button, MESITA-3439)
+  // ?rewards=prepayment|payment|special (the Home tile's offer button,
+  // MESITA-3439, its slides since MESITA-3467)
   // opens the sheet on arrival, once: closing it drops the ask.
   const askedRewards = useSyncExternalStore(noopSubscribe, readRewardsAsk, () => null);
   const [askDismissed, setAskDismissed] = useState(false);

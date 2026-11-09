@@ -64,6 +64,7 @@ export function inertButtonProps(live: boolean): {
   };
 }
 
-/** The two halves of the Rewards page (MESITA-3412): Pay opens at
- *  `payment`, Prepay at `prepayment`. */
-export type RewardsSection = "payment" | "prepayment";
+/** The sections of the Rewards page (MESITA-3412): Pay opens at
+ *  `payment`, Prepay at `prepayment`; the Home offer button's Welcome, Story
+ *  and VIP slides open at `special` (MESITA-3467). */
+export type RewardsSection = "payment" | "prepayment" | "special";

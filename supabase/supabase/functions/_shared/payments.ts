@@ -90,24 +90,29 @@ export async function chargesEnabledByPlace(
   return out;
 }
 
+/** THE OFFER BUTTON'S SLIDES (MESITA-3467, Pato: "a carousel of offers ...
+ *  whatever offers the place is offering"): cashback on a card payment and
+ *  the vouchers the place sells now, in moneyState's words. */
+export type ListRowOffers = { cashback: boolean; sell: MoneyVoucherKey[] };
+
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
  *  THE MESITA PAY MARK (MESITA-3321, Pato: "if the product is mesita pay
  *  ... put an extra icon in green"): on each row of a page,
  *  `vouchers_up_to_pct`, the best bonus among the vouchers moneyState says
- *  the place sells now, or null, and `mesita_pay`, moneyState's mark
- *  (MESITA-3408). Two batched reads for the whole page (the switches and the
+ *  the place sells now, or null, `mesita_pay`, moneyState's mark
+ *  (MESITA-3408), and `offers`, the offer button's slides (MESITA-3467). Two batched reads for the whole page (the switches and the
  *  accounts by id), never one per tile; a failed settings read reads as no
  *  row (nothing for sale; the mark follows the account), is logged, and the
  *  page still answers. */
 export async function withVouchersUpTo<T extends { id: string }>(
   admin: SupabaseClient | null,
   places: T[],
-): Promise<(T & { vouchers_up_to_pct: number | null; mesita_pay: boolean })[]> {
+): Promise<(T & { vouchers_up_to_pct: number | null; mesita_pay: boolean; offers: ListRowOffers })[]> {
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { cashback: false, sell: [] } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   const [settingsRes, charging] = await Promise.all([
@@ -124,16 +129,16 @@ export async function withVouchersUpTo<T extends { id: string }>(
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
-    const { sell, mesita_pay } = listRowMoney(settings.get(p.id), charges.has(p.id));
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay };
+    const { sell, mesita_pay, cashback } = listRowMoney(settings.get(p.id), charges.has(p.id));
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { cashback, sell } };
   });
 }
 
 /** One list row's money, pure: what sells and whether the mark shows. A
  *  place with no settings row reads as `settingsFromRow(null)`. */
-export function listRowMoney(settings: PaymentSettings | undefined, charges: boolean): { sell: MoneyVoucherKey[]; mesita_pay: boolean } {
+export function listRowMoney(settings: PaymentSettings | undefined, charges: boolean): { sell: MoneyVoucherKey[]; mesita_pay: boolean; cashback: boolean } {
   const state = moneyState(settings ?? settingsFromRow(null), charges ? { charges_enabled: true } : null, null);
-  return { sell: state.sell, mesita_pay: state.mesita_pay };
+  return { sell: state.sell, mesita_pay: state.mesita_pay, cashback: state.cashback };
 }
 
 // ── The account ────────────────────────────────────────────────────────────

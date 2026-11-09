@@ -489,3 +489,22 @@ summary {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* THE OFFER BUTTON'S SLIDE-UP (MESITA-3467, Pato: "switching across all the
+   offers ... like a carousel"): the old words leave upward, the new words
+   rise from below, 300ms ease-out, clipped inside the still green button.
+   A phone set to reduce motion gets no movement (the beat holds anyway). */
+@keyframes offer-in {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes offer-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+.offer-in { animation: offer-in 300ms ease-out both; }
+.offer-out { animation: offer-out 300ms ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .offer-in { animation: none; }
+  .offer-out { display: none; }
+}

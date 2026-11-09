@@ -1,0 +1,148 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+import type { Place } from "@/lib/api/places";
+import { cn } from "@/lib/utils";
+import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
+import { useOfferBeat, useReducedMotion } from "@/components/consumer/offer-beat";
+
+/** THE OFFER BUTTON'S SLIDES (MESITA-3467, Pato: "the green button must
+ *  have multiple ... a carousel of offers: Pay (5% Back), Prepay $100 (10%
+ *  Bonus) ... whatever offers the place is offering"). Only what the place
+ *  offers now (the list row's `offers`: cashback and the vouchers on sale),
+ *  in this order: Pay first (any guest, any visit), then Welcome, the three
+ *  sizes, Story, VIP. The figures are the Rewards sheet's catalog
+ *  (packages/place-profile vouchers.tsx STANDARD and SPECIAL); a change there
+ *  changes here. Each slide opens the Rewards sheet at its own section. */
+export type OfferSlide = {
+  key: string;
+  /** The words before the ink pill. */
+  lead: string;
+  pill: string;
+  /** Read aloud in the button's label. */
+  spoken: string;
+  section: "payment" | "prepayment" | "special";
+};
+
+const OFFER_SLIDES: OfferSlide[] = [
+  { key: "cashback", lead: "Pay", pill: "5% Back", spoken: "Pay, 5% back", section: "payment" },
+  { key: "voucher_welcome", lead: "Prepay MX$100 · Welcome", pill: "30%", spoken: "Prepay MX$100, Welcome, 30% bonus", section: "special" },
+  { key: "voucher_200", lead: "Prepay MX$200", pill: "10% Bonus", spoken: "Prepay MX$200, 10% bonus", section: "prepayment" },
+  { key: "voucher_1000", lead: "Prepay MX$1,000", pill: "20% Bonus", spoken: "Prepay MX$1,000, 20% bonus", section: "prepayment" },
+  { key: "voucher_5000", lead: "Prepay MX$5,000", pill: "30% Bonus", spoken: "Prepay MX$5,000, 30% bonus", section: "prepayment" },
+  { key: "voucher_story", lead: "Story", pill: "30% Bonus", spoken: "Story, 30% bonus", section: "special" },
+  { key: "voucher_vip", lead: "VIP", pill: "30% Bonus", spoken: "VIP, 30% bonus", section: "special" },
+];
+
+/** The place's slides, in the fixed order; none = no button. */
+export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
+  const offers = place.offers;
+  if (!offers) return [];
+  const sell = new Set(offers.sell);
+  return OFFER_SLIDES.filter((s) => (s.key === "cashback" ? offers.cashback : sell.has(s.key)));
+}
+
+function offersLabel(name: string, slides: OfferSlide[]): string {
+  return `Offers at ${name}: ${slides.map((s) => s.spoken).join("; ")}`;
+}
+
+/** The slide the shared beat shows now, plus the one it just left (for the
+ *  slide-up), or a still first slide under reduced motion. */
+function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number | null } {
+  const beat = useOfferBeat();
+  const reduced = useReducedMotion();
+  // The beat this button first drew on: no slide-up on arrival.
+  const [firstBeat] = useState(beat);
+  const n = slides.length;
+  if (n <= 1 || reduced) return { index: 0, previous: null };
+  const index = beat % n;
+  return { index, previous: beat === firstBeat ? null : (beat - 1 + n) % n };
+}
+
+function OfferWords({ slide, className }: { slide: OfferSlide; className?: string }) {
+  return (
+    <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
+      {slide.lead}
+      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
+        {slide.pill}
+      </span>
+    </span>
+  );
+}
+
+/** The moving words inside the still green box, hidden from screen readers
+ *  (the box's label lists every offer once). Keyed by slide so each change
+ *  replays the slide-up. */
+function OfferTrack({ slides, index, previous }: { slides: OfferSlide[]; index: number; previous: number | null }) {
+  return (
+    <span className="relative block h-full w-full overflow-hidden" aria-hidden>
+      {previous !== null ? <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} className="offer-out" /> : null}
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} className={previous !== null ? "offer-in" : undefined} />
+    </span>
+  );
+}
+
+const OFFER_BOX =
+  "relative flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950";
+
+/** THE OFFER BUTTON (MESITA-3439's green Bonus button, rotating since
+ *  MESITA-3467): full width under Save and Share, the place screen's Link
+ *  green, 12px semibold as Save and Share (MESITA-3442), a 44px hit area.
+ *  The slide on screen when the finger lands picks the Rewards section, and
+ *  the button holds that slide while a finger or keyboard focus is on it. */
+export function OfferButton({
+  href,
+  name,
+  slides,
+  className,
+}: {
+  href: string;
+  name: string;
+  slides: OfferSlide[];
+  className?: string;
+}) {
+  const live = useOfferSlide(slides);
+  const [held, setHeld] = useState<number | null>(null);
+  if (slides.length === 0) return null;
+  const index = held ?? live.index;
+  const slide = slides[index];
+  const hold = () => setHeld((h) => h ?? live.index);
+  const release = () => setHeld(null);
+  return (
+    <Link
+      href={`${href}?rewards=${slide.section}`}
+      aria-label={offersLabel(name, slides)}
+      onPointerDown={hold}
+      onFocus={hold}
+      onPointerCancel={release}
+      onPointerLeave={release}
+      onBlur={release}
+      className={cn(
+        CARD_BUTTON_BOX,
+        OFFER_BOX,
+        "transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.99]",
+        className,
+      )}
+      data-tile-bonus
+    >
+      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
+    </Link>
+  );
+}
+
+/** The Search map card's top strip (MESITA-3444): the same slides on the
+ *  same beat (MESITA-3467), part of the card (its tap opens the place). */
+export function OfferStrip({ name, slides, className }: { name: string; slides: OfferSlide[]; className?: string }) {
+  const live = useOfferSlide(slides);
+  if (slides.length === 0) return null;
+  return (
+    <p
+      className={cn(CARD_BUTTON_BOX, OFFER_BOX, "pointer-events-none", className)}
+      aria-label={offersLabel(name, slides)}
+      data-tile-bonus
+    >
+      <OfferTrack slides={slides} index={live.index} previous={live.previous} />
+    </p>
+  );
+}

@@ -1,5 +1,4 @@
 import {
-  BadgePercent,
   Clock,
   Heart,
   Navigation,
@@ -7,7 +6,6 @@ import {
   Sparkles,
   Star,
 } from "lucide-react";
-import Link from "next/link";
 import type { Place } from "@/lib/api/places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { formatPlacePriceLevelSymbols } from "@mesita/place-profile/lib/place-price";
@@ -303,76 +301,3 @@ export function CardActions({
     </div>
   );
 }
-
-/**
- * THE VOUCHER LINE under Save and Share, as wide as the two and as tall
- * (Pato, MESITA-3312: "if the place offers voucher, draw the kinda discount
- * voucher icon at the bottom of the buttons saying Up to 25% OFF"). The spot
- * and the form are MESITA-3233's coupon, which left with the discount
- * product (MESITA-3299): dark green on pale green, one line, 32px, the ticket
- * mark. The words are Pato's, fixed: "Up to 25% OFF" (MESITA-3313, his call
- * after the flag that vouchers are bonuses, +10% · +20% · +30%, and none is
- * 25% off; MESITA-3312 shipped "Up to 30% extra credit" for one evening).
- * The server's `vouchers_up_to_pct`, the best bonus among what the place
- * sells now, decides only whether the line shows; nothing for sale, no line.
- * Display only: a tap falls through to the card's own link beneath it.
- */
-/** THE BONUS BUTTON (Pato, MESITA-3439: "add the button to Bonus, below save
- *  and share, wide button, just saying bonus x% don't mention prepay ... keep
- *  the sexy green button"): the place screen's Link green, full width, "30%
- *  Bonus" (its Prepay figure). It opens the place with its Rewards sheet up
- *  at Pre-Payment Rewards. */
-export const BONUS_PCT = 30;
-export function BonusButton({ href, name, className }: { href: string; name: string; className?: string }) {
-  return (
-    <Link
-      href={`${href}?rewards=prepayment`}
-      aria-label={`Welcome Bonus, ${BONUS_PCT}%, at ${name}`}
-      className={cn(
-        CARD_BUTTON_BOX,
-        // The words at Save and Share's size, 12px semibold (Pato, MESITA-3442:
-        // "make the letters same size"), and their 44px hit area.
-        "relative flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950 transition after:absolute after:inset-x-0 after:-inset-y-1.5 hover:opacity-90 active:scale-[0.99]",
-        className,
-      )}
-      data-tile-bonus
-    >
-      <BonusWords />
-    </Link>
-  );
-}
-
-/** WELCOME BONUS (Pato, MESITA-3444, A of four: "mention money too in offer,
- *  like Welcome bonus, 30% ... mention % icon"): the % glyph, "Welcome Bonus",
- *  the 30% in the ink pill Prepay wears. The Welcome voucher is MX$100 for
- *  MX$130, one per guest on a first visit. */
-function BonusWords() {
-  return (
-    <span className="flex items-center gap-1.5">
-      <BadgePercent className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-      Welcome Bonus
-      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
-        {BONUS_PCT}%
-      </span>
-    </span>
-  );
-}
-
-/** The Search map card's top strip (MESITA-3444): the Bonus words on Link
- *  green, part of the card (its tap opens the place). It was "Up to 25% OFF"
- *  on the server's voucher number (MESITA-3327). */
-export function BonusStrip({ className }: { className?: string }) {
-  return (
-    <p
-      className={cn(
-        CARD_BUTTON_BOX,
-        "pointer-events-none flex w-full items-center justify-center bg-green-400 px-2.5 font-sans text-xs font-semibold text-neutral-950",
-        className,
-      )}
-      data-tile-bonus
-    >
-      <BonusWords />
-    </p>
-  );
-}
-

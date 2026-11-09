@@ -15,8 +15,8 @@ import {
   PriceKindRow,
   StarsOpenRow,
   cardFacts,
-  BonusStrip,
 } from "@/components/consumer/place-card";
+import { OfferStrip, offerSlides } from "@/components/consumer/offer-button";
 
 // FOUR ROWS, SHORTER (Pato, MESITA-2859: "name, select / price, category /
 // stars, open/close thats it don't mention the hour / buttons — so now its
@@ -141,9 +141,10 @@ export function RailCard({
   // the text column is narrow, MESITA-2925); $$ · category; ★ rating
   // (reviews) · Open or Closed.
   const facts = cardFacts(place);
-  // The Welcome Bonus strip on every Mesita place card, as on the Home tile
-  // (MESITA-3444); a Google-only card sells nothing yet.
-  const strip = !isGoogleOnlyPlace(place);
+  // The offer strip, the Home tile's rotating offers on the same beat
+  // (MESITA-3444, rotating since MESITA-3467); none = no strip.
+  const slides = isGoogleOnlyPlace(place) ? [] : offerSlides(place);
+  const strip = slides.length > 0;
 
   return (
     <div
@@ -162,7 +163,7 @@ export function RailCard({
         onClick={onOpen}
         className="focus-visible:ring-primary absolute inset-0 flex flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-inset"
       >
-        {strip ? <BonusStrip className={RAIL_CARD_STRIP} /> : null}
+        {strip ? <OfferStrip name={place.name} slides={slides} className={RAIL_CARD_STRIP} /> : null}
         <div className={RAIL_CARD_ROW}>
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card

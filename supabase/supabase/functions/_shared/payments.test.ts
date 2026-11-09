@@ -109,13 +109,15 @@ Deno.test("settings: eight switches; no row is products off and Pay by phone on;
 
 Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by card or buy a voucher", () => {
   // No settings row, charging account: Pay by phone defaults on, so card bill pay, mark on.
-  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: true });
+  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: true, cashback: false });
   // No charging account: nothing.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), voucher_200: true }, false), { sell: [], mesita_pay: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), voucher_200: true }, false), { sell: [], mesita_pay: false, cashback: false });
   // Pay by phone off, MX$200 on, charging: sells and shows the mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true, cashback: false });
   // Pay by phone off, nothing on: no mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, cashback: true }, true), { sell: [], mesita_pay: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, cashback: true }, true), { sell: [], mesita_pay: false, cashback: false });
+  // Cashback on with cards: the offer button's Pay slide (MESITA-3467).
+  assertEquals(listRowMoney({ ...settingsFromRow(null), cashback: true }, true).cashback, true);
 });
 
 // The "Stripe" general state and the guest Pay mark read one rule
