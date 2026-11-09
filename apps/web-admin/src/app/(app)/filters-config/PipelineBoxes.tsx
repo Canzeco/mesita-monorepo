@@ -9,10 +9,11 @@
 // (the Selected boost retired with Selected, MESITA-2925). The Chat Agent is
 // Deep's caller, so its prompt sits in the Deep box.
 
-import { LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
+import { DollarSign, LayoutGrid, MapPin, ScanSearch, Search, Sparkles } from "lucide-react";
 import {
   NumberField,
   SaveRow,
+  SectionCard,
   Switch,
 } from "@/components/admin-ui/config";
 import { useConfigEditor, type ConfigSeed } from "@/components/admin-ui/use-config-editor";
@@ -38,6 +39,9 @@ import {
   NAME_POPULARITY_FLOOR_MAX,
   NAME_POPULARITY_FLOOR_MIN,
   POPULARITY_ROOT_MAX,
+  PREMIER_MONTHLY_CENTS_MAX,
+  PREMIER_MONTHLY_CENTS_MIN,
+  type PremierTier,
   POPULARITY_ROOT_MIN,
   type DiscoveryConfig,
 } from "./catalog";
@@ -53,6 +57,7 @@ export const BOX_SLICES = {
   name: ["nameDeep", "nameLocations", "nameIdle", "nameFloor"],
   map: ["mapPipeline"],
   catalog: ["catalogPipeline"],
+  premier: ["premier"],
 } as const satisfies Record<string, readonly DiscoverySlice[]>;
 
 /** "12×", "1,250×", "≈9.8M×": a plan's worth in reviews, readable at any
@@ -567,5 +572,62 @@ export function DeepBox() {
       icon={<Sparkles className={ICON} />}
       explanation="Open-ended discovery for Chat (Don Memo). No guest reaches Chat yet."
     />
+  );
+}
+
+// 6 ─ Premier Prices (MESITA-3043) ────────────────────────────────────────────
+// Not a pipeline: what the two paid plans cost. The Premier factor (2X, 5X)
+// is the tier's own number; this box sets only the price. Typed in dollars,
+// stored in whole cents.
+const PREMIER_PLANS: { tier: PremierTier; label: string }[] = [
+  { tier: "boost_2x", label: "Pro · Premier 2X ($ a month)" },
+  { tier: "boost_5x", label: "Max · Premier 5X ($ a month)" },
+];
+/** A year is billed as ten months (PREMIER_YEAR_MONTHS in _shared/boost.ts). */
+const PREMIER_YEAR_MONTHS = 10;
+const usd = (cents: number) =>
+  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
+
+export function PremierPricesBox(seed: ConfigSeed<DiscoveryConfig>) {
+  const editor = useDiscoveryEditor(seed);
+  const { cfg, setCfg, saved, setOk, pending, loadBlocked } = editor;
+  const off = pending || loadBlocked;
+  const prices = cfg.premier.monthlyCents;
+  const setPrice = (tier: PremierTier, dollars: number) => {
+    setOk(false);
+    setCfg((c) => ({
+      ...c,
+      premier: { monthlyCents: { ...c.premier.monthlyCents, [tier]: Math.round(dollars * 100) } },
+    }));
+  };
+  const dirty = !same(cfg.premier, saved.premier);
+  return (
+    <div id="s-premier-prices" className="scroll-mt-16">
+      <SectionCard
+        icon={<DollarSign className={ICON} />}
+        title="Premier Prices"
+        subtitle="What a place pays a month for each paid plan. A year costs ten months. A new price reaches new subscriptions and plan changes; a subscription already running renews at the price it was bought at."
+      >
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {PREMIER_PLANS.map(({ tier, label }) => (
+            <NumberField
+              key={tier}
+              label={label}
+              value={prices[tier] / 100}
+              min={PREMIER_MONTHLY_CENTS_MIN / 100}
+              max={PREMIER_MONTHLY_CENTS_MAX / 100}
+              decimals
+              disabled={off}
+              onChange={(v) => setPrice(tier, v)}
+              hint={`A year: ${usd(prices[tier] * PREMIER_YEAR_MONTHS)}`}
+            />
+          ))}
+        </div>
+        <p className="text-muted-foreground mt-3 type-meta">
+          {usd(PREMIER_MONTHLY_CENTS_MIN)}–{usd(PREMIER_MONTHLY_CENTS_MAX)} a month. Upgrade packs keep their own fixed prices.
+        </p>
+        <Save editor={editor} dirty={dirty} slices={BOX_SLICES.premier} />
+      </SectionCard>
+    </div>
   );
 }

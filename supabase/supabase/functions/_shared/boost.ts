@@ -29,8 +29,13 @@
 // flight and runs renewals. Every period write is a `premier_*` RPC, and a
 // pledge becomes `ready` only through premier_make_payer.
 //
-// decision: prices are fixed here, not a console knob — a price is a money
-// promise to the guests already paying, so it changes by PR.
+// Prices are an operator setting since MESITA-3043 (`params.premier.
+// monthlyCents` on discovery_config, Admin › Discovery › Premier Prices);
+// PREMIER_MONTHLY_CENTS is only its default. The promise to guests already
+// paying holds without a PR: a quote's price is stored on the pledge
+// (`amount_cents`) and the period (`price_cents`) when it is bought, and
+// every renewal charges the stored amount, so a new price reaches new
+// purchases and plan changes only.
 // decision (Pato, MESITA-2789): a yearly plan costs ten months for twelve.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
@@ -42,11 +47,14 @@ export type BoostInterval = "month" | "year";
 
 export const PREMIER_TIERS = ["boost_2x", "boost_5x"] as const satisfies readonly BoostTier[];
 
-/** Monthly price in US cents: two plans, 2X $10 and 5X $100 (Pato,
- *  MESITA-3041: "Premier must be only 2 options, 10usd for 2x and 100usd
- *  for 5x";
- *  10X retired). */
-export const PREMIER_MONTHLY_CENTS: Record<BoostTier, number> = {
+/** Monthly price per tier, in US cents. */
+export type PremierPrices = Record<BoostTier, number>;
+
+/** The DEFAULT monthly price in US cents, read when the operator's
+ *  `params.premier.monthlyCents` is unset: two plans, 2X $10 and 5X $100
+ *  (Pato, MESITA-3041: "Premier must be only 2 options, 10usd for 2x and
+ *  100usd for 5x"; 10X retired). */
+export const PREMIER_MONTHLY_CENTS: PremierPrices = {
   boost_2x: 1000,
   boost_5x: 10000,
 };
@@ -88,9 +96,14 @@ export function premierRankOf(boostTier: number): 0 | TierRank {
   return boostTier === 1 || boostTier === 2 ? boostTier : 0;
 }
 
-/** What the guest pays per interval. */
-export function boostAmountCents(tier: BoostTier, interval: BoostInterval): number {
-  const monthly = PREMIER_MONTHLY_CENTS[tier];
+/** What the guest pays per interval, at the operator's monthly prices
+ *  (`loadPremierPrices`; the defaults when none are passed). */
+export function boostAmountCents(
+  tier: BoostTier,
+  interval: BoostInterval,
+  prices: PremierPrices = PREMIER_MONTHLY_CENTS,
+): number {
+  const monthly = prices[tier];
   return interval === "year" ? monthly * PREMIER_YEAR_MONTHS : monthly;
 }
 
@@ -362,9 +375,11 @@ export function quote(args: {
   /** The place's Refill rows and time zone, for subscribing early. */
   manual?: Manual[];
   timeZone?: string | null;
+  /** The operator's monthly prices (MESITA-3043); the defaults if absent. */
+  prices?: PremierPrices;
 }): Quote {
   const { tier, interval, running, charging, viewer, subscription, now, manualTier = 0 } = args;
-  const price = boostAmountCents(tier, interval);
+  const price = boostAmountCents(tier, interval, args.prices);
   const rank = TIER_RANK[tier];
   const nothing = { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, renews_at: null };
 
@@ -641,7 +656,8 @@ export function pledgeCheckoutParams(args: {
     consumer_id: args.consumerId,
     tier: args.tier,
     interval: args.interval,
-    price_cents: String(boostAmountCents(args.tier, args.interval)),
+    // The quote's own price: the one the guest was shown (MESITA-3043).
+    price_cents: String(args.quote.price_cents),
     credit_cents: String(args.quote.credit_cents),
     extra_days: String(args.quote.extra_days),
     charge_cents: String(args.quote.charge_cents),
@@ -1108,7 +1124,7 @@ export async function claimWithoutCheckout(
     p_quoted_period_id: quotedPeriodId,
     p_tier: tier,
     p_interval: interval,
-    p_price_cents: boostAmountCents(tier, interval),
+    p_price_cents: q.price_cents,
     p_credit_cents: q.credit_cents,
     p_extra_days: q.extra_days,
     p_charged_cents: 0,
@@ -1123,7 +1139,7 @@ export async function claimWithoutCheckout(
   const err = await updatePledge(admin, pledge.id, {
     tier,
     billing_interval: interval,
-    amount_cents: boostAmountCents(tier, interval),
+    amount_cents: q.price_cents,
     quoted_period_id: null,
     quoted_credit_cents: 0,
   });

@@ -2,11 +2,12 @@ import { ConfigPageLayout } from "@/components/ConfigPageLayout";
 import type { ConfigSeed } from "@/components/admin-ui/use-config-editor";
 import { getDiscoveryConfig } from "./actions";
 import { DEFAULT_CONFIG, type DiscoveryConfig } from "./catalog";
-import { CatalogBox, DeepBox, MapBox, NameAdminBox, NameBox } from "./PipelineBoxes";
+import { CatalogBox, DeepBox, MapBox, NameAdminBox, NameBox, PremierPricesBox } from "./PipelineBoxes";
 
 // Discovery: ONE page, no subpages (MESITA-2327). Five boxes, one per
 // pipeline as it is run: Admin Name · Consumer Name · Consumer Map ·
-// Consumer Catalog · Consumer Deep (MESITA-2779, MESITA-2909).
+// Consumer Catalog · Consumer Deep (MESITA-2779, MESITA-2909), then Premier
+// Prices (MESITA-3043), the one box that is not a pipeline.
 export default async function DiscoveryPage() {
   const loaded = await getDiscoveryConfig();
   const seed: ConfigSeed<DiscoveryConfig> = {
@@ -17,7 +18,7 @@ export default async function DiscoveryPage() {
   return (
     <ConfigPageLayout
       title="Discovery"
-      description="Four sources, five pipelines, three signals, two gates. Every Discovery control is on this page; family membership lives on Atlas."
+      description="Four sources, five pipelines, three signals, two gates, and Premier's prices. Every Discovery control is on this page; family membership lives on Atlas."
     >
       <div className="flex flex-col gap-6">
         <NameAdminBox {...seed} />
@@ -25,6 +26,7 @@ export default async function DiscoveryPage() {
         <MapBox {...seed} />
         <CatalogBox {...seed} />
         <DeepBox />
+        <PremierPricesBox {...seed} />
       </div>
     </ConfigPageLayout>
   );

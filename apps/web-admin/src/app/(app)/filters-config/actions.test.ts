@@ -79,6 +79,7 @@ function editedEverywhere(live: DiscoveryConfig): DiscoveryConfig {
     general: { ...live.general, requireActive: !live.general.requireActive },
     deep: { limit: 9, minSimilarity: 0.3 },
     chat: { prompt: "Be brief." },
+    premier: { monthlyCents: { boost_2x: 1500, boost_5x: 20000 } },
   };
 }
 
@@ -190,7 +191,7 @@ describe("the Name boxes", () => {
 describe("the boxes' slices", () => {
   it("are the saving boxes, each with its own slices, none shared", () => {
     // Deep is Soon (MESITA-2345): three boxes save.
-    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "map", "catalog"]);
+    expect(Object.keys(BOX_SLICES)).toEqual(["nameAdmin", "name", "map", "catalog", "premier"]);
     const all = Object.values(BOX_SLICES).flat();
     expect(new Set(all).size).toBe(all.length);
   });
@@ -205,5 +206,24 @@ describe("Minimum Popularity lives on Name and only the Name box writes it (MESI
     expect(sent.config?.name.popularityFloor).toBe(want);
     const root = (slices as readonly string[]).includes("mapPipeline") ? 0.5 : live.map.popularityRoot;
     expect(sent.config?.map.popularityRoot).toBe(root);
+  });
+});
+
+// Money (MESITA-3043): a stale copy of the prices on any other box must never
+// overwrite what the operator set on Premier Prices.
+describe("Premier's prices: only the Premier Prices box writes them", () => {
+  it.each(Object.entries(BOX_SLICES))("the %s box", async (box, slices) => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), [...slices]);
+    const want = box === "premier" ? { boost_2x: 1500, boost_5x: 20000 } : live.premier.monthlyCents;
+    expect(sent.config?.premier.monthlyCents).toEqual(want);
+  });
+
+  it("the Premier Prices box writes nothing else", async () => {
+    const live = liveConfig();
+    const sent = armed(live);
+    await updateDiscoveryConfig(editedEverywhere(live), [...BOX_SLICES.premier]);
+    expect({ ...sent.config, premier: live.premier }).toEqual(live);
   });
 });

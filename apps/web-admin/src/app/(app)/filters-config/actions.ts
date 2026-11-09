@@ -54,7 +54,9 @@ export type DiscoverySlice =
   | "nameIdle"
   | "nameAdmin"
   // Name's Minimum Popularity (MESITA-3086): only the Name box writes it.
-  | "nameFloor";
+  | "nameFloor"
+  // Premier's monthly prices (MESITA-3043): only the Premier Prices box.
+  | "premier";
 
 export async function updateDiscoveryConfig(
   config: DiscoveryConfig,
@@ -90,6 +92,7 @@ export async function updateDiscoveryConfig(
     params: keys.has("catalogPipeline") ? config.params : live.config.params,
     deep: keys.has("deep") ? config.deep : live.config.deep,
     chat: keys.has("chat") ? config.chat : live.config.chat,
+    premier: keys.has("premier") ? config.premier : live.config.premier,
   };
   const r = await efInvoke<{ config: unknown; updatedAt: string | null }>(
     "admin-web-update-config",

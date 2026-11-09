@@ -12,6 +12,7 @@
 import { json } from "./http.ts";
 import { isUuid } from "./place-id.ts";
 import { adminClient, type EFEnv } from "./auth.ts";
+import { loadPremierPrices } from "./discovery-config.ts";
 import {
   boostAmountCents,
   boostLivemode,
@@ -91,6 +92,16 @@ export async function readPremier(
   const charging = chargingPeriod(line.periods) != null;
   const subscription = subscriptionOf(line.pledges);
   const viewer = user ? viewerOf({ consumerId: user.id, subscription, running, pledges: line.pledges }) : null;
+  // The operator's prices (MESITA-3043), only when there are quotes to price.
+  let prices: Awaited<ReturnType<typeof loadPremierPrices>> | undefined;
+  if (user && viewer) {
+    try {
+      prices = await loadPremierPrices(admin);
+    } catch (err) {
+      console.error("[premier] prices", String(err));
+      return json({ ok: false, error: "Premier prices are not available right now" }, 500);
+    }
+  }
   // The caller's own pledge: the subscription, or a Checkout in flight.
   const mine = user
     ? line.pledges.find((p) => p.consumer_id === user.id && (p.status === "ready" || p.status === "open")) ?? null
@@ -134,6 +145,7 @@ export async function readPremier(
         manualTier: manual?.tier ?? 0,
         manual: line.manual,
         timeZone: placeRes.place?.timezone,
+        prices,
       })
       : null,
     ...(outcome === undefined ? {} : { outcome }),
@@ -215,6 +227,8 @@ export async function startPremier(
     const viewer = viewerOf({ consumerId: userId, subscription, running, pledges: line.pledges });
     const charging = chargingPeriod(line.periods) != null;
 
+    // Read under the same try: no price, no Checkout (MESITA-3043).
+    const prices = await loadPremierPrices(admin);
     let kind: CheckoutKind;
     let q: Quote;
     if (start.updateCard) {
@@ -233,13 +247,14 @@ export async function startPremier(
         manualTier: runningManual(line.manual, now)?.tier ?? 0,
         manual: line.manual,
         timeZone: place.timezone,
+        prices,
       });
       if (q.covered) return refuse("covered_by_mesita", "Mesita already gives this place this level or more");
       if (q.blocked_by === "taken") return refuse("premier_taken", "Someone else pays for Premier here");
       if (q.kind === "blocked") return refuse("charging", "A renewal is being charged. Try again in a few minutes.");
       kind = q.kind === "buy" ? "buy" : q.kind === "resume" ? "resume" : "change";
     }
-    const amount = boostAmountCents(start.tier, start.interval);
+    const amount = boostAmountCents(start.tier, start.interval, prices);
 
     if (q.checkout === "none" && subscription && viewer === "payer") {
       if (running && TIER_RANK[start.tier] > running.tier) {

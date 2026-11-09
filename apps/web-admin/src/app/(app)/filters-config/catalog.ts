@@ -77,6 +77,17 @@ export type GeneralConfig = {
   // `minReviews` retired (MESITA-2702), `map.googleMinReviews` too (MESITA-2721).
 };
 
+/** Mirrors PremierConfig in _shared/discovery-config.ts (MESITA-3043):
+ *  each plan's monthly price, whole US cents. A year is ten months. */
+export type PremierTier = "boost_2x" | "boost_5x";
+export type PremierConfig = { monthlyCents: Record<PremierTier, number> };
+export const PREMIER_TIERS: readonly PremierTier[] = ["boost_2x", "boost_5x"];
+/** Mirrors PREMIER_MONTHLY_CENTS_* in _shared/discovery-config.ts. */
+export const PREMIER_MONTHLY_CENTS_MIN = 100;
+export const PREMIER_MONTHLY_CENTS_MAX = 1_000_000;
+/** Mirrors PREMIER_MONTHLY_CENTS in _shared/boost.ts (2X $10, 5X $100). */
+export const DEFAULT_PREMIER: PremierConfig = { monthlyCents: { boost_2x: 1000, boost_5x: 10000 } };
+
 export type DiscoveryConfig = {
   params: SignalParams;
   general: GeneralConfig;
@@ -84,6 +95,7 @@ export type DiscoveryConfig = {
   name: NameConfig;
   deep: DeepConfig;
   chat: { prompt: string };
+  premier: PremierConfig;
 };
 
 /** Mirrors DeepConfig in _shared/discovery-config.ts (MESITA-2327). */
@@ -218,6 +230,7 @@ export const DEFAULT_CONFIG: DiscoveryConfig = {
   name: DEFAULT_NAME,
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
+  premier: DEFAULT_PREMIER,
 };
 
 /** Round to the field's own decimals so a float cannot leave the page dirty. */
@@ -275,7 +288,20 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
         ? (r.chat as { prompt: string }).prompt.slice(0, CHAT_PROMPT_MAX)
         : DEFAULT_CONFIG.chat.prompt,
     },
+    premier: coercePremier(r.premier),
   };
+}
+
+/** Mirrors `normalizePremierConfig`: whole cents, clamped, default per plan. */
+function coercePremier(raw: unknown): PremierConfig {
+  const m = ((raw ?? {}) as { monthlyCents?: Record<string, unknown> }).monthlyCents ?? {};
+  const monthlyCents = {} as Record<PremierTier, number>;
+  for (const tier of PREMIER_TIERS) {
+    monthlyCents[tier] = Math.round(
+      num(m[tier], DEFAULT_PREMIER.monthlyCents[tier], PREMIER_MONTHLY_CENTS_MIN, PREMIER_MONTHLY_CENTS_MAX),
+    );
+  }
+  return { monthlyCents };
 }
 
 function coerceGeneral(raw: unknown): GeneralConfig {

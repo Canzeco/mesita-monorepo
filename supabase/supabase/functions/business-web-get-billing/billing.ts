@@ -11,6 +11,7 @@ import {
   type Period,
   type Pledge,
   PREMIER_MONTHLY_CENTS,
+  type PremierPrices,
   runEndAtOrAbove,
   runningPeriod,
   subscriptionOf,
@@ -87,6 +88,8 @@ export function billingView(args: {
   viewerId: string;
   card: Card | null;
   now: number;
+  /** The operator's monthly prices (MESITA-3043); the defaults if absent. */
+  prices?: PremierPrices;
 }): BillingView {
   const { pledges, periods, viewerId, card, now } = args;
   const tz = args.timezone || "UTC";
@@ -195,7 +198,7 @@ export function billingView(args: {
       const runEnd = runEndAtOrAbove(args.manual, t, now);
       if (!runEnd) continue;
       if (inEarlyWindow(runEnd, now, tz)) {
-        keep ??= { tier: t, ends_at: runEnd, price_cents: PREMIER_MONTHLY_CENTS[TIER_BY_RANK[t]] };
+        keep ??= { tier: t, ends_at: runEnd, price_cents: (args.prices ?? PREMIER_MONTHLY_CENTS)[TIER_BY_RANK[t]] };
       } else {
         subscribeFrom[t] = dayString(localDay(ms(runEnd), tz) - 7);
       }

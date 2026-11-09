@@ -15,8 +15,11 @@ import {
   NO_SCREEN_RADIUS_KM,
   DISCOVERY_DEFAULTS,
   normalizeDiscoveryConfig,
+  PREMIER_MONTHLY_CENTS_MAX,
+  PREMIER_MONTHLY_CENTS_MIN,
   SIGNAL_PARAM_BOUNDS,
 } from "./discovery-config.ts";
+import { PREMIER_MONTHLY_CENTS } from "./boost.ts";
 
 const CATALOG_SRC = Deno.readTextFileSync(
   new URL(
@@ -79,7 +82,8 @@ const LIVE_BLOB_2026_10_18 = {
 };
 
 // The rails engine's `catalog` section retired with it (MESITA-2923).
-const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params"];
+// `premier` joined with MESITA-3043 (Premier's prices).
+const LIVE_KEYS = ["chat", "deep", "general", "map", "name", "params", "premier"];
 const RETIRED_KEYS = ["weights", "weightsByMode", "engines", "swipe", "filters", "catalog"];
 
 Deno.test("the live blob loads: the retired keys drop, every live value stands", () => {
@@ -397,3 +401,32 @@ Deno.test("map.selectedFactor retired with Selected (MESITA-2925): a stored key 
   assertEquals("selectedFactor" in normalizeDiscoveryConfig({}).map, false);
 });
 
+
+// ── Premier's prices (MESITA-3043): money, so pinned both ways ──────────────
+
+Deno.test("Premier prices: unset reads today's constants; set ones are whole clamped cents; a retired tier drops", () => {
+  assertEquals(normalizeDiscoveryConfig({}).premier.monthlyCents, PREMIER_MONTHLY_CENTS);
+  assertEquals(normalizeDiscoveryConfig({ premier: "x" }).premier.monthlyCents, PREMIER_MONTHLY_CENTS);
+  const set = normalizeDiscoveryConfig({
+    premier: { monthlyCents: { boost_2x: "1500.4", boost_5x: 99_999_999, boost_10x: 20000 } },
+  }).premier.monthlyCents;
+  assertEquals(set, { boost_2x: 1500, boost_5x: PREMIER_MONTHLY_CENTS_MAX });
+  const low = normalizeDiscoveryConfig({ premier: { monthlyCents: { boost_2x: 1, boost_5x: null } } }).premier.monthlyCents;
+  // Never under Stripe's 50-cent floor.
+  assertEquals(low.boost_2x, PREMIER_MONTHLY_CENTS_MIN);
+  assert(PREMIER_MONTHLY_CENTS_MIN >= 50);
+});
+
+Deno.test("Premier prices: the admin twin mirrors the bounds and the defaults", () => {
+  const constant = (name: string) => {
+    const m = CATALOG_SRC.match(new RegExp(`export const ${name} = ([0-9_.]+);`));
+    assert(m, `catalog.ts has no ${name}`);
+    return Number(m[1].replaceAll("_", ""));
+  };
+  assertEquals(constant("PREMIER_MONTHLY_CENTS_MIN"), PREMIER_MONTHLY_CENTS_MIN);
+  assertEquals(constant("PREMIER_MONTHLY_CENTS_MAX"), PREMIER_MONTHLY_CENTS_MAX);
+  const m = CATALOG_SRC.match(
+    /export const DEFAULT_PREMIER: PremierConfig = \{ monthlyCents: \{ boost_2x: (\d+), boost_5x: (\d+) \} \};/,
+  );
+  assertEquals(m ? { boost_2x: Number(m[1]), boost_5x: Number(m[2]) } : null, PREMIER_MONTHLY_CENTS);
+});
