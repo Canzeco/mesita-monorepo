@@ -211,7 +211,7 @@ export async function voucherOffer(
 export type BuyRefusal = { ok: false; status: number; code: MoneyCode; error: string; url?: string };
 export type BuyOk = { ok: true; url: string; purchase_id: string };
 
-const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
+export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   off: { code: "not_available", error: "This place does not sell that voucher" },
   needs_account: { code: "no_account", error: "This place has not connected payments yet" },
   not_yet: { code: "not_yet", error: "This voucher is not on sale yet" },
@@ -317,15 +317,7 @@ export function voucherCheckoutParams(args: {
 }): Record<string, unknown> {
   const line = CATALOG_LINES[args.voucher];
   const origin = new URL(args.returnUrl).origin;
-  const metadata = {
-    mesita_kind: "wallet_voucher",
-    purchase_id: args.purchaseId,
-    place_id: args.placeId,
-    consumer_id: args.consumerId,
-    voucher: args.voucher,
-    amount_cents: String(line.price_cents),
-    bonus_cents: String(line.bonus_cents),
-  };
+  const metadata = voucherMetadata(args);
   return {
     mode: "payment",
     client_reference_id: args.purchaseId,
@@ -349,7 +341,23 @@ export function voucherCheckoutParams(args: {
   };
 }
 
-function voucherName(k: MoneyVoucherKey): string {
+/** What a voucher's Stripe object carries, the Checkout's and the saved
+ *  card's PaymentIntent alike (MESITA-3552): the receiver reads
+ *  mesita_kind and purchase_id. */
+export function voucherMetadata(args: { purchaseId: string; placeId: string; consumerId: string; voucher: MoneyVoucherKey }): Record<string, string> {
+  const line = CATALOG_LINES[args.voucher];
+  return {
+    mesita_kind: "wallet_voucher",
+    purchase_id: args.purchaseId,
+    place_id: args.placeId,
+    consumer_id: args.consumerId,
+    voucher: args.voucher,
+    amount_cents: String(line.price_cents),
+    bonus_cents: String(line.bonus_cents),
+  };
+}
+
+export function voucherName(k: MoneyVoucherKey): string {
   switch (k) {
     case "voucher_200": return "$200MX voucher";
     case "voucher_1000": return "$1,000MX voucher";
@@ -383,27 +391,22 @@ export async function readPlaceOutstanding(admin: SupabaseClient, placeId: strin
   return typeof data === "number" ? data : Number(data ?? 0);
 }
 
-/** The buy, after every refusal was checked: one `opening` row under the
- *  guest's request_id, one Checkout on the connected account keyed by the
- *  row id, then the row reads `open` with its session. A Stripe refusal
- *  marks the row `failed` and answers 502 checkout_failed. A repeated
- *  request_id finds its row: an open session's url again, or a refusal. */
-export async function openVoucherCheckout(
+/** The cap, then one `opening` row under the guest's request_id; the
+ *  Checkout path and the saved-card path (MESITA-3552) both start here.
+ *  `duplicate`: the request_id (or Welcome's once-per-guest index) already
+ *  has a row; the caller resumes it. */
+export async function openPurchaseRow(
   admin: SupabaseClient,
-  stripe: StripeCall,
   args: {
     consumerId: string;
-    email: string | null;
     place: VoucherPlace;
     account: AccountRow;
     voucher: MoneyVoucherKey;
     currency: string;
     requestId: string;
-    returnUrl: string;
     livemode: boolean;
-    nowSec: number;
   },
-): Promise<BuyOk | BuyRefusal> {
+): Promise<{ ok: true; duplicate: false; purchaseId: string } | { ok: true; duplicate: true } | BuyRefusal> {
   const line = CATALOG_LINES[args.voucher];
   // The test-mode cap (rule 15): read once, no lock.
   const outstanding = await readPlaceOutstanding(admin, args.place.id, args.currency, args.livemode);
@@ -427,20 +430,46 @@ export async function openVoucherCheckout(
     })
     .select("id")
     .single();
-
   if (insertErr) {
-    if (insertErr.code === "23505") {
-      return await resumeRequest(admin, stripe, {
-        consumerId: args.consumerId,
-        requestId: args.requestId,
-        account: args.account,
-        place: args.place,
-        voucher: args.voucher,
-      });
-    }
+    if (insertErr.code === "23505") return { ok: true, duplicate: true };
     throw new Error(`purchase_insert: ${insertErr.message}`);
   }
-  const purchaseId = String((row as { id: string }).id);
+  return { ok: true, duplicate: false, purchaseId: String((row as { id: string }).id) };
+}
+
+/** The buy, after every refusal was checked: one `opening` row under the
+ *  guest's request_id, one Checkout on the connected account keyed by the
+ *  row id, then the row reads `open` with its session. A Stripe refusal
+ *  marks the row `failed` and answers 502 checkout_failed. A repeated
+ *  request_id finds its row: an open session's url again, or a refusal. */
+export async function openVoucherCheckout(
+  admin: SupabaseClient,
+  stripe: StripeCall,
+  args: {
+    consumerId: string;
+    email: string | null;
+    place: VoucherPlace;
+    account: AccountRow;
+    voucher: MoneyVoucherKey;
+    currency: string;
+    requestId: string;
+    returnUrl: string;
+    livemode: boolean;
+    nowSec: number;
+  },
+): Promise<BuyOk | BuyRefusal> {
+  const opened = await openPurchaseRow(admin, args);
+  if (!opened.ok) return opened;
+  if (opened.duplicate) {
+    return await resumeRequest(admin, stripe, {
+      consumerId: args.consumerId,
+      requestId: args.requestId,
+      account: args.account,
+      place: args.place,
+      voucher: args.voucher,
+    });
+  }
+  const purchaseId = opened.purchaseId;
 
   let session: Record<string, unknown>;
   try {

@@ -27,6 +27,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
 import { snapshotFromStripe } from "./payments.ts";
+import { purchaseStore } from "./purchase-pi.ts";
 import { releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 
@@ -421,6 +422,7 @@ async function dispatch(
       // 500 (Stripe disables an endpoint that keeps failing).
       const meta = (obj.metadata ?? {}) as Record<string, unknown>;
       const piId = typeof obj.id === "string" ? obj.id : null;
+      if (meta.mesita_kind === "wallet_voucher" && piId) return await voucherIntent(admin, event, obj, meta, piId, tag);
       if (meta.mesita_kind !== "wallet_payment" || !piId) return ignored("not_mesita");
       const row = await paymentForIntent(admin, meta, piId);
       if (!row) {
@@ -463,6 +465,45 @@ async function dispatch(
     }
   }
   return ignored("unhandled");
+}
+
+/** A voucher's PaymentIntent (MESITA-3552). A Checkout's own PI carries the
+ *  same metadata: checkout.session.* owns those, so only a purchase with no
+ *  session (bought with a saved card) is settled here. succeeded credits it
+ *  (wallet_credit_purchase, replay-safe); canceled fails it; payment_failed
+ *  is logged (the guest's own tap already released it, or the cron cancels
+ *  it after ten minutes). */
+async function voucherIntent(
+  admin: SupabaseClient,
+  event: ConnectEvent,
+  obj: Record<string, unknown>,
+  meta: Record<string, unknown>,
+  piId: string,
+  tag: string,
+): Promise<EventAnswer> {
+  const store = purchaseStore(admin);
+  let row = typeof meta.purchase_id === "string" && /^[0-9a-f-]{36}$/i.test(meta.purchase_id) ? await store.read(meta.purchase_id) : null;
+  if (!row) {
+    const byPi = await admin.from("wallet_purchases").select("id").eq("stripe_payment_intent_id", piId).maybeSingle();
+    if (byPi.error) throw new Error(`purchases_read: ${byPi.error.message}`);
+    if (byPi.data) row = await store.read((byPi.data as { id: string }).id);
+  }
+  if (!row) {
+    console.log("[connect-events] voucher_pi_unknown", tag, piId);
+    return ignored("unknown_purchase");
+  }
+  if (row.stripe_checkout_session_id) return { status: 200, body: { ok: true, purchase_id: row.id, ignored: "checkout_owns_it" } };
+  if (event.type === "payment_intent.payment_failed") {
+    const err = (obj.last_payment_error ?? {}) as Record<string, unknown>;
+    console.log("[connect-events] voucher_pi_failed", tag, row.id, String(err.decline_code ?? err.code ?? ""));
+    return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "payment_failed_logged" } };
+  }
+  if (event.type === "payment_intent.succeeded") {
+    const outcome = await store.credit(row.id, piId, availableAtFromSession(obj, event.created));
+    return { status: 200, body: { ok: true, purchase_id: row.id, outcome } };
+  }
+  await store.release(row.id, "pi_canceled");
+  return { status: 200, body: { ok: true, purchase_id: row.id, outcome: "released" } };
 }
 
 /** A voucher's credit turns Available an hour after the charge (the catalog's

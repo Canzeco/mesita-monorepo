@@ -13,6 +13,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { StripeCall } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { VOUCHER_CATALOG } from "./money.ts";
+import { purchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import type { MoneyVoucherKey } from "./money-state.ts";
 
 export { classifySession } from "./checkout-session.ts";
@@ -31,6 +32,9 @@ export type OpenPurchase = {
   voucher?: string | null;
   /** When the credit turns Available; null credits at once. */
   available_at?: string | null;
+  /** A voucher bought with a saved card (MESITA-3552) has a PaymentIntent
+   *  and no Checkout session. */
+  stripe_payment_intent_id?: string | null;
 };
 
 /** When a voucher paid now turns Available: open vouchers an hour after the
@@ -97,6 +101,15 @@ export async function settlePurchase(
   opts?: { signal?: AbortSignal },
 ): Promise<SettleOutcome> {
   const sessionId = purchase.stripe_checkout_session_id;
+  if (!sessionId && purchase.stripe_payment_intent_id && purchase.stripe_account_id) {
+    return await settlePurchaseByPaymentIntent(purchaseStore(admin), stripe, {
+      id: purchase.id,
+      stripe_account_id: purchase.stripe_account_id,
+      stripe_payment_intent_id: purchase.stripe_payment_intent_id,
+      created_at: purchase.created_at,
+      available_at: purchase.available_at ?? null,
+    }, nowMs, opts);
+  }
   if (!sessionId) {
     // No session was ever stored: nothing can be paid. Past the Checkout
     // window it is closed so it stops being read.

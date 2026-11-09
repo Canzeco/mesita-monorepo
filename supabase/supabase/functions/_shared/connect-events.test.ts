@@ -444,3 +444,69 @@ Deno.test("pi: payment_failed is logged only; the hold stays for a retry", async
   assertEquals(r.body.outcome, "payment_failed_logged");
   assertEquals(fake.rpcs, []);
 });
+
+// ── payment_intent.* for a voucher bought with a saved card (MESITA-3552) ──
+
+function purchaseRow(sessionId: string | null) {
+  return (op: FakeOp): FakeResult => {
+    if (op.table === "wallet_purchases" && op.kind === "select") {
+      return {
+        data: {
+          id: PURCHASE, status: "open", consumer_id: "c", place_id: PLACE, voucher: "voucher_200", amount_cents: 20000, bonus_cents: 0,
+          stripe_account_id: ACCT, stripe_checkout_session_id: sessionId, stripe_payment_intent_id: "pi_v", created_at: "2026-11-09T00:00:00Z",
+        },
+      };
+    }
+    return accountTable(true)(op);
+  };
+}
+
+Deno.test("voucher pi: succeeded credits the purchase its metadata names with its hour, once across a replay", async () => {
+  const seen = new Set<string>();
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "stripe_connect_events" && op.kind === "insert") {
+        const id = (op.payload as { id: string }).id;
+        if (seen.has(id)) return { error: { code: "23505", message: "duplicate key" } };
+        seen.add(id);
+      }
+      return purchaseRow(null)(op);
+    },
+    rpc: () => ({ data: { ok: true, outcome: "credited" } }),
+  });
+  const e = event("payment_intent.succeeded", { id: "pi_v", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE, voucher: "voucher_200" } });
+  const first = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(first.body, { ok: true, purchase_id: PURCHASE, outcome: "credited" });
+  const again = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, e);
+  assertEquals(again.body.ignored, "replay");
+  assertEquals(fake.rpcs, [{
+    name: "wallet_credit_purchase",
+    args: { p_purchase_id: PURCHASE, p_payment_intent: "pi_v", p_available_at: new Date((1_800_000_000 + 3600) * 1000).toISOString() },
+  }]);
+});
+
+Deno.test("voucher pi: canceled fails a saved-card purchase; a Checkout voucher's own PI is left to checkout.session.*", async () => {
+  const inApp = fakeAdmin({ table: purchaseRow(null) });
+  const r = await handleConnectEvent({ admin: inApp.client, stripe: noStripe, livemode: false }, event("payment_intent.canceled", { id: "pi_v", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE } }));
+  assertEquals(r.body.outcome, "released");
+  const upd = inApp.ops.find((o) => o.table === "wallet_purchases" && o.kind === "update");
+  assertEquals((upd?.payload as { status?: string }).status, "failed");
+  assertEquals(upd?.filters, { id: PURCHASE, "status:in": ["opening", "open"] });
+  assertEquals(inApp.rpcs, []);
+
+  const checkout = fakeAdmin({ table: purchaseRow("cs_v") });
+  for (const type of ["payment_intent.succeeded", "payment_intent.canceled"]) {
+    const c = await handleConnectEvent({ admin: checkout.client, stripe: noStripe, livemode: false }, event(type, { id: "pi_v", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE } }));
+    assertEquals(c.body.ignored, "checkout_owns_it");
+  }
+  assertEquals(checkout.rpcs, []);
+  assertEquals(checkout.ops.filter((o) => o.table === "wallet_purchases" && o.kind === "update").length, 0);
+});
+
+Deno.test("voucher pi: payment_failed is logged only", async () => {
+  const fake = fakeAdmin({ table: purchaseRow(null) });
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("payment_intent.payment_failed", { id: "pi_v", metadata: { mesita_kind: "wallet_voucher", purchase_id: PURCHASE }, last_payment_error: { decline_code: "insufficient_funds" } }));
+  assertEquals(r.body.outcome, "payment_failed_logged");
+  assertEquals(fake.rpcs, []);
+  assertEquals(fake.ops.filter((o) => o.table === "wallet_purchases" && o.kind === "update").length, 0);
+});

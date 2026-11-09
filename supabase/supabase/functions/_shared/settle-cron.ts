@@ -15,7 +15,7 @@
 //   a payment with a PaymentIntent and no session (an in-app card part,
 //     MESITA-3568) is read by its PI: succeeded settles; unfinished after
 //     10 minutes is cancelled first, released only when Stripe says
-//     canceled
+//     canceled; a purchase paid with a saved card (MESITA-3552) the same
 //   a stored expires_at in the past that Stripe reports expired: settled
 //     once (released) and not re-read
 //   paid waiter's charges are deleted 24 h after paid_at, expired unpaid
@@ -158,6 +158,14 @@ export async function settleRow(deps: TickDeps, cfg: SettleConfig, row: BatchRow
         stripe_payment_intent_id: pi,
       }, nowMs);
     }
+    // A purchase with no Checkout session may be a voucher bought with a
+    // saved card (MESITA-3552): one read gives its PaymentIntent.
+    let purchasePi: string | null = null;
+    if (!row.stripe_checkout_session_id) {
+      const { data, error } = await admin.from("wallet_purchases").select("stripe_payment_intent_id").eq("id", row.id).maybeSingle();
+      if (error) throw new Error(`purchase_pi_read: ${error.message}`);
+      purchasePi = (data as { stripe_payment_intent_id: string | null } | null)?.stripe_payment_intent_id ?? null;
+    }
     const purchase: OpenPurchase = {
       id: row.id,
       stripe_checkout_session_id: row.stripe_checkout_session_id,
@@ -165,6 +173,7 @@ export async function settleRow(deps: TickDeps, cfg: SettleConfig, row: BatchRow
       created_at: row.created_at,
       voucher: row.voucher,
       available_at: availableAtFor(row.voucher, nowMs),
+      stripe_payment_intent_id: purchasePi,
     };
     return await settlePurchase(admin, stripe, purchase, nowMs);
   } catch (err) {
