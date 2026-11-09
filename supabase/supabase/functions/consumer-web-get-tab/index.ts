@@ -6,13 +6,27 @@
 // about every 1.5 s while waiting for the bill, backing off, and stops when
 // hidden or the tab is final (paid, expired, cancelled).
 //
-// Body: { tab_id: uuid }
+// The card part (MESITA-3563, _shared/tab-card.ts): `rates` says whether
+// cards work here (card_available, card_unavailable_code, card_back_bps 5%,
+// card_minimum_cents); `with_cards: true` (ask once, when the bill arrives)
+// adds the guest's saved cards; while a card part is in flight the poll
+// reads its PaymentIntent: `card_action` carries what Stripe.js needs to
+// finish a 3-D Secure check the guest left (or the app reloaded mid-check),
+// a PI that went through settles here (the receiver and the cron are the
+// other two callers), and one that failed bills the tab again.
+//
+// Body: { tab_id: uuid, with_cards?: boolean }
 // Response: { ok: true, tab: { tab_id, place, status, currency, bill_cents,
 //             tip_suggested_cents, bill_version, ticket, waiter_name,
 //             spendable_cents, rates, credit_cents, cash_bill_cents,
 //             cash_tip_cents, cash_due_cents, cash_received_cents,
 //             card_bill_cents, card_tip_cents, cashback_cents, parts,
-//             paid_at, expires_at, updated_at, test_mode } }
+//             paid_at, expires_at, updated_at, test_mode },
+//             cards?: [{ id, brand, last4, exp_month, exp_year }],
+//             card_action?: { status: requires_action | processing,
+//               payment_intent_id, client_secret?, stripe_account?,
+//               publishable_key? },
+//             card_error?: { code, error, decline_code? } }
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 
@@ -20,7 +34,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { readSettings } from "../_shared/payments.ts";
+import { readAccount, readSettings } from "../_shared/payments.ts";
+import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { listCards } from "../_shared/cards.ts";
+import { type CardStep, paymentsPublishableKey, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readPlaceBalance } from "../_shared/vouchers.ts";
 import { guestTabView, readTabById, readTabParts } from "../_shared/tab.ts";
@@ -46,21 +63,65 @@ serveJson("consumer-web-get-tab", async (req) => {
     if (!tab || tab.consumer_id !== authRes.user.id) {
       return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     }
-    const [parts, settings, placeRes, balance] = await Promise.all([
-      readTabParts(admin, tab.id),
+    const key = paymentsStripeKey();
+    const livemode = paymentsLivemode();
+    const stripe = key ? stripeClient(key) : null;
+    const nowMs = Date.now();
+
+    // A card part in flight: read its PaymentIntent first, so the tab the
+    // guest gets back already says what it settled.
+    let cardAction: CardStep | null = null;
+    let cardError: Record<string, unknown> | null = null;
+    let tabNow = tab;
+    let parts = await readTabParts(admin, tab.id);
+    const inFlight = parts.find((p) => p.part === "card" && p.status === "open");
+    if (inFlight && stripe) {
+      const row = await readCardRow(admin, inFlight.id);
+      if (row) {
+        const polled = await pollTabCard(admin, stripe, row, paymentsPublishableKey(livemode), nowMs);
+        if (polled.step && polled.step.status !== "succeeded") cardAction = polled.step;
+        if (polled.refusal) cardError = { code: polled.refusal.code, error: polled.refusal.error, ...polled.refusal.detail };
+        if (polled.step?.status === "succeeded" || polled.refusal) {
+          tabNow = (await readTabById(admin, tab.id)) ?? tab;
+          parts = await readTabParts(admin, tab.id);
+        }
+      }
+    }
+
+    const [settings, placeRes, balance, account] = await Promise.all([
       readSettings(admin, tab.place_id),
       readVoucherPlace(admin, tab.place_id),
       readPlaceBalance(admin, authRes.user.id, tab.place_id, tab.currency, tab.livemode),
+      readAccount(admin, tab.place_id),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
+    const rates = tabCardRates({ account, settings, livemode, currency: tab.currency, stripeReady: !!stripe && tab.livemode === livemode });
+
+    let cards: Array<Record<string, unknown>> | undefined;
+    if (bodyRes.body.with_cards === true && rates.card_available && stripe) {
+      const customer = await readCustomer(admin, authRes.user.id, livemode);
+      try {
+        cards = customer
+          ? (await listCards(stripe, customer, new Set())).map((c) => ({ id: c.id, brand: c.brand, last4: c.last4, exp_month: c.exp_month, exp_year: c.exp_year }))
+          : [];
+      } catch (err) {
+        console.error("[consumer-web-get-tab] cards_failed", JSON.stringify({ error: errorMessage(err) }));
+        cards = [];
+      }
+    }
+
     return json({
       ok: true,
-      tab: guestTabView(tab, parts, {
+      tab: guestTabView(tabNow, parts, {
         placeName: placeRes.place?.name ?? null,
         spendableCents: Math.max(balance?.spendable_cents ?? 0, 0),
         cashbackOn: settings.cashback,
-        nowMs: Date.now(),
+        nowMs,
+        card: rates,
       }),
+      ...(cards ? { cards } : {}),
+      ...(cardAction ? { card_action: cardAction } : {}),
+      ...(cardError ? { card_error: cardError } : {}),
     });
   } catch (err) {
     const request_id = crypto.randomUUID();
