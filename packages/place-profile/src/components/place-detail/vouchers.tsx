@@ -281,7 +281,7 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
       aria-label={spoken}
       data-place-credit
     >
-      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10" aria-hidden>
+      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10 ring-2 ring-white" aria-hidden>
         {place.photos.length > 0 ? (
           <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
@@ -514,7 +514,7 @@ export function VouchersPane({
           {chosen
             ? actions?.buyingVoucher === chosen.key
               ? "Opening…"
-              : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`
+              : `Pay ${priceValue(chosen, catalog[chosen.key], currency)}, Get ${creditValue(chosen, catalog[chosen.key], currency)}`
             : "Select an offer"}
         </button>
       </div>
