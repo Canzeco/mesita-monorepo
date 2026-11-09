@@ -78,6 +78,10 @@ export type AdminPlace = {
   payments_enabled?: boolean;
   /** Vision text keyed by the gallery URL. Absent until a Full run describes it. */
   photo_analysis?: Record<string, string> | null;
+  /** Where each photo came from, google or instagram (MESITA-3519). */
+  photo_source?: Record<string, string> | null;
+  /** Staff only: the Images step's prompts in use (MESITA-3519). */
+  photo_prompts?: { analysis: string; sorting: string; vision: boolean } | null;
   tags: string[] | null;
   /** Google atmosphere slugs. The Profile tags box. */
   google_tags?: string[] | null;

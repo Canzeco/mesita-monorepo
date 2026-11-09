@@ -568,7 +568,7 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
         </div>
       </SectionCard>
 
-      <PhotosCard place={place} />
+      <PhotosCard place={place} staff={staff} />
 
       <SectionCard
         icon={<MapPinIcon size={20} />}

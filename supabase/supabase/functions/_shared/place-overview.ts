@@ -21,7 +21,8 @@ import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { resolveStoredFamily } from "./profile-family.ts";
 import { fetchPlaceTags, TAG_FACETS } from "./tags.ts";
 import { reviewFoundFromRow } from "./review-found.ts";
-import { photoAnalysisMap } from "./photo-analysis.ts";
+import { photoAnalysisMap, photoSourceMap } from "./photo-analysis.ts";
+import { loadEnrichmentConfig } from "./enrichment-config.ts";
 import { fetchPlaceProfileStats } from "./place-activity-stats.ts";
 import { familyChips } from "./catalog-families.ts";
 import { listPlaceOwners } from "./place-access.ts";
@@ -72,7 +73,7 @@ export async function buildPlaceOverview(
       loadRequestThreshold(admin),
       admin
         .from("place_media_assets")
-        .select("public_url, source_url, analysis_text")
+        .select("public_url, source_url, analysis_text, source")
         .eq("place_id", placeId),
       fetchPlaceProfileStats(admin, placeId),
     ]);
@@ -119,10 +120,21 @@ export async function buildPlaceOverview(
     operator_fields: readOperatorFields(enrichmentRow.data?.enrichment_sources),
     ...reviewFoundFromRow((enrichmentRow.data ?? {}) as Record<string, unknown>),
     photo_analysis: photoAnalysisMap(assetsRow.data),
+    // Profile's photo view (MESITA-3519): where each photo came from.
+    photo_source: photoSourceMap(assetsRow.data),
     profile_stats: profileStats,
   };
 
   if (internal) {
+    // The prompts the Images step runs today (MESITA-3519): the Analysis
+    // prompt wrote each photo's description, the Sorting prompt read them all
+    // and returned one order. Staff only; the config is Mesita's.
+    const config = await loadEnrichmentConfig(admin);
+    place.photo_prompts = {
+      analysis: config.enrichImageAnalysisPrompt,
+      sorting: config.enrichImageSortingPrompt,
+      vision: config.enrichImageVisionEnabled,
+    };
     place.enrich_crenup = enrichmentMap.highWater;
     place.enrich_crenup_total = CRENUP_TOTAL;
     place.enrich_crenup_labels = CRENUP_LABELS_IN_ORDER;

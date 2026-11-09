@@ -57,6 +57,23 @@ export function pairedAnalyses(stored: StoredPhoto[], analyses: PhotoAnalysis[])
   return out;
 }
 
+/** Where each gallery photo came from (MESITA-3519): `google` or `instagram`
+ *  for Enrich's photos, keyed like photoAnalysisMap. A photo the place
+ *  uploaded has no row, so it reads as absent. Pure. */
+export function photoSourceMap(rows: unknown): Record<string, string> {
+  if (!Array.isArray(rows)) return {};
+  const map: Record<string, string> = {};
+  for (const item of rows) {
+    if (!item || typeof item !== "object") continue;
+    const row = item as { public_url?: unknown; source_url?: unknown; source?: unknown };
+    const source = row.source === "google" || row.source === "instagram" ? row.source : null;
+    if (!source) continue;
+    if (typeof row.source_url === "string" && row.source_url) map[row.source_url] = source;
+    if (typeof row.public_url === "string" && row.public_url) map[row.public_url] = source;
+  }
+  return map;
+}
+
 /** Keys are the URLs a gallery tile can hold: the stored file, or the source. */
 export function photoAnalysisMap(rows: unknown): Record<string, string> {
   if (!Array.isArray(rows)) return {};

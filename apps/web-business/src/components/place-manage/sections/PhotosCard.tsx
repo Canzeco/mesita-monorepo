@@ -11,9 +11,10 @@
 // operator field, so every Enrich and Google Update writes around it until
 // the card's Reset hands it back to Enrich.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ImagesIcon } from "@phosphor-icons/react/dist/ssr";
-import { ArrowLeft, ArrowRight, ImagePlus, Loader2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, ImagePlus, Loader2, X } from "lucide-react";
 import { photoUrl } from "@mesita/place-profile";
 import { SectionCard } from "@/components/ui/manage";
 import { resizeImageFile } from "@/lib/image-resize";
@@ -31,7 +32,8 @@ const galleryOf = (place: AdminPlace): string[] =>
     (u): u is string => typeof u === "string" && u.trim() !== "",
   );
 
-export function PhotosCard({ place }: { place: AdminPlace }) {
+/** `staff`: the dialog also shows the Images step's two prompts. */
+export function PhotosCard({ place, staff = false }: { place: AdminPlace; staff?: boolean }) {
   const { savePending, profile, setPlace } = usePlaceContext();
   const owned = (place.operator_fields ?? []).includes("photos");
   const [resetting, setResetting] = useState(false);
@@ -48,6 +50,9 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
   const [uploading, setUploading] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
 
   const dirty = photos.join("\n") !== saved.join("\n");
   useSectionSaver(
@@ -109,6 +114,15 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
       [next[from], next[to]] = [next[to], next[from]];
       return next;
     });
+  /** Drag and drop: the dragged photo lands where it was dropped. */
+  const moveTo = (from: number, to: number) =>
+    setPhotos((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
   const makeHero = (from: number) =>
     setPhotos((prev) => [prev[from], ...prev.filter((_, i) => i !== from)]);
   const remove = (at: number) => setPhotos((prev) => prev.filter((_, i) => i !== at));
@@ -120,7 +134,7 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
     <SectionCard
       icon={<ImagesIcon size={20} />}
       title="Photos"
-      subtitle={`What guests swipe through. The first one is the cover. Up to ${max}.`}
+      subtitle={`What guests swipe through, in this order. The first is the cover. Drag or use the arrows to reorder; tap a photo to see it big. Up to ${max}.`}
       action={
         <span className="inline-flex items-center gap-3">
           {owned ? (
@@ -160,18 +174,54 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
         {photos.map((src, i) => (
           <div
             key={src}
-            className="bg-muted group border-border/60 relative aspect-square overflow-hidden rounded-xl border"
+            draggable={!busy && photos.length > 1}
+            onDragStart={(e) => {
+              setDragFrom(i);
+              e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragOver={(e) => {
+              if (dragFrom === null) return;
+              e.preventDefault();
+              if (dragOver !== i) setDragOver(i);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (dragFrom !== null) moveTo(dragFrom, i);
+              setDragFrom(null);
+              setDragOver(null);
+            }}
+            onDragEnd={() => {
+              setDragFrom(null);
+              setDragOver(null);
+            }}
+            className={
+              "bg-muted group border-border/60 relative aspect-square overflow-hidden rounded-xl border transition " +
+              (dragFrom === i ? "opacity-40 " : "") +
+              (dragOver === i && dragFrom !== i ? "ring-foreground ring-2 " : "") +
+              (photos.length > 1 ? "cursor-grab active:cursor-grabbing" : "")
+            }
           >
-            {/* Stored photos load their 640px size (MESITA-2966). */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photoUrl(src, "card")}
-              onError={(e) => {
-                if (e.currentTarget.src !== src) e.currentTarget.src = src;
-              }}
-              alt={`Photo ${i + 1}`}
-              className="h-full w-full object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => setOpen(i)}
+              aria-label={`Open photo ${i + 1}`}
+              className="block h-full w-full cursor-zoom-in"
+            >
+              {/* Stored photos load their 640px size (MESITA-2966). */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl(src, "card")}
+                onError={(e) => {
+                  if (e.currentTarget.src !== src) e.currentTarget.src = src;
+                }}
+                alt={`Photo ${i + 1}`}
+                draggable={false}
+                className="h-full w-full object-cover"
+              />
+            </button>
+            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-2 py-0.5 type-label font-semibold text-white tabular-nums">
+              {i + 1}
+            </span>
             {i === 0 ? (
               <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 type-label font-semibold text-white">
                 Cover
@@ -195,7 +245,8 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
             >
               <X className="size-4" />
             </button>
-            <div className="absolute inset-x-2 bottom-2 flex justify-between">
+            {photos.length > 1 ? (
+            <div className="pointer-events-none absolute inset-x-2 bottom-2 flex justify-between [&>button]:pointer-events-auto">
               <button
                 type="button"
                 onClick={() => move(i, -1)}
@@ -215,6 +266,13 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
                 <ArrowRight className="size-4" />
               </button>
             </div>
+            ) : null}
+            {photos.length > 1 ? (
+              <GripVertical
+                aria-hidden
+                className="pointer-events-none absolute top-2 left-1/2 size-4 -translate-x-1/2 text-white drop-shadow sm:opacity-0 sm:group-hover:opacity-100"
+              />
+            ) : null}
           </div>
         ))}
 
@@ -239,6 +297,143 @@ export function PhotosCard({ place }: { place: AdminPlace }) {
           {error}
         </p>
       ) : null}
+      {open !== null && photos[open] ? (
+        <PhotoDialog
+          place={place}
+          url={photos[open]}
+          index={open}
+          count={photos.length}
+          staff={staff}
+          onStep={(dir) => setOpen((o) => (o === null ? o : Math.min(photos.length - 1, Math.max(0, o + dir))))}
+          onClose={() => setOpen(null)}
+        />
+      ) : null}
     </SectionCard>
+  );
+}
+
+/** Where a photo came from, in words. */
+function sourceLabel(place: AdminPlace, url: string): string {
+  const source = place.photo_source?.[url];
+  if (source === "google") return "Google";
+  if (source === "instagram") return "Instagram";
+  if (url.includes("/place-images/business/")) return "Uploaded here";
+  return "Google (from Create)";
+}
+
+/**
+ * The big view (MESITA-3519, Pato: "when you click an image it must be open
+ * big and you must be able to see its metadata"). The photo at full size,
+ * its place in the gallery, where it came from, and what the Images step's
+ * Analysis prompt wrote about it. Staff also see both prompts: Enrich
+ * describes every photo with the Analysis prompt, then one Sorting call reads
+ * all the descriptions and returns the order.
+ */
+function PhotoDialog({
+  place,
+  url,
+  index,
+  count,
+  staff,
+  onStep,
+  onClose,
+}: {
+  place: AdminPlace;
+  url: string;
+  index: number;
+  count: number;
+  staff: boolean;
+  onStep: (dir: -1 | 1) => void;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") onStep(-1);
+      if (e.key === "ArrowRight") onStep(1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose, onStep]);
+
+  const description = place.photo_analysis?.[url]?.trim() ?? "";
+  const prompts = place.photo_prompts;
+  const navButton =
+    "inline-flex size-9 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80 disabled:opacity-30";
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Photo ${index + 1} of ${count}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="border-border/70 bg-card shadow-elev flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border lg:flex-row"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative flex min-h-0 flex-1 items-center justify-center bg-black">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoUrl(url, "full")}
+            onError={(e) => {
+              if (e.currentTarget.src !== url) e.currentTarget.src = url;
+            }}
+            alt={`Photo ${index + 1}`}
+            className="max-h-[60dvh] w-full object-contain lg:max-h-[92dvh]"
+          />
+          <button type="button" aria-label="Previous photo" disabled={index === 0} onClick={() => onStep(-1)} className={`${navButton} absolute left-3 top-1/2 -translate-y-1/2`}>
+            <ArrowLeft className="size-5" />
+          </button>
+          <button type="button" aria-label="Next photo" disabled={index === count - 1} onClick={() => onStep(1)} className={`${navButton} absolute right-3 top-1/2 -translate-y-1/2`}>
+            <ArrowRight className="size-5" />
+          </button>
+        </div>
+        <aside className="flex w-full shrink-0 flex-col gap-4 overflow-y-auto p-5 lg:w-96">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-display text-base font-semibold">
+                Photo {index + 1} of {count}
+                {index === 0 ? " · Cover" : ""}
+              </p>
+              <p className="text-muted-foreground text-sm">{sourceLabel(place, url)}</p>
+            </div>
+            <button type="button" aria-label="Close" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <section>
+            <p className="text-muted-foreground type-eyebrow">What Enrich saw</p>
+            <p className="mt-1.5 text-sm leading-relaxed whitespace-pre-line">
+              {description ||
+                "No description yet. Enrich writes one for every photo it keeps; photos uploaded here, or kept from Create, have none."}
+            </p>
+          </section>
+
+          {staff && prompts ? (
+            <>
+              <section>
+                <p className="text-muted-foreground type-eyebrow">Analysis prompt (describes each photo)</p>
+                <p className="bg-muted/60 mt-1.5 rounded-lg p-3 text-xs leading-relaxed whitespace-pre-line">
+                  {prompts.analysis}
+                </p>
+              </section>
+              <section>
+                <p className="text-muted-foreground type-eyebrow">Sorting prompt (reads every description, returns one order)</p>
+                <p className="bg-muted/60 mt-1.5 rounded-lg p-3 text-xs leading-relaxed whitespace-pre-line">
+                  {prompts.sorting}
+                </p>
+              </section>
+              <p className="text-muted-foreground text-xs">
+                Today&apos;s prompts from Configurations › Enriching › Images{prompts.vision ? "" : " (Vision is off)"}. A description was written by the prompt live when that Enrich ran.
+              </p>
+            </>
+          ) : null}
+        </aside>
+      </div>
+    </div>,
+    document.body,
   );
 }
