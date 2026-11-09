@@ -1,6 +1,7 @@
 import { json } from "./http.ts";
 import { isUrl } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
+import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 type MediaUpdateBody = {
   /** The one gallery, hero first. Create, Enrich and Update write it; since
@@ -13,8 +14,8 @@ type MediaUpdateBody = {
 };
 
 const MENU_NAME_MAX = 80;
-/** The most photos a gallery holds (Profile's Photos box). */
-export const GALLERY_MAX = 20;
+/** The most photos a gallery holds: the same cap as Enrich's gallery. */
+export const GALLERY_MAX = ENRICH_FIELD_LIMITS.photos.max;
 const PLACE_IMAGES_BUCKET = "place-images";
 
 /** Where Profile's uploads for this place live (business-web-upload-place-photo). */
