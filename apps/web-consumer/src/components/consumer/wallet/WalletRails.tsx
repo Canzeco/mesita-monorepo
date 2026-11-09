@@ -86,23 +86,26 @@ export function AddTile({
 const CARD_BACK = "5% back as credits";
 const CASH_BACK = "2% back as credits";
 
-/** The pill's short face; the full sentence stays for screen readers. */
-const shortBack = (back: string) => `+${back.split(" ")[0]} in credits`;
+/** The pill's face: "5% Back", the place screen's own words (Pay · 5% Back);
+ *  the full sentence stays for screen readers. */
+const shortBack = (back: string) => `${back.split(" ")[0]} Back`;
 
-/** A money tile and its cashback, one rail slot. TWO BOXES (Pato,
- *  MESITA-3555: "banner floating below, and as wide as the card — BOX A /
- *  BOX B (this mention back %)"): A is the card; B is a black banner just
- *  under it, the card's full width, saying what paying this way gives back.
- *  Replaces MESITA-3551's pill over the card's edge. */
+/** A money tile and its cashback, one rail slot. BOX A is the card; BOX B,
+ *  under it and as wide as it (MESITA-3555), WEARS THE PLACE SCREEN'S PAY
+ *  TILE (Pato, MESITA-3560: "mention back. keep the same green or black of
+ *  the green boxes of pay there"): Link green (ProfileActions' green tone)
+ *  with the ink pill ("5% Back"), centred. */
 function MoneySlot({ back, children }: { back: string; children: ReactNode }) {
   return (
     <div className={RAIL_TILE}>
       {children}
       <p
-        className="bg-foreground text-background mt-1.5 w-full rounded-xl px-2 py-2 text-center text-xs font-semibold whitespace-nowrap shadow-sm"
+        className="mt-1.5 flex h-9 w-full items-center justify-center rounded-xl bg-green-400 text-neutral-950"
         data-wallet-back
       >
-        <span aria-hidden>{shortBack(back)}</span>
+        <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums" aria-hidden>
+          {shortBack(back)}
+        </span>
         <span className="sr-only">{back}</span>
       </p>
     </div>
