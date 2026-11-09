@@ -215,10 +215,13 @@ export type AccountRow = {
   payouts_enabled: boolean;
   requirements_due: string[];
   disabled_reason: string | null;
+  /** MESITA-3461: Mesita's fee invoice is unpaid: card payments are off
+   *  here until it is paid (never the owner's pay_cards switch). */
+  fee_hold?: boolean;
 };
 
 export const ACCOUNT_COLUMNS =
-  "place_id, stripe_account_id, livemode, account_country, charges_enabled, details_submitted, payouts_enabled, requirements_due, disabled_reason";
+  "place_id, stripe_account_id, livemode, account_country, charges_enabled, details_submitted, payouts_enabled, requirements_due, disabled_reason, fee_hold";
 
 /** What Stripe's Account object says, as the row stores it. */
 export function snapshotFromStripe(account: Record<string, unknown>, livemode: boolean): Omit<AccountRow, "place_id" | "stripe_account_id"> {

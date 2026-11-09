@@ -45,7 +45,7 @@ function fakeAdmin(calls: Call[]): SupabaseClient {
 
 const PURCHASE: PurchaseRow = {
   id: "pu-1", consumer_id: "c-1", place_id: "pl-1", amount_cents: 20000, bonus_cents: 2000, refunded_cents: 0,
-  application_fee_cents: 1000, stripe_account_id: "acct_place", stripe_payment_intent_id: "pi_1", voucher: "voucher_200",
+  application_fee_cents: 1000, fee_collected: "application_fee", stripe_account_id: "acct_place", stripe_payment_intent_id: "pi_1", voucher: "voucher_200",
   story_activated_at: null, status: "paid", paid_at: "2026-11-01T00:00:00Z", livemode: false, currency: "mxn",
   created_at: "2026-11-01T00:00:00Z",
 };
@@ -68,6 +68,19 @@ Deno.test("refundPurchase: one Stripe refund keyed by the attempt, on the place'
   assertEquals(ledger?.args, { p_purchase_id: "pu-1", p_amount_refunded: 5000 });
 });
 
+Deno.test("refundPurchase: a billed-fee charge (MESITA-3461) asks Stripe for no application fee refund", async () => {
+  const calls: Call[] = [];
+  const seen: Record<string, unknown>[] = [];
+  const stripe: StripeCall = (_m, _p, params) => {
+    seen.push(params ?? {});
+    return Promise.resolve({ id: "re_2" });
+  };
+  const r = await refundPurchase({ admin: fakeAdmin(calls), stripe, actor: "op" }, { ...PURCHASE, fee_collected: "invoice" });
+  assertEquals(r.ok, true);
+  assertEquals("refund_application_fee" in seen[0], false);
+  assertEquals(calls.some((c) => c.fn === "wallet_note_fee_refund"), false);
+});
+
 Deno.test("refundPayment: a credit-only payment makes no Stripe call and goes through wallet_refund_credit", async () => {
   const calls: Call[] = [];
   let stripeCalls = 0;
@@ -77,7 +90,7 @@ Deno.test("refundPayment: a credit-only payment makes no Stripe call and goes th
   };
   const row: PaymentRow = {
     id: "py-1", consumer_id: "c-1", place_id: "pl-1", credit_cents: 10000, card_cents: 0, tip_cents: 0, refunded_cents: 0,
-    credit_refunded_cents: 0, application_fee_cents: 0, stripe_account_id: null, stripe_payment_intent_id: null,
+    credit_refunded_cents: 0, application_fee_cents: 0, fee_collected: "invoice", stripe_account_id: null, stripe_payment_intent_id: null,
     status: "paid", paid_at: "2026-11-01T00:00:00Z", livemode: false,
   };
   const r = await refundPayment({ admin: fakeAdmin(calls), stripe, actor: "op" }, row);

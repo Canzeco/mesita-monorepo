@@ -11,7 +11,9 @@
 //
 // Every Stripe refund starts as a wallet_refund_attempts row whose id is the
 // Idempotency-Key, carries Stripe-Account, and returns Mesita's fee with the
-// money (refund_application_fee) when the charge carried one. The ledger is
+// money (refund_application_fee) only on a charge from before MESITA-3461
+// that carried one (fee_collected = application_fee); since then the refund
+// RPC writes the refunded share of the fee, so it is never billed. The ledger is
 // written by the same RPCs the Connect receiver calls, with the cumulative
 // amount, so the receiver's later delivery of the same refund is a no-op.
 
@@ -40,6 +42,7 @@ export type PurchaseRow = {
   bonus_cents: number;
   refunded_cents: number;
   application_fee_cents: number;
+  fee_collected: string;
   stripe_account_id: string;
   stripe_payment_intent_id: string | null;
   voucher: string | null;
@@ -52,7 +55,7 @@ export type PurchaseRow = {
 };
 
 export const PURCHASE_COLUMNS =
-  "id, consumer_id, place_id, amount_cents, bonus_cents, refunded_cents, application_fee_cents, stripe_account_id, stripe_payment_intent_id, voucher, story_activated_at, status, paid_at, livemode, currency, created_at";
+  "id, consumer_id, place_id, amount_cents, bonus_cents, refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, voucher, story_activated_at, status, paid_at, livemode, currency, created_at";
 
 export type PaymentRow = {
   id: string;
@@ -64,6 +67,7 @@ export type PaymentRow = {
   refunded_cents: number;
   credit_refunded_cents: number;
   application_fee_cents: number;
+  fee_collected: string;
   stripe_account_id: string | null;
   stripe_payment_intent_id: string | null;
   status: string;
@@ -72,11 +76,16 @@ export type PaymentRow = {
 };
 
 export const PAYMENT_COLUMNS =
-  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode";
+  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, fee_collected, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode";
 
 export type RefundResult =
   | { ok: true; card_refunded_cents: number; credit_refunded_cents: number; status: string | null }
   | { ok: false; code: "nothing_to_refund" | "refund_failed"; stripe_code?: string; error: string };
+
+/** Only a charge from before MESITA-3461 carried Stripe's application fee. */
+export function withApplicationFee(row: { application_fee_cents: number; fee_collected: string }): boolean {
+  return row.fee_collected === "application_fee" && row.application_fee_cents > 0;
+}
 
 /** One Stripe refund of a direct charge, keyed by a fresh attempt row. */
 async function stripeRefund(
@@ -137,18 +146,11 @@ export async function refundPurchase(deps: RefundDeps, row: PurchaseRow, amount?
     paymentIntent: row.stripe_payment_intent_id,
     account: row.stripe_account_id,
     amount: want,
-    withFee: row.application_fee_cents > 0,
+    withFee: withApplicationFee(row),
   });
   if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
   const total = row.refunded_cents + want;
   const res = await rpcOk(deps.admin, "wallet_refund_purchase", { p_purchase_id: row.id, p_amount_refunded: total });
-  if (row.application_fee_cents > 0) {
-    await deps.admin.rpc("wallet_note_fee_refund", {
-      p_kind: "purchase",
-      p_row_id: row.id,
-      p_fee_refunded_cents: Math.floor((row.application_fee_cents * total) / row.amount_cents),
-    });
-  }
   return { ok: true, card_refunded_cents: want, credit_refunded_cents: 0, status: (res.status as string) ?? null };
 }
 
@@ -178,19 +180,12 @@ export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: 
       paymentIntent: row.stripe_payment_intent_id,
       account: row.stripe_account_id,
       amount: card,
-      withFee: row.application_fee_cents > 0,
+      withFee: withApplicationFee(row),
     });
     if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
     const total = row.refunded_cents + card;
     const res = await rpcOk(deps.admin, "wallet_refund_payment", { p_payment_id: row.id, p_amount_refunded: total });
     status = (res.status as string) ?? null;
-    if (row.application_fee_cents > 0 && row.card_cents > 0) {
-      await deps.admin.rpc("wallet_note_fee_refund", {
-        p_kind: "payment",
-        p_row_id: row.id,
-        p_fee_refunded_cents: Math.floor((row.application_fee_cents * Math.min(total, row.card_cents)) / row.card_cents),
-      });
-    }
   }
   if (credit > 0) {
     const { data, error } = await deps.admin

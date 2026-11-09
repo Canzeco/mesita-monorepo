@@ -181,12 +181,11 @@ Deno.test("expired: a payment's hold is released through wallet_release_payment;
 
 // ── charge.refunded ────────────────────────────────────────────────────────
 
-Deno.test("refunded: two partial refunds in reverse order each hand Stripe's cumulative amount to the RPC; the fee's own refund is read on Mesita's account", async () => {
+Deno.test("refunded: two partial refunds in reverse order each hand Stripe's cumulative amount to the RPC; no application fee is read (MESITA-3461)", async () => {
   const feeReads: string[] = [];
-  const stripe: StripeCall = (_m, path, _p, opts) => {
+  const stripe: StripeCall = (_m, path) => {
     feeReads.push(path);
-    assertEquals(opts?.stripeAccount, undefined);
-    return Promise.resolve({ id: "fee_1", amount_refunded: 7 });
+    return Promise.resolve({});
   };
   const fake = fakeAdmin({
     table: (op) => {
@@ -202,10 +201,8 @@ Deno.test("refunded: two partial refunds in reverse order each hand Stripe's cum
   await handleConnectEvent(deps, event("charge.refunded", { id: "ch_1", payment_intent: "pi_9", amount_refunded: 100, application_fee: "fee_1" }));
   const refunds = fake.rpcs.filter((r) => r.name === "wallet_refund_payment").map((r) => r.args.p_amount_refunded);
   assertEquals(refunds, [300, 100]);
-  const fees = fake.rpcs.filter((r) => r.name === "wallet_note_fee_refund");
-  assertEquals(fees.length, 2);
-  assertEquals(fees[0].args, { p_kind: "payment", p_row_id: PAYMENT, p_fee_refunded_cents: 7 });
-  assertEquals(feeReads, ["application_fees/fee_1", "application_fees/fee_1"]);
+  assertEquals(fake.rpcs.some((r) => r.name === "wallet_note_fee_refund"), false);
+  assertEquals(feeReads, []);
 });
 
 Deno.test("refunded: a charge no row names is acknowledged and ignored", async () => {

@@ -126,9 +126,10 @@ Deno.test("the Checkout: payment mode, the fee as application fee, the row id in
   assertEquals(items.length, 1);
   assertEquals(items[0].price_data.unit_amount, 20000);
   assertEquals(items[0].price_data.currency, "mxn");
-  const pid = p.payment_intent_data as { application_fee_amount: number; metadata: Record<string, string> };
-  assertEquals(pid.application_fee_amount, voucherFeeCents("voucher_200"));
-  assertEquals(pid.application_fee_amount, Math.floor((20000 * MESITA_FEE_BPS_VOUCHER) / 10000));
+  // d5a (MESITA-3461): no application fee; the row stores the fee to bill.
+  const pid = p.payment_intent_data as { application_fee_amount?: number; metadata: Record<string, string> };
+  assertEquals("application_fee_amount" in pid, false);
+  assertEquals(voucherFeeCents("voucher_200"), Math.floor((20000 * MESITA_FEE_BPS_VOUCHER) / 10000));
   assertEquals(pid.metadata.purchase_id, ROW);
   assertEquals((p.metadata as Record<string, string>).mesita_kind, "wallet_voucher");
   assertEquals((p.metadata as Record<string, string>).voucher, "voucher_200");

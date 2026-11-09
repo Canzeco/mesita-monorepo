@@ -1,8 +1,9 @@
 // The card part of a payment (MESITA-3305, W2b): a guest whose credit is
 // short pays the rest by card, plus an optional tip, as ONE Stripe Checkout
 // on the place's own connected account. The credit part is held first
-// (wallet_hold_payment), the Checkout carries Mesita's fee on the card part
-// (never on the tip), and the hold becomes a spend when Stripe says paid
+// (wallet_hold_payment), the Checkout is a direct charge with NO application
+// fee (charge model d5a, MESITA-3461: Mesita's 5% of the card part, never of
+// the tip, is stored on the row and billed to the place apart), and the hold becomes a spend when Stripe says paid
 // (settle-payment.ts). A refused Checkout releases the hold at once; an
 // expired one is released only when Stripe confirms the expiry.
 //
@@ -10,7 +11,8 @@
 //   consumer-web-release-payment  releaseCardPayment (MESITA-3458)
 //
 // Refusals, in the order they are checked: no_account (no account that can
-// charge in this universe), cards_off (the owner's switch), currency_mismatch,
+// charge in this universe), cards_off (the owner's switch, or Mesita's fee
+// invoice unpaid: fee_hold, MESITA-3461), currency_mismatch,
 // below_minimum (on card + tip), locked (three refused Checkouts in ten
 // minutes), in_progress (a Checkout of this guest at this place is open),
 // then the RPC's insufficient and taken.
@@ -68,6 +70,10 @@ export function cardRefusal(args: {
   if (args.settings.pay_cards === false) {
     return refuse(409, "This place isn't taking card payments right now", "cards_off");
   }
+  if (a.fee_hold === true) {
+    console.log("[pay-card] fee_unpaid_cards_off", JSON.stringify({ place_id: a.place_id }));
+    return refuse(409, "This place isn't taking card payments right now", "cards_off");
+  }
   const acct = accountCurrency(a);
   if (acct && acct !== args.currency) {
     return refuse(409, "This place's Stripe account does not settle in its currency", "currency_mismatch");
@@ -93,7 +99,7 @@ export function lockedFor(rows: Array<{ status: string; created_at: string }>, n
 
 /** Stripe Checkout on the connected account for the card part and the tip.
  *  Two line items when there is a tip, so the receipt says what was what;
- *  the application fee is bps of the card part alone (rule 1). The ledger
+ *  no application fee (d5a, MESITA-3461): Mesita's fee is billed apart. The ledger
  *  row id rides in metadata and client_reference_id so the receiver finds
  *  it before the session id is stored. */
 export function cardCheckoutParams(args: {
@@ -144,10 +150,7 @@ export function cardCheckoutParams(args: {
     expires_at: args.nowSec + WALLET_CHECKOUT_TTL_SEC,
     metadata,
     line_items,
-    payment_intent_data: {
-      application_fee_amount: bps(args.cardCents, MESITA_FEE_BPS_PAYMENT),
-      metadata,
-    },
+    payment_intent_data: { metadata },
   };
 }
 

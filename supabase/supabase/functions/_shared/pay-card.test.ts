@@ -52,6 +52,9 @@ Deno.test("cardRefusal: no_account, cards_off, currency_mismatch, below_minimum 
   assertEquals(cardRefusal({ ...gate, account: { ...ACCOUNT, charges_enabled: false } })?.code, "no_account");
   assertEquals(cardRefusal({ ...gate, livemode: true })?.code, "no_account");
   assertEquals(cardRefusal({ ...gate, settings: { ...ALL_ON, pay_cards: false } })?.code, "cards_off");
+  // MESITA-3461: an unpaid fee invoice holds cards off, the owner's switch untouched.
+  assertEquals(cardRefusal({ ...gate, account: { ...ACCOUNT, fee_hold: true } })?.code, "cards_off");
+  assertEquals(cardRefusal({ ...gate, account: { ...ACCOUNT, fee_hold: false } }), null);
   assertEquals(cardRefusal({ ...gate, account: { ...ACCOUNT, account_country: "US" } })?.code, "currency_mismatch");
   // MX$5 by card with a MX$10 tip passes the MX$10 minimum (rule 1); MX$5 alone does not.
   assertEquals(cardRefusal({ ...gate, cardCents: 500, tipCents: 1000 }), null);
@@ -77,7 +80,7 @@ Deno.test("lockedFor: three failed within ten minutes lock; two, or one paid amo
   assertEquals(lockedFor([{ status: "failed", created_at: at(1) }, { status: "failed", created_at: at(2) }, { status: "failed", created_at: at(11) }], T0), 0);
 });
 
-Deno.test("the Checkout: one PaymentIntent, the fee is bps of the card part alone, the tip is its own line, the row id rides in metadata and client_reference_id", () => {
+Deno.test("the Checkout: one PaymentIntent, no application fee (d5a), the tip is its own line, the row id rides in metadata and client_reference_id", () => {
   const p = cardCheckoutParams({
     paymentId: ROW,
     placeId: PLACE,
@@ -98,16 +101,16 @@ Deno.test("the Checkout: one PaymentIntent, the fee is bps of the card part alon
   const items = p.line_items as Array<{ price_data: { unit_amount: number; product_data: { name: string } } }>;
   assertEquals(items.map((i) => i.price_data.unit_amount), [500, 1000]);
   assertEquals(items[1].price_data.product_data.name, "Tip · Cuerno");
-  const pid = p.payment_intent_data as { application_fee_amount: number; metadata: Record<string, string> };
-  assertEquals(pid.application_fee_amount, bps(500, MESITA_FEE_BPS_PAYMENT));
-  assertEquals(pid.application_fee_amount, 25);
+  // d5a (MESITA-3461): a direct charge with no application fee.
+  const pid = p.payment_intent_data as { application_fee_amount?: number; metadata: Record<string, string> };
+  assertEquals("application_fee_amount" in pid, false);
   assertEquals(pid.metadata.payment_id, ROW);
   assertEquals(pid.metadata.mesita_kind, "wallet_payment");
   assertEquals(p.success_url, `https://mesita.ai/pay?payment=${ROW}&checkout={CHECKOUT_SESSION_ID}`);
   // No tip: one line.
   const solo = cardCheckoutParams({ paymentId: ROW, placeId: PLACE, consumerId: GUEST, email: null, cardCents: 99999, tipCents: 0, currency: "mxn", placeName: "Cuerno", returnUrl: "https://mesita.ai/pay", nowSec: 1 });
   assertEquals((solo.line_items as unknown[]).length, 1);
-  assertEquals((solo.payment_intent_data as { application_fee_amount: number }).application_fee_amount, 4999);
+  assertEquals("application_fee_amount" in (solo.payment_intent_data as Record<string, unknown>), false);
   assertEquals("customer_email" in solo, false);
 });
 
@@ -146,6 +149,8 @@ Deno.test("start: hold (credit = bill − card, fee and cashback rate stored) �
   assertEquals(hold.p_credit_cents, 2000);
   assertEquals(hold.p_card_cents, 500);
   assertEquals(hold.p_tip_cents, 1000);
+  // The fee billed apart is bps of the card part alone.
+  assertEquals(hold.p_application_fee_cents, bps(500, MESITA_FEE_BPS_PAYMENT));
   assertEquals(hold.p_application_fee_cents, 25);
   assertEquals(hold.p_cashback_bps, 500);
   assertEquals(hold.p_stripe_account_id, "acct_place");

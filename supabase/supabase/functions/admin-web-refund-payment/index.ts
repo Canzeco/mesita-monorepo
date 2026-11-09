@@ -5,7 +5,8 @@
 // account. A payment refunds its card part (card + tip) through Stripe first,
 // then its credit part as credit at once; a credit-only payment never calls
 // Stripe. Each Stripe refund is keyed by a wallet_refund_attempts row
-// (Idempotency-Key) with Stripe-Account and refund_application_fee. The
+// (Idempotency-Key) with Stripe-Account, and refund_application_fee on a
+// charge from before MESITA-3461 that carried one. The
 // operator sees Stripe's decline code; the guest never does. Super-admin only.
 //
 // Body: { kind: "purchase" | "payment", id: uuid, amount_cents?: int }

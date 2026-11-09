@@ -109,9 +109,8 @@ export type EventAnswer = { status: number; body: Record<string, unknown> };
 
 export type EventDeps = {
   admin: SupabaseClient;
-  /** Mesita's own key: the application fee of a place-started refund is
-   *  read here, never on the connected account; a disputed charge is read
-   *  with the place's account as Stripe-Account. */
+  /** Mesita's own key: a disputed charge is read with the place's account
+   *  as Stripe-Account. */
   stripe: StripeCall;
   /** The key's universe; an event from the other one is acknowledged and ignored. */
   livemode: boolean;
@@ -352,14 +351,9 @@ async function dispatch(
       // refund would read as already applied (MESITA-3460).
       const chargeId = idOfField(obj.id);
       const lost = obj.disputed === true && chargeId ? await lostDisputeCents(deps.stripe, event.account as string, chargeId) : 0;
+      // The refund RPC also writes the refunded share of Mesita's fee
+      // (MESITA-3461): a refunded part is never billed.
       const res = await refundRow(admin, row, goneCents(obj, amountRefunded, lost));
-      // A place-started refund: the application fee's own refund, read on
-      // Mesita's account, is what followed the money (rule 6).
-      const feeRefunded = await applicationFeeRefunded(deps.stripe, obj, tag);
-      if (feeRefunded !== null) {
-        const { error: feeErr } = await admin.rpc("wallet_note_fee_refund", { p_kind: row.kind, p_row_id: row.id, p_fee_refunded_cents: feeRefunded });
-        if (feeErr) console.error("[connect-events] fee_refund_note", tag, feeErr.message);
-      }
       return { status: 200, body: { ok: true, [`${row.kind}_id`]: row.id, outcome: res.outcome ?? "applied", status: res.status ?? null } };
     }
 
@@ -420,20 +414,4 @@ function availableAtFromSession(session: Record<string, unknown>, createdSec?: n
   if (meta.voucher === "voucher_story") return null;
   const base = (createdSec ?? Math.floor(Date.now() / 1000)) * 1000;
   return new Date(base + 3600 * 1000).toISOString();
-}
-
-/** Mesita's application fee on a refunded charge, as Stripe reports its
- *  own amount_refunded; null when the charge names none or the read fails
- *  (the ledger still applies the refund; the fee note is best effort). */
-async function applicationFeeRefunded(stripe: StripeCall, charge: Record<string, unknown>, tag: string): Promise<number | null> {
-  const fee = charge.application_fee;
-  const id = typeof fee === "string" ? fee : (fee && typeof fee === "object" ? String((fee as { id?: unknown }).id ?? "") : "");
-  if (!id) return null;
-  try {
-    const f = await stripe("GET", `application_fees/${encodeURIComponent(id)}`);
-    return typeof f.amount_refunded === "number" ? f.amount_refunded : null;
-  } catch (err) {
-    console.error("[connect-events] application_fee_read", tag, String(err));
-    return null;
-  }
 }
