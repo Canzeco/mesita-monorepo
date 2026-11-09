@@ -16,9 +16,12 @@
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok,
-//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
+//   confirmed_by (MESITA-3554) rides a cashback entry with a payment:
+//   'credit' | 'stripe' | 'waiter' from wallet_payments, so Transactions
+//   can name a cash bill the waiter confirmed. Null on every other entry.
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
 //   payments, from wallet_balances: what the Pay tab can spend there now.
 //   place.boost_tier is Premier's stored tier and place.mesita_pay the
@@ -127,7 +130,28 @@ serveJson("consumer-web-get-wallet", async (req) => {
   for (const r of (sums ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number }>) {
     spendable.set(balanceKey(r.place_id, r.currency), r.spendable_cents);
   }
-  const balances = balancesOf((rows ?? []) as Entry[], Date.now(), spendable);
+  // WHO CONFIRMED A CASHBACK (MESITA-3554): one read of the payments behind
+  // the cashback entries. A failed read leaves confirmed_by null (the line
+  // reads plain "Cashback"); the money is unaffected.
+  const entries = (rows ?? []) as Entry[];
+  const cashbackPayments = [
+    ...new Set(entries.filter((e) => e.kind === "cashback" && e.payment_id).map((e) => e.payment_id as string)),
+  ];
+  if (cashbackPayments.length > 0) {
+    const { data: payRows, error: payErr } = await admin
+      .from("wallet_payments")
+      .select("id, confirmed_by")
+      .eq("consumer_id", userId)
+      .in("id", cashbackPayments);
+    if (payErr) console.error(`[consumer-web-get-wallet] confirmed_by read: ${payErr.message}`);
+    const confirmedBy = new Map(
+      ((payErr ? [] : payRows) ?? []).map((p: { id: string; confirmed_by: Entry["confirmed_by"] }) => [p.id, p.confirmed_by]),
+    );
+    for (const e of entries) {
+      if (e.kind === "cashback" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
+    }
+  }
+  const balances = balancesOf(entries, Date.now(), spendable);
 
   // STORIES WAITING FOR STAFF (MESITA-3507): paid, not yet activated, so no
   // credit in the balances above. The Wallet shows each with its QR.

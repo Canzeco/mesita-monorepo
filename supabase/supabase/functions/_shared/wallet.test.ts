@@ -132,3 +132,12 @@ Deno.test("balancesOf: spendable comes from SQL by (place, currency); unnamed re
   assertEquals(b.map((x) => [x.place_id, x.available_cents, x.spendable_cents]), [["a", 15000, 12000], ["b", 9000, 0]]);
   assertEquals(b[0].entries.map((e) => e.payment_id), ["p1", null]);
 });
+
+Deno.test("balancesOf: confirmed_by rides a cashback with a payment only (MESITA-3554)", () => {
+  const b = balancesOf([
+    { place_id: "a", kind: "cashback", amount_cents: 200, currency: "mxn", created_at: "2026-11-09T10:03:00Z", payment_id: "p1", confirmed_by: "waiter" },
+    { place_id: "a", kind: "cashback", amount_cents: 100, currency: "mxn", created_at: "2026-11-09T10:02:00Z", confirmed_by: "waiter" },
+    { place_id: "a", kind: "spend", amount_cents: -3000, currency: "mxn", created_at: "2026-11-09T10:01:00Z", payment_id: "p1", confirmed_by: "waiter" },
+  ]);
+  assertEquals(b[0].entries.map((e) => e.confirmed_by), ["waiter", null, null]);
+});
