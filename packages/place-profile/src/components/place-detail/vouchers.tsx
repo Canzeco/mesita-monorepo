@@ -113,7 +113,7 @@ type Product = {
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
   { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
   { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
@@ -200,30 +200,64 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
 /** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
 
-/** A section title with an (i) that opens how it works under it (MESITA-3485,
- *  Pato: "add like an i icon or something to explain how it works"). */
-function SectionTitle({ id, title, note }: { id: string; title: string; note: string }) {
+/** A section title with an (i) that explains how it works (MESITA-3485).
+ *  A SMALL MODAL, NOT A DROPDOWN (MESITA-3488, Pato: "display a modal, not
+ *  dropout that moves shit. modal must not be full screen, it must simply
+ *  explain shit quickly"): a centred card over a dimmed page, a few short
+ *  lines and Got it; a tap outside or Escape closes it. */
+function SectionTitle({ id, title, lines }: { id: string; title: string; lines: string[] }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-1">
-        <h3 id={id} className={OFFERS_TITLE_CLASS}>
-          {title}
-        </h3>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={`How ${title} work`}
-          className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2.5"
-        >
-          <Info className="h-4 w-4" aria-hidden />
-        </button>
-      </div>
+    <div className="flex items-center gap-1">
+      <h3 id={id} className={OFFERS_TITLE_CLASS}>
+        {title}
+      </h3>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        aria-label={`How ${title} work`}
+        className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2.5"
+      >
+        <Info className="h-4 w-4" aria-hidden />
+      </button>
       {open ? (
-        <p className="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs leading-snug" data-offers-note>
-          {note}
-        </p>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          onClick={() => setOpen(false)}
+          data-offers-note
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={`${id}-how`}
+            className="bg-card flex w-full max-w-xs flex-col gap-3 rounded-2xl p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h4 id={`${id}-how`} className="text-base font-semibold">
+              {title}
+            </h4>
+            <ul className="text-muted-foreground flex flex-col gap-1.5 text-sm leading-snug">
+              {lines.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              autoFocus
+              className="bg-foreground text-paper h-10 rounded-xl text-sm font-semibold hover:opacity-90"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -358,7 +392,12 @@ export function VouchersPane({
         <SectionTitle
           id="rewards-prepayment"
           title="Prepayment Offers"
-          note="Pick an offer and Buy to get credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
+          lines={[
+            "Pick an offer, tap Buy: you get more credits than you pay.",
+            "Credits are ready in an hour (Story's at once).",
+            "Spend them on your bill here.",
+            "Welcome: first visit only. Story and VIP: one a day.",
+          ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
@@ -426,7 +465,10 @@ export function VouchersPane({
         <SectionTitle
           id="rewards-payment"
           title="Payment Offers"
-          note="Mesita Pay: pay the bill here through Mesita and 5% comes back as credits for your next visit, any visit. External: pay the place directly, by cash or their terminal; nothing comes back."
+          lines={[
+            "Mesita Pay: pay your bill with Mesita, get 5% back in credits.",
+            "External: cash or their terminal, nothing back.",
+          ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
