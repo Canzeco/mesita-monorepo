@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { PlaceTopBar, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import type { PlaceDetail } from "@/lib/place-detail";
@@ -22,6 +23,14 @@ export function RewardsSheet({
   section: RewardsSection | null;
   onClose: () => void;
 }) {
+  // THE SAME SLIDE BOTH WAYS (MESITA-3473, Pato: "the animation from profile
+  // to offers must be the same one as the one from offers to profile"): the
+  // last section stays drawn while the page slides back out, so it leaves
+  // with its content instead of as a blank panel. Set during render, the
+  // prop-to-state pattern React documents; never in an effect.
+  const [last, setLast] = useState<RewardsSection | null>(section);
+  if (section != null && section !== last) setLast(section);
+  const drawn = section ?? last;
   return (
     <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen from="right">
       <PlaceTopBar
@@ -32,7 +41,7 @@ export function RewardsSheet({
         onMore={actions.onMore}
       />
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4">
-        {section != null ? <VouchersPane place={place} actions={actions} focus={section} /> : null}
+        {drawn != null ? <VouchersPane place={place} actions={actions} focus={drawn} /> : null}
       </div>
     </LocalSheet>
   );

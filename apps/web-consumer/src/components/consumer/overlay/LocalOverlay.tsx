@@ -253,6 +253,8 @@ export function LocalSheet({
             "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
+            // The place screen's own edge shadow (SlideOverShell), MESITA-3473.
+            from === "right" && "shadow-sheet-left",
             from === "right"
               ? shown
                 ? "translate-x-0"
