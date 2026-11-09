@@ -8,7 +8,10 @@ import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode 
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucher, apiListVouchers, buyRefusalAction } from "@/lib/api/wallet";
+import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, money as moneyLabel } from "@/lib/api/wallet";
+import { apiAddCard, apiListCards, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
+import { runBankCheck } from "@/lib/api/tab";
+import { VoucherPaySheet } from "@/components/consumer/VoucherPaySheet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
@@ -148,8 +151,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       : {}),
     // Prepay and Pay (MESITA-3412): the Rewards sheet, once the fourth tab.
     onOpenRewards: setRewards,
-    // The Rewards sheet (MESITA-3303): Buy opens Stripe Checkout on the
-    // place's account; opening the sheet refreshes the offer and the credit.
+    // The Rewards sheet (MESITA-3303): Buy asks how to pay (a saved card in
+    // one tap, or Stripe's page, MESITA-3552); opening the sheet refreshes
+    // the offer and the credit.
     onBuyVoucher: vouchers.buy,
     buyingVoucher: vouchers.buying,
     onLoadVouchers: vouchers.load,
@@ -249,6 +253,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         onClose={() => setMenu(null)}
         menu={menu}
       />
+      {vouchers.sheet}
     </>
   );
 
@@ -262,9 +267,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 
 // Vouchers (MESITA-3303): the tab's fresh offer and the one buy. The place
 // read carried an offer already; the tab asks again because the screen
-// may be served from the store and the guest's credit changes. Buy opens
-// Stripe Checkout on the place's own account; a refusal says the server's
-// line and refreshes the offer so the tab shows why.
+// may be served from the store and the guest's credit changes. A refusal
+// says the server's line and refreshes the offer so the tab shows why.
+//
+// HOW TO PAY (MESITA-3552): Buy opens a small sheet with the guest's saved
+// cards. A card is one tap: it is charged on the place's own account; a
+// bank check (3-D Secure) runs in Stripe.js, then the same tap is asked
+// again (the same request_id: never a second charge) for how it ended.
+// "Pay on Stripe's page" is the Checkout as before; "Add a card" saves one
+// on Stripe's page and comes back here.
 function usePlaceVouchers(placeId: string): {
   money: PlaceMoney | null;
   buying: VoucherKey | null;
@@ -272,11 +283,16 @@ function usePlaceVouchers(placeId: string): {
   loading: boolean;
   load: () => void;
   buy: (key: VoucherKey) => void;
+  sheet: ReactNode;
 } {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
+  // The voucher whose "how to pay" sheet is open, and the saved cards
+  // (null while they load).
+  const [choosing, setChoosing] = useState<VoucherKey | null>(null);
+  const [cards, setCards] = useState<SavedCard[] | null>(null);
   // The place whose list-vouchers answered, either way; set only in the
   // promise callbacks, never synchronously in an effect (Next 16 lint).
   const [settled, setSettled] = useState<string | null>(null);
@@ -298,6 +314,20 @@ function usePlaceVouchers(placeId: string): {
   const buy = useCallback(
     (key: VoucherKey) => {
       if (!mesita) return;
+      setChoosing(key);
+      setCards(null);
+      void apiListCards(getSupabase())
+        .then((r) => setCards(r.cards))
+        // No list: Stripe's page and Add a card still work.
+        .catch(() => setCards([]));
+    },
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mesita],
+  );
+
+  const checkout = useCallback(
+    (key: VoucherKey) => {
       setBuying(key);
       void apiBuyVoucher(getSupabase(), {
         place_id: placeId,
@@ -306,7 +336,7 @@ function usePlaceVouchers(placeId: string): {
         return_url: window.location.href,
       })
         .then((r) => {
-          window.location.assign(r.url);
+          if (r.url) window.location.assign(r.url);
         })
         .catch((err: unknown) => {
           // MESITA-3549: an open Checkout resumes; place_cap keeps the offer.
@@ -316,21 +346,89 @@ function usePlaceVouchers(placeId: string): {
             return;
           }
           setBuying(null);
+          setChoosing(null);
           toast(action.line, { tone: "error" });
           if (action.reload) load();
         });
     },
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mesita, placeId, load],
+    [placeId, load],
+  );
+
+  const payWithCard = useCallback(
+    async (key: VoucherKey, card: SavedCard) => {
+      setBuying(key);
+      const args = {
+        place_id: placeId,
+        voucher: key,
+        request_id: crypto.randomUUID(),
+        return_url: window.location.href,
+        card_pm_id: card.id,
+      };
+      try {
+        let r = await apiBuyVoucher(getSupabase(), args);
+        if (r.card?.status === "requires_action") {
+          if ((await runBankCheck(r.card)) === "unavailable") {
+            toast("Couldn't open the bank check. Try again.", { tone: "error" });
+          }
+          // The same tap again: how the card payment ended.
+          r = await apiBuyVoucher(getSupabase(), args);
+        }
+        setChoosing(null);
+        if (r.card?.status === "succeeded") toast.success("Voucher bought. The credit is in your Wallet.");
+        else if (r.card?.status === "processing") toast("Your bank is confirming the payment. The credit shows in your Wallet once it's through.");
+        else toast("The bank check wasn't finished. Nothing was charged.", { tone: "error" });
+      } catch (err: unknown) {
+        const action = err instanceof EFError ? buyRefusalAction(err.code, err.body) : buyRefusalAction(null, null);
+        setChoosing(null);
+        toast(action.kind === "say" ? action.line : BUY_REFUSAL.in_progress, { tone: "error" });
+      } finally {
+        setBuying(null);
+        load();
+      }
+    },
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [placeId, load],
+  );
+
+  const addCard = useCallback(() => {
+    void apiAddCard(getSupabase(), window.location.href)
+      .then(({ url }) => window.location.assign(url))
+      .catch((err: unknown) => {
+        toast((err instanceof EFError && err.code && CARD_REFUSAL[err.code]) || CARD_REFUSAL.checkout_failed, { tone: "error" });
+      });
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const money = state?.placeId === placeId ? state.money : null;
+  const line = choosing ? money?.catalog[choosing] : undefined;
+  const sheet = (
+    <VoucherPaySheet
+      open={choosing !== null}
+      title={line && money ? `${moneyLabel(line.price_cents, money.currency)} voucher` : "Voucher"}
+      cards={cards}
+      busy={buying !== null}
+      onCard={(card) => {
+        if (choosing) void payWithCard(choosing, card);
+      }}
+      onCheckout={() => {
+        if (choosing) checkout(choosing);
+      }}
+      onAddCard={addCard}
+      onClose={() => setChoosing(null)}
+    />
   );
 
   return {
-    money: state?.placeId === placeId ? state.money : null,
+    money,
     buying,
     loading: mesita && settled !== placeId,
     load,
     buy,
+    sheet,
   };
 }
 

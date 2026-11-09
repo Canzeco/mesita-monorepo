@@ -80,7 +80,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
     .from("wallet_purchases")
-    .select("id, stripe_checkout_session_id, stripe_account_id, created_at, voucher")
+    .select("id, stripe_checkout_session_id, stripe_account_id, created_at, voucher, stripe_payment_intent_id")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .in("status", ["opening", "open"])
