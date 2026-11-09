@@ -314,7 +314,9 @@ export function MesitaActions({
         ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
       />
       <MesitaTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
-      <MesitaTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={open("payment")} />
+      {/* PAY GOES TO /pay (MESITA-3501, Pato: "pay must redirect to the actual
+          /pay page"); Prepay keeps opening the Offers page. */}
+      <MesitaTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={actions?.onPay} />
     </div>
   );
 }
