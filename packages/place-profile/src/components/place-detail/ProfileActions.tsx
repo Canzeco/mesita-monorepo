@@ -314,13 +314,14 @@ export function MesitaActions({
           MESITA-3428: "reserve button must be dark"), THE SAME SHAPE AS PREPAY
           AND PAY (MESITA-3431: "instead of mentioning the bonus just mention
           enabled or disabled"): glyph and Reserve over a white pill. A place
-          that takes no bookings reads Disabled, inert and never faded
+          that takes no bookings reads Off (On / Off since MESITA-3577, Pato:
+          "don't say disabled or enabled. just say on or off"), inert and never faded
           (MESITA-3078, MESITA-3423). */}
       <MesitaTile
         Icon={CalendarCheck}
         label="Reserve"
         tone="ink"
-        badge={takesReservations ? "Enabled" : "Disabled"}
+        badge={takesReservations ? "On" : "Off"}
         onClick={takesReservations ? onReserve : undefined}
         ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
       />
