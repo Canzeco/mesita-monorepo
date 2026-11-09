@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { BadgePercent, Banknote, Crown, Info, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
@@ -200,15 +201,21 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
 /** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
 
-/** A section title with an (i) that explains how it works (MESITA-3485).
- *  A SMALL MODAL, NOT A DROPDOWN (MESITA-3488, Pato: "display a modal, not
- *  dropout that moves shit. modal must not be full screen, it must simply
- *  explain shit quickly"): a centred card over a dimmed page, a few short
- *  lines and Got it; a tap outside or Escape closes it. */
-/** One paragraph of the (i): a bold lead, then plain words (MESITA-3492). */
-type Para = { lead: string; text: string };
+function SectionTitle({ id, title }: { id: string; title: string }) {
+  return (
+    <h3 id={id} className={OFFERS_TITLE_CLASS}>
+      {title}
+    </h3>
+  );
+}
 
-function SectionTitle({ id, title, lines }: { id: string; title: string; lines: Para[] }) {
+/** AN (i) ON EACH OFFER (MESITA-3493, Pato: "add one i button for each
+ *  offer"), opening a SMALL MODAL, NOT A DROPDOWN (MESITA-3488): a centred
+ *  card over a dimmed page with the offer's own explanation and Got it; a tap
+ *  outside or Escape closes it. It opens in a portal on the body, above the
+ *  sheet and out of any dimmed row; it sits inside a row's label, so every click
+ *  in it is stopped and its default prevented: reading never picks the row. */
+function InfoButton({ title, text }: { title: string; text: string }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
@@ -216,43 +223,37 @@ function SectionTitle({ id, title, lines }: { id: string; title: string; lines: 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+  const stop = (e: { preventDefault(): void; stopPropagation(): void }) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
   return (
-    <div className="flex items-center gap-1">
-      <h3 id={id} className={OFFERS_TITLE_CLASS}>
-        {title}
-      </h3>
+    <span className="inline-flex" onClick={stop}>
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label={`How ${title} work`}
-        className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2.5"
+        aria-label={`How ${title} works`}
+        className="text-muted-foreground hover:text-foreground relative flex h-5 w-5 items-center justify-center rounded-full after:absolute after:-inset-2.5"
+        data-offer-info
       >
         <Info className="h-4 w-4" aria-hidden />
       </button>
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+      {open && typeof document !== "undefined" ? createPortal(
+        <span
+          className="fixed inset-0 z-[135] flex items-center justify-center bg-black/40 p-6"
           onClick={() => setOpen(false)}
           data-offers-note
         >
-          <div
+          <span
             role="dialog"
             aria-modal="true"
-            aria-labelledby={`${id}-how`}
-            className="bg-card flex max-h-[85vh] w-full max-w-sm flex-col gap-3 rounded-2xl p-5 shadow-xl"
+            aria-label={`How ${title} works`}
+            className="bg-card flex max-h-[85vh] w-full max-w-sm cursor-auto flex-col gap-3 rounded-2xl p-5 text-left shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h4 id={`${id}-how`} className="text-base font-semibold">
-              How {title} work
-            </h4>
-            <div className="text-muted-foreground -mx-1 flex flex-col gap-3 overflow-y-auto px-1 text-sm leading-snug">
-              {lines.map((l) => (
-                <p key={l.lead}>
-                  <span className="text-foreground font-semibold">{l.lead}.</span> {l.text}
-                </p>
-              ))}
-            </div>
+            <span className="text-foreground text-base font-semibold">{title}</span>
+            <span className="text-muted-foreground overflow-y-auto text-sm leading-snug font-normal">{text}</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -261,11 +262,30 @@ function SectionTitle({ id, title, lines }: { id: string; title: string; lines: 
             >
               Got it
             </button>
-          </div>
-        </div>
-      ) : null}
-    </div>
+          </span>
+        </span>,
+        document.body,
+      )
+      : null}
+    </span>
   );
+}
+
+/** What each offer's (i) says (MESITA-3492's paragraphs, one per offer),
+ *  with the row's own Pay and Get. */
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
+  switch (key) {
+    case "voucher_200":
+    case "voucher_1000":
+    case "voucher_5000":
+      return `Pay ${pay} and get ${get} in credits for this place: the place adds ${bonus} on top. Pick it, tap the black button and pay; your credits are ready within an hour. Use them to pay your bill here in the app. They only work at this place, and you can buy as many as you like.`;
+    case "voucher_welcome":
+      return `A thank-you for trying this place for the first time: pay ${pay}, get ${get} in credits. One per place: once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.`;
+    case "voucher_story":
+      return `Buy the voucher (pay ${pay}), then activate it by posting an Instagram story at the place. Once your story is up, the ${get} in credits arrive right away and you pay your bill with them. One per visit.`;
+    case "voucher_vip":
+      return `Reserved for Mesita's VIP Class. VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see. If you're VIP, pay ${pay} and get ${get} in credits here. One per visit. Not VIP? You won't be able to buy this one.`;
+  }
 }
 
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
@@ -399,24 +419,6 @@ export function VouchersPane({
         <SectionTitle
           id="rewards-prepayment"
           title="Prepayment Offers"
-          lines={[
-            {
-              lead: "Standard (Small, Medium, Big)",
-              text: "Buy credits for this place before you go and the place adds a bonus on top: Small adds 10%, Medium 20%, Big 30%. Pick one, tap the black button and pay; your credits are ready within an hour. Use them to pay your bill here in the app. They only work at this place, and you can buy as many as you like.",
-            },
-            {
-              lead: "Welcome",
-              text: "A thank-you for trying this place for the first time: pay $100MX, get $130MX in credits. One per place: once you've had it here it's gone for this place, but every other place on Mesita has its own Welcome waiting for you.",
-            },
-            {
-              lead: "Story",
-              text: "Buy the voucher, then activate it by posting an Instagram story at the place. Once your story is up, the $130MX in credits arrive right away and you pay your bill with them. One per visit.",
-            },
-            {
-              lead: "VIP",
-              text: "Reserved for Mesita's VIP Class. VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see. If you're VIP, pay $100MX and get $130MX in credits here. One per visit. Not VIP? You won't be able to buy this one.",
-            },
-          ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
@@ -435,12 +437,15 @@ export function VouchersPane({
                 <span className={cn(CHIP, face.card)} aria-hidden>
                   +{p.bonus.replace(/ bonus$/, "")}
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+                <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-center gap-1 text-base font-semibold">
-                    {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
-                    {p.short}
+                    <span className="flex items-center gap-1" aria-hidden>
+                      {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
+                      {p.short}
+                    </span>
+                    <InfoButton title={p.short} text={offerInfo(p.key, pay, get, p.bonus.replace(/ bonus$/, ""))} />
                   </span>
-                  <span className="text-muted-foreground truncate text-sm tabular-nums">
+                  <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
                     {opening ? "Opening…" : loading || can ? `Pay ${pay} · Get ${get}` : tag(reason)}
                   </span>
                 </span>
@@ -450,7 +455,6 @@ export function VouchersPane({
               <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
                 {can ? (
                   <label className={cn(ROW, "hover:bg-muted/50 cursor-pointer")}>
-                    {inner}
                     <input
                       type="radio"
                       name="voucher"
@@ -460,6 +464,7 @@ export function VouchersPane({
                       aria-label={`Choose the ${p.name} voucher, ${deal}`}
                       className="sr-only"
                     />
+                    {inner}
                     <span
                       className={cn(
                         "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
@@ -484,16 +489,6 @@ export function VouchersPane({
         <SectionTitle
           id="rewards-payment"
           title="Payment Offers"
-          lines={[
-            {
-              lead: "Mesita Pay Cashback",
-              text: "Pay your bill here in the app and 5% of it comes back as credits for your next visit, every visit. A $500MX bill gives you $25MX back.",
-            },
-            {
-              lead: "External Pay Cashback",
-              text: "Pay the place directly, in cash or on their card terminal. That works too, but nothing comes back.",
-            },
-          ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
@@ -503,23 +498,33 @@ export function VouchersPane({
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               +5%
             </span>
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+            <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
-                Mesita Pay Cashback
+                <span aria-hidden>Mesita Pay Cashback</span>
+                <InfoButton
+                  title="Mesita Pay Cashback"
+                  text="Pay your bill here in the app and 5% of it comes back as credits for your next visit, every visit. A $500MX bill gives you $25MX back."
+                />
               </span>
-              <span className="text-muted-foreground text-sm">{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
+              <span className="text-muted-foreground text-sm" aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
           <li className={ROW} aria-label="External Pay Cashback: pay the place directly, by cash or their terminal. Nothing back.">
             <span className={cn(CHIP, "bg-muted text-muted-foreground")} aria-hidden>
               0%
             </span>
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+            <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
-                <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                External Pay Cashback
+                <span className="flex items-center gap-1" aria-hidden>
+                  <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                  External Pay Cashback
+                </span>
+                <InfoButton
+                  title="External Pay Cashback"
+                  text="Pay the place directly, in cash or on their card terminal. That works too, but nothing comes back."
+                />
               </span>
-              <span className="text-muted-foreground text-sm">Cash or their terminal, nothing back</span>
+              <span className="text-muted-foreground text-sm" aria-hidden>Cash or their terminal, nothing back</span>
             </span>
           </li>
         </ul>
