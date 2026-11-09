@@ -121,7 +121,7 @@ Deno.test("startPayment: an RPC error or an unknown answer is a 5xx, never a ref
 
 const ROW: PaymentRow = {
   id: "p1", place_id: PLACE, status: "paid", amount_cents: 5000, credit_cents: 5000, card_cents: 0, tip_cents: 0, cashback_cents: 0,
-  currency: "mxn", paid_at: "2026-11-07T12:00:00Z", proof_token: TOKEN, proof_seen_at: null, ticket: "T-12", livemode: false,
+  currency: "mxn", paid_at: "2026-11-07T12:00:00Z", proof_token: TOKEN, proof_seen_at: null, ticket: "T-12", refunded_cents: 0, livemode: false,
   stripe_checkout_session_id: null, stripe_account_id: null, created_at: "2026-11-07T11:59:00Z", expires_at: null,
 };
 
@@ -143,6 +143,7 @@ Deno.test("proofView: what the staff page reads, and nothing about who paid", ()
 
 Deno.test("paymentView: a refunded payment keeps its status; no token, no proof", () => {
   assertEquals(paymentView({ ...ROW, status: "refunded" }, "Casa").status, "refunded");
+  assertEquals(paymentView({ ...ROW, status: "partly_refunded", refunded_cents: 1200 }, "Casa").refunded_cents, 1200);
   assertEquals(paymentView({ ...ROW, proof_token: null }, "Casa").proof, null);
   assertEquals(paymentView(ROW, null).place, { id: PLACE, name: null });
 });

@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, MapPin, QrCode, Search, Wallet as WalletIcon, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { cashbackFor, paySplit, SizedImg, TestBand } from "@mesita/place-profile";
+import { cashbackFor, paySplit, PlaceMarks, SizedImg, TestBand } from "@mesita/place-profile";
 import { amountText, clockTime, readAmount } from "@mesita/place-profile/lib/money";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -699,6 +699,7 @@ function PayForm({
       const started = await apiStartPayment(getSupabase(), {
         place_id: place.place_id,
         place_name: place.name,
+        place_marks: place.marks,
         amount_cents: cents,
         ...(card ? { card_cents: card.card_cents, tip_cents: card.tip_cents, return_url: `${window.location.origin}${CONSUMER_ROUTES.pay}` } : {}),
         request_id: a.requestId,
@@ -1237,7 +1238,10 @@ function ProofView({
           </p>
         ) : null}
         {refundLine ? <p className="text-muted-foreground mt-1 text-sm font-semibold">{refundLine}</p> : null}
-        <p className="mt-3 text-base font-semibold">{proof.place_name ?? "A Mesita place"}</p>
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-base font-semibold">
+          <span className="min-w-0 truncate">{proof.place_name ?? "A Mesita place"}</span>
+          {proof.place_marks ? <PlaceMarks tier={proof.place_marks.tier} mesitaPay={proof.place_marks.mesita_pay} ad={false} /> : null}
+        </p>
         {paid ? (
           <p
             className={cn("mt-0.5 flex items-center gap-1.5 text-sm", reconnecting ? "text-muted-foreground opacity-60" : "text-foreground")}

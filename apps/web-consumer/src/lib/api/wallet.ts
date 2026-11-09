@@ -123,6 +123,9 @@ export const money = moneyLabel;
 export type PayProof = {
   payment_id: string;
   place_name: string | null;
+  /** The place's Premier tier and Mesita Pay mark beside its name
+   *  (MESITA-3539), when known. */
+  place_marks?: { tier: number | null; mesita_pay: boolean } | null;
   /** The row's state: open (a card part's Checkout is still open), paid,
    *  refunded, partly_refunded, expired, failed, needs_review. */
   status: string;
@@ -192,6 +195,7 @@ export async function apiStartPayment(
   args: {
     place_id: string;
     place_name: string | null;
+    place_marks?: { tier: number | null; mesita_pay: boolean } | null;
     amount_cents: number;
     card_cents?: number;
     tip_cents?: number;
@@ -219,9 +223,11 @@ export async function apiStartPayment(
     proof: {
       payment_id: r.payment_id,
       place_name: args.place_name,
+      place_marks: args.place_marks ?? null,
       status: r.status,
       amount_cents: r.amount_cents ?? args.amount_cents,
       credit_cents: r.credit_cents,
+      ticket: args.ticket,
       currency: r.currency ?? "mxn",
       paid_at: r.paid_at,
       proof_seen_at: null,
@@ -234,7 +240,11 @@ export async function apiStartPayment(
 /** One of the guest's payments: its proof again and whether staff saw it;
  *  an open card part is settled on this read when Stripe says paid. */
 export async function apiGetPayment(client: SupabaseClient, paymentId: string): Promise<PayProof> {
-  const r = await invokeEF<Omit<PayProof, "place_name"> & { place: { id: string; name: string | null } }>(
+  const r = await invokeEF<
+    Omit<PayProof, "place_name" | "place_marks"> & {
+      place: { id: string; name: string | null; marks?: { tier: number | null; mesita_pay: boolean } };
+    }
+  >(
     client,
     "consumer-web-get-payment",
     { payment_id: paymentId },
@@ -242,6 +252,7 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
   return {
     payment_id: r.payment_id,
     place_name: r.place?.name ?? null,
+    place_marks: r.place?.marks ?? null,
     status: r.status,
     amount_cents: r.amount_cents,
     credit_cents: r.credit_cents,

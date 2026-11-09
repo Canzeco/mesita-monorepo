@@ -14,9 +14,14 @@
 // its status with no proof.
 //
 // Body: { payment_id: uuid }
-// Response: { ok: true, payment_id, place: { id, name }, status, amount_cents,
-//             credit_cents, card_cents, tip_cents, cashback_cents, currency,
-//             paid_at | null, proof_seen_at, proof: { token, url } | null,
+// MESITA-3539: the proof also answers the ticket the guest typed, how much
+// was refunded (card + tip, wallet_payments.refunded_cents) and the place's
+// marks (Premier tier, Mesita Pay) beside its name.
+//
+// Response: { ok: true, payment_id, place: { id, name, marks?: { tier, mesita_pay } },
+//             status, amount_cents, credit_cents, card_cents, tip_cents,
+//             cashback_cents, currency, paid_at | null, proof_seen_at,
+//             proof: { token, url } | null, ticket | null, refunded_cents,
 //             url?: string | null, expires_at?: string | null, test_mode }
 //   401 sign_in · 404 gone (not theirs)
 
@@ -25,7 +30,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from ".
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentView, readPayment } from "../_shared/pay.ts";
+import { paymentView, readPayment, readPlaceMarks } from "../_shared/pay.ts";
 import { settlePayment } from "../_shared/settle-payment.ts";
 
 /** How long one read waits on Stripe for the session. */
@@ -90,6 +95,7 @@ serveJson("consumer-web-get-payment", async (req) => {
     }
   }
   if (!res.ok || !res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
-  const view = paymentView(res.row, res.placeName);
+  const marks = await readPlaceMarks(admin, res.row.place_id);
+  const view = paymentView(res.row, res.placeName, marks);
   return json({ ok: true, ...view, ...(view.status === "open" || view.status === "opening" ? { url: url ?? null, expires_at: res.row.expires_at ?? null } : {}) });
 });

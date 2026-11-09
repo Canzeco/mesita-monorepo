@@ -19,6 +19,7 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
+import { withVouchersUpTo } from "./payments.ts";
 import { isUuid } from "./place-id.ts";
 import { mintProofToken, proofUrl } from "./proof.ts";
 import { readVoucherPlace } from "./wallet.ts";
@@ -201,6 +202,8 @@ export type PaymentRow = {
   proof_token: string | null;
   proof_seen_at: string | null;
   ticket: string | null;
+  /** Card + tip refunded so far (Stripe's cumulative amount_refunded, capped). */
+  refunded_cents: number;
   livemode: boolean;
   stripe_checkout_session_id: string | null;
   stripe_account_id: string | null;
@@ -210,15 +213,21 @@ export type PaymentRow = {
 
 const PAYMENT_COLUMNS =
   "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, cashback_cents, currency, paid_at, " +
-  "proof_token, proof_seen_at, ticket, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
+  "proof_token, proof_seen_at, ticket, refunded_cents, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
+
+/** The place's two marks beside its name (MESITA-3321): the Premier tier
+ *  (red) and the Mesita Pay mark (green). */
+export type PlaceMarksView = { tier: number | null; mesita_pay: boolean };
 
 /** What the guest's Pay page shows for one of their payments: the proof
  *  (once paid), the seen stamp, the status as it stands (a refund reads
- *  Refunded; an open card part reads open). */
-export function paymentView(row: PaymentRow, placeName: string | null) {
+ *  Refunded; an open card part reads open), the ticket the guest typed and
+ *  how much was refunded (MESITA-3539). `marks` rides on the place when the
+ *  caller read them. */
+export function paymentView(row: PaymentRow, placeName: string | null, marks?: PlaceMarksView | null) {
   return {
     payment_id: row.id,
-    place: { id: row.place_id, name: placeName },
+    place: { id: row.place_id, name: placeName, ...(marks ? { marks } : {}) },
     status: row.status,
     amount_cents: row.amount_cents,
     credit_cents: row.credit_cents,
@@ -229,8 +238,28 @@ export function paymentView(row: PaymentRow, placeName: string | null) {
     paid_at: row.paid_at,
     proof_seen_at: row.proof_seen_at,
     proof: row.proof_token && row.paid_at ? { token: row.proof_token, url: proofUrl(row.proof_token) } : null,
+    ticket: row.ticket,
+    refunded_cents: row.refunded_cents ?? 0,
     test_mode: !row.livemode,
   };
+}
+
+/** The place's marks for the proof: its Premier tier (profiles.boost_tier,
+ *  as the Pay list reads it) and moneyState's Mesita Pay mark. A failed read
+ *  answers no marks; the proof still shows. */
+export async function readPlaceMarks(admin: SupabaseClient, placeId: string): Promise<PlaceMarksView | null> {
+  try {
+    const [profile, money] = await Promise.all([
+      admin.from("profiles").select("boost_tier").eq("id", placeId).maybeSingle(),
+      withVouchersUpTo(admin, [{ id: placeId }]),
+    ]);
+    if (profile.error) throw new Error(profile.error.message);
+    const tier = (profile.data as { boost_tier: number | null } | null)?.boost_tier ?? null;
+    return { tier, mesita_pay: money[0]?.mesita_pay ?? false };
+  } catch (err) {
+    console.error("[pay] marks_read_failed", JSON.stringify({ place_id: placeId, error: String(err) }));
+    return null;
+  }
 }
 
 /** The guest's own payment in any state, or null when it is not theirs:
