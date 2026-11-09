@@ -177,10 +177,12 @@ select is(
   'an outside bill nobody confirmed closes expired'
 );
 
+-- MESITA-3545: a bill the sweep closed is a timeout (expired), not a
+-- guest's cancel (closed).
 select is(
   wallet_confirm_outside('00000000-0000-4000-8000-000000113544')->>'code',
-  'closed',
-  'a closed bill cannot be confirmed'
+  'expired',
+  'a bill that timed out cannot be confirmed'
 );
 
 -- ━━━ Every paid row names its confirmer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
