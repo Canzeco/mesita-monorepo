@@ -197,7 +197,7 @@ export function buildPlaceUpdate(
   const resetFields: OperatorField[] = [];
   if ("reset_fields" in body) {
     if (!Array.isArray(body.reset_fields) || !body.reset_fields.every(isOperatorField)) {
-      return fail(json({ ok: false, error: "reset_fields must list name, description, tags or family_keys" }, 400));
+      return fail(json({ ok: false, error: "reset_fields must list name, description, tags, family_keys or photos" }, 400));
     }
     resetFields.push(...body.reset_fields);
   }

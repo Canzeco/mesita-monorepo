@@ -21,13 +21,16 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { writePlace } from "./place-doc.ts";
 
-export type OperatorField = "name" | "description" | "tags" | "family_keys";
+export type OperatorField = "name" | "description" | "tags" | "family_keys" | "photos";
 
 export const OPERATOR_FIELDS: readonly OperatorField[] = [
   "name",
   "description",
   "tags",
   "family_keys",
+  // The gallery, since MESITA-3504/3513 (Pato: "make them stick"): a place
+  // that saved its Photos keeps them through every Enrich and Google Update.
+  "photos",
 ];
 
 /** Where inside `enrichment_sources` the marks live. */
@@ -65,7 +68,7 @@ export function operatorFieldsInPatch(patch: Record<string, unknown>): OperatorF
   for (const field of OPERATOR_FIELDS) {
     if (!(field in patch)) continue;
     const v = patch[field];
-    const owned = field === "tags" || field === "family_keys"
+    const owned = field === "tags" || field === "family_keys" || field === "photos"
       ? Array.isArray(v) && v.length > 0
       : typeof v === "string" && v.trim() !== "";
     if (owned) out.push(field);
