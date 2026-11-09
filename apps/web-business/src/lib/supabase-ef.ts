@@ -64,7 +64,8 @@ export async function efInvoke<T>(
 
   const { data: parsed, error } = await supabase.functions.invoke<unknown>(
     fnName,
-    { body: body as Record<string, unknown> },
+    // FormData rides as multipart (Profile's photo upload, MESITA-3504).
+    { body: body instanceof FormData ? body : (body as Record<string, unknown>) },
   );
 
   if (error) {

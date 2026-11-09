@@ -555,3 +555,11 @@ export async function getPlaceEnrichment(
     data: { state: r.data.state ?? null },
   };
 }
+
+/** Profile's Photos box (MESITA-3504): store one photo for this place and get
+ *  its URL. The gallery changes only when Profile saves `photos`. */
+export async function uploadPlacePhoto(form: FormData): Promise<Result<{ url: string }>> {
+  const r = await efInvoke<{ url: string }>("business-web-upload-place-photo", form);
+  if (!r.ok) return { ok: false, error: r.error, code: r.code };
+  return { ok: true, data: { url: r.data.url } };
+}

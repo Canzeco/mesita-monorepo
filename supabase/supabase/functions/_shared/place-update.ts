@@ -29,7 +29,7 @@ export type UpdateBody = {
   // whitelist below never reads them.
   hours?: PlaceHours | null;
   phone?: string | null;
-  /** Refused: the gallery is not edited here (MESITA-2794). */
+  /** The gallery, hero first (MESITA-3504). */
   photos?: unknown;
   mesita_photos?: unknown;
   // External + social channels

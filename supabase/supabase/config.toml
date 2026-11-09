@@ -586,6 +586,10 @@ verify_jwt = true
 [functions.business-web-update-place]
 verify_jwt = true
 
+# MESITA-3504: Profile's Photos box uploads one photo (multipart).
+[functions.business-web-upload-place-photo]
+verify_jwt = true
+
 [functions.business-web-get-premier]
 verify_jwt = true
 

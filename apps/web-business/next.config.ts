@@ -63,6 +63,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return REDIRECTS.map((r) => ({ ...r, permanent: false }));
   },
+  // Profile's photo upload goes through a server action (MESITA-3504); the
+  // browser shrinks it to 2048px JPEG first. Vercel's own cap is 4.5 MB.
+  experimental: {
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   transpilePackages: ["@mesita/place-profile"],
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
