@@ -138,6 +138,8 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
  *  (MESITA-3303). The guest sees the same reason on the Vouchers tab. */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_account: "Not for sale until Stripe setup is complete.",
+  needs_house_credits: "Not for sale until House Credits is on.",
+  needs_billing: "Not for sale until Mesita's invoice is paid.",
   not_yet: "Not on sale yet.",
   needs_card_payments: "On sale once card payments are on.",
   needs_instagram: "On sale once the Instagram connection is on.",

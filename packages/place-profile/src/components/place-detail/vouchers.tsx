@@ -157,7 +157,7 @@ function priceValue(product: Product, line: VoucherCatalogLine | undefined, curr
 /** One tag per state, objective: where it stands for this guest at this place. */
 function tag(reason: VoucherReason | undefined): string {
   if (!reason) return "Available here";
-  if (reason === "off" || reason === "needs_account") return "Not at this place yet";
+  if (reason === "off" || reason === "needs_account" || reason === "needs_house_credits" || reason === "needs_billing") return "Not at this place yet";
   if (reason === "paused") return "Paused for a moment";
   if (reason === "used") return "You had yours here";
   if (reason === "needs_visit") return "One per visit";
@@ -495,7 +495,9 @@ export function VouchersPane({
   // cashback row reads the server's word, `money.cashback` (MESITA-3408).
   const state = moneyState(
     {
-      cashback: money?.cashback === true,
+      // House Credits as the server says; an older read without it is
+      // read as on, so the server's own unavailable reasons stand.
+      house_credits: money?.house_credits !== false,
       voucher_200: money?.vouchers.voucher_200 === true,
       voucher_1000: money?.vouchers.voucher_1000 === true,
       voucher_5000: money?.vouchers.voucher_5000 === true,

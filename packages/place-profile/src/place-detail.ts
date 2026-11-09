@@ -37,6 +37,15 @@ export type PlaceMoney = {
   /** A bill paid to the waiter earns 2% here (the Cashback switch and a place
    *  code, no Stripe; MESITA-3545). The server sends it; older reads lack it. */
   outside_cashback?: boolean;
+  /** The place's own rates now, in bps, 0 = Off or not usable (MESITA-3589):
+   *  the card part (Mesita Payments Cashback) and the cash bill part (Cash
+   *  Payments Cashback). Older reads lack them. */
+  card_cashback_bps?: number;
+  cash_cashback_bps?: number;
+  /** House Credits is On here (MESITA-3589); older reads lack it. */
+  house_credits?: boolean;
+  /** Cash Payments is On here (the switch and the place code; MESITA-3589). */
+  cash?: boolean;
   vouchers: Record<VoucherKey, boolean>;
   /** Stripe is in test mode: the TestBand shows, no real money moves. */
   test_mode: boolean;
