@@ -8,9 +8,19 @@
 // body's, so a live row never shows under test. Who paid is the guest's
 // name, else two characters of the email's local part; never the email.
 //
+// MESITA-3548 (Payments Flow v2, step D): money received counts outside
+// bills the waiter marked Received; tips count card tips only (a cash tip is
+// the waiter's, in person); each row says its confirmer (stripe · waiter ·
+// credit), its outside part, the waiter's bill, its tab and part; the window's
+// received_share and the place's outside cashback over the rolling day
+// against OUTSIDE_CASHBACK_DAILY_CEILING_CENTS. Every new field is read by
+// name with a default, so the old RPC shape still answers.
+//
 // Body: { place_id: uuid, from?: ISO, to?: ISO, before?: { created_at, id } }
 // Response: { ok, test_mode, received_cents, fee_cents, tips_cents,
-//             available_cents, pending_cents, rows: [...], next }
+//             available_cents, pending_cents, received_share: { received, total },
+//             outside_cashback_today_cents, outside_cashback_ceiling_cents,
+//             rows: [...], next }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -19,6 +29,7 @@ import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
 import { maskGuest } from "../_shared/money-admin.ts";
+import { OUTSIDE_CASHBACK_DAILY_CEILING_CENTS } from "../_shared/money.ts";
 
 function isoOr(v: unknown, fallback: string): string | null {
   if (v === undefined || v === null || v === "") return fallback;
@@ -39,9 +50,19 @@ type Row = {
   card_cents: number;
   tip_cents: number;
   refunded_cents: number;
+  confirmed_by?: string | null;
+  outside_cents?: number | null;
+  charge_amount_cents?: number | null;
+  tab_id?: string | null;
+  part?: string | null;
+  cashback_cents?: number | null;
+  outside_cashback_bps?: number | null;
   guest_name: string | null;
   guest_email: string | null;
 };
+
+const CONFIRMERS = new Set(["stripe", "waiter", "credit"]);
+const PARTS = new Set(["credit", "outside", "card"]);
 
 serveJson("business-web-get-place-money", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -81,8 +102,16 @@ serveJson("business-web-get-place-money", async (req) => {
   const s = (data ?? {}) as Record<string, unknown>;
   const rows = ((s.rows ?? []) as Row[]).map(({ guest_name, guest_email, ...r }) => ({
     ...r,
+    confirmed_by: CONFIRMERS.has(String(r.confirmed_by)) ? r.confirmed_by : null,
+    outside_cents: Number(r.outside_cents ?? 0),
+    charge_amount_cents: r.charge_amount_cents == null ? null : Number(r.charge_amount_cents),
+    tab_id: typeof r.tab_id === "string" ? r.tab_id : null,
+    part: PARTS.has(String(r.part)) ? r.part : null,
+    cashback_cents: Number(r.cashback_cents ?? 0),
+    outside_cashback_bps: Number(r.outside_cashback_bps ?? 0),
     guest: maskGuest(guest_name, guest_email),
   }));
+  const share = (s.received_share ?? {}) as { received?: unknown; total?: unknown };
   return json({
     ok: true,
     test_mode: !livemode,
@@ -91,6 +120,9 @@ serveJson("business-web-get-place-money", async (req) => {
     tips_cents: Number(s.tips_cents ?? 0),
     available_cents: Number(s.available_cents ?? 0),
     pending_cents: Number(s.pending_cents ?? 0),
+    received_share: { received: Number(share.received ?? 0), total: Number(share.total ?? 0) },
+    outside_cashback_today_cents: Number(s.outside_cashback_today_cents ?? 0),
+    outside_cashback_ceiling_cents: OUTSIDE_CASHBACK_DAILY_CEILING_CENTS,
     rows,
     next: s.next ?? null,
   });

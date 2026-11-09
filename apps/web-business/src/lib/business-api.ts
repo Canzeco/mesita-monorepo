@@ -474,10 +474,23 @@ export type PlaceMoneyRow = {
   status: string;
   voucher: string | null;
   ticket: string | null;
-  /** What the guest paid: credit + card + tip on a payment. */
+  /** What the guest paid: credit + card + outside + tip on a payment. */
   amount_cents: number;
+  credit_cents?: number;
+  card_cents?: number;
   tip_cents: number;
   refunded_cents: number;
+  /** MESITA-3548: who confirmed the bill was paid. Missing on the old shape. */
+  confirmed_by?: "stripe" | "waiter" | "credit" | null;
+  /** The part paid outside Mesita (cash the waiter marked Received). */
+  outside_cents?: number;
+  /** The waiter's bill, when this payment paid a charge or a tab. */
+  charge_amount_cents?: number | null;
+  /** Pay at the table: the tab this row pays, and which part it is. */
+  tab_id?: string | null;
+  part?: "credit" | "outside" | "card" | null;
+  cashback_cents?: number;
+  outside_cashback_bps?: number;
   guest: string;
 };
 export type PlaceMoneyCursor = { created_at: string; id: string } | null;
@@ -488,6 +501,12 @@ export type PlaceMoney = {
   tips_cents: number;
   available_cents: number;
   pending_cents: number;
+  /** MESITA-3548: bills with a waiter's bill over the window, and how many
+   *  ended in the waiter's Received (cash). Missing on the old shape. */
+  received_share?: { received: number; total: number };
+  /** The place's outside cashback over the rolling day, and its ceiling. */
+  outside_cashback_today_cents?: number;
+  outside_cashback_ceiling_cents?: number;
   rows: PlaceMoneyRow[];
   next: PlaceMoneyCursor;
 };
