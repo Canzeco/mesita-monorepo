@@ -172,12 +172,13 @@ Deno.test("open-charge: 50 staff tries per place lock every address; 50 guest tr
   assert(!r.ok && r.code === "locked");
 });
 
-Deno.test("clientAddress: a forged left x-forwarded-for value does not change the hash", async () => {
-  const plain = new Headers({ "x-forwarded-for": "203.0.113.7" });
-  const forged = new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.7" });
+Deno.test("clientAddress: x-forwarded-for is client-written, so it never changes the hash", async () => {
+  const plain = new Headers({ "cf-connecting-ip": "203.0.113.7" });
+  const forged = new Headers({ "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "6.6.6.6" });
   assertEquals(clientAddress(forged), "203.0.113.7");
   assertEquals(await staffTryKey("k", clientAddress(plain)), await staffTryKey("k", clientAddress(forged)));
-  assertEquals(clientAddress(new Headers({ "cf-connecting-ip": "198.51.100.9", "x-forwarded-for": "1.1.1.1" })), "198.51.100.9");
+  assertEquals(clientAddress(new Headers({ "x-real-ip": "198.51.100.9", "x-forwarded-for": "1.1.1.1" })), "198.51.100.9");
+  assertEquals(clientAddress(new Headers({ "x-forwarded-for": "1.1.1.1" })), "unknown");
   assertNotEquals(await staffTryKey("k", "203.0.113.7"), await staffTryKey("other", "203.0.113.7"));
 });
 
