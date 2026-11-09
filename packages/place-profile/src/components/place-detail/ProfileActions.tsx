@@ -2,7 +2,6 @@
 
 import {
   CalendarCheck,
-  Coins,
   Heart,
   Map as MapIcon,
   Phone,
@@ -10,6 +9,7 @@ import {
   Rocket,
   Share2,
   Ticket,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type React from "react";
@@ -33,7 +33,7 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      grey, glyph over label
-//   [ Reserve ] [ Credits / $120MX ] [ Prepay / 30% Bonus ] [ Pay / 5% Back ]   ink · ink · green · green (MESITA-3576)
+//   [ Reserve ] [ Prepay / 30% Bonus ] [ Wallet / $120MX ] [ Pay / 5% Back ]   ink · green · ink · green (MESITA-3577)
 //   ink · green · green · green, pinned (MESITA-3574, Pato: "make this four
 //   items ... Reserve Prepay Wallet-Card-Preview-(for that place) Pay. 5 and
 //   4. just mention wallet and display how many credits the user has
@@ -113,7 +113,7 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve · Credits · Prepay · Pay, a quarter each
+/** Row 2, pinned: Reserve · Prepay · Wallet · Pay, a quarter each
  *  (MESITA-3574; a third each in MESITA-3426, Prepay · Pay halves in
  *  MESITA-3423, Prepay · Card · Pay in MESITA-3419). */
 export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-4 gap-2";
@@ -281,7 +281,7 @@ export function ProfileActions({
 }
 
 /** THE MESITA ROW, PINNED (Pato, MESITA-3330: "the dark buttons must not be
- *  scrollable, those stuck at the top"): Reserve · Credits · Prepay · Pay leave the
+ *  scrollable, those stuck at the top"): Reserve · Prepay · Wallet · Pay leave the
  *  summary band and ride in PlaceDetailBody's sticky block with the tab
  *  strip, so they stay reachable while the body scrolls; the grey tiles
  *  scroll away with the summary. Same tiles, same wiring. */
@@ -314,34 +314,38 @@ export function MesitaActions({
           MESITA-3428: "reserve button must be dark"), THE SAME SHAPE AS PREPAY
           AND PAY (MESITA-3431: "instead of mentioning the bonus just mention
           enabled or disabled"): glyph and Reserve over a white pill. A place
-          that takes no bookings reads Disabled, inert and never faded
+          that takes no bookings reads Off (On / Off since MESITA-3577, Pato:
+          "don't say disabled or enabled. just say on or off"), inert and never faded
           (MESITA-3078, MESITA-3423). */}
       <MesitaTile
         Icon={CalendarCheck}
         label="Reserve"
         tone="ink"
-        badge={takesReservations ? "Enabled" : "Disabled"}
+        badge={takesReservations ? "On" : "Off"}
         onClick={takesReservations ? onReserve : undefined}
         ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
       />
-      {/* CREDITS (MESITA-3574, named and inked in MESITA-3576): the guest's
+      {/* Prepay wears the ticket since MESITA-3574. */}
+      <MesitaTile Icon={Ticket} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
+      {/* WALLET (MESITA-3574; Credits in MESITA-3576, Wallet again in
+          MESITA-3577, Pato: "credits sounds like a videogame here ... just
+          here call it Wallet"; the coins glyph went with it): the guest's
           credit here, Available, from the host's list-vouchers read
           (place.money.balance); $0MX when none, a quiet "…" while the first
           read is out. Opens the Wallet at this place's credit. COLOUR HAS ONE
           MEANING (Pato, MESITA-3576: "what should be the color for those
-          boxes"): black is status (Reserve, Credits), green is earning
-          (Prepay's bonus, Pay's cashback); Credits sits beside Prepay, how
-          credits are added. */}
+          boxes"): black is status (Reserve, Wallet), green is earning
+          (Prepay's bonus, Pay's cashback); Prepay comes first, then Wallet, then
+          Pay: the order the money moves (Pato, MESITA-3577: "prepay must be
+          before credits"). */}
       <MesitaTile
-        Icon={Coins}
-        label="Credits"
+        Icon={Wallet}
+        label="Wallet"
         amount={walletBadge === "…" ? "loading" : `${walletBadge} of credits here`}
         badge={walletBadge}
         tone="ink"
         onClick={actions?.onOpenWallet}
       />
-      {/* Prepay wears the ticket since MESITA-3574. */}
-      <MesitaTile Icon={Ticket} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
       {/* PAY GOES TO /pay (MESITA-3501, Pato: "pay must redirect to the actual
           /pay page"); Prepay keeps opening the Offers page. */}
       <MesitaTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={actions?.onPay} />

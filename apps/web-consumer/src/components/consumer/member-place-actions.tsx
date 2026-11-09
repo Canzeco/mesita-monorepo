@@ -104,7 +104,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
   const vouchers = usePlaceVouchers(place.id);
-  // The Credits tile's credit (MESITA-3574): read the place's offer and the
+  // The Wallet tile's credit (MESITA-3574): read the place's offer and the
   // guest's balance when the screen opens, not only when Rewards opens.
   // load sets state in its promise callbacks only (Next 16 lint).
   const loadVouchers = vouchers.load;
@@ -161,7 +161,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskDismissed(true);
       navigateTo(router, "/pay");
     },
-    // The pinned row's Credits tile (MESITA-3574): the Wallet, opened at this
+    // The pinned row's Wallet tile (MESITA-3574): the Wallet, opened at this
     // place's credit; its pill reads the list-vouchers balance below.
     onOpenWallet: () => navigateTo(router, `/wallet?place=${encodeURIComponent(place.id)}`),
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
