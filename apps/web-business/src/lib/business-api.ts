@@ -449,6 +449,51 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
   };
 }
 
+/** One row of the owner's money (MESITA-3307): a voucher bought or a payment
+ *  made. `guest` is already masked by the server: a name, or two characters
+ *  of the email's local part, never the email. */
+export type PlaceMoneyRow = {
+  kind: "voucher" | "payment";
+  id: string;
+  created_at: string;
+  paid_at: string;
+  status: string;
+  voucher: string | null;
+  ticket: string | null;
+  /** What the guest paid: credit + card + tip on a payment. */
+  amount_cents: number;
+  tip_cents: number;
+  refunded_cents: number;
+  guest: string;
+};
+export type PlaceMoneyCursor = { created_at: string; id: string } | null;
+export type PlaceMoney = {
+  test_mode: boolean;
+  received_cents: number;
+  fee_cents: number;
+  tips_cents: number;
+  available_cents: number;
+  pending_cents: number;
+  rows: PlaceMoneyRow[];
+  next: PlaceMoneyCursor;
+};
+
+/** The owner's money: totals over [from, to) and 50 rows before `before`.
+ *  Owners and Mesita staff only; an editor gets `forbidden`. */
+export async function getPlaceMoney(
+  placeId: string,
+  range: { from?: string; to?: string; before?: PlaceMoneyCursor } = {},
+): Promise<Result<PlaceMoney>> {
+  const r = await efInvoke<PlaceMoney>("business-web-get-place-money", {
+    place_id: placeId,
+    from: range.from,
+    to: range.to,
+    before: range.before ?? undefined,
+  });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: { ...r.data, rows: r.data.rows ?? [], next: r.data.next ?? null } };
+}
+
 /** One switch: Cashback or one voucher. Returns every switch as it now stands. */
 export async function setPlacePayment(placeId: string, key: PaymentKey, enabled: boolean): Promise<Result<PaymentSettings>> {
   const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });

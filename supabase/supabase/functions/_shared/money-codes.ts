@@ -46,6 +46,10 @@ export const MONEY_CODES = [
   "stale_event",
   "body_too_large",
   "settle_failed",
+  // Operator refunds (MESITA-3307): Stripe refused one (+stripe_code), or
+  // nothing is left to refund on the row
+  "refund_failed",
+  "nothing_to_refund",
   // A stale Business › Payments tab sent a switch that no longer exists (MESITA-3408)
   "unknown_switch",
   // Why a voucher is not sellable yet

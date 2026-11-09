@@ -1,7 +1,8 @@
 "use client";
 
-// Payments (MESITA-3296, four sections since MESITA-3408): Mesita Pay, the
-// place's own Stripe account, with the one button its state calls for; Visit
+// Payments (MESITA-3296, four sections since MESITA-3408): the place's own
+// Stripe account, with the one button its state calls for; the owner's money
+// (MESITA-3307: totals, the fee note, the rows; owners only); Visit
 // Checkout, the bill in its order (House Credits, Mesita Pay, Outside
 // Mesita), one switch; Payments Cashback, one switch; Prepaid Vouchers, six.
 // A guest's credit is the place's debt, so no switch refuses it. The owner and
@@ -30,10 +31,12 @@ import { Switch } from "@/components/ui/config";
 import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
+import { MoneySection } from "./MoneySection";
 import {
   openPaymentDashboard,
   type PaymentAccount,
   type PaymentKey,
+  type PlaceMoney,
   type PlacePayments,
   setPlacePayment,
   startPaymentOnboarding,
@@ -124,6 +127,14 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_instagram: "On sale once the Instagram connection is on.",
 };
 
+/** Why a switched-on voucher cannot sell while the account cannot charge
+ *  (MESITA-3307): one grey line by the account's state, with the Stripe
+ *  button beside it. */
+function accountReason(a: PaymentAccount): string {
+  if (a.state === "restricted") return a.requirements_due > 0 ? "Stripe needs more information" : "Stripe paused this account";
+  return "Finish Stripe onboarding";
+}
+
 /** Where the account was opened. Permanent on the account (Stripe). */
 const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
 
@@ -160,7 +171,18 @@ function accountCopy(a: PaymentAccount): { line: string; button: string | null; 
   }
 }
 
-export function PaymentsPanel({ placeId, initial, back }: { placeId: string; initial: PlacePayments; back: "return" | "refresh" | null }) {
+export function PaymentsPanel({
+  placeId,
+  initial,
+  money,
+  back,
+}: {
+  placeId: string;
+  initial: PlacePayments;
+  /** The owner's money (MESITA-3307); null for an editor or when it failed. */
+  money: PlaceMoney | null;
+  back: "return" | "refresh" | null;
+}) {
   const [settings, setSettings] = useState(initial.settings);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
@@ -199,7 +221,11 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
     const reason = isVoucherKey(key) ? selling.unavailable[key] : undefined;
     // One state note at most, then the W2b note last.
     let note: string | null = null;
-    if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
+    let needsStripe = false;
+    if (on && reason === "needs_account") {
+      note = accountReason(account);
+      needsStripe = true;
+    } else if (on && reason && NOT_SELLING[reason]) note = NOT_SELLING[reason];
     if (key === "pay_cards") note = on ? (account.charges_enabled ? null : "Needs Stripe: on once the account can charge.") : "Guests still pay from credit here.";
     if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Mesita Pay on and Stripe ready.";
     const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
@@ -211,7 +237,19 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
         <div className="min-w-0">
           <p className="font-medium">{name}</p>
           <p className="text-muted-foreground">{line}</p>
-          {note ? <p className={NOTE}>{note}</p> : null}
+          {note ? (
+            <p className={NOTE}>
+              {note}
+              {needsStripe && canEdit ? (
+                <>
+                  {" · "}
+                  <button type="button" className="underline" disabled={pending} onClick={() => void stripe()}>
+                    {copy.button ?? "Open Stripe"}
+                  </button>
+                </>
+              ) : null}
+            </p>
+          ) : null}
           {soon ? <p className={NOTE}>{ARRIVES_SOON}</p> : null}
         </div>
         {value ? <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p> : <span />}
@@ -237,7 +275,7 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
 
   return (
     <>
-      {testMode ? <TestBand detail="Mesita's fee: 5% on vouchers, 5% on card payments. Guests pay with Stripe's test card." /> : null}
+      {testMode ? <TestBand detail="Guests pay with Stripe's test card." /> : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">
           <li className="flex flex-col gap-4 px-5 py-4 sm:px-6">
@@ -271,12 +309,16 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
                 ))}
               </ul>
             ) : null}
+            {!ready && money && money.available_cents + money.pending_cents > 0 ? (
+              <p className={NOTE}>Guests can still spend credit here.</p>
+            ) : null}
             {ready && !CARD_BILL_PAY_LIVE && !selling.mesita_pay ? (
               <p className={NOTE}>The green Mesita Pay mark shows on your place once a voucher is on sale.</p>
             ) : null}
           </li>
         </ul>
       </Card>
+      {money ? <MoneySection placeId={placeId} initial={money} /> : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <h2 className={HEAD}>Visit Checkout</h2>
         <ul className="divide-border divide-y">

@@ -1,0 +1,158 @@
+"use client";
+
+// The owner's money on Business › Payments (MESITA-3307, W3): one card of
+// four rows (Money received · Mesita's fee · Credit outstanding · Tips), the
+// fee rates and the test-mode cap in one grey note under it, then the rows:
+// what each guest paid, newest first, 50 at a time, with a date range. The
+// owner and Mesita staff only (the server answers editors 403). Who paid is
+// masked by the server; the page never sees an email.
+
+import { useState } from "react";
+import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { Card } from "@/components/shell/Page";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { getPlaceMoney, type PlaceMoney } from "@/lib/business-api";
+
+const CURRENCY = "MXN";
+const ROW = "flex min-h-14 items-center gap-4 px-5 py-3 text-sm sm:px-6";
+const NOTE = "text-muted-foreground text-xs";
+
+/** Shown under the totals, never in the TestBand. */
+export const FEE_NOTE = "Mesita's fee: 5% on vouchers, 5% on card payments.";
+export const CAP_NOTE = "In test mode a place holds at most $20,000MX of guests' credit.";
+
+const KIND: Record<string, string> = {
+  voucher_200: "Standard voucher",
+  voucher_1000: "Standard Medium voucher",
+  voucher_5000: "Standard Large voucher",
+  voucher_welcome: "Welcome voucher",
+  voucher_story: "Story voucher",
+  voucher_vip: "VIP voucher",
+};
+
+function money(cents: number): string {
+  return moneyLabel(cents, CURRENCY);
+}
+
+function when(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+/** A yyyy-mm-dd day as the start of that day, local time, in ISO. */
+function dayStart(day: string, plusDays = 0): string | undefined {
+  if (!day) return undefined;
+  const d = new Date(`${day}T00:00:00`);
+  d.setDate(d.getDate() + plusDays);
+  return d.toISOString();
+}
+
+export function MoneySection({ placeId, initial }: { placeId: string; initial: PlaceMoney }) {
+  const [money_, setMoney] = useState(initial);
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load(more: boolean, nextFrom = from, nextTo = to) {
+    setBusy(true);
+    setError(null);
+    const r = await getPlaceMoney(placeId, {
+      from: dayStart(nextFrom),
+      to: dayStart(nextTo, 1),
+      before: more ? money_.next : null,
+    });
+    setBusy(false);
+    if (!r.ok) return setError(r.error);
+    setMoney(more ? { ...r.data, rows: [...money_.rows, ...r.data.rows] } : r.data);
+  }
+
+  const totals: { label: string; value: string; line?: string }[] = [
+    { label: "Money received", value: money(money_.received_cents), line: "Vouchers and card payments, after refunds." },
+    { label: "Mesita's fee", value: money(money_.fee_cents) },
+    {
+      label: "Credit outstanding",
+      value: money(money_.available_cents + money_.pending_cents),
+      line: `${money(money_.available_cents)} available · ${money(money_.pending_cents)} pending. Guests spend it here.`,
+    },
+    { label: "Tips", value: money(money_.tips_cents), line: "Yours in full; no fee." },
+  ];
+
+  return (
+    <>
+      <Card className="flex flex-col p-0 sm:p-0">
+        <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Money</h2>
+        <ul className="divide-border divide-y">
+          {totals.map((t) => (
+            <li key={t.label} className={ROW}>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{t.label}</p>
+                {t.line ? <p className="text-muted-foreground">{t.line}</p> : null}
+              </div>
+              <p className="font-semibold whitespace-nowrap tabular-nums">{t.value}</p>
+            </li>
+          ))}
+        </ul>
+        <p className={`${NOTE} px-5 pb-4 sm:px-6`} data-fee-note>
+          {FEE_NOTE}
+          {money_.test_mode ? ` ${CAP_NOTE}` : ""}
+        </p>
+      </Card>
+
+      <Card className="flex flex-col p-0 sm:p-0">
+        <div className="flex flex-wrap items-end gap-3 px-5 pt-4 pb-3 sm:px-6">
+          <h2 className="flex-1 font-semibold">Payments received</h2>
+          <label className="flex flex-col text-xs">
+            <span className="text-muted-foreground">From</span>
+            <input
+              type="date"
+              className="border-border bg-background h-9 rounded-lg border px-2 text-sm"
+              value={from}
+              onChange={(e) => {
+                setFrom(e.target.value);
+                void load(false, e.target.value, to);
+              }}
+            />
+          </label>
+          <label className="flex flex-col text-xs">
+            <span className="text-muted-foreground">To</span>
+            <input
+              type="date"
+              className="border-border bg-background h-9 rounded-lg border px-2 text-sm"
+              value={to}
+              onChange={(e) => {
+                setTo(e.target.value);
+                void load(false, from, e.target.value);
+              }}
+            />
+          </label>
+        </div>
+        {money_.rows.length === 0 ? (
+          <p className="text-muted-foreground px-5 pb-5 text-sm sm:px-6">
+            {from || to ? "Nothing in these dates." : "No payments yet. Vouchers guests buy and bills they pay on Mesita show here."}
+          </p>
+        ) : (
+          <ul className="divide-border divide-y border-t">
+            {money_.rows.map((r) => (
+              <li key={r.id} className={ROW}>
+                <p className="w-28 shrink-0 font-semibold tabular-nums">{money(r.amount_cents)}</p>
+                <p className="text-muted-foreground min-w-0 flex-1 truncate">
+                  {r.kind === "voucher" ? KIND[r.voucher ?? ""] ?? "Voucher" : "Payment"}
+                  {r.tip_cents > 0 ? ` (tip ${money(r.tip_cents)})` : ""} · {r.guest}
+                  {r.ticket ? ` · ${r.ticket}` : ""}
+                  {r.refunded_cents > 0 ? ` · ${money(r.refunded_cents)} refunded` : ""}
+                </p>
+                <p className="text-muted-foreground shrink-0 tabular-nums">{when(r.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+        {money_.next ? (
+          <button type="button" className="text-muted-foreground hover:text-foreground border-t px-5 py-3 text-left text-sm sm:px-6" disabled={busy} onClick={() => void load(true)}>
+            {busy ? "Loading…" : "Older"}
+          </button>
+        ) : null}
+      </Card>
+      {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
+    </>
+  );
+}

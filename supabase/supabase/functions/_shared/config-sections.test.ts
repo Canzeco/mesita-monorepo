@@ -37,6 +37,7 @@ type Row = Record<string, unknown>;
 function seedRow(): Row {
   return {
     discovery_config: null,
+    money_config: null,
     enrichment_config: null,
     enrichment_triggers: null,
     models_config: null,
@@ -187,6 +188,24 @@ const CASES: Record<string, SectionCase> = {
     },
     invalid: { config: "not an object" },
     refuse: { status: 400, contains: "config must be an object" },
+  },
+
+  money: {
+    // Manage › Money's pause switch (MESITA-3307), with the cron's bounds.
+    valid: { config: { buying_paused: true, settle_rows: 20 } },
+    assertSaved: (saved, row) => {
+      assertEquals((saved.config as Row).buying_paused, true);
+      assertEquals((row.money_config as Row).settle_rows, 20);
+      assertEquals((row.money_config as Row).settle_concurrency, 5);
+    },
+    // Coerced: a string is not "paused", a zero bound is its default.
+    invalid: { config: { buying_paused: "yes", settle_rows: 0 } },
+    refuse: {
+      clamped: (saved) => {
+        assertEquals((saved.config as Row).buying_paused, false);
+        assertEquals((saved.config as Row).settle_rows, 50);
+      },
+    },
   },
 
   reservations: {
