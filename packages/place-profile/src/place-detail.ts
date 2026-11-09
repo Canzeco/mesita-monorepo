@@ -34,6 +34,9 @@ export type PlaceMoney = {
   mesita_pay: boolean;
   /** Payments Cashback, the standard 5%, on. */
   cashback: boolean;
+  /** A bill paid to the waiter earns 2% here (the Cashback switch and a place
+   *  code, no Stripe; MESITA-3545). The server sends it; older reads lack it. */
+  outside_cashback?: boolean;
   vouchers: Record<VoucherKey, boolean>;
   /** Stripe is in test mode: the TestBand shows, no real money moves. */
   test_mode: boolean;
