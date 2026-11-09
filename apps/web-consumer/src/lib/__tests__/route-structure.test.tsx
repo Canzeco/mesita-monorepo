@@ -645,7 +645,8 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Cards",
       // Refunds: credit a closed place can't honour (MESITA-3517).
       "Refunds",
-      "Connector",
+      // Connector until MESITA-3561.
+      "MCP",
       "Share",
       "Settings",
     ]);

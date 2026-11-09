@@ -164,7 +164,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
   {
     Icon: ConnectorIcon,
-    title: "Connector",
+    // MCP (Pato, MESITA-3561: "Rename Connector to MCP"). The label only:
+    // the route stays /me/connector.
+    title: "MCP",
     summary: "ChatGPT or Claude",
     href: CONSUMER_ROUTES.mePages.connector,
   },
