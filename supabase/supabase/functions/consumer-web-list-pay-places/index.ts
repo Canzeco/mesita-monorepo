@@ -23,7 +23,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { CASHBACK_BPS, MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
 import { listRowMoney, PAYMENT_KEYS, type PaymentKey, type PaymentSettings, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
@@ -50,7 +50,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (!loc.ok) return json({ ok: false, code: "bad_location", field: loc.field, error: `${loc.field} is not a coordinate` }, 400);
 
   const admin = adminClient(envRes.env);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
 
   // The guest's credit per place, and every account that charges in this
   // universe (the card places; few for a long time, so one read).

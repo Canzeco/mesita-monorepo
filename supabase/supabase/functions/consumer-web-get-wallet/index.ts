@@ -40,7 +40,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { chargesEnabledByPlace, listRowMoney, PAYMENT_KEYS, type PaymentKey, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
@@ -72,7 +72,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const sessionId = typeof body.session_id === "string" ? body.session_id : null;
 
   const admin = adminClient(envRes.env);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
 
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
@@ -87,7 +87,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
 
   let outcome: SettleOutcome | "none" | undefined = sessionId ? "none" : undefined;
   let settling: string[] = [];
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   const purchases = (open ?? []) as OpenPurchase[];
   if (key && purchases.length > 0) {
     const res = await settleAll(admin, stripeClient(key), purchases, Date.now(), SETTLE_BUDGET_MS);

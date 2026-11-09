@@ -17,7 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { planCloseOut, PURCHASE_COLUMNS, type PurchaseRow, refundPurchase } from "../_shared/money-admin.ts";
 
 serveJson("admin-web-close-out-place", async (req) => {
@@ -30,10 +30,10 @@ serveJson("admin-web-close-out-place", async (req) => {
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, code: "not_configured", error: "Stripe is not configured" }, 503);
   const stripe = stripeClient(key);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
 
   const { data, error } = await admin
     .from("wallet_purchases")

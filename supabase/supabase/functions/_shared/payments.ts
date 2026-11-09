@@ -12,10 +12,10 @@
 // refuses the pair, the account is created with no dashboard instead: the
 // money posture is the law, the dashboard is a convenience.
 //
-// Test mode until Pato flips STRIPE_MODE (boostStripeKey); agents never do.
+// Test mode until Pato flips PAYMENTS_STRIPE_MODE (paymentsStripeKey); agents never do.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { boostLivemode, type StripeCall } from "./boost.ts";
+import { paymentsLivemode, type StripeCall } from "./boost.ts";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { vouchersUpToPct } from "./money.ts";
 
@@ -145,7 +145,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   const [settingsRes, charging] = await Promise.all([
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
-    chargesEnabledByPlace(admin, ids, boostLivemode()),
+    chargesEnabledByPlace(admin, ids, paymentsLivemode()),
   ]);
   if (settingsRes.error) {
     console.error("[payments] settings_read_failed", JSON.stringify({ code: settingsRes.error.code, message: settingsRes.error.message, places: ids.length }));

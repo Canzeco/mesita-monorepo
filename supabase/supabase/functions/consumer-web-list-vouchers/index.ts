@@ -14,7 +14,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
@@ -36,6 +36,6 @@ serveJson("consumer-web-list-vouchers", async (req) => {
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   if (!placeRes.place) return json({ ok: false, error: "Place not found" }, 404);
 
-  const money = await voucherOffer(admin, placeRes.place, user?.id ?? null, boostLivemode());
+  const money = await voucherOffer(admin, placeRes.place, user?.id ?? null, paymentsLivemode());
   return json({ ok: true, money });
 });

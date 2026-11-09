@@ -20,7 +20,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { accountView, readAccount, readSettings, refreshAccount } from "../_shared/payments.ts";
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 
@@ -38,10 +38,10 @@ serveJson("business-web-get-payments", async (req) => {
   if (access instanceof Response) return access;
 
   let account = await readAccount(admin, placeId);
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (account && key) {
     try {
-      account = await refreshAccount(admin, stripeClient(key), account, boostLivemode());
+      account = await refreshAccount(admin, stripeClient(key), account, paymentsLivemode());
     } catch (err) {
       // Stripe unreachable, or the account gone from this universe: answer
       // what the row last said rather than nothing.
@@ -55,16 +55,16 @@ serveJson("business-web-get-payments", async (req) => {
     .from("place_fee_invoices")
     .select(FEE_INVOICE_COLUMNS)
     .eq("place_id", placeId)
-    .eq("livemode", boostLivemode())
+    .eq("livemode", paymentsLivemode())
     .in("status", ["open", "uncollectible"])
     .order("created_at", { ascending: true })
     .limit(10);
   if (feeErr) return json({ ok: false, error: `place_fee_invoices: ${feeErr.message}` }, 500);
-  const hold = account?.livemode === boostLivemode() && account?.fee_hold === true;
+  const hold = account?.livemode === paymentsLivemode() && account?.fee_hold === true;
   return json({
     ok: true,
     can_edit: canManage(access.role),
-    test_mode: !boostLivemode(),
+    test_mode: !paymentsLivemode(),
     account: accountView(account),
     settings,
     code_set: !!code,

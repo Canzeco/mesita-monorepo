@@ -17,7 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, staffTryKey } from "../_shared/charge.ts";
 import { listPayments, readListBody, staffAccess, supabaseStaffStore } from "../_shared/staff.ts";
@@ -57,7 +57,7 @@ serveJson("visit-web-list-payments", async (req) => {
     return json({ ok: false, code: access.code, error: access.error, ...access.detail }, access.status);
   }
 
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const payments = await listPayments(store, { placeId: input.placeId, livemode, nowMs });
   // Never the place code or the token in a log line.
   if (access.minted) console.log("[visit-web-list-payments]", JSON.stringify({ outcome: "signed_in", place_id: input.placeId }));

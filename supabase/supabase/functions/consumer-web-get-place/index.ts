@@ -27,7 +27,7 @@ import {
 } from "../_shared/place-requests.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -116,7 +116,7 @@ serveJson("consumer-web-get-place", async (req) => {
       admin,
       { id: placeId, name: text(row.name), state: text(row.state), currency: text(row.currency) },
       user?.id ?? null,
-      boostLivemode(),
+      paymentsLivemode(),
     ),
   ]);
   const request = placeRequestState({

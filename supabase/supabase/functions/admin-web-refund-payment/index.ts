@@ -19,7 +19,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
   type PaymentRow,
@@ -45,8 +45,8 @@ serveJson("admin-web-refund-payment", async (req) => {
     return json({ ok: false, code: "amount_required", error: "amount_cents must be a positive integer" }, 400);
   }
 
-  const key = boostStripeKey();
-  const livemode = boostLivemode();
+  const key = paymentsStripeKey();
+  const livemode = paymentsLivemode();
   const deps = { admin, stripe: key ? stripeClient(key) : null, actor: user.id };
 
   const table = kind === "purchase" ? "wallet_purchases" : "wallet_payments";
