@@ -296,9 +296,10 @@ export function VouchersPane({
     onLoad?.();
   }, [onLoad]);
   const prepaymentRef = useRef<HTMLElement>(null);
+  const specialRef = useRef<HTMLElement>(null);
   useEffect(() => {
-    if (focus !== "prepayment") return;
-    const el = prepaymentRef.current;
+    if (focus === "payment") return;
+    const el = focus === "special" ? specialRef.current : prepaymentRef.current;
     // The nearest scroller only: scrollIntoView would also move the app
     // card behind the sheet, whose overflow is hidden but still scrollable.
     let box = el?.parentElement ?? null;
@@ -444,7 +445,7 @@ export function VouchersPane({
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
         {row(STANDARD, "Prepayment offers")}
       </section>
-      <section className="flex flex-col gap-2" aria-labelledby="rewards-special" data-promos="special">
+      <section ref={specialRef} className="flex flex-col gap-2" aria-labelledby="rewards-special" data-promos="special">
         <h3 id="rewards-special" className={OFFERS_TITLE_CLASS}>Special Prepayment Offers</h3>
         {row(SPECIAL, "Special prepayment offers", true)}
         <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
