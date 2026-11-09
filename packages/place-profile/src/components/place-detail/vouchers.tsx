@@ -281,6 +281,12 @@ function InfoButton({ title, text }: { title: string; text: string[] }) {
 /** WHEN THE CREDITS ARRIVE (MESITA-3498, Pato: "Welcome, Story and VIP are
  *  activated immediately; the other vouchers take one hour ... Pay X, get Y
  *  in 1 hr ... Pay X, get Y instantly"). */
+/** The black button stays clean: no MX there, only on the rows (MESITA-3499,
+ *  Pato: "don't mention MX below, just on the select"). */
+function noMx(v: string): string {
+  return v.replace(/MX$/, "");
+}
+
 function readyIn(key: MoneyVoucherKey): string {
   return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
 }
@@ -599,7 +605,7 @@ export function VouchersPane({
           {chosen
             ? actions?.buyingVoucher === chosen.key
               ? "Opening…"
-              : `Pay ${priceValue(chosen, catalog[chosen.key], currency)}, Get ${creditValue(chosen, catalog[chosen.key], currency)}`
+              : `Pay ${noMx(priceValue(chosen, catalog[chosen.key], currency))}, Get ${noMx(creditValue(chosen, catalog[chosen.key], currency))} ${readyIn(chosen.key)}`
             : "Select an offer"}
         </button>
       </div>
