@@ -6,7 +6,7 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 
-const TWINS = ["money-state.ts", "money-codes.ts"] as const;
+const TWINS = ["money-state.ts", "money-codes.ts", "pay-split.ts"] as const;
 
 for (const name of TWINS) {
   Deno.test(`twin: ${name} is byte-identical in packages/place-profile`, async () => {
