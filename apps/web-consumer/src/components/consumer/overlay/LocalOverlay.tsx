@@ -203,6 +203,7 @@ export function LocalSheet({
   children,
   ariaLabel,
   fullScreen = false,
+  from = "bottom",
 }: {
   open: boolean;
   onClose: () => void;
@@ -210,6 +211,10 @@ export function LocalSheet({
   ariaLabel: string;
   /** The whole card, not the semi-modal (using a reward, MESITA-3254). */
   fullScreen?: boolean;
+  /** Where the panel comes from. "right" slides in right to left and out
+   *  left to right, the place screen's own motion (SlideOverShell), for a
+   *  full-screen page opened from it (the Offers page, MESITA-3453). */
+  from?: "bottom" | "right";
 }) {
   const { mounted, shown } = useLocalPresence(open);
   useEscape(open, onClose);
@@ -248,7 +253,13 @@ export function LocalSheet({
             "outline-none",
             "transition-transform duration-300 motion-reduce:transition-none",
             OVERLAY_EASE,
-            shown ? "translate-y-0" : "translate-y-full",
+            from === "right"
+              ? shown
+                ? "translate-x-0"
+                : "translate-x-full"
+              : shown
+                ? "translate-y-0"
+                : "translate-y-full",
           )}
         >
           {fullScreen ? null : <div className={SHEET_GRABBER_CLASS} />}
