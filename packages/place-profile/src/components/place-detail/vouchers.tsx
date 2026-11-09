@@ -330,7 +330,10 @@ export function VouchersPane({
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
         <fieldset className="m-0 min-w-0 border-0 p-0">
           <legend className="sr-only">Choose a voucher</legend>
-          <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-voucher-catalog>
+          {/* SQUARE TILES (MESITA-3484, Pato: "make the 6 offers instead some
+              square dimensions, not rectangles"): three across, two rows,
+              each the voucher's light face; picking one rings it in ink. */}
+          <ul className="grid grid-cols-3 gap-2" data-voucher-catalog>
             {products.map((p) => {
               const line = catalog[p.key];
               const pay = priceValue(p, line, currency);
@@ -341,33 +344,49 @@ export function VouchersPane({
               const on = chosen?.key === p.key;
               const face = FACES[p.key];
               const Mark = face.Mark;
-              const small = [p.short, p.when, loading || can ? null : tag(reason)].filter(Boolean).join(" · ");
+              const tile = cn(
+                "flex aspect-square w-full flex-col justify-between rounded-2xl p-2.5 text-left",
+                face.card,
+                on && "ring-foreground ring-2 ring-offset-2",
+              );
               const inner = (
                 <>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                      on ? "border-foreground" : "border-foreground/25",
-                      !can && "invisible",
-                    )}
-                  >
-                    {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
-                  </span>
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-foreground text-sm leading-snug font-semibold tabular-nums">{deal}</span>
-                    <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                  <span className="flex w-full items-center justify-between gap-1">
+                    <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
                       {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
-                      {small}
+                      {p.short}
+                    </span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
+                        on ? "border-neutral-950" : "border-neutral-950/30",
+                        !can && "invisible",
+                      )}
+                    >
+                      {on ? <span className="h-2 w-2 rounded-full bg-neutral-950" /> : null}
                     </span>
                   </span>
-                  <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", face.card)}>{p.bonus.replace(" bonus", " Bonus")}</span>
+                  <span className="flex flex-col" aria-hidden>
+                    <span className="text-3xl leading-none font-extrabold tabular-nums">+{p.bonus.replace(/ bonus$/, "")}</span>
+                    <span className="text-[11px] font-semibold">bonus</span>
+                  </span>
+                  <span className="flex flex-col text-[11px] leading-tight font-semibold tabular-nums" aria-hidden>
+                    {loading || can ? (
+                      <>
+                        <span className="truncate">Pay {pay}</span>
+                        <span className="truncate">Get {get}</span>
+                      </>
+                    ) : (
+                      <span>{tag(reason)}</span>
+                    )}
+                  </span>
                 </>
               );
               return (
                 <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
                   {can ? (
-                    <label className={cn(ROW, "cursor-pointer", on && "bg-muted/60")}>
+                    <label className={cn(tile, "cursor-pointer")}>
                       <input
                         type="radio"
                         name="voucher"
@@ -380,7 +399,7 @@ export function VouchersPane({
                       {inner}
                     </label>
                   ) : (
-                    <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
+                    <div className={tile} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
                       {inner}
                     </div>
                   )}
