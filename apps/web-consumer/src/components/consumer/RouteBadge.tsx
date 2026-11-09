@@ -16,8 +16,8 @@ import { Z_ROUTE_BADGE } from "@/lib/z-index";
  * don't: `/place/[id]` lights Home while `/reservation/[id]` lights Me, and
  * an `@modal` intercept looks identical to its hard twin.
  *
- * Placement follows the frame. On desktop it parks in the gutter beside
- * the card, overlapping nothing. Narrow viewports have no gutter, so it
+ * Placement follows the frame. On desktop it parks right of the card,
+ * over the call log, overlapping nothing. Narrow viewports have no gutter, so it
  * sits translucent over the top-left corner — `pointer-events-none`
  * throughout, so it can never eat a tap meant for the app.
  */
@@ -34,10 +34,9 @@ export function RouteBadge() {
       data-testid="route-badge"
       className={cn(
         "pointer-events-none fixed top-2 left-2 select-none",
-        // Right edge lands 0.75rem left of the card, whose half-width is
-        // 14rem (max-w-md in MobileFrame). If that width ever changes this
-        // only drifts within the gutter — it never covers the card.
-        "md:left-[calc(50%-14.75rem)] md:-translate-x-full",
+        // Desktop: over the call log, 0.75rem right of the card, which sits
+        // at the left edge, 1rem in, 28rem wide (MobileFrame, MESITA-3518).
+        "md:left-[29.75rem]",
         "bg-card/80 text-muted-foreground border-border rounded-full border px-2.5 py-1",
         "type-label font-mono leading-none tracking-tight tabular-nums backdrop-blur-sm",
         Z_ROUTE_BADGE,

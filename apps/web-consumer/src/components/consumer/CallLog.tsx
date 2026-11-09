@@ -19,11 +19,13 @@ import { Z_ROUTE_BADGE } from "@/lib/z-index";
 const SLOW_MS = 800;
 
 /**
- * A log under the route badge (MESITA-3040): every Edge Function call this
- * browser makes and every screen change, newest first, with its status and
- * milliseconds. Desktop gutter only (a phone has no room beside the card),
- * so it never sits over the app. Clicking an Edge Function line opens a box
- * over the log with the request it sent and the response (MESITA-3089).
+ * The desktop console right of the phone card (MESITA-3040, MESITA-3518):
+ * a log of every Edge Function call this browser makes and every screen
+ * change, newest first, with its status and milliseconds; then a panel with
+ * the request and response of the newest Edge Function call. Clicking a
+ * line pins that call in the panel (MESITA-3089); "latest" lets it follow
+ * the newest again. Under xl there is no room for the panel, so a clicked
+ * line opens the same box over the log instead. Phones show none of it.
  *
  * Server-side calls (the shell layout's profile read, a place page's read)
  * do not appear as lines: they are inside the `nav` line's time.
@@ -36,18 +38,21 @@ export function CallLog() {
   );
   const pathname = usePathname() ?? "/";
   const previous = useRef<string | null>(null);
-  const [openId, setOpenId] = useState<number | null>(null);
-  // Gone once it scrolls out of the last 40 lines.
-  const open = lines.find((line) => line.id === openId) ?? null;
+  const [pinnedId, setPinnedId] = useState<number | null>(null);
+  // Gone once it scrolls out of the last 40 lines; then the panel follows
+  // the newest call again.
+  const pinned = lines.find((line) => line.id === pinnedId) ?? null;
+  const latest = lines.find((line) => line.kind === "ef") ?? null;
+  const shown = pinned ?? latest;
 
   useEffect(() => {
-    if (openId === null) return;
+    if (pinnedId === null) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpenId(null);
+      if (event.key === "Escape") setPinnedId(null);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [openId]);
+  }, [pinnedId]);
 
   // Start the clock on the finger, before any router work.
   useEffect(() => {
@@ -74,38 +79,63 @@ export function CallLog() {
     });
   }, [pathname]);
 
+  const unpin = () => setPinnedId(null);
+
   return (
     <div
       data-testid="call-log"
       className={cn(
-        "fixed top-10 bottom-2 hidden select-none md:flex",
-        // Same gutter as RouteBadge: right edge 0.75rem left of the card.
-        "md:right-[calc(50%+14.75rem)] md:w-[min(26rem,calc(50%-15.5rem))]",
-        // A terminal: dark whatever the app theme (MESITA-3088).
-        "flex-col gap-0.5 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950/95 p-2 text-zinc-200 shadow-lg backdrop-blur-sm",
+        // Right of the card (left edge, 1rem in, 28rem wide — MobileFrame),
+        // under the route badge, to 1rem from the window's right edge.
+        "fixed top-10 bottom-2 hidden gap-3 select-none md:right-4 md:left-[29.75rem] md:flex",
         "type-label font-mono leading-tight tabular-nums",
         Z_ROUTE_BADGE,
       )}
     >
-      <div className="pb-1 text-zinc-500">edge functions · navigation</div>
-      {lines.length === 0 ? (
-        <div className="text-zinc-500">waiting for the first call…</div>
-      ) : (
-        lines.map((line) => (
-          <Line
-            key={line.id}
-            line={line}
-            open={line.id === openId}
-            onToggle={() =>
-              setOpenId((current) => (current === line.id ? null : line.id))
-            }
-          />
-        ))
-      )}
-      {open ? <Detail line={open} onClose={() => setOpenId(null)} /> : null}
+      <div
+        className={cn(
+          "relative flex min-w-0 flex-1 flex-col gap-0.5 overflow-hidden xl:w-[26rem] xl:flex-none",
+          TERMINAL,
+        )}
+      >
+        <div className="pb-1 text-zinc-500">edge functions · navigation</div>
+        {lines.length === 0 ? (
+          <div className="text-zinc-500">waiting for the first call…</div>
+        ) : (
+          lines.map((line) => (
+            <Line
+              key={line.id}
+              line={line}
+              open={line.id === shown?.id}
+              onToggle={() =>
+                setPinnedId((current) => (current === line.id ? null : line.id))
+              }
+            />
+          ))
+        )}
+        {/* Under xl: no panel, so a pinned call opens over the log. */}
+        {pinned ? (
+          <div className="absolute inset-x-2 top-8 bottom-2 flex xl:hidden">
+            <Detail line={pinned} pinned onUnpin={unpin} />
+          </div>
+        ) : null}
+      </div>
+      <div className={cn("hidden min-w-0 flex-1 xl:flex", TERMINAL)}>
+        {shown ? (
+          <Detail line={shown} pinned={pinned !== null} onUnpin={unpin} />
+        ) : (
+          <div className="text-zinc-500">
+            request · response — waiting for the first call…
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+
+// A terminal: dark whatever the app theme (MESITA-3088).
+const TERMINAL =
+  "rounded-lg border border-zinc-800 bg-zinc-950/95 p-2 text-zinc-200 shadow-lg backdrop-blur-sm";
 
 function Line({
   line,
@@ -141,7 +171,7 @@ function Line({
     <button
       type="button"
       onClick={onToggle}
-      aria-expanded={open}
+      aria-pressed={open}
       className={cn(
         className,
         "w-full cursor-pointer hover:bg-zinc-800/80",
@@ -153,23 +183,34 @@ function Line({
   );
 }
 
-// The box over the log: the clicked line, then what it sent and got back.
-function Detail({ line, onClose }: { line: CallLine; onClose: () => void }) {
+// One call: its line, then what it sent and got back.
+function Detail({
+  line,
+  pinned,
+  onUnpin,
+}: {
+  line: CallLine;
+  pinned: boolean;
+  onUnpin: () => void;
+}) {
   return (
-    <div className="absolute inset-x-2 top-8 bottom-2 flex flex-col gap-2 rounded-md border border-zinc-700 bg-zinc-900 p-2 shadow-2xl select-text">
+    <div className="flex min-h-0 w-full flex-col gap-2 rounded-md border border-zinc-700 bg-zinc-900 p-2 shadow-2xl select-text">
       <div className="flex items-center gap-2 text-zinc-200">
         <span className="min-w-0 flex-1 truncate">
           {line.label.replace(/^consumer-web-/, "")} · {line.status} ·{" "}
           {line.ms === null ? "—" : `${line.ms} ms`} · {clock(line.at)}
         </span>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="cursor-pointer rounded-sm px-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-        >
-          ×
-        </button>
+        {pinned ? (
+          <button
+            type="button"
+            onClick={onUnpin}
+            className="cursor-pointer rounded-sm px-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          >
+            pinned · show latest
+          </button>
+        ) : (
+          <span className="text-zinc-500">latest</span>
+        )}
       </div>
       <Section title="request" value={line.request} className="max-h-[35%]" />
       <Section title="response" value={line.response} className="flex-1" />
