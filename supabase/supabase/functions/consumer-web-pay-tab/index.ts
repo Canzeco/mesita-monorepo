@@ -41,6 +41,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
+import { moneyState } from "../_shared/money-state.ts";
 import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "../_shared/money.ts";
 import { cardRefusal } from "../_shared/pay-card.ts";
@@ -74,6 +75,13 @@ serveJson("consumer-web-pay-tab", async (req) => {
       return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     }
     const settings = await readSettings(admin, tab.place_id);
+    // Cash Payments (MESITA-3589): a cash part needs the owner's switch. A
+    // credit-only bill never does: credit the guest holds stays spendable
+    // whatever the switches say.
+    const cashMoney = moneyState({ ...settings, has_place_code: true }, null, null);
+    if ((split.cashBillCents > 0 || split.cashTipCents > 0) && !cashMoney.cash) {
+      return json({ ok: false, code: "cash_off", error: "This place doesn't take cash through Mesita. Pay with credits or card." }, 409);
+    }
 
     // The card part's gates, before anything is held.
     let card: CardSplitArgs | null = null;
@@ -101,7 +109,7 @@ serveJson("consumer-web-pay-tab", async (req) => {
       };
     }
 
-    const r = await callTabRpc(admin, "pay_tab_open_parts", splitArgs(userId, split, settings.cashback, card));
+    const r = await callTabRpc(admin, "pay_tab_open_parts", splitArgs(userId, split, cashMoney.cash_cashback_bps, card));
     if (r.ok !== true) {
       const refusal = rpcRefusal(r);
       console.log("[consumer-web-pay-tab]", JSON.stringify({ outcome: refusal.code, tab_id: tab.id }));

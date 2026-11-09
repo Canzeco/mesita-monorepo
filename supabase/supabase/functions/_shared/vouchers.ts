@@ -30,9 +30,19 @@ export type VoucherOffer = {
   currency: string;
   charges_enabled: boolean;
   cashback: boolean;
-  /** A bill paid to the waiter through the waiter's code earns 2% here
-   *  (the Cashback switch and a place code; no Stripe; MESITA-3545). */
+  /** A bill paid to the waiter earns cashback here (Cash Payments Cashback;
+   *  MESITA-3545, the place's own rate since MESITA-3589). */
   outside_cashback: boolean;
+  /** The place's rates now, in bps (0 = Off or not usable; MESITA-3589):
+   *  the card part (Mesita Payments Cashback) and the cash bill part (Cash
+   *  Payments Cashback). Never on the tip or the credit part. */
+  card_cashback_bps: number;
+  cash_cashback_bps: number;
+  /** House Credits is On here: new credit can be born. Off never stops a
+   *  guest spending what they already hold. */
+  house_credits: boolean;
+  /** Cash Payments is On here (the owner's switch and the place code). */
+  cash: boolean;
   /** The green Mesita Pay mark, moneyState's, before the pause and
    *  Welcome-used filters so the place screen and the list rows agree. */
   mesita_pay: boolean;
@@ -86,7 +96,11 @@ export type OfferInput = {
 /** The pure half of the offer. */
 export function offerFrom(i: OfferInput): VoucherOffer {
   const usable = !!i.account && i.account.livemode === i.livemode && i.account.charges_enabled;
-  const state = moneyState({ ...i.settings, has_place_code: i.hasPlaceCode === true }, { charges_enabled: usable }, i.balance ? { spendable_cents: i.balance.spendable_cents } : null);
+  const state = moneyState(
+    { ...i.settings, has_place_code: i.hasPlaceCode === true },
+    { charges_enabled: usable, fee_hold: usable && i.account?.fee_hold === true },
+    i.balance ? { spendable_cents: i.balance.spendable_cents } : null,
+  );
   const unavailable = { ...state.unavailable };
   const sell: MoneyVoucherKey[] = [];
   for (const k of state.sell) {
@@ -97,13 +111,17 @@ export function offerFrom(i: OfferInput): VoucherOffer {
   }
   // The guest's offer carries the voucher switches alone; the Mesita Pay switch
   // (MESITA-3396) is already folded into `cashback` and the mark.
-  const { cashback: _c, pay_cards: _pd, ...vouchers } = i.settings;
+  const vouchers = Object.fromEntries(MONEY_VOUCHER_KEYS.map((k) => [k, i.settings[k] === true])) as Record<MoneyVoucherKey, boolean>;
   return {
     test_mode: !i.livemode,
     currency: i.currency,
     charges_enabled: usable,
     cashback: state.cashback,
     outside_cashback: state.outside_cashback,
+    card_cashback_bps: state.card_cashback_bps,
+    cash_cashback_bps: state.cash_cashback_bps,
+    house_credits: state.house_credits,
+    cash: state.cash,
     mesita_pay: state.mesita_pay,
     vouchers,
     sell,
@@ -214,6 +232,8 @@ export type BuyOk = { ok: true; url: string; purchase_id: string };
 export const REFUSAL_FOR: Record<VoucherReason, { code: MoneyCode; error: string }> = {
   off: { code: "not_available", error: "This place does not sell that voucher" },
   needs_account: { code: "no_account", error: "This place has not connected payments yet" },
+  needs_house_credits: { code: "not_available", error: "This place doesn't accept prepayments" },
+  needs_billing: { code: "not_available", error: "This place doesn't accept prepayments right now" },
   not_yet: { code: "not_yet", error: "This voucher is not on sale yet" },
   needs_card_payments: { code: "needs_card_payments", error: "This voucher needs card payments, which are not on yet" },
   needs_instagram: { code: "needs_instagram", error: "This voucher needs the Instagram connection, which is not on yet" },

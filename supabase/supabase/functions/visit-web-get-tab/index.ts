@@ -17,6 +17,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { readSettings } from "../_shared/payments.ts";
+import { moneyState } from "../_shared/money-state.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isTabToken, readTabByToken, readTabParts, staffTabView } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
@@ -45,7 +46,7 @@ serveJson("visit-web-get-tab", async (req) => {
     if (!placeRes.ok) throw new Error(placeRes.error);
     return json({
       ok: true,
-      tab: staffTabView(tab, parts, { placeName: placeRes.place?.name ?? null, cashbackOn: settings.cashback, nowMs: Date.now() }),
+      tab: staffTabView(tab, parts, { placeName: placeRes.place?.name ?? null, cashBackBps: moneyState({ ...settings, has_place_code: true }, null, null).cash_cashback_bps, nowMs: Date.now() }),
     });
   } catch (err) {
     const request_id = crypto.randomUUID();

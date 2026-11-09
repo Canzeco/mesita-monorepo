@@ -37,12 +37,24 @@ export const MONEY_VOUCHER_KEYS = [
 ] as const;
 export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
 
-/** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396, the key is
- *  never renamed: renaming resets live config); absent reads ON, so a reader
- *  from before it keeps working. `has_place_code` is not a switch but a fact
- *  the caller passes when it read place_codes (MESITA-3545): the waiter's
- *  charge, and so the outside rate, needs one. Absent reads false. */
-export type MoneySettings = { cashback: boolean; pay_cards?: boolean; has_place_code?: boolean } & Record<MoneyVoucherKey, boolean>;
+/** The owner's switches, the Place states of Main §10 (MESITA-3589).
+ *  `pay_cards` is Mesita Payments (MESITA-3396, the key is never renamed:
+ *  renaming resets live config); absent reads ON, so a reader from before it
+ *  keeps working. `house_credits` is House Credits (On only while a signed
+ *  House Credits Contract exists, enforced in SQL). `cash_payments` is Cash
+ *  Payments (the waiter confirms a bill paid outside). The two rates are the
+ *  place's own cashback in bps, null/absent = Off. `has_place_code` is not a
+ *  switch but a fact the caller passes when it read place_codes
+ *  (MESITA-3545): the waiter's Received needs one. Absent reads false.
+ *  The six voucher switches are Mesita Prepayments' sub-settings. */
+export type MoneySettings = {
+  pay_cards?: boolean;
+  house_credits?: boolean;
+  cash_payments?: boolean;
+  card_cashback_bps?: number | null;
+  cash_cashback_bps?: number | null;
+  has_place_code?: boolean;
+} & Record<MoneyVoucherKey, boolean>;
 
 /** The place's connected account as the ledger last saw it; null = none.
  *  `fee_hold` (MESITA-3461): Mesita's fee invoice is unpaid, so cards are
@@ -56,6 +68,10 @@ export type MoneyBalance = { spendable_cents: number } | null;
 export type VoucherReason =
   | "off"
   | "needs_account"
+  /** House Credits is Off here (MESITA-3589): no new credits, so no voucher. */
+  | "needs_house_credits"
+  /** Mesita's fee invoice is unpaid (MESITA-3461): Billing is Past due. */
+  | "needs_billing"
   | "not_yet"
   | "needs_card_payments"
   | "needs_instagram"
@@ -88,12 +104,24 @@ export type MoneyState = {
   sell: MoneyVoucherKey[];
   /** Every voucher not in `sell`, with its reason. */
   unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>>;
-  /** Cashback lands on the card part of a payment here (Mesita Pay, 5%). */
+  /** Cashback lands on the card part of a payment here (Mesita Payments
+   *  Cashback): `card_cashback_bps` > 0. */
   cashback: boolean;
+  /** What the card part of the bill earns here now, in bps; 0 = none
+   *  (MESITA-3589: the place's own rate, needs House Credits and cards). */
+  card_cashback_bps: number;
+  /** A bill paid outside can be confirmed here by the waiter's Received
+   *  (Cash Payments On and a place code), with or without cashback. */
+  cash: boolean;
   /** Cashback lands on a bill paid outside and confirmed by the waiter's
-   *  Received (2%, MESITA-3545): the Cashback switch and a place code, no
-   *  Stripe needed. */
+   *  Received (Cash Payments Cashback): `cash_cashback_bps` > 0. */
   outside_cashback: boolean;
+  /** What the cash part of the bill earns here now, in bps; 0 = none
+   *  (needs House Credits, Cash Payments and a place code). */
+  cash_cashback_bps: number;
+  /** House Credits is On here: new credit can be born (cashback, vouchers).
+   *  Off never stops a guest spending credit they already hold. */
+  house_credits: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
   /** The green Mesita Pay mark (see the header). */
@@ -102,21 +130,40 @@ export type MoneyState = {
 
 export function moneyState(settings: MoneySettings, account: MoneyAccount, balance: MoneyBalance): MoneyState {
   const charges = account?.charges_enabled === true;
-  // the Mesita Pay switch (MESITA-3396) needs the account too. Absent means on.
+  const billingDue = account?.fee_hold === true;
+  // Mesita Payments (MESITA-3396) needs the account too. Absent means on.
   // An unpaid fee invoice (MESITA-3461) holds cards off without touching it.
-  const cards = charges && account?.fee_hold !== true && settings.pay_cards !== false;
+  const cards = charges && !billingDue && settings.pay_cards !== false;
+  const houseCredits = settings.house_credits === true;
+  const cash = settings.cash_payments === true && settings.has_place_code === true;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
     if (settings[key] !== true) unavailable[key] = "off";
+    else if (!houseCredits) unavailable[key] = "needs_house_credits";
     else if (!charges) unavailable[key] = "needs_account";
+    else if (billingDue) unavailable[key] = "needs_billing";
     else if (NOT_YET_SELLABLE[key]) unavailable[key] = NOT_YET_SELLABLE[key];
     else sell.push(key);
   }
   const credit = (balance?.spendable_cents ?? 0) > 0;
   const pay: PayWay = credit && cards ? "both" : credit ? "credit" : cards ? "card" : "none";
-  // Cashback lands on the card part, so it needs Cards on, not just the account.
+  const rate = (v: number | null | undefined) => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : 0);
+  // Cashback is new credit: it needs House Credits, and lands on the card
+  // part (cards on) or the cash bill part (Cash Payments on), never the tip.
+  const card_cashback_bps = houseCredits && cards ? rate(settings.card_cashback_bps) : 0;
+  const cash_cashback_bps = houseCredits && cash ? rate(settings.cash_cashback_bps) : 0;
   const mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0;
-  const outside_cashback = settings.cashback === true && settings.has_place_code === true;
-  return { sell, unavailable, cashback: settings.cashback === true && cards, outside_cashback, pay, mesita_pay };
+  return {
+    sell,
+    unavailable,
+    cashback: card_cashback_bps > 0,
+    card_cashback_bps,
+    cash,
+    outside_cashback: cash_cashback_bps > 0,
+    cash_cashback_bps,
+    house_credits: houseCredits,
+    pay,
+    mesita_pay,
+  };
 }

@@ -68,6 +68,7 @@ import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "..
 import { startCardPayment } from "../_shared/pay-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
+import { moneyState } from "../_shared/money-state.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, openOutsideOf, readChargeCode, readTip, supabaseChargeStore } from "../_shared/charge.ts";
@@ -122,6 +123,12 @@ serveJson("consumer-web-start-payment", async (req) => {
       return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
     }
     const settings = await readSettings(admin, c.place_id);
+    // Cash Payments (MESITA-3589): the waiter's code means the place code is
+    // set; the owner's switch decides whether a bill may be paid outside.
+    const money = moneyState({ ...settings, has_place_code: true }, null, null);
+    if (!money.cash) {
+      return json({ ok: false, code: "cash_off", error: "This place doesn't take cash through Mesita. Pay with credit or card." }, 409);
+    }
     const currency = String(placeRes.place.currency ?? MONEY_CURRENCY).toLowerCase();
     const livemode = paymentsLivemode();
     if (!(await store.claim(c.id, userId))) {
@@ -163,7 +170,7 @@ serveJson("consumer-web-start-payment", async (req) => {
         requestId: bodyRes.body.request_id,
         currency,
         livemode,
-        cashbackOn: settings.cashback,
+        cashBackBps: money.cash_cashback_bps,
         nowMs: Date.now(),
       });
       if (!res.ok) {

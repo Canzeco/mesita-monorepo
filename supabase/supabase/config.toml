@@ -782,6 +782,10 @@ verify_jwt = true
 [functions.business-web-set-payment]
 verify_jwt = true
 
+# The House Credits Contract, signed by the owner (MESITA-3589).
+[functions.business-web-sign-house-credits-contract]
+verify_jwt = true
+
 # Business › Payments, the owner's money (MESITA-3307): totals and rows,
 # owner and Mesita staff only.
 [functions.business-web-get-place-money]

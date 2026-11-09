@@ -46,7 +46,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
-import { chargesEnabledByPlace, listRowMoney, PAYMENT_KEYS, type PaymentKey, settingsFromRow } from "../_shared/payments.ts";
+import { chargesEnabledByPlace, listRowMoney, type PaymentKey, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
 import { readPins, withPins } from "../_shared/house-cards.ts";
@@ -207,7 +207,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
     readWalletPlaces(admin, ids),
     chargesEnabledByPlace(admin, ids, livemode),
     ids.length > 0
-      ? admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids)
+      ? admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
@@ -216,7 +216,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const cardsOff = new Set<string>();
   // via unknown: a template-string select widens `data` (as in payments.ts).
   const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<
-    { place_id: string } & Partial<Record<PaymentKey, unknown>>
+    { place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>
   >;
   const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
   for (const r of settingRows) {

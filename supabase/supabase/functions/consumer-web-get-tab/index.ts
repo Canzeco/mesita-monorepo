@@ -35,6 +35,7 @@ import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from ".
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
+import { moneyState } from "../_shared/money-state.ts";
 import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
 import { listCards } from "../_shared/cards.ts";
 import { type CardStep, paymentsPublishableKey, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
@@ -96,6 +97,8 @@ serveJson("consumer-web-get-tab", async (req) => {
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
     const rates = tabCardRates({ account, settings, livemode, currency: tab.currency, stripeReady: !!stripe && tab.livemode === livemode });
+    // Cash Payments and its cashback (MESITA-3589).
+    const cashMoney = moneyState({ ...settings, has_place_code: true }, null, null);
 
     let cards: Array<Record<string, unknown>> | undefined;
     if (bodyRes.body.with_cards === true && rates.card_available && stripe) {
@@ -115,7 +118,9 @@ serveJson("consumer-web-get-tab", async (req) => {
       tab: guestTabView(tabNow, parts, {
         placeName: placeRes.place?.name ?? null,
         spendableCents: Math.max(balance?.spendable_cents ?? 0, 0),
-        cashbackOn: settings.cashback,
+        // A billed tab was billed with the place code, so it is set.
+        cashOk: cashMoney.cash,
+        cashBackBps: cashMoney.cash_cashback_bps,
         nowMs,
         card: rates,
       }),

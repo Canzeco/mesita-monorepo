@@ -19,7 +19,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
-import { bps, CASHBACK_BPS, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS } from "./money.ts";
+import { bps, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
@@ -235,7 +235,8 @@ export async function startCardPayment(
     | undefined;
   if (open && open.request_id !== input.requestId) return await inProgress(stripe, account, open);
 
-  const cashbackBps = moneyState(args.settings, { charges_enabled: true }, null).cashback ? CASHBACK_BPS : 0;
+  // The place's own Mesita Payments Cashback (MESITA-3589), snapshotted on the row.
+  const cashbackBps = moneyState(args.settings, { charges_enabled: true }, null).card_cashback_bps;
   const creditCents = input.amountCents - input.cardCents;
   const expiresAt = new Date(args.nowMs + WALLET_CHECKOUT_TTL_SEC * 1000).toISOString();
   const { data, error } = await admin.rpc("wallet_hold_payment", {

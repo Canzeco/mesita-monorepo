@@ -8,7 +8,12 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
-//             settings: { cashback, voucher_200, ..., voucher_vip },
+//             settings: { house_credits, cash_payments, pay_cards, voucher_200,
+//                         ..., voucher_vip, card_cashback_bps, cash_cashback_bps },
+//             contract: { signed, signed_at, terms_version },  the House
+//                          Credits Contract (MESITA-3589), independent of Stripe
+//             account.stage: none|onboarding|in_review|connected|action_needed|
+//                          payouts_paused|restricted (Main §10's Place Stripe)
 //             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
 //             fee: { hold, invoice } }  Mesita's fee invoice (MESITA-3461):
@@ -21,7 +26,7 @@ import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
-import { accountView, readAccount, readSettings, refreshAccount } from "../_shared/payments.ts";
+import { accountView, readAccount, readContract, readSettings, refreshAccount } from "../_shared/payments.ts";
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 
 serveJson("business-web-get-payments", async (req) => {
@@ -48,7 +53,7 @@ serveJson("business-web-get-payments", async (req) => {
       console.error(`[business-web-get-payments] refresh: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
-  const settings = await readSettings(admin, placeId);
+  const [settings, contract] = await Promise.all([readSettings(admin, placeId), readContract(admin, placeId)]);
   const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
   const { data: invoices, error: feeErr } = await admin
@@ -67,6 +72,7 @@ serveJson("business-web-get-payments", async (req) => {
     test_mode: !paymentsLivemode(),
     account: accountView(account),
     settings,
+    contract,
     code_set: !!code,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
   });

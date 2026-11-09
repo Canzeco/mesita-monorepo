@@ -154,7 +154,7 @@ select is(
 -- ━━━ Settling ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- The switch flips after start: nothing changes, the rate is on the row.
-insert into public.place_payment_settings (place_id, cashback) values ('00000000-0000-4000-8000-000000013305', false);
+insert into public.place_payment_settings (place_id, card_cashback_bps) values ('00000000-0000-4000-8000-000000013305', null);
 
 create temp table settled as
   select wallet_settle_payment((select (r ->> 'payment_id')::uuid from hold), 'pi_card_3305') as r;

@@ -28,8 +28,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
-import { CASHBACK_BPS, MIN_CHARGE_CENTS, MONEY_CURRENCY, OUTSIDE_CASHBACK_BPS } from "../_shared/money.ts";
-import { listRowMoney, PAYMENT_KEYS, type PaymentKey, type PaymentSettings, settingsFromRow } from "../_shared/payments.ts";
+import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
+import { moneyState } from "../_shared/money-state.ts";
+import { listRowMoney, type PaymentKey, type PaymentSettings, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 
 const fail = (where: string, message: string) => {
@@ -77,7 +78,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
   const [placesRes, settingsRes, paidRes] = await Promise.all([
     admin.from("profiles").select("id, name, profile_photo, address, state, currency, lat, lng, boost_tier").in("id", ids),
-    admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
+    admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     admin.from("wallet_payments")
       .select("id, place_id, amount_cents, tip_cents, paid_at")
       .eq("consumer_id", userId)
@@ -92,7 +93,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
   if (paidRes.error) return fail("payments", paidRes.error.message);
 
   const settings = new Map<string, PaymentSettings>();
-  for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[]) {
+  for (const row of (settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>)[]) {
     settings.set(row.place_id, settingsFromRow(row));
   }
   const paid = new Map<string, { payment_id: string; total_cents: number; paid_at: string }>();
@@ -109,7 +110,9 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     const charges = charging.has(p.id);
     const active = p.state === "active";
     const cardOk = charges && s.pay_cards && active;
-    const outsideOk = coded.has(p.id) && active;
+    // Cash Payments (MESITA-3589): the owner's switch and the place code.
+    const cashState = moneyState({ ...s, has_place_code: coded.has(p.id) }, charges ? { charges_enabled: true } : null, null);
+    const outsideOk = cashState.cash && active;
     if (cardOk || outsideOk) cardPlaceCount++;
     const money = listRowMoney(s, charges);
     const b = credit.get(p.id);
@@ -127,9 +130,9 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       // A closed place still owes its credit; only an active one is paid here.
       available_cents: active ? (b?.spendable_cents ?? 0) : 0,
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
-      cashback_bps: cardOk && money.cashback ? CASHBACK_BPS : 0,
+      cashback_bps: cardOk ? cashState.card_cashback_bps : 0,
       outside_ok: outsideOk,
-      outside_bps: outsideOk && s.cashback ? OUTSIDE_CASHBACK_BPS : 0,
+      outside_bps: outsideOk ? cashState.cash_cashback_bps : 0,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

@@ -5,7 +5,6 @@ import { assertEquals } from "jsr:@std/assert@1";
 import { CARD_BILL_PAY_LIVE, type MoneySettings, moneyState } from "./money-state.ts";
 
 const off: MoneySettings = {
-  cashback: false,
   voucher_200: false,
   voucher_1000: false,
   voucher_5000: false,
@@ -14,7 +13,11 @@ const off: MoneySettings = {
   voucher_vip: false,
 };
 const allOn: MoneySettings = {
-  cashback: true,
+  house_credits: true,
+  cash_payments: true,
+  card_cashback_bps: 500,
+  cash_cashback_bps: 200,
+  has_place_code: true,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -63,11 +66,41 @@ Deno.test("credit is the place's debt (MESITA-3408): every switch off, no accoun
   assertEquals(moneyState(everythingOff, can, { spendable_cents: 100 }).pay, "credit");
 });
 
-Deno.test("cashback needs its own switch and Pay by phone with a charging account", () => {
-  assertEquals(moneyState({ ...off, cashback: true }, can, null).cashback, true);
-  assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).cashback, false);
-  assertEquals(moneyState({ ...off, cashback: true }, cannot, null).cashback, false);
-  assertEquals(moneyState(off, can, null).cashback, false);
+Deno.test("card cashback (MESITA-3589): the place's own rate, needs House Credits and Mesita Payments with a charging account", () => {
+  const on = { ...off, house_credits: true, card_cashback_bps: 700 };
+  assertEquals(moneyState(on, can, null).card_cashback_bps, 700);
+  assertEquals(moneyState(on, can, null).cashback, true);
+  assertEquals(moneyState({ ...on, pay_cards: false }, can, null).card_cashback_bps, 0);
+  assertEquals(moneyState(on, cannot, null).card_cashback_bps, 0);
+  assertEquals(moneyState(on, { charges_enabled: true, fee_hold: true }, null).card_cashback_bps, 0);
+  // House Credits Off: no new credit, so no cashback.
+  assertEquals(moneyState({ ...on, house_credits: false }, can, null).card_cashback_bps, 0);
+  // Off (null) is off.
+  assertEquals(moneyState({ ...on, card_cashback_bps: null }, can, null).cashback, false);
+});
+
+Deno.test("cash (MESITA-3589): Cash Payments needs the switch and the place code; its cashback needs House Credits too, no Stripe", () => {
+  const cash = { ...off, cash_payments: true, has_place_code: true };
+  assertEquals(moneyState(cash, null, null).cash, true);
+  assertEquals(moneyState(cash, null, null).cash_cashback_bps, 0);
+  assertEquals(moneyState({ ...cash, has_place_code: false }, null, null).cash, false);
+  assertEquals(moneyState({ ...cash, cash_payments: false }, null, null).cash, false);
+  const back = { ...cash, house_credits: true, cash_cashback_bps: 300 };
+  assertEquals(moneyState(back, null, null).cash_cashback_bps, 300);
+  assertEquals(moneyState(back, null, null).outside_cashback, true);
+  assertEquals(moneyState({ ...back, house_credits: false }, null, null).cash_cashback_bps, 0);
+});
+
+Deno.test("Prepayments (MESITA-3589) need House Credits and Billing paid up", () => {
+  assertEquals(moneyState({ ...allOn, house_credits: false }, can, null).unavailable.voucher_200, "needs_house_credits");
+  assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).unavailable.voucher_200, "needs_billing");
+  assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).sell, []);
+});
+
+Deno.test("House Credits Off never stops a guest spending what they hold", () => {
+  const nothing = { ...off, pay_cards: false };
+  assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).pay, "credit");
+  assertEquals(moneyState(nothing, null, { spendable_cents: 500 }).house_credits, false);
 });
 
 Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by card here or buy a voucher", () => {
@@ -75,13 +108,13 @@ Deno.test("the green mark (MESITA-3408): on when a guest can pay the bill by car
   // Pay by phone on with a charging account: card bill pay, mark on.
   assertEquals(moneyState(off, can, null).mesita_pay, true);
   // A sellable voucher lights it, even with Pay by phone off.
-  assertEquals(moneyState({ ...off, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, house_credits: true, voucher_200: true, pay_cards: false }, can, null).mesita_pay, true);
   // Pay by phone off and nothing selling: off.
-  assertEquals(moneyState({ ...off, cashback: true, pay_cards: false }, can, null).mesita_pay, false);
+  assertEquals(moneyState({ ...off, house_credits: true, card_cashback_bps: 500, pay_cards: false }, can, null).mesita_pay, false);
   // MX$5,000 and VIP sell since MESITA-3550, so they light it.
-  assertEquals(moneyState({ ...off, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_5000: true }, can, null).mesita_pay, true);
   // Story sells since MESITA-3507, so it lights it.
-  assertEquals(moneyState({ ...off, pay_cards: false, voucher_story: true }, can, null).mesita_pay, true);
+  assertEquals(moneyState({ ...off, house_credits: true, pay_cards: false, voucher_story: true }, can, null).mesita_pay, true);
   // No account: no mark.
   assertEquals(moneyState(allOn, null, null).mesita_pay, false);
   assertEquals(moneyState(allOn, cannot, null).mesita_pay, false);
@@ -95,11 +128,12 @@ Deno.test("pay: both with a balance and an account, credit with a balance only, 
   assertEquals(moneyState(off, null, null).pay, "none");
 });
 
-Deno.test("fee_hold (MESITA-3461): an unpaid fee invoice turns cards and cashback off, credit still pays, vouchers still sell", () => {
+Deno.test("fee_hold (MESITA-3461): an unpaid fee invoice turns cards, cashback and (MESITA-3589) vouchers off, credit still pays", () => {
   const held = moneyState(allOn, { charges_enabled: true, fee_hold: true }, { spendable_cents: 100 });
   assertEquals(held.pay, "credit");
   assertEquals(held.cashback, false);
-  assertEquals(held.sell.includes("voucher_200"), true);
+  assertEquals(held.sell.includes("voucher_200"), false);
+  assertEquals(held.unavailable.voucher_200, "needs_billing");
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: true }, null).pay, "none");
   assertEquals(moneyState(allOn, { charges_enabled: true, fee_hold: false }, null).pay, "card");
 });

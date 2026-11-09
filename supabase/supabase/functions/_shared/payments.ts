@@ -21,16 +21,18 @@ import { vouchersUpToPct } from "./money.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
 
-/** The switches an owner has, in the order the page shows them.
- *  `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is never renamed:
- *  renaming resets live config). Cash and Credits left with MESITA-3408: Cash
- *  changed nothing, and a guest's credit is the place's debt, never switched
- *  off. Their columns stay until MESITA-3409 drops them; nothing reads them.
- *  Cashback stays its own switch (MESITA-3411, Pato: "cashback must be
- *  optional"); Mesita's fee is charged either way. */
+/** The owner's on/off switches, in Main §10's order (MESITA-3589).
+ *  `pay_cards` is Mesita Payments (MESITA-3396; the key is never renamed:
+ *  renaming resets live config). `house_credits` is House Credits (On only
+ *  while a signed House Credits Contract exists: SQL refuses otherwise).
+ *  `cash_payments` is Cash Payments (the waiter's Received; the set EF
+ *  refuses On without the place code). The six vouchers are Mesita
+ *  Prepayments' sub-switches and need House Credits On (SQL refuses
+ *  otherwise). The old `cashback` switch moved into the two rates below. */
 export const PAYMENT_KEYS = [
+  "house_credits",
+  "cash_payments",
   "pay_cards",
-  "cashback",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -44,22 +46,57 @@ export function isPaymentKey(v: unknown): v is PaymentKey {
   return typeof v === "string" && (PAYMENT_KEYS as readonly string[]).includes(v);
 }
 
-export type PaymentSettings = Record<PaymentKey, boolean>;
+/** The place's own cashback rates in bps (MESITA-3589): null = Off.
+ *  Card: Mesita Payments Cashback. Cash: Cash Payments Cashback. */
+export const RATE_KEYS = ["card_cashback_bps", "cash_cashback_bps"] as const;
+export type RateKey = (typeof RATE_KEYS)[number];
 
-/** No row = the Mesita Pay switch on, every product off. the Mesita Pay switch reads off only
- *  when the row says `false` outright, so a row from before the column never
- *  switches a place off. */
-export function settingsFromRow(row: Partial<Record<PaymentKey, unknown>> | null): PaymentSettings {
+export function isRateKey(v: unknown): v is RateKey {
+  return typeof v === "string" && (RATE_KEYS as readonly string[]).includes(v);
+}
+
+/** The rate an owner may set: whole percents 1..20, as bps (Main §10). */
+export const CASHBACK_MIN_BPS = 100;
+export const CASHBACK_MAX_BPS = 2000;
+export function isValidCashbackBps(v: unknown): v is number {
+  return typeof v === "number" && Number.isInteger(v) && v >= CASHBACK_MIN_BPS && v <= CASHBACK_MAX_BPS && v % 100 === 0;
+}
+
+/** Every column a settings read selects. */
+export const SETTINGS_COLUMNS = [...PAYMENT_KEYS, ...RATE_KEYS].join(", ");
+
+export type PaymentSettings = Record<PaymentKey, boolean> & Record<RateKey, number | null>;
+
+/** No row = Mesita Payments on, everything else off. Mesita Payments reads
+ *  off only when the row says `false` outright, so a row from before the
+ *  column never switches a place off. */
+export function settingsFromRow(row: Partial<Record<PaymentKey | RateKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
   for (const k of PAYMENT_KEYS) out[k] = k === "pay_cards" ? row?.[k] !== false : row?.[k] === true;
+  for (const k of RATE_KEYS) {
+    const v = row?.[k];
+    out[k] = typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null;
+  }
   return out;
 }
 
 export async function readSettings(admin: SupabaseClient, placeId: string): Promise<PaymentSettings> {
-  const { data, error } = await admin.from("place_payment_settings").select(PAYMENT_KEYS.join(", "))
+  const { data, error } = await admin.from("place_payment_settings").select(SETTINGS_COLUMNS)
     .eq("place_id", placeId).maybeSingle();
   if (error) throw new Error(`place_payment_settings: ${error.message}`);
-  return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
+  return settingsFromRow(data as Partial<Record<PaymentKey | RateKey, unknown>> | null);
+}
+
+/** The place's House Credits Contract, live or none (MESITA-3589). */
+export const HOUSE_CREDITS_TERMS_VERSION = "draft-2026-11";
+export type ContractView = { signed: boolean; signed_at: string | null; terms_version: string | null };
+
+export async function readContract(admin: SupabaseClient, placeId: string): Promise<ContractView> {
+  const { data, error } = await admin.from("house_credits_contracts").select("signed_at, terms_version")
+    .eq("place_id", placeId).is("ended_at", null).maybeSingle();
+  if (error) throw new Error(`house_credits_contracts: ${error.message}`);
+  const row = data as { signed_at?: string; terms_version?: string } | null;
+  return { signed: !!row, signed_at: row?.signed_at ?? null, terms_version: row?.terms_version ?? null };
 }
 
 /** A place's Stripe state for the admin console (MESITA-3395), three values:
@@ -144,7 +181,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   const [settingsRes, charging] = await Promise.all([
-    admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
+    admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     chargesEnabledByPlace(admin, ids, paymentsLivemode()),
   ]);
   if (settingsRes.error) {
@@ -152,7 +189,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   }
   // via unknown: a template-string select widens `data` to supabase-js's
   // GenericStringError union, as in get-place.
-  const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey, unknown>>)[];
+  const settingRows = (settingsRes.error ? [] : settingsRes.data ?? []) as unknown as ({ place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>)[];
   const settings = new Map<string, PaymentSettings>();
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
@@ -247,10 +284,33 @@ export function accountState(row: Pick<AccountRow, "charges_enabled" | "details_
   return "onboarding";
 }
 
+/** Place Stripe, the seven values of Main §10 (MESITA-3589), from the row
+ *  alone: None · Onboarding · In review · Connected · Action needed ·
+ *  Payouts paused · Restricted. Cards work in connected, action_needed and
+ *  payouts_paused. */
+export type StripeStage = "none" | "onboarding" | "in_review" | "connected" | "action_needed" | "payouts_paused" | "restricted";
+
+export function stripeStage(
+  row: Pick<AccountRow, "charges_enabled" | "details_submitted" | "disabled_reason" | "payouts_enabled" | "requirements_due"> | null,
+): StripeStage {
+  if (!row) return "none";
+  if (!row.charges_enabled) {
+    if (!row.details_submitted) return "onboarding";
+    // Stripe is still checking what the owner sent: nothing to do but wait.
+    const r = row.disabled_reason;
+    if (!r || r === "requirements.pending_verification" || r === "under_review") return "in_review";
+    return "restricted";
+  }
+  if (!row.payouts_enabled) return "payouts_paused";
+  if ((row.requirements_due ?? []).length > 0) return "action_needed";
+  return "connected";
+}
+
 /** What the page gets: never the account id, never Stripe's own words. */
 export function accountView(row: AccountRow | null) {
   return {
     state: accountState(row),
+    stage: stripeStage(row),
     livemode: row?.livemode ?? false,
     country: row?.account_country ?? null,
     charges_enabled: row?.charges_enabled ?? false,

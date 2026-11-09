@@ -67,10 +67,11 @@ function part(over: Partial<TabPartRow> = {}): TabPartRow {
   };
 }
 
-Deno.test("cashback: 2% of the cash bill part only, never credits or the tip", () => {
-  assertEquals(tabMoney(tab(), [part()], true).cashback_cents, 200);
-  assertEquals(tabMoney(tab(), [part()], false).cashback_cents, 0);
-  assertEquals(tabMoney(tab(), [part()], true).cash_due_cents, 14500);
+Deno.test("cashback: the place's cash rate on the cash bill part only, never credits or the tip", () => {
+  assertEquals(tabMoney(tab(), [part()], 200).cashback_cents, 200);
+  assertEquals(tabMoney(tab(), [part()], 700).cashback_cents, 700);
+  assertEquals(tabMoney(tab(), [part()], 0).cashback_cents, 0);
+  assertEquals(tabMoney(tab(), [part()], 200).cash_due_cents, 14500);
 });
 
 Deno.test("a stale tab reads expired, unless a part is in flight or paid", () => {
