@@ -103,10 +103,14 @@ export type StaffPaymentRow = {
   amount_cents: number;
   tip_cents: number;
   currency: string;
-  paid_at: string;
+  /** Null on an outside bill nobody confirmed (it reads Expired). */
+  paid_at: string | null;
+  updated_at?: string;
   ticket: string | null;
   proof_seen_at: string | null;
   status: string;
+  /** The part paid outside Mesita and confirmed by Received (MESITA-3545). */
+  outside_cents?: number | null;
 };
 
 export interface StaffStore {
@@ -166,6 +170,12 @@ export type StaffPaymentView = {
   ticket: string | null;
   seen: boolean;
   refunded: boolean;
+  /** Paid outside Mesita and confirmed by a waiter's Received at paid_at:
+   *  the list reads "Outside · Received HH:mm" (MESITA-3545). */
+  outside: boolean;
+  /** An outside bill nobody confirmed in its 30 minutes (or the guest
+   *  cancelled): "Outside · Expired", at the time it closed. */
+  expired: boolean;
 };
 
 export function staffPaymentView(r: StaffPaymentRow): StaffPaymentView {
@@ -174,10 +184,12 @@ export function staffPaymentView(r: StaffPaymentRow): StaffPaymentView {
     amount_cents: r.amount_cents,
     tip_cents: r.tip_cents,
     currency: r.currency,
-    paid_at: r.paid_at,
+    paid_at: r.paid_at ?? r.updated_at ?? "",
     ticket: r.ticket,
     seen: r.proof_seen_at !== null,
     refunded: r.status === "refunded",
+    outside: (r.outside_cents ?? 0) > 0,
+    expired: r.paid_at === null && (r.outside_cents ?? 0) > 0,
   };
 }
 
@@ -223,12 +235,13 @@ export function supabaseStaffStore(admin: SupabaseClient): StaffStore {
       const createdSince = new Date(Date.parse(sinceIso) - 26 * 60 * 60 * 1000).toISOString();
       const { data, error } = await admin
         .from("wallet_payments")
-        .select("id, amount_cents, tip_cents, currency, paid_at, ticket, proof_seen_at, status")
+        .select("id, amount_cents, tip_cents, currency, paid_at, updated_at, ticket, proof_seen_at, status, outside_cents")
         .eq("place_id", placeId)
         .eq("livemode", livemode)
         .gte("created_at", createdSince)
-        .gte("paid_at", sinceIso)
-        .order("paid_at", { ascending: false })
+        // Paid in the window, or an outside bill that expired in it (MESITA-3545).
+        .or(`paid_at.gte.${sinceIso},and(outside_cents.gt.0,status.eq.expired,updated_at.gte.${sinceIso})`)
+        .order("updated_at", { ascending: false })
         .limit(limit);
       if (error) throw new Error(`staff_payments: ${error.message}`);
       return (data ?? []) as StaffPaymentRow[];

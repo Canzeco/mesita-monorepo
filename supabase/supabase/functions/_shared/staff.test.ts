@@ -37,8 +37,8 @@ async function memoryStore(codes: Record<string, string>) {
     payments: (p, since, livemode, limit) =>
       Promise.resolve(
         rows
-          .filter((r) => r.place_id === p && r.livemode === livemode && r.paid_at >= since)
-          .sort((a, b) => b.paid_at.localeCompare(a.paid_at))
+          .filter((r) => r.place_id === p && r.livemode === livemode && (r.paid_at ?? "") >= since)
+          .sort((a, b) => (b.paid_at ?? "").localeCompare(a.paid_at ?? ""))
           .slice(0, limit),
       ),
   };
@@ -146,5 +146,7 @@ Deno.test("the list: this place, this mode, the last 12 hours, newest first, nev
   const list = await listPayments(s.store, { placeId: PLACE, livemode: false, nowMs: T0 });
   assertEquals(list.map((p) => p.id), ["a", "b"]);
   assertEquals(list.map((p) => p.seen), [false, true]);
-  assertEquals(Object.keys(list[0]).sort(), ["amount_cents", "currency", "id", "paid_at", "refunded", "seen", "ticket", "tip_cents"]);
+  assertEquals(Object.keys(list[0]).sort(), ["amount_cents", "currency", "expired", "id", "outside", "paid_at", "refunded", "seen", "ticket", "tip_cents"]);
+  // Never who paid (MESITA-3545 adds only the outside flags).
+  assertEquals(list.map((p) => [p.outside, p.expired]), [[false, false], [false, false]]);
 });

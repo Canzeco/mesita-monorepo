@@ -120,12 +120,13 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
                     {p.tip_cents > 0 ? ` + ${moneyLabel(p.tip_cents, p.currency)} tip` : ""}
                   </span>
                   <span className="payment-meta">
-                    {clockTime(p.paid_at)}
+                    {/* A bill paid outside (MESITA-3545): the Received time is the confirmation. */}
+                    {p.expired ? "Outside · Expired" : p.outside ? `Outside · Received ${clockTime(p.paid_at)}` : clockTime(p.paid_at)}
                     {p.ticket ? ` · Ticket ${p.ticket}` : ""}
                     {p.refunded ? " · Refunded" : ""}
                   </span>
                 </span>
-                {p.seen ? <span className="payment-seen">Seen</span> : <strong className="payment-unseen">Not seen</strong>}
+                {p.outside ? null : p.seen ? <span className="payment-seen">Seen</span> : <strong className="payment-unseen">Not seen</strong>}
               </li>
             ))}
           </ul>

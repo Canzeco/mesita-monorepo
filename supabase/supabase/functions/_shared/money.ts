@@ -26,6 +26,19 @@ export const CASHBACK_BPS = 500;
  *  (wallet_open_outside), never re-read at confirm. */
 export const OUTSIDE_CASHBACK_BPS = 200;
 
+/** Outside bills one guest may open at one place in a rolling day (open,
+ *  paid or refunded; cancelled and expired ones do not count). Estimated:
+ *  Pato sets the number (MESITA-3545, folds MESITA-3553). The RPC
+ *  wallet_open_outside_capped takes it as p_max_per_day. */
+export const OUTSIDE_MAX_PER_DAY = 2;
+
+/** A place's outside cashback over a rolling day, in centavos ($500MX).
+ *  Past it a Received still confirms the bill, with what is left, or no
+ *  cashback. Estimated: Pato sets it. TWIN of c_ceiling in
+ *  wallet_confirm_outside (20261109130000_charge_tip_outside_path.sql);
+ *  changing one is a migration plus this line. */
+export const OUTSIDE_CASHBACK_DAILY_CEILING_CENTS = 50_000;
+
 /** The one currency the ledger sells in today. */
 export const MONEY_CURRENCY = "mxn";
 

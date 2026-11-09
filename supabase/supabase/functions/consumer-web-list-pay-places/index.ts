@@ -12,11 +12,15 @@
 // Body: { lat?: number, lng?: number } (the client rounds to 3 decimals)
 // Response: { ok: true, places: [{ place_id, name, photo, address, marks: { tier, mesita_pay },
 //             distance_m | null, currency, card_ok, available_cents,
-//             pending_cents, cashback_bps, test_mode, card_min_cents,
+//             pending_cents, cashback_bps, outside_ok, outside_bps, test_mode, card_min_cents,
 //             paid_recent: { payment_id, total_cents, paid_at } | null }] }
 //   available_cents is spendable now (Available minus held credit).
 //   card_min_cents is MIN_CHARGE_CENTS (money.ts), the minimum the start
 //   checks on card + tip; cashback_bps is what a card part earns here.
+//   MESITA-3545: outside_ok = the place has a place code (the waiter's
+//   charge, so the bill can be paid outside); outside_bps is what a bill paid
+//   outside and confirmed earns (0 with the Cashback switch off). An
+//   outside-only place carries no Mesita Pay mark.
 //   401 sign_in · 400 bad_location (+field; the client asks again without
 //   one) · 500 with request_id.
 
@@ -24,7 +28,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
-import { CASHBACK_BPS, MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
+import { CASHBACK_BPS, MIN_CHARGE_CENTS, MONEY_CURRENCY, OUTSIDE_CASHBACK_BPS } from "../_shared/money.ts";
 import { listRowMoney, PAYMENT_KEYS, type PaymentKey, type PaymentSettings, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
 
@@ -54,16 +58,20 @@ serveJson("consumer-web-list-pay-places", async (req) => {
 
   // The guest's credit per place, and every account that charges in this
   // universe (the card places; few for a long time, so one read).
-  const [balRes, acctRes] = await Promise.all([
+  const [balRes, acctRes, codeRes] = await Promise.all([
     admin.rpc("wallet_balances", { p_consumer_id: userId, p_livemode: livemode }),
     admin.from("place_payment_accounts").select("place_id").eq("charges_enabled", true).eq("livemode", livemode).limit(5000),
+    // The places where the waiter's charge can open (MESITA-3545).
+    admin.from("place_codes").select("place_id").limit(5000),
   ]);
   if (balRes.error) return fail("balances", balRes.error.message);
   if (acctRes.error) return fail("accounts", acctRes.error.message);
+  if (codeRes.error) return fail("place_codes", codeRes.error.message);
   const balances = (balRes.data ?? []) as Array<{ place_id: string; currency: string; spendable_cents: number; pending_cents: number }>;
   const charging = new Set(((acctRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
+  const coded = new Set(((codeRes.data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id));
 
-  const ids = [...new Set([...balances.map((b) => b.place_id), ...charging])];
+  const ids = [...new Set([...balances.map((b) => b.place_id), ...charging, ...coded])];
   if (ids.length === 0) return json({ ok: true, places: [] });
 
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
@@ -101,7 +109,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     const charges = charging.has(p.id);
     const active = p.state === "active";
     const cardOk = charges && s.pay_cards && active;
-    if (cardOk) cardPlaceCount++;
+    const outsideOk = coded.has(p.id) && active;
+    if (cardOk || outsideOk) cardPlaceCount++;
     const money = listRowMoney(s, charges);
     const b = credit.get(p.id);
     rows.push({
@@ -119,6 +128,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
       available_cents: active ? (b?.spendable_cents ?? 0) : 0,
       pending_cents: active ? (b?.pending_cents ?? 0) : 0,
       cashback_bps: cardOk && money.cashback ? CASHBACK_BPS : 0,
+      outside_ok: outsideOk,
+      outside_bps: outsideOk && s.cashback ? OUTSIDE_CASHBACK_BPS : 0,
       paid_recent: paid.get(p.id) ?? null,
     });
   }

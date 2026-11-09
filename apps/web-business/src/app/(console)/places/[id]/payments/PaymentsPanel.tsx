@@ -62,8 +62,11 @@ type Product = { key: PaymentKey; name: string; line: string; value: string; ico
 const CASHBACK: Product = {
   key: "cashback",
   name: "Payments Cashback",
-  line: "Guest pays with Mesita Pay, gets 5% of it back as credit at your place. Optional: Mesita's fee is the same either way.",
-  value: "5%",
+  // Two rates (MESITA-3545, Payments Flow v2): 5% on Mesita Pay, 2% on a bill
+  // paid outside through the waiter's code and confirmed with Received. The
+  // cash half needs no Stripe, only a place code.
+  line: "Guest pays with Mesita Pay, gets 5% back as credit at your place. Pays cash or your terminal through your waiter's code, gets 2% once your waiter taps Received. Works without Stripe for cash.",
+  value: "5% · 2%",
   icon: CoinsIcon,
   tone: "bg-amber-100 text-amber-700",
 };
@@ -105,7 +108,11 @@ const HOUSE_CREDITS: InfoRow = {
   line: "Spent on the bill whenever a guest holds credit here. It is your debt, always honoured.",
   icon: PiggyBankIcon,
 };
-const OUTSIDE: InfoRow = { name: "Outside Mesita", line: "Cash or your own terminal. Mesita never touches it.", icon: MoneyIcon };
+const OUTSIDE: InfoRow = {
+  name: "Outside Mesita",
+  line: "Cash or your own terminal. When the waiter taps Received, the guest gets 2% back as credit here, which you owe.",
+  icon: MoneyIcon,
+};
 
 /** Card payment of the bill is W2b. Live since MESITA-3305 (the flag is
  *  true), so the note shows only if the flag is ever turned back off. */
@@ -255,7 +262,8 @@ export function PaymentsPanel({
             : null
         : "Guests still pay from credit here.";
     }
-    if (key === "cashback" && on && !selling.cashback) note = "Cashback needs Mesita Pay on and Stripe ready.";
+    // The place-code line lives once, under Visit Checkout (no switch is gated on it).
+    if (key === "cashback" && on && !selling.cashback) note = "2% back on bills paid to the waiter works now. 5% on Mesita Pay starts when Stripe is ready.";
     const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
       <li key={key} className={MARK_ROW}>

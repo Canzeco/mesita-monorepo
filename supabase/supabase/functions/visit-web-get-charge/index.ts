@@ -5,9 +5,14 @@
 // when the payment row is paid; a stale or expired token answers 404 gone
 // and writes no try. Never who paid.
 //
+// MESITA-3545: it also answers the tip (the charge's until a payment binds
+// it, the payment's after), what moved on Mesita once paid (paid_cents: a
+// lowered card part reads less than the bill), the outside bill waiting for
+// Received (outside: { cents, tip_cents, expires_at }) and paid_outside.
+//
 // Body: { token: 22 base64url chars }
-// Response: { ok: true, state: open | paid, amount_cents, currency, ticket,
-//             expires_at, paid_at, server_time }
+// Response: { ok: true, state: open | paid, amount_cents, tip_cents, paid_cents,
+//             outside, paid_outside, currency, ticket, expires_at, paid_at, server_time }
 //   400 (not a token) · 404 gone
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";

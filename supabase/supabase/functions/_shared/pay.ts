@@ -17,7 +17,7 @@
 // the money already moved under that id: the page shows that payment's proof.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
+import { MAX_PAYMENT_INPUT_CENTS, OUTSIDE_CASHBACK_BPS, OUTSIDE_MAX_PER_DAY } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { withVouchersUpTo } from "./payments.ts";
 import { isUuid } from "./place-id.ts";
@@ -184,6 +184,117 @@ export async function startPayment(
   }
 }
 
+// ── Paying outside (MESITA-3545) ─────────────────────────────────────────────
+
+/** How long an outside bill waits for the waiter's Received: its own 30
+ *  minutes, not the charge's 10, so a slow cash handover still earns. */
+export const OUTSIDE_TTL_SEC = 30 * 60;
+
+/** The outside split of a bill: credit first (what the guest can spend
+ *  here), the rest outside. Credit covering the whole bill leaves nothing to
+ *  pay outside: credit_covers. */
+export function outsideSplit(billCents: number, spendableCents: number): { credit: number; outside: number } | null {
+  const credit = Math.min(Math.max(spendableCents, 0), billCents);
+  const outside = billCents - credit;
+  return outside > 0 ? { credit, outside } : null;
+}
+
+export type StartedOutside = {
+  payment_id: string;
+  status: "open" | "paid";
+  outcome: "opened" | "in_progress" | "already_paid";
+  amount_cents: number;
+  credit_cents: number;
+  outside_cents: number;
+  tip_cents: number;
+  outside_cashback_bps: number;
+  currency: string;
+  expires_at: string | null;
+  test_mode: boolean;
+};
+
+/** Opens a bill paid outside Mesita: the credit part held, the rest waiting
+ *  for the waiter's Received (wallet_open_outside). The server decides the
+ *  split; the guest only says "paying outside". */
+export async function startOutsidePayment(
+  admin: Rpc,
+  args: {
+    consumerId: string;
+    placeId: string;
+    billCents: number;
+    tipCents: number;
+    ticket: string | null;
+    requestId: string;
+    currency: string;
+    livemode: boolean;
+    cashbackOn: boolean;
+    nowMs: number;
+  },
+): Promise<{ ok: true; started: StartedOutside } | PayRefusal> {
+  const bps = args.cashbackOn ? OUTSIDE_CASHBACK_BPS : 0;
+  const expiresAt = new Date(args.nowMs + OUTSIDE_TTL_SEC * 1000).toISOString();
+  // The split is the SQL's, under the pair lock: credit = least(spendable, bill).
+  const { data, error } = await admin.rpc("wallet_open_outside_capped", {
+    p_consumer_id: args.consumerId,
+    p_place_id: args.placeId,
+    p_bill_cents: args.billCents,
+    p_tip_cents: args.tipCents,
+    p_currency: args.currency,
+    p_livemode: args.livemode,
+    p_request_id: args.requestId,
+    p_proof_token: mintProofToken(),
+    p_ticket: args.ticket,
+    p_outside_cashback_bps: bps,
+    p_expires_at: expiresAt,
+    p_max_per_day: OUTSIDE_MAX_PER_DAY,
+  });
+  if (error) throw new Error(`wallet_open_outside_capped: ${error.message}`);
+  const r = (data ?? null) as Record<string, unknown> | null;
+  if (!r) throw new Error("wallet_open_outside_capped: no answer");
+  if (r.ok === true) {
+    const outcome = r.outcome as StartedOutside["outcome"];
+    const credit = Number(r.credit_cents ?? 0);
+    const outside = Number(r.outside_cents ?? 0);
+    return {
+      ok: true,
+      started: {
+        payment_id: String(r.payment_id),
+        status: outcome === "already_paid" ? "paid" : "open",
+        outcome,
+        amount_cents: credit + outside,
+        credit_cents: credit,
+        outside_cents: outside,
+        tip_cents: Number(r.tip_cents ?? args.tipCents),
+        outside_cashback_bps: bps,
+        currency: args.currency,
+        expires_at: typeof r.expires_at === "string" ? r.expires_at : null,
+        test_mode: !args.livemode,
+      },
+    };
+  }
+  switch (r.code) {
+    case "credit_covers":
+      return refuse(409, "Your credit here covers this bill. Pay it from credit.", "credit_covers", {
+        spendable_cents: r.spendable_cents,
+        bill_cents: r.bill_cents,
+      });
+    case "outside_limit":
+      return refuse(409, "You have paid the waiter here enough times today. Pay on Mesita instead.", "outside_limit", {
+        max_per_day: r.max_per_day,
+      });
+    case "closed":
+      return refuse(409, "That payment was cancelled. Tap again to start over.", "closed", { payment_id: r.payment_id ?? null });
+    case "insufficient":
+      return refuse(409, "Your credit changed. Try again.", "insufficient", { spendable_cents: r.spendable_cents });
+    case "taken":
+      return refuse(409, "This payment already went through", "taken", { payment_id: r.payment_id ?? null });
+    case "amount_required":
+      return refuse(400, "Type an amount to pay", "amount_required");
+    default:
+      throw new Error(`wallet_open_outside_capped: unknown answer ${JSON.stringify(r)}`);
+  }
+}
+
 // ── Reads ────────────────────────────────────────────────────────────────────
 
 export type PaymentRow = {
@@ -195,6 +306,8 @@ export type PaymentRow = {
   /** The card part and the tip (MESITA-3305); 0 on a credit-only payment. */
   card_cents: number;
   tip_cents: number;
+  /** The part paid outside Mesita, confirmed by the waiter (MESITA-3545). */
+  outside_cents?: number;
   cashback_cents: number;
   currency: string;
   /** Null while a card part's Checkout is still open. */
@@ -212,7 +325,7 @@ export type PaymentRow = {
 };
 
 const PAYMENT_COLUMNS =
-  "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, cashback_cents, currency, paid_at, " +
+  "id, place_id, status, amount_cents, credit_cents, card_cents, tip_cents, outside_cents, cashback_cents, currency, paid_at, " +
   "proof_token, proof_seen_at, ticket, refunded_cents, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
 
 /** The place's two marks beside its name (MESITA-3321): the Premier tier
@@ -233,9 +346,11 @@ export function paymentView(row: PaymentRow, placeName: string | null, marks?: P
     credit_cents: row.credit_cents,
     card_cents: row.card_cents,
     tip_cents: row.tip_cents,
+    outside_cents: row.outside_cents ?? 0,
     cashback_cents: row.cashback_cents,
     currency: row.currency,
     paid_at: row.paid_at,
+    expires_at: row.expires_at ?? null,
     proof_seen_at: row.proof_seen_at,
     proof: row.proof_token && row.paid_at ? { token: row.proof_token, url: proofUrl(row.proof_token) } : null,
     ticket: row.ticket,

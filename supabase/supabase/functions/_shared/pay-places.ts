@@ -4,6 +4,11 @@
 // the account charges in this universe and Mesita Pay is on). Credit places
 // first, then by distance.
 //
+// MESITA-3545 (Payments Flow v2): a place with a place code is also listed
+// when it takes no card (`outside_ok`): the guest types the waiter's code
+// there and pays the bill outside, earning `outside_bps` when the Cashback
+// switch is on. Outside-only places count like card places below.
+//
 // While fewer than OPEN_ALL_BELOW places have Mesita Pay on, every one of
 // them is listed, nearest first (the /autoplan gate d3a of 2026-11-08: an
 // empty list in a young city reads as a broken tab); from OPEN_ALL_BELOW on,
@@ -66,6 +71,12 @@ export type PayPlaceInput = {
   available_cents: number;
   pending_cents: number;
   cashback_bps: number;
+  /** A place code is set: the waiter's charge can open here, so the guest
+   *  can pay outside (MESITA-3545). */
+  outside_ok: boolean;
+  /** What a bill paid outside and confirmed earns here (OUTSIDE_CASHBACK_BPS
+   *  with the Cashback switch on, else 0). */
+  outside_bps: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
 };
 
@@ -87,10 +98,11 @@ export function payPlaces(
   const out: Array<PayPlace & { credit: boolean }> = [];
   for (const r of rows) {
     const credit = r.available_cents > 0 || r.pending_cents > 0;
-    if (!credit && !r.card_ok) continue;
+    if (!credit && !r.card_ok && !r.outside_ok) continue;
     const d = opts.at && r.lat !== null && r.lng !== null ? distanceM(opts.at, { lat: r.lat, lng: r.lng }) : null;
-    // A card-only place: within the radius once the city is big enough; with
-    // no location, only while every card place is listed.
+    // A place without the guest's credit (card or outside): within the radius
+    // once the city is big enough; with no location, only while every such
+    // place is listed.
     if (!credit && near && (d === null || d > NEAR_RADIUS_M)) continue;
     out.push({
       place_id: r.place_id,
@@ -104,6 +116,8 @@ export function payPlaces(
       available_cents: r.available_cents,
       pending_cents: r.pending_cents,
       cashback_bps: r.cashback_bps,
+      outside_ok: r.outside_ok,
+      outside_bps: r.outside_bps,
       test_mode: opts.testMode,
       card_min_cents: opts.minCents(r.currency),
       paid_recent: r.paid_recent,

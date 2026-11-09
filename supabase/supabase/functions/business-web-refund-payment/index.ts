@@ -22,6 +22,7 @@ import { isUuid } from "../_shared/place-id.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
+  paymentNeedsStripe,
   type PaymentRow,
   PURCHASE_COLUMNS,
   type PurchaseRow,
@@ -57,7 +58,8 @@ serveJson("business-web-refund-payment", async (req) => {
   const table = kind === "purchase" ? "wallet_purchases" : "wallet_payments";
   const { data, error } = await admin
     .from(table)
-    .select(kind === "purchase" ? PURCHASE_COLUMNS : PAYMENT_COLUMNS)
+    // Widened to string: the literal union is too complex for the client's types.
+    .select((kind === "purchase" ? PURCHASE_COLUMNS : PAYMENT_COLUMNS) as string)
     .eq("id", id)
     .eq("place_id", placeId)
     .maybeSingle();
@@ -70,8 +72,8 @@ serveJson("business-web-refund-payment", async (req) => {
   }
 
   const deps = { admin, stripe: key ? stripeClient(key) : null, actor: user.id };
-  const needsStripe = kind === "purchase" ||
-    (row as PaymentRow).card_cents + (row as PaymentRow).tip_cents > (row as PaymentRow).refunded_cents;
+  // An outside bill (MESITA-3545) never needs Stripe: its tip was paid at the table.
+  const needsStripe = kind === "purchase" || paymentNeedsStripe(row as PaymentRow);
   if (needsStripe && !deps.stripe) {
     return json({ ok: false, code: "not_configured", error: "Stripe is not configured" }, 503);
   }

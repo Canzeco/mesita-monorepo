@@ -39,19 +39,38 @@
 //   404 gone (no open charge under that code: one guest try) ·
 //   409 locked (+retry_after_s, the sixth wrong code in 10 minutes) |
 //       taken (+payment_id: this guest's paid payment, or null)
+//
+// MESITA-3545 (Payments Flow v2): `look: true` also answers the waiter's tip
+// (tip_cents). With a charge the card path pays at most the waiter's bill:
+// `amount_cents` may be lower, never higher (the rest is "rest at the
+// table", paid off-app, earning nothing); the tip is the guest's to change.
+// The outside path: body { place_id, charge_code, outside: true, tip_cents,
+// request_id }. A new tap after a cancel carries a NEW request_id. Always the charge's full bill: the server takes credit
+// first (min(spendable, bill)) and the rest is paid outside, waiting 30
+// minutes for the waiter's Received (visit-web-confirm-charge); the 2%
+// cashback only when the Cashback switch is on (else 0: credit is the
+// place's debt, so the switch never refuses the bill). Never no_account or
+// cards_off: no Stripe on this path.
+// Response (outside): { ok: true, payment_id, status: "open" | "paid",
+//           outcome: opened | in_progress | already_paid, amount_cents,
+//           credit_cents, outside_cents, tip_cents, outside_cashback_bps,
+//           currency, expires_at, test_mode }
+//   400 outside_needs_charge (no charge_code) | tip_invalid ·
+//   409 credit_covers (+spendable_cents, bill_cents: credit pays the whole
+//       bill, pay from credit) | insufficient | taken
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
-import { readCardPart, readPayBody, startPayment } from "../_shared/pay.ts";
+import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
 import { startCardPayment } from "../_shared/pay-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, readChargeCode, supabaseChargeStore } from "../_shared/charge.ts";
+import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, openOutsideOf, readChargeCode, readTip, supabaseChargeStore } from "../_shared/charge.ts";
 import { moneyText } from "../_shared/pay.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
@@ -68,6 +87,10 @@ serveJson("consumer-web-start-payment", async (req) => {
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const admin = adminClient(envRes.env);
+  const outside = bodyRes.body.outside === true;
+  if (outside && (bodyRes.body.charge_code === undefined || bodyRes.body.charge_code === null)) {
+    return json({ ok: false, code: "outside_needs_charge", error: "Paying outside needs the waiter's code" }, 400);
+  }
 
   // The waiter's charge (W2c): the code names the amount and the ticket.
   let charge: ChargeRow | null = null;
@@ -86,10 +109,97 @@ serveJson("consumer-web-start-payment", async (req) => {
     charge = found.charge;
   }
 
+  // Paying outside (MESITA-3545): the charge's whole bill, credit first.
+  if (outside && charge && charges) {
+    const c = charge;
+    const store = charges;
+    if (!isUuid(bodyRes.body.request_id)) return json({ ok: false, error: "request_id must be a uuid" }, 400);
+    const tip = readTip(bodyRes.body.tip_cents);
+    if (!tip.ok) return json({ ok: false, code: tip.code, error: tip.error, ...tip.detail }, tip.status);
+    const placeRes = await readVoucherPlace(admin, c.place_id);
+    if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
+    if (!placeRes.place || placeRes.place.state !== "active") {
+      return json({ ok: false, code: "gone", error: "This place can't take payments" }, 404);
+    }
+    const settings = await readSettings(admin, c.place_id);
+    const currency = String(placeRes.place.currency ?? MONEY_CURRENCY).toLowerCase();
+    const livemode = paymentsLivemode();
+    if (!(await store.claim(c.id, userId))) {
+      return json({ ok: false, code: "taken", error: "Someone else is paying this charge", payment_id: null }, 409);
+    }
+    // This guest's outside bill on this charge is still waiting: answer it,
+    // never a second hold under a new request_id.
+    // A live card or credit payment of this guest already holds the charge.
+    if (c.payment_id && !(await openOutsideOf(store, c, userId))) {
+      const held = await store.payment(c.payment_id);
+      if (held && held.consumer_id === userId && (held.status === "open" || held.status === "opening")) {
+        return json({ ok: false, code: "in_progress", error: "This charge is already being paid", payment_id: held.id }, 409);
+      }
+    }
+    const bound = await openOutsideOf(store, c, userId);
+    if (bound) {
+      await store.bind(c.id, bound.id, null, c.amount_cents);
+      return json({
+        ok: true,
+        payment_id: bound.id,
+        status: "open",
+        outcome: "in_progress",
+        amount_cents: bound.amount_cents,
+        credit_cents: bound.credit_cents,
+        outside_cents: bound.outside_cents,
+        tip_cents: bound.tip_cents,
+        currency,
+        expires_at: bound.expires_at,
+        test_mode: !livemode,
+      });
+    }
+    try {
+      const res = await startOutsidePayment(admin, {
+        consumerId: userId,
+        placeId: c.place_id,
+        billCents: c.amount_cents,
+        tipCents: tip.tipCents,
+        ticket: c.ticket,
+        requestId: bodyRes.body.request_id,
+        currency,
+        livemode,
+        cashbackOn: settings.cashback,
+        nowMs: Date.now(),
+      });
+      if (!res.ok) {
+        // Nothing moved: the charge goes back to the waiter.
+        await store.unclaim(c.id, userId);
+        console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: res.code ?? "refused", place_id: c.place_id, path: "outside" }));
+        return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
+      }
+      const paidAt = res.started.outcome === "already_paid" ? (await store.payment(res.started.payment_id))?.paid_at ?? null : null;
+      if (!(await store.bind(c.id, res.started.payment_id, paidAt, c.amount_cents))) {
+        // Another payment holds the charge: never a second one.
+        return json({ ok: false, code: "in_progress", error: "This charge is already being paid", payment_id: c.payment_id }, 409);
+      }
+      console.log("[consumer-web-start-payment]", JSON.stringify({
+        outcome: res.started.outcome,
+        payment_id: res.started.payment_id,
+        place_id: c.place_id,
+        credit_cents: res.started.credit_cents,
+        outside_cents: res.started.outside_cents,
+        tip_cents: res.started.tip_cents,
+        outside_bps: res.started.outside_cashback_bps,
+        path: "outside",
+      }));
+      return json({ ok: true, ...res.started });
+    } catch (err) {
+      console.error("[consumer-web-start-payment] outside", JSON.stringify({ consumer_id: userId, place_id: c.place_id, request_id: bodyRes.body.request_id, error: errorMessage(err) }));
+      return json({ ok: false, error: "Couldn't confirm the payment. Try again.", request_id: bodyRes.body.request_id }, 500);
+    }
+  }
+
   const parsed = readPayBody(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error, ...parsed.detail }, parsed.status);
   const input = charge ? { ...parsed.input, ticket: charge.ticket } : parsed.input;
-  if (charge && input.amountCents !== charge.amount_cents) {
+  // Lower-only (MESITA-3545): never more than the waiter's bill; less is the
+  // rest at the table.
+  if (charge && input.amountCents > charge.amount_cents) {
     return json({ ok: false, error: `The waiter's charge is ${moneyText(charge.amount_cents, charge.currency)}` }, 400);
   }
   const card = readCardPart(bodyRes.body, input.amountCents);
@@ -120,7 +230,9 @@ serveJson("consumer-web-start-payment", async (req) => {
     if (charge && charges) await charges.unclaim(charge.id, userId);
   };
   const bind = async (paymentId: string, paidAt: string | null) => {
-    if (charge && charges) await charges.bind(charge.id, paymentId, paidAt);
+    if (charge && charges && !(await charges.bind(charge.id, paymentId, paidAt, charge.amount_cents))) {
+      console.error("[consumer-web-start-payment] bind_refused", JSON.stringify({ payment_id: paymentId, place_id: charge.place_id }));
+    }
   };
 
   try {
