@@ -6,7 +6,8 @@
 // (settle-payment.ts). A refused Checkout releases the hold at once; an
 // expired one is released only when Stripe confirms the expiry.
 //
-//   consumer-web-start-payment  readCardPayBody → startCardPayment
+//   consumer-web-start-payment    readCardPayBody → startCardPayment
+//   consumer-web-release-payment  releaseCardPayment (MESITA-3458)
 //
 // Refusals, in the order they are checked: no_account (no account that can
 // charge in this universe), cards_off (the owner's switch), currency_mismatch,
@@ -23,6 +24,7 @@ import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import type { PayInput, PayRefusal } from "./pay.ts";
 import { mintProofToken } from "./proof.ts";
 import { accountCurrency } from "./vouchers.ts";
+import { releasePayment, settlePayment } from "./settle-payment.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 
 /** A start with a card part: the bill (credit + card), the card part, the
@@ -359,4 +361,68 @@ async function inProgress(
     url,
     expires_at: row.expires_at,
   });
+}
+
+// ── Back from a cancelled Checkout (MESITA-3458) ────────────────────────────
+
+/** Why a cancelled Checkout's row closes: `expired`, never `failed`, so a
+ *  guest who cancels three times is not locked out (rule 13 counts failed). */
+export const CANCELLED_ERROR = "cancelled";
+
+/** What a release did: `released` (the session is closed on Stripe and the
+ *  hold is gone), `paid` (Stripe had already taken the money: settled
+ *  instead), `unchanged` (the row was already closed or paid), `pending`
+ *  (Stripe could not close it and still reports it open: nothing changed,
+ *  the cron closes it when it expires). */
+export type ReleaseOutcome = "released" | "paid" | "unchanged" | "pending";
+
+/** The guest came back from Checkout with `checkout=cancel`: the open
+ *  session is expired on the place's account and the hold released, so the
+ *  next start is not answered in_progress with the old session and the
+ *  credit is spendable again. When the expire is refused (the session
+ *  completed or already expired), the session is read and settled as it
+ *  says: a paid one is never released. The caller has already checked the
+ *  row is this guest's. */
+export async function releaseCardPayment(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  row: {
+    id: string;
+    status: string;
+    stripe_checkout_session_id: string | null;
+    stripe_account_id: string | null;
+    created_at: string;
+    expires_at: string | null;
+  },
+  nowMs: number,
+): Promise<ReleaseOutcome> {
+  if (row.status !== "open" && row.status !== "opening") return "unchanged";
+  const sessionId = row.stripe_checkout_session_id;
+  const account = row.stripe_account_id;
+  if (!sessionId || !account) {
+    // No session yet: nothing on Stripe can take money for this row. A
+    // start still in flight finds the row closed and expires its session.
+    await releasePayment(admin, row.id, "expired", CANCELLED_ERROR);
+    return "released";
+  }
+  try {
+    const s = await stripe("POST", `checkout/sessions/${encodeURIComponent(sessionId)}/expire`, undefined, { stripeAccount: account });
+    if (s.status === "expired") {
+      await releasePayment(admin, row.id, "expired", CANCELLED_ERROR);
+      return "released";
+    }
+  } catch (err) {
+    // Stripe refuses to expire a session that is no longer open.
+    console.log("[pay-card] expire_refused", JSON.stringify({ payment_id: row.id, error: err instanceof Error ? err.message : String(err) }));
+  }
+  const outcome = await settlePayment(admin, stripe, {
+    id: row.id,
+    stripe_checkout_session_id: sessionId,
+    stripe_account_id: account,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+  }, nowMs);
+  if (outcome === "paid" || outcome === "already_paid" || outcome === "late_completion") return "paid";
+  if (outcome === "expired") return "released";
+  return "pending";
 }

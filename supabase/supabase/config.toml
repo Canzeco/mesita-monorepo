@@ -310,6 +310,9 @@ verify_jwt = true
 [functions.consumer-web-get-payment]
 verify_jwt = true
 
+[functions.consumer-web-release-payment]
+verify_jwt = true
+
 [functions.visit-web-get-proof]
 verify_jwt = false
 
