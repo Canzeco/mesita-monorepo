@@ -44,7 +44,7 @@ import { StorefrontIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { PLACE_TAB_META } from "./place-tab-meta";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
-import { useShellPlace } from "@/lib/shell-place";
+import { needsStripeConnect, useShellPlace } from "@/lib/shell-place";
 import { cn } from "@/lib/utils";
 
 // The consumer app's wordmark face (web-consumer ModeTabs).
@@ -53,7 +53,7 @@ const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 export type ShellPlace = { id: string; name: string | null; photo: string | null; role: "owner" | "editor" | null };
 
 /** `href` null: there is no place yet, so the row is drawn greyed, not a link. */
-type Row = { key: string; label: string; icon: Icon; href: string | null; active: boolean };
+type Row = { key: string; label: string; icon: Icon; href: string | null; active: boolean; dot?: string };
 
 /** The Places row: the current place, or plain Places without one. */
 type Switcher = { href: string; active: boolean; name: string; photo: string | null; role: string | null; hasPlace: boolean };
@@ -65,6 +65,7 @@ function menu(
   placeId: string | null,
   place: { name: string | null; photo: string | null; role: ShellPlace["role"] } | null,
   isSuperAdmin: boolean,
+  connectStripe: boolean,
 ): { account: Row; switcher: Switcher; place: PlaceMenu } {
   const under = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const account: Row = { key: "account", label: "Account", icon: UserCircleIcon, href: ACCOUNT, active: pathname === ACCOUNT };
@@ -91,7 +92,9 @@ function menu(
         // Reviews lives inside Profile (MESITA-3393).
         tab("profile"),
         tab("premier"),
-        tab("payments"),
+        // One quiet dot until the place's Stripe account can charge
+        // (MESITA-3384); Payments leads with the Connect card meanwhile.
+        { ...tab("payments"), ...(connectStripe ? { dot: "Connect Stripe" } : {}) },
         // Last: every product, current and future (MESITA-3238).
         tab("all"),
       ],
@@ -166,6 +169,9 @@ function RailRow({ row }: { row: Row }) {
         <RowIcon size={20} weight={row.active ? "fill" : "regular"} aria-hidden />
       </span>
       <span className="hidden min-w-0 flex-1 truncate lg:inline">{row.label}</span>
+      {row.dot ? (
+        <span className="bg-muted-foreground/60 absolute top-2 right-2 size-1.5 rounded-full lg:static lg:shrink-0" aria-hidden />
+      ) : null}
     </>
   );
   if (!row.href) {
@@ -182,12 +188,13 @@ function RailRow({ row }: { row: Row }) {
   return (
     <Link
       href={row.href}
-      title={row.label}
-      aria-label={row.label}
+      title={row.dot ? `${row.label}: ${row.dot}` : row.label}
+      aria-label={row.dot ? `${row.label}: ${row.dot}` : row.label}
       aria-current={row.active ? "page" : undefined}
       // Below lg the rail is icons only (w-16); the label returns at lg.
       className={cn(
         ROW,
+        row.dot && "relative",
         row.active ? "bg-muted text-foreground font-medium" : "text-foreground/80 hover:bg-muted/60 hover:text-foreground",
       )}
     >
@@ -216,7 +223,7 @@ export function BusinessShell({
   const mine = places.find((p) => p.id === placeId) ?? null;
   const shown = named?.id === placeId ? named : null;
   const current = mine || shown ? { name: shown?.name ?? mine?.name ?? null, photo: shown?.photo ?? mine?.photo ?? null, role: mine?.role ?? null } : null;
-  const { account, switcher, place } = menu(pathname, placeId, current, isSuperAdmin);
+  const { account, switcher, place } = menu(pathname, placeId, current, isSuperAdmin, needsStripeConnect(placeId));
 
   // Desktop web (Pato, 2026-11-02, MESITA-3119): one side menu at every
   // width, no bottom bar; below lg it narrows to an icon rail.

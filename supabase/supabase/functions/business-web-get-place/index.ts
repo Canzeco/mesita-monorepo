@@ -9,7 +9,11 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, role: "owner" | "superadmin", place, profile,
 //             manager: { method, expires_at, role } | null,
-//             code_set: boolean }   whether the place code is set (MESITA-3299), never the code
+//             code_set: boolean,   whether the place code is set (MESITA-3299), never the code
+//             can_sell: boolean | null }  MESITA-3384: the place's Stripe account
+//               charges in this server's mode (stripeStateOf "charging", the rule
+//               the voucher sale reads); false draws the Connect nudge on
+//               Payments and its dot in the menu; null when the read failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -18,6 +22,8 @@ import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { buildPlaceOverview } from "../_shared/place-overview.ts";
 import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
+import { boostLivemode } from "../_shared/boost.ts";
+import { stripeStateByPlace } from "../_shared/payments.ts";
 
 serveJson("business-web-get-place", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -38,6 +44,8 @@ serveJson("business-web-get-place", async (req) => {
   const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
 
+  const stripe = await stripeStateByPlace(admin, [placeId], boostLivemode());
+
   return json({
     ok: true,
     role: access.role,
@@ -47,5 +55,6 @@ serveJson("business-web-get-place", async (req) => {
     profile: res.overview.profile,
     manager: access.manager ? { method: access.manager.method, expires_at: access.manager.expires_at, role: access.manager.role } : null,
     code_set: !!code,
+    can_sell: stripe ? stripe.get(placeId) === "charging" : null,
   });
 });
