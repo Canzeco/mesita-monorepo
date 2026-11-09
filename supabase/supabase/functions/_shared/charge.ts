@@ -126,15 +126,13 @@ export function mintChargeCode(): string {
 
 export const mintChargeToken = mintProofToken;
 
-/** The client address as the platform's edge saw it: Cloudflare's
- *  cf-connecting-ip when present (the edge sets it), else the rightmost hop
- *  of x-forwarded-for, the one the nearest proxy appended. A value a client
- *  writes on the left of x-forwarded-for is never read. */
+/** The client address as the platform's edge saw it. Probed live on
+ *  2026-11-09 (MESITA-3535): Cloudflare sets cf-connecting-ip and refuses a
+ *  request that sends its own (error 1000); the Supabase edge overwrites
+ *  x-real-ip with the same address; x-forwarded-for arrives exactly as the
+ *  client wrote it, nothing appended, so it is never read. */
 export function clientAddress(headers: Headers): string {
-  const cf = headers.get("cf-connecting-ip")?.trim();
-  if (cf) return cf;
-  const hops = (headers.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  return hops.at(-1) ?? "unknown";
+  return headers.get("cf-connecting-ip")?.trim() || headers.get("x-real-ip")?.trim() || "unknown";
 }
 
 /** HMAC-SHA256 of the address under a key derived from the service role

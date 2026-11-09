@@ -129,6 +129,35 @@ export type Database = {
         }
         Relationships: []
       }
+      app_feedback: {
+        Row: {
+          consumer_id: string
+          created_at: string
+          id: string
+          note: string
+        }
+        Insert: {
+          consumer_id: string
+          created_at?: string
+          id?: string
+          note: string
+        }
+        Update: {
+          consumer_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_feedback_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_search_attempts: {
         Row: {
           account_id: string
@@ -2323,6 +2352,92 @@ export type Database = {
         }
         Relationships: []
       }
+      vip_invitation_attempts: {
+        Row: {
+          code_last4: string | null
+          consumer_id: string
+          created_at: string
+          id: number
+          outcome: string
+        }
+        Insert: {
+          code_last4?: string | null
+          consumer_id: string
+          created_at?: string
+          id?: never
+          outcome: string
+        }
+        Update: {
+          code_last4?: string | null
+          consumer_id?: string
+          created_at?: string
+          id?: never
+          outcome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_invitation_attempts_consumer_id_fkey"
+            columns: ["consumer_id"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vip_invitation_codes: {
+        Row: {
+          code_hash: string
+          code_last4: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          revoked_at: string | null
+          used_at: string | null
+          used_by: string | null
+          vip_partner_id: string | null
+        }
+        Insert: {
+          code_hash: string
+          code_last4: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+          used_at?: string | null
+          used_by?: string | null
+          vip_partner_id?: string | null
+        }
+        Update: {
+          code_hash?: string
+          code_last4?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          revoked_at?: string | null
+          used_at?: string | null
+          used_by?: string | null
+          vip_partner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vip_invitation_codes_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "consumers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vip_invitation_codes_vip_partner_id_fkey"
+            columns: ["vip_partner_id"]
+            isOneToOne: false
+            referencedRelation: "vip_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vip_partners: {
         Row: {
           created_at: string
@@ -2439,6 +2554,7 @@ export type Database = {
           consumer_id: string | null
           created_at: string
           credit_cents: number
+          credit_refunded_cents: number
           currency: string
           expires_at: string | null
           fee_refunded_cents: number
@@ -2471,6 +2587,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
+          credit_refunded_cents?: number
           currency: string
           expires_at?: string | null
           fee_refunded_cents?: number
@@ -2503,6 +2620,7 @@ export type Database = {
           consumer_id?: string | null
           created_at?: string
           credit_cents?: number
+          credit_refunded_cents?: number
           currency?: string
           expires_at?: string | null
           fee_refunded_cents?: number
@@ -2886,6 +3004,22 @@ export type Database = {
         Args: { p_account_id: string; p_cap: number }
         Returns: boolean
       }
+      catalog_rank: {
+        Args: {
+          p_exponent: number
+          p_families: string[]
+          p_half_km: number
+          p_known_families: string[]
+          p_lat: number
+          p_lng: number
+          p_nearest?: boolean
+          p_premier_1: number
+          p_premier_2: number
+          p_require_active: boolean
+          p_root: number
+        }
+        Returns: Json
+      }
       close_place_enrichment_run: {
         Args: {
           p_charges?: Json
@@ -2915,6 +3049,10 @@ export type Database = {
       consumer_instagram_verify: {
         Args: { p_consumer_id: string; p_followers: number; p_handle: string }
         Returns: undefined
+      }
+      consumer_redeem_vip_invitation: {
+        Args: { p_code: string; p_consumer: string }
+        Returns: string
       }
       expire_saved_location_names: { Args: never; Returns: number }
       generate_consumer_code: { Args: never; Returns: string }
@@ -3008,6 +3146,17 @@ export type Database = {
       place_invite_accept: {
         Args: { p_consumer_id: string; p_email: string }
         Returns: number
+      }
+      place_money_summary: {
+        Args: {
+          p_before?: string
+          p_before_id?: string
+          p_from: string
+          p_livemode: boolean
+          p_place_id: string
+          p_to: string
+        }
+        Returns: Json
       }
       place_take_code_try: {
         Args: { p_consumer_id: string; p_max: number; p_place_id: string }
@@ -3218,6 +3367,10 @@ export type Database = {
         Args: { p_consumer_id: string; p_place_id: string }
         Returns: undefined
       }
+      wallet_needs_review_list: {
+        Args: { p_before?: string; p_before_id?: string }
+        Returns: Json
+      }
       wallet_note_fee_refund: {
         Args: { p_fee_refunded_cents: number; p_kind: string; p_row_id: string }
         Returns: Json
@@ -3243,6 +3396,7 @@ export type Database = {
         Args: { p_currency: string; p_livemode: boolean; p_place_id: string }
         Returns: number
       }
+      wallet_refund_credit: { Args: { p_attempt_id: string }; Returns: Json }
       wallet_refund_payment: {
         Args: {
           p_amount_refunded: number
