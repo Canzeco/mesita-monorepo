@@ -303,10 +303,10 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
     scoring: "Proximity × Popularity × s, s the Premier factor (MESITA-2925), a plain product never clamped or normalized (MESITA-2710); Proximity is 1 ÷ (1 + (distance ÷ half distance)^exponent), ½ at the operator's half distance (MESITA-3015, the exponent a knob since MESITA-3083, live 1). No radius: a far place is never cut, only lowered. s counts at any distance (the reach went with MESITA-3015): at exponent 1, past the half distance the score is half distance ÷ distance, so a Premier 5X beats a place up to about five times closer (125× the reviews at the cube root) and one in another city never tops Home. No location: Popularity × s. Chat ranks the same way inside the current-location radius. Ties break on distance, then id. One list (MESITA-3041): the two lanes of MESITA-3016 are retired.",
     keepsOrder: [],
     rules: [
-      "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and the best 1,000 come back; Home draws them a Catalog page size at a time (MESITA-2909, MESITA-2921).",
+      "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and Home gets every ranked id with the first page's cards, then reads the rest by id a Catalog page size at a time (MESITA-2909, MESITA-3057).",
       "No Popularity floor since MESITA-3086: a place with no Google numbers scores 0 and ranks last, never dropped.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
-      "Mesita's read ranks every active place (up to 10,000) and keeps the best 1,000 by score; Home shows them `map.catalogPageSize` at a time (MESITA-2921).",
+      "Mesita's read ranks every active place (up to 10,000) by score and hands Home the whole order; Home fills `map.catalogPageSize` cards at a time (MESITA-2921, MESITA-3057).",
       "Chat reads every ready Mesita place inside a fixed 15 km (Selected only until MESITA-2925; the current-location radius knob retired in MESITA-3086).",
     ],
     callers: ["Catalog (Home's Places)", "Chat (Don Memo)"],
