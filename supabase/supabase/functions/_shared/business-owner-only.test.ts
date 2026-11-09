@@ -12,6 +12,8 @@ const DOORS = [
   "business-web-transfer-owner",
   "business-web-start-premier",
   "business-web-cancel-premier",
+  // The owner's money (MESITA-3307): editors get 403 forbidden.
+  "business-web-get-place-money",
 ];
 
 /** The payer door's call, checked by business-premier-payer-doors.test.ts. */

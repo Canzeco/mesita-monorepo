@@ -1,4 +1,4 @@
-import { getPlacePayments } from "@/lib/business-api";
+import { getPlaceMoney, getPlacePayments } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
 import { PaymentsPanel } from "./PaymentsPanel";
 
@@ -19,10 +19,13 @@ export default async function PaymentsPage({
 }) {
   const [{ id }, { stripe }] = await Promise.all([params, searchParams]);
   const payments = await getPlacePayments(id);
+  // The owner's money (MESITA-3307): owners and Mesita staff only, so an
+  // editor's page never asks.
+  const money = payments.ok && payments.data.can_edit ? await getPlaceMoney(id) : null;
   return (
     <div className="flex flex-col gap-4 pb-8">
       {payments.ok ? (
-        <PaymentsPanel placeId={id} initial={payments.data} back={stripe === "return" ? "return" : stripe === "refresh" ? "refresh" : null} />
+        <PaymentsPanel placeId={id} initial={payments.data} money={money?.ok ? money.data : null} back={stripe === "return" ? "return" : stripe === "refresh" ? "refresh" : null} />
       ) : (
         <Card>
           <p className="font-semibold">Payments didn&apos;t load.</p>

@@ -1,0 +1,239 @@
+// W3 (MESITA-3307): the owner's money page and the operator's refunds.
+//
+//   maskGuest        who paid, as the owner sees it: the guest's name, else
+//                    the email's local part cut to two characters; never the
+//                    email itself.
+//   refundPurchase   one voucher purchase, full or partial, through Stripe on
+//                    the place's connected account.
+//   refundPayment    one payment: its card part (card + tip) through Stripe
+//                    first, then its credit part given back as credit.
+//   planCloseOut     what a place's close-out refunds per purchase.
+//
+// Every Stripe refund starts as a wallet_refund_attempts row whose id is the
+// Idempotency-Key, carries Stripe-Account, and returns Mesita's fee with the
+// money (refund_application_fee) when the charge carried one. The ledger is
+// written by the same RPCs the Connect receiver calls, with the cumulative
+// amount, so the receiver's later delivery of the same refund is a no-op.
+
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { type StripeCall, StripeError } from "./boost.ts";
+
+// ── Masking ───────────────────────────────────────────────────────────────
+
+export function maskGuest(name: string | null | undefined, email: string | null | undefined): string {
+  const n = (name ?? "").trim();
+  if (n) return n;
+  const local = (email ?? "").split("@")[0].trim();
+  if (!local) return "Guest";
+  return `${local.slice(0, 2)}•••`;
+}
+
+// ── Refunds ───────────────────────────────────────────────────────────────
+
+export type RefundDeps = { admin: SupabaseClient; stripe: StripeCall; actor: string | null };
+
+export type PurchaseRow = {
+  id: string;
+  consumer_id: string | null;
+  place_id: string;
+  amount_cents: number;
+  bonus_cents: number;
+  refunded_cents: number;
+  application_fee_cents: number;
+  stripe_account_id: string;
+  stripe_payment_intent_id: string | null;
+  voucher: string | null;
+  story_activated_at: string | null;
+  status: string;
+  paid_at: string | null;
+  livemode: boolean;
+  currency: string;
+  created_at: string;
+};
+
+export const PURCHASE_COLUMNS =
+  "id, consumer_id, place_id, amount_cents, bonus_cents, refunded_cents, application_fee_cents, stripe_account_id, stripe_payment_intent_id, voucher, story_activated_at, status, paid_at, livemode, currency, created_at";
+
+export type PaymentRow = {
+  id: string;
+  consumer_id: string | null;
+  place_id: string;
+  credit_cents: number;
+  card_cents: number;
+  tip_cents: number;
+  refunded_cents: number;
+  credit_refunded_cents: number;
+  application_fee_cents: number;
+  stripe_account_id: string | null;
+  stripe_payment_intent_id: string | null;
+  status: string;
+  paid_at: string | null;
+  livemode: boolean;
+};
+
+export const PAYMENT_COLUMNS =
+  "id, consumer_id, place_id, credit_cents, card_cents, tip_cents, refunded_cents, credit_refunded_cents, application_fee_cents, stripe_account_id, stripe_payment_intent_id, status, paid_at, livemode";
+
+export type RefundResult =
+  | { ok: true; card_refunded_cents: number; credit_refunded_cents: number; status: string | null }
+  | { ok: false; code: "nothing_to_refund" | "refund_failed"; stripe_code?: string; error: string };
+
+/** One Stripe refund of a direct charge, keyed by a fresh attempt row. */
+async function stripeRefund(
+  deps: RefundDeps,
+  target: { purchase_id?: string; payment_id?: string },
+  args: { paymentIntent: string; account: string; amount: number; withFee: boolean },
+): Promise<{ ok: true } | { ok: false; stripe_code: string; error: string }> {
+  const { data, error } = await deps.admin
+    .from("wallet_refund_attempts")
+    .insert({ ...target, amount_cents: args.amount, created_by: deps.actor })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`wallet_refund_attempts: ${error?.message ?? "no row"}`);
+  const attemptId = (data as { id: string }).id;
+  try {
+    const refund = await deps.stripe(
+      "POST",
+      "refunds",
+      {
+        payment_intent: args.paymentIntent,
+        amount: args.amount,
+        ...(args.withFee ? { refund_application_fee: true } : {}),
+        metadata: { attempt_id: attemptId },
+      },
+      { idempotencyKey: attemptId, stripeAccount: args.account },
+    );
+    await deps.admin
+      .from("wallet_refund_attempts")
+      .update({ status: "done", stripe_refund_id: String(refund.id ?? ""), updated_at: new Date().toISOString() })
+      .eq("id", attemptId);
+    return { ok: true };
+  } catch (err) {
+    const code = err instanceof StripeError ? (err.code || err.type || String(err.httpStatus)) : "network";
+    await deps.admin
+      .from("wallet_refund_attempts")
+      .update({ status: "failed", error_code: code, updated_at: new Date().toISOString() })
+      .eq("id", attemptId);
+    return { ok: false, stripe_code: code, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+async function rpcOk(admin: SupabaseClient, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data, error } = await admin.rpc(fn, args);
+  if (error) throw new Error(`${fn}: ${error.message}`);
+  const res = (data ?? {}) as Record<string, unknown>;
+  if (res.ok !== true) throw new Error(`${fn}: ${String(res.code ?? "failed")}`);
+  return res;
+}
+
+/** A voucher purchase: `amount` (default all that is left) back to the card. */
+export async function refundPurchase(deps: RefundDeps, row: PurchaseRow, amount?: number): Promise<RefundResult> {
+  const left = row.amount_cents - row.refunded_cents;
+  const want = Math.min(amount ?? left, left);
+  if (!row.paid_at || want <= 0 || !row.stripe_payment_intent_id) {
+    return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this purchase" };
+  }
+  const r = await stripeRefund(deps, { purchase_id: row.id }, {
+    paymentIntent: row.stripe_payment_intent_id,
+    account: row.stripe_account_id,
+    amount: want,
+    withFee: row.application_fee_cents > 0,
+  });
+  if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
+  const total = row.refunded_cents + want;
+  const res = await rpcOk(deps.admin, "wallet_refund_purchase", { p_purchase_id: row.id, p_amount_refunded: total });
+  if (row.application_fee_cents > 0) {
+    await deps.admin.rpc("wallet_note_fee_refund", {
+      p_kind: "purchase",
+      p_row_id: row.id,
+      p_fee_refunded_cents: Math.floor((row.application_fee_cents * total) / row.amount_cents),
+    });
+  }
+  return { ok: true, card_refunded_cents: want, credit_refunded_cents: 0, status: (res.status as string) ?? null };
+}
+
+/** How a payment refund splits: the card part (card + tip) first, then the
+ *  credit part. Pure. */
+export function splitPaymentRefund(row: PaymentRow, amount?: number): { card: number; credit: number } {
+  const cardLeft = row.card_cents + row.tip_cents - row.refunded_cents;
+  const creditLeft = row.credit_cents - row.credit_refunded_cents;
+  const want = Math.max(0, Math.min(amount ?? cardLeft + creditLeft, cardLeft + creditLeft));
+  const card = Math.min(want, cardLeft);
+  return { card, credit: Math.min(want - card, creditLeft) };
+}
+
+/** A payment: its card part through Stripe, then its credit part as credit
+ *  (a credit-only payment makes no Stripe call). */
+export async function refundPayment(deps: RefundDeps, row: PaymentRow, amount?: number): Promise<RefundResult> {
+  const { card, credit } = splitPaymentRefund(row, amount);
+  if (!row.paid_at || card + credit <= 0) {
+    return { ok: false, code: "nothing_to_refund", error: "Nothing left to refund on this payment" };
+  }
+  let status: string | null = null;
+  if (card > 0) {
+    if (!row.stripe_payment_intent_id || !row.stripe_account_id) {
+      return { ok: false, code: "refund_failed", error: "The card part has no Stripe charge" };
+    }
+    const r = await stripeRefund(deps, { payment_id: row.id }, {
+      paymentIntent: row.stripe_payment_intent_id,
+      account: row.stripe_account_id,
+      amount: card,
+      withFee: row.application_fee_cents > 0,
+    });
+    if (!r.ok) return { ok: false, code: "refund_failed", stripe_code: r.stripe_code, error: r.error };
+    const total = row.refunded_cents + card;
+    const res = await rpcOk(deps.admin, "wallet_refund_payment", { p_payment_id: row.id, p_amount_refunded: total });
+    status = (res.status as string) ?? null;
+    if (row.application_fee_cents > 0 && row.card_cents > 0) {
+      await deps.admin.rpc("wallet_note_fee_refund", {
+        p_kind: "payment",
+        p_row_id: row.id,
+        p_fee_refunded_cents: Math.floor((row.application_fee_cents * Math.min(total, row.card_cents)) / row.card_cents),
+      });
+    }
+  }
+  if (credit > 0) {
+    const { data, error } = await deps.admin
+      .from("wallet_refund_attempts")
+      .insert({ payment_id: row.id, amount_cents: credit, created_by: deps.actor })
+      .select("id")
+      .single();
+    if (error || !data) throw new Error(`wallet_refund_attempts: ${error?.message ?? "no row"}`);
+    const res = await rpcOk(deps.admin, "wallet_refund_credit", { p_attempt_id: (data as { id: string }).id });
+    status = (res.status as string) ?? status;
+  }
+  return { ok: true, card_refunded_cents: card, credit_refunded_cents: credit, status };
+}
+
+// ── Close-out ─────────────────────────────────────────────────────────────
+
+export type CloseOutPurchase = Pick<
+  PurchaseRow,
+  "id" | "amount_cents" | "bonus_cents" | "refunded_cents" | "voucher" | "story_activated_at" | "created_at"
+>;
+
+/** One guest's purchases at the place, newest first: each refunds
+ *  min(cash not yet refunded, floor(remaining × amount / (amount + bonus)))
+ *  and the remaining unspent credit drops by what that refund takes back
+ *  (its principal plus the bonus's share), stopping at 0. A Story voucher
+ *  staff never activated gave no credit, so its cash comes back whole and
+ *  spends none of the remaining. Pure. */
+export function planCloseOut(purchases: CloseOutPurchase[], unspentCents: number): { id: string; amount: number }[] {
+  const out: { id: string; amount: number }[] = [];
+  let remaining = Math.max(0, unspentCents);
+  const sorted = [...purchases].sort((a, b) => (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0));
+  for (const p of sorted) {
+    const cash = p.amount_cents - p.refunded_cents;
+    if (cash <= 0) continue;
+    if (p.voucher === "voucher_story" && !p.story_activated_at) {
+      out.push({ id: p.id, amount: cash });
+      continue;
+    }
+    if (remaining <= 0) continue;
+    const amount = Math.min(cash, Math.floor((remaining * p.amount_cents) / (p.amount_cents + p.bonus_cents)));
+    if (amount <= 0) continue;
+    out.push({ id: p.id, amount });
+    remaining -= amount + Math.floor((p.bonus_cents * amount) / p.amount_cents);
+  }
+  return out;
+}

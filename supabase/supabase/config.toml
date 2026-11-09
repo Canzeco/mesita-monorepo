@@ -535,6 +535,20 @@ verify_jwt = true
 [functions.admin-web-save-vip-code]
 verify_jwt = true
 
+# Manage › Money (MESITA-3307): refund one purchase or payment, close out a
+# place, the needs_review list and its Re-read. Super-admin only.
+[functions.admin-web-refund-payment]
+verify_jwt = true
+
+[functions.admin-web-close-out-place]
+verify_jwt = true
+
+[functions.admin-web-list-needs-review]
+verify_jwt = true
+
+[functions.admin-web-reopen-settle]
+verify_jwt = true
+
 # THE admin config pair (MESITA-1724). Every app_config section the console
 # edits arrives here under `section`, and the no-section read is the Crenup
 # page's own payload. Registry: functions/_shared/config-sections.ts. Both
@@ -689,6 +703,11 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.business-web-set-payment]
+verify_jwt = true
+
+# Business › Payments, the owner's money (MESITA-3307): totals and rows,
+# owner and Mesita staff only.
+[functions.business-web-get-place-money]
 verify_jwt = true
 
 [functions.business-web-start-payment-onboarding]
