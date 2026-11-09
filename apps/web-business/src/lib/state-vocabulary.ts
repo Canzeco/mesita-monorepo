@@ -17,6 +17,12 @@
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
 //                 Pay · Mesita Credits (MESITA-2115). Nobody holds, proves,
 //                 pays or redeems yet.
+//                 They came back as PLACE STATES (MESITA-3588, Main §10):
+//                 what the business decides — Owned · Plan · Billing ·
+//                 Stripe · Reservations · Cash Payments (+ Cashback) ·
+//                 Mesita Payments (+ Cashback) · Mesita Prepayments, with
+//                 House Credits (never "Mesita Credits": credits are the
+//                 place's debt). Drawn by PlaceStatesCard / place-states.ts.
 //   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
 //                 8. Vectors Enriched, each a bool (called or not).
 //                 Seed is Create-only and is not a step on this box.
