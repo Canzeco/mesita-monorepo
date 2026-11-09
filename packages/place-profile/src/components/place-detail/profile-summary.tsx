@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Banknote, Clock, MapPin, MessageSquareText, Navigation, Star, Tag, Users } from "lucide-react";
+import { Banknote, Clock, MapPin, Navigation, Star, Tag, UserStar, Users } from "lucide-react";
 
 import type { PlaceActions } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
@@ -109,7 +109,7 @@ export function ProfileSummary({
               detail={stat.detail}
               label={stat.label}
               icon={channelStatIcon(stat)}
-              unitIcon={stat.key === "google" ? MessageSquareText : Users}
+              unitIcon={stat.key === "google" ? UserStar : Users}
               unit={stat.key === "google" ? "reviews" : "followers"}
               mention={stat.mention}
               spokenValue={stat.spoken}
