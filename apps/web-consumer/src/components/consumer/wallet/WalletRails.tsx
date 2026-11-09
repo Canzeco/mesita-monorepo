@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { CreditCard, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
@@ -150,29 +150,6 @@ export function SavedCardTile({ card, onOpen }: { card: SavedCard; onOpen: () =>
         <span>
           <span className="block text-sm leading-tight font-semibold tabular-nums">•••• {card.last4}</span>
           <span className="block type-label text-white/70 tabular-nums">{expiryLabel(card)}</span>
-        </span>
-      </button>
-    </MoneySlot>
-  );
-}
-
-/** Money's checkout method: Mesita Pay charges by card, Apple Pay or Google
- *  Pay at Stripe's checkout. Saved cards (MESITA-3523) sit beside it with
- *  the same line. */
-export function CheckoutMethodTile({ onOpen }: { onOpen: () => void }) {
-  return (
-    <MoneySlot back={CARD_BACK}>
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Card, Apple Pay or Google Pay, chosen at checkout: ${CARD_BACK}`}
-        className={cn(TILE_SHAPE, "flex w-full flex-col justify-between bg-white p-3 text-left ring-1 ring-black/10")}
-        data-wallet-method="checkout"
-      >
-        <CreditCard className="h-5 w-5" aria-hidden />
-        <span>
-          <span className="block text-xs leading-tight font-semibold">Card · Apple Pay · Google Pay</span>
-          <span className="text-muted-foreground block type-label">At checkout</span>
         </span>
       </button>
     </MoneySlot>
