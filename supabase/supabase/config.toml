@@ -316,6 +316,13 @@ verify_jwt = false
 [functions.visit-web-mark-proof-seen]
 verify_jwt = false
 
+# MESITA-3507: the Story voucher's staff page. No sign-in: the token is the key.
+[functions.visit-web-get-story]
+verify_jwt = false
+
+[functions.visit-web-activate-story]
+verify_jwt = false
+
 # MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
 # holds no Supabase JWT; the signature on the raw body with
 # STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato

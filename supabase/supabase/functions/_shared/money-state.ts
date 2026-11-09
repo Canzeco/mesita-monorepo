@@ -61,12 +61,18 @@ export type VoucherReason =
 
 /** Vouchers in the catalog that no wave sells yet, and why. W1b sells the
  *  other three; MX$5,000 waits for its own wave, VIP for card payments
- *  (W2b) and Story for the Instagram bot (W4). */
+ *  (W2b). Story sells since MESITA-3507: its gates are the guest's own
+ *  (a linked Instagram above STORY_MIN_FOLLOWERS) and staff activate its
+ *  credit after seeing the story, so no wave holds it back. */
 export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
   voucher_5000: "not_yet",
   voucher_vip: "needs_card_payments",
-  voucher_story: "needs_instagram",
 };
+
+/** Story is for guests whose linked Instagram has MORE than this many
+ *  followers (MESITA-3507, Pato: "only available for users that have more
+ *  than 1000 followers in instagram"). The buy EF refuses the rest. */
+export const STORY_MIN_FOLLOWERS = 1000;
 
 export type PayWay = "credit" | "card" | "both" | "none";
 

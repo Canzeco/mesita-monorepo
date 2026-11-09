@@ -21,6 +21,9 @@
 //   payments, from wallet_balances: what the Pay tab can spend there now.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
+//             waiting_stories (MESITA-3507): [{ purchase_id, place, place_id,
+//               credit_cents, currency, paid_at, token, url }]: paid Story
+//               vouchers staff have not activated yet (no credit until then),
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
 //             settling?: true, pending_purchases?: [purchase ids] }
 
@@ -29,6 +32,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from 
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import { chargesEnabledByPlace } from "../_shared/payments.ts";
+import { storyUrl } from "../_shared/proof.ts";
 import {
   balanceKey,
   balancesOf,
@@ -114,7 +118,26 @@ serveJson("consumer-web-get-wallet", async (req) => {
   }
   const balances = balancesOf((rows ?? []) as Entry[], Date.now(), spendable);
 
-  const ids = [...new Set(balances.map((b) => b.place_id))];
+  // STORIES WAITING FOR STAFF (MESITA-3507): paid, not yet activated, so no
+  // credit in the balances above. The Wallet shows each with its QR.
+  const { data: storyRows, error: storyErr } = await admin
+    .from("wallet_purchases")
+    .select("id, place_id, amount_cents, bonus_cents, currency, paid_at, story_token")
+    .eq("consumer_id", userId)
+    .eq("livemode", livemode)
+    .eq("voucher", "voucher_story")
+    .eq("status", "paid")
+    .is("story_activated_at", null)
+    .not("story_token", "is", null)
+    .order("paid_at", { ascending: false })
+    .limit(20);
+  if (storyErr) return json({ ok: false, error: `stories: ${storyErr.message}` }, 500);
+  const stories = (storyRows ?? []) as Array<{
+    id: string; place_id: string; amount_cents: number; bonus_cents: number;
+    currency: string; paid_at: string | null; story_token: string;
+  }>;
+
+  const ids = [...new Set([...balances.map((b) => b.place_id), ...stories.map((s) => s.place_id)])];
   // card_ok (MESITA-3305): the place's account can charge in this universe
   // and the owner's Cards switch is on, so the Pay tab may offer a card
   // part there. A failed read reads as no card; the server is the last word
@@ -142,6 +165,16 @@ serveJson("consumer-web-get-wallet", async (req) => {
       place_id,
       ...b,
       card_ok: (charging?.has(place_id) ?? false) && !cardsOff.has(place_id),
+    })),
+    waiting_stories: stories.map((st) => ({
+      purchase_id: st.id,
+      place: places.get(st.place_id) ?? null,
+      place_id: st.place_id,
+      credit_cents: st.amount_cents + st.bonus_cents,
+      currency: st.currency,
+      paid_at: st.paid_at,
+      token: st.story_token,
+      url: storyUrl(st.story_token),
     })),
     ...(outcome === undefined ? {} : { outcome }),
     ...(settling.length > 0 ? { settling: true, pending_purchases: settling } : {}),

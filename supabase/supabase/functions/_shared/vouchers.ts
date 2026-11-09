@@ -10,9 +10,10 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
-import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, type VoucherReason } from "./money-state.ts";
+import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings, readAccount, readSettings } from "./payments.ts";
 import { readMoneyConfig } from "./money-config.ts";
+import { readInstagramSyncState } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
@@ -189,6 +190,36 @@ export function buyRefusal(offer: VoucherOffer, voucher: MoneyVoucherKey, accoun
     return { ok: false, status: 409, code: "below_minimum", error: "This amount is below Stripe's minimum charge" };
   }
   return null;
+}
+
+/** The guest's own Instagram, as `consumers` stores it. */
+export type StoryGuest = { instagram_handle: string | null; instagram_followers_count: number | null } | null;
+
+/** Story's guest gate (MESITA-3507): a linked Instagram with MORE than
+ *  STORY_MIN_FOLLOWERS followers. Null when the guest may buy it. Any other
+ *  voucher passes. */
+export function storyRefusal(voucher: MoneyVoucherKey, guest: StoryGuest): BuyRefusal | null {
+  if (voucher !== "voucher_story") return null;
+  if (!guest?.instagram_handle) {
+    return { ok: false, status: 409, code: "needs_instagram", error: "Link your Instagram to buy the Story voucher" };
+  }
+  if ((guest.instagram_followers_count ?? 0) <= STORY_MIN_FOLLOWERS) {
+    return {
+      ok: false,
+      status: 409,
+      code: "few_followers",
+      error: `The Story voucher is for Instagram accounts with more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers`,
+    };
+  }
+  return null;
+}
+
+/** The buying guest's Instagram, for storyRefusal, through the consumer door. */
+export async function readStoryGuest(admin: SupabaseClient, consumerId: string): Promise<StoryGuest> {
+  const res = await readInstagramSyncState(admin, consumerId);
+  if (!res.ok) throw new Error(`consumers: ${res.error}`);
+  if (res.deleted) return null;
+  return { instagram_handle: res.handle, instagram_followers_count: res.followers };
 }
 
 /** Stripe Checkout on the connected account. The ledger row id rides in
