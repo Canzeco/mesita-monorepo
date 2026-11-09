@@ -194,9 +194,15 @@ const PRIMARY_TYPE_DROPPED_COLUMNS = {
   profiles: ["google_primary_type"],
 } as const satisfies Record<string, readonly string[]>;
 
+/** MESITA-3409 — MESITA-3408 took two Ways to pay off Business › Payments;
+ *  20261109080000_drop_pay_cash_pay_credits.sql drops their columns. */
+const PAY_WAYS_DROPPED_COLUMNS = {
+  place_payment_settings: ["pay_cash", "pay_credits"],
+} as const satisfies Record<string, readonly string[]>;
+
 /** Every dropping table's columns, all cuts merged. */
 const DROPPED_BY_TABLE = new Map<string, Set<string>>();
-for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS, PRIMARY_TYPE_DROPPED_COLUMNS]) {
+for (const list of [DROPPED_COLUMNS, RESIDUE_DROPPED_COLUMNS, CLASS_PLAN_DROPPED_COLUMNS, PRIMARY_TYPE_DROPPED_COLUMNS, PAY_WAYS_DROPPED_COLUMNS]) {
   for (const [table, cols] of Object.entries(list)) {
     const set = DROPPED_BY_TABLE.get(table) ?? new Set<string>();
     for (const col of cols) if (!RESTORED[table]?.includes(col)) set.add(col);
