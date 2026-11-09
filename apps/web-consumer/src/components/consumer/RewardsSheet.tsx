@@ -23,7 +23,7 @@ export function RewardsSheet({
   onClose: () => void;
 }) {
   return (
-    <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen>
+    <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen from="right">
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
