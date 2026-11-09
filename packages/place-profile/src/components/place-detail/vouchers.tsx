@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgePercent, Banknote, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, Info, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -205,6 +205,35 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
 /** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
 
+/** A section title with an (i) that opens how it works under it (MESITA-3485,
+ *  Pato: "add like an i icon or something to explain how it works"). */
+function SectionTitle({ id, title, note }: { id: string; title: string; note: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-1">
+        <h3 id={id} className={OFFERS_TITLE_CLASS}>
+          {title}
+        </h3>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-label={`How ${title} work`}
+          className="text-muted-foreground hover:text-foreground relative flex h-6 w-6 items-center justify-center rounded-full after:absolute after:-inset-2.5"
+        >
+          <Info className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+      {open ? (
+        <p className="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs leading-snug" data-offers-note>
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
  *  "show the wallet on top ... profile picture of place joined to amount of
  *  credits and wallet icon"): the Offers page's top-bar right slot, where the
@@ -329,7 +358,11 @@ export function VouchersPane({
     // button into its Buy; with none picked it is Pay bill.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
-        <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
+        <SectionTitle
+          id="rewards-prepayment"
+          title="Prepayment Offers"
+          note="Buy credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
+        />
         <fieldset className="m-0 min-w-0 border-0 p-0">
           <legend className="sr-only">Choose a voucher</legend>
           {/* SQUARE TILES (MESITA-3484, Pato: "make the 6 offers instead some
@@ -346,6 +379,8 @@ export function VouchersPane({
               const on = chosen?.key === p.key;
               const face = FACES[p.key];
               const Mark = face.Mark;
+              // The ink ring alone marks the pick (MESITA-3485 dropped the dot
+              // so "WELCOME BONUS" fits).
               const tile = cn(
                 "flex aspect-square w-full flex-col justify-between rounded-2xl p-2.5 text-left",
                 face.card,
@@ -357,16 +392,6 @@ export function VouchersPane({
                     <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
                       {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
                       {p.short}
-                    </span>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2",
-                        on ? "border-neutral-950" : "border-neutral-950/30",
-                        !can && "invisible",
-                      )}
-                    >
-                      {on ? <span className="h-2 w-2 rounded-full bg-neutral-950" /> : null}
                     </span>
                   </span>
                   <span className="flex flex-col" aria-hidden>
@@ -412,7 +437,11 @@ export function VouchersPane({
         </fieldset>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
-        <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
+        <SectionTitle
+          id="rewards-payment"
+          title="Payment Offers"
+          note="Mesita Pay: pay the bill here through Mesita and 5% comes back as credits for your next visit, any visit. External: pay the place directly, by cash or their terminal; nothing comes back."
+        />
         {/* TWO BOXES, HORIZONTAL RECTANGLES (MESITA-3484, Pato: "Mesita Pay,
             External ... the others horizontal rectangles"), half and half. */}
         <ul className="grid grid-cols-2 gap-2" data-cashback>
