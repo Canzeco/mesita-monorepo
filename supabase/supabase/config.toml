@@ -330,6 +330,14 @@ verify_jwt = false
 [functions.visit-web-activate-story]
 verify_jwt = false
 
+# MESITA-3306 (W2c): the waiter's charge. No sign-in on visit.mesita.ai: the
+# place code opens a charge, the 128-bit charge token reads it.
+[functions.visit-web-open-charge]
+verify_jwt = false
+
+[functions.visit-web-get-charge]
+verify_jwt = false
+
 # MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
 # holds no Supabase JWT; the signature on the raw body with
 # STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato

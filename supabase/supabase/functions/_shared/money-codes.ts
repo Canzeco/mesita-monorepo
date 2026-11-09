@@ -26,6 +26,8 @@ export const MONEY_CODES = [
   "amount_required",
   "insufficient",
   "above_cap",
+  // The waiter's charge (MESITA-3306): a ticket over 32 characters
+  "ticket_too_long",
   // The session
   "sign_in",
   "forbidden",
