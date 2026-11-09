@@ -41,7 +41,7 @@ describe("Vouchers tab", () => {
     const regular = pane({ vip: false, instagramLinked: false });
     expect(regular).not.toContain('aria-label="Choose the VIP voucher');
     expect(regular).not.toContain('aria-label="Choose the Story voucher');
-    expect(regular).toContain("VIP Class only");
+    expect(regular).toContain("data-voucher-locked"); // the lock says it; the line keeps the deal (MESITA-3516)
     const vip = pane({ vip: true, instagramLinked: true });
     expect(vip).toContain('aria-label="Choose the VIP voucher');
     expect(vip).toContain('aria-label="Choose the Story voucher');
