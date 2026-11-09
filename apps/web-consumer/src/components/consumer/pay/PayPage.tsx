@@ -53,9 +53,14 @@ import { cn } from "@/lib/utils";
 //
 // The paid state is the address: `/pay?payment=<id>` (set with
 // replaceState), so a reload or a Wallet "Paid" row shows the same proof.
-// While the proof is unseen the page asks the server every 5 s (15 s after
-// two minutes, never while the tab is hidden, and only on focus after 30
-// minutes), so it changes to "Seen" when the waiter taps.
+// The proof (MESITA-3459): the big figure is amount + tip ("MX$300 + MX$30
+// tip" under it), then the place, "Paid · HH:mm", a live clock
+// (aria-hidden), the ticket when the server sends it, and the QR last.
+// While unseen the page reads the payment every 5 s while visible, stops on
+// Seen, while hidden or after 15 minutes, and reads once on becoming visible
+// again; "Paid" swaps to "Seen · HH:mm" in a polite live region. Two failed
+// reads grey the line with "Reconnecting"; a 403/404 stops polling with
+// "This payment isn't on your account".
 //
 // Back from a cancelled Checkout (MESITA-3458): Stripe returns to
 // `/pay?payment=<id>&checkout=cancel`. The page releases it first
@@ -71,10 +76,10 @@ const CHECKOUT_CANCEL = "cancel";
 const PLACE_PARAM = "place";
 /** How long a paid return reads "Confirming…" before "Still confirming". */
 const CONFIRM_PATIENCE_MS = 30_000;
-const POLL_FAST_MS = 5_000;
-const POLL_SLOW_MS = 15_000;
-const POLL_SLOW_AFTER_MS = 2 * 60_000;
-const POLL_STOP_AFTER_MS = 30 * 60_000;
+/** The proof re-reads the payment this often while visible (MESITA-3459). */
+const POLL_MS = 5_000;
+/** ...and stops after this long; becoming visible again reads once. */
+const POLL_STOP_AFTER_MS = 15 * 60_000;
 const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
 /** The location the list read carries, in decimals (~110 m). The server's
  *  twin is LOCATION_DECIMALS in _shared/pay-places.ts. */
@@ -89,6 +94,9 @@ const FIELD_CLASS =
  *  while one is open. */
 const QUIET_BUTTON_CLASS =
   "border-border bg-card hover:bg-muted min-h-12 w-full rounded-2xl border px-4 text-base font-semibold transition";
+
+/** A 403 or 404 on the read: the payment is not this guest's. */
+const isGone = (e: unknown) => e instanceof EFError && (e.status === 403 || e.status === 404);
 
 const noSubscribe = () => () => {};
 
@@ -189,7 +197,8 @@ export function PayPage() {
       .catch((e) => {
         if (cancelled) return;
         setPaymentParam(null);
-        if (e instanceof EFError && e.code) toast("That payment isn't here.", { tone: "error" });
+        if (isGone(e)) toast("This payment isn't on your account", { tone: "error" });
+        else if (e instanceof EFError && e.code) toast("That payment isn't here.", { tone: "error" });
         else toast(NETWORK_FAILURE, { tone: "error" });
         setProofDone(true);
       });
@@ -1044,6 +1053,24 @@ function PayForm({
 
 // ── The proof ────────────────────────────────────────────────────────────────
 
+/** The live clock: the anti-fake check beside the server's Seen answer.
+ *  Decorative to a screen reader (aria-hidden); ticks every second. */
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const hh = String(now.getHours()).padStart(2, "0");
+  const mm = String(now.getMinutes()).padStart(2, "0");
+  const ss = String(now.getSeconds()).padStart(2, "0");
+  return (
+    <p className="font-display mt-3 text-2xl font-semibold tabular-nums" aria-hidden data-live-clock>
+      {hh}:{mm}:{ss}
+    </p>
+  );
+}
+
 function ProofView({
   proof,
   onChange,
@@ -1062,10 +1089,17 @@ function ProofView({
   const closed = proof.status === "expired" || proof.status === "failed";
   const review = proof.status === "needs_review";
   const seen = proof.proof_seen_at;
-  const watch = (!seen && !refunded && !closed && !review) || open;
+  // A 403/404 on a read: not this guest's payment; polling stops.
+  const [gone, setGone] = useState(false);
+  // Two failed reads in a row grey the Paid line with "Reconnecting".
+  const [failures, setFailures] = useState(0);
+  const reconnecting = failures >= 2;
+  const watch = !gone && ((!seen && !refunded && !closed && !review) || open);
   // A paid return reads "Confirming…" for 30 s, then "Still confirming".
   const [slow, setSlow] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const m = (cents: number) => money(cents, proof.currency);
+  const tip = proof.tip_cents ?? 0;
 
   useEffect(() => {
     if (!open) return;
@@ -1077,7 +1111,7 @@ function ProofView({
     setRefreshing(true);
     void apiGetPayment(getSupabase(), proof.payment_id)
       .then(onChange)
-      .catch(() => toast(NETWORK_FAILURE, { tone: "error" }))
+      .catch((e) => (isGone(e) ? setGone(true) : toast(NETWORK_FAILURE, { tone: "error" })))
       .finally(() => setRefreshing(false));
   }
 
@@ -1093,7 +1127,9 @@ function ProofView({
       .catch(() => onDone());
   }
 
-  // Re-read while unseen, so the screen turns to Seen when the waiter taps.
+  // Re-read every 5 s while visible, so the screen turns to Seen when the
+  // waiter taps. Stops on Seen, while hidden, after 15 minutes, or on a
+  // 403/404; one read when the page becomes visible again.
   useEffect(() => {
     if (!watch) return;
     let cancelled = false;
@@ -1102,28 +1138,70 @@ function ProofView({
     const read = () =>
       apiGetPayment(getSupabase(), proof.payment_id)
         .then((p) => {
-          if (!cancelled) onChange(p);
+          if (cancelled) return;
+          setFailures(0);
+          onChange(p);
         })
-        // A failed read keeps the QR and tries next tick.
-        .catch(() => {});
+        .catch((e) => {
+          if (cancelled) return;
+          if (isGone(e)) {
+            if (timer) clearTimeout(timer);
+            setGone(true);
+            return;
+          }
+          // A failed read keeps the QR and tries next tick.
+          setFailures((n) => n + 1);
+        });
     const tick = () => {
-      const elapsed = Date.now() - started;
-      if (elapsed > POLL_STOP_AFTER_MS) return;
-      if (!document.hidden) void read();
-      timer = setTimeout(tick, elapsed > POLL_SLOW_AFTER_MS ? POLL_SLOW_MS : POLL_FAST_MS);
+      if (cancelled || Date.now() - started > POLL_STOP_AFTER_MS || document.hidden) return;
+      void read().then(() => {
+        if (!cancelled) timer = setTimeout(tick, POLL_MS);
+      });
     };
-    timer = setTimeout(tick, POLL_FAST_MS);
-    const onFocus = () => {
-      if (Date.now() - started > POLL_STOP_AFTER_MS) void read();
+    timer = setTimeout(tick, POLL_MS);
+    const onVisible = () => {
+      if (document.hidden) {
+        if (timer) clearTimeout(timer);
+        timer = undefined;
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      // One read on coming back; inside the 15 minutes polling resumes.
+      void read().then(() => {
+        if (!cancelled && Date.now() - started <= POLL_STOP_AFTER_MS) timer = setTimeout(tick, POLL_MS);
+      });
     };
-    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
-      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proof.payment_id, watch]);
+
+  if (gone) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <div className="border-border bg-card flex w-full flex-col items-center rounded-2xl border px-6 py-6">
+          <p className="text-sm font-semibold" role="status">This payment isn&apos;t on your account</p>
+        </div>
+        <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={onDone}>
+          Done
+        </Button>
+      </div>
+    );
+  }
+
+  const paid = !open && !closed && !!proof.paid_at;
+  const refundLine = refunded
+    ? "Refunded"
+    : partly
+      ? proof.refunded_cents
+        ? `Refunded ${m(proof.refunded_cents)}`
+        : "Partly refunded"
+      : null;
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -1142,32 +1220,42 @@ function ProofView({
           <p className="text-sm font-semibold" role="status">Payment didn&apos;t go through</p>
         ) : review ? (
           <p className="text-sm font-semibold" role="status">We&apos;re checking this payment.</p>
-        ) : refunded ? null : seen ? (
-          <p className="text-foreground flex items-center gap-1.5 text-sm font-semibold" role="status">
-            <CheckCircle2 className="h-4 w-4" aria-hidden />
-            Seen · {clockTime(seen)}
+        ) : !refunded && !seen ? (
+          <p className="text-muted-foreground text-sm font-semibold">Show this to the staff</p>
+        ) : null}
+        <p className="font-display mt-3 text-4xl font-semibold tabular-nums" data-proof-total>
+          {m(proof.amount_cents + tip)}
+        </p>
+        {tip > 0 ? (
+          <p className="text-muted-foreground mt-1 text-sm tabular-nums">
+            {m(proof.amount_cents)} + {m(tip)} tip
           </p>
-        ) : (
-          <p className="text-sm font-semibold">Show this to the staff</p>
-        )}
+        ) : null}
+        {proof.card_cents && proof.credit_cents ? (
+          <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+            {m(proof.credit_cents)} from credit · {m(proof.card_cents)} by card
+          </p>
+        ) : null}
+        {refundLine ? <p className="text-muted-foreground mt-1 text-sm font-semibold">{refundLine}</p> : null}
+        <p className="mt-3 text-base font-semibold">{proof.place_name ?? "A Mesita place"}</p>
+        {paid ? (
+          <p
+            className={cn("mt-0.5 flex items-center gap-1.5 text-sm", reconnecting ? "text-muted-foreground opacity-60" : "text-foreground")}
+            aria-live="polite"
+            data-proof-status
+          >
+            {seen ? <CheckCircle2 className="h-4 w-4" aria-hidden /> : null}
+            {seen ? `Seen · ${clockTime(seen)}` : `Paid · ${clockTime(proof.paid_at as string)}`}
+            {reconnecting && !seen ? <span> · Reconnecting</span> : null}
+          </p>
+        ) : null}
+        {paid && !refunded ? <LiveClock /> : null}
+        {proof.ticket ? <p className="text-muted-foreground mt-1 text-sm">Ticket {proof.ticket}</p> : null}
         {!refunded && proof.proof ? (
           <div className={cn("mt-4 rounded-xl bg-white p-3 transition", seen && "opacity-40")}>
             <QRCodeSVG value={proof.proof.url} size={208} marginSize={0} aria-label="Payment proof" />
           </div>
         ) : null}
-        <p className="font-display mt-5 text-4xl font-semibold tabular-nums">{money(proof.amount_cents, proof.currency)}</p>
-        {proof.card_cents ? (
-          <p className="text-muted-foreground mt-1 text-xs">
-            {proof.credit_cents ? `${money(proof.credit_cents, proof.currency)} from credit · ` : ""}
-            {money(proof.card_cents, proof.currency)} by card
-            {proof.tip_cents ? ` · ${money(proof.tip_cents, proof.currency)} tip` : ""}
-          </p>
-        ) : null}
-        {refunded || partly ? (
-          <p className="text-muted-foreground mt-1 text-sm font-semibold">{refunded ? "Refunded" : "Partly refunded"}</p>
-        ) : null}
-        <p className="mt-2 text-sm font-semibold">{proof.place_name ?? "A Mesita place"}</p>
-        {proof.paid_at ? <p className="text-muted-foreground mt-0.5 text-sm">Paid · {clockTime(proof.paid_at)}</p> : null}
       </div>
       {open ? (
         <>

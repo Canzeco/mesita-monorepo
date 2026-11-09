@@ -122,6 +122,11 @@ export type PayProof = {
   card_cents?: number;
   tip_cents?: number;
   cashback_cents?: number;
+  /** How much was refunded, when the server sends it: a partial refund
+   *  reads "Refunded MX$N" (else "Partly refunded"). */
+  refunded_cents?: number;
+  /** The ticket number the guest typed, when the server sends it. */
+  ticket?: string | null;
   currency: string;
   /** Null while the card part is still open. */
   paid_at: string | null;
@@ -233,6 +238,8 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
     card_cents: r.card_cents,
     tip_cents: r.tip_cents,
     cashback_cents: r.cashback_cents,
+    refunded_cents: r.refunded_cents,
+    ticket: r.ticket ?? null,
     currency: r.currency,
     paid_at: r.paid_at,
     proof_seen_at: r.proof_seen_at,
