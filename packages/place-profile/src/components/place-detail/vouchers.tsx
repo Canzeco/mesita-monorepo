@@ -227,6 +227,15 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   };
 })();
 
+/** The cashback's face: the hero tile's green (MESITA-3476). */
+const CASHBACK_FACE: Face = {
+  card: "bg-green-400 text-neutral-950",
+  muted: "text-neutral-950/70",
+  big: "",
+  buy: "",
+  Mark: BadgePercent,
+};
+
 /** One voucher, a third of the row (MESITA-3451): the name small, the credit
  *  it buys big, "for MX$X" under it, the "+N% bonus" pill, then a 28px Buy
  *  or the tag (design C, MESITA-3454). Each voucher wears its own face
@@ -240,7 +249,13 @@ function OfferCard({
   faded,
   face,
   action,
+  unit = "bonus",
+  lines,
 }: {
+  /** The word under the big number: "bonus", or "back" for the cashback. */
+  unit?: string;
+  /** The two small lines, when they are not Pay / Get (the cashback). */
+  lines?: [string, string];
   name: string;
   bonus: string;
   pay: string;
@@ -252,7 +267,7 @@ function OfferCard({
 }) {
   const Mark = face.Mark;
   return (
-    <li className={cn("flex min-w-0 flex-col gap-1 rounded-2xl p-2.5", face.card, faded && "opacity-50")} aria-label={label}>
+    <li data-offer-card className={cn("flex min-w-0 flex-col gap-1 rounded-2xl p-2.5", face.card, faded && "opacity-50")} aria-label={label}>
       <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
         {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
         {name}
@@ -261,11 +276,11 @@ function OfferCard({
           must be the big thing. Pay X / Get Y must be same size"). */}
       <span className={cn("flex flex-col", face.big)}>
         <span className="text-3xl leading-none font-extrabold tabular-nums">+{bonus.replace(/ bonus$/, "")}</span>
-        <span className="text-[11px] font-semibold">bonus</span>
+        <span className="text-[11px] font-semibold">{unit}</span>
       </span>
       <span className="mt-1 flex flex-col text-xs leading-snug font-semibold tabular-nums" aria-hidden>
-        <span className="truncate">Pay {pay}</span>
-        <span className="truncate">Get {get}</span>
+        <span className="truncate">{lines ? lines[0] : `Pay ${pay}`}</span>
+        <span className="truncate">{lines ? lines[1] : `Get ${get}`}</span>
       </span>
       <div className="mt-1">{action}</div>
     </li>
@@ -473,21 +488,27 @@ export function VouchersPane({
       ) : null}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        <div
-          className={cn(CARD, "flex items-center gap-3 rounded-xl p-2.5", !loading && !cashback && dim && "opacity-50")}
-          aria-label={`5% Cashback: pay the bill here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
-          data-cashback
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-400 text-neutral-950" aria-hidden>
-            <BadgePercent className="h-5 w-5" />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-            <span className="text-foreground text-sm leading-snug font-semibold">5% Cashback</span>
-            <span className="text-muted-foreground text-xs leading-snug">
-              {canPay || loading ? "Pay by card, 5% back as credit" : cashbackTag}
-            </span>
-          </span>
-        </div>
+        {/* THE SAME CARD AS A VOUCHER (MESITA-3476, Pato: "payment offer box
+            must be same height as prepayment offers"): a third of the row,
+            on the green, no button (MESITA-3474) — "Any visit" in Buy's slot. */}
+        <ul className="grid grid-cols-3 gap-1.5" data-cashback>
+          <OfferCard
+            name="Cashback"
+            bonus="5% bonus"
+            unit="back"
+            lines={["Pay by card", "Back as credit"]}
+            pay=""
+            get=""
+            label={`5% Cashback: pay the bill here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
+            faded={!loading && !cashback && dim}
+            face={CASHBACK_FACE}
+            action={
+              <span className="flex h-7 items-center justify-center text-center text-[10px] leading-tight font-semibold text-neutral-950/70">
+                {canPay || loading ? "Any visit" : cashbackTag}
+              </span>
+            }
+          />
+        </ul>
       </section>
       {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
           ... PREPAYMENTS: Welcome, Story, VIP / Small, Mid, Big. don't
