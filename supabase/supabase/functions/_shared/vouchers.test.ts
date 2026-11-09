@@ -77,6 +77,14 @@ Deno.test("paused stops every sale; Welcome once; an account from the other univ
   assertEquals(none.unavailable.voucher_200, "needs_account");
 });
 
+Deno.test("Story is one each new visit (MESITA-3463): spent reads needs_visit and the buy door refuses it", () => {
+  const spent = offerFrom({ ...base, perVisitUsed: { voucher_story: true } });
+  assertEquals(spent.sell, ["voucher_200", "voucher_1000", "voucher_welcome"]);
+  assertEquals(spent.unavailable.voucher_story, "needs_visit");
+  assertEquals(buyRefusal(spent, "voucher_story", ACCOUNT)?.code, "needs_visit");
+  assertEquals(offerFrom({ ...base, perVisitUsed: { voucher_story: false } }).sell.includes("voucher_story"), true);
+});
+
 Deno.test("buyRefusal: codes for every closed door, null for an open one", () => {
   const o = offerFrom(base);
   assertEquals(buyRefusal(o, "voucher_200", ACCOUNT), null);
