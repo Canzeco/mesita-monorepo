@@ -29,6 +29,11 @@
 //             waiting_stories (MESITA-3507): [{ purchase_id, place, place_id,
 //               credit_cents, currency, paid_at, token, url }]: paid Story
 //               vouchers staff have not activated yet (no credit until then),
+//             sent_links (MESITA-3292): [{ gift_id, place_id, amount_cents,
+//               currency, created_at }]: credit links the guest sent that
+//               nobody took yet (already off their balance; take-back-able),
+//             can_send (MESITA-3292): sending credit is open in this
+//               universe (always in test; live once money_config.sending_live),
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
 //             settling?: true, pending_purchases?: [purchase ids] }
 
@@ -37,6 +42,7 @@ import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from 
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
 import { chargesEnabledByPlace, listRowMoney, PAYMENT_KEYS, type PaymentKey, settingsFromRow } from "../_shared/payments.ts";
+import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
 import {
   balanceKey,
@@ -142,6 +148,24 @@ serveJson("consumer-web-get-wallet", async (req) => {
     currency: string; paid_at: string | null; story_token: string;
   }>;
 
+  // OPEN CREDIT LINKS (MESITA-3292): sent, not yet taken. Their gift_out
+  // already took the credit off the balances above.
+  const [{ data: giftRows, error: giftErr }, moneyConfig] = await Promise.all([
+    admin
+      .from("wallet_gifts")
+      .select("id, place_id, amount_cents, currency, created_at")
+      .eq("sender_id", userId)
+      .eq("livemode", livemode)
+      .eq("status", "open")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    readMoneyConfig(admin),
+  ]);
+  if (giftErr) return json({ ok: false, error: `gifts: ${giftErr.message}` }, 500);
+  const sentLinks = (giftRows ?? []) as Array<{
+    id: string; place_id: string; amount_cents: number; currency: string; created_at: string;
+  }>;
+
   const ids = [...new Set([...balances.map((b) => b.place_id), ...stories.map((s) => s.place_id)])];
   // card_ok (MESITA-3305): the place's account can charge in this universe
   // and the owner's Cards switch is on, so the Pay tab may offer a card
@@ -191,6 +215,14 @@ serveJson("consumer-web-get-wallet", async (req) => {
       token: st.story_token,
       url: storyUrl(st.story_token),
     })),
+    sent_links: sentLinks.map((g) => ({
+      gift_id: g.id,
+      place_id: g.place_id,
+      amount_cents: g.amount_cents,
+      currency: g.currency,
+      created_at: g.created_at,
+    })),
+    can_send: sendingOn(moneyConfig, livemode),
     ...(outcome === undefined ? {} : { outcome }),
     ...(settling.length > 0 ? { settling: true, pending_purchases: settling } : {}),
   });

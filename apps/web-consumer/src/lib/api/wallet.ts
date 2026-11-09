@@ -6,6 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { invokeEF } from "./_invoke";
 
 export type WalletEntry = {
@@ -71,6 +72,12 @@ export type Wallet = {
   balances: WalletBalance[];
   /** Absent from a server before MESITA-3507: reads as none. */
   waiting_stories?: WaitingStory[];
+  /** Credit links the guest sent that nobody took yet (MESITA-3292): the
+   *  amount is already off their balance; they can take it back. */
+  sent_links?: SentLink[];
+  /** Sending credit is open here (MESITA-3292): always in test mode; live
+   *  once the lawyer answers. Absent reads as no. */
+  can_send?: boolean;
   outcome?: PrepayOutcome;
   /** The read ran out of time confirming a purchase with Stripe; it is
    *  confirmed on the next read or by the server on its own. */
@@ -444,4 +451,74 @@ export const ENTRY_LABEL: Record<string, string> = {
   cashback: "Cashback",
   spend: "Paid",
   reversal: "Refund",
+  // Sending credit to a friend (MESITA-3292)
+  gift_out: "Sent to a friend",
+  gift_in: "From a friend",
+  gift_back: "Taken back",
+};
+
+// ── Sending credit to a friend (MESITA-3292) ────────────────────────────────
+
+/** A link the guest sent that nobody took yet. */
+export type SentLink = { gift_id: string; place_id: string; amount_cents: number; currency: string; created_at: string };
+
+/** The query parameter a credit link carries on /wallet. */
+export const GIFT_PARAM = "gift";
+
+/** The link a friend opens: this app's own Wallet with the key. */
+export function giftLink(token: string, origin: string = typeof window === "undefined" ? "" : window.location.origin): string {
+  return `${origin}${CONSUMER_ROUTES.wallet}?${GIFT_PARAM}=${encodeURIComponent(token)}`;
+}
+
+/** Sends credit at one place as a one-time link. `token` is null on a
+ *  replay (the server keeps only its hash). Refusals arrive as EFError with
+ *  a code from SEND_REFUSAL. */
+export async function apiSendCredit(
+  client: SupabaseClient,
+  args: { place_id: string; amount_cents: number; request_id: string },
+): Promise<{ outcome: "sent" | "already_sent"; gift_id: string; amount_cents: number; currency: string; token: string | null }> {
+  return await invokeEF(client, "consumer-web-send-credit", args);
+}
+
+export async function apiTakeBackCredit(client: SupabaseClient, giftId: string): Promise<{ amount_cents: number; currency: string }> {
+  return await invokeEF(client, "consumer-web-take-back-credit", { gift_id: giftId });
+}
+
+/** What a credit link holds, read without taking it. */
+export type GiftLook = {
+  status: "open" | "claimed" | "taken_back";
+  amount_cents: number;
+  currency: string;
+  /** The caller sent it. */
+  mine: boolean;
+  /** The caller already took it. */
+  yours: boolean;
+  place: WalletBalance["place"];
+};
+
+export async function apiLookGift(client: SupabaseClient, token: string): Promise<GiftLook> {
+  const r = await invokeEF<{ gift: GiftLook }>(client, "consumer-web-claim-credit", { token, look: true });
+  return r.gift;
+}
+
+export async function apiClaimGift(
+  client: SupabaseClient,
+  token: string,
+): Promise<{ outcome: "claimed" | "already_claimed"; place_id: string; amount_cents: number; currency: string }> {
+  return await invokeEF(client, "consumer-web-claim-credit", { token });
+}
+
+/** What the guest reads when sending or taking credit is refused. */
+export const GIFT_REFUSAL: Record<string, string> = {
+  sign_in: "Sign in first.",
+  not_live: "Sending credit isn't open yet.",
+  amount_required: "Type an amount to send.",
+  above_cap: "That's more than one link can carry.",
+  insufficient: "That's more than you can send here.",
+  too_many_open: "You have 10 links waiting here. Take one back first.",
+  taken: "That link was already sent.",
+  gone: "That link isn't here.",
+  claimed: "Someone already took this credit.",
+  taken_back: "Your friend took this credit back.",
+  own_gift: "This is your own link. Send it to a friend.",
 };

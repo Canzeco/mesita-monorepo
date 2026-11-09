@@ -325,6 +325,16 @@ verify_jwt = true
 [functions.consumer-web-release-payment]
 verify_jwt = true
 
+# MESITA-3292: sending credit to a friend at the same place, as a one-time link.
+[functions.consumer-web-send-credit]
+verify_jwt = true
+
+[functions.consumer-web-claim-credit]
+verify_jwt = true
+
+[functions.consumer-web-take-back-credit]
+verify_jwt = true
+
 [functions.visit-web-get-proof]
 verify_jwt = false
 
