@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef } from "react";
-import { BadgePercent, Crown, PartyPopper, QrCode, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, PartyPopper, QrCode, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -189,52 +189,27 @@ type Face = {
   buy: string;
   Mark?: LucideIcon | typeof Instagram;
 };
+// LIGHT FACES, BLACK WORDS (MESITA-3480, Pato: "standardize the colors, all
+// the boxes must have the same black letters, thus make them lighter, and the
+// standard prepayment options must be green, not black"): one ink on every
+// card, a light tint per voucher, a black Buy. Solid since MESITA-3471.
+const LIGHT = { muted: "text-neutral-950/60", big: "", buy: "bg-neutral-950 text-white" };
 const FACES: Record<MoneyVoucherKey, Face> = (() => {
-  const ink: Face = {
-    card: "bg-neutral-950 text-white",
-    muted: "text-white/60",
-    big: "text-green-400",
-    buy: "bg-white text-neutral-950",
-  };
+  const green: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT };
   return {
-    voucher_200: ink,
-    voucher_1000: ink,
-    voucher_5000: ink,
-    // SOLID, NO GRADIENTS (MESITA-3471, Pato: "use clear colors, not
-    // gradients"; picked A of three mocks).
-    voucher_welcome: {
-      card: "bg-[#2563EB] text-white",
-      muted: "text-white/75",
-      big: "",
-      buy: "bg-white text-[#2563EB]",
-      Mark: PartyPopper,
-    },
-    // Instagram's pink.
-    voucher_story: {
-      card: "bg-[#E1306C] text-white",
-      muted: "text-white/80",
-      big: "",
-      buy: "bg-white text-[#E1306C]",
-      Mark: Instagram,
-    },
-    voucher_vip: {
-      card: "bg-[#F5B301] text-neutral-950",
-      muted: "text-neutral-950/70",
-      big: "",
-      buy: "bg-neutral-950 text-[#F5B301]",
-      Mark: Crown,
-    },
+    voucher_200: green,
+    voucher_1000: green,
+    voucher_5000: green,
+    voucher_welcome: { card: "bg-blue-200 text-neutral-950", ...LIGHT, Mark: PartyPopper },
+    voucher_story: { card: "bg-pink-200 text-neutral-950", ...LIGHT, Mark: Instagram },
+    voucher_vip: { card: "bg-amber-200 text-neutral-950", ...LIGHT, Mark: Crown },
   };
 })();
 
-/** The cashback's face: the hero tile's green (MESITA-3476). */
-const CASHBACK_FACE: Face = {
-  card: "bg-green-400 text-neutral-950",
-  muted: "text-neutral-950/70",
-  big: "",
-  buy: "",
-  Mark: BadgePercent,
-};
+/** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
+const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
+/** Paying the place directly: grey, nothing back (MESITA-3480). */
+const EXTERNAL_FACE: Face = { card: "bg-muted text-muted-foreground ring-border ring-1", muted: "text-muted-foreground", big: "", buy: "", Mark: Banknote };
 
 /** One voucher, a third of the row (MESITA-3451): the name small, the credit
  *  it buys big, "for MX$X" under it, the "+N% bonus" pill, then a 28px Buy
@@ -251,7 +226,10 @@ function OfferCard({
   action,
   unit = "bonus",
   lines,
+  figure,
 }: {
+  /** The big number as written ("0%"), when it is not "+{bonus}". */
+  figure?: string;
   /** The word under the big number: "bonus", or "back" for the cashback. */
   unit?: string;
   /** The two small lines, when they are not Pay / Get (the cashback). */
@@ -275,11 +253,11 @@ function OfferCard({
       {/* THE BONUS IS THE BIG THING (MESITA-3472, Pato: "maybe the Bonus
           must be the big thing. Pay X / Get Y must be same size"). */}
       <span className={cn("flex flex-col", face.big)}>
-        <span className="text-3xl leading-none font-extrabold tabular-nums">+{bonus.replace(/ bonus$/, "")}</span>
+        <span className="text-3xl leading-none font-extrabold tabular-nums">{figure ?? `+${bonus.replace(/ bonus$/, "")}`}</span>
         <span className="text-[11px] font-semibold">{unit}</span>
       </span>
       <span className="mt-1 flex flex-col text-xs leading-snug font-semibold tabular-nums" aria-hidden>
-        <span className="truncate">{lines ? lines[0] : `Pay ${pay}`}</span>
+        <span>{lines ? lines[0] : `Pay ${pay}`}</span>
         {/* "GET Y IN CREDITS" (MESITA-3478, Pato: "mention in prepayments
             get y as credit too ... say credits"); it wraps, never truncates. */}
         <span>{lines ? lines[1] : `Get ${get} in credits`}</span>
@@ -472,37 +450,37 @@ export function VouchersPane({
           card only says what paying here earns. */}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        {/* WIDE AND SHORT (MESITA-3479, Pato: "make payment offer shorter
-            and wider, 3 columns"): the voucher card's green face across the
-            row's three columns, its parts side by side; no button
-            (MESITA-3474). It was a voucher-sized third (MESITA-3476). */}
-        <div
-          className={cn(
-            "flex items-center gap-3 rounded-2xl px-3 py-2.5",
-            CASHBACK_FACE.card,
-            !loading && !cashback && dim && "opacity-50",
-          )}
-          aria-label={`5% Cashback: pay the bill here by card, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
-          data-cashback
-        >
-          <span className="flex shrink-0 flex-col" aria-hidden>
-            <span className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase", CASHBACK_FACE.muted)}>
-              <BadgePercent className="h-3 w-3" strokeWidth={2.5} />
-              Cashback
-            </span>
-            <span className="flex items-baseline gap-1">
-              <span className="text-3xl leading-none font-extrabold tabular-nums">+5%</span>
-              <span className="text-[11px] font-semibold">back</span>
-            </span>
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col text-xs leading-snug font-semibold" aria-hidden>
-            <span>Pay by card</span>
-            <span>Back as credits</span>
-          </span>
-          <span className={cn("shrink-0 text-[10px] font-semibold", CASHBACK_FACE.muted)} aria-hidden>
-            {canPay || loading ? "Any visit" : cashbackTag}
-          </span>
-        </div>
+        {/* EXTERNAL VS MESITA PAY (MESITA-3480, Pato: "Externally / Mesita Pay
+            ... external means that you get nothing in return ... Mesita Pay
+            you need to pay to get your cashback"): two voucher-sized cards;
+            no button (MESITA-3474), Pay bill is the fixed bar below. */}
+        <ul className="grid grid-cols-3 gap-1.5" data-cashback>
+          <OfferCard
+            name="External"
+            bonus=""
+            figure="0%"
+            unit="back"
+            lines={["Pay the place directly", "Cash or their terminal"]}
+            pay=""
+            get=""
+            label="External: pay the place directly, by cash or their terminal. You get nothing back."
+            faded={false}
+            face={EXTERNAL_FACE}
+            action={<span className="flex h-7 items-center text-[10px] leading-tight font-semibold">You get nothing back</span>}
+          />
+          <OfferCard
+            name="Mesita Pay"
+            bonus="5% bonus"
+            unit="back"
+            lines={["Pay with Mesita", "Get 5% in credits"]}
+            pay=""
+            get=""
+            label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
+            faded={!loading && !cashback && dim}
+            face={CASHBACK_FACE}
+            action={<span className="flex h-7 items-center text-[10px] leading-tight font-semibold text-neutral-950/60">{canPay || loading ? "Any visit" : cashbackTag}</span>}
+          />
+        </ul>
       </section>
       {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
           ... PREPAYMENTS: Welcome, Story, VIP / Small, Mid, Big. don't
