@@ -424,7 +424,7 @@ function PlaceList({
   const [query, setQuery] = useState("");
   const testMode = places.some((p) => p.test_mode);
   const q = fold(query.trim());
-  const shown = q ? places.filter((p) => fold(`${p.name ?? ""} ${p.address ?? ""}`).includes(q)) : places;
+  const shown = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
   return (
     <div className="flex flex-col">
       {testMode ? <TestBand className="mb-3" /> : null}
@@ -472,8 +472,8 @@ function PlaceList({
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a place or area"
-              aria-label="Search a place or area"
+              placeholder="Search a place"
+              aria-label="Search a place"
               autoComplete="off"
               className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
             />
