@@ -20,7 +20,17 @@ export type WalletEntry = {
 export type WalletBalance = {
   place_id: string;
   /** Null when the place is gone from the catalog's reach; the money stays. */
-  place: { id: string; slug: string | null; name: string | null; photo: string | null } | null;
+  place: {
+    id: string;
+    slug: string | null;
+    name: string | null;
+    photo: string | null;
+    /** Premier's stored tier, the red mark (MESITA-3514). Absent reads 0. */
+    boost_tier?: number;
+    /** The green Mesita Pay mark, by the list rows' rule (MESITA-3514).
+     *  Absent reads as no. */
+    mesita_pay?: boolean;
+  } | null;
   /** Lowercase ISO 4217 ("mxn"). */
   currency: string;
   /** Everything, Available and Pending. */
