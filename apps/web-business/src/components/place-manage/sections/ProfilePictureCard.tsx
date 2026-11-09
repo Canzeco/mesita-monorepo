@@ -8,8 +8,9 @@
 // wallet. Until the place picks one it follows the cover, the gallery's first
 // photo. A pick (a gallery photo or an upload) is stored on
 // place_profiles.profile_photo and saves with the page's one Save; Create,
-// Enrich and Google Update never write it, so it sticks. "Use the cover"
-// saves null and follows the cover again.
+// Enrich and Google Update never write it, so it sticks. Picking the cover
+// (the picker's first circle) saves null and follows the cover again. Tapping
+// the photo opens the picker (MESITA-3531).
 
 import { useRef, useState } from "react";
 import { UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
@@ -109,8 +110,18 @@ export function ProfilePictureCard({ place }: { place: AdminPlace }) {
         }}
       />
 
+      {/* THE PHOTO IS THE BUTTON (MESITA-3531, Pato: "remove the use the cover
+          quick button and the change button ... you click on top of the
+          image"): a tap opens the picker; the cover is its first circle. */}
       <div className="mt-5 flex items-center gap-4">
-        <div className="bg-muted border-border size-20 shrink-0 overflow-hidden rounded-full border">
+        <button
+          type="button"
+          onClick={() => setChoosing((c) => !c)}
+          disabled={busy}
+          aria-expanded={choosing}
+          aria-label="Change the profile picture"
+          className="bg-muted border-border hover:ring-foreground/20 size-20 shrink-0 overflow-hidden rounded-full border transition hover:ring-4 disabled:opacity-50"
+        >
           {shown ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -121,33 +132,17 @@ export function ProfilePictureCard({ place }: { place: AdminPlace }) {
               alt="Profile picture"
               className="h-full w-full object-cover"
             />
-          ) : null}
-        </div>
+          ) : (
+            <span className="text-muted-foreground flex h-full w-full items-center justify-center">
+              <ImagePlus className="size-5" />
+            </span>
+          )}
+        </button>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">{pick ? "Your pick" : shown ? "Your cover photo" : "No photo yet"}</p>
           <p className="text-muted-foreground text-xs">
-            {pick ? "Stays when the gallery changes." : "Changes when the cover changes."}
+            {pick ? "Stays when the gallery changes." : "Changes when the cover changes."} Tap the photo to change it.
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setChoosing((c) => !c)}
-              disabled={busy}
-              className="border-border hover:bg-muted/60 rounded-full border px-3 py-1 text-sm font-medium transition disabled:opacity-50"
-            >
-              {choosing ? "Done" : "Change"}
-            </button>
-            {pick ? (
-              <button
-                type="button"
-                onClick={() => setPick(null)}
-                disabled={busy}
-                className="text-muted-foreground hover:text-foreground rounded-full px-3 py-1 text-sm font-medium transition disabled:opacity-50"
-              >
-                Use the cover
-              </button>
-            ) : null}
-          </div>
         </div>
       </div>
 
