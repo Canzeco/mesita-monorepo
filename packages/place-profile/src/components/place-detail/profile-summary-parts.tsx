@@ -37,9 +37,10 @@ export function ProfilePhoto({ place }: { place: PlaceDetail }) {
         "border-border overflow-hidden border",
       )}
     >
-      {place.photos.length > 0 ? (
+      {/* The profile picture (MESITA-3528): the owner's pick, else the cover. */}
+      {place.profilePhoto ? (
         <SizedImg
-          src={place.photos[0]}
+          src={place.profilePhoto}
           size="thumb"
           alt={place.name}
           className="h-full w-full object-cover"

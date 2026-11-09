@@ -25,6 +25,7 @@ import {
 import { usePlaceContext } from "../PlaceContext";
 import { ReviewsSummary } from "./ReviewsSummary";
 import { PhotosCard } from "./PhotosCard";
+import { ProfilePictureCard } from "./ProfilePictureCard";
 import { useSectionSaver } from "../useSectionDirty";
 import {
   formatPlacePriceRange,
@@ -491,7 +492,7 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
     <div className="columns-1 gap-4 pb-8 [&>section]:mb-4 [&>section]:break-inside-avoid [&>details]:mb-4 [&>details]:break-inside-avoid lg:columns-2 lg:gap-5 lg:pb-10 lg:[&>section]:mb-5 lg:[&>details]:mb-5">
       {/* Box order (MESITA-547 / MESITA-720 / MESITA-834 / MESITA-900;
           Basics, Location and Hours are separate cards — Pato, 2026-08-29):
-          Basics → Photos → Location → Hours → Links. Photos is the gallery
+          Basics → Photos → Profile picture (MESITA-3528) → Location → Hours → Links. Photos is the gallery
           editor again (MESITA-3504; gone since MESITA-2794).
           Google Reviews is the last card, one column like the rest (Pato,
           MESITA-3403: "google must be one column, not two").
@@ -569,6 +570,8 @@ export function PlaceSection({ place, staff = false }: { place: AdminPlace; staf
       </SectionCard>
 
       <PhotosCard place={place} staff={staff} />
+
+      <ProfilePictureCard place={place} />
 
       <SectionCard
         icon={<MapPinIcon size={20} />}

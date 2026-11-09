@@ -213,6 +213,15 @@ export async function applyPlaceUpdate(
   });
   if (!marks.ok) return json({ ok: false, error: `operator_fields: ${marks.error}` }, 500);
   place.operator_fields = marks.fields;
+  // The place's own profile picture pick (MESITA-3528), as the place read
+  // sends it, so a save never reads as "follows the cover".
+  const { data: pickRow, error: pickErr } = await admin
+    .from("place_profiles")
+    .select("profile_photo")
+    .eq("id", placeId)
+    .maybeSingle();
+  if (pickErr) return json({ ok: false, error: `profile_photo: ${pickErr.message}` }, 500);
+  place.profile_photo_pick = (pickRow as { profile_photo?: string | null } | null)?.profile_photo ?? null;
 
   // The on_update row's `embedding` cell re-synthesises when the blurb inputs
   // change. A disabled row buys nothing.

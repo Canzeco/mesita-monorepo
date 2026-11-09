@@ -439,8 +439,8 @@ export function OffersWalletPill({ place }: { place: PlaceDetail }) {
       data-place-credit
     >
       <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10 ring-2 ring-white" aria-hidden>
-        {place.photos.length > 0 ? (
-          <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
+        {place.profilePhoto ? (
+          <SizedImg src={place.profilePhoto} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
           <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
         )}

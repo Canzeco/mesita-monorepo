@@ -94,7 +94,7 @@ function balanceRow(b: WalletBalance, cat: Place | undefined): Row {
     card: {
       key: `${b.place_id}:${b.currency}`,
       name,
-      photo: b.place?.photo ?? cat?.photos[0] ?? null,
+      photo: b.place?.photo ?? cat?.profile_photo ?? cat?.photos[0] ?? null,
       tier: cat?.boost_tier ?? null,
       mesitaPay: cat?.mesita_pay === true,
       currency: b.currency,
@@ -112,7 +112,7 @@ function catalogRow(p: Place): Row {
     card: {
       key: `${p.id}:mxn`,
       name: p.name,
-      photo: p.photos[0] ?? null,
+      photo: p.profile_photo ?? p.photos[0] ?? null,
       tier: p.boost_tier ?? null,
       mesitaPay: p.mesita_pay === true,
       currency: "mxn",

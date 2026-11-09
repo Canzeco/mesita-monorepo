@@ -242,11 +242,13 @@ export async function readWalletPlaces(
   if (ids.length === 0) return { ok: true, places };
   const { data, error } = await admin
     .from("profiles")
-    .select("id, slug, name, photos")
+    .select("id, slug, name, profile_photo")
     .in("id", ids);
   if (error) return { ok: false, error: `places: ${error.message}` };
-  for (const p of (data ?? []) as Array<{ id: string; slug: string | null; name: string | null; photos: string[] | null }>) {
-    places.set(p.id, { id: p.id, slug: p.slug, name: p.name, photo: p.photos?.[0] ?? null });
+  // The round photo is the profile picture (MESITA-3528): the view answers
+  // the owner's pick, else the cover.
+  for (const p of (data ?? []) as Array<{ id: string; slug: string | null; name: string | null; profile_photo: string | null }>) {
+    places.set(p.id, { id: p.id, slug: p.slug, name: p.name, photo: p.profile_photo ?? null });
   }
   return { ok: true, places };
 }

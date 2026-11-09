@@ -64,7 +64,7 @@ export async function buildPlaceOverview(
         .maybeSingle(),
       admin
         .from("place_profiles")
-        .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources")
+        .select("enrichment, google_found, instagram_found, facebook_found, enrichment_sources, profile_photo")
         .eq("id", placeId)
         .maybeSingle(),
       fetchPlaceCategories(admin),
@@ -122,6 +122,9 @@ export async function buildPlaceOverview(
     photo_analysis: photoAnalysisMap(assetsRow.data),
     // Profile's photo view (MESITA-3519): where each photo came from.
     photo_source: photoSourceMap(assetsRow.data),
+    // The place's own pick (MESITA-3528), null while it follows the cover;
+    // profile_photo above is what guests see.
+    profile_photo_pick: (enrichmentRow.data as { profile_photo?: string | null } | null)?.profile_photo ?? null,
     profile_stats: profileStats,
   };
 

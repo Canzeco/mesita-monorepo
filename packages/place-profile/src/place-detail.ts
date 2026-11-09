@@ -128,6 +128,9 @@ export type PlaceDetail = {
 
   // 2. Media
   photos: string[];
+  /** The round profile picture (MESITA-3528): the owner's pick, else the
+   *  cover. Null with no photo at all. */
+  profilePhoto: string | null;
 
   // Mesita tags, else Google atmosphere chips (MESITA-2792). Empty hides the box.
   tags: Array<{
