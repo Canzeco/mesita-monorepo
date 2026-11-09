@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
+import { LiveClock } from "./LiveClock";
+import { TabView, type TabStart } from "./TabView";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiGetPayment,
@@ -37,8 +39,10 @@ import { cn } from "@/lib/utils";
 // the list, MESITA-3536 the list's look and the steps). The list of places
 // the guest can pay at now (consumer-web-list-pay-places, nearest first):
 // "Select a place to pay", a search box, and rows of profile photo, name,
-// address and distance. A place opens a sheet over the list, one question a
-// step: the bill, the tip (only where the place takes a card), pay the bill
+// address and distance. A place opens its bill at the table (MESITA-3564,
+// TabView.tsx): the QR the waiter scans, the waiter's bill, the guest's
+// split of credit and cash, Paid. "Waiter gave you a code?" on the QR keeps
+// the older door: a sheet over the list, one question a step: the bill, the tip (only where the place takes a card), pay the bill
 // with (Card, or Credit there: credit first, the card the rest), pay the
 // tip with (Card; tips go by card), then the summary and "Go to checkout"
 // (or "Pay … with credit"). Then the proof. Every amount shown is a server
@@ -48,8 +52,8 @@ import { cn } from "@/lib/utils";
 // The location is asked once, after a priming card ("See Mesita Pay places
 // near you"), rounded to 3 decimals and sent only to the list read. The
 // table QR opens `/pay?place=<id>`: the shell's sign-in wall carries it
-// through sign-in, and the form opens for that place, or the list says the
-// place isn't taking Mesita Pay.
+// through sign-in, and that place's bill opens, or the list says the place
+// isn't taking Mesita Pay.
 //
 // The paid state is the address: `/pay?payment=<id>` (set with
 // replaceState), so a reload or a Wallet "Paid" row shows the same proof.
@@ -74,6 +78,8 @@ const PAYMENT_PARAM = "payment";
 const CHECKOUT_PARAM = "checkout";
 const CHECKOUT_CANCEL = "cancel";
 const PLACE_PARAM = "place";
+/** The open bill at the table (MESITA-3564): `/pay?tab=<id>` survives a reload. */
+const TAB_PARAM = "tab";
 /** How long a paid return reads "Confirming…" before "Still confirming". */
 const CONFIRM_PATIENCE_MS = 30_000;
 /** The proof re-reads the payment this often while visible (MESITA-3459). */
@@ -145,6 +151,7 @@ export function PayPage() {
   // skeleton, never the list; the server render reads "".
   const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
   const askedPayment = new URLSearchParams(search).get(PAYMENT_PARAM);
+  const askedTab = new URLSearchParams(search).get(TAB_PARAM);
 
   const [places, setPlaces] = useState<PayPlace[] | null>(null);
   const [listFailed, setListFailed] = useState(false);
@@ -157,6 +164,11 @@ export function PayPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const askedPlace = useRef<string | null | undefined>(undefined);
+  // Pay at the table (MESITA-3564): picking a place opens its bill (the QR
+  // the waiter scans); a reload of `/pay?tab=<id>` shows the same bill.
+  const [tabPicked, setTabPicked] = useState<TabStart | null>(null);
+  const [tabLeft, setTabLeft] = useState(false);
+  const tabStart: TabStart | null = tabPicked ?? (askedTab && !tabLeft ? { kind: "tab", tabId: askedTab } : null);
 
   // Boot: a ?payment= load reads that payment (or releases a cancelled
   // Checkout); otherwise the list loads.
@@ -266,10 +278,7 @@ export function PayPage() {
           askedPlace.current = new URLSearchParams(window.location.search).get(PLACE_PARAM);
           if (askedPlace.current) {
             const hit = list.find((p) => p.place_id === askedPlace.current);
-            if (hit && (hit.card_ok || hit.available_cents > 0)) {
-              setOpenId(hit.place_id);
-              setSheetClosed(false);
-            }
+            if (hit) setTabPicked({ kind: "place", placeId: hit.place_id });
             else setNotice(NOT_TAKING);
             setParam(PLACE_PARAM, null);
           }
@@ -324,6 +333,13 @@ export function PayPage() {
     refresh();
   }
 
+  function leaveTab() {
+    setTabPicked(null);
+    setTabLeft(true);
+    setParam(TAB_PARAM, null);
+    refresh();
+  }
+
   const open = openId && places ? places.find((p) => p.place_id === openId) ?? null : null;
   // Closing keeps the place in the sheet while it slides away; picking a
   // place (or the table QR, or a cancelled Checkout) opens it again.
@@ -340,6 +356,20 @@ export function PayPage() {
       <div className="mt-5 flex min-h-0 flex-1 flex-col">
         {proof ? (
           <ProofView proof={proof} onChange={setProof} onDone={done} />
+        ) : tabStart ? (
+          <TabView
+            key={tabStart.kind === "tab" ? tabStart.tabId : tabStart.placeId}
+            start={tabStart}
+            getSupabase={getSupabase}
+            canUseCode={(placeId) => places?.some((p) => p.place_id === placeId) ?? false}
+            onTabId={(id) => setParam(TAB_PARAM, id)}
+            onWaiterCode={(placeId) => {
+              leaveTab();
+              setOpenId(placeId);
+              setSheetClosed(false);
+            }}
+            onDone={leaveTab}
+          />
         ) : askedPayment && !proofDone ? (
           <ProofSkeleton />
         ) : places ? (
@@ -349,8 +379,7 @@ export function PayPage() {
             notice={notice}
             onPick={(id) => {
               setNotice(null);
-              setOpenId(id);
-              setSheetClosed(false);
+              setTabPicked({ kind: "place", placeId: id });
             }}
             onUseLocation={askLocation}
             onNotNow={notNow}
@@ -1053,24 +1082,6 @@ function PayForm({
 }
 
 // ── The proof ────────────────────────────────────────────────────────────────
-
-/** The live clock: the anti-fake check beside the server's Seen answer.
- *  Decorative to a screen reader (aria-hidden); ticks every second. */
-function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mm = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  return (
-    <p className="font-display mt-3 text-2xl font-semibold tabular-nums" aria-hidden data-live-clock>
-      {hh}:{mm}:{ss}
-    </p>
-  );
-}
 
 function ProofView({
   proof,
