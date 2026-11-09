@@ -200,7 +200,8 @@ export function ImageCarousel({
         />
       )}
 
-      {items.length > 1 && !interactiveDots && (
+      {/* 1 / 1 TOO (MESITA-3532, Pato: "if only one image ... also show 1/1"). */}
+      {items.length >= 1 && !interactiveDots && (
         <CarouselSlideCounter idx={idx} count={items.length} />
       )}
     </div>
