@@ -14,6 +14,7 @@ import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { LiveClock } from "./LiveClock";
 import { TabView, type TabStart } from "./TabView";
 import { EFError } from "@/lib/api/_invoke";
+import { apiGetTab, type GuestTab } from "@/lib/api/tab";
 import {
   apiGetPayment,
   apiListPayPlaces,
@@ -93,6 +94,28 @@ const LOCATION_DECIMALS = 3;
 /** "Not now" on the location card holds for this browser session. */
 const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
 const NOT_TAKING = "This place isn't taking Mesita Pay right now";
+/** The guest's open bill at the table (MESITA-3572): its id stays on this
+ *  device so the Pay list can lead with it. The server is the truth: a bill
+ *  that reads paid, expired or cancelled is forgotten. */
+const OPEN_TAB_KEY = "mesita.pay.open-tab";
+const OPEN_TAB_STATUSES = new Set(["waiting_bill", "billed", "paying"]);
+
+function readOpenTabId(): string | null {
+  try {
+    return window.localStorage.getItem(OPEN_TAB_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeOpenTabId(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(OPEN_TAB_KEY, id);
+    else window.localStorage.removeItem(OPEN_TAB_KEY);
+  } catch {
+    // Private mode or blocked storage: the list just doesn't lead with it.
+  }
+}
 
 const FIELD_CLASS =
   "border-border bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-3 text-base outline-none focus:border-foreground";
@@ -169,6 +192,38 @@ export function PayPage() {
   const [tabPicked, setTabPicked] = useState<TabStart | null>(null);
   const [tabLeft, setTabLeft] = useState(false);
   const tabStart: TabStart | null = tabPicked ?? (askedTab && !tabLeft ? { kind: "tab", tabId: askedTab } : null);
+  const inTab = tabStart !== null;
+  const [openTab, setOpenTab] = useState<GuestTab | null>(null);
+
+  // The list leads with the guest's open bill, read fresh each time the
+  // list shows.
+  useEffect(() => {
+    if (inTab) return;
+    const id = readOpenTabId();
+    if (!id) return;
+    let cancelled = false;
+    void apiGetTab(getSupabase(), id)
+      .then((r) => {
+        if (cancelled) return;
+        if (OPEN_TAB_STATUSES.has(r.tab.status)) {
+          setOpenTab(r.tab);
+        } else {
+          writeOpenTabId(null);
+          setOpenTab(null);
+        }
+      })
+      .catch((e) => {
+        if (cancelled || !(e instanceof EFError) || (e.status !== 404 && e.status !== 403)) return;
+        writeOpenTabId(null);
+        setOpenTab(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // getSupabase is a new function each render (useLazyBrowserSupabase):
+    // listing it would re-read in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inTab, listNonce]);
 
   // Boot: a ?payment= load reads that payment (or releases a cancelled
   // Checkout); otherwise the list loads.
@@ -334,6 +389,7 @@ export function PayPage() {
   }
 
   function leaveTab() {
+    setOpenTab(null);
     setTabPicked(null);
     setTabLeft(true);
     setParam(TAB_PARAM, null);
@@ -362,7 +418,10 @@ export function PayPage() {
             start={tabStart}
             getSupabase={getSupabase}
             canUseCode={(placeId) => places?.some((p) => p.place_id === placeId) ?? false}
-            onTabId={(id) => setParam(TAB_PARAM, id)}
+            onTabId={(id) => {
+              setParam(TAB_PARAM, id);
+              writeOpenTabId(id);
+            }}
             onWaiterCode={(placeId) => {
               leaveTab();
               setOpenId(placeId);
@@ -377,6 +436,12 @@ export function PayPage() {
             places={places}
             loc={loc}
             notice={notice}
+            openTab={openTab}
+            onOpenTab={(id) => {
+              setNotice(null);
+              setParam(TAB_PARAM, id);
+              setTabPicked({ kind: "tab", tabId: id });
+            }}
             onPick={(id) => {
               setNotice(null);
               setTabPicked({ kind: "place", placeId: id });
@@ -439,6 +504,8 @@ function PlaceList({
   places,
   loc,
   notice,
+  openTab,
+  onOpenTab,
   onPick,
   onUseLocation,
   onNotNow,
@@ -446,6 +513,9 @@ function PlaceList({
   places: PayPlace[];
   loc: Loc;
   notice: string | null;
+  /** The guest's open bill at the table, if any (MESITA-3572). */
+  openTab: GuestTab | null;
+  onOpenTab: (tabId: string) => void;
   onPick: (placeId: string) => void;
   onUseLocation: () => void;
   onNotNow: () => void;
@@ -461,6 +531,28 @@ function PlaceList({
         <p className="border-border bg-card mb-3 rounded-2xl border px-4 py-3 text-sm font-semibold" role="status">
           {notice}
         </p>
+      ) : null}
+
+      {openTab ? (
+        <button
+          type="button"
+          onClick={() => onOpenTab(openTab.tab_id)}
+          className="border-foreground bg-card hover:bg-muted/60 mb-4 flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3 text-left transition"
+          data-pay-open-tab
+        >
+          <QrCode className="h-6 w-6 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-base font-semibold">Your open bill · {openTab.place.name ?? "A Mesita place"}</span>
+            <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
+              {openTab.status === "waiting_bill"
+                ? "Waiting for the bill"
+                : openTab.status === "billed"
+                ? `Ready to pay · ${money(openTab.bill_cents ?? 0, openTab.currency)}`
+                : "Paying"}
+            </span>
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+        </button>
       ) : null}
 
       {loc.state === "prime" ? (
