@@ -18,7 +18,7 @@ Deno.test("a profile save does not verify or sync a link", () => {
 });
 
 Deno.test("an owner may not flip Mesita's switches", () => {
-  for (const key of ["prepay_enabled", "reservations_enabled", "reservation_channel", "photos", "mesita_photos"]) {
+  for (const key of ["prepay_enabled", "reservations_enabled", "reservation_channel", "mesita_photos"]) {
     assertEquals(firstNonOwnerField({ id: "p", name: "x", [key]: true }), key);
   }
 });

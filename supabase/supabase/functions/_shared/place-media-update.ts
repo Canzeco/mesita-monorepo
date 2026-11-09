@@ -3,7 +3,8 @@ import { isUrl } from "./place-urls.ts";
 import { optString } from "./place-update-utils.ts";
 
 type MediaUpdateBody = {
-  /** The one gallery is written by Create, Enrich and Update only (MESITA-2794). */
+  /** The one gallery, hero first. Create, Enrich and Update write it; since
+   *  MESITA-3504 the place's Profile does too (reorder, remove, upload). */
   photos?: unknown;
   mesita_photos?: unknown;
   menu_pdf_url?: unknown;
@@ -12,6 +13,35 @@ type MediaUpdateBody = {
 };
 
 const MENU_NAME_MAX = 80;
+/** The most photos a gallery holds (Profile's Photos box). */
+export const GALLERY_MAX = 20;
+const PLACE_IMAGES_BUCKET = "place-images";
+
+/** Where Profile's uploads for this place live (business-web-upload-place-photo). */
+export function businessPhotoPrefix(supabaseUrl: string, placeId: string): string {
+  return `${supabaseUrl.replace(/\/+$/, "")}/storage/v1/object/public/${PLACE_IMAGES_BUCKET}/business/${placeId}/`;
+}
+
+/**
+ * The first photo a gallery save may not hold, or null (MESITA-3504). A saved
+ * gallery only reorders and drops what the place already shows, plus what its
+ * own Profile uploaded: an owner can never point the gallery at an outside
+ * URL. Pure.
+ */
+export function firstForeignPhoto(
+  photos: readonly string[],
+  ctx: { current: readonly string[]; placeId: string; supabaseUrl: string },
+): string | null {
+  const current = new Set(ctx.current);
+  const prefix = businessPhotoPrefix(ctx.supabaseUrl, ctx.placeId);
+  for (const url of photos) {
+    if (current.has(url)) continue;
+    const rest = url.startsWith(prefix) ? url.slice(prefix.length) : null;
+    if (rest && /^[A-Za-z0-9._-]+$/.test(rest) && !rest.includes("..")) continue;
+    return url;
+  }
+  return null;
+}
 const MENU_MAX_COUNT = 20;
 
 type MenuNutrition = {
@@ -103,13 +133,33 @@ export function applyMediaUpdates(
   body: MediaUpdateBody,
   update: Record<string, unknown>,
 ): Response | null {
-  if ("photos" in body || "mesita_photos" in body) {
+  if ("mesita_photos" in body) {
     return json({
       ok: false,
       code: "gallery_not_editable",
-      error:
-        "The gallery is not edited here: Create sets Google's hero, Enrich rebuilds it, and Update refreshes the hero while it is one photo.",
+      error: "mesita_photos is gone (MESITA-2794): the gallery is photos.",
     }, 400);
+  }
+  if ("photos" in body) {
+    const raw = body.photos;
+    if (!Array.isArray(raw) || raw.some((u) => typeof u !== "string")) {
+      return json({ ok: false, code: "invalid_photos", error: "photos must be a list of URLs" }, 400);
+    }
+    const seen = new Set<string>();
+    const photos: string[] = [];
+    for (const u of raw as string[]) {
+      const url = u.trim();
+      if (!url || seen.has(url)) continue;
+      if (!isUrl(url)) {
+        return json({ ok: false, code: "invalid_photos", error: "each photo needs a valid https:// url" }, 400);
+      }
+      seen.add(url);
+      photos.push(url);
+    }
+    if (photos.length > GALLERY_MAX) {
+      return json({ ok: false, code: "too_many_photos", error: `a gallery holds at most ${GALLERY_MAX} photos` }, 400);
+    }
+    update.photos = photos;
   }
 
   if ("menu_pdf_url" in body) {

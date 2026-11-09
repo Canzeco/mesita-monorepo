@@ -25,6 +25,7 @@ import { persistBusinessFieldPins } from "./field-correction-writer.ts";
 import { markOperatorFields, operatorFieldsInPatch } from "./operator-fields.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
 import { buildPlaceUpdate, READ_ONLY_FIELDS, type UpdateBody } from "./place-update.ts";
+import { firstForeignPhoto } from "./place-media-update.ts";
 
 export type PlaceUpdateActor = "admin" | "owner";
 
@@ -45,6 +46,9 @@ export const OWNER_WRITABLE_FIELDS = [
   "menu_pdf_url",
   "menu_pdf_name",
   "products",
+  // The gallery, hero first (MESITA-3504): only what the place already
+  // shows or uploaded itself (firstForeignPhoto).
+  "photos",
   // Basics' Reset hands an edited field back to Enrich; an owner may undo
   // their own edit.
   "reset_fields",
@@ -88,6 +92,23 @@ export async function applyPlaceUpdate(
   const readOnly = READ_ONLY_FIELDS.find((field) => field in body);
   if (readOnly) {
     return json({ ok: false, code: "read_only_field", error: `${readOnly} is inferred, not edited` }, 400);
+  }
+
+  if ("photos" in body && Array.isArray(body.photos)) {
+    const { data: cur, error: curErr } = await admin.from("profiles").select("photos").eq("id", placeId).maybeSingle();
+    if (curErr) return json({ ok: false, error: curErr.message }, 500);
+    if (!cur) return json({ ok: false, error: "Place not found" }, 404);
+    const foreign = firstForeignPhoto(
+      (body.photos as unknown[]).filter((u): u is string => typeof u === "string").map((u) => u.trim()).filter(Boolean),
+      {
+        current: Array.isArray(cur.photos) ? (cur.photos as string[]) : [],
+        placeId,
+        supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
+      },
+    );
+    if (foreign) {
+      return json({ ok: false, code: "photo_not_ours", error: "A photo must be one the place shows or uploaded here" }, 400);
+    }
   }
 
   const families = await fetchPlaceFamilies(admin);
