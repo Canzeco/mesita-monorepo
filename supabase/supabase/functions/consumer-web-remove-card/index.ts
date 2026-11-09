@@ -14,7 +14,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, readCustomer, StripeError, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, readCustomer, StripeError, stripeClient } from "../_shared/boost.ts";
 import { premierCards, removeCheck } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
@@ -34,10 +34,10 @@ serveJson("consumer-web-remove-card", async (req) => {
   const pmId = bodyRes.body.payment_method_id;
   if (typeof pmId !== "string" || !PM_ID.test(pmId)) return json({ ok: false, error: "payment_method_id is not a card id" }, 400);
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, error: "Cards are not available right now" }, 503);
   const userId = authRes.user.id;
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const admin = adminClient(envRes.env);
   const stripe = stripeClient(key);
   try {

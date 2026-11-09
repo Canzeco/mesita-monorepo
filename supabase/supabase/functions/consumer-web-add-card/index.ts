@@ -5,6 +5,9 @@
 // Premier: premier_customers). Stripe's page types the card; on success it
 // returns to `return_url` with `?card=<session id>` and the card is already
 // on the customer, so the next list shows it. Nothing is charged.
+// Cards live in the PAYMENTS mode (PAYMENTS_STRIPE_MODE, MESITA-3573), the
+// mode a bill's card part reads them in (_shared/tab-card.ts); list and
+// remove follow it. Premier's own refill keeps STRIPE_MODE.
 //
 // Body: { return_url: string }
 // Response: { ok: true, url, test_mode }
@@ -14,7 +17,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, ensureCustomer, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, ensureCustomer, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
 import { cardSetupParams, listCards, MAX_CARDS } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
@@ -34,10 +37,10 @@ serveJson("consumer-web-add-card", async (req) => {
     return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
   }
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, error: "Cards are not available right now" }, 503);
   const userId = authRes.user.id;
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const admin = adminClient(envRes.env);
   const stripe = stripeClient(key);
   try {
