@@ -306,7 +306,7 @@ export const DISCOVERY_PIPELINES: readonly DiscoveryPipelineFact[] = [
       "Mesita places only, no Google call (MESITA-2872). The whole catalog is ranked in one run and Home gets every ranked id with the first page's cards, then reads the rest by id a Catalog page size at a time (MESITA-2909, MESITA-3057).",
       "No Popularity floor since MESITA-3086: a place with no Google numbers scores 0 and ranks last, never dropped.",
       "Closed places never show (Discovery › General's active check). Mesita rows must be ready.",
-      "Mesita's read ranks every active place (up to 10,000) by score and hands Home the whole order; Home fills `map.catalogPageSize` cards at a time (MESITA-2921, MESITA-3057).",
+      "Mesita's read ranks every active place by score in one SQL statement, with no row cap (MESITA-3059), and hands Home the whole order; Home fills `map.catalogPageSize` cards at a time (MESITA-2921, MESITA-3057).",
       "Chat reads every ready Mesita place inside a fixed 15 km (Selected only until MESITA-2925; the current-location radius knob retired in MESITA-3086).",
     ],
     callers: ["Catalog (Home's Places)", "Chat (Don Memo)"],

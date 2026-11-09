@@ -30,7 +30,8 @@
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { applyBboxPredicate, type BboxQuery, haversineKm, nearbyBbox } from "./geo.ts";
 import { applyGeneralGateQuery, type FilterableQuery } from "./discovery-general-gate.ts";
-import { familiesForPlace } from "./place-taxonomy.ts";
+import { FAMILIES, familiesForPlace } from "./place-taxonomy.ts";
+import { PREMIER_FACTOR } from "./boost.ts";
 import {
   type AreaBounds,
   type AreaCandidate,
@@ -343,22 +344,24 @@ export function mesitaPoolQuery<Q extends MesitaPoolQuery<Q>>(
   return q.order("id", { ascending: true });
 }
 
-// ── The Catalog's and the Map's read (MESITA-2921, MESITA-2950) ─────────
+// ── The Map's read (MESITA-2950) and the Catalog's (MESITA-3059) ────────
 //
 // A capped read ordered by id is an id-ordered slice, and ids are UUIDs: past
-// 1000 active places Home ranked an effectively random 1000, not the best,
-// and so did the Map once its screen ring (no ceiling, MESITA-2918) held more
-// than 1000 ready places. So both read in two passes (the Map boxed to its
-// ring, the Catalog unboxed):
+// 1000 places in its ring the Map would rank an effectively random 1000. So
+// the Map reads in two passes, boxed to its ring:
 //   1. the scoring columns only, walked by id (`.gt("id", last)`) page after
 //      page until an EMPTY page, at most CATALOG_SCAN_PAGES_MAX pages;
-//   2. ranked with the shared scorer, one page of the ranked list kept (the
-//      Catalog's first page, MESITA-3057; the Map's top N), and
-//      only those cards read, ID_CHUNK ids per `.in()`, in parallel.
+//   2. ranked with the shared scorer, its top N kept, and only those cards
+//      read, ID_CHUNK ids per `.in()`, in parallel.
 // The page stops on an EMPTY page, not a short one: a short page would end
-// the walk early if `max_rows` ever dropped below CATALOG_SCAN_PAGE. The
-// cost is one extra read. Above the cap the cut is by id again (`scanCapped`,
-// MESITA-2921's trigger for a SQL ranking).
+// the walk early if `max_rows` ever dropped below CATALOG_SCAN_PAGE. Above
+// the cap the cut is by id again (`scanCapped`).
+//
+// The Catalog has no ring, so it does not walk (MESITA-3059): the SQL
+// function `catalog_rank` ranks every gated place in one statement and
+// answers the ordered ids as one jsonb value (no `max_rows`, no row cap);
+// only the first page's cards are read (pass 2) and scored here for their
+// `area` breakdown.
 
 /** Pass-1 page size: PostgREST's `max_rows` (config.toml). */
 export const CATALOG_SCAN_PAGE = 1000;
@@ -468,19 +471,7 @@ type RankedPool = {
   places: AreaPoolPlace[];
   summary: CatalogPoolSummary;
   lastId: string | null;
-  /** Every ranked id, best first (MESITA-3057): the Catalog hands Home the
-   *  whole order once and Home fills cards by id. Empty on the Map. */
-  order: string[];
 };
-
-/** The Reward tab's order (MESITA-3214): distance alone, then id; a place with
- *  no coordinates last. Popularity and Premier play no part. */
-function nearestFirst(places: readonly AreaPoolPlace[]): AreaPoolPlace[] {
-  return [...places].sort((a, b) =>
-    (a.area.distanceKm ?? Infinity) - (b.area.distanceKm ?? Infinity) ||
-    a.id.localeCompare(b.id)
-  );
-}
 
 /** Both passes: walk, rank with `selectAreaPool`, keep `keepMax`, read the
  *  kept cards, emit them in rank order. */
@@ -490,7 +481,6 @@ async function selectRankedPool<T extends PoolRow>(
   location: AreaLocation,
   gates: CatalogGates,
   keepMax: number,
-  nearest = false,
 ): Promise<RankedPool> {
   const walk = await walkScoringRows(deps.read, deps.cfg, gates, deps.pagesMax);
   const ranked = await selectAreaPool({
@@ -500,10 +490,7 @@ async function selectRankedPool<T extends PoolRow>(
     mesitaRows: walk.rows,
     cfg: deps.cfg,
   });
-  const list = nearest ? nearestFirst(ranked.places) : ranked.places;
-  // The first page of the ranked list (MESITA-3057): the whole list is
-  // ranked, only these cards are read; Home fills the rest by id.
-  const kept = list.slice(0, keepMax);
+  const kept = ranked.places.slice(0, keepMax);
   const cards = await cardsForIds(
     deps.read,
     deps.cfg,
@@ -529,38 +516,109 @@ async function selectRankedPool<T extends PoolRow>(
       missing: kept.length - places.length,
     },
     lastId: walk.lastId,
-    order: surface === "catalog" ? list.map((p) => p.id) : [],
   };
 }
 
+/** The SQL rank (MESITA-3059): `catalog_rank` through supabase-js's `rpc`. */
+export type CatalogRankRpc = (
+  args: Record<string, unknown>,
+) => PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
+
+/** The family slugs a place must hold one of to pass the Family gate:
+ *  every catalog family but Undefined (`knownFamilies`). */
+const KNOWN_FAMILY_SLUGS: readonly string[] = FAMILIES
+  .map((f) => f.slug as string)
+  .filter((s) => s !== "undefined");
+
+/** `catalog_rank`'s arguments: every number and slug comes from the same
+ *  TypeScript the scorer reads (`areaSignalParams`, PREMIER_FACTOR,
+ *  the catalog families), so SQL owns the arithmetic only. */
+export function catalogRankArgs(
+  cfg: Pick<DiscoveryConfig, "general" | "map" | "params">,
+  location: AreaLocation,
+  families: readonly string[],
+  nearest: boolean,
+): Record<string, unknown> {
+  const sig = areaSignalParams(cfg.params, cfg.map, "catalog");
+  const anchor = location.kind === "point" ? location.anchor : null;
+  return {
+    p_lat: anchor?.lat ?? null,
+    p_lng: anchor?.lng ?? null,
+    p_half_km: sig.halfKm,
+    p_exponent: sig.exponent,
+    p_root: sig.popularityRoot,
+    p_premier_1: PREMIER_FACTOR[1],
+    p_premier_2: PREMIER_FACTOR[2],
+    p_families: [...families],
+    p_known_families: [...KNOWN_FAMILY_SLUGS],
+    p_require_active: cfg.general.requireActive === true,
+    p_nearest: nearest,
+  };
+}
+
+export type CatalogRankSummary = AreaPoolSummary & {
+  /** Rows that passed the gates and were ranked (`ranked`). `read` is the
+   *  rows the SQL rank read before the Family gate, `returned` the places
+   *  emitted after pass 2. */
+  total: number;
+  /** Pass-2 reads. */
+  chunks: number;
+  /** Kept ids pass 2 did not return (no backfill from below the cut). */
+  missing: number;
+};
+
+export type CatalogPool = {
+  places: AreaPoolPlace[];
+  summary: CatalogRankSummary;
+  /** Every ranked id, best first (MESITA-3057): the Catalog hands Home the
+   *  whole order once and Home fills cards by id. */
+  order: string[];
+};
+
 /**
- * The Catalog pool (MESITA-2921): rank every gated place once, keep the
- * first `pageSize`, read only their cards, and hand back `order`, every
- * ranked id best first (MESITA-3057, Pato: "have all the ids … then populate
- * with data and the images"); Home fills the rest with `selectCatalogFill`.
- * The offset pages of MESITA-3044 and the bare best-1000 answer are gone
- * (MESITA-3058): no build sends them. Ranking is `selectAreaPool`'s,
- * so the order (`final` desc, then distance, then id) and every `area`
- * breakdown are the scorer's; the card comes from pass 2 and the breakdown
- * from pass 1's values, so a row edited between the two reads can disagree.
+ * The Catalog pool (MESITA-2921, MESITA-3059): `catalog_rank` ranks every
+ * gated place in SQL, no row cap, and answers `order`, every ranked id best
+ * first (MESITA-3057, Pato: "have all the ids … then populate with data and
+ * the images"); only the first `pageSize` cards are read, and scored here
+ * from the same point so each carries its `area` breakdown. Home fills the
+ * rest with `selectCatalogFill`. `nearest` sorts by distance alone (the
+ * Reward tab, MESITA-3214); Home's score still fills `area`. A failed rank
+ * is pass 1, page 0.
  */
-export function selectCatalogPool<T extends PoolRow>(
-  deps: RankedPoolDeps<T> & {
+export async function selectCatalogPool<T extends PoolRow>(
+  deps: Omit<RankedPoolDeps<T>, "pagesMax"> & {
+    rank: CatalogRankRpc;
     location: AreaLocation;
     /** The first page's length: only these cards are read. */
     pageSize: number;
-    /** Sort by distance alone instead of the score (MESITA-3214). */
     nearest?: boolean;
   },
-): Promise<RankedPool> {
-  return selectRankedPool(
-    deps,
-    "catalog",
-    deps.location,
-    { families: deps.families },
-    deps.pageSize,
-    deps.nearest === true,
+): Promise<CatalogPool> {
+  const { data, error } = await deps.rank(
+    catalogRankArgs(deps.cfg, deps.location, deps.families, deps.nearest === true),
   );
+  if (error) throw new CatalogReadError(1, 0, error.code ?? null, error.message);
+  const answer = (data ?? {}) as { read?: unknown; ids?: unknown };
+  const order = Array.isArray(answer.ids) ? answer.ids.map(String) : [];
+  const read = typeof answer.read === "number" ? answer.read : order.length;
+  const kept = order.slice(0, Math.max(0, deps.pageSize));
+  const filled = await selectCatalogFill({ ...deps, ids: kept });
+  return {
+    places: filled.places,
+    summary: {
+      read,
+      ranked: order.length,
+      returned: filled.places.length,
+      surface: "catalog",
+      halfKm: areaSignalParams(deps.cfg.params, deps.cfg.map, "catalog").halfKm,
+      placesShown: null,
+      pageSize: catalogPageSize(deps.cfg.map),
+      total: order.length,
+      chunks: filled.summary.chunks,
+      missing: kept.length - filled.places.length,
+    },
+    order,
+  };
 }
 
 /**

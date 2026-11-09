@@ -191,10 +191,11 @@ Deno.test("Area: no Territory anywhere in the model; the rules' numbers are the 
     `every ready place in the radius box (up to ${fmt(CATALOG_SCAN_PAGES_MAX * CATALOG_SCAN_PAGE)})`,
   ];
   for (const f of facts) assert(rules.includes(f), f);
-  // Home ranks every place up to the scan cap and gets the whole order
-  // (MESITA-2921, MESITA-3057); its page is PostgREST's max_rows.
+  // Home ranks every place in SQL, no cap, and gets the whole order
+  // (MESITA-3057, MESITA-3059); the Map's walk page is PostgREST's max_rows.
   const catalog = DISCOVERY_PIPELINES.find((p) => p.key === "catalog")!.rules.join(" ");
-  assert(catalog.includes(`up to ${fmt(CATALOG_SCAN_PAGES_MAX * CATALOG_SCAN_PAGE)}`));
+  assert(catalog.includes("no row cap"));
+  assertEquals(catalog.includes("up to 10,000"), false);
   assert(catalog.includes("hands Home the whole order"));
   const toml = await text("config.toml");
   assert(toml.includes(`max_rows = ${CATALOG_SCAN_PAGE}`));

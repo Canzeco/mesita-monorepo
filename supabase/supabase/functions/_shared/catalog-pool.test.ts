@@ -1,10 +1,14 @@
-// The Catalog's two-pass read (MESITA-2921): walk every gated row's scoring
-// columns by id, rank them all, keep the first page, then read only its
-// cards; `order` carries every ranked id (MESITA-3057). A fake PostgREST builder stands in for the database.
+// The Map's two-pass read (MESITA-2950): walk every gated row's scoring
+// columns by id, rank them all, keep the top, then read only those cards.
+// The Catalog ranks in SQL (`catalog_rank`, MESITA-3059) and reads only its
+// first page's cards; `order` carries every ranked id (MESITA-3057). A fake
+// PostgREST builder and a fake rank stand in for the database.
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
   CATALOG_SCAN_PAGE,
   CATALOG_SCORING_COLUMNS,
+  catalogRankArgs,
+  type CatalogRankRpc,
   CatalogReadError,
   type PoolBuilder,
   type PoolRow,
@@ -14,6 +18,7 @@ import {
   walkScoringRows,
 } from "./area-pipeline.ts";
 import { DISCOVERY_DEFAULTS } from "./discovery-config.ts";
+import { PREMIER_FACTOR } from "./boost.ts";
 
 const CENTER = { lat: 25.67, lng: -100.3 };
 const CARDS = "id,name,lat,lng";
@@ -90,22 +95,39 @@ function fakeRead(rows: PoolRow[], opts: { fail?: Fail; dropFromCards?: string[]
 
 const wire = (rows: unknown[]) => rows as PoolRow[];
 
-/** The first page's length in these tests. */
-const PAGE = 1000;
+/** A fake `catalog_rank`: answers this order (or an error) and records its
+ *  arguments. */
+function fakeRank(order: string[], opts: { fail?: boolean; read?: number } = {}) {
+  const calls: Record<string, unknown>[] = [];
+  const rank: CatalogRankRpc = (args) => {
+    calls.push(args);
+    return Promise.resolve(
+      opts.fail
+        ? { data: null, error: { message: "boom: relation detail", code: "57014" } }
+        : { data: { read: opts.read ?? order.length, ids: order }, error: null },
+    );
+  };
+  return { rank, calls };
+}
 
-function pool(rows: PoolRow[], opts: Parameters<typeof fakeRead>[1] & { pagesMax?: number } = {}) {
+function pool(
+  rows: PoolRow[],
+  order: string[],
+  opts: Parameters<typeof fakeRead>[1] & { pageSize?: number; failRank?: boolean } = {},
+) {
   const fake = fakeRead(rows, opts);
+  const ranker = fakeRank(order, { fail: opts.failRank });
   const run = selectCatalogPool({
+    rank: ranker.rank,
     read: fake.read,
     cfg: DISCOVERY_DEFAULTS,
     location: resolveAreaLocation(CENTER, null),
     families: [],
     cardColumns: CARDS,
     wire,
-    pagesMax: opts.pagesMax,
-    pageSize: PAGE,
+    pageSize: opts.pageSize ?? 100,
   });
-  return { run, seen: fake.seen };
+  return { run, seen: fake.seen, calls: ranker.calls };
 }
 
 Deno.test("walkScoringRows: 2,500 rows, every id once, keyset by the last id, stops on an empty page", async () => {
@@ -135,56 +157,70 @@ Deno.test("walkScoringRows: full pages up to the cap set scanCapped and stop", a
   assertEquals(seen.length, 2);
 });
 
-Deno.test("the Catalog keeps the best 1000 BY RANK, not the first 1000 by id (MESITA-2921)", async () => {
-  // 1,500 places; the 500 with the highest ids are the most loved, so an
-  // id-ordered 1000-row cut would have dropped every one of them.
-  const rows = Array.from({ length: 1500 }, (_, i) =>
-    row(i, i >= 1000 ? { google_stars_overall: 4.9, google_review_count: 5000 } : {}));
-  const { run, seen } = pool(rows);
-  const { places, summary } = await run;
-  assertEquals(places.length, PAGE);
-  const kept = new Set(places.map((p) => p.id));
-  for (let i = 1000; i < 1500; i++) assert(kept.has(pid(i)), pid(i));
-  // Rank order survives pass 2, and every place carries its card and breakdown.
-  const finals = places.map((p) => p.area.final);
-  assertEquals(finals, [...finals].sort((a, b) => b - a));
-  assertEquals(places[0].name, "Place 1000");
-  assertEquals(places[0].area.halfKm, 1);
-  assertEquals(summary.read, 1500);
-  assertEquals(summary.total, 1500);
-  assertEquals(summary.returned, 1000);
-  assertEquals(summary.chunks, 5);
-  assertEquals(summary.missing, 0);
-  assertEquals(summary.surface, "catalog");
-  // Pass 2 reads cards only for the kept ids, 200 per chunk.
-  const cards = seen.filter((s) => s.columns === CARDS);
-  assertEquals(cards.length, 5);
-  for (const c of cards) assertEquals(c.limit, c.in!.length);
+Deno.test("the Catalog never walks: one SQL rank, then only the first page's cards (MESITA-3059)", async () => {
+  // 1,250 places, past any page; the SQL order is the answer's order.
+  const rows = Array.from({ length: 1250 }, (_, i) => row(i, { google_review_count: 10 + i }));
+  const order = rows.map((r) => r.id).reverse();
+  const { run, seen, calls } = pool(rows, order, { pageSize: 100 });
+  const out = await run;
+  assertEquals(calls.length, 1);
+  // No scoring-column walk at all, so no 10,000-row cap.
+  assertEquals(seen.filter((s) => s.columns === CATALOG_SCORING_COLUMNS).length, 0);
+  const asked = seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
+  assertEquals(asked, order.slice(0, 100));
+  assertEquals(out.order, order);
+  assertEquals(out.places.map((p) => p.id), order.slice(0, 100));
+  // Each card carries its breakdown, scored from the same point.
+  assertEquals(out.places[0].area.halfKm, 1);
+  assertEquals(out.places[0].name, "Place 1249");
+  assertEquals(
+    [out.summary.read, out.summary.total, out.summary.returned, out.summary.chunks, out.summary.missing],
+    [1250, 1250, 100, 1, 0],
+  );
+  assertEquals(out.summary.surface, "catalog");
+});
+
+Deno.test("catalog_rank's arguments are the engine's own knobs and constants", () => {
+  const args = catalogRankArgs(DISCOVERY_DEFAULTS, resolveAreaLocation(CENTER, null), ["dinner"], true);
+  assertEquals([args.p_lat, args.p_lng], [CENTER.lat, CENTER.lng]);
+  assertEquals([args.p_premier_1, args.p_premier_2], [PREMIER_FACTOR[1], PREMIER_FACTOR[2]]);
+  assertEquals(args.p_families, ["dinner"]);
+  assert((args.p_known_families as string[]).includes("dinner"));
+  assertEquals((args.p_known_families as string[]).includes("undefined"), false);
+  assertEquals(args.p_require_active, DISCOVERY_DEFAULTS.general.requireActive);
+  assertEquals(args.p_nearest, true);
+  const none = catalogRankArgs(DISCOVERY_DEFAULTS, resolveAreaLocation(null, null), [], false);
+  assertEquals([none.p_lat, none.p_lng], [null, null]);
 });
 
 Deno.test("a kept id pass 2 does not return is skipped and counted, never backfilled", async () => {
-  const rows = Array.from({ length: 1001 }, (_, i) => row(i, i === 0 ? { google_review_count: 9000 } : {}));
-  const { run } = pool(rows, { dropFromCards: [pid(0)] });
+  const rows = Array.from({ length: 150 }, (_, i) => row(i));
+  const order = rows.map((r) => r.id);
+  const { run } = pool(rows, order, { dropFromCards: [pid(0)] });
   const { places, summary } = await run;
-  assertEquals(places.length, 999);
+  assertEquals(places.length, 99);
   assertEquals(summary.missing, 1);
   assertEquals(places.some((p) => p.id === pid(0)), false);
 });
 
 Deno.test("a failed read names its pass and its page or chunk", async () => {
   const rows = Array.from({ length: 450 }, (_, i) => row(i));
-  const scan = await assertRejects(() => pool(rows, { fail: { pass: 1, at: 0 } }).run, CatalogReadError);
+  const order = rows.map((r) => r.id);
+  const scan = await assertRejects(() => pool(rows, order, { failRank: true }).run, CatalogReadError);
   assertEquals([scan.pass, scan.at, scan.pgCode], [1, 0, "57014"]);
-  const card = await assertRejects(() => pool(rows, { fail: { pass: 2, at: 2 } }).run, CatalogReadError);
+  const card = await assertRejects(
+    () => pool(rows, order, { pageSize: 450, fail: { pass: 2, at: 2 } }).run,
+    CatalogReadError,
+  );
   assertEquals([card.pass, card.at], [2, 2]);
 });
 
-Deno.test("an empty catalog reads one empty page and no cards", async () => {
-  const { run, seen } = pool([]);
-  const { places, summary } = await run;
-  assertEquals(places, []);
+Deno.test("an empty catalog ranks once and reads no cards", async () => {
+  const { run, seen } = pool([], []);
+  const { places, summary, order } = await run;
+  assertEquals([places, order], [[], []]);
   assertEquals(summary.chunks, 0);
-  assertEquals(seen.length, 1);
+  assertEquals(seen.length, 0);
 });
 
 Deno.test("list-catalog: a pass-2 error is a 502 with the code and no PostgREST text", async () => {
@@ -232,28 +268,4 @@ Deno.test("list-places: a failed read is a 502 with the code and no PostgREST te
   assertEquals(/json\(\{[^}]*err\.message/s.test(src), false);
   // No capped single read is left to rank a slice.
   assertEquals(src.includes(".limit("), false);
-});
-
-Deno.test("a rank reads only the first page's cards and orders every ranked id (MESITA-3057)", async () => {
-  // 1,250 places with distinct scores, past the page: every one is in
-  // `order`, only the first page's cards are read.
-  const rows = Array.from({ length: 1250 }, (_, i) => row(i, { google_review_count: 10 + i }));
-  const fake = fakeRead(rows);
-  const out = await selectCatalogPool({
-    read: fake.read,
-    cfg: DISCOVERY_DEFAULTS,
-    location: resolveAreaLocation(CENTER, null),
-    families: [],
-    cardColumns: CARDS,
-    wire,
-    pageSize: 100,
-  });
-  const asked = fake.seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
-  assertEquals([asked.length, out.places.length, out.summary.total], [100, 100, 1250]);
-  assertEquals(out.order.length, 1250);
-  assertEquals(new Set(out.order).size, 1250);
-  // Best first: the most-reviewed place leads, and the page is the order's head.
-  assertEquals(out.order[0], pid(1249));
-  assertEquals(out.order[1249], pid(0));
-  assertEquals(out.places.map((p) => p.id), out.order.slice(0, 100));
 });
