@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
 import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
-import { consumerAuthDestination } from "@/lib/auth-redirect";
+import { consumerAuthDestination, payPlaceFromNext } from "@/lib/auth-redirect";
+import { apiGetPayPlaceName } from "@/lib/api/auth";
 
 // Root of the consumer subdomain. Strong routing contract:
 //
@@ -31,9 +32,17 @@ export default async function ConsumerRootPage({
     redirect(afterAuth);
   }
 
+  // The Pay QR door (MESITA-3526): a table QR's `/pay?place=<id>` names the
+  // place. A failed or empty read keeps the plain title; sign-in never waits
+  // on it to work.
+  const payPlaceId = payPlaceFromNext(params.next);
+  const payPlaceName = payPlaceId
+    ? await apiGetPayPlaceName(supabase, payPlaceId).catch(() => null)
+    : null;
+
   return (
     <EnterpriseAuthLayout
-      title="Sign in with your phone"
+      title={payPlaceName ? `Sign in to pay at ${payPlaceName}` : "Sign in with your phone"}
       subtitle="We'll text you a one-time code."
       footer={
         <>

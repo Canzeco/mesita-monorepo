@@ -192,6 +192,12 @@ verify_jwt = false
 [functions.consumer-web-get-place]
 verify_jwt = false
 
+# MESITA-3526: the Pay QR door. Sign-in names the place a scanned table QR
+# points at; the guest has no session yet. Name only, never whether the place
+# takes payments; profiles RLS decides which places answer.
+[functions.consumer-web-get-pay-place-name]
+verify_jwt = false
+
 # MESITA-3405: "Call me with the code" on phone sign-in. Public: the guest has
 # no session yet; it only repeats a code Auth already texted to that number.
 [functions.consumer-web-call-sign-in-code]
