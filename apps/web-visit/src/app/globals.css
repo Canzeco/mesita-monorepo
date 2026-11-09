@@ -181,3 +181,53 @@ button.quiet {
   font-size: 16px;
   font-weight: 700;
 }
+
+/* ── The waiter's charge (MESITA-3306) ─────────────────────────────────── */
+
+.charge-code {
+  margin: 16px 0 0;
+  font-size: 88px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  /* the trailing letter-spacing, mirrored, keeps the digits centred */
+  padding-left: 0.12em;
+  line-height: 1;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+}
+
+.charge-amount {
+  font-size: 40px;
+}
+
+/* Paid: one green tick, the screen's one authored motion. */
+.charge-tick {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+  margin-top: 24px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 56px;
+  font-weight: 800;
+  animation: charge-tick-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@keyframes charge-tick-in {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .charge-tick {
+    animation: none;
+  }
+}

@@ -106,3 +106,80 @@ export function getStory(token: string): Promise<StoryVoucher> {
 export function activateStory(token: string): Promise<{ activated_at: string; already: boolean }> {
   return call<{ activated_at: string; already: boolean }>("visit-web-activate-story", { token }, STORY_WORDS);
 }
+
+// ── The waiter's charge (MESITA-3306) ───────────────────────────────────────
+
+/** A charge staff just opened: the 4-digit code the guest types on Pay and
+ *  the token this screen polls with (never the place code). */
+export type OpenedCharge = {
+  code: string;
+  charge_token: string;
+  amount_cents: number;
+  currency: string;
+  ticket: string | null;
+  expires_at: string;
+  server_time: string;
+  place: { name: string | null };
+  test_mode: boolean;
+};
+
+/** What the poll answers while the charge lives. */
+export type ChargeRead = {
+  state: "open" | "paid";
+  amount_cents: number;
+  currency: string;
+  ticket: string | null;
+  expires_at: string;
+  paid_at: string | null;
+  server_time: string;
+};
+
+/** A refusal opening a charge: the server's sentence and code, and the wait
+ *  when locked. */
+export class ChargeError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | null,
+    readonly retryAfterS: number | null,
+  ) {
+    super(message);
+  }
+}
+
+async function post(name: string, body: Record<string, unknown>): Promise<{ res: Response | null; data: Record<string, unknown> | null }> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/${name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "",
+      },
+      body: JSON.stringify(body),
+    });
+    return { res, data: (await res.json().catch(() => null)) as Record<string, unknown> | null };
+  } catch {
+    return { res: null, data: null };
+  }
+}
+
+export async function openCharge(args: {
+  place_id: string;
+  place_code: string;
+  amount_cents: number;
+  ticket: string | null;
+}): Promise<OpenedCharge> {
+  const { data } = await post("visit-web-open-charge", args);
+  if (data?.ok) return data as unknown as OpenedCharge;
+  const code = typeof data?.code === "string" ? data.code : null;
+  const words = typeof data?.error === "string" && code ? data.error : "Couldn't open the charge. Try again.";
+  throw new ChargeError(words, code, typeof data?.retry_after_s === "number" ? data.retry_after_s : null);
+}
+
+/** The poll: the charge, `gone` (expired or unknown: the screen stops), or
+ *  `failed` (no answer: the screen keeps polling and says Reconnecting). */
+export async function getCharge(token: string): Promise<ChargeRead | "gone" | "failed"> {
+  const { res, data } = await post("visit-web-get-charge", { token });
+  if (data?.ok) return data as unknown as ChargeRead;
+  if (res && (res.status === 404 || res.status === 400)) return "gone";
+  return "failed";
+}

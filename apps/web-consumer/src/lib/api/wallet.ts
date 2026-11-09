@@ -183,6 +183,9 @@ export async function apiStartPayment(
     return_url?: string;
     request_id: string;
     ticket: string | null;
+    /** The waiter's 4-digit code (MESITA-3306): the charge sets the amount
+     *  and the ticket; the server refuses any other amount. */
+    charge_code?: string;
   },
 ): Promise<PayStart> {
   const r = await invokeEF<Started>(client, "consumer-web-start-payment", {
@@ -192,6 +195,7 @@ export async function apiStartPayment(
     ...(args.card_cents ? { card_cents: args.card_cents, return_url: args.return_url } : {}),
     ...(args.tip_cents ? { tip_cents: args.tip_cents } : {}),
     ...(args.ticket ? { ticket: args.ticket } : {}),
+    ...(args.charge_code ? { charge_code: args.charge_code } : {}),
   });
   if (r.status === "open" && "url" in r) return { kind: "checkout", payment_id: r.payment_id, url: r.url, expires_at: r.expires_at };
   if (!("outcome" in r) || r.paid_at === undefined) return { kind: "already_paid", payment_id: r.payment_id };
@@ -294,6 +298,30 @@ export const PAY_REFUSAL: Record<string, string> = {
   in_progress: "A card payment here is still open.",
   checkout_failed: "Couldn't open checkout. Try again.",
   locked: "Card payments here are paused for a few minutes.",
+};
+
+// ── The waiter's charge (MESITA-3306) ───────────────────────────────────────
+
+/** What a waiter's code names: the amount the guest pays, locked, and the
+ *  ticket staff typed. */
+export type WaiterCharge = { amount_cents: number; currency: string; ticket: string | null; expires_at: string };
+
+/** Reads the charge a code names; moves no money. A wrong code is one try:
+ *  refusals arrive as EFError with a code from CHARGE_REFUSAL. */
+export async function apiLookCharge(client: SupabaseClient, placeId: string, code: string): Promise<WaiterCharge> {
+  const r = await invokeEF<{ charge: WaiterCharge }>(client, "consumer-web-start-payment", {
+    place_id: placeId,
+    charge_code: code,
+    look: true,
+  });
+  return r.charge;
+}
+
+/** What the guest reads when a waiter's code is refused. */
+export const CHARGE_REFUSAL: Record<string, string> = {
+  gone: "That code isn't open here. Ask the waiter for it again.",
+  taken: "Someone else is paying this charge.",
+  locked: "Too many wrong codes.",
 };
 
 // ── The Pay tab's list (MESITA-3457) ────────────────────────────────────────

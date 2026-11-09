@@ -29,6 +29,16 @@
 //   502 checkout_failed ·
 //   500 with request_id (the payment may have gone through: retry the same
 //   request_id and a replay answers already_paid)
+//
+// MESITA-3306 (W2c): the waiter's charge. With `charge_code` (the 4 digits
+// staff read out) the charge decides the amount and the ticket: `look: true`
+// answers { ok: true, charge: { amount_cents, currency, ticket, expires_at } }
+// and moves nothing; a start must carry that amount. One UPDATE claims the
+// charge for this guest before any money moves, and it is given back when
+// none did; the payment is bound to it so the staff screen reads Paid.
+//   404 gone (no open charge under that code: one guest try) ·
+//   409 locked (+retry_after_s, the sixth wrong code in 10 minutes) |
+//       taken (+payment_id: this guest's paid payment, or null)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
@@ -40,6 +50,9 @@ import { startCardPayment } from "../_shared/pay-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { isUuid } from "../_shared/place-id.ts";
+import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, readChargeCode, supabaseChargeStore } from "../_shared/charge.ts";
+import { moneyText } from "../_shared/pay.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
@@ -54,16 +67,37 @@ serveJson("consumer-web-start-payment", async (req) => {
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
+  const admin = adminClient(envRes.env);
+
+  // The waiter's charge (W2c): the code names the amount and the ticket.
+  let charge: ChargeRow | null = null;
+  let charges: ChargeStore | null = null;
+  if (bodyRes.body.charge_code !== undefined && bodyRes.body.charge_code !== null) {
+    if (!isUuid(bodyRes.body.place_id)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
+    const code = readChargeCode(bodyRes.body.charge_code);
+    if (!code) return json({ ok: false, error: "The waiter's code is four digits" }, 400);
+    charges = supabaseChargeStore(admin);
+    const found = await findGuestCharge(charges, { placeId: bodyRes.body.place_id, consumerId: userId, code, nowMs: Date.now() });
+    if (!found.ok) {
+      console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: found.code ?? "refused", place_id: bodyRes.body.place_id, charge: true }));
+      return json({ ok: false, code: found.code, error: found.error, ...found.detail }, found.status);
+    }
+    if (bodyRes.body.look === true) return json({ ok: true, charge: chargeLook(found.charge) });
+    charge = found.charge;
+  }
+
   const parsed = readPayBody(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error, ...parsed.detail }, parsed.status);
-  const input = parsed.input;
+  const input = charge ? { ...parsed.input, ticket: charge.ticket } : parsed.input;
+  if (charge && input.amountCents !== charge.amount_cents) {
+    return json({ ok: false, error: `The waiter's charge is ${moneyText(charge.amount_cents, charge.currency)}` }, 400);
+  }
   const card = readCardPart(bodyRes.body, input.amountCents);
   if (!card.ok) return json({ ok: false, code: card.code, error: card.error, ...card.detail }, card.status);
   if (card.cardCents > 0 && (!card.returnUrl || !isAllowedReturnUrl(card.returnUrl))) {
     return json({ ok: false, error: "return_url is not a Mesita address" }, 400);
   }
 
-  const admin = adminClient(envRes.env);
   const placeRes = await readVoucherPlace(admin, input.placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
@@ -76,6 +110,18 @@ serveJson("consumer-web-start-payment", async (req) => {
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
   const livemode = boostLivemode();
+
+  // One guest per charge: claimed before any money moves.
+  if (charge && charges && !(await charges.claim(charge.id, userId))) {
+    return json({ ok: false, code: "taken", error: "Someone else is paying this charge", payment_id: null }, 409);
+  }
+  // A start that moved no money gives the charge back; one that did binds it.
+  const release = async () => {
+    if (charge && charges) await charges.unclaim(charge.id, userId);
+  };
+  const bind = async (paymentId: string, paidAt: string | null) => {
+    if (charge && charges) await charges.bind(charge.id, paymentId, paidAt);
+  };
 
   try {
     if (card.cardCents > 0) {
@@ -93,22 +139,27 @@ serveJson("consumer-web-start-payment", async (req) => {
         nowMs: Date.now(),
       });
       if (!res.ok) {
+        await release();
         console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: res.code ?? "refused", place_id: input.placeId, amount_cents: input.amountCents, card_cents: card.cardCents }));
         return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
       }
       if (res.kind === "already_paid") {
         // The same tap, already settled: the page reads the payment back.
+        if (charges) await bind(res.payment_id, (await charges.payment(res.payment_id))?.paid_at ?? null);
         return json({ ok: true, payment_id: res.payment_id, status: "paid", outcome: "already_paid", test_mode: !livemode });
       }
+      await bind(res.start.payment_id, null);
       console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: "open", payment_id: res.start.payment_id, place_id: input.placeId, amount_cents: input.amountCents, card_cents: card.cardCents, tip_cents: card.tipCents }));
       return json({ ok: true, ...res.start });
     }
 
     const res = await startPayment(admin, { consumerId: userId, input, currency, livemode });
     if (!res.ok) {
+      await release();
       console.log("[consumer-web-start-payment]", JSON.stringify({ outcome: res.code ?? "refused", place_id: input.placeId, amount_cents: input.amountCents }));
       return json({ ok: false, code: res.code, error: res.error, ...res.detail }, res.status);
     }
+    await bind(res.payment.payment_id, res.payment.paid_at);
     console.log("[consumer-web-start-payment]", JSON.stringify({
       outcome: res.payment.outcome,
       payment_id: res.payment.payment_id,

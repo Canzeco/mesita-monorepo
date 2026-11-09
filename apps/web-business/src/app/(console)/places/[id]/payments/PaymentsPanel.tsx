@@ -104,6 +104,12 @@ const OUTSIDE: InfoRow = { name: "Outside Mesita", line: "Cash or your own termi
 const ARRIVES_SOON = "Card payment of the bill arrives soon.";
 const NOTE = "text-muted-foreground text-xs";
 
+/** The waiter's charge (MESITA-3306): staff open it on visit.mesita.ai with
+ *  the place code, so the page names the link once the code is set and
+ *  sends the owner to Settings while it is not. */
+const VISIT_ORIGIN = "https://visit.mesita.ai";
+const WAITER_CHARGE_NEEDS_CODE = "Set a place code on Settings to take the waiter's charge";
+
 /** The six voucher switches, the keys moneyState reports a reason for. */
 type VoucherKey = Extract<PaymentKey, `voucher_${string}`>;
 const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_");
@@ -157,7 +163,8 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
   const [settings, setSettings] = useState(initial.settings);
   const [busy, setBusy] = useState<PaymentKey | "stripe" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
-  const { account, can_edit: canEdit, test_mode: testMode } = initial;
+  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSet } = initial;
+  const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
   const ready = account.state === "ready";
   const pending = !canEdit || busy !== null;
@@ -275,6 +282,20 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
           {row(MESITA_PAY)}
           {infoRow(OUTSIDE)}
         </ul>
+        <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
+          {codeSet ? (
+            <>
+              Waiter&apos;s charge:{" "}
+              <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
+                {chargeUrl.replace("https://", "")}
+              </a>
+            </>
+          ) : (
+            <a className="underline" href={placeTabHref(placeId, "settings")}>
+              {WAITER_CHARGE_NEEDS_CODE}
+            </a>
+          )}
+        </p>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
         <ul className="divide-border divide-y">{row(CASHBACK)}</ul>

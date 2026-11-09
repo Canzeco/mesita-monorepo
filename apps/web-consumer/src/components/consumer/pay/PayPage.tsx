@@ -14,14 +14,17 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   apiGetPayment,
   apiListPayPlaces,
+  apiLookCharge,
   apiReleasePayment,
   apiStartPayment,
   attemptFor,
+  CHARGE_REFUSAL,
   money,
   PAY_REFUSAL,
   type PayAttempt,
   type PayPlace,
   type PayProof,
+  type WaiterCharge,
 } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -520,8 +523,14 @@ function PayForm({
   const [busy, setBusy] = useState(false);
   const [resume, setResume] = useState<string | null>(null);
   const attempt = useRef<PayAttempt | null>(null);
+  // The waiter's charge (MESITA-3306): no code field until the guest asks
+  // for it; a right code sets the amount and the ticket, read-only.
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState("");
+  const [charge, setCharge] = useState<WaiterCharge | null>(null);
+  const [looking, setLooking] = useState(false);
 
-  const cents = readAmount(amount);
+  const cents = charge ? charge.amount_cents : readAmount(amount);
   const tipTyped = place.card_ok ? readAmount(tip) : null;
   const tipBad = place.card_ok && tip.trim() !== "" && tipTyped === null;
   const split = cents === null
@@ -546,7 +555,44 @@ function PayForm({
     : tipBad
     ? "Type a tip like 30 or 30.50"
     : null;
-  const canPay = split !== null && (split.kind === "credit" || split.kind === "card") && !tipBad && !busy;
+  const canPay = split !== null && (split.kind === "credit" || split.kind === "card") && !tipBad && !busy && !looking;
+
+  /** A refusal of the waiter's code: true when handled here. */
+  function chargeRefused(e: EFError): boolean {
+    const body = e.body ?? {};
+    if (e.code === "taken" && typeof body.payment_id === "string") {
+      onTaken(body.payment_id);
+      return true;
+    }
+    if (e.code === "locked" && typeof body.retry_after_s === "number") {
+      toast(`${CHARGE_REFUSAL.locked} Try again in ${Math.ceil(body.retry_after_s / 60)} min.`, { tone: "error" });
+      return true;
+    }
+    if (e.code === "gone" || e.code === "taken") {
+      toast(CHARGE_REFUSAL[e.code], { tone: "error" });
+      setCharge(null);
+      setCode("");
+      return true;
+    }
+    return false;
+  }
+
+  async function look(typed: string) {
+    setLooking(true);
+    try {
+      const c = await apiLookCharge(getSupabase(), place.place_id, typed);
+      attempt.current = null;
+      setCharge(c);
+      setAmount(amountText(c.amount_cents));
+      setCreditChanged(false);
+    } catch (e) {
+      if (!(e instanceof EFError) || !e.code || !chargeRefused(e)) {
+        toast(e instanceof EFError && e.code ? PAY_REFUSAL[e.code] ?? e.message : NETWORK_FAILURE, { tone: "error" });
+      }
+    } finally {
+      setLooking(false);
+    }
+  }
 
   async function pay() {
     if (!split || !canPay || cents === null) return;
@@ -562,7 +608,8 @@ function PayForm({
         amount_cents: cents,
         ...(card ? { card_cents: card.card_cents, tip_cents: card.tip_cents, return_url: `${window.location.origin}${CONSUMER_ROUTES.pay}` } : {}),
         request_id: a.requestId,
-        ticket: ticket.trim() || null,
+        ticket: charge ? charge.ticket : ticket.trim() || null,
+        ...(charge ? { charge_code: code } : {}),
       });
       attempt.current = null;
       if (started.kind === "checkout") {
@@ -585,6 +632,7 @@ function PayForm({
       }
       attempt.current = null;
       const body = e.body ?? {};
+      if (charge && chargeRefused(e)) return;
       if (e.code === "taken" && typeof body.payment_id === "string") {
         onTaken(body.payment_id);
         return;
@@ -655,17 +703,66 @@ function PayForm({
         autoComplete="off"
         placeholder="0"
         value={amount}
+        readOnly={charge !== null}
         onChange={(e) => {
           setAmount(e.target.value);
           setCreditChanged(false);
         }}
-        className={cn(FIELD_CLASS, "mt-1.5 tabular-nums")}
+        className={cn(FIELD_CLASS, "mt-1.5 tabular-nums", charge && "bg-muted")}
       />
-      {amount.trim() !== "" && cents === null ? (
+      {charge ? (
+        <p className="text-muted-foreground mt-1.5 text-xs" data-waiter-charge>
+          The waiter&apos;s charge{charge.ticket ? ` · Ticket ${charge.ticket}` : ""} ·{" "}
+          <button
+            type="button"
+            className="underline"
+            onClick={() => {
+              setCharge(null);
+              setCode("");
+              setAmount("");
+              attempt.current = null;
+            }}
+          >
+            Not this code
+          </button>
+        </p>
+      ) : amount.trim() !== "" && cents === null ? (
         <p className="text-destructive mt-1.5 text-xs">Type an amount like 250 or 250.50</p>
       ) : split?.kind === "over" ? (
         <p className="text-destructive mt-1.5 text-xs">More than your {money(place.available_cents, place.currency)} of credit here</p>
       ) : null}
+
+      {charge ? null : codeOpen ? (
+        <>
+          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-charge-code">
+            Waiter&apos;s code
+          </label>
+          <input
+            id="pay-charge-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            placeholder="0000"
+            value={code}
+            disabled={looking}
+            onChange={(e) => {
+              const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+              setCode(v);
+              if (v.length === 4) void look(v);
+            }}
+            className={cn(FIELD_CLASS, "mt-1.5 tracking-[0.3em] tabular-nums")}
+          />
+        </>
+      ) : (
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center self-start text-sm font-semibold underline"
+          onClick={() => setCodeOpen(true)}
+          data-charge-code-link
+        >
+          Waiter gave you a code?
+        </button>
+      )}
 
       {place.card_ok ? (
         <>
@@ -684,17 +781,21 @@ function PayForm({
         </>
       ) : null}
 
-      <label className="mt-4 block text-sm font-semibold" htmlFor="pay-ticket">
-        Ticket or table no. <span className="text-muted-foreground font-normal">(optional)</span>
-      </label>
-      <input
-        id="pay-ticket"
-        autoComplete="off"
-        maxLength={32}
-        value={ticket}
-        onChange={(e) => setTicket(e.target.value)}
-        className={cn(FIELD_CLASS, "mt-1.5")}
-      />
+      {charge ? null : (
+        <>
+          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-ticket">
+            Ticket or table no. <span className="text-muted-foreground font-normal">(optional)</span>
+          </label>
+          <input
+            id="pay-ticket"
+            autoComplete="off"
+            maxLength={32}
+            value={ticket}
+            onChange={(e) => setTicket(e.target.value)}
+            className={cn(FIELD_CLASS, "mt-1.5")}
+          />
+        </>
+      )}
 
       {creditChanged ? (
         <p className="mt-5 text-sm font-semibold" role="status">
