@@ -200,26 +200,28 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
     voucher_200: ink,
     voucher_1000: ink,
     voucher_5000: ink,
+    // SOLID, NO GRADIENTS (MESITA-3471, Pato: "use clear colors, not
+    // gradients"; picked A of three mocks).
     voucher_welcome: {
-      card: "bg-blue-600 text-white",
+      card: "bg-[#2563EB] text-white",
       muted: "text-white/75",
-      pill: "bg-white/25 text-white",
-      buy: "bg-white text-blue-700",
+      pill: "bg-white text-[#2563EB]",
+      buy: "bg-white text-[#2563EB]",
       Mark: PartyPopper,
     },
-    // Instagram's own gradient (yellow, pink, purple, blue).
+    // Instagram's pink.
     voucher_story: {
-      card: "bg-[linear-gradient(45deg,#feda75_0%,#fa7e1e_25%,#d62976_50%,#962fbf_75%,#4f5bd5_100%)] text-white",
+      card: "bg-[#E1306C] text-white",
       muted: "text-white/80",
-      pill: "bg-white/25 text-white",
-      buy: "bg-white text-[#d62976]",
+      pill: "bg-white text-[#E1306C]",
+      buy: "bg-white text-[#E1306C]",
       Mark: Instagram,
     },
     voucher_vip: {
-      card: "bg-[linear-gradient(135deg,#fde68a_0%,#f59e0b_55%,#b45309_100%)] text-neutral-950",
+      card: "bg-[#F5B301] text-neutral-950",
       muted: "text-neutral-950/70",
-      pill: "bg-neutral-950 text-amber-300",
-      buy: "bg-neutral-950 text-amber-300",
+      pill: "bg-neutral-950 text-[#F5B301]",
+      buy: "bg-neutral-950 text-[#F5B301]",
       Mark: Crown,
     },
   };
