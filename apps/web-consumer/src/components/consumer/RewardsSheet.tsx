@@ -33,6 +33,9 @@ export function RewardsSheet({
   const drawn = section ?? last;
   return (
     <LocalSheet open={section != null} onClose={onClose} ariaLabel={`${place.name} offers`} fullScreen from="right">
+      {/* A hairline between the bar and the page (MESITA-3474, Pato: "add a
+          line dividing ... only the header from the body"). */}
+      <div className="border-border border-b">
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
@@ -40,6 +43,7 @@ export function RewardsSheet({
         onBack={onClose}
         onMore={actions.onMore}
       />
+      </div>
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4">
         {drawn != null ? <VouchersPane place={place} actions={actions} focus={drawn} /> : null}
       </div>

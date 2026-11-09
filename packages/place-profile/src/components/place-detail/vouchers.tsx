@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef } from "react";
-import { BadgePercent, Crown, PartyPopper, type LucideIcon } from "lucide-react";
+import { BadgePercent, Crown, PartyPopper, QrCode, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -449,6 +449,28 @@ export function VouchersPane({
     <div className="bg-card -mx-4 -mt-4 flex flex-col gap-2.5 px-4 pt-3 pb-4" data-promos-page>
       {/* NO TEST NOTICE (MESITA-3454, Pato: "remove the test advice i don't
           care. for the moment"). Stripe's test mode still decides the charge. */}
+      {/* FOUR SECTIONS (MESITA-3474, Pato: "Visit Checkout: PAY BILL
+          REDIRECTION / Payments Offers: Cashback (no button) / Prepayments
+          Offers / Card & Credits"). Pay bill leads, full width; the cashback
+          card only says what paying here earns. */}
+      {loading || canPay ? (
+        <section className="flex flex-col gap-2" aria-labelledby="rewards-checkout" data-promos="checkout">
+          <h3 id="rewards-checkout" className={OFFERS_TITLE_CLASS}>Visit Checkout</h3>
+          {loading ? (
+            <div className={cn(PLACE_BONE_CLASS, "h-12 w-full rounded-xl")} aria-hidden data-reward-loading />
+          ) : (
+            <button
+              type="button"
+              onClick={actions?.onPay}
+              aria-label="Pay the bill here with Mesita"
+              className={cn(ACTION_BUTTON, "h-12 min-h-12 gap-2 rounded-xl text-base")}
+            >
+              <QrCode className="h-5 w-5" aria-hidden />
+              Pay bill
+            </button>
+          )}
+        </section>
+      ) : null}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
         <div
@@ -465,18 +487,6 @@ export function VouchersPane({
               {canPay || loading ? "Pay by card, 5% back as credit" : cashbackTag}
             </span>
           </span>
-          {loading ? (
-            <div className={cn(PLACE_BONE_CLASS, "h-7 w-16 shrink-0")} aria-hidden data-reward-loading />
-          ) : canPay ? (
-            <button
-              type="button"
-              onClick={actions?.onPay}
-              aria-label="Pay the bill here with Mesita"
-              className={cn(ACTION_BUTTON, SMALL_ACTION, "w-auto shrink-0 px-3")}
-            >
-              Pay bill
-            </button>
-          ) : null}
         </div>
       </section>
       {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
@@ -489,11 +499,14 @@ export function VouchersPane({
           Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credit is ready in an hour.
         </p>
       </section>
-      {loading ? (
-        <div className={cn(PLACE_BONE_CLASS, "h-11 w-full rounded-xl")} aria-hidden data-reward-loading />
-      ) : (
-        <HouseCard place={place} currency={currency} />
-      )}
+      <section className="flex flex-col gap-2" aria-labelledby="rewards-credits" data-promos="credits">
+        <h3 id="rewards-credits" className={OFFERS_TITLE_CLASS}>Card &amp; Credits</h3>
+        {loading ? (
+          <div className={cn(PLACE_BONE_CLASS, "h-11 w-full rounded-xl")} aria-hidden data-reward-loading />
+        ) : (
+          <HouseCard place={place} currency={currency} />
+        )}
+      </section>
     </div>
   );
 }
