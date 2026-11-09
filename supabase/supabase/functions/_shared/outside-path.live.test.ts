@@ -55,7 +55,7 @@ Deno.test({
       // Contract, House Credits and Cash Payments on at 2%, and a place code.
       await admin.from("place_profiles").insert({ id: place, google_name: `Outside live ${stamp}` }).throwOnError();
       await admin.from("places").insert({ id: place, slug: `outside-live-${stamp}`, state: "active", content_state: "generating", currency: "MXN" }).throwOnError();
-      await admin.from("house_credits_contracts").insert({ place_id: place, signed_by: userId, terms_version: "draft-2026-11" }).throwOnError();
+      await admin.from("house_credits_contracts").insert({ place_id: place, signed_by: userId, signer_role: "owner", terms_version: "draft-2026-11", text_sha256: "0".repeat(64) }).throwOnError();
       await admin.from("place_payment_settings").upsert({ place_id: place, house_credits: true, cash_payments: true, cash_cashback_bps: 200 }).throwOnError();
       await admin.from("place_codes").insert({ place_id: place, code_hash: await hashPlaceCode(place, "123456") }).throwOnError();
 

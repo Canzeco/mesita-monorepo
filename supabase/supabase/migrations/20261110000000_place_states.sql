@@ -24,10 +24,9 @@
 --    `cashback` is no longer read by any EF; a follow-up drops it once the
 --    EFs that named it are gone from the cloud (drop-before-deploy would
 --    break the old EFs for the ~5 minutes between migration and redeploy).
--- 3. The old `cashback` switch moves into the two rates (5% card, 2% cash).
---    No place has a signed contract yet, so House Credits starts Off
---    everywhere, and voucher switches on a place without House Credits go
---    Off (they could not sell without it). Today that is one test place.
+-- 3. Every place starts with House Credits, Cash Payments and both rates Off
+--    (no contract exists yet; a reset follows). The old `cashback` switch is
+--    not carried over; voucher switches go Off with House Credits.
 --
 -- The ledger stays rail- and setting-blind: the EFs read these columns at
 -- payment time and pass the rate into the RPCs, which snapshot it on the row
@@ -43,16 +42,51 @@ create table public.house_credits_contracts (
   -- account (deleting a user must neither fail nor erase the signature).
   signed_by uuid not null,
   signed_by_email text,
-  signed_at timestamptz not null default now(),
+  -- owner, or superadmin when Mesita staff sign on the owner's behalf.
+  signer_role text not null check (signer_role in ('owner', 'superadmin')),
   terms_version text not null check (length(terms_version) between 1 and 64),
+  -- sha256 (hex) of the exact text the signer was shown.
+  text_sha256 text not null check (text_sha256 ~ '^[0-9a-f]{64}$'),
+  signed_at timestamptz not null default now(),
+  ip text,
+  user_agent text,
   ended_at timestamptz,
+  ended_by uuid,
+  end_reason text,
   created_at timestamptz not null default now(),
-  check (ended_at is null or ended_at >= signed_at)
+  check (ended_at is null or ended_at >= signed_at),
+  check ((ended_at is null) = (end_reason is null))
 );
 
 create unique index house_credits_contracts_one_live
   on public.house_credits_contracts (place_id) where ended_at is null;
 create index house_credits_contracts_place on public.house_credits_contracts (place_id, signed_at desc);
+
+-- Append-only: a signature is never edited; ending it is the one change,
+-- made once (ended_at, ended_by, end_reason). Rows leave only with their
+-- place (cascade) or a reset (truncate); no EF deletes one.
+create or replace function public.house_credits_contracts_append_only()
+ returns trigger
+ language plpgsql
+ set search_path to 'public'
+as $function$
+begin
+  if old.ended_at is not null
+     or (new.id, new.place_id, new.signed_by, new.signed_by_email, new.signer_role, new.terms_version,
+         new.text_sha256, new.signed_at, new.ip, new.user_agent, new.created_at)
+        is distinct from
+        (old.id, old.place_id, old.signed_by, old.signed_by_email, old.signer_role, old.terms_version,
+         old.text_sha256, old.signed_at, old.ip, old.user_agent, old.created_at) then
+    raise exception 'house_credits_contracts is append-only: only ending a live contract is allowed'
+      using errcode = 'check_violation';
+  end if;
+  return new;
+end;
+$function$;
+
+create trigger house_credits_contracts_append_only
+  before update on public.house_credits_contracts
+  for each row execute function public.house_credits_contracts_append_only();
 
 alter table public.house_credits_contracts enable row level security;
 revoke all on table public.house_credits_contracts from public, anon, authenticated;
@@ -73,20 +107,25 @@ alter table public.place_payment_settings
 
 -- ── 3. Carry the old switch over (before the guards exist) ────────────────
 
-update public.place_payment_settings
-   set card_cashback_bps = case when cashback then 500 end,
-       cash_cashback_bps = case when cashback then 200 end;
-
+-- Every place starts Off: no contract exists yet, and the reset that follows
+-- makes old values moot. The old Cashback switch is not carried over.
 update public.place_payment_settings
    set voucher_200 = false, voucher_1000 = false, voucher_5000 = false,
        voucher_welcome = false, voucher_story = false, voucher_vip = false
  where not house_credits;
 
+-- The rates stored on payment rows can never exceed the 20% an owner may set.
+alter table public.wallet_payments
+  drop constraint if exists wallet_payments_cashback_bps_check,
+  add constraint wallet_payments_cashback_bps_max check (cashback_bps between 0 and 2000),
+  add constraint wallet_payments_outside_cashback_bps_max check (outside_cashback_bps between 0 and 2000);
+
 -- ── 4. The guards ──────────────────────────────────────────────────────────
 
 alter table public.place_payment_settings
   add constraint place_payment_settings_cash_le_card
-    check (cash_cashback_bps is null or card_cashback_bps is null or cash_cashback_bps <= card_cashback_bps),
+    check (cash_cashback_bps is null or card_cashback_bps is null or not pay_cards
+           or cash_cashback_bps <= card_cashback_bps),
   add constraint place_payment_settings_prepay_needs_house_credits
     check (house_credits or not (voucher_200 or voucher_1000 or voucher_5000
                                  or voucher_welcome or voucher_story or voucher_vip));
@@ -99,7 +138,8 @@ create or replace function public.place_payment_settings_house_credits_guard()
  set search_path to 'public'
 as $function$
 begin
-  if new.house_credits and not exists (
+  -- Checked only on the turn to On: an unrelated update never re-checks.
+  if new.house_credits and (tg_op = 'INSERT' or not old.house_credits) and not exists (
     select 1 from public.house_credits_contracts c
      where c.place_id = new.place_id and c.ended_at is null
   ) then
@@ -141,6 +181,7 @@ create trigger house_credits_contracts_end
 
 revoke all on function public.place_payment_settings_house_credits_guard() from public, anon, authenticated;
 revoke all on function public.house_credits_contracts_end() from public, anon, authenticated;
+revoke all on function public.house_credits_contracts_append_only() from public, anon, authenticated;
 
 comment on column public.place_payment_settings.house_credits is
   'MESITA-3589: House Credits On/Off (Main §10). On only while a live house_credits_contracts row exists. Off stops new credits; credit guests hold stays spendable.';

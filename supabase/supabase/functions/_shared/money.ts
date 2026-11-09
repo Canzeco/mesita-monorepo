@@ -15,16 +15,11 @@ import type { MoneyVoucherKey } from "./money-state.ts";
 export const MESITA_FEE_BPS_VOUCHER = 500;
 export const MESITA_FEE_BPS_PAYMENT = 500;
 
-/** Payments Cashback: one standard rate (Pato, 2026-11-06), on the card part
- *  of a payment, never on credit spent, tips or voucher purchases. */
-export const CASHBACK_BPS = 500;
-
-/** Payments Cashback on a bill paid outside Mesita (cash or the place's own
- *  terminal) that the waiter confirms with Received: the second standard
- *  rate of Payments Flow v2 (Pato, 2026-11-09, MESITA-3541). On the outside
- *  part only, never on credit spent or tips; stored on the row at open
- *  (wallet_open_outside), never re-read at confirm. */
-export const OUTSIDE_CASHBACK_BPS = 200;
+// Cashback has no constant since MESITA-3589: each place sets its own rates
+// (place_payment_settings.card_cashback_bps / cash_cashback_bps, 1%..20%,
+// defaults 5% and 2% suggested on Business › Payments). moneyState turns
+// them into what applies now; the EFs store it on the row at start/open and
+// settle/Received/refund read the row, never the setting.
 
 /** Outside bills one guest may open at one place in a rolling day (open,
  *  paid or refunded; cancelled and expired ones do not count). Estimated:

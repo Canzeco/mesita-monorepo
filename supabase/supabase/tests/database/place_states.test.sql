@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(14);
+select plan(17);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3589'), ('00000000-0000-4000-8000-0000000b3589');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3589');
@@ -38,12 +38,12 @@ select throws_ok(
   $$update public.place_payment_settings set voucher_200 = true where place_id = '00000000-0000-4000-8000-000000013589'$$,
   '23514', null, 'a voucher On without House Credits is refused');
 
-insert into public.house_credits_contracts (place_id, signed_by, terms_version)
-values ('00000000-0000-4000-8000-000000013589', '00000000-0000-4000-8000-0000000b3589', 'draft-2026-11');
+insert into public.house_credits_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
+values ('00000000-0000-4000-8000-000000013589', '00000000-0000-4000-8000-0000000b3589', 'owner', 'draft-2026-11', repeat('0', 64));
 
 select throws_ok(
-  $$insert into public.house_credits_contracts (place_id, signed_by, terms_version)
-    values ('00000000-0000-4000-8000-000000013589', '00000000-0000-4000-8000-0000000b3589', 'draft-2026-11')$$,
+  $$insert into public.house_credits_contracts (place_id, signed_by, signer_role, terms_version, text_sha256)
+    values ('00000000-0000-4000-8000-000000013589', '00000000-0000-4000-8000-0000000b3589', 'owner', 'draft-2026-11', repeat('0', 64))$$,
   '23505', null, 'a place has one live contract');
 
 select lives_ok(
@@ -65,11 +65,20 @@ select lives_ok(
   '7% card and 3% cash are taken');
 select throws_ok(
   $$update public.place_payment_settings set cash_cashback_bps = 800 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'cash above card is refused');
+  '23514', null, 'cash above card is refused while Mesita Payments is on');
+select lives_ok(
+  $$update public.place_payment_settings set pay_cards = false, cash_cashback_bps = 800
+     where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  'with Mesita Payments off the card rate does not cap cash');
 
 -- ━━━ Ending the contract ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-update public.house_credits_contracts set ended_at = now() where place_id = '00000000-0000-4000-8000-000000013589';
+select throws_ok(
+  $$update public.house_credits_contracts set terms_version = 'edited' where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'a signature is never edited (append-only)');
+
+update public.house_credits_contracts set ended_at = now(), end_reason = 'test'
+ where place_id = '00000000-0000-4000-8000-000000013589';
 
 select is(
   (select (house_credits, voucher_200)::text from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
@@ -105,6 +114,12 @@ select is(
   (select sum(amount_cents)::int from public.wallet_entries
     where consumer_id = '00000000-0000-4000-8000-0000000a3589' and kind = 'cashback'),
   null, 'and no new credit is born from it');
+
+-- The waiter's code path: a credit-only payment with every switch off.
+select is(
+  wallet_pay_credit('00000000-0000-4000-8000-0000000a3589', '00000000-0000-4000-8000-000000013589', 5000, 'mxn', false,
+    gen_random_uuid(), 'bbbbbbbbbbbbbbbbbbbbb2', null)->>'outcome',
+  'paid', 'a credit-only payment by the waiter''s code also pays with every switch off');
 
 select * from finish();
 rollback;

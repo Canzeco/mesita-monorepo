@@ -2,7 +2,7 @@
 // down. Money, so pinned.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { bps, CASHBACK_BPS, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct } from "./money.ts";
+import { bps, MESITA_FEE_BPS_PAYMENT, MESITA_FEE_BPS_VOUCHER, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents, vouchersUpToPct } from "./money.ts";
 
 Deno.test("bps rounds down to the cent", () => {
   assertEquals(bps(999_99, 500), 4999);
@@ -11,10 +11,9 @@ Deno.test("bps rounds down to the cent", () => {
   assertEquals(bps(0, 500), 0);
 });
 
-Deno.test("the fee and cashback rates are 5% each", () => {
+Deno.test("the fee rates are 5% each", () => {
   assertEquals(MESITA_FEE_BPS_VOUCHER, 500);
   assertEquals(MESITA_FEE_BPS_PAYMENT, 500);
-  assertEquals(CASHBACK_BPS, 500);
 });
 
 Deno.test("the catalog's bonuses and fees, in centavos", () => {

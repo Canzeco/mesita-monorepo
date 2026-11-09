@@ -74,7 +74,7 @@ export type PayPlaceInput = {
   /** A place code is set: the waiter's charge can open here, so the guest
    *  can pay outside (MESITA-3545). */
   outside_ok: boolean;
-  /** What a bill paid outside and confirmed earns here (OUTSIDE_CASHBACK_BPS
+  /** What a bill paid outside and confirmed earns here (the place's Cash Payments Cashback,
    *  with the Cashback switch on, else 0). */
   outside_bps: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;

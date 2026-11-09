@@ -89,6 +89,15 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
 
 /** The place's House Credits Contract, live or none (MESITA-3589). */
 export const HOUSE_CREDITS_TERMS_VERSION = "draft-2026-11";
+/** The exact text the owner is shown and agrees to (Pato, 2026-11-09: "JUST
+ *  MAKE AN AGREE MODAL EXPLAINING NOTHING"); a lawyer's text replaces it and
+ *  bumps the version before launch. Its sha256 is stored with the signature. */
+export const HOUSE_CREDITS_TERMS_TEXT = "The full agreement will be added before launch.";
+
+export async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 export type ContractView = { signed: boolean; signed_at: string | null; terms_version: string | null };
 
 export async function readContract(admin: SupabaseClient, placeId: string): Promise<ContractView> {

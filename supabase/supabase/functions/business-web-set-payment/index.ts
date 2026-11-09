@@ -12,8 +12,8 @@
 //     sell House Credits; credit guests already hold stays spendable.
 //   - A voucher On needs House Credits On (SQL refuses too).
 //   - Cash Payments On needs the place code (the waiter's Received).
-//   - The cash rate is never above the card rate when both are set (SQL
-//     refuses too).
+//   - While Mesita Payments is on, the cash rate is never above the card
+//     rate (SQL refuses too; turning Mesita Pay on over it answers the same).
 //
 // Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|voucher_*, enabled: boolean }
 //    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 100..2000 (whole percents) | null }
@@ -82,7 +82,7 @@ serveJson("business-web-set-payment", async (req) => {
     patch[key] = on;
   } else {
     const next = { ...current, [key]: bps as number | null };
-    if (next.cash_cashback_bps !== null && next.card_cashback_bps !== null && next.cash_cashback_bps > next.card_cashback_bps) {
+    if (next.pay_cards && next.cash_cashback_bps !== null && next.card_cashback_bps !== null && next.cash_cashback_bps > next.card_cashback_bps) {
       return json({ ok: false, code: "cash_above_card", error: "Cash cashback can't be higher than Mesita Pay cashback." }, 409);
     }
     patch[key] = bps;
