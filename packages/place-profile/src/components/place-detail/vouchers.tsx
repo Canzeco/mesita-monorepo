@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BadgePercent, Banknote, Crown, Info, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, Info, Lock, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -253,7 +253,7 @@ function InfoButton({ title, text }: { title: string; text: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <span className="text-foreground text-lg font-semibold">{title}</span>
-            <span className="text-muted-foreground overflow-y-auto text-base leading-snug font-normal">{text}</span>
+            <span className="text-muted-foreground mb-3 overflow-y-auto text-base leading-snug font-normal">{text}</span>
             <button
               type="button"
               onClick={() => setOpen(false)}
@@ -478,6 +478,13 @@ export function VouchersPane({
                 ) : (
                   <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
                     {inner}
+                    {/* LOCKED, NOT A SELECTOR (MESITA-3495, Pato: "if not available show a
+                        locked icon instead of the circle"). */}
+                    {loading ? null : (
+                      <span className="text-muted-foreground flex h-6 w-6 shrink-0 items-center justify-center" aria-hidden data-voucher-locked>
+                        <Lock className="h-5 w-5" strokeWidth={2.25} />
+                      </span>
+                    )}
                   </div>
                 )}
               </li>
