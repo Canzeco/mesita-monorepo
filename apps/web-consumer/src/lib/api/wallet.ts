@@ -100,14 +100,32 @@ export async function apiListVouchers(client: SupabaseClient, placeId: string): 
   return placeMoneyFrom(r.money);
 }
 
-/** Opens Stripe Checkout for one voucher on the place's own account. The
- *  `request_id` is one per tap: a retry with the same id finds the same
- *  checkout. Refusals arrive as EFError with a code from BUY_REFUSAL. */
+/** What Stripe.js needs to finish a voucher paid with a saved card
+ *  (MESITA-3552): the same shape as a bill's card part, so runBankCheck
+ *  (lib/api/tab.ts) runs it. */
+export type VoucherCardStep = {
+  status: "succeeded" | "processing" | "requires_action";
+  payment_intent_id: string;
+  client_secret?: string;
+  stripe_account?: string;
+  publishable_key?: string;
+};
+
+/** Buys one voucher on the place's own account. Without `card_pm_id` it
+ *  opens Stripe Checkout (`url`); with a saved card's id it charges that
+ *  card at once (`card`, MESITA-3552). The `request_id` is one per tap: a
+ *  retry with the same id finds the same purchase, never a second charge,
+ *  and after a bank check it answers how the card payment ended. Refusals
+ *  arrive as EFError with a code from BUY_REFUSAL. */
 export async function apiBuyVoucher(
   client: SupabaseClient,
-  args: { place_id: string; voucher: VoucherKey; request_id: string; return_url: string },
-): Promise<{ url: string; purchase_id: string }> {
-  return await invokeEF<{ url: string; purchase_id: string }>(client, "consumer-web-buy-voucher", args);
+  args: { place_id: string; voucher: VoucherKey; request_id: string; return_url: string; card_pm_id?: string | null },
+): Promise<{ url?: string; purchase_id: string; card?: VoucherCardStep }> {
+  const { card_pm_id, ...rest } = args;
+  return await invokeEF<{ url?: string; purchase_id: string; card?: VoucherCardStep }>(client, "consumer-web-buy-voucher", {
+    ...rest,
+    ...(card_pm_id ? { card_pm_id } : {}),
+  });
 }
 
 /** What the guest reads when the buy is refused, by the server's code. */
@@ -128,6 +146,12 @@ export const BUY_REFUSAL: Record<string, string> = {
   place_cap: "This place can't take more credit for now. Try again later.",
   in_progress: "Your checkout for this voucher is still open.",
   checkout_failed: "Couldn't open checkout. Try again.",
+  // A saved card (MESITA-3552)
+  card_not_found: "That card isn't saved on your account anymore. Choose another.",
+  card_declined: "Your card was declined. Nothing was charged. Try another card.",
+  card_needs_auth: "This card needs a bank check we can't show. Try another card or Stripe's page.",
+  card_failed: "Couldn't charge the card. Nothing was charged. Try again.",
+  closed: "That purchase was cancelled. Tap Buy to start over.",
 };
 
 /** What a refused buy does (MESITA-3549). A refusal that carries the open
