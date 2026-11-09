@@ -87,7 +87,7 @@ export const BUY_REFUSAL: Record<string, string> = {
   checkout_failed: "Couldn't open checkout. Try again.",
 };
 
-/** "MX$500" / "$25" — whole amounts drop the cents. One formatter with the
+/** "$500MX" / "$25" — whole amounts drop the cents. One formatter with the
  *  staff's proof page (web-visit), so both screens print the same peso. */
 export const money = moneyLabel;
 

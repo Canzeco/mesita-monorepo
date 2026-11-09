@@ -29,10 +29,15 @@ function currencyPrefix(code: string | null | undefined): string {
   if (code === "USD") return "$";
   if (code === "EUR") return "€";
   if (code && code !== "MXN") return `${code} `;
-  return "MX$";
+  return "$";
 }
 
-/** e.g. MX$500–800 per person. Null when price_level is missing. */
+/** Pesos carry MX after the amount (MESITA-3491): "$200–300MX". */
+function currencySuffix(code: string | null | undefined): string {
+  return !code || code === "MXN" ? "MX" : "";
+}
+
+/** e.g. $500–800MX per person. Null when price_level is missing. */
 export function formatPlacePriceRange(
   priceLevel: number | null | undefined,
   currency: string | null | undefined,
@@ -40,5 +45,5 @@ export function formatPlacePriceRange(
   if (priceLevel == null || priceLevel < 1 || priceLevel > 4) return null;
   const level = Math.round(priceLevel) as 1 | 2 | 3 | 4;
   const [min, max] = LEVEL_RANGES[level];
-  return `${currencyPrefix(currency)}${min}–${max} per person`;
+  return `${currencyPrefix(currency)}${min}–${max}${currencySuffix(currency)} per person`;
 }

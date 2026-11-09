@@ -65,15 +65,15 @@ const STANDARD: Product[] = [
   // One mark and one colour for the standard three (MESITA-3326, Pato: "the
   // standard deals/promos must have the same icon and the same color"): the
   // wallet on emerald, as the guest's Promos catalog draws them.
-  { key: "voucher_200", name: "Standard voucher", line: "Guest pays MX$200, gets MX$220 of credit.", value: "+10%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "Standard Medium voucher", line: "Guest pays MX$1,000, gets MX$1,200 of credit.", value: "+20%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_5000", name: "Standard Large voucher", line: "Guest pays MX$5,000, gets MX$6,500 of credit.", value: "+30%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_200", name: "Standard voucher", line: "Guest pays $200,MX gets $220MX of credit.", value: "+10%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_1000", name: "Standard Medium voucher", line: "Guest pays $1,000,MX gets $1,200MX of credit.", value: "+20%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_5000", name: "Standard Large voucher", line: "Guest pays $5,000,MX gets $6,500MX of credit.", value: "+30%", icon: WalletIcon, tone: "bg-emerald-100 text-emerald-700" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome voucher", line: "Guest pays MX$100, gets MX$130 of credit. Once, on the first visit.", value: "+30%", icon: HandWavingIcon, tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_story", name: "Story voucher", line: "Guest pays MX$100, gets MX$130 of credit after posting an Instagram story at your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays MX$100, gets MX$130 of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_welcome", name: "Welcome voucher", line: "Guest pays $100,MX gets $130MX of credit. Once, on the first visit.", value: "+30%", icon: HandWavingIcon, tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_story", name: "Story voucher", line: "Guest pays $100,MX gets $130MX of credit after posting an Instagram story at your place.", value: "+30%", icon: InstagramLogoIcon, tone: "bg-pink-100 text-pink-700" },
+  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays $100,MX gets $130MX of credit. VIP guests only.", value: "+30%", icon: CrownIcon, tone: "bg-violet-100 text-violet-700" },
 ];
 
 /** Mesita Pay (MESITA-3396's Cards; named by MESITA-3410, Pato: "Mesita Pay,

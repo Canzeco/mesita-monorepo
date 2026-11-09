@@ -89,7 +89,7 @@ export function readCardPart(
   return { ok: true, cardCents, tipCents, returnUrl };
 }
 
-/** "MX$170" or "MX$170.50": the one sentence the server writes with money in it. */
+/** "$170MX" or "$170.50MX" (MX after the amount, MESITA-3491): the one sentence the server writes with money in it. */
 export function moneyText(cents: number, currency: string): string {
   const whole = cents % 100 === 0;
   try {
@@ -98,7 +98,7 @@ export function moneyText(cents: number, currency: string): string {
       currency: currency.toUpperCase(),
       minimumFractionDigits: whole ? 0 : 2,
       maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100);
+    }).format(cents / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
   } catch {
     return `${(cents / 100).toFixed(whole ? 0 : 2)} ${currency.toUpperCase()}`;
   }

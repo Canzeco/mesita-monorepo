@@ -71,7 +71,7 @@ export type Place = {
   google_count?: number | null;
   /** Place's Instagram follower count (read-only signal). */
   instagram_followers_count?: number | null;
-  /** Pre-formatted with the currency prefix, e.g. "MX$200–300". */
+  /** Pre-formatted with the currency, e.g. "$200–300MX". */
   price_range?: string | null;
   /** Short relative timestamp like "2 days ago" (server-formatted). */
   last_updated_label?: string | null;

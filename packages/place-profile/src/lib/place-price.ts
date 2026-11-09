@@ -4,7 +4,7 @@ import { DEFAULT_CURRENCY } from "./money";
  * Place price labels — two surfaces, two formats.
  *
  * decision: Pato — swipe shows $$$$ (price_level symbols); place profile
- * shows the numeric amount range (e.g. MX$500–800 per person).
+ * shows the numeric amount range (e.g. $500–800MX per person).
  */
 
 const LEVEL_RANGES = {
@@ -18,7 +18,12 @@ function currencyPrefix(code: string | null | undefined): string {
   if (code === "USD") return "$";
   if (code === "EUR") return "€";
   if (code && code !== DEFAULT_CURRENCY) return `${code} `;
-  return "MX$";
+  return "$";
+}
+
+/** Pesos carry MX after the amount (MESITA-3491): "$200–300MX". */
+function currencySuffix(code: string | null | undefined): string {
+  return !code || code === "MXN" ? "MX" : "";
 }
 
 function withPerPerson(label: string): string {
@@ -33,7 +38,7 @@ function fallbackFromLevel(
   if (priceLevel == null || priceLevel < 1 || priceLevel > 4) return null;
   const level = Math.round(priceLevel) as 1 | 2 | 3 | 4;
   const [min, max] = LEVEL_RANGES[level];
-  return `${currencyPrefix(currency)}${min}–${max}`;
+  return `${currencyPrefix(currency)}${min}–${max}${currencySuffix(currency)}`;
 }
 
 function clampPriceLevel(
@@ -52,14 +57,14 @@ export function formatPlacePriceLevelSymbols(
   return "$".repeat(level);
 }
 
-/** Place profile: numeric range when available (e.g. MX$500–800 per person). */
+/** Place profile: numeric range when available (e.g. $500–800MX per person). */
 export function formatPlacePriceChip(input: {
   priceRange?: string | null;
   priceLevel?: number | null;
   currency?: string | null;
 }): string | null {
   const raw = input.priceRange?.trim() ?? "";
-  if (raw && /\d/.test(raw)) return withPerPerson(raw);
+  if (raw && /\d/.test(raw)) return withPerPerson(raw.replace(/^MX\$\s*([\d.,]+(?:\s*[–-]\s*[\d.,]+)?)/, "$$$1MX"));
 
   const fromLevel = fallbackFromLevel(input.priceLevel, input.currency);
   if (fromLevel) return withPerPerson(fromLevel);

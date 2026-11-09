@@ -245,9 +245,9 @@ export function voucherCheckoutParams(args: {
 
 function voucherName(k: MoneyVoucherKey): string {
   switch (k) {
-    case "voucher_200": return "MX$200 voucher";
-    case "voucher_1000": return "MX$1,000 voucher";
-    case "voucher_5000": return "MX$5,000 voucher";
+    case "voucher_200": return "$200MX voucher";
+    case "voucher_1000": return "$1,000MX voucher";
+    case "voucher_5000": return "$5,000MX voucher";
     case "voucher_welcome": return "Welcome voucher";
     case "voucher_story": return "Story voucher";
     case "voucher_vip": return "VIP voucher";
@@ -255,7 +255,7 @@ function voucherName(k: MoneyVoucherKey): string {
 }
 
 function pesos(cents: number): string {
-  return `MX$${Math.floor(cents / 100).toLocaleString("en-US")}`;
+  return `$${Math.floor(cents / 100).toLocaleString("en-US")}MX`;
 }
 
 export type PurchaseRow = { id: string; status: string; stripe_checkout_session_id: string | null };
