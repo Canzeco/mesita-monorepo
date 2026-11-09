@@ -39,14 +39,19 @@ values
 
 -- ━━━ No fee on a refunded or lost-dispute part ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+do $$ begin
+  perform wallet_refund_payment('00000000-0000-4000-8000-0000000b3462', 20000);
+  perform wallet_refund_payment('00000000-0000-4000-8000-0000000b3463', 5000, 'dispute_lost');
+end $$;
+
 select is(
-  (wallet_refund_payment('00000000-0000-4000-8000-0000000b3462', 20000) ->> 'fee_refunded_cents')::int,
+  (select fee_refunded_cents from public.wallet_payments where id = '00000000-0000-4000-8000-0000000b3462'),
   1000,
   'a full refund takes back all of the fee'
 );
 
 select is(
-  (wallet_refund_payment('00000000-0000-4000-8000-0000000b3463', 5000, 'dispute_lost') ->> 'fee_refunded_cents')::int,
+  (select fee_refunded_cents from public.wallet_payments where id = '00000000-0000-4000-8000-0000000b3463'),
   250,
   'a lost dispute of half the card part takes back half the fee'
 );

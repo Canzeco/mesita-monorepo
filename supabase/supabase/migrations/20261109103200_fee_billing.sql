@@ -154,8 +154,7 @@ begin
 
   return jsonb_build_object('ok', true, 'outcome', 'applied', 'delta_cents', v_delta,
     'card_refunded_cents', v_card_refunded, 'tip_refunded_cents', v_tip_refunded,
-    'reversed_cents', v_reversed, 'uncovered_cents', v_to_reverse - v_reversed, 'status', v_status,
-    'fee_refunded_cents', v_fee_refunded);
+    'reversed_cents', v_reversed, 'uncovered_cents', v_to_reverse - v_reversed, 'status', v_status);
 end;
 $function$;
 
@@ -218,7 +217,7 @@ begin
        set refunded_cents = v_new_refunded, fee_refunded_cents = v_fee_refunded, status = v_status, updated_at = now()
      where id = v.id;
     return jsonb_build_object('ok', true, 'outcome', 'applied', 'delta_cents', v_delta,
-      'reversed_cents', 0, 'uncovered_cents', 0, 'status', v_status, 'fee_refunded_cents', v_fee_refunded);
+      'reversed_cents', 0, 'uncovered_cents', 0, 'status', v_status);
   end if;
 
   -- What should be gone in total once this refund is applied: the refunded
@@ -254,8 +253,7 @@ begin
    where id = v.id;
 
   return jsonb_build_object('ok', true, 'outcome', 'applied', 'delta_cents', v_delta,
-    'reversed_cents', v_reversed, 'uncovered_cents', v_to_reverse - v_reversed, 'status', v_status,
-    'fee_refunded_cents', v_fee_refunded);
+    'reversed_cents', v_reversed, 'uncovered_cents', v_to_reverse - v_reversed, 'status', v_status);
 end;
 $function$;
 
