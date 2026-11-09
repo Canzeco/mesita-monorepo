@@ -4,8 +4,12 @@
 // 2 boxes as pending ... invent something"). NOT BUILT: today a card is typed
 // on Stripe's own page at each payment and Mesita keeps none, so every line
 // is tagged Soon and the page offers no button, as Connector does.
+// MESITA-3523: saving a card is live on the Wallet's Money rail (Add), so
+// that line is no longer Soon and the page links there.
 
+import Link from "next/link";
 import { CreditCard } from "lucide-react";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { PerkList } from "@/components/consumer/me/perk-list";
@@ -27,11 +31,18 @@ export function CardsModal() {
             <PerkList
               label="What it will do"
               items={[
-                { text: "Save a card", soon: true },
+                { text: "Save a card" },
                 { text: "Apple Pay", soon: true },
                 { text: "Google Pay", soon: true },
               ]}
             />
+            <Link
+              href={CONSUMER_ROUTES.wallet}
+              className="mt-3 inline-block text-sm font-semibold underline-offset-4 hover:underline"
+              data-cards-wallet
+            >
+              Your cards are in Wallet
+            </Link>
           </div>
         </div>
       </SettingsGroup>
