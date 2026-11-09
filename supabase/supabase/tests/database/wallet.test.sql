@@ -46,8 +46,8 @@ select ok(
     and not has_table_privilege('authenticated', 'public.place_charges', 'SELECT')
     and not has_table_privilege('authenticated', 'public.stripe_connect_events', 'SELECT')
     and not has_function_privilege('authenticated', 'public.wallet_credit_purchase(uuid, text, timestamptz)', 'EXECUTE')
-    and not has_function_privilege('anon', 'public.wallet_refund_purchase(uuid, integer)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.wallet_refund_payment(uuid, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.wallet_refund_purchase(uuid, integer, text)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.wallet_refund_payment(uuid, integer, text)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_balance(uuid, uuid, text, boolean, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.place_code_check(uuid, text)', 'EXECUTE'),
   'client roles hold nothing on the ledger; every wallet_* function and place_code_check are service-role only'
