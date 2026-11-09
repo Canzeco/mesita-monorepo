@@ -183,3 +183,42 @@ export async function getCharge(token: string): Promise<ChargeRead | "gone" | "f
   if (res && (res.status === 404 || res.status === 400)) return "gone";
   return "failed";
 }
+
+// ── The staff list of payments (MESITA-3462) ────────────────────────────────
+
+/** One payment as staff read it: never who paid. */
+export type StaffPayment = {
+  id: string;
+  amount_cents: number;
+  tip_cents: number;
+  currency: string;
+  paid_at: string;
+  ticket: string | null;
+  seen: boolean;
+  refunded: boolean;
+};
+
+export type PaymentList = {
+  payments: StaffPayment[];
+  place: { name: string | null };
+  server_time: string;
+  test_mode: boolean;
+  /** Only on the read that carried the place code: every read after carries
+   *  this instead, never the code. */
+  staff_token?: string;
+};
+
+/** The read: the list; `staff_only` (no staff access: the code is wrong, or
+ *  the token is stale or the owner changed the code); a refusal staff can
+ *  act on (`refused`, the server's words); or `failed` (no answer: the
+ *  screen keeps reading and says Reconnecting). */
+export async function listPayments(
+  args: { place_id: string; place_code: string } | { place_id: string; staff_token: string },
+): Promise<PaymentList | { kind: "staff_only" | "refused"; error: string; retryAfterS: number | null } | "failed"> {
+  const { res, data } = await post("visit-web-list-payments", args);
+  if (data?.ok) return data as unknown as PaymentList;
+  if (!res || res.status >= 500 || !data) return "failed";
+  const error = typeof data.error === "string" ? data.error : "Couldn't read the payments. Try again.";
+  const retryAfterS = typeof data.retry_after_s === "number" ? data.retry_after_s : null;
+  return { kind: data.code === "staff_only" ? "staff_only" : "refused", error, retryAfterS };
+}

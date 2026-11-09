@@ -338,6 +338,12 @@ verify_jwt = false
 [functions.visit-web-get-charge]
 verify_jwt = false
 
+# MESITA-3462: the staff list of a place's Mesita Pay payments. No sign-in on
+# visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
+# the place's current code hash), and the 15 s reads carry the token.
+[functions.visit-web-list-payments]
+verify_jwt = false
+
 # MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
 # holds no Supabase JWT; the signature on the raw body with
 # STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato
