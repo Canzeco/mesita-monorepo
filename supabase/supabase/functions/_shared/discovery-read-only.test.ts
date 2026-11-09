@@ -1,9 +1,9 @@
 // No DB rows from load, render, scroll, prefetch or select (MESITA-2298 §4,
 // MESITA-2302 §9). The two discovery EFs and the engine read; the only row
 // a load may mint is the per-IP Nearby ledger, behind
-// `consumeNearbyGoogleQuota`, which meters a billed Google call. The one RPC
-// allowed is `catalog_rank` (MESITA-3059), a STABLE function: Postgres
-// refuses a write inside it.
+// `consumeNearbyGoogleQuota`, which meters a billed Google call. The RPCs
+// allowed are `catalog_rank` (MESITA-3059) and `deep_knn` (MESITA-2330),
+// STABLE functions: Postgres refuses a write inside them.
 import { assertEquals } from "jsr:@std/assert@1";
 
 const FILES = [
@@ -19,7 +19,8 @@ const FILES = [
 for (const file of FILES) {
   Deno.test(`read-only: ${file} writes no rows`, async () => {
     const src = (await Deno.readTextFile(new URL(file, import.meta.url)))
-      .replaceAll('.rpc("catalog_rank",', "");
+      .replaceAll('.rpc("catalog_rank",', "")
+      .replaceAll('.rpc("deep_knn",', "");
     for (const write of [".insert(", ".update(", ".upsert(", ".delete(", ".rpc("]) {
       assertEquals(src.includes(write), false, `${file} calls ${write}`);
     }

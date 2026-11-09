@@ -138,3 +138,34 @@ Deno.test("Memo's only database client feeds the config read and the three pipel
   assertEquals(/\.\s*(from|rpc)\s*\(/.test(chat), false);
   assertEquals(chat.includes("createClient("), false);
 });
+
+// ── MESITA-2330: the pool cap is never why a matching place is missing ────
+
+Deno.test("Deep's pool is the kNN in Postgres, with no row cap of its own", async () => {
+  const src = await Deno.readTextFile(new URL("./deep-pipeline.ts", import.meta.url));
+  const pool = src.slice(src.indexOf("pool: async (vector, config)"));
+  assert(pool.includes('.rpc("deep_knn",'));
+  // The only k is Deep's own result limit; no fetch cap, no id-ordered slice.
+  assert(pool.includes("p_limit: config.limit"));
+  assertEquals(/\.limit\(|\.range\(|DEEP_POOL/.test(src), false);
+  const sql = await Deno.readTextFile(
+    new URL("../../migrations/20261109104400_deep_knn.sql", import.meta.url),
+  );
+  assert(sql.includes("order by p.embedding operator(extensions.<=>) q.v asc"));
+  assertEquals(/limit\s+\d/.test(sql.replace(/--.*$/gm, "")), false);
+});
+
+Deno.test("deep: the pool receives the query vector and Deep's config", async () => {
+  let seen: { vector: number[]; limit: number } | null = null;
+  const out = await runDeepPipeline({
+    query: "an intimate jazz bar",
+    config: { limit: 3, minSimilarity: 0 },
+    embed: () => Promise.resolve([1, 0]),
+    pool: (vector, config) => {
+      seen = { vector, limit: config.limit };
+      return Promise.resolve([row("a", [1, 0])]);
+    },
+  });
+  assertEquals(seen, { vector: [1, 0], limit: 3 });
+  assertEquals(out.places.map((p) => p.id), ["a"]);
+});
