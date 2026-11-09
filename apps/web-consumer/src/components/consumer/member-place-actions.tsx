@@ -25,6 +25,7 @@ import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
+import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 
 // THE SECONDARY SHEETS LOAD AFTER THE PLACE PAINTS (MESITA-3014). Each
@@ -81,6 +82,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 } {
   const { isSaved, toggle } = useSavedPlaces();
   const router = useRouter();
+  const profile = useConsumerProfile().data;
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
   const [reserveOpen, setReserveOpen] = useState(false);
@@ -151,6 +153,19 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setRewards(null);
       setAskDismissed(true);
       navigateTo(router, "/pay");
+    },
+    // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
+    // linked Instagram; each lock's action opens the page that lifts it.
+    ...(profile
+      ? { guest: { vip: profile.guest_class === "vip", instagramLinked: Boolean(profile.instagram_handle) } }
+      : {}),
+    onJoinVip: () => {
+      setRewards(null);
+      navigateTo(router, "/me/class");
+    },
+    onLinkInstagram: () => {
+      setRewards(null);
+      navigateTo(router, "/me/instagram");
     },
   };
 

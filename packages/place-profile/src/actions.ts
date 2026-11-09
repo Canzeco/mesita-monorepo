@@ -49,6 +49,14 @@ export type PlaceActions = {
   /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
    *  Absent, the card draws no button (admin's preview). */
   onPay?: () => void;
+  /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
+   *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
+   *  preview, profile not read yet), no guest lock is drawn. */
+  guest?: { vip: boolean; instagramLinked: boolean };
+  /** Request VIP in the VIP (i): the host's VIP Class page. */
+  onJoinVip?: () => void;
+  /** Link Instagram in the Story (i): the host's Instagram page. */
+  onLinkInstagram?: () => void;
 };
 
 export function inertButtonProps(live: boolean): {
