@@ -341,7 +341,7 @@ function noMx(v: string): string {
 }
 
 function readyIn(key: MoneyVoucherKey): string {
-  if (key === "voucher_story") return "after story post";
+  if (key === "voucher_story") return "after your story";
   return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
 }
 
