@@ -12,6 +12,7 @@ import {
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { SizedImg } from "../SizedPhoto";
+import { MesitaPayMark } from "../PlaceMarks";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
 // MESITA-3309: "Make the Vouchers graphics. It must look like 6 digital
@@ -112,18 +113,18 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Medium", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay $200MX, get $220MX.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Medium", line: "Pay $1,000MX, get $1,200MX.", limit: "As many as you like.", bonus: "20% bonus", short: "Medium Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay $5,000MX, get $6,500MX.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome Bonus", brief: "First visit only" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100MX, get $130MX.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome Bonus", brief: "First visit only" },
+  { key: "voucher_story", name: "Story", line: "Pay $100MX, get $130MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay $100MX, get $130MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
-/** "MX$1,200" from cents. Formatting only, never arithmetic. */
+/** "$1,200MX" from cents. Formatting only, never arithmetic. */
 export function pesos(cents: number, currency: string): string {
   const code = currency.toUpperCase();
   const whole = cents % 100 === 0;
@@ -134,7 +135,7 @@ export function pesos(cents: number, currency: string): string {
       currencyDisplay: "narrowSymbol",
       minimumFractionDigits: whole ? 0 : 2,
       maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100).replace(/^\$/, code === "MXN" ? "MX$" : "$");
+    }).format(cents / 100).replace(/^(-?)\$(.*)$/, code === "MXN" ? "$1$$$2MX" : "$1$$$2");
   } catch {
     return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
   }
@@ -143,13 +144,13 @@ export function pesos(cents: number, currency: string): string {
 /** The credit: the server's, else from the copy. */
 function creditValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.credit_cents, currency);
-  const m = /get (MX\$[\d,]+)/.exec(product.line);
+  const m = /get (\$[\d,]+MX)/.exec(product.line);
   return m ? m[1] : product.name;
 }
 /** What a guest pays: the server's, else from the copy. */
 function priceValue(product: Product, line: VoucherCatalogLine | undefined, currency: string): string {
   if (line) return pesos(line.price_cents, currency);
-  const m = /Pay (MX\$[\d,]+)/.exec(product.line);
+  const m = /Pay (\$[\d,]+MX)/.exec(product.line);
   return m ? m[1] : product.name;
 }
 
@@ -241,7 +242,7 @@ function SectionTitle({ id, title, lines }: { id: string; title: string; lines: 
             onClick={(e) => e.stopPropagation()}
           >
             <h4 id={`${id}-how`} className="text-base font-semibold">
-              {title}
+              How {title} work
             </h4>
             <ul className="text-muted-foreground flex flex-col gap-1.5 text-sm leading-snug">
               {lines.map((l) => (
@@ -379,8 +380,10 @@ export function VouchersPane({
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = [...STANDARD, ...SPECIAL];
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
-  const ROW = "flex w-full items-center gap-3 px-4 py-3 text-left";
-  const CHIP = "flex h-14 w-20 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold tracking-tight tabular-nums";
+  // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
+  // shorter"; "Mesita Pay Cashback ... External Pay Cashback").
+  const ROW = "flex w-full items-center gap-3 px-4 py-2 text-left";
+  const CHIP = "flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl text-xl font-extrabold tracking-tight tabular-nums";
 
   return (
     // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
@@ -393,10 +396,11 @@ export function VouchersPane({
           id="rewards-prepayment"
           title="Prepayment Offers"
           lines={[
-            "Pick an offer, tap Buy: you get more credits than you pay.",
-            "Credits are ready in an hour (Story's at once).",
-            "Spend them on your bill here.",
-            "Welcome: first visit only. Story and VIP: one a day.",
+            "Load credits for this place before you go, and the place adds a bonus on top.",
+            "Example: pay $1,000MX, get $1,200MX to spend here.",
+            "Pick an offer and tap Buy. Your credits are ready within an hour; Story's arrive right away.",
+            "Use them to pay your bill here in the app. They only work at this place.",
+            "Small, Medium, Big: as many as you like. Welcome: once, on your first visit. Story: post a story about the place, once a day. VIP: for VIP guests, once a day.",
           ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
@@ -466,34 +470,36 @@ export function VouchersPane({
           id="rewards-payment"
           title="Payment Offers"
           lines={[
-            "Mesita Pay: pay your bill with Mesita, get 5% back in credits.",
-            "External: cash or their terminal, nothing back.",
+            "Two ways to pay your bill here.",
+            "Mesita Pay Cashback: pay the bill in the app and 5% comes back as credits for your next visit, on every visit.",
+            "Example: a $500MX bill gives you $25MX back.",
+            "External Pay Cashback: pay the place directly, by cash or their card terminal. Nothing comes back.",
           ]}
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
             className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            aria-label={`Mesita Pay Cashback: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               +5%
             </span>
             <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
               <span className="flex items-center gap-1 text-base font-semibold">
-                <BadgePercent className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                Mesita Pay
+                <MesitaPayMark className="h-4 w-4 shrink-0" />
+                Mesita Pay Cashback
               </span>
               <span className="text-muted-foreground text-sm">{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
-          <li className={ROW} aria-label="External: pay the place directly, by cash or their terminal. Nothing back.">
+          <li className={ROW} aria-label="External Pay Cashback: pay the place directly, by cash or their terminal. Nothing back.">
             <span className={cn(CHIP, "bg-muted text-muted-foreground")} aria-hidden>
               0%
             </span>
             <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
               <span className="flex items-center gap-1 text-base font-semibold">
                 <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                External
+                External Pay Cashback
               </span>
               <span className="text-muted-foreground text-sm">Cash or their terminal, nothing back</span>
             </span>
