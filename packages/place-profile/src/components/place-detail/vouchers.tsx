@@ -239,6 +239,11 @@ function InfoButton({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+  // ON THE PHONE, NOT THE PAGE (MESITA-3524, Pato: "modal must be ON THE
+  // PHONE emulator screen, not on the terminals"): the popup portals into the
+  // app card when there is one (the consumer app's #mesita-app-card), else the
+  // body (admin's preview).
+  const host = typeof document !== "undefined" ? document.getElementById("mesita-app-card") : null;
   const stop = (e: { preventDefault(): void; stopPropagation(): void }) => {
     e.preventDefault();
     e.stopPropagation();
@@ -257,7 +262,7 @@ function InfoButton({
       </button>
       {open && typeof document !== "undefined" ? createPortal(
         <span
-          className="fixed inset-0 z-[135] flex items-center justify-center bg-black/40 p-6"
+          className={cn(host ? "absolute" : "fixed", "inset-0 z-[135] flex items-center justify-center bg-black/40 p-6")}
           onClick={() => setOpen(false)}
           data-offers-note
         >
@@ -324,7 +329,7 @@ function InfoButton({
             </span>
           </span>
         </span>,
-        document.body,
+        host ?? document.body,
       )
       : null}
     </span>
@@ -341,7 +346,7 @@ function noMx(v: string): string {
 }
 
 function readyIn(key: MoneyVoucherKey): string {
-  if (key === "voucher_story") return "after your story";
+  if (key === "voucher_story") return "after story";
   return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
 }
 
@@ -602,7 +607,7 @@ export function VouchersPane({
                       }
                     />
                   </span>
-                  <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
+                  <span className="text-muted-foreground text-sm leading-snug tabular-nums" aria-hidden>
                     {opening
                       ? "Opening…"
                       : `Pay ${pay} · Get ${get} ${readyIn(p.key)}`}
