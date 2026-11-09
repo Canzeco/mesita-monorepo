@@ -62,31 +62,59 @@ export async function readSettings(admin: SupabaseClient, placeId: string): Prom
   return settingsFromRow(data as Partial<Record<PaymentKey, unknown>> | null);
 }
 
-/** Which of these places can take payments now (MESITA-3394): a
- *  `place_payment_accounts` row with `charges_enabled` in the server's
- *  current Stripe mode (`livemode`), the rule the voucher sale already uses
- *  (`offerFrom` in vouchers.ts). One read for all the ids, no chunking: the
- *  caller chunks when its page can be large. `null` when the read fails, so a
- *  caller can say "unknown" instead of a false "no". The row is a snapshot:
- *  only Business › Payments refreshes it until the Connect receiver
- *  (MESITA-3305) lands. Readers: the admin "Stripe" general state
- *  (admin-web-search-places) and the guest list rows (withVouchersUpTo), so
- *  the two never disagree. */
-export async function chargesEnabledByPlace(
+/** A place's Stripe state for the admin console (MESITA-3395), three values:
+ *  `none` (no `place_payment_accounts` row, or only a row from the other
+ *  Stripe mode, which this server cannot charge through), `onboarding` (a
+ *  row in the server's mode that cannot charge yet, restricted included) and
+ *  `charging` (`charges_enabled` in the server's mode). `charging` is the one
+ *  rule the voucher sale and the guest Pay mark read (`offerFrom` in
+ *  vouchers.ts, chargesEnabledByPlace below), so the admin filter, the
+ *  "Stripe" general state and the guest list can never disagree. */
+export type StripeState = "none" | "onboarding" | "charging";
+
+export function stripeStateOf(
+  row: { charges_enabled?: unknown; livemode?: unknown } | null | undefined,
+  livemode: boolean,
+): StripeState {
+  if (!row || row.livemode !== livemode) return "none";
+  return row.charges_enabled === true ? "charging" : "onboarding";
+}
+
+/** Every requested place's StripeState, from one read for all the ids, no
+ *  chunking: the caller chunks when its page can be large. `null` when the
+ *  read fails, so a caller can say "unknown" instead of a false "none". The
+ *  row is a snapshot: only Business › Payments refreshes it until the
+ *  Connect receiver (MESITA-3305) lands. */
+export async function stripeStateByPlace(
   admin: SupabaseClient,
   ids: string[],
   livemode: boolean,
-): Promise<Set<string> | null> {
-  if (ids.length === 0) return new Set();
+): Promise<Map<string, StripeState> | null> {
+  const out = new Map<string, StripeState>();
+  if (ids.length === 0) return out;
   const { data, error } = await admin.from("place_payment_accounts").select("place_id, charges_enabled, livemode").in("place_id", ids);
   if (error) {
     console.error(`[payments] accounts read (${ids.length} ids): ${error.message}`);
     return null;
   }
+  const rows = new Map<string, { charges_enabled?: unknown; livemode?: unknown }>();
+  for (const row of (data ?? []) as { place_id: string; charges_enabled?: unknown; livemode?: unknown }[]) rows.set(row.place_id, row);
+  for (const id of ids) out.set(id, stripeStateOf(rows.get(id), livemode));
+  return out;
+}
+
+/** Which of these places can take payments now (MESITA-3394): the places
+ *  stripeStateByPlace reads `charging`. `null` when the read fails. Readers:
+ *  the guest list rows (withVouchersUpTo) and the Wallet. */
+export async function chargesEnabledByPlace(
+  admin: SupabaseClient,
+  ids: string[],
+  livemode: boolean,
+): Promise<Set<string> | null> {
+  const states = await stripeStateByPlace(admin, ids, livemode);
+  if (!states) return null;
   const out = new Set<string>();
-  for (const row of (data ?? []) as { place_id: string; charges_enabled?: unknown; livemode?: unknown }[]) {
-    if (row.charges_enabled === true && row.livemode === livemode) out.add(row.place_id);
-  }
+  for (const [id, state] of states) if (state === "charging") out.add(id);
   return out;
 }
 

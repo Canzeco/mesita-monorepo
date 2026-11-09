@@ -15,6 +15,7 @@ import {
   listRowMoney,
   settingsFromRow,
   snapshotFromStripe,
+  stripeStateByPlace,
 } from "./payments.ts";
 
 Deno.test("the place pays Stripe, Stripe bears losses and collects, whatever the dashboard", () => {
@@ -150,4 +151,23 @@ Deno.test("chargesEnabledByPlace: no ids reads nothing; a failed read is null, n
   assertEquals(empty.calls.in, 0);
   const failed = accountsFake({ data: null, error: { message: "boom" } });
   assertEquals(await chargesEnabledByPlace(failed.client, ["a"], false), null);
+});
+
+// The admin Stripe filter (MESITA-3395) reads three states off the same rows
+// and the same in-mode rule, so "charging" there is the guest Pay mark here.
+Deno.test("stripeStateByPlace: none · onboarding · charging in the requested mode", async () => {
+  const { client } = accountsFake({
+    data: [
+      { place_id: "a", charges_enabled: true, livemode: false },
+      { place_id: "b", charges_enabled: true, livemode: true },
+      { place_id: "c", charges_enabled: false, livemode: false },
+    ],
+    error: null,
+  });
+  assertEquals(
+    await stripeStateByPlace(client, ["a", "b", "c", "d"], false),
+    new Map([["a", "charging"], ["b", "none"], ["c", "onboarding"], ["d", "none"]]),
+  );
+  const failed = accountsFake({ data: null, error: { message: "boom" } });
+  assertEquals(await stripeStateByPlace(failed.client, ["a"], false), null);
 });

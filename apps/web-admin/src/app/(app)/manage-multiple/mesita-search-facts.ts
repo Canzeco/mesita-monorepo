@@ -57,3 +57,23 @@ export function crenupCalled(
   }
   return hit.enrich_crenup >= fn.n;
 }
+
+// The Stripe filter over a Mesita Search run (MESITA-3395). Three values an
+// operator chases, then "?" for a row the EF could not read and "Not on
+// Mesita" for a pasted ID with no place, so the counts always add up to the
+// run. "All" is the run itself.
+export const STRIPE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "none", label: "No account" },
+  { key: "onboarding", label: "Onboarding" },
+  { key: "charging", label: "Charging" },
+  { key: "unknown", label: "?" },
+  { key: "missing", label: "Not on Mesita" },
+] as const;
+
+export type StripeFilter = (typeof STRIPE_FILTERS)[number]["key"];
+
+export function stripeFilterOf(row: Row): Exclude<StripeFilter, "all"> {
+  if (!row.hit) return "missing";
+  return row.hit.stripe_state ?? "unknown";
+}

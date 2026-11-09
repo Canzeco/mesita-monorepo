@@ -95,6 +95,9 @@ export type PlaceHit = {
   /** Stripe (MESITA-3394): the place's account can take payments in the
    *  server's Stripe mode; null when the EF could not read it ("?"). */
   stripe_connected?: boolean | null;
+  /** Stripe for the Multiple Places filter (MESITA-3395): no account ·
+   *  onboarding · charging, in the server's Stripe mode; null = not read. */
+  stripe_state?: "none" | "onboarding" | "charging" | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */
   viewed?: number | null;
   saved?: number | null;
@@ -150,6 +153,10 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
     // A missing field (an EF older than this client) reads "?", never "no".
     stripe_connected: typeof raw.stripe_connected === "boolean" ? raw.stripe_connected : null,
+    stripe_state:
+      raw.stripe_state === "none" || raw.stripe_state === "onboarding" || raw.stripe_state === "charging"
+        ? raw.stripe_state
+        : null,
     viewed: typeof raw.viewed === "number" ? raw.viewed : null,
     saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,

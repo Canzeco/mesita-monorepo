@@ -6,7 +6,13 @@ import { AlertTriangle, Library, Loader2, Search } from "lucide-react";
 import { listAllPlaces, searchPlacesByGoogleIds } from "./actions";
 import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
-import type { Row } from "./mesita-search-facts";
+import { ChoicePill } from "@/components/admin-ui/config";
+import {
+  STRIPE_FILTERS,
+  stripeFilterOf,
+  type Row,
+  type StripeFilter,
+} from "./mesita-search-facts";
 import { MesitaSearchResults } from "./MesitaSearchResults";
 
 /** Which button is mid-flight — both share the table below. */
@@ -24,6 +30,24 @@ export function MesitaSearchTab({
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
+  // The Stripe filter (MESITA-3395): narrows the table, never the run, so
+  // the summary and the shared ID box still speak for the whole run.
+  const [stripe, setStripe] = useState<StripeFilter>("all");
+  const stripeCounts = useMemo(() => {
+    const counts = new Map<StripeFilter, number>([["all", rows?.length ?? 0]]);
+    for (const row of rows ?? []) {
+      const k = stripeFilterOf(row);
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return counts;
+  }, [rows]);
+  const shown = useMemo(
+    () =>
+      stripe === "all"
+        ? rows
+        : (rows ?? []).filter((row) => stripeFilterOf(row) === stripe),
+    [rows, stripe],
+  );
   const busy = running !== null;
   const fail = (message: string) => {
     setError(message);
@@ -52,6 +76,7 @@ export function MesitaSearchTab({
         hit: byGid.get(googleId) ?? null,
       }));
       setRows(next);
+      setStripe("all");
       const found = next.filter((row) => row.hit !== null).length;
       setSummary(`${found} of ${next.length} on Mesita`);
     } catch (err) {
@@ -77,6 +102,7 @@ export function MesitaSearchTab({
         return;
       }
       const { places, total } = r.data;
+      setStripe("all");
       setRows(
         places.map((hit) => ({
           key: hit.id,
@@ -160,7 +186,41 @@ export function MesitaSearchTab({
         <p className="text-muted-foreground mt-6 text-sm">No places to show.</p>
       ) : null}
 
-      {rows && rows.length > 0 ? <MesitaSearchResults rows={rows} /> : null}
+      {rows && rows.length > 0 ? (
+        <div
+          role="group"
+          aria-label="Filter by Stripe"
+          className="mt-6 flex flex-wrap items-center gap-2"
+        >
+          <span className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
+            Stripe
+          </span>
+          {STRIPE_FILTERS.map((f) => {
+            const n = stripeCounts.get(f.key) ?? 0;
+            // "?" and "Not on Mesita" only appear when a row is one.
+            if ((f.key === "unknown" || f.key === "missing") && n === 0) {
+              return null;
+            }
+            return (
+              <ChoicePill
+                key={f.key}
+                active={stripe === f.key}
+                onClick={() => setStripe(f.key)}
+              >
+                {f.label} {n}
+              </ChoicePill>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {shown && rows && rows.length > 0 && shown.length === 0 ? (
+        <p className="text-muted-foreground mt-6 text-sm">
+          No places in this Stripe state.
+        </p>
+      ) : null}
+
+      {shown && shown.length > 0 ? <MesitaSearchResults rows={shown} /> : null}
     </div>
   );
 }
