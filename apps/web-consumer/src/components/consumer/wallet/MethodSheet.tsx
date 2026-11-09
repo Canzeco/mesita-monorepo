@@ -5,10 +5,11 @@ import Link from "next/link";
 import { ChevronLeft, CreditCard } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { ENTRY_LABEL, entryDate, money, type WaitingStory, type WalletBalance } from "@/lib/api/wallet";
+import { ENTRY_LABEL, entryDate, money, type SentLink, type WaitingStory, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs } from "@/lib/wallet-countdown";
+import { SendCreditSheet, SentLinks } from "./SendCredit";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
 
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533, 2026-11-09: "when you
@@ -38,6 +39,10 @@ export type Method =
     /** The place's id and route segment, for Pay and Offers. */
     placeId: string;
     placeSlug: string;
+    /** Sending credit is open here (MESITA-3292). */
+    canSend: boolean;
+    /** Links sent at this place that nobody took yet. */
+    sentLinks: SentLink[];
   }
   | { kind: "checkout" }
   | { kind: "story"; story: WaitingStory };
@@ -111,6 +116,9 @@ function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "plac
     return () => clearTimeout(id);
   }, [entries, onReread]);
 
+  const [sending, setSending] = useState(false);
+  const spendable = balance?.spendable_cents ?? 0;
+  const changed = onReread ?? (() => {});
   return (
     <>
       <WalletCard card={{ ...card, tap: { kind: "plain" } }} eager />
@@ -141,8 +149,24 @@ function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "plac
           <Link href={`${href}?rewards=prepayment`} className={SECONDARY}>
             Buy credits
           </Link>
+          {/* SEND TO A FRIEND (MESITA-3292): same place only, from what can be spent now. */}
+          {method.canSend && spendable > 0 ? (
+            <button type="button" className={SECONDARY} onClick={() => setSending(true)} data-send-credit-open>
+              Send to a friend
+            </button>
+          ) : null}
         </div>
       )}
+      <SentLinks links={method.sentLinks} currency={card.currency} onChanged={changed} />
+      <SendCreditSheet
+        open={sending}
+        onClose={() => setSending(false)}
+        onSent={changed}
+        placeId={method.placeId}
+        placeName={card.name}
+        currency={card.currency}
+        spendableCents={spendable}
+      />
 
       <h3 className="mt-6 mb-1 text-sm font-semibold">History</h3>
       {balance && balance.entries.length > 0 ? (

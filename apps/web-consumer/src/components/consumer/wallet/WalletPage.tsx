@@ -7,12 +7,13 @@ import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { apiGetWallet, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, GIFT_PARAM, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
 import { type Method, MethodSheet } from "./MethodSheet";
+import { GiftClaimSheet } from "./SendCredit";
 import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
 
 // TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
@@ -113,6 +114,9 @@ export function WalletPage() {
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
   const [method, setMethod] = useState<Method | null>(null);
+  // A friend's credit link (MESITA-3292): /wallet?gift=<token>. Read with
+  // the Wallet and dropped from the address, so a reload does not ask again.
+  const [giftToken, setGiftToken] = useState<string | null>(null);
 
   // Balances: on mount, on Try again, and again while a purchase settles.
   useEffect(() => {
@@ -120,12 +124,17 @@ export function WalletPage() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const params = new URLSearchParams(window.location.search);
     const session = params.get(PREPAY_PARAM) ?? undefined;
-    if (session) {
+    const gift = params.get(GIFT_PARAM);
+    if (session || gift) {
       params.delete(PREPAY_PARAM);
+      params.delete(GIFT_PARAM);
       const q = params.toString();
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
     }
     void apiGetWallet(getSupabase(), session)
+      .finally(() => {
+        if (gift && !cancelled) setGiftToken(gift);
+      })
       .then((w) => {
         if (cancelled) return;
         setWallet(w);
@@ -160,12 +169,14 @@ export function WalletPage() {
   }, [wallet]);
 
   // The open sheet follows the latest read (MESITA-3549): a re-read while it
-  // is open (settling, a pending entry turning Available) updates it.
+  // is open (settling, a pending entry turning Available, a credit link sent
+  // or taken back, MESITA-3292) updates it, links and all.
   const liveMethod = useMemo<Method | null>(() => {
     if (method?.kind !== "place" || !credits) return method;
     const row = credits.find((r) => r.card.key === method.card.key);
-    return row ? { ...method, card: row.card, balance: row.balance } : method;
-  }, [method, credits]);
+    const sentLinks = (wallet?.sent_links ?? []).filter((l) => l.place_id === method.placeId && l.currency === method.card.currency);
+    return { ...method, ...(row ? { card: row.card, balance: row.balance } : {}), sentLinks, canSend: wallet?.can_send === true };
+  }, [method, credits, wallet]);
   const reread = useCallback(() => setNonce((n) => n + 1), []);
 
   let shown = 0;
@@ -214,7 +225,15 @@ export function WalletPage() {
               compact
               eager={shown++ < EAGER_CARDS}
               onToggle={() =>
-                setMethod({ kind: "place", card: row.card, balance: row.balance, placeId: row.placeId, placeSlug: row.placeSlug })}
+                setMethod({
+                  kind: "place",
+                  card: row.card,
+                  balance: row.balance,
+                  placeId: row.placeId,
+                  placeSlug: row.placeSlug,
+                  canSend: wallet?.can_send === true,
+                  sentLinks: [],
+                })}
             />
           </div>
         ))}
@@ -233,6 +252,14 @@ export function WalletPage() {
       ) : null}
 
       <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} />
+      <GiftClaimSheet
+        token={giftToken}
+        onClose={() => setGiftToken(null)}
+        onClaimed={() => {
+          setGiftToken(null);
+          setNonce((n) => n + 1);
+        }}
+      />
     </div>
   );
 }

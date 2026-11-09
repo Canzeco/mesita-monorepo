@@ -58,6 +58,14 @@ export const MONEY_CODES = [
   "needs_instagram",
   // Story: the guest's Instagram has 1,000 followers or fewer (MESITA-3507)
   "few_followers",
+  // Sending credit to a friend (MESITA-3292): live sending waits on the
+  // lawyer (money_config.sending_live), ten open links per place, a link is
+  // never the sender's own, and a link taken or taken back gives nothing
+  "not_live",
+  "too_many_open",
+  "own_gift",
+  "claimed",
+  "taken_back",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];
