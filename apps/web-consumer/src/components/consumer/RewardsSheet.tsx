@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PlaceTopBar, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
+import { OffersWalletPill, PlaceTopBar, VouchersPane, type PlaceActions, type RewardsSection } from "@mesita/place-profile";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import type { PlaceDetail } from "@/lib/place-detail";
 
@@ -41,7 +41,7 @@ export function RewardsSheet({
         premierTier={place.boost_tier ?? 0}
         mesitaPay={place.money?.mesita_pay === true}
         onBack={onClose}
-        onMore={actions.onMore}
+        right={<OffersWalletPill place={place} />}
       />
       </div>
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">

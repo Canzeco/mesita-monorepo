@@ -1,7 +1,7 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef } from "react";
-import { BadgePercent, Banknote, Crown, PartyPopper, QrCode, type LucideIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BadgePercent, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -14,7 +14,6 @@ import {
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
-import { MesitaPayMark } from "../PlaceMarks";
 import { SizedImg } from "../SizedPhoto";
 
 // THE VOUCHERS TAB IS SIX DIGITAL PRODUCTS IN ONE VERTICAL LIST (Pato,
@@ -171,9 +170,6 @@ const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px
 
 /** A section title on the one-screen Offers page: 16px (MESITA-3452). */
 const OFFERS_TITLE_CLASS = "text-foreground font-sans text-base leading-tight font-semibold";
-/** The small action on an offer (MESITA-3454, Pato: "make the pay buttons
- *  smaller"): 28px, 11px words. */
-const SMALL_ACTION = "h-7 min-h-7 rounded-md text-[11px]";
 
 /** A card: one hairline edge, white, rounded. */
 const CARD = "border-border bg-card rounded-2xl border";
@@ -208,107 +204,37 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
 
 /** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
-/** Paying the place directly: grey, nothing back (MESITA-3480). */
-const EXTERNAL_FACE: Face = { card: "bg-muted text-muted-foreground ring-border ring-1", muted: "text-muted-foreground", big: "", buy: "", Mark: Banknote };
 
-/** One voucher, a third of the row (MESITA-3451): the name small, the credit
- *  it buys big, "for MX$X" under it, the "+N% bonus" pill, then a 28px Buy
- *  or the tag (design C, MESITA-3454). Each voucher wears its own face
- *  (FACES, MESITA-3466). */
-function OfferCard({
-  name,
-  bonus,
-  pay,
-  get,
-  label,
-  faded,
-  face,
-  action,
-  unit = "bonus",
-  lines,
-  figure,
-}: {
-  /** The big number as written ("0%"), when it is not "+{bonus}". */
-  figure?: string;
-  /** The word under the big number: "bonus", or "back" for the cashback. */
-  unit?: string;
-  /** The two small lines, when they are not Pay / Get (the cashback). */
-  lines?: [string, string];
-  name: string;
-  bonus: string;
-  pay: string;
-  get: string;
-  label: string;
-  faded: boolean;
-  face: Face;
-  action: ReactNode;
-}) {
-  const Mark = face.Mark;
-  return (
-    <li data-offer-card className={cn("flex min-w-0 flex-col gap-1 rounded-2xl p-2.5", face.card, faded && "opacity-50")} aria-label={label}>
-      <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
-        {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
-        {name}
-      </span>
-      {/* THE BONUS IS THE BIG THING (MESITA-3472, Pato: "maybe the Bonus
-          must be the big thing. Pay X / Get Y must be same size"). */}
-      <span className={cn("flex flex-col", face.big)}>
-        <span className="text-3xl leading-none font-extrabold tabular-nums">{figure ?? `+${bonus.replace(/ bonus$/, "")}`}</span>
-        <span className="text-[11px] font-semibold">{unit}</span>
-      </span>
-      <span className="mt-1 flex flex-col text-xs leading-snug font-semibold tabular-nums" aria-hidden>
-        <span>{lines ? lines[0] : `Pay ${pay}`}</span>
-        {/* "GET Y IN CREDITS" (MESITA-3478, Pato: "mention in prepayments
-            get y as credit too ... say credits"); it wraps, never truncates. */}
-        <span>{lines ? lines[1] : `Get ${get} in credits`}</span>
-      </span>
-      <div className="mt-1">{action}</div>
-    </li>
-  );
-}
-
-/** THE HOUSE CARD (Pato, MESITA-3448: "show a preview of the House Card for
- *  that place like how many credits you have"): the guest's credit at this
- *  place as a dark card, the place's photo and name, "House Card" and the
- *  Mesita Pay mark on top, the server's available balance big, its pending
- *  line under it. No credit reads MX$0 and that credit is optional (Pato,
- *  MESITA-3451: "you don't need to add credits to your House Card in order
- *  to pay, that must be clear"); it sits last on the page since then. The numbers are
- *  list-vouchers' balance; this file formats cents and never adds. */
-function HouseCard({ place, currency }: { place: PlaceDetail; currency: string }) {
+/** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
+ *  "show the wallet on top ... profile picture of place joined to amount of
+ *  credits and wallet icon"): the Offers page's top-bar right slot, where the
+ *  three dots were. The place's small photo, a wallet mark and the guest's
+ *  available credits here (list-vouchers' balance; formatted, never added).
+ *  It replaced the House Card strip (MESITA-3448..3454). */
+export function OffersWalletPill({ place }: { place: PlaceDetail }) {
   const balance = place.money?.balance ?? null;
+  const currency = place.money?.currency ?? "mxn";
   const available = balance?.available_cents ?? 0;
   const pending = balance?.pending_cents ?? 0;
-  // ONE STRIP SINCE MESITA-3452 (Pato: "fit all in one screen"); a 1.7:1 card
-  // before. SMALLER SINCE MESITA-3454 (Pato: "maybe the card make it small").
+  const spoken = `Your credits here: ${pesos(available, currency)}${pending > 0 ? `, ${pesos(pending, currency)} pending` : ""}`;
   return (
-    <div className="flex items-center gap-2.5 rounded-xl bg-neutral-950 px-3 py-2 text-white" data-house-card data-place-credit>
-      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full border border-white/30 bg-white/10">
+    <span
+      className="mr-1.5 flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-neutral-950 pr-3 pl-1 text-white"
+      aria-label={spoken}
+      data-place-credit
+    >
+      <span className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/10" aria-hidden>
         {place.photos.length > 0 ? (
           <SizedImg src={place.photos[0]} size="thumb" alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="flex h-full w-full items-center justify-center text-xs font-semibold">
-            {firstInitial(place.name)}
-          </span>
+          <span className="flex h-full w-full items-center justify-center text-xs font-semibold">{firstInitial(place.name)}</span>
         )}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 text-xs text-white/60">
-          Your House Card
-          {place.money?.mesita_pay ? <MesitaPayMark className="h-4 w-4 shrink-0" /> : null}
-        </span>
-        <span className="block truncate text-[11px] leading-snug text-white/80">
-          {pending > 0
-            ? `+ ${pesos(pending, currency)} pending · ready within the hour`
-            : available > 0
-              ? "Spend them when you pay the bill here."
-              : "No credits needed to pay. Credits add a bonus."}
-        </span>
-      </span>
-      <span className="shrink-0 text-base font-bold tabular-nums" aria-label={`Your credits here: ${pesos(available, currency)}`}>
+      <Wallet className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="text-sm font-bold tabular-nums" aria-hidden>
         {pesos(available, currency)}
       </span>
-    </div>
+    </span>
   );
 }
 
@@ -388,127 +314,127 @@ export function VouchersPane({
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
 
-  /** One row of three vouchers (MESITA-3451). */
-  const row = (items: Product[], label: string) => (
-    <ul className="grid grid-cols-3 gap-1.5" aria-label={label} data-voucher-catalog>
-      {items.map((p) => {
-        const line = catalog[p.key];
-        const pay = priceValue(p, line, currency);
-        const get = creditValue(p, line, currency);
-        const deal = p.key === "voucher_story" ? `Pay ${pay} & post a story, Get ${get}` : `Pay ${pay}, Get ${get}`;
-        const reason = unavailable[p.key];
-        const can = !loading && buyable(p.key);
-        const action = loading ? (
-          <div className={cn(PLACE_BONE_CLASS, "h-7 w-full")} aria-hidden data-reward-loading />
-        ) : can ? (
-          <button
-            type="button"
-            {...inertButtonProps(live)}
-            onClick={live ? () => actions?.onBuyVoucher?.(p.key) : undefined}
-            disabled={buying}
-            aria-label={`Buy the ${p.name} voucher, ${deal}`}
-            className={cn(ACTION_BUTTON, SMALL_ACTION, "px-1 font-bold", FACES[p.key].buy)}
-            data-voucher-buy={p.key}
-          >
-            {actions?.buyingVoucher === p.key ? "Opening…" : "Buy"}
-          </button>
-        ) : (
-          <span className={cn("flex h-7 items-center justify-center text-center text-[10px] leading-tight font-semibold", FACES[p.key].muted)}>
-            {tag(reason)}
-          </span>
-        );
-        return (
-          <OfferCard
-            key={p.key}
-            name={p.short}
-            bonus={p.bonus}
-            pay={pay}
-            get={get}
-            label={`${p.name} voucher, ${deal}. ${[p.when, loading || can ? p.limit : tag(reason)].filter(Boolean).join(" ")}`}
-            faded={!loading && !can && dim}
-            face={FACES[p.key]}
-            action={action}
-          />
-        );
-      })}
-    </ul>
-  );
+  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
+  const products = [...SPECIAL, ...STANDARD];
+  const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
+  const ROW = "flex items-center gap-3 px-4 py-3";
 
   return (
-    // A WHITE PAGE (MESITA-3366). THREE ROWS SINCE MESITA-3451 (Pato:
-    // "Payment Offers all in one row; Prepayment Offers ... all three in one
-    // row; Special Prepayment Offers ... all three in one row"), the House
-    // Card last ("maybe move the House Card to the bottom").
-    // ONE SCREEN SINCE MESITA-3452 (Pato: "fit all in one screen"): 16px
-    // titles, no subtitles, 10px between blocks.
-    <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-2.5 px-4 pt-3 pb-4" data-promos-page>
-      {/* NO TEST NOTICE (MESITA-3454, Pato: "remove the test advice i don't
-          care. for the moment"). Stripe's test mode still decides the charge. */}
-      {/* FOUR SECTIONS (MESITA-3474, Pato: "Visit Checkout: PAY BILL
-          REDIRECTION / Payments Offers: Cashback (no button) / Prepayments
-          Offers / Card & Credits"). Pay bill leads, full width; the cashback
-          card only says what paying here earns. */}
-      <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
-        <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        {/* EXTERNAL VS MESITA PAY (MESITA-3480, Pato: "Externally / Mesita Pay
-            ... external means that you get nothing in return ... Mesita Pay
-            you need to pay to get your cashback"): two voucher-sized cards;
-            no button (MESITA-3474), Pay bill is the fixed bar below. */}
-        {/* HALF AND HALF, ONE HEIGHT (MESITA-3482, Pato: "occupy two columns
-            there 50% and 50%"): the grid stretches both cards to one row. */}
-        <ul className="grid grid-cols-2 items-stretch gap-1.5" data-cashback>
-          <OfferCard
-            name="External"
-            bonus=""
-            figure="0%"
-            unit="back"
-            lines={["Pay the place directly", "Cash or their terminal"]}
-            pay=""
-            get=""
-            label="External: pay the place directly, by cash or their terminal. You get nothing back."
-            faded={false}
-            face={EXTERNAL_FACE}
-            action={<span className="flex h-7 items-center text-[10px] leading-tight font-semibold">You get nothing back</span>}
-          />
-          <OfferCard
-            name="Mesita Pay"
-            bonus="5% bonus"
-            unit="back"
-            lines={["Pay with Mesita", "Get 5% in credits"]}
-            pay=""
-            get=""
-            label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
-            faded={!loading && !cashback && dim}
-            face={CASHBACK_FACE}
-            action={<span className="flex h-7 items-center text-[10px] leading-tight font-semibold text-neutral-950/60">{canPay || loading ? "Any visit" : cashbackTag}</span>}
-          />
-        </ul>
-      </section>
-      {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
-          ... PREPAYMENTS: Welcome, Story, VIP / Small, Mid, Big. don't
-          divide"): the six vouchers in one section, the specials first. */}
+    // LIKE INKIND (MESITA-3483, Pato: "do this ... then the list of
+    // prepayment offers, 6 items, and the list of payment offers. First
+    // prepayment, then payments ... at the bottom the direct to pay bill"):
+    // two cards of rows, then one fixed button. Picking a voucher turns the
+    // button into its Buy; with none picked it is Pay bill.
+    <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
-        {row([...SPECIAL, ...STANDARD], "Prepayment offers")}
+        <fieldset className="m-0 min-w-0 border-0 p-0">
+          <legend className="sr-only">Choose a voucher</legend>
+          <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-voucher-catalog>
+            {products.map((p) => {
+              const line = catalog[p.key];
+              const pay = priceValue(p, line, currency);
+              const get = creditValue(p, line, currency);
+              const deal = `Pay ${pay}, Get ${get}`;
+              const reason = unavailable[p.key];
+              const can = !loading && buyable(p.key);
+              const on = chosen?.key === p.key;
+              const face = FACES[p.key];
+              const Mark = face.Mark;
+              const small = [p.short, p.when, loading || can ? null : tag(reason)].filter(Boolean).join(" · ");
+              const inner = (
+                <>
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                      on ? "border-foreground" : "border-foreground/25",
+                      !can && "invisible",
+                    )}
+                  >
+                    {on ? <span className="bg-foreground h-2.5 w-2.5 rounded-full" /> : null}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-foreground text-sm leading-snug font-semibold tabular-nums">{deal}</span>
+                    <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                      {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
+                      {small}
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", face.card)}>{p.bonus.replace(" bonus", " Bonus")}</span>
+                </>
+              );
+              return (
+                <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
+                  {can ? (
+                    <label className={cn(ROW, "cursor-pointer", on && "bg-muted/60")}>
+                      <input
+                        type="radio"
+                        name="voucher"
+                        value={p.key}
+                        checked={on}
+                        onChange={() => setPicked(p.key)}
+                        aria-label={`Choose the ${p.name} voucher, ${deal}`}
+                        className="sr-only"
+                      />
+                      {inner}
+                    </label>
+                  ) : (
+                    <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
+                      {inner}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
         <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
-          Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credits are ready in an hour.
+          Credits are ready in an hour, Story's at once. Welcome: first visit · Story: post a story, 1/day · VIP: VIP guests, 1/day.
         </p>
       </section>
-      <section className="flex flex-col gap-2" aria-labelledby="rewards-credits" data-promos="credits">
-        <h3 id="rewards-credits" className={OFFERS_TITLE_CLASS}>Card &amp; Credits</h3>
-        {loading ? (
-          <div className={cn(PLACE_BONE_CLASS, "h-11 w-full rounded-xl")} aria-hidden data-reward-loading />
-        ) : (
-          <HouseCard place={place} currency={currency} />
-        )}
+      <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
+        <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
+        <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-cashback>
+          <li
+            className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
+            aria-label={`Pay with Mesita: 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+          >
+            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+              <span className="text-foreground text-sm leading-snug font-semibold">Pay with Mesita</span>
+              <span className="text-muted-foreground text-[11px]">
+                {canPay || loading ? "Get 5% back in credits, any visit" : cashbackTag}
+              </span>
+            </span>
+            <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", CASHBACK_FACE.card)} aria-hidden>5% Back</span>
+          </li>
+          <li className={ROW} aria-label="Pay the place directly, by cash or their terminal: nothing back.">
+            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+              <span className="text-foreground text-sm leading-snug font-semibold">Pay the place directly</span>
+              <span className="text-muted-foreground text-[11px]">Cash or their terminal, nothing back</span>
+            </span>
+            <span className="bg-muted text-muted-foreground shrink-0 rounded-md px-2 py-1 text-xs font-bold" aria-hidden>0% Back</span>
+          </li>
+        </ul>
       </section>
-      {/* PAY BILL, FIXED AT THE BOTTOM (MESITA-3477, Pato: "move pay bill to
-          the bottom, like a fixed button"): sticky to the foot of the page's
-          scroller, on a white bar with a hairline; where Pay would show. */}
-      {loading || canPay ? (
+      {/* THE ONE BUTTON, FIXED AT THE FOOT (MESITA-3477): Buy for the picked
+          voucher, else Pay bill where Pay would show. */}
+      {loading || chosen || canPay ? (
         <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
           {loading ? (
             <div className={cn(PLACE_BONE_CLASS, "h-12 w-full rounded-xl")} aria-hidden data-reward-loading />
+          ) : chosen ? (
+            <button
+              type="button"
+              {...inertButtonProps(live)}
+              onClick={live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
+              disabled={buying}
+              aria-label={`Buy the ${chosen.name} voucher`}
+              className={cn(ACTION_BUTTON, "h-12 min-h-12 rounded-xl text-base")}
+              data-voucher-buy={chosen.key}
+            >
+              {actions?.buyingVoucher === chosen.key ? "Opening…" : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`}
+            </button>
           ) : (
             <button
               type="button"

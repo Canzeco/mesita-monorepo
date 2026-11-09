@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { TEST_BAND_TEXT } from "../TestBand";
 import type { PlaceDetail, PlaceMoney } from "../../place-detail";
 import { placeMoneyFrom } from "../../place-to-detail";
-import { pesos, VouchersPane } from "./vouchers";
+import { OffersWalletPill, pesos, VouchersPane } from "./vouchers";
 
 const OFFER: PlaceMoney = {
   charges_enabled: true,
@@ -37,11 +37,11 @@ describe("Vouchers tab", () => {
 
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
     const html = render(OFFER, () => {});
-    // Every card for sale carries its own Buy (MESITA-3446).
-    expect(html).toContain('aria-label="Buy the Small voucher');
-    expect(html).toContain('aria-label="Buy the Mid voucher');
-    expect(html).toContain('aria-label="Buy the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
-    expect(html).not.toContain('aria-label="Buy the Welcome voucher');
+    // Every row for sale is a choice; one button buys the chosen (MESITA-3483).
+    expect(html).toContain('aria-label="Choose the Small voucher');
+    expect(html).toContain('aria-label="Choose the Mid voucher');
+    expect(html).toContain('aria-label="Choose the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).not.toContain('aria-label="Choose the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
     const older = placeMoneyFrom({ charges_enabled: true, cashback: true, vouchers: { voucher_200: true } });
@@ -55,13 +55,12 @@ describe("Vouchers tab", () => {
     expect(placeMoneyFrom({ charges_enabled: false })?.mesita_pay).toBe(false);
   });
 
-  it("shows the guest's credit from the server's balance on the House Card, Available and Pending", () => {
-    const html = render(OFFER);
-    expect(html).toContain("Your credits here");
-    expect(html).toContain("MX$220");
-    expect(html).toContain("MX$100");
-    // No credit: the House Card says credit is optional to pay (MESITA-3451).
-    expect(render({ ...OFFER, balance: null })).toContain("No credits needed to pay.");
+  it("shows the guest's credits from the server's balance on the wallet pill, Available and Pending (MESITA-3483)", () => {
+    const pill = (money: PlaceMoney) =>
+      renderToStaticMarkup(<OffersWalletPill place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} />);
+    const html = pill(OFFER);
+    expect(html).toContain("Your credits here: MX$220, MX$100 pending");
+    expect(pill({ ...OFFER, balance: null })).toContain("MX$0");
   });
 
   it("formats cents and never adds", () => {
@@ -69,7 +68,7 @@ describe("Vouchers tab", () => {
     expect(pesos(120000, "mxn")).toBe("MX$1,200");
     expect(pesos(1050, "mxn")).toBe("MX$10.50");
     expect(render(OFFER)).toContain("Pay MX$1,000, Get MX$1,200");
-    expect(render(OFFER)).toContain("+30%");
+    expect(render(OFFER)).toContain("30% Bonus");
   });
 });
 

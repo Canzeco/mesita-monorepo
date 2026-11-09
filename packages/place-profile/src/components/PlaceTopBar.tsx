@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { ChevronLeft, MoreHorizontal } from "lucide-react";
 
 import { inertButtonProps } from "../actions";
@@ -35,7 +36,11 @@ export function PlaceTopBar({
   onBack,
   onMore,
   backOnly = false,
+  right,
 }: {
+  /** Drawn where the three dots go, instead of them (the Offers page's
+   *  wallet pill, MESITA-3483). */
+  right?: React.ReactNode;
   name: string | null;
   /** `boost_tier`; 1..3 draws "Premier 2X" after the name (MESITA-2925). */
   premierTier?: number;
@@ -64,15 +69,17 @@ export function PlaceTopBar({
       {backOnly ? null : (
         <>
           <PlaceDetailTitle placeName={name} premierTier={premierTier} mesitaPay={mesitaPay} />
+          {right ?? (
           <button
-            type="button"
-            aria-label="More options"
-            aria-haspopup="dialog"
-            className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
-            {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
-          >
-            <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
-          </button>
+              type="button"
+              aria-label="More options"
+              aria-haspopup="dialog"
+              className="text-foreground hover:bg-muted flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition"
+              {...(onMore ? { onClick: onMore } : inertButtonProps(false))}
+            >
+              <MoreHorizontal className="h-6 w-6" strokeWidth={2.25} />
+            </button>
+          )}
         </>
       )}
     </header>
