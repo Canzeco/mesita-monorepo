@@ -12,7 +12,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
 import { listCards, premierCards } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
@@ -26,12 +26,12 @@ serveJson("consumer-web-list-cards", async (req) => {
   const authRes = await getAuthedUser(req, envRes.env);
   if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to see your cards" }, 401);
   const userId = authRes.user.id;
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const admin = adminClient(envRes.env);
 
   const customer = await readCustomer(admin, userId, livemode);
   if (!customer) return json({ ok: true, test_mode: !livemode, cards: [] });
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, error: "Cards are not available right now" }, 503);
   try {
     const cards = await listCards(stripeClient(key), customer, await premierCards(admin, userId));
