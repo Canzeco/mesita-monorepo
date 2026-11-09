@@ -91,9 +91,10 @@ describe("member preview edges", () => {
     // One row of three since MESITA-3314: Reserve · Prepay · Pay, no "Mesita".
     // The amount rides in the name (MESITA-3324). With no money read (this
     // preview) nothing Mesita runs is promised: Off, never "30% Bonus" or
-    // "5% Back" typed in the code (MESITA-3581).
-    expect(html).toContain('aria-label="Prepay, Off, not available here"');
-    expect(html).toContain('aria-label="Pay, Off, not available here"');
+    // "5% Back" typed in the code (MESITA-3581). An Off tile still opens a
+    // sheet saying why (MESITA-3583).
+    expect(html).toContain('aria-label="Prepay, Off"');
+    expect(html).toContain('aria-label="Pay, Off"');
     expect(html).not.toContain("30% Bonus");
     // The old pinned band (border-t + backdrop-blur under the scroller) is gone.
     expect(html).not.toContain("backdrop-blur");

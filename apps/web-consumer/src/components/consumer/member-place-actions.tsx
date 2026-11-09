@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode 
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, money as moneyLabel } from "@/lib/api/wallet";
+import { apiAddHouseCard, apiBuyVoucher, apiListVouchers, BUY_REFUSAL, buyRefusalAction, money as moneyLabel } from "@/lib/api/wallet";
 import { apiAddCard, apiListCards, CARD_REFUSAL, type SavedCard } from "@/lib/api/cards";
 import { runBankCheck } from "@/lib/api/tab";
 import { VoucherPaySheet } from "@/components/consumer/VoucherPaySheet";
@@ -168,6 +168,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The pinned row's Wallet tile (MESITA-3574): the Wallet, opened at this
     // place's credit; its pill reads the list-vouchers balance below.
     onOpenWallet: () => navigateTo(router, `/wallet?place=${encodeURIComponent(place.id)}`),
+    // The Wallet tile's Off sheet (MESITA-3583): "Add card to Wallet" pins
+    // this place's House Card with $0; the sheet says when it already is.
+    ...(isMesitaPlaceId(place.id)
+      ? { houseCardInWallet: vouchers.inWallet, onAddHouseCard: vouchers.addHouseCard }
+      : {}),
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
     // linked Instagram; each lock's action opens the page that lifts it.
     ...(profile
@@ -278,6 +283,10 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 // on Stripe's page and comes back here.
 function usePlaceVouchers(placeId: string): {
   money: PlaceMoney | null;
+  /** This place's House Card is in the guest's Wallet (MESITA-3582). */
+  inWallet: boolean | undefined;
+  /** Pins it with $0; resolves true once it is in the Wallet. */
+  addHouseCard: () => Promise<boolean>;
   buying: VoucherKey | null;
   /** The first list-vouchers for this place has not answered (MESITA-3388). */
   loading: boolean;
@@ -288,6 +297,7 @@ function usePlaceVouchers(placeId: string): {
   const getSupabase = useLazyBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [state, setState] = useState<{ placeId: string; money: PlaceMoney } | null>(null);
+  const [card, setCard] = useState<{ placeId: string; inWallet: boolean } | null>(null);
   const [buying, setBuying] = useState<VoucherKey | null>(null);
   // The voucher whose "how to pay" sheet is open, and the saved cards
   // (null while they load).
@@ -300,8 +310,9 @@ function usePlaceVouchers(placeId: string): {
   const load = useCallback(() => {
     if (!mesita) return;
     void apiListVouchers(getSupabase(), placeId)
-      .then((money) => {
+      .then(({ money, inWallet }) => {
         if (money) setState({ placeId, money });
+        if (inWallet !== undefined) setCard({ placeId, inWallet });
       })
       .catch(() => {
         // The place read's offer stays on screen.
@@ -310,6 +321,22 @@ function usePlaceVouchers(placeId: string): {
     // getSupabase is a stable lazy getter (MESITA-3207).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mesita, placeId]);
+
+  const addHouseCard = useCallback(
+    async () => {
+      if (!mesita) return false;
+      try {
+        await apiAddHouseCard(getSupabase(), placeId);
+        setCard({ placeId, inWallet: true });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    // getSupabase is a stable lazy getter (MESITA-3207).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mesita, placeId],
+  );
 
   const buy = useCallback(
     (key: VoucherKey) => {
@@ -424,6 +451,8 @@ function usePlaceVouchers(placeId: string): {
 
   return {
     money,
+    inWallet: card && card.placeId === placeId ? card.inWallet : undefined,
+    addHouseCard,
     buying,
     loading: mesita && settled !== placeId,
     load,
