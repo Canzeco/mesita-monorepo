@@ -95,6 +95,8 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     // An older EF answer has no mark: fall back to the old rule, never drop it.
     mesita_pay: typeof m.mesita_pay === "boolean" ? m.mesita_pay : m.charges_enabled === true,
     cashback: m.cashback === true,
+    // The waiter's 2% (MESITA-3545); the place screen's Pay reads it (MESITA-3581).
+    outside_cashback: m.outside_cashback === true,
     vouchers,
     test_mode: m.test_mode === true,
     currency: typeof m.currency === "string" ? m.currency : "mxn",
