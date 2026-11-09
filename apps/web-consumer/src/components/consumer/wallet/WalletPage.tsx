@@ -13,7 +13,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { AddTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
+import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
 
 // TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
 // page called Wallet, and then at the right that icon for transactions ...
@@ -191,6 +191,7 @@ export function WalletPage() {
           line="Saving a card comes soon"
           onClick={() => toast("Saving a card comes soon. Today you pick card, Apple Pay or Google Pay at checkout.")}
         />
+        <CashTile />
         <CheckoutMethodTile onOpen={() => setMethod({ kind: "checkout" })} />
       </WalletRail>
 
