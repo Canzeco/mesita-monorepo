@@ -7,8 +7,8 @@
 // page's one Save sends `photos` (business-web-update-place), so Discard
 // drops it like any other edit.
 //
-// Enrich with Overwrite off keeps a gallery of two or more photos; Overwrite
-// on rebuilds it.
+// The next Enrich still rebuilds the gallery (Docs › Atlas, one gallery):
+// an owner's order does not stick through Enrich yet.
 
 import { useRef, useState } from "react";
 import { ImagesIcon } from "@phosphor-icons/react/dist/ssr";
