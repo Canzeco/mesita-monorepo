@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   Share2,
   UserRound,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -57,6 +58,14 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //   Favorites · Transactions · Cards
 //   Connector · Share · Settings
 //
+// THIRTEEN SINCE MESITA-3517: Refunds sits after Cards, the money cells
+// together, and Settings closes the page across both columns, so no cell
+// sits alone on the last row (two columns since MESITA-3469):
+//
+//   Profile · Instagram / Class · Plan / Notifications · Reservations /
+//   Favorites · Transactions / Cards · Refunds / Connector · Share /
+//   Settings (full width)
+//
 // route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
@@ -74,7 +83,7 @@ export type HubTile = {
   href: string;
 };
 
-/** The first eleven grid cells, in reading order; Settings is the twelfth. */
+/** The first twelve grid cells, in reading order; Settings is the last. */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -143,6 +152,14 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Ways to pay",
     href: CONSUMER_ROUTES.mePages.cards,
   },
+  // REFUNDS (Pato, MESITA-3517): if a place closes for good with the guest's
+  // credit unspent, Mesita refunds it. The page is the view only, empty.
+  {
+    Icon: Undo2,
+    title: "Refunds",
+    summary: "If a place closes",
+    href: CONSUMER_ROUTES.mePages.refunds,
+  },
   {
     Icon: Plug,
     title: "Connector",
@@ -188,9 +205,10 @@ export function MeHubFrame({
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
         <div className="flex flex-col gap-2">
           <DestGrid>
-            {[...ME_HUB_GRID, ME_HUB_SETTINGS].map((cell) => (
+            {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.href}>{tile(cell, "cell")}</Fragment>
             ))}
+            <div className="col-span-2">{tile(ME_HUB_SETTINGS, "cell")}</div>
           </DestGrid>
         </div>
       </div>

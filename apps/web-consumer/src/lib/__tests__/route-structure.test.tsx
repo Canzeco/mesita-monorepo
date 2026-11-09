@@ -620,7 +620,7 @@ describe("T8 — Me's grid is twelve live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders twelve cells in Pato's order", () => {
+  it("renders thirteen cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -643,6 +643,8 @@ describe("T8 — Me's grid is twelve live cells", () => {
       // "add two other boxes, maybe some for transactions").
       "Transactions",
       "Cards",
+      // Refunds: credit a closed place can't honour (MESITA-3517).
+      "Refunds",
       "Connector",
       "Share",
       "Settings",
