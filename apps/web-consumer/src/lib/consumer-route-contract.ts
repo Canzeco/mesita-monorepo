@@ -73,6 +73,10 @@ export const CONSUMER_ROUTES = {
     // Use Mesita from an AI assistant (ChatGPT, Claude). Not built: the page
     // says Soon (MESITA-2562).
     connector: "/me/connector",
+    // Every money line, newest first, and saved ways to pay (Soon), the two
+    // cells that made Me a full 3×4 grid (MESITA-3465).
+    transactions: "/me/transactions",
+    cards: "/me/cards",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
     notifications: "/me/notifications",

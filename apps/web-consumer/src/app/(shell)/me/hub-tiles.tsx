@@ -6,6 +6,7 @@ import {
   Crown,
   Heart,
   Plug,
+  ReceiptText,
   Settings as SettingsIcon,
   Share2,
   UserRound,
@@ -45,7 +46,18 @@ import { DestGrid, type DestShape } from "./profile-sections";
 //
 // Share left the bar (MESITA-2871) and came here (MESITA-2887).
 //
-// TEN CELLS, AND THAT IS THE WHOLE PAGE. route-structure T8 pins them.
+// TWELVE CELLS, A FULL 3×4 SINCE MESITA-3465 (Pato: "this looks like shit.
+// add two other boxes, maybe some for transactions ... or the other 2 boxes
+// as pending ... invent something"): Transactions (every money line, real)
+// and Cards (saved ways to pay, Soon) sit after Favorites, and Settings is
+// the twelfth cell, no longer a full-width row under the grid:
+//
+//   Profile · Instagram · Class
+//   Plan · Notifications · Reservations
+//   Favorites · Transactions · Cards
+//   Connector · Share · Settings
+//
+// route-structure T8 pins them.
 //
 // NO TILE PRINTS A GUEST FACT (Pato, MESITA-2607: "in the boxes below don't
 // display anything of info of the user ... don't display info
@@ -62,7 +74,7 @@ export type HubTile = {
   href: string;
 };
 
-/** The nine grid cells, in reading order. */
+/** The first eleven grid cells, in reading order; Settings is the twelfth. */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -120,6 +132,18 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     href: CONSUMER_ROUTES.mePages.favorites,
   },
   {
+    Icon: ReceiptText,
+    title: "Transactions",
+    summary: "Payments and credit",
+    href: CONSUMER_ROUTES.mePages.transactions,
+  },
+  {
+    Icon: CreditCard,
+    title: "Cards",
+    summary: "Ways to pay",
+    href: CONSUMER_ROUTES.mePages.cards,
+  },
+  {
     Icon: Plug,
     title: "Connector",
     summary: "ChatGPT or Claude",
@@ -135,8 +159,8 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
 ];
 
-/** The tenth cell: Settings closes the page as one full-width row
- *  (MESITA-2562, MESITA-3450). */
+/** The twelfth cell: Settings closes the grid (MESITA-2562); a full-width row
+ *  under it until MESITA-3465. */
 export const ME_HUB_SETTINGS: HubTile = {
   Icon: SettingsIcon,
   title: "Settings",
@@ -164,11 +188,10 @@ export function MeHubFrame({
       <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
         <div className="flex flex-col gap-2">
           <DestGrid>
-            {ME_HUB_GRID.map((cell) => (
+            {[...ME_HUB_GRID, ME_HUB_SETTINGS].map((cell) => (
               <Fragment key={cell.href}>{tile(cell, "cell")}</Fragment>
             ))}
           </DestGrid>
-          {tile(ME_HUB_SETTINGS, "row")}
         </div>
       </div>
       {children}
