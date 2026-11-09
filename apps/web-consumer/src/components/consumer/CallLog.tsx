@@ -120,11 +120,17 @@ export function CallLog() {
           </div>
         ) : null}
       </div>
-      <div className={cn("hidden min-w-0 flex-1 xl:flex", TERMINAL)}>
+      <div
+        className={cn(
+          "hidden min-w-0 flex-1 xl:flex",
+          TERMINAL,
+          "border-green-950 bg-black",
+        )}
+      >
         {shown ? (
           <Detail line={shown} pinned={pinned !== null} onUnpin={unpin} />
         ) : (
-          <div className="text-zinc-500">
+          <div className="text-green-700">
             request · response — waiting for the first call…
           </div>
         )}
@@ -183,7 +189,8 @@ function Line({
   );
 }
 
-// One call: its line, then what it sent and got back.
+// One call: its line, then what it sent and got back — raw JSON, green on
+// black, a wall of text that changes with every call (MESITA-3521).
 function Detail({
   line,
   pinned,
@@ -194,8 +201,8 @@ function Detail({
   onUnpin: () => void;
 }) {
   return (
-    <div className="flex min-h-0 w-full flex-col gap-2 rounded-md border border-zinc-700 bg-zinc-900 p-2 shadow-2xl select-text">
-      <div className="flex items-center gap-2 text-zinc-200">
+    <div className="flex min-h-0 w-full flex-col gap-2 rounded-md border border-green-950 bg-black p-2 text-green-400 shadow-2xl select-text">
+      <div className="flex items-center gap-2">
         <span className="min-w-0 flex-1 truncate">
           {line.label.replace(/^consumer-web-/, "")} · {line.status} ·{" "}
           {line.ms === null ? "—" : `${line.ms} ms`} · {clock(line.at)}
@@ -204,12 +211,12 @@ function Detail({
           <button
             type="button"
             onClick={onUnpin}
-            className="cursor-pointer rounded-sm px-1 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+            className="cursor-pointer rounded-sm px-1 text-green-600 hover:bg-green-950 hover:text-green-300"
           >
             pinned · show latest
           </button>
         ) : (
-          <span className="text-zinc-500">latest</span>
+          <span className="text-green-700">latest</span>
         )}
       </div>
       <Section title="request" value={line.request} className="max-h-[35%]" />
@@ -229,9 +236,9 @@ function Section({
 }) {
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
-      <div className="pb-1 text-zinc-500">{title}</div>
-      <pre className="min-h-0 flex-1 overflow-auto rounded-sm bg-zinc-950 p-2 break-all whitespace-pre-wrap text-zinc-300">
-        {pretty(value)}
+      <div className="pb-1 text-green-700">{title}</div>
+      <pre className="min-h-0 flex-1 overflow-auto break-all whitespace-pre-wrap">
+        {raw(value)}
       </pre>
     </div>
   );
@@ -241,10 +248,10 @@ function Section({
 // for holding a whole catalog.
 const MAX_CHARS = 100_000;
 
-function pretty(value: unknown): string {
+function raw(value: unknown): string {
   let text: string;
   try {
-    text = JSON.stringify(value, null, 2) ?? String(value);
+    text = JSON.stringify(value) ?? String(value);
   } catch {
     text = String(value);
   }
