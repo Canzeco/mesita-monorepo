@@ -13,12 +13,15 @@
 //
 // Body: { session_id?: string }
 // Response: { ok: true, test_mode,
-//             balances: [{ place: { id, slug, name, photo } | null, place_id, currency,
+//             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok,
 //                          entries: [{ kind, amount_cents, at, pending, payment_id }] }],
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
 //   payments, from wallet_balances: what the Pay tab can spend there now.
+//   place.boost_tier is Premier's stored tier and place.mesita_pay the
+//   green mark by moneyState's rule (MESITA-3514): the Wallet's marks and
+//   its filter come from here, never from a catalog read.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
 //             waiting_stories (MESITA-3507): [{ purchase_id, place, place_id,
@@ -31,7 +34,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
-import { chargesEnabledByPlace } from "../_shared/payments.ts";
+import { chargesEnabledByPlace, listRowMoney, PAYMENT_KEYS, type PaymentKey, settingsFromRow } from "../_shared/payments.ts";
 import { storyUrl } from "../_shared/proof.ts";
 import {
   balanceKey,
@@ -146,15 +149,25 @@ serveJson("consumer-web-get-wallet", async (req) => {
     readWalletPlaces(admin, ids),
     chargesEnabledByPlace(admin, ids, livemode),
     ids.length > 0
-      ? admin.from("place_payment_settings").select("place_id, pay_cards").in("place_id", ids)
+      ? admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
   const places = placesRes.places;
   if (settingsRes.error) console.error(`[consumer-web-get-wallet] settings read: ${settingsRes.error.message}`);
   const cardsOff = new Set<string>();
-  for (const r of ((settingsRes.error ? [] : settingsRes.data) ?? []) as Array<{ place_id: string; pay_cards: boolean | null }>) {
+  // via unknown: a template-string select widens `data` (as in payments.ts).
+  const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<
+    { place_id: string } & Partial<Record<PaymentKey, unknown>>
+  >;
+  const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
+  for (const r of settingRows) {
     if (r.pay_cards === false) cardsOff.add(r.place_id);
+  }
+  // THE GREEN MARK (MESITA-3514): the list rows' rule, so a Wallet card
+  // and a Home tile never disagree. A failed settings read reads as no row.
+  for (const [id, place] of places) {
+    place.mesita_pay = listRowMoney(settingsFromRow(settingsById.get(id) ?? null), charging?.has(id) ?? false).mesita_pay;
   }
 
   return json({

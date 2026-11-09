@@ -230,7 +230,18 @@ export async function readVoucherPlace(
   return { ok: true, place: (data as VoucherPlace | null) ?? null };
 }
 
-export type WalletPlace = { id: string; slug: string | null; name: string | null; photo: string | null };
+/** A Wallet card's place. `boost_tier` is Premier's stored tier (the red
+ *  mark); `mesita_pay` (the green mark, moneyState's rule) is added by
+ *  consumer-web-get-wallet from the place's switches and account
+ *  (MESITA-3514), so the Wallet reads no catalog. */
+export type WalletPlace = {
+  id: string;
+  slug: string | null;
+  name: string | null;
+  photo: string | null;
+  boost_tier: number;
+  mesita_pay: boolean;
+};
 
 /** The places a guest holds money at. A balance outlives a place's listing,
  *  so the service role reads them, not the guest-visible catalog. */
@@ -242,13 +253,21 @@ export async function readWalletPlaces(
   if (ids.length === 0) return { ok: true, places };
   const { data, error } = await admin
     .from("profiles")
-    .select("id, slug, name, profile_photo")
+    .select("id, slug, name, profile_photo, boost_tier")
     .in("id", ids);
   if (error) return { ok: false, error: `places: ${error.message}` };
   // The round photo is the profile picture (MESITA-3528): the view answers
   // the owner's pick, else the cover.
-  for (const p of (data ?? []) as Array<{ id: string; slug: string | null; name: string | null; profile_photo: string | null }>) {
-    places.set(p.id, { id: p.id, slug: p.slug, name: p.name, photo: p.profile_photo ?? null });
+  // mesita_pay starts false; the EF sets it from the switches it reads.
+  for (const p of (data ?? []) as Array<{ id: string; slug: string | null; name: string | null; profile_photo: string | null; boost_tier: number | null }>) {
+    places.set(p.id, {
+      id: p.id,
+      slug: p.slug,
+      name: p.name,
+      photo: p.profile_photo ?? null,
+      boost_tier: typeof p.boost_tier === "number" ? p.boost_tier : 0,
+      mesita_pay: false,
+    });
   }
   return { ok: true, places };
 }
