@@ -1,7 +1,7 @@
 // Discovery config — the operator's half of the Discovery model (Docs ›
 // Discovery, MESITA-2327).
 //
-// Keys: params · general · catalog · map · name · deep · chat.
+// Keys: params · general · map · name · deep · chat · premier.
 // Admin: one page, five pipeline boxes (Admin Name · Consumer Name · Consumer
 // Map · Consumer Catalog · Consumer Deep); each box saves only its own slices.
 //
@@ -13,6 +13,11 @@
 //              Popularity floor is the quality cut (MESITA-2721).
 //   chat       The Chat Agent's system prompt. Blank → memo_config, then the
 //              in-code persona (memo-prompt.ts).
+//   premier    Premier's monthly prices per plan, in US cents (MESITA-3043;
+//              code constants until then). Read by every Premier quote
+//              (premier-flow.ts) and Billing's Keep line; the Premier Prices
+//              box edits it. A top-level key, not `params.premier`: `params`
+//              is the signal numbers, and the Catalog box saves all of it.
 //
 // RETIRED WITH THE SWIPE DECK (MESITA-2328): `weights`, `weightsByMode`,
 // `engines`, the `swipe` slice and the deck's shape numbers on `params`. The
@@ -72,6 +77,7 @@ import {
   PROXIMITY_HALF_KM_MIN,
 } from "./pipeline-signals.ts";
 import { errorMessage } from "./errors.ts";
+import { PREMIER_MONTHLY_CENTS, PREMIER_TIERS, type PremierPrices } from "./boost.ts";
 
 /**
  * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
@@ -229,6 +235,21 @@ export type GeneralConfig = {
   // (MESITA-2721): both dropped on the next Save, never renamed.
 };
 
+/**
+ * Premier's prices (MESITA-3043): the monthly price of each plan in US
+ * cents, whole. A year is ten months (`PREMIER_YEAR_MONTHS`, a constant).
+ * A price is stored on the pledge when bought, so a change reaches new
+ * purchases and plan changes, never a renewal already promised.
+ */
+export type PremierConfig = { monthlyCents: PremierPrices };
+
+/** Bounds of one monthly price, in cents: $1 (over Stripe's 50-cent floor)
+ *  to $10,000. */
+export const PREMIER_MONTHLY_CENTS_MIN = 100;
+export const PREMIER_MONTHLY_CENTS_MAX = 1_000_000;
+
+export const DEFAULT_PREMIER: PremierConfig = { monthlyCents: PREMIER_MONTHLY_CENTS };
+
 export type DiscoveryConfig = {
   params: SignalParams;
   general: GeneralConfig;
@@ -236,6 +257,7 @@ export type DiscoveryConfig = {
   name: NameConfig;
   deep: DeepConfig;
   chat: { prompt: string };
+  premier: PremierConfig;
 };
 
 /** Ceiling for discovery_config.chat.prompt. The console textarea matches it. */
@@ -361,7 +383,22 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
   name: DEFAULT_NAME,
   deep: DEFAULT_DEEP,
   chat: { prompt: "" },
+  premier: DEFAULT_PREMIER,
 };
+
+/** Every plan's price, whole cents, clamped; a missing or invalid one reads
+ *  its default, and a retired tier (`boost_10x`) drops on the next save. */
+export function normalizePremierConfig(raw: unknown): PremierConfig {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const m = (r.monthlyCents ?? {}) as Record<string, unknown>;
+  const monthlyCents = {} as PremierPrices;
+  for (const tier of PREMIER_TIERS) {
+    monthlyCents[tier] = Math.round(
+      num(m[tier], DEFAULT_PREMIER.monthlyCents[tier], PREMIER_MONTHLY_CENTS_MIN, PREMIER_MONTHLY_CENTS_MAX),
+    );
+  }
+  return { monthlyCents };
+}
 
 export function normalizeDeepConfig(raw: unknown): DeepConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
@@ -573,6 +610,7 @@ export function normalizeDiscoveryConfig(raw: unknown): DiscoveryConfig {
         ((r.chat ?? {}) as Record<string, unknown>).prompt,
       ),
     },
+    premier: normalizePremierConfig(r.premier),
   };
 }
 
@@ -601,4 +639,21 @@ export async function loadDiscoveryConfig(
     console.error("[discovery-config] read threw:", errorMessage(e));
     return DISCOVERY_DEFAULTS;
   }
+}
+
+/**
+ * Premier's monthly prices for a quote that becomes a charge (MESITA-3043).
+ * Unlike `loadDiscoveryConfig` this never falls back on a failed read: a
+ * guest shown or charged a default the operator replaced would be paying a
+ * price nobody set, so the caller answers 500 instead.
+ */
+export async function loadPremierPrices(admin: SupabaseClient): Promise<PremierPrices> {
+  const { data, error } = await admin
+    .from("app_config")
+    .select("discovery_config")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) throw new Error(`premier_prices: ${error.message}`);
+  const raw = (data?.discovery_config ?? {}) as Record<string, unknown>;
+  return normalizePremierConfig(raw.premier).monthlyCents;
 }

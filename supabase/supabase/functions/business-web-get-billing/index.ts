@@ -34,6 +34,7 @@ import {
   stripeClient,
   subscriptionOf,
 } from "../_shared/boost.ts";
+import { loadPremierPrices } from "../_shared/discovery-config.ts";
 import { billingView, type Card, receiptsByIntent, type SavedCard, savedCards } from "./billing.ts";
 
 serveJson("business-web-get-billing", async (req) => {
@@ -107,6 +108,15 @@ serveJson("business-web-get-billing", async (req) => {
       receipt_url: (p.stripe_payment_intent_id && receipts.get(p.stripe_payment_intent_id)) || null,
     }));
 
+  // Keep's first charge is a price (MESITA-3043): no read, no page.
+  let prices: Awaited<ReturnType<typeof loadPremierPrices>>;
+  try {
+    prices = await loadPremierPrices(admin);
+  } catch (err) {
+    console.error("[business-web-get-billing] prices:", String(err));
+    return json({ ok: false, error: "Premier prices are not available right now" }, 500);
+  }
+
   const view = billingView({
     pledges: line.pledges,
     periods: line.periods,
@@ -115,6 +125,7 @@ serveJson("business-web-get-billing", async (req) => {
     viewerId: user.id,
     card,
     now: Date.now(),
+    prices,
   });
 
   return json({

@@ -100,6 +100,29 @@ Deno.test("premier: two plans, $10 · $100 a month, a year for the price of ten 
   assertEquals(PREMIER_TIERS, ["boost_2x", "boost_5x"]);
 });
 
+Deno.test("premier: the operator's prices reach the quote, and its price is what the Checkout carries (MESITA-3043)", () => {
+  const prices = { boost_2x: 1500, boost_5x: 20000 };
+  assertEquals(boostAmountCents("boost_5x", "year", prices), 200000);
+  const q = quote({ tier: "boost_2x", interval: "month", running: null, charging: false, viewer: "stranger", subscription: null, now: T0, prices });
+  assertEquals([q.price_cents, q.charge_cents], [1500, 1500]);
+  const pay = pledgeCheckoutParams({
+    mode: "payment",
+    kind: "buy",
+    customer: "cus_1",
+    backingId: "b1",
+    placeId: "p1",
+    consumerId: "c1",
+    tier: "boost_2x",
+    interval: "month",
+    quote: q,
+    placeName: "Cafe",
+    returnUrl: "https://mesita.ai/x",
+    nowSec: 1000,
+  });
+  assertEquals(at(pay, "metadata", "price_cents"), "1500");
+  assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 1500);
+});
+
 Deno.test("premier: 2X → 5X credit at day 0 and mid-period, month and year (MESITA-3041)", () => {
   for (const interval of ["month", "year"] as const) {
     const price2 = boostAmountCents("boost_2x", interval);
