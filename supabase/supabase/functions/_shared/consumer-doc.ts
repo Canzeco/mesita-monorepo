@@ -456,6 +456,65 @@ export async function readClassJoinRow(
   return { ok: true, row: (data as ClassJoinRow | null) ?? null };
 }
 
+/** Name and member number for each guest id (MESITA-3540: who used a VIP
+ *  code, on Admin › Guests). Closed accounts are included: the code was used. */
+export async function readGuestLabels(
+  admin: SupabaseClient,
+  ids: string[],
+): Promise<
+  { ok: true; guests: Map<string, { name: string | null; code: string | null }> } | {
+    ok: false;
+    message: string;
+  }
+> {
+  const guests = new Map<string, { name: string | null; code: string | null }>();
+  if (ids.length === 0) return { ok: true, guests };
+  const { data, error } = await admin.from("consumers").select("id, full_name, code").in("id", ids);
+  if (error) return { ok: false, message: error.message };
+  for (const g of data ?? []) {
+    guests.set(g.id as string, {
+      name: (g.full_name as string | null) ?? null,
+      code: (g.code as string | null) ?? null,
+    });
+  }
+  return { ok: true, guests };
+}
+
+/** What the one redeem answers (MESITA-3540). */
+export type VipRedeemOutcome =
+  | "joined"
+  | "already_vip"
+  | "invalid"
+  | "rate_limited"
+  | "consumer_not_found";
+
+const VIP_REDEEM_OUTCOMES: readonly string[] = [
+  "joined",
+  "already_vip",
+  "invalid",
+  "rate_limited",
+  "consumer_not_found",
+];
+
+/** A guest uses a VIP invitation code (MESITA-3540): consumer_redeem_vip_invitation
+ *  locks the guest, applies the limit of 10 wrong codes an hour, uses the code
+ *  once and makes the guest VIP in one transaction. `code` is twelve digits. */
+export async function redeemVipInvitation(
+  admin: SupabaseClient,
+  consumerId: string,
+  code: string,
+): Promise<{ ok: true; outcome: VipRedeemOutcome } | { ok: false; message: string }> {
+  const { data, error } = await admin.rpc("consumer_redeem_vip_invitation", {
+    p_consumer: consumerId,
+    p_code: code,
+  });
+  if (error) return { ok: false, message: error.message };
+  if (typeof data !== "string" || !VIP_REDEEM_OUTCOMES.includes(data)) {
+    return { ok: false, message: `unexpected redeem outcome: ${String(data)}` };
+  }
+  return { ok: true, outcome: data as VipRedeemOutcome };
+}
+
 /** The guest's own class change: a Regular joining VIP, or a VIP leaving it
  *  (MESITA-3054). The caller has read the row and knows the current class.
  *  The write is admin_set_guest_standing, guest_class's one writer, with no

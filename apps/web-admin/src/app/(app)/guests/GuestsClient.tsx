@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Crown, Handshake, Plus, Search, UsersRound } from "lucide-react";
+import { Copy, Crown, Handshake, Plus, Search, Ticket, UsersRound } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import {
   Button,
@@ -11,13 +11,16 @@ import {
 } from "@/components/admin-ui/config";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import {
+  issueVipCode,
   listGuests,
+  revokeVipCode,
   saveVipPartner,
   setGuestStanding,
   type GuestClass,
   type GuestPlan,
   type GuestRow,
   type StandingPatch,
+  type VipCode,
   type VipPartner,
 } from "./actions";
 
@@ -39,6 +42,11 @@ import {
 // nothing demotes a VIP when the day passes — an operator flips the class.
 // The Partners card adds and renames partners; one with a Google Place ID is
 // a Mesita place that partners with us.
+//
+// The Invitation codes card (MESITA-3540) issues a twelve-digit VIP code for
+// one guest to use once on Me › Class. The whole code shows once, right after
+// it is issued; the list keeps only its last four. An unused code can be
+// revoked. A code may carry a partner: the guest's VIP then comes through it.
 
 const NOTE_MAX = 280;
 /** The database CHECK and the EF hold the same limit. */
@@ -89,10 +97,12 @@ export function vipLine(g: GuestRow): string | null {
 export function GuestsClient({
   initialGuests,
   initialPartners = [],
+  initialVipCodes = null,
   loadError,
 }: {
   initialGuests: GuestRow[];
   initialPartners?: VipPartner[];
+  initialVipCodes?: VipCode[] | null;
   loadError: string | null;
 }) {
   const [partners, setPartners] = useState<VipPartner[]>(initialPartners);
@@ -108,6 +118,7 @@ export function GuestsClient({
         partners={partners}
         onPartners={setPartners}
       />
+      <CodesCard initialCodes={initialVipCodes} partners={partners} />
       <PartnersCard partners={partners} onPartners={setPartners} />
     </PageContainer>
   );
@@ -698,6 +709,163 @@ function PartnersCard({
           </Button>
         </div>
       )}
+      {error && <ErrorNote message={error} />}
+    </SectionCard>
+  );
+}
+
+/** "Unused", "Used by Ana López · 0000-0000 on Nov 9, 2026", "Revoked Nov 9, 2026". */
+export function vipCodeLine(c: VipCode): string {
+  const day = (iso: string) => fmtDay(iso);
+  if (c.status === "revoked" && c.revokedAt) return `Revoked ${day(c.revokedAt)}`;
+  if (c.status === "used") {
+    const who = [c.usedByName, c.usedByCode].filter(Boolean).join(" · ") || "a closed account";
+    return c.usedAt ? `Used by ${who} on ${day(c.usedAt)}` : `Used by ${who}`;
+  }
+  return `Unused · issued ${day(c.createdAt)}`;
+}
+
+/** VIP invitation codes (MESITA-3540): issue one for a guest (shown once),
+ *  see who used which, revoke an unused one. */
+function CodesCard({
+  initialCodes,
+  partners,
+}: {
+  initialCodes: VipCode[] | null;
+  partners: VipPartner[];
+}) {
+  const [codes, setCodes] = useState<VipCode[]>(initialCodes ?? []);
+  const [label, setLabel] = useState("");
+  const [partnerId, setPartnerId] = useState("");
+  const [shown, setShown] = useState<{ code: string; label: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(
+    initialCodes === null ? "Couldn't load the codes. Reload the page." : null,
+  );
+  const [busy, startBusy] = useTransition();
+  const partnerName = (id: string | null) => partners.find((p) => p.id === id)?.name ?? null;
+
+  const issue = () => {
+    if (busy) return;
+    setError(null);
+    setCopied(false);
+    startBusy(async () => {
+      const r = await issueVipCode({ label: label.trim() || null, vipPartnerId: partnerId || null });
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setShown({ code: r.issuedCode, label: label.trim() });
+      if (r.codes) setCodes(r.codes);
+      setLabel("");
+    });
+  };
+
+  const revoke = (id: string) => {
+    if (busy) return;
+    setError(null);
+    startBusy(async () => {
+      const r = await revokeVipCode(id);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      if (r.codes) setCodes(r.codes);
+    });
+  };
+
+  return (
+    <SectionCard
+      icon={<Ticket className="text-muted-foreground h-4 w-4" />}
+      title="Invitation codes"
+      subtitle="A twelve-digit code makes one guest VIP when they enter it on Me › Class (still Soon in the app, so no guest can enter one yet). Each code works once. You see the whole code only when you issue it."
+      state={
+        <span className="text-muted-foreground text-xs tabular-nums">
+          {codes.filter((c) => c.status === "unused").length} unused
+        </span>
+      }
+    >
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <TextField
+            label="For · optional"
+            value={label}
+            onChange={setLabel}
+            maxLength={80}
+            placeholder="Who this code is for"
+            autoComplete="off"
+          />
+        </div>
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="text-muted-foreground text-xs font-medium">Partner · optional</span>
+          <select
+            value={partnerId}
+            onChange={(e) => setPartnerId(e.target.value)}
+            className={INPUT_CLASS}
+            data-vip-code-partner
+          >
+            <option value="">No partner</option>
+            {partners.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button pending={busy} icon={<Plus className="h-3.5 w-3.5" />} onClick={issue}>
+          Issue code
+        </Button>
+      </div>
+
+      {shown && (
+        <div className="border-border bg-muted/40 mt-4 rounded-xl border px-4 py-3" data-vip-code-shown>
+          <p className="text-muted-foreground text-xs">
+            {shown.label ? `Code for ${shown.label}` : "New code"} · copy it now, it won&apos;t show again
+          </p>
+          <div className="mt-1 flex items-center gap-3">
+            <span className="font-mono text-lg font-semibold tracking-wider tabular-nums">{shown.code}</span>
+            <Button
+              tone="secondary"
+              size="sm"
+              icon={<Copy className="h-3.5 w-3.5" />}
+              onClick={() => {
+                void navigator.clipboard?.writeText(shown.code.replace(/ /g, "")).then(
+                  () => setCopied(true),
+                  () => setCopied(false),
+                );
+              }}
+            >
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <ul className="border-border divide-border/60 mt-5 divide-y overflow-hidden rounded-xl border">
+        {codes.length === 0 && (
+          <li className="text-muted-foreground px-4 py-4 text-sm">No codes yet.</li>
+        )}
+        {codes.map((c) => {
+          const partner = partnerName(c.vipPartnerId);
+          return (
+            <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-3" data-vip-code-row>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  <span className="font-mono tabular-nums">…{c.last4}</span>
+                  {c.label && ` · ${c.label}`}
+                  {partner && <span className="text-muted-foreground"> · {partner}</span>}
+                </p>
+                <p className="text-muted-foreground truncate text-xs">{vipCodeLine(c)}</p>
+              </div>
+              {c.status === "unused" && (
+                <Button tone="secondary" size="sm" disabled={busy} onClick={() => revoke(c.id)}>
+                  Revoke
+                </Button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
       {error && <ErrorNote message={error} />}
     </SectionCard>
   );

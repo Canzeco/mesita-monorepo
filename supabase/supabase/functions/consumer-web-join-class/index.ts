@@ -8,18 +8,18 @@
 //       | { via: "leave" } — a VIP goes back to Regular (Pato, MESITA-3054:
 //         "add button to downgrade class in the weird case someone wishes
 //         to"); 200 { ok, guest_class: "regular", left }.
-//   code — EMULATED: only twelve zeros join (EMULATOR_CODE in join.ts; Pato,
-//          MESITA-3071: "for the moment use emulator code … 12 zeros to
-//          accept upgrade"); any other twelve digits is 403 invalid_code.
-//          Real one-use codes are MESITA-3055; this EF is where they will be
-//          checked.
+//   code — issued by an operator on Admin › Guests
+//          and used once (MESITA-3540). consumer_redeem_vip_invitation
+//          locks the guest, refuses after 10 wrong codes in an hour, uses
+//          the code and makes the guest VIP in one transaction. Twelve zeros
+//          (MESITA-3071's emulator code) joins nothing any more.
 //
 // Response: 200 { ok: true, guest_class: "vip", joined } — joined:false when
 // the guest was already VIP (a retry is safe).
 // Errors { ok: false, code, error, ... } — the codes are listed in Notion
 // Docs › Identity (Class):
-//   400 bad_request · 400 bad_code · 403 invalid_code ·
-//   404 consumer_not_found ·
+//   400 bad_request · 400 bad_code · 403 invalid_code (unknown, used or
+//   revoked: one answer) · 429 too_many_attempts · 404 consumer_not_found ·
 //   500 join_failed { request_id } (never the database's own words).
 // Every request logs one `class_join` line {via, outcome}; a code's last four
 // digits at most.
@@ -35,7 +35,7 @@ import {
   serveJson,
 } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { readClassJoinRow, writeOwnGuestClass } from "../_shared/consumer-doc.ts";
+import { readClassJoinRow, redeemVipInvitation, writeOwnGuestClass } from "../_shared/consumer-doc.ts";
 import { handleJoin } from "./join.ts";
 
 serveJson("consumer-web-join-class", async (req) => {
@@ -54,6 +54,7 @@ serveJson("consumer-web-join-class", async (req) => {
   const admin = adminClient(envRes.env);
   const userId = authRes.user.id;
   const res = await handleJoin(bodyRes.body, {
+    redeemCode: (code) => redeemVipInvitation(admin, userId, code),
     readRow: () => readClassJoinRow(admin, userId),
     writeClass: (guestClass, note) => writeOwnGuestClass(admin, userId, guestClass, note),
     requestId: crypto.randomUUID(),

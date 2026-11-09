@@ -53,15 +53,64 @@ export type StandingPatch = {
   vipUntil?: string | null;
 };
 
-type ListResult = ActionResult<{ guests: GuestRow[]; partners: VipPartner[] }>;
+/** A VIP invitation code (MESITA-3540). Only the last four are ever shown
+ *  again; the whole code is in the answer that issued it. */
+export type VipCode = {
+  id: string;
+  last4: string;
+  label: string | null;
+  vipPartnerId: string | null;
+  status: "unused" | "used" | "revoked";
+  createdAt: string;
+  usedAt: string | null;
+  usedByName: string | null;
+  usedByCode: string | null;
+  revokedAt: string | null;
+};
+
+type ListResult = ActionResult<{
+  guests: GuestRow[];
+  partners: VipPartner[];
+  /** null when the codes read failed (the guests still load). */
+  vipCodes: VipCode[] | null;
+}>;
 
 export async function listGuests(q = ""): Promise<ListResult> {
-  const r = await efInvoke<{ guests: GuestRow[]; partners?: VipPartner[] }>(
-    "admin-web-list-guests",
-    { q },
+  const r = await efInvoke<{
+    guests: GuestRow[];
+    partners?: VipPartner[];
+    vipCodes?: VipCode[] | null;
+  }>("admin-web-list-guests", { q });
+  if (!r.ok) return { ok: false, error: r.error };
+  return {
+    ok: true,
+    guests: r.data.guests ?? [],
+    partners: r.data.partners ?? [],
+    vipCodes: r.data.vipCodes ?? null,
+  };
+}
+
+/** Issue a VIP invitation code (shown once, as "1234 5678 9012"). */
+export async function issueVipCode(input: {
+  label?: string | null;
+  vipPartnerId?: string | null;
+}): Promise<ActionResult<{ issuedCode: string; codes: VipCode[] | null }>> {
+  const r = await efInvoke<{ issuedCode: string; codes: VipCode[] | null }>(
+    "admin-web-save-vip-code",
+    input,
   );
   if (!r.ok) return { ok: false, error: r.error };
-  return { ok: true, guests: r.data.guests ?? [], partners: r.data.partners ?? [] };
+  return { ok: true, issuedCode: r.data.issuedCode, codes: r.data.codes ?? null };
+}
+
+/** Revoke an unused VIP invitation code. */
+export async function revokeVipCode(id: string): Promise<ActionResult<{ codes: VipCode[] | null }>> {
+  const r = await efInvoke<{ codes: VipCode[] | null }>("admin-web-save-vip-code", {
+    id,
+    revoke: true,
+  });
+  if (!r.ok) return { ok: false, error: r.error };
+  return { ok: true, codes: r.data.codes ?? null };
 }
 
 /** Add a partner (no id) or rename one. googlePlaceId: undefined leaves the
