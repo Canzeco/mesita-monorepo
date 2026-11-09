@@ -11,7 +11,7 @@ const minCents = (c: string) => MIN_CHARGE_CENTS[c] ?? 0;
 function row(id: string, over: Partial<PayPlaceInput> = {}): PayPlaceInput {
   return {
     place_id: id, name: id, lat: AT.lat, lng: AT.lng, tier: null, mesita_pay: true, currency: "mxn",
-    card_ok: true, available_cents: 0, pending_cents: 0, cashback_bps: 0, paid_recent: null, ...over,
+    card_ok: true, available_cents: 0, pending_cents: 0, cashback_bps: 0, paid_recent: null, photo: null, address: null, ...over,
   };
 }
 // ~1 km and ~5 km north of AT.
@@ -24,7 +24,7 @@ Deno.test("every row carries the server's card minimum", () => {
   assertEquals(p.marks, { tier: null, mesita_pay: true });
 });
 
-Deno.test("credit places first, then nearest; places with neither are dropped", () => {
+Deno.test("nearest first, credit or not (MESITA-3536); places with neither are dropped", () => {
   const rows = [
     row("far-card", north(5)),
     row("near-card", north(1)),
@@ -32,7 +32,7 @@ Deno.test("credit places first, then nearest; places with neither are dropped", 
     row("nothing", { card_ok: false }),
   ];
   const ids = payPlaces(rows, { at: AT, cardPlaceCount: 2, testMode: false, minCents }).map((p) => p.place_id);
-  assertEquals(ids, ["credit-far", "near-card", "far-card"]);
+  assertEquals(ids, ["near-card", "far-card", "credit-far"]);
 });
 
 Deno.test("pending-only credit still lists the place", () => {
@@ -44,9 +44,9 @@ Deno.test("pending-only credit still lists the place", () => {
 Deno.test(`below ${OPEN_ALL_BELOW} card places every one is listed; from ${OPEN_ALL_BELOW} on, only within ${NEAR_RADIUS_M} m`, () => {
   const rows = [row("near", north(1)), row("far", north(5)), row("credit-far", { ...north(9), available_cents: 1 })];
   const young = payPlaces(rows, { at: AT, cardPlaceCount: OPEN_ALL_BELOW - 1, testMode: false, minCents }).map((p) => p.place_id);
-  assertEquals(young, ["credit-far", "near", "far"]);
+  assertEquals(young, ["near", "far", "credit-far"]);
   const grown = payPlaces(rows, { at: AT, cardPlaceCount: OPEN_ALL_BELOW, testMode: false, minCents }).map((p) => p.place_id);
-  assertEquals(grown, ["credit-far", "near"]);
+  assertEquals(grown, ["near", "credit-far"]);
   const blind = payPlaces(rows, { at: null, cardPlaceCount: OPEN_ALL_BELOW, testMode: false, minCents }).map((p) => p.place_id);
   assertEquals(blind, ["credit-far"]);
 });
