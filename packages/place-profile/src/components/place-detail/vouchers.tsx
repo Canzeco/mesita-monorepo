@@ -280,7 +280,9 @@ function OfferCard({
       </span>
       <span className="mt-1 flex flex-col text-xs leading-snug font-semibold tabular-nums" aria-hidden>
         <span className="truncate">{lines ? lines[0] : `Pay ${pay}`}</span>
-        <span className="truncate">{lines ? lines[1] : `Get ${get}`}</span>
+        {/* "GET Y IN CREDITS" (MESITA-3478, Pato: "mention in prepayments
+            get y as credit too ... say credits"); it wraps, never truncates. */}
+        <span>{lines ? lines[1] : `Get ${get} in credits`}</span>
       </span>
       <div className="mt-1">{action}</div>
     </li>
@@ -321,11 +323,11 @@ function HouseCard({ place, currency }: { place: PlaceDetail; currency: string }
           {pending > 0
             ? `+ ${pesos(pending, currency)} pending · ready within the hour`
             : available > 0
-              ? "Spend it when you pay the bill here."
-              : "No credit needed to pay. Credit adds a bonus."}
+              ? "Spend them when you pay the bill here."
+              : "No credits needed to pay. Credits add a bonus."}
         </span>
       </span>
-      <span className="shrink-0 text-base font-bold tabular-nums" aria-label={`Your credit here: ${pesos(available, currency)}`}>
+      <span className="shrink-0 text-base font-bold tabular-nums" aria-label={`Your credits here: ${pesos(available, currency)}`}>
         {pesos(available, currency)}
       </span>
     </div>
@@ -478,10 +480,10 @@ export function VouchersPane({
             name="Cashback"
             bonus="5% bonus"
             unit="back"
-            lines={["Pay by card", "Back as credit"]}
+            lines={["Pay by card", "Back as credits"]}
             pay=""
             get=""
-            label={`5% Cashback: pay the bill here by card, 5% comes back as credit. ${loading ? "" : cashbackTag}`}
+            label={`5% Cashback: pay the bill here by card, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
             faded={!loading && !cashback && dim}
             face={CASHBACK_FACE}
             action={
@@ -499,7 +501,7 @@ export function VouchersPane({
         <h3 id="rewards-prepayment" className={OFFERS_TITLE_CLASS}>Prepayment Offers</h3>
         {row([...SPECIAL, ...STANDARD], "Prepayment offers")}
         <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
-          Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credit is ready in an hour.
+          Welcome: first visit · Story: post a story, 1/day, ready at once · VIP: VIP guests, 1/day. Other credits are ready in an hour.
         </p>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-credits" data-promos="credits">

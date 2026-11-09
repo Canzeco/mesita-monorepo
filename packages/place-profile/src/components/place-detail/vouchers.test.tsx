@@ -57,11 +57,11 @@ describe("Vouchers tab", () => {
 
   it("shows the guest's credit from the server's balance on the House Card, Available and Pending", () => {
     const html = render(OFFER);
-    expect(html).toContain("Your credit here");
+    expect(html).toContain("Your credits here");
     expect(html).toContain("MX$220");
     expect(html).toContain("MX$100");
     // No credit: the House Card says credit is optional to pay (MESITA-3451).
-    expect(render({ ...OFFER, balance: null })).toContain("No credit needed to pay.");
+    expect(render({ ...OFFER, balance: null })).toContain("No credits needed to pay.");
   });
 
   it("formats cents and never adds", () => {
