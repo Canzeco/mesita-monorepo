@@ -33,7 +33,7 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      grey, glyph over label
-//   [ Reserve ] [ Prepay / 30% Bonus ] [ Wallet / $120MX ] [ Pay / 5% Back ]   ink · green · ink · green (MESITA-3577)
+//   [ Reserve ] [ Prepay / 30% Bonus ] [ Wallet / $120MX ] [ Pay / 5% Back ]   ink · green · green · green (MESITA-3578)
 //   ink · green · green · green, pinned (MESITA-3574, Pato: "make this four
 //   items ... Reserve Prepay Wallet-Card-Preview-(for that place) Pay. 5 and
 //   4. just mention wallet and display how many credits the user has
@@ -332,10 +332,10 @@ export function MesitaActions({
           here call it Wallet"; the coins glyph went with it): the guest's
           credit here, Available, from the host's list-vouchers read
           (place.money.balance); $0MX when none, a quiet "…" while the first
-          read is out. Opens the Wallet at this place's credit. COLOUR HAS ONE
-          MEANING (Pato, MESITA-3576: "what should be the color for those
-          boxes"): black is status (Reserve, Wallet), green is earning
-          (Prepay's bonus, Pay's cashback); Prepay comes first, then Wallet, then
+          read is out. Opens the Wallet at this place's credit. COLOUR GROUPS
+          (MESITA-3578; black · green · black · green from MESITA-3576 "look
+          like shit"): Reserve is the one black tile, booking, not money;
+          Prepay · Wallet · Pay are green, one money flow. Prepay comes first, then Wallet, then
           Pay: the order the money moves (Pato, MESITA-3577: "prepay must be
           before credits"). */}
       <MesitaTile
@@ -343,7 +343,7 @@ export function MesitaActions({
         label="Wallet"
         amount={walletBadge === "…" ? "loading" : `${walletBadge} of credits here`}
         badge={walletBadge}
-        tone="ink"
+        tone="green"
         onClick={actions?.onOpenWallet}
       />
       {/* PAY GOES TO /pay (MESITA-3501, Pato: "pay must redirect to the actual
