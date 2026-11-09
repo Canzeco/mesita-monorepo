@@ -341,6 +341,7 @@ function noMx(v: string): string {
 }
 
 function readyIn(key: MoneyVoucherKey): string {
+  if (key === "voucher_story") return "after your story";
   return key === "voucher_200" || key === "voucher_1000" || key === "voucher_5000" ? "in 1 hr" : "instantly";
 }
 
@@ -376,7 +377,11 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
     case "voucher_story":
       return [
         deal,
-        "To get it, post an Instagram story at the place. Your credits are ready instantly.",
+        // TWO STEPS AND A FLOOR (MESITA-3506, Pato: "first buy it, then ...
+        // activate it by posting an instagram story tagging the place";
+        // "only available for users that have more than 1000 followers").
+        "Only for guests with more than 1,000 Instagram followers.",
+        "It takes two steps. 1. Buy it here. 2. Activate it: post an Instagram story at the place, tag the place, and show the story to the staff.",
         "One per visit.",
         ...CREDIT_FACTS,
       ];
