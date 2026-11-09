@@ -2,7 +2,7 @@
 //
 // MESITA-3457: the Pay tab's list. The places a signed-in guest can pay at
 // now: where they hold credit (any switch, MESITA-3408) and where Mesita Pay
-// takes a card part (`card_ok`), credit places first, then nearest. Which
+// takes a card part (`card_ok`), nearest first (MESITA-3536). Which
 // card places are listed, the radius and the cap are _shared/pay-places.ts.
 // consumer-web-start-payment is unchanged: this only lists.
 //
@@ -10,7 +10,7 @@
 // logged, and neither is the body.
 //
 // Body: { lat?: number, lng?: number } (the client rounds to 3 decimals)
-// Response: { ok: true, places: [{ place_id, name, marks: { tier, mesita_pay },
+// Response: { ok: true, places: [{ place_id, name, photo, address, marks: { tier, mesita_pay },
 //             distance_m | null, currency, card_ok, available_cents,
 //             pending_cents, cashback_bps, test_mode, card_min_cents,
 //             paid_recent: { payment_id, total_cents, paid_at } | null }] }
@@ -68,7 +68,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
 
   const since = new Date(Date.now() - PAID_RECENT_HOURS * 3600_000).toISOString();
   const [placesRes, settingsRes, paidRes] = await Promise.all([
-    admin.from("profiles").select("id, name, state, currency, lat, lng, boost_tier").in("id", ids),
+    admin.from("profiles").select("id, name, profile_photo, address, state, currency, lat, lng, boost_tier").in("id", ids),
     admin.from("place_payment_settings").select(`place_id, ${PAYMENT_KEYS.join(", ")}`).in("place_id", ids),
     admin.from("wallet_payments")
       .select("id, place_id, amount_cents, tip_cents, paid_at")
@@ -95,7 +95,7 @@ serveJson("consumer-web-list-pay-places", async (req) => {
 
   let cardPlaceCount = 0;
   const rows: PayPlaceInput[] = [];
-  type ProfileRow = { id: string; name: string | null; state: string | null; currency: string | null; lat: number | null; lng: number | null; boost_tier: number | null };
+  type ProfileRow = { id: string; name: string | null; profile_photo: string | null; address: string | null; state: string | null; currency: string | null; lat: number | null; lng: number | null; boost_tier: number | null };
   for (const p of (placesRes.data ?? []) as ProfileRow[]) {
     const s = settings.get(p.id) ?? settingsFromRow(null);
     const charges = charging.has(p.id);
@@ -107,6 +107,8 @@ serveJson("consumer-web-list-pay-places", async (req) => {
     rows.push({
       place_id: p.id,
       name: p.name,
+      photo: p.profile_photo ?? null,
+      address: p.address ?? null,
       lat: p.lat,
       lng: p.lng,
       tier: p.boost_tier,

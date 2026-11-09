@@ -1,15 +1,16 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, QrCode } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ChevronRight, CreditCard, MapPin, QrCode, Search, Wallet as WalletIcon, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { cashbackFor, paySplit, PlaceMarks, TestBand, type PaySplit } from "@mesita/place-profile";
+import { cashbackFor, paySplit, SizedImg, TestBand } from "@mesita/place-profile";
 import { amountText, clockTime, readAmount } from "@mesita/place-profile/lib/money";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiGetPayment,
@@ -33,17 +34,16 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 // THE PAY TAB (MESITA-3304 credit, MESITA-3305 the card part, MESITA-3457
-// the list and one amount). Three screens on one page: the list of places
-// the guest can pay at now (consumer-web-list-pay-places: their credit
-// first, then Mesita Pay places nearest first), the form for one place, and
-// the proof. Every amount shown is a server field or the shared paySplit
-// twin the server's own rule is tested against; the server is the last word.
-//
-// The form takes ONE amount, what the guest pays on Mesita: available credit
-// covers it first, the rest goes by card where Mesita Pay is on, shown live
-// as the split (the split is the review). A tip is its own amount, by card
-// only, with no fee and no cashback. Where card + tip is under the card
-// minimum, less credit is used so the card part reaches it.
+// the list, MESITA-3536 the list's look and the steps). The list of places
+// the guest can pay at now (consumer-web-list-pay-places, nearest first):
+// "Select a place to pay", a search box, and rows of profile photo, name,
+// address and distance. A place opens a sheet over the list, one question a
+// step: the bill, the tip (only where the place takes a card), pay the bill
+// with (Card, or Credit there: credit first, the card the rest), pay the
+// tip with (Card; tips go by card), then the summary and "Go to checkout"
+// (or "Pay … with credit"). Then the proof. Every amount shown is a server
+// field or the shared paySplit twin the server's own rule is tested
+// against; the server is the last word.
 //
 // The location is asked once, after a priming card ("See Mesita Pay places
 // near you"), rounded to 3 decimals and sent only to the list read. The
@@ -145,6 +145,7 @@ export function PayPage() {
   const [proofDone, setProofDone] = useState(false);
   const [refill, setRefill] = useState<Refill | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [sheetClosed, setSheetClosed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const askedPlace = useRef<string | null | undefined>(undefined);
@@ -168,6 +169,7 @@ export function PayPage() {
               ticket: r.ticket ?? "",
             });
             setOpenId(r.place_id);
+            setSheetClosed(false);
           }
           return null;
         }
@@ -255,7 +257,10 @@ export function PayPage() {
           askedPlace.current = new URLSearchParams(window.location.search).get(PLACE_PARAM);
           if (askedPlace.current) {
             const hit = list.find((p) => p.place_id === askedPlace.current);
-            if (hit && (hit.card_ok || hit.available_cents > 0)) setOpenId(hit.place_id);
+            if (hit && (hit.card_ok || hit.available_cents > 0)) {
+              setOpenId(hit.place_id);
+              setSheetClosed(false);
+            }
             else setNotice(NOT_TAKING);
             setParam(PLACE_PARAM, null);
           }
@@ -311,6 +316,13 @@ export function PayPage() {
   }
 
   const open = openId && places ? places.find((p) => p.place_id === openId) ?? null : null;
+  // Closing keeps the place in the sheet while it slides away; picking a
+  // place (or the table QR, or a cancelled Checkout) opens it again.
+  const sheetPlace = open;
+  const closeSheet = () => {
+    setSheetClosed(true);
+    setRefill(null);
+  };
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
@@ -321,19 +333,6 @@ export function PayPage() {
           <ProofView proof={proof} onChange={setProof} onDone={done} />
         ) : askedPayment && !proofDone ? (
           <ProofSkeleton />
-        ) : open ? (
-          <PayForm
-            key={open.place_id}
-            place={open}
-            refill={refill && refill.placeId === open.place_id ? refill : null}
-            onBack={() => {
-              setOpenId(null);
-              setRefill(null);
-            }}
-            onPaid={showProof}
-            onTaken={openPayment}
-            onRefresh={refresh}
-          />
         ) : places ? (
           <PlaceList
             places={places}
@@ -342,8 +341,8 @@ export function PayPage() {
             onPick={(id) => {
               setNotice(null);
               setOpenId(id);
+              setSheetClosed(false);
             }}
-            onOpenPayment={openPayment}
             onUseLocation={askLocation}
             onNotNow={notNow}
           />
@@ -358,18 +357,51 @@ export function PayPage() {
           <ListSkeleton />
         )}
       </div>
+
+      <LocalSheet open={open !== null && !sheetClosed && !proof} onClose={closeSheet} ariaLabel={`Pay at ${sheetPlace?.name ?? "a Mesita place"}`}>
+        {sheetPlace ? (
+          <PayForm
+            key={sheetPlace.place_id}
+            place={sheetPlace}
+            refill={refill && refill.placeId === sheetPlace.place_id ? refill : null}
+            onBack={closeSheet}
+            onPaid={showProof}
+            onTaken={openPayment}
+            onRefresh={refresh}
+          />
+        ) : null}
+      </LocalSheet>
     </div>
   );
 }
 
 // ── The list ─────────────────────────────────────────────────────────────────
 
+/** Lower case, no accents: "Cafe" finds "Café". */
+function fold(v: string): string {
+  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** The place's round profile picture, or its first letter. */
+function PlacePhoto({ place, className }: { place: PayPlace; className: string }) {
+  return (
+    <span className={cn("bg-muted shrink-0 overflow-hidden rounded-full ring-1 ring-black/5", className)} aria-hidden>
+      {place.photo ? (
+        <SizedImg src={place.photo} size="thumb" alt="" loading="lazy" className="h-full w-full object-cover" />
+      ) : (
+        <span className="text-muted-foreground flex h-full w-full items-center justify-center text-base font-semibold">
+          {(place.name ?? "M").trim().charAt(0).toUpperCase()}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function PlaceList({
   places,
   loc,
   notice,
   onPick,
-  onOpenPayment,
   onUseLocation,
   onNotNow,
 }: {
@@ -377,11 +409,13 @@ function PlaceList({
   loc: Loc;
   notice: string | null;
   onPick: (placeId: string) => void;
-  onOpenPayment: (paymentId: string) => void;
   onUseLocation: () => void;
   onNotNow: () => void;
 }) {
+  const [query, setQuery] = useState("");
   const testMode = places.some((p) => p.test_mode);
+  const q = fold(query.trim());
+  const shown = q ? places.filter((p) => fold(`${p.name ?? ""} ${p.address ?? ""}`).includes(q)) : places;
   return (
     <div className="flex flex-col">
       {testMode ? <TestBand className="mb-3" /> : null}
@@ -423,57 +457,46 @@ function PlaceList({
         />
       ) : (
         <>
-          <div className="border-border bg-card overflow-hidden rounded-2xl border">
-            {places.map((p, i) => {
-              // The server lists a payment only within PAID_RECENT_HOURS of paying.
-              const recent = p.paid_recent;
-              return (
+          <h2 className="px-1 text-base font-semibold">Select a place to pay</h2>
+          <label className="border-border bg-card mt-2 flex h-12 items-center gap-2.5 rounded-2xl border px-3.5">
+            <Search className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search a place or area"
+              aria-label="Search a place or area"
+              autoComplete="off"
+              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
+            />
+          </label>
+          {shown.length === 0 ? (
+            <p className="text-muted-foreground mt-4 px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+          ) : (
+            <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border" data-pay-places>
+              {shown.map((p, i) => (
                 <Fragment key={p.place_id}>
-                  {i > 0 && <RowDivider />}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => onPick(p.place_id)}
-                      className="hover:bg-muted/60 flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="flex min-w-0 items-center gap-1">
-                          <span className="truncate text-sm font-semibold">{p.name ?? "A Mesita place"}</span>
-                          <PlaceMarks tier={p.marks.tier} mesitaPay={p.marks.mesita_pay} compact ad={false} />
-                        </span>
-                        <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs">
-                          {p.distance_m !== null ? <span>{distanceText(p.distance_m)}</span> : null}
-                          {p.available_cents <= 0 && p.pending_cents > 0 ? (
-                            <span>{money(p.pending_cents, p.currency)} pending · available within the hour</span>
-                          ) : null}
-                          {!p.card_ok ? <span>Credit only</span> : null}
-                          {p.test_mode ? (
-                            <span className="border-border rounded-md border px-1.5 type-label font-semibold uppercase">Test</span>
-                          ) : null}
-                        </span>
-                      </span>
-                      {p.available_cents > 0 ? (
-                        <span className="font-display shrink-0 text-base font-semibold tabular-nums">
-                          {money(p.available_cents, p.currency)}
-                        </span>
-                      ) : null}
+                  {i > 0 && <div className="bg-border ml-[4.5rem] h-px" />}
+                  <button
+                    type="button"
+                    onClick={() => onPick(p.place_id)}
+                    className="hover:bg-muted/60 flex min-h-[4.75rem] w-full items-center gap-3.5 px-4 py-3 text-left transition"
+                  >
+                    <PlacePhoto place={p} className="h-12 w-12" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
+                      {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{p.address}</span> : null}
+                    </span>
+                    {p.distance_m !== null ? (
+                      <span className="text-muted-foreground shrink-0 self-start pt-0.5 text-sm tabular-nums">{distanceText(p.distance_m)}</span>
+                    ) : (
                       <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-                    </button>
-                    {recent ? (
-                      <button
-                        type="button"
-                        onClick={() => onOpenPayment(recent.payment_id)}
-                        className="text-muted-foreground hover:text-foreground flex min-h-11 w-full items-center gap-1.5 px-4 pb-3 text-left text-xs font-semibold"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                        Paid {money(recent.total_cents, p.currency)} · {clockTime(recent.paid_at)}
-                      </button>
-                    ) : null}
-                  </div>
+                    )}
+                  </button>
                 </Fragment>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
           <a
             href={CONSUMER_ROUTES.search}
             className="border-border bg-card hover:bg-muted mt-4 flex min-h-12 items-center justify-center rounded-2xl border px-4 text-base font-semibold transition"
@@ -488,14 +511,56 @@ function PlaceList({
 
 // ── The form ─────────────────────────────────────────────────────────────────
 
-function splitLine(s: PaySplit, currency: string, minCents: number): string | null {
-  if (s.kind === "credit") return `${money(s.credit_cents, currency)} from credit`;
-  if (s.kind !== "card") return null;
-  const parts: string[] = [];
-  if (s.credit_cents > 0) parts.push(`${money(s.credit_cents, currency)} from credit`);
-  if (s.card_cents > 0) parts.push(`${money(s.card_cents, currency)} by card`);
-  if (s.tip_cents > 0) parts.push(`${money(s.tip_cents, currency)} tip by card`);
-  return `${parts.join(" · ")}${s.raised ? ` (card minimum ${money(minCents, currency)})` : ""}`;
+/** The tip buttons, in percent of the bill (MESITA-3536). */
+const TIP_PERCENTS = [10, 15, 20] as const;
+type TipChoice = (typeof TIP_PERCENTS)[number] | "other" | "none";
+type Step = "bill" | "tip" | "billWith" | "tipWith";
+type BillWith = "credit" | "card";
+
+const STEP_TITLE: Record<Step, string> = {
+  bill: "How much is the bill?",
+  tip: "Add a tip?",
+  billWith: "Pay the bill with",
+  tipWith: "Pay the tip with",
+};
+
+/** One choice in "Pay … with": a radio row, greyed with its reason when off. */
+function MethodRow({
+  name,
+  icon: Icon,
+  title,
+  note,
+  checked,
+  disabled,
+  onPick,
+}: {
+  name: string;
+  icon: typeof CreditCard;
+  title: string;
+  note: string;
+  checked: boolean;
+  disabled: boolean;
+  onPick: () => void;
+}) {
+  return (
+    <label className={cn("flex min-h-[4.75rem] items-center gap-3.5 px-4 py-3", checked && "bg-muted/60", disabled ? "opacity-50" : "cursor-pointer")}>
+      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", checked ? "bg-foreground text-background" : "bg-muted")}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-semibold">{title}</span>
+        <span className="text-muted-foreground mt-0.5 block text-sm">{note}</span>
+      </span>
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        disabled={disabled}
+        onChange={onPick}
+        className="accent-foreground h-5 w-5 shrink-0"
+      />
+    </label>
+  );
 }
 
 function PayForm({
@@ -515,8 +580,16 @@ function PayForm({
   onRefresh: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
+  // The steps (MESITA-3536): the bill, the tip (only where the place takes a
+  // card: a tip goes by card), how to pay the bill, how to pay the tip, and
+  // there the summary and the button.
+  const steps: Step[] = place.card_ok ? ["bill", "tip", "billWith", "tipWith"] : ["bill", "billWith"];
+  const [step, setStep] = useState(() => (refill ? steps.length - 1 : 0));
   const [amount, setAmount] = useState(() => (refill ? amountText(refill.amountCents) : ""));
+  const [tipChoice, setTipChoice] = useState<TipChoice | null>(() => (refill ? (refill.tipCents > 0 ? "other" : "none") : null));
   const [tip, setTip] = useState(() => (refill && refill.tipCents > 0 ? amountText(refill.tipCents) : ""));
+  // Credit first while the guest holds some here; else the card.
+  const [billWith, setBillWith] = useState<BillWith>(() => (!place.card_ok || place.available_cents > 0 ? "credit" : "card"));
   const [ticket, setTicket] = useState(() => refill?.ticket ?? "");
   const [cancelNote, setCancelNote] = useState(refill !== null);
   const [creditChanged, setCreditChanged] = useState(false);
@@ -530,32 +603,51 @@ function PayForm({
   const [charge, setCharge] = useState<WaiterCharge | null>(null);
   const [looking, setLooking] = useState(false);
 
+  const at = steps[Math.min(step, steps.length - 1)];
+  const last = step >= steps.length - 1;
   const cents = charge ? charge.amount_cents : readAmount(amount);
-  const tipTyped = place.card_ok ? readAmount(tip) : null;
-  const tipBad = place.card_ok && tip.trim() !== "" && tipTyped === null;
-  const split = cents === null
+  // A percent button is a share of the bill the guest picked, worked out
+  // here; the server checks the card + tip it is sent.
+  const tipTyped = !place.card_ok
+    ? 0
+    : typeof tipChoice === "number"
+    ? cents === null ? 0 : Math.round((cents * tipChoice) / 100)
+    : tipChoice === "other"
+    ? readAmount(tip)
+    : 0;
+  const tipBad = tipChoice === "other" && tip.trim() !== "" && tipTyped === null;
+  const tipCents = tipTyped ?? 0;
+  const split = cents === null || cents <= 0
     ? null
     : paySplit({
       amountCents: cents,
-      tipCents: tipTyped ?? 0,
-      availableCents: place.available_cents,
+      tipCents,
+      // "Card" is a card part of the whole bill: no credit used.
+      availableCents: billWith === "credit" ? place.available_cents : 0,
       cardOk: place.card_ok,
       minCents: place.card_min_cents,
     });
   const card = split?.kind === "card" ? split : null;
   const total = card ? card.credit_cents + card.card_cents + card.tip_cents : (cents ?? 0);
   const earn = card ? cashbackFor(card.card_cents, place.cashback_bps) : 0;
+  const m = (c: number) => money(c, place.currency);
 
-  const reason = amount.trim() !== "" && cents === null
-    ? "Type an amount like 250 or 250.50"
+  const amountBad = amount.trim() !== "" && cents === null;
+  const reason = at === "bill"
+    ? amountBad ? "Type an amount like 250 or 250.50" : null
+    : at === "tip"
+    ? tipBad ? "Type a tip like 30 or 30.50" : null
     : split?.kind === "over"
-    ? `More than your ${money(place.available_cents, place.currency)} of credit here`
+    ? `More than your ${m(place.available_cents)} of credit here`
     : split?.kind === "below_minimum"
-    ? `Card payments start at ${money(split.minimum_cents, place.currency)}`
-    : tipBad
-    ? "Type a tip like 30 or 30.50"
+    ? `Card payments start at ${m(split.minimum_cents)}`
     : null;
   const canPay = split !== null && (split.kind === "credit" || split.kind === "card") && !tipBad && !busy && !looking;
+  const canNext = at === "bill"
+    ? cents !== null && cents > 0 && !looking
+    : at === "tip"
+    ? tipChoice !== null && !tipBad
+    : canPay;
 
   /** A refusal of the waiter's code: true when handled here. */
   function chargeRefused(e: EFError): boolean {
@@ -638,8 +730,10 @@ function PayForm({
         return;
       }
       if (e.code === "insufficient" || e.code === "below_minimum") {
-        // The credit moved under the form: re-read, show the new split.
+        // The credit moved under the form: re-read, and back to "Pay the
+        // bill with" with the new split.
         setCreditChanged(true);
+        setStep(steps.indexOf("billWith"));
         onRefresh();
         return;
       }
@@ -661,165 +755,296 @@ function PayForm({
     }
   }
 
-  const line = split ? splitLine(split, place.currency, place.card_min_cents) : null;
   const payLabel = !split || cents === null
     ? "Pay"
     : card
-    ? `Pay ${money(total, place.currency)}`
-    : `Pay ${money(cents, place.currency)} with credit`;
+    ? `Go to checkout · ${m(total)}`
+    : `Pay ${m(cents)} with credit`;
+  const title = at === "billWith" && cents !== null
+    ? `Pay the ${m(cents)} bill with`
+    : at === "tipWith" && tipCents > 0
+    ? `Pay the ${m(tipCents)} tip with`
+    : at === "tipWith"
+    ? "Check and pay"
+    : STEP_TITLE[at];
 
   return (
-    <div className="flex flex-col">
-      {place.test_mode ? <TestBand className="mb-3" /> : null}
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-muted-foreground hover:text-foreground -ml-1 flex min-h-11 items-center gap-1 self-start text-sm font-semibold"
-      >
-        <ChevronLeft className="h-4 w-4" aria-hidden />
-        All places
-      </button>
-      <p className="mt-1 flex min-w-0 items-center gap-1">
-        <span className="truncate text-lg font-semibold">{place.name ?? "A Mesita place"}</span>
-        <PlaceMarks tier={place.marks.tier} mesitaPay={place.marks.mesita_pay} compact ad={false} />
-      </p>
-      <p className="text-muted-foreground mt-0.5 text-sm">
-        {money(place.available_cents, place.currency)} available credit
-        {place.pending_cents > 0 ? ` · ${money(place.pending_cents, place.currency)} pending` : ""}
-        {place.card_ok ? "" : " · Credit only"}
-      </p>
-      {cancelNote ? (
-        <p className="text-muted-foreground mt-3 text-sm" role="status">
-          Payment cancelled
-        </p>
-      ) : null}
-
-      <label className="mt-5 block text-sm font-semibold" htmlFor="pay-amount">
-        Amount
-      </label>
-      <input
-        id="pay-amount"
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0"
-        value={amount}
-        readOnly={charge !== null}
-        onChange={(e) => {
-          setAmount(e.target.value);
-          setCreditChanged(false);
-        }}
-        className={cn(FIELD_CLASS, "mt-1.5 tabular-nums", charge && "bg-muted")}
-      />
-      {charge ? (
-        <p className="text-muted-foreground mt-1.5 text-xs" data-waiter-charge>
-          The waiter&apos;s charge{charge.ticket ? ` · Ticket ${charge.ticket}` : ""} ·{" "}
-          <button
-            type="button"
-            className="underline"
-            onClick={() => {
-              setCharge(null);
-              setCode("");
-              setAmount("");
-              attempt.current = null;
-            }}
-          >
-            Not this code
-          </button>
-        </p>
-      ) : amount.trim() !== "" && cents === null ? (
-        <p className="text-destructive mt-1.5 text-xs">Type an amount like 250 or 250.50</p>
-      ) : split?.kind === "over" ? (
-        <p className="text-destructive mt-1.5 text-xs">More than your {money(place.available_cents, place.currency)} of credit here</p>
-      ) : null}
-
-      {charge ? null : codeOpen ? (
-        <>
-          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-charge-code">
-            Waiter&apos;s code
-          </label>
-          <input
-            id="pay-charge-code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={4}
-            placeholder="0000"
-            value={code}
-            disabled={looking}
-            onChange={(e) => {
-              const v = e.target.value.replace(/\D/g, "").slice(0, 4);
-              setCode(v);
-              if (v.length === 4) void look(v);
-            }}
-            className={cn(FIELD_CLASS, "mt-1.5 tracking-[0.3em] tabular-nums")}
-          />
-        </>
-      ) : (
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-sheet>
+      <div className="flex items-center justify-between px-2 pt-1">
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center self-start text-sm font-semibold underline"
-          onClick={() => setCodeOpen(true)}
-          data-charge-code-link
+          aria-label={step > 0 ? "Back" : "Back to places"}
+          onClick={() => (step > 0 ? setStep(step - 1) : onBack())}
+          className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full"
         >
-          Waiter gave you a code?
+          <ArrowLeft className="h-5 w-5" aria-hidden />
         </button>
-      )}
+        <span className="text-muted-foreground text-sm font-medium">
+          Step {step + 1} of {steps.length}
+        </span>
+        <button type="button" aria-label="Close" onClick={onBack} className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full">
+          <X className="h-5 w-5" aria-hidden />
+        </button>
+      </div>
+      <div className="mt-2 grid gap-1.5 px-4" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-hidden>
+        {steps.map((s, i) => (
+          <span key={s} className={cn("h-1 rounded-full", i <= step ? "bg-foreground" : "bg-border")} />
+        ))}
+      </div>
 
-      {place.card_ok ? (
-        <>
-          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-tip">
-            Tip <span className="text-muted-foreground font-normal">(optional, by card)</span>
-          </label>
-          <input
-            id="pay-tip"
-            inputMode="decimal"
-            autoComplete="off"
-            value={tip}
-            onChange={(e) => setTip(e.target.value)}
-            className={cn(FIELD_CLASS, "mt-1.5 tabular-nums")}
-          />
-          {tipBad ? <p className="text-destructive mt-1.5 text-xs">Type a tip like 30 or 30.50</p> : null}
-        </>
-      ) : null}
-
-      {charge ? null : (
-        <>
-          <label className="mt-4 block text-sm font-semibold" htmlFor="pay-ticket">
-            Ticket or table no. <span className="text-muted-foreground font-normal">(optional)</span>
-          </label>
-          <input
-            id="pay-ticket"
-            autoComplete="off"
-            maxLength={32}
-            value={ticket}
-            onChange={(e) => setTicket(e.target.value)}
-            className={cn(FIELD_CLASS, "mt-1.5")}
-          />
-        </>
-      )}
-
-      {creditChanged ? (
-        <p className="mt-5 text-sm font-semibold" role="status">
-          Your credit changed
-        </p>
-      ) : null}
-      {line ? (
-        <div className={cn("border-border bg-card rounded-2xl border px-4 py-3", creditChanged ? "mt-2" : "mt-5")} data-pay-split>
-          <p className="text-sm font-semibold">{line}</p>
-          {earn > 0 ? (
-            <p className="text-muted-foreground mt-0.5 text-sm">You earn {money(earn, place.currency)} back · available in an hour</p>
-          ) : null}
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
+        {place.test_mode ? <TestBand className="mb-3" /> : null}
+        <div className="flex items-center gap-3">
+          <PlacePhoto place={place} className="h-11 w-11" />
+          <span className="min-w-0">
+            <span className="block truncate text-base font-semibold">{place.name ?? "A Mesita place"}</span>
+            {place.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{place.address}</span> : null}
+          </span>
         </div>
-      ) : null}
+        {cancelNote ? (
+          <p className="text-muted-foreground mt-3 text-sm" role="status">
+            Payment cancelled
+          </p>
+        ) : null}
 
-      <Button size="lg" className="mt-5 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
-        {busy ? <Spinner size="sm" label="Paying" /> : payLabel}
-      </Button>
-      {reason && !busy ? <p className="text-muted-foreground mt-2 text-center text-xs">{reason}</p> : null}
-      {resume ? (
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={() => window.location.assign(resume)}>
-          Resume card payment
-        </button>
-      ) : null}
+        <h2 className={cn("mt-6 text-xl font-semibold", (at === "bill" || at === "tip") && "text-center")}>{title}</h2>
+
+        {at === "bill" ? (
+          <>
+            <p className="text-muted-foreground mt-1 text-center text-sm">The total on your check, before tip</p>
+            <label className="border-foreground mx-auto mt-6 flex w-60 items-baseline justify-center gap-1.5 border-b-2 pb-2" htmlFor="pay-amount">
+              <span className="text-muted-foreground text-4xl font-semibold">$</span>
+              <input
+                id="pay-amount"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0"
+                value={amount}
+                readOnly={charge !== null}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setCreditChanged(false);
+                }}
+                className="placeholder:text-muted-foreground/50 w-36 min-w-0 bg-transparent text-4xl font-semibold tabular-nums outline-none"
+                aria-label="Bill amount"
+              />
+              <span className="text-muted-foreground text-base font-semibold">{place.currency.toUpperCase()}</span>
+            </label>
+            {charge ? (
+              <p className="text-muted-foreground mt-3 text-center text-sm" data-waiter-charge>
+                The waiter&apos;s charge{charge.ticket ? ` · Ticket ${charge.ticket}` : ""} ·{" "}
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => {
+                    setCharge(null);
+                    setCode("");
+                    setAmount("");
+                    attempt.current = null;
+                  }}
+                >
+                  Not this code
+                </button>
+              </p>
+            ) : null}
+
+            {charge ? null : (
+              <>
+                <label className="mt-8 block text-sm font-semibold" htmlFor="pay-ticket">
+                  Check or table no. <span className="text-muted-foreground font-normal">(optional)</span>
+                </label>
+                <input
+                  id="pay-ticket"
+                  autoComplete="off"
+                  maxLength={32}
+                  value={ticket}
+                  onChange={(e) => setTicket(e.target.value)}
+                  className={cn(FIELD_CLASS, "mt-1.5")}
+                />
+                {codeOpen ? (
+                  <>
+                    <label className="mt-4 block text-sm font-semibold" htmlFor="pay-charge-code">
+                      Waiter&apos;s code
+                    </label>
+                    <input
+                      id="pay-charge-code"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={4}
+                      placeholder="0000"
+                      value={code}
+                      disabled={looking}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "").slice(0, 4);
+                        setCode(v);
+                        if (v.length === 4) void look(v);
+                      }}
+                      className={cn(FIELD_CLASS, "mt-1.5 tracking-[0.3em] tabular-nums")}
+                    />
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground mt-3 flex min-h-11 items-center text-sm font-semibold underline"
+                    onClick={() => setCodeOpen(true)}
+                    data-charge-code-link
+                  >
+                    Waiter gave you a code?
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        ) : null}
+
+        {at === "tip" ? (
+          <>
+            <p className="text-muted-foreground mt-1 text-center text-sm">It all goes to the staff, by card</p>
+            <div className="mt-6 grid grid-cols-2 gap-2.5">
+              {TIP_PERCENTS.map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  aria-pressed={tipChoice === pct}
+                  onClick={() => setTipChoice(pct)}
+                  className={cn(
+                    "flex h-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border transition",
+                    tipChoice === pct ? "border-foreground bg-muted/60 border-2" : "border-border hover:bg-muted/60",
+                  )}
+                >
+                  <span className="text-base font-semibold">{pct}%</span>
+                  <span className="text-muted-foreground text-sm tabular-nums">{cents !== null ? m(Math.round((cents * pct) / 100)) : ""}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={tipChoice === "other"}
+                onClick={() => setTipChoice("other")}
+                className={cn(
+                  "flex h-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border transition",
+                  tipChoice === "other" ? "border-foreground bg-muted/60 border-2" : "border-border hover:bg-muted/60",
+                )}
+              >
+                <span className="text-base font-semibold">Other</span>
+                <span className="text-muted-foreground text-sm">Type it</span>
+              </button>
+            </div>
+            {tipChoice === "other" ? (
+              <input
+                id="pay-tip"
+                inputMode="decimal"
+                autoComplete="off"
+                autoFocus
+                placeholder="Tip"
+                aria-label="Tip"
+                value={tip}
+                onChange={(e) => setTip(e.target.value)}
+                className={cn(FIELD_CLASS, "mt-3 tabular-nums")}
+              />
+            ) : null}
+            <button
+              type="button"
+              aria-pressed={tipChoice === "none"}
+              onClick={() => setTipChoice("none")}
+              className={cn(
+                "mt-3 flex min-h-11 w-full items-center justify-center rounded-2xl text-base font-semibold",
+                tipChoice === "none" ? "border-foreground border-2" : "text-muted-foreground",
+              )}
+            >
+              No tip
+            </button>
+          </>
+        ) : null}
+
+        {at === "billWith" ? (
+          <>
+            {creditChanged ? (
+              <p className="mt-2 text-sm font-semibold" role="status">
+                Your credit changed
+              </p>
+            ) : null}
+            <div className="border-border mt-4 overflow-hidden rounded-2xl border" role="radiogroup" aria-label="Pay the bill with">
+              <MethodRow
+                name="pay-bill-with"
+                icon={CreditCard}
+                title="Card"
+                note={
+                  !place.card_ok
+                    ? "This place takes credit only"
+                    : place.cashback_bps > 0
+                    ? `Card, Apple Pay or Google Pay · ${place.cashback_bps / 100}% back as credit here`
+                    : "Card, Apple Pay or Google Pay"
+                }
+                checked={billWith === "card"}
+                disabled={!place.card_ok}
+                onPick={() => setBillWith("card")}
+              />
+              <div className="bg-border h-px" />
+              <MethodRow
+                name="pay-bill-with"
+                icon={WalletIcon}
+                title={`Credit at ${place.name ?? "this place"}`}
+                note={`You have ${m(place.available_cents)} here${place.pending_cents > 0 ? ` · ${m(place.pending_cents)} pending` : ""}`}
+                checked={billWith === "credit"}
+                disabled={place.available_cents <= 0}
+                onPick={() => setBillWith("credit")}
+              />
+            </div>
+            {place.card_ok && billWith === "credit" ? (
+              <p className="text-muted-foreground mt-3 px-1 text-sm">Your credit pays first and the card pays the rest.</p>
+            ) : null}
+          </>
+        ) : null}
+
+        {at === "tipWith" && tipCents > 0 ? (
+          <div className="border-border mt-4 overflow-hidden rounded-2xl border" role="radiogroup" aria-label="Pay the tip with">
+            <MethodRow name="pay-tip-with" icon={CreditCard} title="Card" note="The same card as the bill" checked disabled={false} onPick={() => {}} />
+            <div className="bg-border h-px" />
+            <MethodRow name="pay-tip-with" icon={WalletIcon} title="Credit" note="Tips go by card" checked={false} disabled onPick={() => {}} />
+          </div>
+        ) : null}
+
+        {last && split && (split.kind === "credit" || split.kind === "card") ? (
+          <div className="bg-muted/60 mt-4 flex flex-col gap-2 rounded-2xl px-4 py-3.5 text-sm tabular-nums" data-pay-split>
+            {split.credit_cents > 0 ? (
+              <p className="flex justify-between"><span>Bill · credit</span><span>{m(split.credit_cents)}</span></p>
+            ) : null}
+            {split.card_cents > 0 ? (
+              <p className="flex justify-between"><span>Bill · card</span><span>{m(split.card_cents)}</span></p>
+            ) : null}
+            {split.tip_cents > 0 ? (
+              <p className="flex justify-between"><span>Tip · card</span><span>{m(split.tip_cents)}</span></p>
+            ) : null}
+            {card?.raised ? (
+              <p className="text-muted-foreground">Card minimum {m(place.card_min_cents)}: a little less credit is used</p>
+            ) : null}
+            <div className="bg-border h-px" />
+            <p className="flex justify-between text-base font-semibold"><span>Total</span><span>{m(total)}</span></p>
+            {earn > 0 ? (
+              <p className="text-muted-foreground flex justify-between"><span>You get back as credit here</span><span>{m(earn)}</span></p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="border-border border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {last ? (
+          <Button size="lg" className="w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
+            {busy ? <Spinner size="sm" label="Paying" /> : payLabel}
+          </Button>
+        ) : (
+          <Button size="lg" className="w-full text-base font-semibold" disabled={!canNext} onClick={() => setStep(step + 1)}>
+            Next
+          </Button>
+        )}
+        {reason && !busy ? <p className="text-muted-foreground mt-2 text-center text-xs">{reason}</p> : null}
+        {last && card ? <p className="text-muted-foreground mt-2 text-center text-xs">You pay on Stripe&apos;s secure page</p> : null}
+        {resume ? (
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={() => window.location.assign(resume)}>
+            Resume card payment
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

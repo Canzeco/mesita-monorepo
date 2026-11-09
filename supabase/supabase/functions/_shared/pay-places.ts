@@ -52,6 +52,10 @@ export function distanceM(a: Coords, b: Coords): number {
 export type PayPlaceInput = {
   place_id: string;
   name: string | null;
+  /** The profile picture (profiles.profile_photo), the Wallet cards' round photo. */
+  photo: string | null;
+  /** The street address as the place reads it (profiles.address). */
+  address: string | null;
   lat: number | null;
   lng: number | null;
   tier: number | null;
@@ -91,6 +95,8 @@ export function payPlaces(
     out.push({
       place_id: r.place_id,
       name: r.name,
+      photo: r.photo,
+      address: r.address,
       marks: { tier: r.tier, mesita_pay: r.mesita_pay },
       distance_m: d,
       currency: r.currency,
@@ -104,14 +110,17 @@ export function payPlaces(
       credit,
     });
   }
-  out.sort((a, b) => {
-    if (a.credit !== b.credit) return a.credit ? -1 : 1;
+  const nearest = (a: PayPlace, b: PayPlace) => {
     if (a.distance_m !== b.distance_m) {
       if (a.distance_m === null) return 1;
       if (b.distance_m === null) return -1;
       return a.distance_m - b.distance_m;
     }
     return (a.name ?? "").localeCompare(b.name ?? "");
-  });
-  return out.slice(0, PAY_PLACES_LIMIT).map(({ credit: _credit, ...p }) => p);
+  };
+  // The cap keeps every credit place (credit first, then nearest), and the
+  // kept list reads nearest first (MESITA-3536: the list shows no credit,
+  // so credit-first read as random).
+  out.sort((a, b) => (a.credit !== b.credit ? (a.credit ? -1 : 1) : nearest(a, b)));
+  return out.slice(0, PAY_PLACES_LIMIT).map(({ credit: _credit, ...p }) => p).sort(nearest);
 }
