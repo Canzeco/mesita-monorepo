@@ -104,6 +104,13 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
   const vouchers = usePlaceVouchers(place.id);
+  // The Wallet tile's credit (MESITA-3574): read the place's offer and the
+  // guest's balance when the screen opens, not only when Rewards opens.
+  // load sets state in its promise callbacks only (Next 16 lint).
+  const loadVouchers = vouchers.load;
+  useEffect(() => {
+    loadVouchers();
+  }, [loadVouchers]);
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -154,6 +161,9 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       setAskDismissed(true);
       navigateTo(router, "/pay");
     },
+    // The pinned row's Wallet tile (MESITA-3574): the Wallet, opened at this
+    // place's credit; its pill reads the list-vouchers balance below.
+    onOpenWallet: () => navigateTo(router, `/wallet?place=${encodeURIComponent(place.id)}`),
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
     // linked Instagram; each lock's action opens the page that lifts it.
     ...(profile

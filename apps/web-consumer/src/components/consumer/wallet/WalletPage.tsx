@@ -49,6 +49,9 @@ import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, W
 // place that has since turned Mesita Pay off.
 
 const PREPAY_PARAM = "prepay";
+/** A place screen's Wallet tile (MESITA-3574): /wallet?place=<id> opens that
+ *  place's credit sheet once the balances arrive, when it has a card here. */
+export const WALLET_PLACE_PARAM = "place";
 
 // SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
 // Add on the Money rail opens Stripe's own page in setup mode; it returns
@@ -192,9 +195,11 @@ export function WalletPage() {
     const params = new URLSearchParams(window.location.search);
     const session = params.get(PREPAY_PARAM) ?? undefined;
     const gift = params.get(GIFT_PARAM);
-    if (session || gift) {
+    const focusPlace = params.get(WALLET_PLACE_PARAM);
+    if (session || gift || focusPlace) {
       params.delete(PREPAY_PARAM);
       params.delete(GIFT_PARAM);
+      params.delete(WALLET_PLACE_PARAM);
       const q = params.toString();
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
     }
@@ -207,6 +212,20 @@ export function WalletPage() {
         setWallet(w);
         setFailed(false);
         if (session) sayOutcome(w);
+        // The place screen's Wallet tile: open that place's credit.
+        const focus = focusPlace ? w.balances.filter(shows).find((b) => b.place_id === focusPlace) : undefined;
+        if (focus) {
+          const row = balanceRow(focus);
+          setMethod({
+            kind: "place",
+            card: row.card,
+            balance: row.balance,
+            placeId: row.placeId,
+            placeSlug: row.placeSlug,
+            canSend: w.can_send === true,
+            sentLinks: [],
+          });
+        }
         // Still confirming: ask once more after a moment.
         if (w.settling || (session && w.outcome === "pending")) {
           timer = setTimeout(() => {
