@@ -1,8 +1,10 @@
 // Supabase Edge Function — admin-web-suggest-places (product caller)
 //
 // Manage Single Place name bar. Same Name Deep Search engine as consumer
-// Search (`_shared/name-pipeline.ts`, `runAdminNamePipeline`, mode deep): Autocomplete + Text Search
-// + Lineup Name, then Mesita → Google after dropping overlaps.
+// Search (`_shared/name-pipeline.ts`, `runAdminNamePipeline`, mode deep):
+// Google Autocomplete + Text Search, one list after dropping overlaps. A mode
+// other than fast or deep is a 400 `unknown_mode`; Google failing on every
+// query a mode ran is a 502 (MESITA-2894).
 // Super-admin gated.
 //
 // Auth: caller's JWT email must be in public.super_admins.
@@ -20,7 +22,7 @@ import { runAdminNamePipeline } from "../_shared/name-pipeline.ts";
 type Body = {
   input?: string;
   sessionToken?: string;
-  mode?: string;
+  mode?: unknown;
 };
 
 serveJson("admin-web-suggest-places", async (req) => {
@@ -46,6 +48,6 @@ serveJson("admin-web-suggest-places", async (req) => {
   return await runAdminNamePipeline(env, {
     input: body.input,
     sessionToken: body.sessionToken,
-    mode: typeof body.mode === "string" ? body.mode : "deep",
+    mode: body.mode == null ? "deep" : String(body.mode),
   });
 });

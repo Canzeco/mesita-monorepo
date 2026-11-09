@@ -189,6 +189,16 @@ export function applyResolvedMesitaName(
 export const LISTED_COLUMNS =
   "id, slug, google_place_id, name, google_name, address, lat, lng, content_state, enriched_at, boost_tier, business_state, google_review_count, google_stars_overall, family_keys";
 
+/** The envelope for a Google call that never answered or answered with an
+ *  unreadable body. Text Search returns it too (MESITA-2894): a failure is
+ *  never an empty lane, so deep mode can tell "Google is down" from "Google
+ *  found nothing". */
+export const GOOGLE_UNREACHABLE_ENVELOPE: Readonly<Record<string, unknown>> = Object.freeze({
+  ok: false,
+  code: "google_unreachable",
+  error: "Search is unavailable right now. Try again.",
+});
+
 // A network failure or an unreadable body is an error envelope like any
 // Google error, never a throw: in fast mode a throw escaped the handler as a
 // CORS-less 500, and in deep mode it rejected the whole Promise.all even
@@ -236,14 +246,7 @@ export async function fetchAutocomplete(
       "[name-pipeline] autocomplete unreachable:",
       errorMessage(err),
     );
-    return {
-      predictions: [],
-      errorEnvelope: {
-        ok: false,
-        code: "google_unreachable",
-        error: "Search is unavailable right now. Try again.",
-      },
-    };
+    return { predictions: [], errorEnvelope: GOOGLE_UNREACHABLE_ENVELOPE };
   }
   const predictions = (data.suggestions ?? [])
     .map((s) => s.placePrediction)
@@ -272,7 +275,7 @@ export async function fetchTextSearch(
   limit: number,
   locations = false,
   seen?: Map<string, GoogleHit>,
-): Promise<LaneItem[]> {
+): Promise<{ items: LaneItem[]; errorEnvelope?: Record<string, unknown> }> {
   const body: Record<string, unknown> = {
     textQuery: input,
     maxResultCount: Math.min(GOOGLE_TEXT_MAX, Math.max(1, limit)),
@@ -293,15 +296,17 @@ export async function fetchTextSearch(
       "[name-pipeline] text search threw:",
       err instanceof Error ? err.message : err,
     );
-    return [];
+    return { items: [], errorEnvelope: GOOGLE_UNREACHABLE_ENVELOPE };
   }
   if (!r.ok) {
     const t = await r.text();
-    console.error(
-      "[name-pipeline] text search:",
-      friendlyGoogleError(classifyGoogleError(r.status, t), r.status, t),
-    );
-    return [];
+    const code = classifyGoogleError(r.status, t);
+    const error = friendlyGoogleError(code, r.status, t);
+    console.error("[name-pipeline] text search:", error);
+    return {
+      items: [],
+      errorEnvelope: { ok: false, code, error, httpStatus: r.status },
+    };
   }
   let data: { places?: GooglePlaceListing[] };
   try {
@@ -311,7 +316,7 @@ export async function fetchTextSearch(
       "[name-pipeline] text search body:",
       errorMessage(err),
     );
-    return [];
+    return { items: [], errorEnvelope: GOOGLE_UNREACHABLE_ENVELOPE };
   }
   const out: LaneItem[] = [];
   for (const p of data.places ?? []) {
@@ -358,7 +363,7 @@ export async function fetchTextSearch(
     });
     if (out.length >= limit) break;
   }
-  return out;
+  return { items: out };
 }
 
 /**

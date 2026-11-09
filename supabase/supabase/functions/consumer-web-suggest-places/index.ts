@@ -1,7 +1,9 @@
 // Supabase Edge Function — consumer-web-suggest-places (product caller)
 //
-// Consumer Search name-bar. Fast = Autocomplete (default). Deep = Mesita
-// · Google after idle, one list after dropping overlaps.
+// Consumer Search name-bar. Fast = Autocomplete (default). Deep = Google
+// Autocomplete + Text Search after idle, one list after dropping overlaps.
+// A mode other than fast or deep is a 400 `unknown_mode`; Google failing on
+// every query a mode ran is a 502, never an empty list (MESITA-2894).
 // Autocomplete and Text Search never take a country — both stay Any.
 // Membership is a boolean `enriched` on each row; the client paints the
 // point and never shows source section labels. Admin Manage Single Place
@@ -30,7 +32,7 @@ type Body = {
   sessionToken?: string;
   lat?: number;
   lng?: number;
-  mode?: string;
+  mode?: unknown;
   /** A picked Location's Google place id — anchor resolve, not a search. */
   anchorPlaceId?: string;
   /** A Google-only place's id — the Generate dialog's preview (MESITA-2941). */
@@ -71,6 +73,6 @@ serveJson("consumer-web-suggest-places", async (req) => {
     sessionToken: body.sessionToken,
     lat,
     lng,
-    mode: typeof body.mode === "string" ? body.mode : "fast",
+    mode: body.mode == null ? "fast" : String(body.mode),
   });
 });
