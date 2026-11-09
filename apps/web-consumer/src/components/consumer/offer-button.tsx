@@ -120,7 +120,7 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <Link
-      href={`${href}?rewards=${slide.section}`}
+      href={slide.section === "payment" ? "/pay" : `${href}?rewards=${slide.section}`}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
       onFocus={hold}
