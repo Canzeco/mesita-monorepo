@@ -242,8 +242,151 @@ Deno.test("account.updated out of order: the newer event writes the snapshot, an
   assertEquals(fake.ops.filter((o) => o.table === "place_payment_accounts" && o.kind === "update").length, 1);
 });
 
-Deno.test("an event type outside the four is acknowledged and ignored", async () => {
+Deno.test("an event type outside the six is acknowledged and ignored", async () => {
   const fake = fakeAdmin({ table: accountTable(true) });
-  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.dispute.created", {}));
+  const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event("charge.dispute.funds_withdrawn", {}));
   assertEquals(r.body.ignored, "unhandled");
+});
+
+// ── charge.dispute.* (MESITA-3460) ─────────────────────────────────────────
+
+/** A fake Stripe on the place's account: the charge's current state, and
+ *  the disputes listed on it. Every call must name the connected account. */
+function disputeStripe(charge: Record<string, unknown>, disputes: Record<string, unknown>[] = [], calls: string[] = []): StripeCall {
+  return (_m, path, _p, opts) => {
+    calls.push(path);
+    assertEquals(opts?.stripeAccount, ACCT);
+    if (path.startsWith("charges/")) return Promise.resolve(charge);
+    if (path === "disputes") return Promise.resolve({ data: disputes });
+    return Promise.reject(new Error(`unexpected ${path}`));
+  };
+}
+
+/** The ledger: pi_d is the payment, pi_v the voucher purchase. */
+function ledgerTable(op: FakeOp): FakeResult {
+  if (op.table === "wallet_payments" && op.kind === "select") return { data: op.filters.stripe_payment_intent_id === "pi_d" ? { id: PAYMENT } : null };
+  if (op.table === "wallet_purchases" && op.kind === "select") return { data: op.filters.stripe_payment_intent_id === "pi_v" ? { id: PURCHASE } : null };
+  return accountTable(true)(op);
+}
+
+const refundOk = () => ({ data: { ok: true, outcome: "applied", status: "refunded" } });
+
+function dispute(status: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
+  return { id: "dp_1", object: "dispute", charge: "ch_d", payment_intent: "pi_d", amount: 10000, status, ...extra };
+}
+
+for (const [type, status] of [["charge.dispute.created", "needs_response"], ["charge.dispute.closed", "won"], ["charge.dispute.closed", "warning_closed"]]) {
+  Deno.test(`dispute: ${type} ${status} logs only; no Stripe read, no RPC`, async () => {
+    const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+    const r = await handleConnectEvent({ admin: fake.client, stripe: noStripe, livemode: false }, event(type, dispute(status)));
+    assertEquals(r, { status: 200, body: { ok: true, outcome: "dispute_logged", dispute_status: status } });
+    assertEquals(fake.rpcs, []);
+  });
+}
+
+Deno.test("dispute: lost on a payment reads the charge on the place's account and refunds the whole charge as dispute_lost", async () => {
+  const calls: string[] = [];
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 0, payment_intent: "pi_d" }, [], calls);
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost")));
+  assertEquals(r, { status: 200, body: { ok: true, payment_id: PAYMENT, outcome: "applied", status: "refunded", reason: "dispute_lost" } });
+  assertEquals(calls, ["charges/ch_d"]);
+  assertEquals(fake.rpcs, [{ name: "wallet_refund_payment", args: { p_payment_id: PAYMENT, p_amount_refunded: 10000, p_reason: "dispute_lost" } }]);
+});
+
+Deno.test("dispute: lost on a voucher purchase goes to wallet_refund_purchase", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_v", amount: 20000, amount_refunded: 0, payment_intent: "pi_v" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { charge: "ch_v", payment_intent: "pi_v", amount: 20000 })));
+  assertEquals(r.body.purchase_id, PURCHASE);
+  assertEquals(fake.rpcs, [{ name: "wallet_refund_purchase", args: { p_purchase_id: PURCHASE, p_amount_refunded: 20000, p_reason: "dispute_lost" } }]);
+});
+
+Deno.test("dispute: lost after a partial refund adds the disputed amount to Stripe's current amount_refunded, capped at the charge", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  // MX$30 refunded already; the dispute is for the MX$70 left.
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 3000, payment_intent: "pi_d" });
+  await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { amount: 7000 })));
+  assertEquals(fake.rpcs[0].args.p_amount_refunded, 10000);
+  // A dispute that names the full amount after a refund never passes the charge.
+  const fake2 = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  await handleConnectEvent({ admin: fake2.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { amount: 10000 })));
+  assertEquals(fake2.rpcs[0].args.p_amount_refunded, 10000);
+});
+
+Deno.test("dispute: a partial dispute amount refunds only that amount", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 0, payment_intent: "pi_d" });
+  await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { amount: 4000 })));
+  assertEquals(fake.rpcs[0].args.p_amount_refunded, 4000);
+});
+
+Deno.test("dispute: a refund arriving after the lost dispute still counts what the dispute took", async () => {
+  const calls: string[] = [];
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  // MX$40 lost to the dispute, then the place refunds MX$20 of the rest.
+  const stripe = disputeStripe({}, [{ id: "dp_1", status: "lost", amount: 4000 }], calls);
+  const r = await handleConnectEvent(
+    { admin: fake.client, stripe, livemode: false },
+    event("charge.refunded", { id: "ch_d", payment_intent: "pi_d", amount: 10000, amount_refunded: 2000, disputed: true }),
+  );
+  assertEquals(r.status, 200);
+  assertEquals(calls, ["disputes"]);
+  assertEquals(fake.rpcs, [{ name: "wallet_refund_payment", args: { p_payment_id: PAYMENT, p_amount_refunded: 6000 } }]);
+});
+
+Deno.test("dispute: the same lost event twice runs the refund once (the replay guard)", async () => {
+  const seen = new Set<string>();
+  const fake = fakeAdmin({
+    table: (op) => {
+      if (op.table === "stripe_connect_events" && op.kind === "insert") {
+        const id = (op.payload as { id: string }).id;
+        if (seen.has(id)) return { error: { code: "23505", message: "duplicate key" } };
+        seen.add(id);
+        return { data: null };
+      }
+      return ledgerTable(op);
+    },
+    rpc: refundOk,
+  });
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 0, payment_intent: "pi_d" });
+  const e = event("charge.dispute.closed", dispute("lost"));
+  await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, e);
+  const again = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, e);
+  assertEquals(again.body.ignored, "replay");
+  assertEquals(fake.rpcs.length, 1);
+});
+
+Deno.test("dispute: no payment_intent on the dispute falls back to the charge's own", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 0, payment_intent: "pi_d" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { payment_intent: null })));
+  assertEquals(r.body.payment_id, PAYMENT);
+  assertEquals(fake.rpcs[0].name, "wallet_refund_payment");
+});
+
+Deno.test("dispute: a Stripe read failure answers 500 and forgets the event, so Stripe retries; no RPC", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe: StripeCall = () => Promise.reject(new Error("stripe 503"));
+  const e = event("charge.dispute.closed", dispute("lost"));
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, e);
+  assertEquals(r.status, 500);
+  assertEquals(r.body.code, "settle_failed");
+  assertEquals(fake.rpcs, []);
+  assertEquals(fake.ops.find((o) => o.table === "stripe_connect_events" && o.kind === "delete")?.filters, { id: e.id });
+});
+
+Deno.test("dispute: an RPC refusal answers 500 too", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: () => ({ data: { ok: false, code: "not_paid" } }) });
+  const stripe = disputeStripe({ id: "ch_d", amount: 10000, amount_refunded: 0, payment_intent: "pi_d" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost")));
+  assertEquals(r.status, 500);
+});
+
+Deno.test("dispute: a lost charge no row names is acknowledged as dispute_unmatched", async () => {
+  const fake = fakeAdmin({ table: ledgerTable, rpc: refundOk });
+  const stripe = disputeStripe({ id: "ch_x", amount: 500, amount_refunded: 0, payment_intent: "pi_x" });
+  const r = await handleConnectEvent({ admin: fake.client, stripe, livemode: false }, event("charge.dispute.closed", dispute("lost", { charge: "ch_x", payment_intent: null })));
+  assertEquals(r, { status: 200, body: { ok: true, ignored: "dispute_unmatched" } });
+  assertEquals(fake.rpcs, []);
 });
