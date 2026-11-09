@@ -31,6 +31,8 @@ export type UpdateBody = {
   phone?: string | null;
   /** The gallery, hero first (MESITA-3504). */
   photos?: unknown;
+  /** The profile picture (MESITA-3528): a gallery photo or upload, or null. */
+  profile_photo?: unknown;
   mesita_photos?: unknown;
   // External + social channels
   website_url?: string | null;
