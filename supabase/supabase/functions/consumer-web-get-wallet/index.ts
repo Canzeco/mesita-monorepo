@@ -15,7 +15,7 @@
 // Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
-//                          spendable_cents, last_at, card_ok,
+//                          spendable_cents, last_at, card_ok, pinned,
 //                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
@@ -27,6 +27,8 @@
 //   place.boost_tier is Premier's stored tier and place.mesita_pay the
 //   green mark by moneyState's rule (MESITA-3514): the Wallet's marks and
 //   its filter come from here, never from a catalog read.
+//   pinned (MESITA-3582): the guest added this card by hand; a pinned card
+//   with no entries is a $0 card they can remove.
 //   card_ok (MESITA-3305) says the place can take a card part: its account
 //   charges in this universe and the owner's Cards switch is on.
 //             waiting_stories (MESITA-3507): [{ purchase_id, place, place_id,
@@ -47,6 +49,8 @@ import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/bo
 import { chargesEnabledByPlace, listRowMoney, PAYMENT_KEYS, type PaymentKey, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
+import { readPins, withPins } from "../_shared/house-cards.ts";
+import { MONEY_CURRENCY } from "../_shared/money.ts";
 import {
   balanceKey,
   balancesOf,
@@ -151,7 +155,11 @@ serveJson("consumer-web-get-wallet", async (req) => {
       if (e.kind === "cashback" && e.payment_id) e.confirmed_by = confirmedBy.get(e.payment_id) ?? null;
     }
   }
-  const balances = balancesOf(entries, Date.now(), spendable);
+  // PINNED HOUSE CARDS (MESITA-3582): a place the guest added by hand with
+  // no entries reads as a $0 card after the ones holding money, never twice.
+  const pinsRes = await readPins(admin, userId);
+  if (!pinsRes.ok) return json({ ok: false, error: pinsRes.error }, 500);
+  const balances = withPins(balancesOf(entries, Date.now(), spendable), pinsRes.pins, MONEY_CURRENCY);
 
   // STORIES WAITING FOR STAFF (MESITA-3507): paid, not yet activated, so no
   // credit in the balances above. The Wallet shows each with its QR.
