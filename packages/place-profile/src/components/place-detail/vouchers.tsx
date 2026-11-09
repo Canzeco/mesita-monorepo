@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgePercent, Banknote, Crown, Info, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, Info, PartyPopper, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
-import { inertButtonProps } from "../../actions";
 import { cn, firstInitial } from "../../lib/format";
 import {
-  PLACE_BONE_CLASS,
-  PLACE_BUTTON_CLASS,
   PLACE_META_CLASS,
 } from "../../lib/ui";
 import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
@@ -165,8 +162,6 @@ function tag(reason: VoucherReason | undefined): string {
   return "Coming soon";
 }
 
-/** The full-width action under a card: 44px, ink on paper. */
-const ACTION_BUTTON = cn(PLACE_BUTTON_CLASS, "bg-foreground text-paper w-full px-4 hover:opacity-90 disabled:opacity-60");
 
 /** A section title on the one-screen Offers page: 16px (MESITA-3452). */
 const OFFERS_TITLE_CLASS = "text-foreground font-sans text-base leading-tight font-semibold";
@@ -343,98 +338,73 @@ export function VouchersPane({
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
 
-  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = [...STANDARD, ...SPECIAL];
-  const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
-  const ROW = "flex items-center gap-3 px-4 py-3";
+  const ROW = "flex w-full items-center gap-3 px-4 py-3 text-left";
+  const CHIP = "flex h-14 w-20 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold tracking-tight tabular-nums";
 
   return (
-    // LIKE INKIND (MESITA-3483, Pato: "do this ... then the list of
-    // prepayment offers, 6 items, and the list of payment offers. First
-    // prepayment, then payments ... at the bottom the direct to pay bill"):
-    // two cards of rows, then one fixed button. Picking a voucher turns the
-    // button into its Buy; with none picked it is Pay bill.
+    // A LIST, NO BUTTONS (MESITA-3486, Pato: "make the things as a list, not
+    // as boxes ... remove the pay bill button from here. no buttons here"):
+    // two cards of rows, each led by its big number. A prepayment row you
+    // can buy is itself the tap that opens its checkout.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <SectionTitle
           id="rewards-prepayment"
           title="Prepayment Offers"
-          note="Buy credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
+          note="Tap an offer to buy credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
         />
-        <fieldset className="m-0 min-w-0 border-0 p-0">
-          <legend className="sr-only">Choose a voucher</legend>
-          {/* SQUARE TILES (MESITA-3484, Pato: "make the 6 offers instead some
-              square dimensions, not rectangles"): three across, two rows,
-              each the voucher's light face; picking one rings it in ink. */}
-          <ul className="grid grid-cols-3 gap-2" data-voucher-catalog>
-            {products.map((p) => {
-              const line = catalog[p.key];
-              const pay = priceValue(p, line, currency);
-              const get = creditValue(p, line, currency);
-              const deal = `Pay ${pay}, Get ${get}`;
-              const reason = unavailable[p.key];
-              const can = !loading && buyable(p.key);
-              const on = chosen?.key === p.key;
-              const face = FACES[p.key];
-              const Mark = face.Mark;
-              // The ink ring alone marks the pick (MESITA-3485 dropped the dot
-              // so "WELCOME BONUS" fits).
-              const tile = cn(
-                "flex aspect-square w-full flex-col justify-between rounded-2xl p-2.5 text-left",
-                face.card,
-                on && "ring-foreground ring-2 ring-offset-2",
-              );
-              const inner = (
-                <>
-                  <span className="flex w-full items-center justify-between gap-1">
-                    <span className={cn("flex min-w-0 items-center gap-1 truncate text-[10px] font-semibold uppercase", face.muted)}>
-                      {Mark ? <Mark className="h-3 w-3 shrink-0" strokeWidth={2.5} /> : null}
-                      {p.short}
-                    </span>
+        <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
+          {products.map((p) => {
+            const line = catalog[p.key];
+            const pay = priceValue(p, line, currency);
+            const get = creditValue(p, line, currency);
+            const deal = `Pay ${pay}, Get ${get}`;
+            const reason = unavailable[p.key];
+            const can = !loading && buyable(p.key);
+            const face = FACES[p.key];
+            const Mark = face.Mark;
+            const opening = actions?.buyingVoucher === p.key;
+            const inner = (
+              <>
+                <span className={cn(CHIP, face.card)} aria-hidden>
+                  +{p.bonus.replace(/ bonus$/, "")}
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+                  <span className="flex items-center gap-1 text-base font-semibold">
+                    {Mark ? <Mark className="h-4 w-4 shrink-0" strokeWidth={2.25} /> : null}
+                    {p.short}
                   </span>
-                  <span className="flex flex-col" aria-hidden>
-                    <span className="text-3xl leading-none font-extrabold tabular-nums">+{p.bonus.replace(/ bonus$/, "")}</span>
-                    <span className="text-[11px] font-semibold">bonus</span>
+                  <span className="text-muted-foreground truncate text-sm tabular-nums">
+                    {opening ? "Opening…" : loading || can ? `Pay ${pay} · Get ${get}` : tag(reason)}
                   </span>
-                  <span className="flex flex-col text-[11px] leading-tight font-semibold tabular-nums" aria-hidden>
-                    {loading || can ? (
-                      <>
-                        <span className="truncate">Pay {pay}</span>
-                        <span className="truncate">Get {get}</span>
-                      </>
-                    ) : (
-                      <span>{tag(reason)}</span>
-                    )}
-                  </span>
-                </>
-              );
-              return (
-                <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
-                  {can ? (
-                    <label className={cn(tile, "cursor-pointer")}>
-                      <input
-                        type="radio"
-                        name="voucher"
-                        value={p.key}
-                        checked={on}
-                        onChange={() => setPicked(p.key)}
-                        aria-label={`Choose the ${p.name} voucher, ${deal}`}
-                        className="sr-only"
-                      />
-                      {inner}
-                    </label>
-                  ) : (
-                    <div className={tile} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
-                      {inner}
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </fieldset>
+                </span>
+              </>
+            );
+            return (
+              <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
+                {can && live ? (
+                  <button
+                    type="button"
+                    onClick={() => actions?.onBuyVoucher?.(p.key)}
+                    disabled={buying}
+                    aria-label={`Buy the ${p.name} voucher, ${deal}`}
+                    className={cn(ROW, "hover:bg-muted/50 cursor-pointer disabled:opacity-60")}
+                    data-voucher-buy={p.key}
+                  >
+                    {inner}
+                  </button>
+                ) : (
+                  <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading || can ? "" : tag(reason)}`}>
+                    {inner}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <SectionTitle
@@ -442,74 +412,36 @@ export function VouchersPane({
           title="Payment Offers"
           note="Mesita Pay: pay the bill here through Mesita and 5% comes back as credits for your next visit, any visit. External: pay the place directly, by cash or their terminal; nothing comes back."
         />
-        {/* TWO BOXES, HORIZONTAL RECTANGLES (MESITA-3484, Pato: "Mesita Pay,
-            External ... the others horizontal rectangles"), half and half. */}
-        <ul className="grid grid-cols-2 gap-2" data-cashback>
+        <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
-            className={cn("flex flex-col gap-1 rounded-2xl p-3", CASHBACK_FACE.card, !loading && !cashback && dim && "opacity-50")}
+            className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
             aria-label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
-            <span className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase", CASHBACK_FACE.muted)} aria-hidden>
-              <BadgePercent className="h-3 w-3" strokeWidth={2.5} />
-              Mesita Pay
+            <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
+              +5%
             </span>
-            <span className="flex items-baseline gap-1" aria-hidden>
-              <span className="text-2xl leading-none font-extrabold">+5%</span>
-              <span className="text-[11px] font-semibold">back</span>
-            </span>
-            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
-              {canPay || loading ? "In credits, any visit" : cashbackTag}
+            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+              <span className="flex items-center gap-1 text-base font-semibold">
+                <BadgePercent className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                Mesita Pay
+              </span>
+              <span className="text-muted-foreground text-sm">{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
             </span>
           </li>
-          <li
-            className="bg-muted text-muted-foreground ring-border flex flex-col gap-1 rounded-2xl p-3 ring-1"
-            aria-label="External: pay the place directly, by cash or their terminal. Nothing back."
-          >
-            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase" aria-hidden>
-              <Banknote className="h-3 w-3" strokeWidth={2.5} />
-              External
+          <li className={ROW} aria-label="External: pay the place directly, by cash or their terminal. Nothing back.">
+            <span className={cn(CHIP, "bg-muted text-muted-foreground")} aria-hidden>
+              0%
             </span>
-            <span className="flex items-baseline gap-1" aria-hidden>
-              <span className="text-2xl leading-none font-extrabold">0%</span>
-              <span className="text-[11px] font-semibold">back</span>
-            </span>
-            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
-              Cash or their terminal
+            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
+              <span className="flex items-center gap-1 text-base font-semibold">
+                <Banknote className="h-4 w-4 shrink-0" strokeWidth={2.25} />
+                External
+              </span>
+              <span className="text-muted-foreground text-sm">Cash or their terminal, nothing back</span>
             </span>
           </li>
         </ul>
       </section>
-      {/* THE ONE BUTTON, FIXED AT THE FOOT (MESITA-3477): Buy for the picked
-          voucher, else Pay bill where Pay would show. */}
-      {loading || chosen || canPay ? (
-        <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
-          {loading ? (
-            <div className={cn(PLACE_BONE_CLASS, "h-12 w-full rounded-xl")} aria-hidden data-reward-loading />
-          ) : chosen ? (
-            <button
-              type="button"
-              {...inertButtonProps(live)}
-              onClick={live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
-              disabled={buying}
-              aria-label={`Buy the ${chosen.name} voucher`}
-              className={cn(ACTION_BUTTON, "h-12 min-h-12 rounded-xl text-base")}
-              data-voucher-buy={chosen.key}
-            >
-              {actions?.buyingVoucher === chosen.key ? "Opening…" : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={actions?.onPay}
-              aria-label="Pay the bill here with Mesita"
-              className={cn(ACTION_BUTTON, "h-12 min-h-12 gap-2 rounded-xl text-base")}
-            >
-              <QrCode className="h-5 w-5" aria-hidden />
-              Pay bill
-            </button>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }
