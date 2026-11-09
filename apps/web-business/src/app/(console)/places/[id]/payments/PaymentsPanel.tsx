@@ -262,8 +262,8 @@ export function PaymentsPanel({
             : null
         : "Guests still pay from credit here.";
     }
-    if (key === "cashback" && on && !codeSet) note = WAITER_CHARGE_NEEDS_CODE;
-    else if (key === "cashback" && on && !selling.cashback) note = "2% back on bills paid to the waiter works now. 5% on Mesita Pay starts when Stripe is ready.";
+    // The place-code line lives once, under Visit Checkout (no switch is gated on it).
+    if (key === "cashback" && on && !selling.cashback) note = "2% back on bills paid to the waiter works now. 5% on Mesita Pay starts when Stripe is ready.";
     const soon = !CARD_BILL_PAY_LIVE && (key === "pay_cards" || key === "cashback");
     return (
       <li key={key} className={MARK_ROW}>
