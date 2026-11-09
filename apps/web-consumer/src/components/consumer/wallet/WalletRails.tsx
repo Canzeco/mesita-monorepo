@@ -86,25 +86,28 @@ export function AddTile({
 const CARD_BACK = "5% back as credits";
 const CASH_BACK = "2% back as credits";
 
-/** The pill's face: "5% Back", the place screen's own words (Pay · 5% Back);
- *  the full sentence stays for screen readers. */
-const shortBack = (back: string) => `${back.split(" ")[0]} Back`;
+/** The pill holds the rate ("5%"); "Back as Credits" sits beside it (Pato,
+ *  MESITA-3566: "Back as Credits"). The full sentence stays for screen readers. */
+const backRate = (back: string) => back.split(" ")[0];
 
 /** A money tile and its cashback, one rail slot. BOX A is the card; BOX B,
  *  under it and as wide as it (MESITA-3555), WEARS THE PLACE SCREEN'S PAY
  *  TILE (Pato, MESITA-3560: "mention back. keep the same green or black of
  *  the green boxes of pay there"): Link green (ProfileActions' green tone)
- *  with the ink pill ("5% Back"), centred. */
+ *  with the ink pill ("5%") and "Back as Credits", centred. */
 function MoneySlot({ back, children }: { back: string; children: ReactNode }) {
   return (
     <div className={RAIL_TILE}>
       {children}
       <p
-        className="mt-1.5 flex h-9 w-full items-center justify-center rounded-xl bg-green-400 text-neutral-950"
+        className="mt-1.5 flex h-9 w-full items-center justify-center gap-1 rounded-xl bg-green-400 text-neutral-950"
         data-wallet-back
       >
         <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums" aria-hidden>
-          {shortBack(back)}
+          {backRate(back)}
+        </span>
+        <span className="text-xs leading-none font-semibold whitespace-nowrap" aria-hidden>
+          Back as Credits
         </span>
         <span className="sr-only">{back}</span>
       </p>
