@@ -35,7 +35,7 @@ select ok(
     and not has_table_privilege('anon', 'public.pay_tabs', 'SELECT')
     and not has_function_privilege('authenticated', 'public.pay_tab_open(uuid, uuid, text, text, boolean, interval, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_bill(text, text, boolean, integer, integer, integer, text, text, interval, timestamptz)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, integer, timestamptz)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.pay_tab_open_parts(uuid, uuid, integer, integer, integer, integer, integer, integer, uuid, text, integer, integer, timestamptz, text, integer, integer, text, timestamptz)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.pay_tab_cash(text, text, integer, timestamptz)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.pay_tab_change(uuid, uuid, text)', 'EXECUTE'),
   'client roles can neither read tabs nor call the tab functions');
@@ -87,7 +87,7 @@ select is(
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
     0, 0, 0, 32000, 0, gen_random_uuid(), null, 200, 2)->>'code',
-  'card_unavailable', 'a card part waits for T2');
+  'card_unavailable', 'a card part without the place''s account is refused');
 select is(
   pay_tab_open_parts((select (r->>'tab_id')::uuid from t1), '00000000-0000-4000-8000-0000000a3567', 2,
     25000, 7000, 0, 0, 0, gen_random_uuid(), null, 200, 2)->>'code',

@@ -7,7 +7,8 @@
 // screen reads the bill by polling and chooses how to pay the bill (credits
 // first, the rest in cash) and the tip (cash; never credits); the waiter
 // types the cash received (or nothing: exactly what is owed). The card part
-// is T2 (MESITA-3563): until it lands a card part answers card_unavailable.
+// (T2b, MESITA-3563, _shared/tab-card.ts) pays the bill and/or the tip with a
+// saved card inside the app; credits never pay a tip.
 //
 //   consumer-web-open-tab    pay_tab_open        the guest's QR
 //   consumer-web-get-tab     reads               the guest's poll
@@ -128,6 +129,8 @@ export type SplitInput = {
   cashTipCents: number;
   cardBillCents: number;
   cardTipCents: number;
+  /** The saved card (a platform PaymentMethod) for a card part. */
+  cardPmId: string | null;
   requestId: string;
 };
 
@@ -144,9 +147,26 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
   const parts = ["credit_cents", "cash_bill_cents", "cash_tip_cents", "card_bill_cents", "card_tip_cents"].map((k) => cents(b[k], { min: 0 }));
   if (parts.some((p) => p === null)) return refuse(400, "parts", "Each part is a whole number of centavos");
   const [credit, cashBill, cashTip, cardBill, cardTip] = parts as number[];
+  let cardPmId: string | null = null;
+  if (cardBill > 0 || cardTip > 0) {
+    if (typeof b.card_pm_id !== "string" || !/^pm_[A-Za-z0-9]{8,64}$/.test(b.card_pm_id)) {
+      return refuse(400, "card_required", "Choose a saved card");
+    }
+    cardPmId = b.card_pm_id;
+  }
   return {
     ok: true,
-    input: { tabId: b.tab_id, billVersion: v, creditCents: credit, cashBillCents: cashBill, cashTipCents: cashTip, cardBillCents: cardBill, cardTipCents: cardTip, requestId: b.request_id },
+    input: {
+      tabId: b.tab_id,
+      billVersion: v,
+      creditCents: credit,
+      cashBillCents: cashBill,
+      cashTipCents: cashTip,
+      cardBillCents: cardBill,
+      cardTipCents: cardTip,
+      cardPmId,
+      requestId: b.request_id,
+    },
   };
 }
 
@@ -161,7 +181,9 @@ const REFUSALS: Record<string, [number, string]> = {
   paid: [409, "This tab is paid"],
   stale: [409, "The bill changed. Check it and try again."],
   parts: [409, "The parts must add up to the bill"],
-  card_unavailable: [409, "Paying by card here is coming soon. Pay with credits and cash."],
+  card_unavailable: [409, "This place isn't taking cards right now. Pay with credits or cash."],
+  card_tip_alone: [409, "A tip by card needs part of the bill by card or credits"],
+  card_pending: [409, "The guest's card is still going through"],
   insufficient: [409, "Your credit changed. Try again."],
   outside_limit: [409, "You have paid the waiter here enough times today. Pay with credits instead."],
   closed: [409, "That payment was cancelled. Tap again to start over."],
@@ -237,9 +259,10 @@ export function effectiveStatus(t: TabRow, parts: TabPartRow[], nowMs: number): 
 }
 
 /** The amounts both screens show, from the tab's split. Cashback: 2% of the
- *  cash bill part when the place's Cashback switch is on; never on credits
- *  or the tip. */
-export function tabMoney(t: TabRow, parts: TabPartRow[], cashbackOn: boolean) {
+ *  cash bill part when the place's Cashback switch is on, 5% of the card
+ *  bill part (cardBackBps); never on credits or the tip. Once a part is paid
+ *  the stored cashback is the answer. */
+export function tabMoney(t: TabRow, parts: TabPartRow[], cashbackOn: boolean, cardBackBps = 0) {
   const live = parts.filter((p) => p.status !== "expired" && p.status !== "failed");
   const cashbackPaid = live.reduce((s, p) => s + (p.paid_at ? p.cashback_cents : 0), 0);
   return {
@@ -250,16 +273,29 @@ export function tabMoney(t: TabRow, parts: TabPartRow[], cashbackOn: boolean) {
     cash_received_cents: t.cash_received_cents,
     card_bill_cents: t.card_bill_cents,
     card_tip_cents: t.card_tip_cents,
-    cashback_cents: cashbackPaid || (cashbackOn ? Math.floor((t.cash_bill_cents * OUTSIDE_CASHBACK_BPS) / 10_000) : 0),
+    cashback_cents: cashbackPaid ||
+      (cashbackOn ? Math.floor((t.cash_bill_cents * OUTSIDE_CASHBACK_BPS) / 10_000) : 0) +
+        Math.floor((t.card_bill_cents * cardBackBps) / 10_000),
   };
 }
+
+export type TabCardInfo = {
+  card_available: boolean;
+  card_unavailable_code: string | null;
+  card_back_bps: number;
+  card_minimum_cents: number;
+};
+
+const NO_CARD: TabCardInfo = { card_available: false, card_unavailable_code: "not_configured", card_back_bps: 0, card_minimum_cents: 0 };
 
 export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   placeName: string | null;
   spendableCents: number;
   cashbackOn: boolean;
   nowMs: number;
+  card?: TabCardInfo;
 }) {
+  const card = extra.card ?? NO_CARD;
   return {
     tab_id: t.id,
     place: { id: t.place_id, name: extra.placeName },
@@ -271,8 +307,14 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     ticket: t.ticket,
     waiter_name: t.waiter_name,
     spendable_cents: extra.spendableCents,
-    rates: { cash_back_bps: extra.cashbackOn ? OUTSIDE_CASHBACK_BPS : 0, card_back_bps: null, card_available: false },
-    ...tabMoney(t, parts, extra.cashbackOn),
+    rates: {
+      cash_back_bps: extra.cashbackOn ? OUTSIDE_CASHBACK_BPS : 0,
+      card_back_bps: card.card_back_bps,
+      card_available: card.card_available,
+      card_unavailable_code: card.card_unavailable_code,
+      card_minimum_cents: card.card_minimum_cents,
+    },
+    ...tabMoney(t, parts, extra.cashbackOn, card.card_back_bps),
     parts: parts.map((p) => ({ id: p.id, part: p.part, status: p.status, paid_at: p.paid_at })),
     paid_at: t.paid_at,
     expires_at: t.expires_at,
@@ -331,9 +373,28 @@ export async function callTabRpc(admin: Rpc, fn: string, args: Record<string, un
   return r;
 }
 
+/** What a card part adds to the call: the place's account, Mesita's fee
+ *  (5% of the card bill part, invoiced), the 5% the card bill part earns,
+ *  the card row's proof token and when an unfinished one is cancelled. */
+export type CardSplitArgs = {
+  stripeAccountId: string;
+  feeCents: number;
+  cashbackBps: number;
+  expiresAt: string;
+};
+
 /** The split as pay_tab_open_parts takes it. */
-export function splitArgs(consumerId: string, s: SplitInput, cashbackOn: boolean) {
+export function splitArgs(consumerId: string, s: SplitInput, cashbackOn: boolean, card?: CardSplitArgs | null) {
   return {
+    ...(card
+      ? {
+        p_stripe_account_id: card.stripeAccountId,
+        p_card_fee_cents: card.feeCents,
+        p_card_cashback_bps: card.cashbackBps,
+        p_card_proof_token: mintProofToken(),
+        p_card_expires_at: card.expiresAt,
+      }
+      : {}),
     p_tab_id: s.tabId,
     p_consumer_id: consumerId,
     p_bill_version: s.billVersion,
