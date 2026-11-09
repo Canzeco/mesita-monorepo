@@ -337,24 +337,28 @@ export function VouchersPane({
   };
   const live = Boolean(actions?.onBuyVoucher);
   const buying = actions?.buyingVoucher != null;
+  // SELECT, THEN BUY (MESITA-3487, Pato: "you select then you click Buy.
+  // selector at the right").
+  const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
 
   // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
   // Welcome Bonus, Story Bonus, VIP Bonus").
   const products = [...STANDARD, ...SPECIAL];
+  const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   const ROW = "flex w-full items-center gap-3 px-4 py-3 text-left";
   const CHIP = "flex h-14 w-20 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold tracking-tight tabular-nums";
 
   return (
-    // A LIST, NO BUTTONS (MESITA-3486, Pato: "make the things as a list, not
-    // as boxes ... remove the pay bill button from here. no buttons here"):
-    // two cards of rows, each led by its big number. A prepayment row you
-    // can buy is itself the tap that opens its checkout.
+    // A LIST (MESITA-3486, Pato: "make the things as a list, not as boxes"):
+    // two cards of rows, each led by its big number. A prepayment row you can
+    // buy carries a selector at its right; the one Buy sits at the foot
+    // (MESITA-3487). No Pay bill here.
     <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-3 px-4 pt-4 pb-4" data-promos-page>
       <section ref={prepaymentRef} className="flex flex-col gap-2" aria-labelledby="rewards-prepayment" data-promos="prepayment">
         <SectionTitle
           id="rewards-prepayment"
           title="Prepayment Offers"
-          note="Tap an offer to buy credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
+          note="Pick an offer and Buy to get credits here before you go and get the bonus on top. Credits are ready in an hour (Story's at once) and you spend them when you pay the bill here. Small, Mid and Big: as many as you like. Welcome: one, on your first visit. Story: post a story, one a day. VIP: VIP guests, one a day."
         />
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
@@ -367,6 +371,7 @@ export function VouchersPane({
             const face = FACES[p.key];
             const Mark = face.Mark;
             const opening = actions?.buyingVoucher === p.key;
+            const on = chosen?.key === p.key;
             const inner = (
               <>
                 <span className={cn(CHIP, face.card)} aria-hidden>
@@ -385,19 +390,30 @@ export function VouchersPane({
             );
             return (
               <li key={p.key} data-voucher={p.key} className={cn(!loading && !can && dim && "opacity-50")}>
-                {can && live ? (
-                  <button
-                    type="button"
-                    onClick={() => actions?.onBuyVoucher?.(p.key)}
-                    disabled={buying}
-                    aria-label={`Buy the ${p.name} voucher, ${deal}`}
-                    className={cn(ROW, "hover:bg-muted/50 cursor-pointer disabled:opacity-60")}
-                    data-voucher-buy={p.key}
-                  >
+                {can ? (
+                  <label className={cn(ROW, "hover:bg-muted/50 cursor-pointer")}>
                     {inner}
-                  </button>
+                    <input
+                      type="radio"
+                      name="voucher"
+                      value={p.key}
+                      checked={on}
+                      onChange={() => setPicked(p.key)}
+                      aria-label={`Choose the ${p.name} voucher, ${deal}`}
+                      className="sr-only"
+                    />
+                    <span
+                      className={cn(
+                        "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2",
+                        on ? "border-foreground" : "border-border",
+                      )}
+                      aria-hidden
+                    >
+                      {on ? <span className="bg-foreground h-3 w-3 rounded-full" /> : null}
+                    </span>
+                  </label>
                 ) : (
-                  <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading || can ? "" : tag(reason)}`}>
+                  <div className={ROW} aria-label={`${p.name} voucher, ${deal}. ${loading ? "" : tag(reason)}`}>
                     {inner}
                   </div>
                 )}
@@ -442,6 +458,24 @@ export function VouchersPane({
           </li>
         </ul>
       </section>
+      {/* ONE BUY AT THE FOOT (MESITA-3487): pick a row, then Buy. No Pay bill
+          here (MESITA-3486). */}
+      <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
+        <button
+          type="button"
+          onClick={chosen && live ? () => actions?.onBuyVoucher?.(chosen.key) : undefined}
+          disabled={!chosen || !live || buying}
+          aria-label={chosen ? `Buy the ${chosen.name} voucher` : "Select an offer to buy"}
+          className="bg-foreground text-paper flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold hover:opacity-90 disabled:opacity-40"
+          data-voucher-buy={chosen?.key}
+        >
+          {chosen
+            ? actions?.buyingVoucher === chosen.key
+              ? "Opening…"
+              : `Buy for ${priceValue(chosen, catalog[chosen.key], currency)}`
+            : "Select an offer"}
+        </button>
+      </div>
     </div>
   );
 }
