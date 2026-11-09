@@ -60,8 +60,8 @@ describe("Vouchers tab", () => {
     expect(html).toContain("Your credit here");
     expect(html).toContain("MX$220");
     expect(html).toContain("MX$100");
-    // No credit: the House Card reads MX$0 (MESITA-3448).
-    expect(render({ ...OFFER, balance: null })).toContain("Buy an offer below to load it.");
+    // No credit: the House Card says credit is optional to pay (MESITA-3451).
+    expect(render({ ...OFFER, balance: null })).toContain("You can pay the bill without credit.");
   });
 
   it("formats cents and never adds", () => {
