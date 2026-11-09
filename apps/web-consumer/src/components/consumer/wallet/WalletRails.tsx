@@ -85,14 +85,26 @@ export function AddTile({
 const CARD_BACK = "5% back as credits";
 const CASH_BACK = "2% back as credits";
 
-/** A money tile and its cashback line under it, one rail slot. */
+/** The pill's short face; the full sentence stays for screen readers. */
+const shortBack = (back: string) => `+${back.split(" ")[0]} in credits`;
+
+/** A money tile and its cashback, one rail slot. THE CASHBACK IS A BLACK
+ *  PILL FLOATING OVER THE CARD'S BOTTOM EDGE (Pato, MESITA-3551: "a nice
+ *  black box floating below"): the ink chip, centred, half over the card,
+ *  half below it; the slot keeps room under it so the rail never clips it. */
 function MoneySlot({ back, children }: { back: string; children: ReactNode }) {
   return (
-    <div className={RAIL_TILE}>
-      {children}
-      <p className="mt-1.5 px-0.5 text-xs font-semibold text-emerald-700" data-wallet-back>
-        {back}
-      </p>
+    <div className={cn(RAIL_TILE, "pb-3.5")}>
+      <div className="relative">
+        {children}
+        <p
+          className="bg-foreground text-background pointer-events-none absolute bottom-0 left-1/2 z-[1] -translate-x-1/2 translate-y-1/2 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap shadow-md"
+          data-wallet-back
+        >
+          <span aria-hidden>{shortBack(back)}</span>
+          <span className="sr-only">{back}</span>
+        </p>
+      </div>
     </div>
   );
 }
