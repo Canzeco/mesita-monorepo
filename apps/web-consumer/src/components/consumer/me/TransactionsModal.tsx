@@ -5,8 +5,10 @@
 // or whatever"). The lines are the Wallet's own entries (consumer-web-get-
 // wallet), across every place: prepaid, bonus, cashback, paid, refund. Each
 // row names the place, the kind and the date, and the signed amount. A Paid
-// row opens its proof on Pay, as on the Wallet. This page never adds money
-// up; it only lists and formats what the server sent.
+// row opens its proof on Pay, as on the Wallet. A cashback from a bill the
+// waiter confirmed as paid in cash reads "Cash · confirmed by staff"
+// (MESITA-3554), so it is told apart from card cashback. This page never
+// adds money up; it only lists and formats what the server sent.
 
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
@@ -21,6 +23,12 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 type Line = WalletEntry & { place: string; currency: string };
+
+/** The row's kind label: a waiter-confirmed cash cashback names itself. */
+function lineLabel(l: Line): string {
+  if (l.kind === "cashback" && l.confirmed_by === "waiter") return "Cash · confirmed by staff";
+  return ENTRY_LABEL[l.kind] ?? l.kind;
+}
 
 /** Every entry of every balance, newest first. */
 function linesOf(w: Wallet): Line[] {
@@ -72,7 +80,7 @@ export function TransactionsModal() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{l.place}</span>
                     <span className="text-muted-foreground block text-xs">
-                      {ENTRY_LABEL[l.kind] ?? l.kind} · {entryDate(l.at)}
+                      {lineLabel(l)} · {entryDate(l.at)}
                       {l.pending ? " · pending" : ""}
                     </span>
                   </span>

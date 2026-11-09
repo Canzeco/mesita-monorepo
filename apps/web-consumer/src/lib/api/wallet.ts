@@ -19,6 +19,10 @@ export type WalletEntry = {
   available_at?: string | null;
   /** A spend's payment (MESITA-3304): the Wallet links it to its proof. */
   payment_id?: string | null;
+  /** Who confirmed a cashback's payment (MESITA-3554): 'waiter' is a bill
+   *  paid in cash at the table. Null on other entries; absent from a server
+   *  before MESITA-3554. */
+  confirmed_by?: string | null;
 };
 
 export type WalletBalance = {
