@@ -1,7 +1,7 @@
 name: shared
 
 # The money modules the place screen and the Edge Functions both run
-# (moneyState, the money codes) have one source in _shared and a generated
+# (moneyState, the money codes, the Pay split) have one source in _shared and a generated
 # copy in packages/place-profile (MESITA-3302). This fails a PR whose copy
 # drifted from its source.
 on:
@@ -12,6 +12,8 @@ on:
       - "supabase/supabase/functions/_shared/money-codes.ts"
       - "packages/place-profile/src/money-state.ts"
       - "packages/place-profile/src/money-codes.ts"
+      - "supabase/supabase/functions/_shared/pay-split.ts"
+      - "packages/place-profile/src/pay-split.ts"
       - "scripts/sync-shared.ts"
       - "deno.json"
       - ".github/workflows/shared.yml"
@@ -40,6 +42,8 @@ jobs:
               - 'supabase/supabase/functions/_shared/money-codes.ts'
               - 'packages/place-profile/src/money-state.ts'
               - 'packages/place-profile/src/money-codes.ts'
+              - 'supabase/supabase/functions/_shared/pay-split.ts'
+              - 'packages/place-profile/src/pay-split.ts'
               - 'scripts/sync-shared.ts'
               - 'deno.json'
               - '.github/workflows/shared.yml'

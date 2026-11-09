@@ -293,6 +293,10 @@ verify_jwt = true
 [functions.consumer-web-get-wallet]
 verify_jwt = true
 
+# MESITA-3457: the Pay tab's list of places a guest can pay at.
+[functions.consumer-web-list-pay-places]
+verify_jwt = true
+
 # MESITA-3303: the place screen's Vouchers tab (list, public with an optional
 # session) and the buy (signed in).
 [functions.consumer-web-list-vouchers]

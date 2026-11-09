@@ -24,9 +24,10 @@ describe("Wallet in test mode", () => {
 // MESITA-3304: the Pay tab spends credit; its form and its proof both wear
 // the band from the server's flag, and it never adds money up either.
 describe("Pay in test mode", () => {
-  it("renders the TestBand on the form and on the proof", () => {
-    expect(PAY).toContain('import { TestBand } from "@mesita/place-profile"');
-    expect(PAY).toMatch(/wallet\.test_mode \? <TestBand/);
+  it("renders the TestBand on the list, the form and the proof", () => {
+    expect(PAY).toMatch(/import \{[^}]*\bTestBand\b[^}]*\} from "@mesita\/place-profile"/);
+    expect(PAY).toMatch(/testMode \? <TestBand/);
+    expect(PAY).toMatch(/place\.test_mode \? <TestBand/);
     expect(PAY).toMatch(/proof\.test_mode \? <TestBand/);
   });
 

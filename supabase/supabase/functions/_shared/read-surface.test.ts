@@ -247,6 +247,9 @@ const PROFILES_READ_ALLOWLIST = [
   "business-web-list-verifications/index.ts",
   // What you pay (MESITA-3130): the name and photo of each place the caller pays Premier for.
   "business-web-list-billing/index.ts",
+  // The Pay tab's list (MESITA-3457): name, state, currency, coordinates and
+  // tier of the places a guest holds credit at or can pay by card.
+  "consumer-web-list-pay-places/index.ts",
 ];
 
 Deno.test("PROFILES READ: no new raw reader of profiles outside the allowlist", async () => {

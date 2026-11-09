@@ -1,67 +1,71 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CheckCircle2, QrCode, Wallet as WalletIcon } from "lucide-react";
+import { Fragment, useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { CheckCircle2, ChevronLeft, ChevronRight, MapPin, QrCode } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { TestBand } from "@mesita/place-profile";
+import { cashbackFor, paySplit, PlaceMarks, TestBand, type PaySplit } from "@mesita/place-profile";
 import { amountText, clockTime, readAmount } from "@mesita/place-profile/lib/money";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
+import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import {
   apiGetPayment,
-  apiGetWallet,
+  apiListPayPlaces,
   apiReleasePayment,
   apiStartPayment,
   attemptFor,
   money,
   PAY_REFUSAL,
   type PayAttempt,
+  type PayPlace,
   type PayProof,
-  splitPayment,
-  type Wallet,
-  type WalletBalance,
 } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-// THE PAY TAB PAYS A PLACE FROM THE GUEST'S CREDIT THERE (MESITA-3304, W2a).
-// Four states on one page: Empty (no credit anywhere), Pending only (a
-// voucher's hour is still running), the form (places with credit, an
-// amount, an optional ticket number) and Paid (the proof QR staff scan on
-// visit.mesita.ai). Every amount shown is a server field; the server is the
-// last word on whether the money is there.
+// THE PAY TAB (MESITA-3304 credit, MESITA-3305 the card part, MESITA-3457
+// the list and one amount). Three screens on one page: the list of places
+// the guest can pay at now (consumer-web-list-pay-places: their credit
+// first, then Mesita Pay places nearest first), the form for one place, and
+// the proof. Every amount shown is a server field or the shared paySplit
+// twin the server's own rule is tested against; the server is the last word.
+//
+// The form takes ONE amount, what the guest pays on Mesita: available credit
+// covers it first, the rest goes by card where Mesita Pay is on, shown live
+// as the split (the split is the review). A tip is its own amount, by card
+// only, with no fee and no cashback. Where card + tip is under the card
+// minimum, less credit is used so the card part reaches it.
+//
+// The location is asked once, after a priming card ("See Mesita Pay places
+// near you"), rounded to 3 decimals and sent only to the list read. The
+// table QR opens `/pay?place=<id>`: the shell's sign-in wall carries it
+// through sign-in, and the form opens for that place, or the list says the
+// place isn't taking Mesita Pay.
 //
 // The paid state is the address: `/pay?payment=<id>` (set with
-// replaceState, kept in local state as the Wallet does with ?prepay=), so a
-// reload or a Wallet "Paid" row shows the same proof. While the proof is
-// unseen the page asks the server every 5 s (15 s after two minutes, never
-// while the tab is hidden, and only on focus after 30 minutes), so it
-// changes to "Seen" when the waiter taps.
-//
-// The card part (MESITA-3305, W2b): where the place takes cards (the
-// server's `card_ok`), an amount past the credit splits, "MX$X from credit ·
-// MX$Y by card", with an optional tip by card, and the button opens Stripe
-// Checkout on the place's account. Checkout returns to `/pay?payment=<id>`,
-// where the read settles the payment; while it is still open the page says
-// so, offers to resume the Checkout, and asks again every 5 s.
+// replaceState), so a reload or a Wallet "Paid" row shows the same proof.
+// While the proof is unseen the page asks the server every 5 s (15 s after
+// two minutes, never while the tab is hidden, and only on focus after 30
+// minutes), so it changes to "Seen" when the waiter taps.
 //
 // Back from a cancelled Checkout (MESITA-3458): Stripe returns to
 // `/pay?payment=<id>&checkout=cancel`. The page releases it first
 // (consumer-web-release-payment expires the session and frees the held
-// credit), re-reads the Wallet, and shows the form again with the same
-// place, amount, tip and ticket and a quiet "Payment cancelled". A paid
-// return reads "Confirming…" for 30 s, then "Still confirming" with
-// Refresh; "Payment didn't go through" only when the server says expired
-// or failed.
+// credit) and shows the form again with the same place, amount, tip and
+// ticket and a quiet "Payment cancelled". A paid return reads "Confirming…"
+// for 30 s, then "Still confirming" with Refresh; "Payment didn't go
+// through" only when the server says expired or failed.
 
 const PAYMENT_PARAM = "payment";
 const CHECKOUT_PARAM = "checkout";
 const CHECKOUT_CANCEL = "cancel";
+const PLACE_PARAM = "place";
 /** How long a paid return reads "Confirming…" before "Still confirming". */
 const CONFIRM_PATIENCE_MS = 30_000;
 const POLL_FAST_MS = 5_000;
@@ -69,26 +73,31 @@ const POLL_SLOW_MS = 15_000;
 const POLL_SLOW_AFTER_MS = 2 * 60_000;
 const POLL_STOP_AFTER_MS = 30 * 60_000;
 const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
+/** The location the list read carries, in decimals (~110 m). The server's
+ *  twin is LOCATION_DECIMALS in _shared/pay-places.ts. */
+const LOCATION_DECIMALS = 3;
+/** "Not now" on the location card holds for this browser session. */
+const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
+const NOT_TAKING = "This place isn't taking Mesita Pay right now";
 
 const FIELD_CLASS =
   "border-border bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-3 text-base outline-none focus:border-foreground";
 /** The quiet second button under the pink one: Resume a Checkout, Done
- *  while one is open. The same shape as "Pay all". */
+ *  while one is open. */
 const QUIET_BUTTON_CLASS =
   "border-border bg-card hover:bg-muted min-h-12 w-full rounded-2xl border px-4 text-base font-semibold transition";
 
 const noSubscribe = () => () => {};
 
-function setPaymentParam(id: string | null) {
+function setParam(name: string, value: string | null) {
   const params = new URLSearchParams(window.location.search);
-  if (id) params.set(PAYMENT_PARAM, id);
-  else params.delete(PAYMENT_PARAM);
-  params.delete(CHECKOUT_PARAM);
+  if (value) params.set(name, value);
+  else params.delete(name);
+  if (name === PAYMENT_PARAM) params.delete(CHECKOUT_PARAM);
   const q = params.toString();
   window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
 }
-
-const keyOf = (b: WalletBalance) => `${b.place_id}:${b.currency}`;
+const setPaymentParam = (id: string | null) => setParam(PAYMENT_PARAM, id);
 
 /** What the form shows again after a cancelled Checkout. */
 type Refill = { placeId: string; amountCents: number; tipCents: number; ticket: string };
@@ -96,83 +105,186 @@ type Refill = { placeId: string; amountCents: number; tipCents: number; ticket: 
 /** A payment that is neither settled nor closed: the page keeps confirming. */
 const isOpen = (p: PayProof) => p.status === "open" || p.status === "opening";
 
+const round = (v: number) => Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
+
+/** "350 m" / "2.4 km". */
+function distanceText(m: number): string {
+  return m < 1000 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toFixed(1)} km`;
+}
+
+type Loc =
+  | { state: "unknown" }
+  | { state: "prime" }
+  | { state: "asking" }
+  | { state: "blocked" }
+  | { state: "off" }
+  | { state: "on"; at: { lat: number; lng: number } };
+
+function readNotNow(): boolean {
+  try {
+    return window.sessionStorage.getItem(LOCATION_NOT_NOW_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function PayPage() {
   const getSupabase = useLazyBrowserSupabase();
   // Read once on the client so a load with ?payment= draws the proof's
-  // skeleton, never the form; the server render reads "".
+  // skeleton, never the list; the server render reads "".
   const search = useSyncExternalStore(noSubscribe, () => window.location.search, () => "");
   const askedPayment = new URLSearchParams(search).get(PAYMENT_PARAM);
 
-  const [wallet, setWallet] = useState<Wallet | null>(null);
-  const [walletFailed, setWalletFailed] = useState(false);
-  const [walletNonce, setWalletNonce] = useState(0);
+  const [places, setPlaces] = useState<PayPlace[] | null>(null);
+  const [listFailed, setListFailed] = useState(false);
+  const [listNonce, setListNonce] = useState(0);
   const [proof, setProof] = useState<PayProof | null>(null);
   const [proofDone, setProofDone] = useState(false);
   const [refill, setRefill] = useState<Refill | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loc, setLoc] = useState<Loc>({ state: "unknown" });
+  const askedPlace = useRef<string | null | undefined>(undefined);
 
-  // Boot: a ?payment= load reads that payment; otherwise (and after Done)
-  // the Wallet answers what can pay.
+  // Boot: a ?payment= load reads that payment (or releases a cancelled
+  // Checkout); otherwise the list loads.
   useEffect(() => {
     let cancelled = false;
     const params = new URLSearchParams(window.location.search);
     const id = params.get(PAYMENT_PARAM);
-    if (id && !proofDone) {
-      const cancelledCheckout = params.get(CHECKOUT_PARAM) === CHECKOUT_CANCEL;
-      // Back from a cancelled Checkout: release it, then the form again.
-      const read = cancelledCheckout
-        ? apiReleasePayment(getSupabase(), id).then((r) => {
-          if (r.payment.status === "expired" || r.payment.status === "failed") {
-            if (!cancelled && r.place_id) {
-              setRefill({
-                placeId: r.place_id,
-                amountCents: r.payment.amount_cents,
-                tipCents: r.payment.tip_cents ?? 0,
-                ticket: r.ticket ?? "",
-              });
-            }
-            return null;
+    if (!id || proofDone) return;
+    const cancelledCheckout = params.get(CHECKOUT_PARAM) === CHECKOUT_CANCEL;
+    const read = cancelledCheckout
+      ? apiReleasePayment(getSupabase(), id).then((r) => {
+        if (r.payment.status === "expired" || r.payment.status === "failed") {
+          if (!cancelled && r.place_id) {
+            setRefill({
+              placeId: r.place_id,
+              amountCents: r.payment.amount_cents,
+              tipCents: r.payment.tip_cents ?? 0,
+              ticket: r.ticket ?? "",
+            });
+            setOpenId(r.place_id);
           }
-          return r.payment;
-        })
-        : apiGetPayment(getSupabase(), id);
-      void read
-        .then((p) => {
-          if (cancelled) return;
-          if (p) {
-            setProof(p);
-            return;
-          }
-          setPaymentParam(null);
-          setProofDone(true);
-        })
-        .catch((e) => {
-          if (cancelled) return;
-          if (e instanceof EFError && e.code) {
-            setPaymentParam(null);
-            toast("That payment isn't here.", { tone: "error" });
-            setProofDone(true);
-          } else {
-            setWalletFailed(true);
-          }
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-    void apiGetWallet(getSupabase())
-      .then((w) => {
-        if (cancelled) return;
-        setWallet(w);
-        setWalletFailed(false);
+          return null;
+        }
+        return r.payment;
       })
-      .catch(() => {
-        if (!cancelled) setWalletFailed(true);
+      : apiGetPayment(getSupabase(), id);
+    void read
+      .then((p) => {
+        if (cancelled) return;
+        if (p) {
+          setProof(p);
+          return;
+        }
+        setPaymentParam(null);
+        setProofDone(true);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setPaymentParam(null);
+        if (e instanceof EFError && e.code) toast("That payment isn't here.", { tone: "error" });
+        else toast(NETWORK_FAILURE, { tone: "error" });
+        setProofDone(true);
       });
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [walletNonce, proofDone]);
+  }, [proofDone]);
+
+  // The location: a fix already in hand is used; a granted permission is
+  // asked at once; otherwise the priming card asks first.
+  useEffect(() => {
+    let cancelled = false;
+    const have = locationSnapshot().coords;
+    const ask = () => {
+      setLoc({ state: "asking" });
+      void requestUserLocation().then((c) => {
+        if (cancelled) return;
+        if (c) setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
+        else setLoc({ state: locationSnapshot().error === "denied" ? "blocked" : "off" });
+      });
+    };
+    if (have) {
+      // Deferred a tick: no state is set inside the effect's own body.
+      void Promise.resolve().then(() => {
+        if (!cancelled) setLoc({ state: "on", at: { lat: round(have.lat), lng: round(have.lng) } });
+      });
+    } else if (typeof navigator !== "undefined" && navigator.permissions?.query) {
+      void navigator.permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((s) => {
+          if (cancelled) return;
+          if (s.state === "granted") ask();
+          else if (s.state === "denied") setLoc({ state: "blocked" });
+          else setLoc({ state: readNotNow() ? "off" : "prime" });
+        })
+        .catch(() => {
+          if (!cancelled) setLoc({ state: readNotNow() ? "off" : "prime" });
+        });
+    } else {
+      void Promise.resolve().then(() => {
+        if (!cancelled) setLoc({ state: readNotNow() ? "off" : "prime" });
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const at = loc.state === "on" ? loc.at : null;
+  const atKey = at ? `${at.lat},${at.lng}` : "";
+
+  // The list: read without a location at once (credit places need none),
+  // and again when a location arrives.
+  useEffect(() => {
+    if (askedPayment && !proofDone) return;
+    let cancelled = false;
+    void apiListPayPlaces(getSupabase(), at)
+      .then((list) => {
+        if (cancelled) return;
+        setPlaces(list);
+        setListFailed(false);
+        // The table QR's place, once: open its form, or say why not.
+        if (askedPlace.current === undefined) {
+          askedPlace.current = new URLSearchParams(window.location.search).get(PLACE_PARAM);
+          if (askedPlace.current) {
+            const hit = list.find((p) => p.place_id === askedPlace.current);
+            if (hit && (hit.card_ok || hit.available_cents > 0)) setOpenId(hit.place_id);
+            else setNotice(NOT_TAKING);
+            setParam(PLACE_PARAM, null);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setListFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listNonce, atKey, proofDone]);
+
+  const refresh = useCallback(() => setListNonce((n) => n + 1), []);
+
+  function askLocation() {
+    setLoc({ state: "asking" });
+    void requestUserLocation().then((c) => {
+      if (c) setLoc({ state: "on", at: { lat: round(c.lat), lng: round(c.lng) } });
+      else setLoc({ state: locationSnapshot().error === "denied" ? "blocked" : "off" });
+    });
+  }
+
+  function notNow() {
+    try {
+      window.sessionStorage.setItem(LOCATION_NOT_NOW_KEY, "1");
+    } catch {
+      // Private mode: the card comes back next visit, nothing else breaks.
+    }
+    setLoc({ state: "off" });
+  }
 
   function showProof(p: PayProof) {
     setPaymentParam(p.payment_id);
@@ -188,129 +300,257 @@ export function PayPage() {
 
   function done() {
     setRefill(null);
+    setOpenId(null);
     setPaymentParam(null);
     setProof(null);
     setProofDone(true);
-    setWallet(null);
-    setWalletNonce((n) => n + 1);
+    refresh();
   }
+
+  const open = openId && places ? places.find((p) => p.place_id === openId) ?? null : null;
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
       <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
-      <p className="text-muted-foreground type-body mt-1">Pay a bill with your credit at a place.</p>
 
       <div className="mt-5 flex min-h-0 flex-1 flex-col">
         {proof ? (
           <ProofView proof={proof} onChange={setProof} onDone={done} />
-        ) : askedPayment && !proofDone && !walletFailed ? (
+        ) : askedPayment && !proofDone ? (
           <ProofSkeleton />
-        ) : wallet ? (
+        ) : open ? (
           <PayForm
-            wallet={wallet}
-            refill={refill}
+            key={open.place_id}
+            place={open}
+            refill={refill && refill.placeId === open.place_id ? refill : null}
+            onBack={() => {
+              setOpenId(null);
+              setRefill(null);
+            }}
             onPaid={showProof}
             onTaken={openPayment}
-            onRefresh={() => setWalletNonce((n) => n + 1)}
+            onRefresh={refresh}
           />
-        ) : walletFailed ? (
+        ) : places ? (
+          <PlaceList
+            places={places}
+            loc={loc}
+            notice={notice}
+            onPick={(id) => {
+              setNotice(null);
+              setOpenId(id);
+            }}
+            onOpenPayment={openPayment}
+            onUseLocation={askLocation}
+            onNotNow={notNow}
+          />
+        ) : listFailed ? (
           <EmptyState
-            icon={WalletIcon}
+            icon={QrCode}
             title="Couldn't load Pay"
             description="Check your connection and try again."
-            action={{ label: "Try again", onClick: () => setWalletNonce((n) => n + 1) }}
+            action={{ label: "Try again", onClick: refresh }}
           />
         ) : (
-          <FormSkeleton />
+          <ListSkeleton />
         )}
       </div>
     </div>
   );
 }
 
+// ── The list ─────────────────────────────────────────────────────────────────
+
+function PlaceList({
+  places,
+  loc,
+  notice,
+  onPick,
+  onOpenPayment,
+  onUseLocation,
+  onNotNow,
+}: {
+  places: PayPlace[];
+  loc: Loc;
+  notice: string | null;
+  onPick: (placeId: string) => void;
+  onOpenPayment: (paymentId: string) => void;
+  onUseLocation: () => void;
+  onNotNow: () => void;
+}) {
+  const testMode = places.some((p) => p.test_mode);
+  return (
+    <div className="flex flex-col">
+      {testMode ? <TestBand className="mb-3" /> : null}
+      {notice ? (
+        <p className="border-border bg-card mb-3 rounded-2xl border px-4 py-3 text-sm font-semibold" role="status">
+          {notice}
+        </p>
+      ) : null}
+
+      {loc.state === "prime" ? (
+        <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
+          <p className="flex items-center gap-2 text-base font-semibold">
+            <MapPin className="h-4 w-4 shrink-0" aria-hidden />
+            See Mesita Pay places near you
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
+              Use my location
+            </Button>
+            <button type="button" className="border-border bg-card hover:bg-muted min-h-11 flex-1 rounded-xl border px-4 text-sm font-semibold transition" onClick={onNotNow}>
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : loc.state === "blocked" ? (
+        <p className="text-muted-foreground mb-3 text-sm">
+          Location is off for mesita.ai. Turn it on in your browser&apos;s site settings.
+        </p>
+      ) : null}
+
+      {loc.state === "asking" && places.length === 0 ? (
+        <RowsSkeleton />
+      ) : places.length === 0 ? (
+        <EmptyState
+          icon={MapPin}
+          title={loc.state === "on" ? "No Mesita Pay place near you" : "Turn on location to see Mesita Pay places near you"}
+          description=""
+          action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
+        />
+      ) : (
+        <>
+          <div className="border-border bg-card overflow-hidden rounded-2xl border">
+            {places.map((p, i) => {
+              // The server lists a payment only within PAID_RECENT_HOURS of paying.
+              const recent = p.paid_recent;
+              return (
+                <Fragment key={p.place_id}>
+                  {i > 0 && <RowDivider />}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => onPick(p.place_id)}
+                      className="hover:bg-muted/60 flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition"
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 items-center gap-1">
+                          <span className="truncate text-sm font-semibold">{p.name ?? "A Mesita place"}</span>
+                          <PlaceMarks tier={p.marks.tier} mesitaPay={p.marks.mesita_pay} compact ad={false} />
+                        </span>
+                        <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs">
+                          {p.distance_m !== null ? <span>{distanceText(p.distance_m)}</span> : null}
+                          {p.available_cents <= 0 && p.pending_cents > 0 ? (
+                            <span>{money(p.pending_cents, p.currency)} pending · available within the hour</span>
+                          ) : null}
+                          {!p.card_ok ? <span>Credit only</span> : null}
+                          {p.test_mode ? (
+                            <span className="border-border rounded-md border px-1.5 type-label font-semibold uppercase">Test</span>
+                          ) : null}
+                        </span>
+                      </span>
+                      {p.available_cents > 0 ? (
+                        <span className="font-display shrink-0 text-base font-semibold tabular-nums">
+                          {money(p.available_cents, p.currency)}
+                        </span>
+                      ) : null}
+                      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+                    </button>
+                    {recent ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPayment(recent.payment_id)}
+                        className="text-muted-foreground hover:text-foreground flex min-h-11 w-full items-center gap-1.5 px-4 pb-3 text-left text-xs font-semibold"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                        Paid {money(recent.total_cents, p.currency)} · {clockTime(recent.paid_at)}
+                      </button>
+                    ) : null}
+                  </div>
+                </Fragment>
+              );
+            })}
+          </div>
+          <a
+            href={CONSUMER_ROUTES.search}
+            className="border-border bg-card hover:bg-muted mt-4 flex min-h-12 items-center justify-center rounded-2xl border px-4 text-base font-semibold transition"
+          >
+            Find a place
+          </a>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── The form ─────────────────────────────────────────────────────────────────
 
+function splitLine(s: PaySplit, currency: string, minCents: number): string | null {
+  if (s.kind === "credit") return `${money(s.credit_cents, currency)} from credit`;
+  if (s.kind !== "card") return null;
+  const parts: string[] = [];
+  if (s.credit_cents > 0) parts.push(`${money(s.credit_cents, currency)} from credit`);
+  if (s.card_cents > 0) parts.push(`${money(s.card_cents, currency)} by card`);
+  if (s.tip_cents > 0) parts.push(`${money(s.tip_cents, currency)} tip by card`);
+  return `${parts.join(" · ")}${s.raised ? ` (card minimum ${money(minCents, currency)})` : ""}`;
+}
+
 function PayForm({
-  wallet,
+  place,
   refill,
+  onBack,
   onPaid,
   onTaken,
   onRefresh,
 }: {
-  wallet: Wallet;
-  /** The cancelled Checkout's place, amount, tip and ticket (MESITA-3458). */
+  place: PayPlace;
+  /** The cancelled Checkout's amount, tip and ticket (MESITA-3458). */
   refill: Refill | null;
+  onBack: () => void;
   onPaid: (p: PayProof) => void;
   onTaken: (paymentId: string) => void;
   onRefresh: () => void;
 }) {
   const getSupabase = useLazyBrowserSupabase();
-  // A place pays when the guest holds credit there, or when it takes cards
-  // (a card-only payment where the credit ran out, MESITA-3305).
-  const payable = wallet.balances.filter((b) => b.available_cents > 0 || b.card_ok === true);
-  const [picked, setPicked] = useState<string | null>(() => {
-    const b = refill ? payable.find((x) => x.place_id === refill.placeId) : undefined;
-    return b ? keyOf(b) : null;
-  });
   const [amount, setAmount] = useState(() => (refill ? amountText(refill.amountCents) : ""));
   const [tip, setTip] = useState(() => (refill && refill.tipCents > 0 ? amountText(refill.tipCents) : ""));
   const [ticket, setTicket] = useState(() => refill?.ticket ?? "");
   const [cancelNote, setCancelNote] = useState(refill !== null);
+  const [creditChanged, setCreditChanged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resume, setResume] = useState<string | null>(null);
   const attempt = useRef<PayAttempt | null>(null);
 
-  if (payable.length === 0) {
-    const pending = wallet.balances.filter((b) => b.pending_cents > 0);
-    if (pending.length > 0) {
-      return (
-        <div className="border-border bg-card rounded-2xl border px-4 py-4">
-          {wallet.test_mode ? <TestBand className="mb-3" /> : null}
-          {pending.map((b) => (
-            <p key={keyOf(b)} className="text-sm">
-              <span className="font-semibold">{b.place?.name ?? "A Mesita place"}</span>
-              <span className="text-muted-foreground">
-                {" "}· {money(b.pending_cents, b.currency)} pending · available within the hour
-              </span>
-            </p>
-          ))}
-          <p className="text-muted-foreground mt-2 text-sm">You can pay here as soon as it&apos;s available.</p>
-        </div>
-      );
-    }
-    return (
-      <EmptyState
-        icon={QrCode}
-        title="Nothing to pay with yet"
-        description="Buy a voucher at a place and pay here from your credit."
-        action={{ label: "Find a place", href: CONSUMER_ROUTES.search }}
-      />
-    );
-  }
-
-  // The lit row: the one picked, else the place with the newest activity
-  // (balances arrive newest first).
-  const place = payable.find((b) => keyOf(b) === picked) ?? payable[0];
   const cents = readAmount(amount);
-  const split = cents === null ? null : splitPayment(cents, place.spendable_cents, place.card_ok === true);
-  const over = split?.kind === "over";
-  const byCard = split !== null && (split.kind === "mixed" || split.kind === "card");
-  const tipCents = byCard ? (readAmount(tip) ?? 0) : 0;
-  const canPay = cents !== null && !over && !busy;
+  const tipTyped = place.card_ok ? readAmount(tip) : null;
+  const tipBad = place.card_ok && tip.trim() !== "" && tipTyped === null;
+  const split = cents === null
+    ? null
+    : paySplit({
+      amountCents: cents,
+      tipCents: tipTyped ?? 0,
+      availableCents: place.available_cents,
+      cardOk: place.card_ok,
+      minCents: place.card_min_cents,
+    });
+  const card = split?.kind === "card" ? split : null;
+  const total = card ? card.credit_cents + card.card_cents + card.tip_cents : (cents ?? 0);
+  const earn = card ? cashbackFor(card.card_cents, place.cashback_bps) : 0;
 
-  function pick(b: WalletBalance) {
-    if (keyOf(b) === keyOf(place)) return;
-    setPicked(keyOf(b));
-    setAmount("");
-    setTip("");
-    setTicket("");
-    setResume(null);
-    setCancelNote(false);
-  }
+  const reason = amount.trim() !== "" && cents === null
+    ? "Type an amount like 250 or 250.50"
+    : split?.kind === "over"
+    ? `More than your ${money(place.available_cents, place.currency)} of credit here`
+    : split?.kind === "below_minimum"
+    ? `Card payments start at ${money(split.minimum_cents, place.currency)}`
+    : tipBad
+    ? "Type a tip like 30 or 30.50"
+    : null;
+  const canPay = split !== null && (split.kind === "credit" || split.kind === "card") && !tipBad && !busy;
 
   async function pay() {
-    if (cents === null || !split || over || busy) return;
-    const a = attemptFor(attempt.current, place.place_id, cents + (byCard ? tipCents : 0));
+    if (!split || !canPay || cents === null) return;
+    const a = attemptFor(attempt.current, place.place_id, total);
     attempt.current = a;
     setBusy(true);
     setResume(null);
@@ -318,9 +558,9 @@ function PayForm({
     try {
       const started = await apiStartPayment(getSupabase(), {
         place_id: place.place_id,
-        place_name: place.place?.name ?? null,
+        place_name: place.name,
         amount_cents: cents,
-        ...(byCard ? { card_cents: split.card_cents, tip_cents: tipCents, return_url: `${window.location.origin}${CONSUMER_ROUTES.pay}` } : {}),
+        ...(card ? { card_cents: card.card_cents, tip_cents: card.tip_cents, return_url: `${window.location.origin}${CONSUMER_ROUTES.pay}` } : {}),
         request_id: a.requestId,
         ticket: ticket.trim() || null,
       });
@@ -349,8 +589,9 @@ function PayForm({
         onTaken(body.payment_id);
         return;
       }
-      if (e.code === "insufficient" && typeof body.spendable_cents === "number") {
-        toast(`You have ${money(body.spendable_cents, place.currency)} of credit here.`, { tone: "error" });
+      if (e.code === "insufficient" || e.code === "below_minimum") {
+        // The credit moved under the form: re-read, show the new split.
+        setCreditChanged(true);
         onRefresh();
         return;
       }
@@ -372,85 +613,61 @@ function PayForm({
     }
   }
 
-  const payLabel = cents === null
+  const line = split ? splitLine(split, place.currency, place.card_min_cents) : null;
+  const payLabel = !split || cents === null
     ? "Pay"
-    : split?.kind === "credit"
-    ? `Pay ${money(cents, place.currency)} from credit`
-    : `Pay ${money(cents + tipCents, place.currency)} · continue to card`;
+    : card
+    ? `Pay ${money(total, place.currency)}`
+    : `Pay ${money(cents, place.currency)} with credit`;
 
   return (
     <div className="flex flex-col">
-      {wallet.test_mode ? <TestBand className="mb-3" /> : null}
+      {place.test_mode ? <TestBand className="mb-3" /> : null}
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-muted-foreground hover:text-foreground -ml-1 flex min-h-11 items-center gap-1 self-start text-sm font-semibold"
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+        All places
+      </button>
+      <p className="mt-1 flex min-w-0 items-center gap-1">
+        <span className="truncate text-lg font-semibold">{place.name ?? "A Mesita place"}</span>
+        <PlaceMarks tier={place.marks.tier} mesitaPay={place.marks.mesita_pay} compact ad={false} />
+      </p>
+      <p className="text-muted-foreground mt-0.5 text-sm">
+        {money(place.available_cents, place.currency)} available credit
+        {place.pending_cents > 0 ? ` · ${money(place.pending_cents, place.currency)} pending` : ""}
+        {place.card_ok ? "" : " · Credit only"}
+      </p>
       {cancelNote ? (
-        <p className="text-muted-foreground mb-3 text-sm" role="status">
+        <p className="text-muted-foreground mt-3 text-sm" role="status">
           Payment cancelled
         </p>
       ) : null}
-      <div className="border-border bg-card overflow-hidden rounded-2xl border" role="radiogroup" aria-label="Place">
-        {payable.map((b, i) => {
-          const lit = keyOf(b) === keyOf(place);
-          return (
-            <Fragment key={keyOf(b)}>
-              {i > 0 && <RowDivider />}
-              <button
-                type="button"
-                role="radio"
-                aria-checked={lit}
-                onClick={() => pick(b)}
-                className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left transition", lit ? "bg-muted" : "hover:bg-muted/60")}
-              >
-                <span
-                  className={cn(
-                    "h-4 w-4 shrink-0 rounded-full border-2",
-                    lit ? "border-foreground bg-foreground" : "border-border",
-                  )}
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{b.place?.name ?? "A Mesita place"}</span>
-                <span className="font-display shrink-0 text-base font-semibold tabular-nums">
-                  {money(b.spendable_cents, b.currency)}
-                </span>
-              </button>
-            </Fragment>
-          );
-        })}
-      </div>
-      <p className="text-muted-foreground mt-2 text-sm">
-        You have {money(place.spendable_cents, place.currency)} here
-        {place.card_ok ? <span> · cards accepted</span> : null}
-      </p>
 
       <label className="mt-5 block text-sm font-semibold" htmlFor="pay-amount">
         Amount
       </label>
-      <div className="mt-1.5 flex items-center gap-2">
-        <input
-          id="pay-amount"
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className={cn(FIELD_CLASS, "tabular-nums")}
-        />
-        <button
-          type="button"
-          onClick={() => setAmount(amountText(place.spendable_cents))}
-          disabled={place.spendable_cents <= 0}
-          className="border-border bg-card hover:bg-muted h-12 shrink-0 rounded-xl border px-4 text-sm font-semibold transition disabled:opacity-50"
-        >
-          Pay all
-        </button>
-      </div>
-      {over ? <p className="text-muted-foreground mt-1.5 text-xs">More than you have here</p> : null}
-      {byCard && split ? (
-        <p className="text-muted-foreground mt-1.5 text-xs" data-pay-split>
-          {split.credit_cents > 0 ? `${money(split.credit_cents, place.currency)} from credit · ` : ""}
-          {money(split.card_cents, place.currency)} by card
-        </p>
+      <input
+        id="pay-amount"
+        inputMode="decimal"
+        autoComplete="off"
+        placeholder="0"
+        value={amount}
+        onChange={(e) => {
+          setAmount(e.target.value);
+          setCreditChanged(false);
+        }}
+        className={cn(FIELD_CLASS, "mt-1.5 tabular-nums")}
+      />
+      {amount.trim() !== "" && cents === null ? (
+        <p className="text-destructive mt-1.5 text-xs">Type an amount like 250 or 250.50</p>
+      ) : split?.kind === "over" ? (
+        <p className="text-destructive mt-1.5 text-xs">More than your {money(place.available_cents, place.currency)} of credit here</p>
       ) : null}
 
-      {byCard ? (
+      {place.card_ok ? (
         <>
           <label className="mt-4 block text-sm font-semibold" htmlFor="pay-tip">
             Tip <span className="text-muted-foreground font-normal">(optional, by card)</span>
@@ -459,16 +676,16 @@ function PayForm({
             id="pay-tip"
             inputMode="decimal"
             autoComplete="off"
-            placeholder="0"
             value={tip}
             onChange={(e) => setTip(e.target.value)}
             className={cn(FIELD_CLASS, "mt-1.5 tabular-nums")}
           />
+          {tipBad ? <p className="text-destructive mt-1.5 text-xs">Type a tip like 30 or 30.50</p> : null}
         </>
       ) : null}
 
       <label className="mt-4 block text-sm font-semibold" htmlFor="pay-ticket">
-        Ticket number <span className="text-muted-foreground font-normal">(optional)</span>
+        Ticket or table no. <span className="text-muted-foreground font-normal">(optional)</span>
       </label>
       <input
         id="pay-ticket"
@@ -479,9 +696,24 @@ function PayForm({
         className={cn(FIELD_CLASS, "mt-1.5")}
       />
 
-      <Button size="lg" className="mt-6 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
-        {busy ? "Paying…" : payLabel}
+      {creditChanged ? (
+        <p className="mt-5 text-sm font-semibold" role="status">
+          Your credit changed
+        </p>
+      ) : null}
+      {line ? (
+        <div className={cn("border-border bg-card rounded-2xl border px-4 py-3", creditChanged ? "mt-2" : "mt-5")} data-pay-split>
+          <p className="text-sm font-semibold">{line}</p>
+          {earn > 0 ? (
+            <p className="text-muted-foreground mt-0.5 text-sm">You earn {money(earn, place.currency)} back · available in an hour</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Button size="lg" className="mt-5 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
+        {busy ? <Spinner size="sm" label="Paying" /> : payLabel}
       </Button>
+      {reason && !busy ? <p className="text-muted-foreground mt-2 text-center text-xs">{reason}</p> : null}
       {resume ? (
         <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={() => window.location.assign(resume)}>
           Resume card payment
@@ -659,23 +891,30 @@ function ProofSkeleton() {
   );
 }
 
-function FormSkeleton() {
+function RowsSkeleton() {
+  return (
+    <div className="border-border bg-card overflow-hidden rounded-2xl border" aria-busy>
+      {[0, 1, 2].map((i) => (
+        <Fragment key={i}>
+          {i > 0 && <RowDivider />}
+          <div className="flex min-h-14 items-center gap-3 px-4 py-3">
+            <div className="flex-1">
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="mt-1.5 h-3 w-24" />
+            </div>
+            <Skeleton className="h-5 w-16" />
+          </div>
+        </Fragment>
+      ))}
+    </div>
+  );
+}
+
+function ListSkeleton() {
   return (
     <div aria-busy>
-      <div className="border-border bg-card overflow-hidden rounded-2xl border">
-        {[0, 1].map((i) => (
-          <Fragment key={i}>
-            {i > 0 && <RowDivider />}
-            <div className="flex min-h-14 items-center gap-3 px-4 py-3">
-              <Skeleton className="h-4 w-4 rounded-full" />
-              <Skeleton className="h-4 flex-1" />
-              <Skeleton className="h-5 w-16" />
-            </div>
-          </Fragment>
-        ))}
-      </div>
-      <Skeleton className="mt-5 h-12 w-full rounded-xl" />
-      <Skeleton className="mt-6 h-12 w-full rounded-2xl" />
+      <RowsSkeleton />
+      <Skeleton className="mt-4 h-12 w-full rounded-2xl" />
     </div>
   );
 }
