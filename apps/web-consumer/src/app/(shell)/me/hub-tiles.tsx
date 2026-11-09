@@ -10,7 +10,7 @@ import {
   Settings as SettingsIcon,
   Share2,
   UserRound,
-  Undo2,
+  HandCoins,
   type LucideIcon,
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -155,7 +155,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // REFUNDS (Pato, MESITA-3517): if a place closes for good with the guest's
   // credit unspent, Mesita refunds it. The page is the view only, empty.
   {
-    Icon: Undo2,
+    Icon: HandCoins,
     title: "Refunds",
     summary: "If a place closes",
     href: CONSUMER_ROUTES.mePages.refunds,
@@ -208,7 +208,9 @@ export function MeHubFrame({
             {ME_HUB_GRID.map((cell) => (
               <Fragment key={cell.href}>{tile(cell, "cell")}</Fragment>
             ))}
-            <div className="col-span-2">{tile(ME_HUB_SETTINGS, "cell")}</div>
+            {/* SETTINGS AT THE LEFT, NOTHING AT THE RIGHT (MESITA-3527, Pato:
+                "if it's uneven the number of items, then asymmetry is okay"). */}
+            {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>
       </div>
