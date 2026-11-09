@@ -273,7 +273,7 @@ function InfoButton({ title, text }: { title: string; text: string }) {
 
 /** What each offer's (i) says (MESITA-3492's paragraphs, one per offer),
  *  with the row's own Pay and Get. */
-function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
+function offerText(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
   switch (key) {
     case "voucher_200":
     case "voucher_1000":
@@ -286,6 +286,12 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
     case "voucher_vip":
       return `Reserved for Mesita's VIP Class. VIP guests are onboarded by hand: models, modeling agencies, creators and other guests places want to see. If you're VIP, pay ${pay} and get ${get} in credits here. One per visit. Not VIP? You won't be able to buy this one.`;
   }
+}
+
+/** Prepaid credits earn no cashback (MESITA-3496, Pato: "prepayment vouchers
+ *  don't give cashbacks"). */
+function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string): string {
+  return `${offerText(key, pay, get, bonus)} Paying with these credits doesn't earn the 5% Mesita Pay Cashback.`;
 }
 
 /** THE WALLET PILL (Pato, MESITA-3483, with inKind's "Load your wallet":
@@ -510,7 +516,7 @@ export function VouchersPane({
                 <span aria-hidden>Mesita Pay Cashback</span>
                 <InfoButton
                   title="Mesita Pay Cashback"
-                  text="Pay your bill here in the app and 5% of it comes back as credits for your next visit, every visit. A $500MX bill gives you $25MX back."
+                  text="Pay your bill here in the app and get 5% back as credits for your next visit, on every visit, whatever the amount: a $100MX bill or a $10,000MX one. The 5% is on the part of the bill you don't pay with prepaid credits; credits from Prepayment Offers never earn cashback. Example: a $500MX bill with $200MX paid from credits and $300MX by card gives you $15MX back."
                 />
               </span>
               <span className="text-muted-foreground text-sm" aria-hidden>{canPay || loading ? "Back in credits, any visit" : cashbackTag}</span>
