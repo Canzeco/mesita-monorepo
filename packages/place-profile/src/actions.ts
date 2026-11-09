@@ -49,7 +49,7 @@ export type PlaceActions = {
   /** The Cashback card's Pay (MESITA-3352): opens the host's Pay page.
    *  Absent, the card draws no button (admin's preview). */
   onPay?: () => void;
-  /** The pinned row's Wallet tile (MESITA-3574): opens the host's Wallet at
+  /** The pinned row's Credits tile (MESITA-3574): opens the host's Wallet at
    *  this place's credit. Absent (admin's preview, business), the tile is
    *  inert. Its pill reads `place.money.balance`. */
   onOpenWallet?: () => void;
