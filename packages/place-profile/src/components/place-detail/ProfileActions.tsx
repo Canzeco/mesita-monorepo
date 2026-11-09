@@ -315,9 +315,9 @@ export function MesitaActions({
   const open = (section: "payment" | "prepayment") =>
     onOpenRewards ? () => onOpenRewards(section) : undefined;
   const tone = (t: MesitaTileState) => (t.works ? "green" : "off");
-  // What the screen reader hears after the label: the number, or why it's grey.
-  const said = (t: MesitaTileState) =>
-    t.pill === MESITA_ROW_LOADING ? "loading" : t.works ? t.pill : "off at this place";
+  // What the screen reader hears after the label: the pill ("20% Bonus",
+  // "Off"), or "loading" while the first read is out.
+  const said = (t: MesitaTileState) => (t.pill === MESITA_ROW_LOADING ? "loading" : t.pill);
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       {/* RESERVE LEADS THE PINNED ROW (MESITA-3426): green "On" where the
