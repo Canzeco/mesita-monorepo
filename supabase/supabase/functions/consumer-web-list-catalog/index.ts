@@ -3,15 +3,11 @@
 // THE CATALOG PIPELINE (Home's Places; split from Area by MESITA-2909,
 // `_shared/area-pipeline.ts`). Every ready Mesita place (the family row's
 // families pushed into the read) is gated, scored and ranked from its
-// scoring columns, and ONE PAGE of that ranked list keeps its cards
-// (MESITA-3044, Pato: "sort all catalog places in one run, but don't load
-// them all … never stop until the catalog is gone"): `offset` names where
-// the page starts, `map.catalogPageSize` its length, and `next` where the
-// following one starts (null at the end). Each request ranks again (an
-// isolate keeps nothing); ties break on distance then id, so pages line up.
-// A request with no `offset` (a build from before MESITA-3044) gets the best
-// 1000 at once, as before (MESITA-2921: a capped id-ordered read ranked a
-// random 1000).
+// scoring columns, and only the first page of that ranked list keeps its
+// cards (MESITA-3044, Pato: "sort all catalog places in one run, but don't
+// load them all … never stop until the catalog is gone"). Ties break on
+// distance then id, so the order is stable (MESITA-2921: a capped id-ordered
+// read ranked a random 1000).
 //
 // RANK ONCE, FILL BY ID (MESITA-3057, Pato: "don't bring the data of all
 // 1000 places in one run … have all the ids … then populate with data and
@@ -19,8 +15,9 @@
 // best first, with the first page's cards; Home then sends `fill`, up to
 // `CATALOG_PAGE_SIZE_MAX` of those ids, and gets only their cards, read
 // through the same gates and scored from the point it sends (the rank's).
-// Nothing is ranked again on scroll. `offset` and the bare request stay for
-// builds already open; every log line names its `mode`.
+// Nothing is ranked again on scroll. The `offset` pages and the bare
+// best-1000 answer are gone (MESITA-3058: no build sent them in 10 days);
+// any request without `fill` is a rank. Every log line names its `mode`.
 // Nothing here calls Google (MESITA-2872).
 //
 // NO RADIUS (Pato, MESITA-2909: "en Catalog no nos importa … no hay un
@@ -39,30 +36,28 @@
 // Family gate into the Mesita read. Without it the pool is every family's.
 //
 // Request: POST { unified: true, google: true, lat, lng, familyKeys?,
-//   fill? | ids? | offset? }   (that precedence; one per request)
+//   fill? | ids? }   (that precedence; one per request)
 //   fill      1..100 Mesita ids (uuids, duplicates collapsed): their cards
 //             only, in that order; anything else in an array = 400
 //             `fill_invalid`. Answer { ok, places, summary: { asked,
 //             returned, chunks } }.
 //   ids       true: rank once and answer `order` (every ranked id) + the
-//             first page's cards.
+//             first page's cards. A request without `fill` is a rank either
+//             way (MESITA-3058).
 //   nearest   true, with `ids`: `order` is distance alone, nearest first, for
 //             the Reward tab (MESITA-3214). Home's score still fills `area`.
-//   offset    a whole number ≥ 0: the ranked position the page starts at;
-//             absent = the old whole answer (≤ 1000).
 //   lat/lng   a POINT; none = no location (Popularity alone).
 //   radiusKm  ignored since MESITA-2909 (the Catalog has no radius); pins
 //             carry none since MESITA-2914.
 //   bounds    ignored (Territory retired, MESITA-2500).
 //   google    ignored since MESITA-2872 (no Google stub comes back).
-// Response: { ok, location: { kind }, pageSize, next, total, order?,
+// Response: { ok, location: { kind }, pageSize, total, order,
 //   places: [... { area }], summary }.
-//   order     every ranked id, best first (`ids: true` only)
-//   next      the next page's offset, or null: the catalog has ended
+//   order     every ranked id, best first
 //   total     every ranked place (the list the pages walk)
 //   summary.read      pass-1 rows read (scoring columns)
 //   summary.total     rows that passed the gates and were ranked
-//   summary.returned  places emitted (one page, or ≤ 1000 with no offset)
+//   summary.returned  places emitted (the first page)
 //   summary.chunks    pass-2 card reads
 //   summary.scanCapped  10,000 rows read and more remain: cut by id again
 //   summary.missing   kept ids pass 2 did not return
@@ -118,10 +113,8 @@ type Body = {
   prefer?: unknown;
   /** The family row's families (MESITA-2438); absent or empty = every family. */
   familyKeys?: unknown;
-  /** The page's first ranked position (MESITA-3044); absent = the whole
-   *  answer, for builds from before it. */
-  offset?: unknown;
-  /** `true`: rank once and answer `order` (MESITA-3057). */
+  /** `true`: rank once and answer `order` (MESITA-3057). Every non-fill
+   *  request is a rank since MESITA-3058. */
   ids?: unknown;
   /** With `ids`: sort by distance alone (the Reward tab, MESITA-3214). */
   nearest?: unknown;
@@ -137,11 +130,6 @@ function readFill(v: unknown[]): string[] | null {
   const ids = [...new Set(v)];
   if (ids.length === 0 || ids.length > CATALOG_PAGE_SIZE_MAX) return null;
   return ids.every((id) => typeof id === "string" && UUID.test(id)) ? ids as string[] : null;
-}
-
-/** A whole number ≥ 0, else null (absent or junk = an unpaged request). */
-function readOffset(v: unknown): number | null {
-  return typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null;
 }
 
 function wirePlaces(rows: unknown[]): PoolRow[] {
@@ -176,10 +164,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
   }
   const location = resolveAreaLocation(center, null);
   const families = readGuestFamilyKeys(body.familyKeys).filter((f) => f !== "undefined");
-  const offset = readOffset(body.offset);
   const fill = Array.isArray(body.fill) ? body.fill : null;
-  const rank = fill === null && body.ids === true;
-  const mode = fill !== null ? "fill" : rank ? "rank" : offset !== null ? "offset" : "legacy";
+  const mode = fill !== null ? "fill" : "rank";
 
   const requestId = crypto.randomUUID();
   const started = Date.now();
@@ -253,13 +239,9 @@ serveJson("consumer-web-list-catalog", async (req) => {
       // pool does not select it (MESITA-2328).
       cardColumns: PLACE_CARD_COLUMNS,
       wire: wirePlaces,
-      nearest: rank && body.nearest === true,
+      nearest: body.nearest === true,
       // A rank answers the first page; `order` carries the rest by id.
-      ...(rank
-        ? { page: { offset: 0, size: catalogPageSize(cfg.map) } }
-        : offset === null
-        ? {}
-        : { page: { offset, size: catalogPageSize(cfg.map) } }),
+      pageSize: catalogPageSize(cfg.map),
     });
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;
@@ -298,11 +280,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
     // names none (MESITA-2914).
     location: { kind: location.kind },
     pageSize: pool.summary.pageSize,
-    // An unpaged request gets no `next`: its build pages the list itself; a
-    // rank's build fills by id from `order`.
-    next: offset === null || rank ? null : pool.summary.next,
     total: pool.summary.total,
-    ...(rank ? { order: pool.order } : {}),
+    order: pool.order,
     places,
     summary: pool.summary,
   });

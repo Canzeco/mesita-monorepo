@@ -1,9 +1,8 @@
 // The Catalog's two-pass read (MESITA-2921): walk every gated row's scoring
-// columns by id, rank them all, keep the best 1000, then read only their
-// cards. A fake PostgREST builder stands in for the database.
+// columns by id, rank them all, keep the first page, then read only its
+// cards; `order` carries every ranked id (MESITA-3057). A fake PostgREST builder stands in for the database.
 import { assert, assertEquals, assertRejects } from "jsr:@std/assert@1";
 import {
-  CATALOG_RETURN_MAX,
   CATALOG_SCAN_PAGE,
   CATALOG_SCORING_COLUMNS,
   CatalogReadError,
@@ -91,6 +90,9 @@ function fakeRead(rows: PoolRow[], opts: { fail?: Fail; dropFromCards?: string[]
 
 const wire = (rows: unknown[]) => rows as PoolRow[];
 
+/** The first page's length in these tests. */
+const PAGE = 1000;
+
 function pool(rows: PoolRow[], opts: Parameters<typeof fakeRead>[1] & { pagesMax?: number } = {}) {
   const fake = fakeRead(rows, opts);
   const run = selectCatalogPool({
@@ -101,6 +103,7 @@ function pool(rows: PoolRow[], opts: Parameters<typeof fakeRead>[1] & { pagesMax
     cardColumns: CARDS,
     wire,
     pagesMax: opts.pagesMax,
+    pageSize: PAGE,
   });
   return { run, seen: fake.seen };
 }
@@ -139,7 +142,7 @@ Deno.test("the Catalog keeps the best 1000 BY RANK, not the first 1000 by id (ME
     row(i, i >= 1000 ? { google_stars_overall: 4.9, google_review_count: 5000 } : {}));
   const { run, seen } = pool(rows);
   const { places, summary } = await run;
-  assertEquals(places.length, CATALOG_RETURN_MAX);
+  assertEquals(places.length, PAGE);
   const kept = new Set(places.map((p) => p.id));
   for (let i = 1000; i < 1500; i++) assert(kept.has(pid(i)), pid(i));
   // Rank order survives pass 2, and every place carries its card and breakdown.
@@ -231,61 +234,26 @@ Deno.test("list-places: a failed read is a 502 with the code and no PostgREST te
   assertEquals(src.includes(".limit("), false);
 });
 
-Deno.test("paged: every page reads only its own cards, pages walk the whole ranked list once, next is null at the end (MESITA-3044)", async () => {
-  // 1,250 places with distinct scores, past the old 1,000 cap: every one is
-  // reachable page by page.
+Deno.test("a rank reads only the first page's cards and orders every ranked id (MESITA-3057)", async () => {
+  // 1,250 places with distinct scores, past the page: every one is in
+  // `order`, only the first page's cards are read.
   const rows = Array.from({ length: 1250 }, (_, i) => row(i, { google_review_count: 10 + i }));
-  const size = 100;
-  const all: string[] = [];
-  let offset: number | null = 0;
-  let pages = 0;
-  while (offset !== null) {
-    const fake = fakeRead(rows);
-    const out: Awaited<ReturnType<typeof selectCatalogPool>> = await selectCatalogPool({
-      read: fake.read,
-      cfg: DISCOVERY_DEFAULTS,
-      location: resolveAreaLocation(CENTER, null),
-      families: [],
-      cardColumns: CARDS,
-      wire,
-      page: { offset, size },
-    });
-    // Pass 2 asked only for this page's ids.
-    const asked = fake.seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
-    assertEquals(asked.length, out.places.length);
-    assert(out.places.length <= size);
-    assertEquals(out.summary.offset, offset);
-    assertEquals(out.summary.total, 1250);
-    all.push(...out.places.map((p: { id: string }) => p.id));
-    offset = out.summary.next;
-    pages++;
-  }
-  assertEquals(pages, 13);
-  assertEquals(all.length, 1250);
-  assertEquals(new Set(all).size, 1250);
-  // Best first across pages: the most-reviewed place leads page 1.
-  assertEquals(all[0], pid(1249));
-  assertEquals(all[1249], pid(0));
-});
-
-Deno.test("paged: an offset past the end is an empty last page, never an error (MESITA-3044)", async () => {
-  const rows = Array.from({ length: 5 }, (_, i) => row(i));
+  const fake = fakeRead(rows);
   const out = await selectCatalogPool({
-    read: fakeRead(rows).read,
+    read: fake.read,
     cfg: DISCOVERY_DEFAULTS,
     location: resolveAreaLocation(CENTER, null),
     families: [],
     cardColumns: CARDS,
     wire,
-    page: { offset: 50, size: 20 },
+    pageSize: 100,
   });
-  assertEquals([out.places.length, out.summary.next, out.summary.total], [0, null, 5]);
-});
-
-Deno.test("unpaged (an older build): the best 1000 at once, next null (MESITA-3044 keeps it)", async () => {
-  const rows = Array.from({ length: 1200 }, (_, i) => row(i));
-  const { run } = pool(rows);
-  const out = await run;
-  assertEquals(out.places.length, CATALOG_RETURN_MAX);
-  assertEquals(out.summary.next, CATALOG_RETURN_MAX);
+  const asked = fake.seen.filter((s) => s.columns === CARDS).flatMap((s) => s.in ?? []);
+  assertEquals([asked.length, out.places.length, out.summary.total], [100, 100, 1250]);
+  assertEquals(out.order.length, 1250);
+  assertEquals(new Set(out.order).size, 1250);
+  // Best first: the most-reviewed place leads, and the page is the order's head.
+  assertEquals(out.order[0], pid(1249));
+  assertEquals(out.order[1249], pid(0));
+  assertEquals(out.places.map((p) => p.id), out.order.slice(0, 100));
 });
