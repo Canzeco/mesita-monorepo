@@ -2,8 +2,8 @@
 // deployed doors, with no Stripe anywhere: the waiter opens a charge with a
 // tip, the guest looks it up and pays the waiter, the staff screen sees the
 // bill waiting, Received pays it and writes 2% cashback Pending one hour.
-// Then a cancel (Received reads closed) and a timeout (the sweep closes it,
-// nothing born). It needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and
+// Then a cancel: the charge is free again and Received has nothing to
+// confirm (the timeout and the closed answer are pgTAP's). It needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and
 // SUPABASE_ANON_KEY (a PR's `deno test` has none: the test reports itself
 // ignored). Everything it made is deleted in finally, children first.
 
@@ -27,7 +27,7 @@ async function call(name: string, body: Record<string, unknown>, jwt?: string): 
 }
 
 Deno.test({
-  name: "outside path: charge with tip → pay the waiter → Received → 2% Pending; cancel reads closed; timeout births nothing",
+  name: "outside path: charge with tip → pay the waiter → Received → 2% Pending; a cancel frees the charge",
   ignore: !ready,
   sanitizeOps: false,
   sanitizeResources: false,
@@ -85,8 +85,12 @@ Deno.test({
       assertEquals(start2.status, 200, JSON.stringify(start2.data));
       const cancel = await call("consumer-web-release-payment", { payment_id: start2.data.payment_id }, jwt);
       assertEquals(cancel.data.outcome, "released");
+      // The cancel frees the charge for its remaining minutes: the staff
+      // screen is back on Open, and Received has nothing to confirm.
+      const poll2 = await call("visit-web-get-charge", { token: open2.data.charge_token });
+      assertEquals([poll2.data.state, poll2.data.outside], ["open", null]);
       const recv2 = await call("visit-web-confirm-charge", { token: open2.data.charge_token });
-      assertEquals([recv2.status, recv2.data.code], [409, "closed"]);
+      assertEquals([recv2.status, recv2.data.code], [409, "not_outside"]);
     } finally {
       if (userId) {
         await admin.from("wallet_entries").delete().eq("consumer_id", userId);

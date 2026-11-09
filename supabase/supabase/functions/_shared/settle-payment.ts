@@ -6,7 +6,7 @@
 // of one event write the spend and the cashback once.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
+import { type StripeCall, StripeError } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 
@@ -16,7 +16,15 @@ export type OpenPayment = {
   stripe_account_id: string | null;
   created_at: string;
   expires_at?: string | null;
+  /** An in-app card part (Pay at the table, MESITA-3563) has a
+   *  PaymentIntent and no Checkout session (MESITA-3568). */
+  stripe_payment_intent_id?: string | null;
 };
+
+/** How long an in-app PaymentIntent may sit unfinished (a 3-D Secure
+ *  challenge the guest left) before the cron cancels it and frees the
+ *  credit it held. */
+export const PI_TTL_MS = 10 * 60_000;
 
 export type PaymentSettleOutcome = "paid" | "already_paid" | "pending" | "expired" | "mismatch" | "late_completion";
 
@@ -52,6 +60,9 @@ export async function settlePayment(
   opts?: { signal?: AbortSignal },
 ): Promise<PaymentSettleOutcome> {
   const sessionId = payment.stripe_checkout_session_id;
+  if (!sessionId && payment.stripe_payment_intent_id && payment.stripe_account_id) {
+    return await settleByPaymentIntent(admin, stripe, payment, nowMs, opts);
+  }
   if (!sessionId || !payment.stripe_account_id) {
     const ttl = payment.expires_at ? Date.parse(payment.expires_at) : Date.parse(payment.created_at) + WALLET_CHECKOUT_TTL_SEC * 1000;
     if (nowMs > ttl) {
@@ -75,4 +86,48 @@ export async function settlePayment(
     return "expired";
   }
   return await settlePaidPayment(admin, payment.id, c.paymentIntent);
+}
+
+/** A payment paid inside the app (MESITA-3568): read its PaymentIntent on
+ *  the connected account. succeeded → settle; canceled → release; still in
+ *  flight → pending for PI_TTL_MS, then cancel it FIRST and release only when
+ *  Stripe answers canceled (a PI that succeeded meanwhile settles, never
+ *  fails). */
+export async function settleByPaymentIntent(
+  admin: Pick<SupabaseClient, "rpc">,
+  stripe: StripeCall,
+  payment: OpenPayment,
+  nowMs: number,
+  opts?: { signal?: AbortSignal },
+): Promise<PaymentSettleOutcome> {
+  const piId = payment.stripe_payment_intent_id as string;
+  const account = payment.stripe_account_id as string;
+  const path = `payment_intents/${encodeURIComponent(piId)}`;
+  const pi = await stripe("GET", path, undefined, { stripeAccount: account, signal: opts?.signal });
+  const meta = (pi.metadata ?? {}) as Record<string, unknown>;
+  if (typeof meta.payment_id === "string" && meta.payment_id !== payment.id) {
+    console.error("[settle-payment] pi_mismatch", JSON.stringify({ payment_id: payment.id, payment_intent: piId }));
+    return "mismatch";
+  }
+  const decide = async (status: unknown): Promise<PaymentSettleOutcome | null> => {
+    if (status === "succeeded") return await settlePaidPayment(admin, payment.id, piId);
+    if (status === "canceled") {
+      await releasePayment(admin, payment.id, "failed", "pi_canceled");
+      return "expired";
+    }
+    return null;
+  };
+  const first = await decide(pi.status);
+  if (first) return first;
+  if (pi.status === "processing" || nowMs - Date.parse(payment.created_at) < PI_TTL_MS) return "pending";
+
+  let after: Record<string, unknown>;
+  try {
+    after = await stripe("POST", `${path}/cancel`, { cancellation_reason: "abandoned" }, { stripeAccount: account, idempotencyKey: `tabpi-cancel:${payment.id}:${piId}`, signal: opts?.signal });
+  } catch (err) {
+    // The PI moved under us (it succeeded or is processing): read it again.
+    if (!(err instanceof StripeError) || err.httpStatus !== 400) throw err;
+    after = await stripe("GET", path, undefined, { stripeAccount: account, signal: opts?.signal });
+  }
+  return (await decide(after.status)) ?? "pending";
 }
