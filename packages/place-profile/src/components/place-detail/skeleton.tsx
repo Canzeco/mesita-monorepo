@@ -233,11 +233,12 @@ export function PlaceDetailBodySkeleton({
       <span className="sr-only">Loading place</span>
       <ProfileSummarySkeleton />
       <div aria-hidden className="flex flex-col gap-3 px-4">
-        {/* The sticky block (MESITA-3330): three Mesita bones, then the strip
+        {/* The sticky block (MESITA-3330): four Mesita bones (MESITA-3574), then the strip
             itself, not a copy: its labels, its 3px blue underline. */}
         <div inert className={PLACE_STICKY_BLOCK_CLASS}>
           <div className={PLACE_STICKY_ROW_CLASS}>
             <div className={PROFILE_MESITA_ROW_CLASS}>
+              <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />
               <Bone className={PROFILE_MESITA_TILE_BOX_CLASS} />

@@ -8,6 +8,7 @@ import {
   QrCode,
   Rocket,
   Share2,
+  Ticket,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -17,6 +18,7 @@ import type { PlaceActions } from "../../actions";
 import { inertButtonProps } from "../../actions";
 import type { PlaceDetail } from "../../place-detail";
 import { cn } from "../../lib/format";
+import { moneyLabel } from "../../lib/money";
 import { PLACE_PILL_CLASS } from "../../lib/ui";
 import { buildDirectionsUrl } from "../../lib/maps-link";
 import { isReserveActionEnabled } from "../../lib/place-profile-actions";
@@ -31,8 +33,11 @@ import { isReserveActionEnabled } from "../../lib/place-profile-actions";
 // Reserve and Pay side by side):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      grey, glyph over label
-//   [ Reserve ] [ Prepay / 30% Bonus ] [ Pay / 5% Back ]    grey · green · green, pinned
-//   (MESITA-3426)
+//   [ Reserve ] [ Prepay / 30% Bonus ] [ Wallet / $120MX ] [ Pay / 5% Back ]
+//   ink · green · green · green, pinned (MESITA-3574, Pato: "make this four
+//   items ... Reserve Prepay Wallet-Card-Preview-(for that place) Pay. 5 and
+//   4. just mention wallet and display how many credits the user has
+//   there"; three since MESITA-3426)
 //
 // That is Pato's 3×3 sketch (MESITA-3419); layout D (MESITA-3416) before.
 //
@@ -108,9 +113,10 @@ export const PROFILE_TILES_ROW_CLASS = "grid grid-cols-5 gap-2";
  *  glyph-over-label before that. */
 export const PROFILE_TILE_BOX_CLASS =
   "flex h-13 min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1";
-/** Row 2, pinned: Reserve · Prepay · Pay, a third each (MESITA-3426; Prepay
- *  · Pay halves in MESITA-3423, Prepay · Card · Pay in MESITA-3419). */
-export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-3 gap-2";
+/** Row 2, pinned: Reserve · Prepay · Wallet · Pay, a quarter each
+ *  (MESITA-3574; a third each in MESITA-3426, Prepay · Pay halves in
+ *  MESITA-3423, Prepay · Card · Pay in MESITA-3419). */
+export const PROFILE_MESITA_ROW_CLASS = "grid grid-cols-4 gap-2";
 
 /** A Mesita tile's box: the grey tile's own (MESITA-3419, MESITA-3421). */
 export const PROFILE_MESITA_TILE_BOX_CLASS = PROFILE_TILE_BOX_CLASS;
@@ -275,7 +281,7 @@ export function ProfileActions({
 }
 
 /** THE MESITA ROW, PINNED (Pato, MESITA-3330: "the dark buttons must not be
- *  scrollable, those stuck at the top"): Reserve · Prepay · Pay leave the
+ *  scrollable, those stuck at the top"): Reserve · Prepay · Wallet · Pay leave the
  *  summary band and ride in PlaceDetailBody's sticky block with the tab
  *  strip, so they stay reachable while the body scrolls; the grey tiles
  *  scroll away with the summary. Same tiles, same wiring. */
@@ -297,6 +303,11 @@ export function MesitaActions({
   const takesReservations = isReserveActionEnabled(place);
   const open = (section: "payment" | "prepayment") =>
     onOpenRewards ? () => onOpenRewards(section) : undefined;
+  const balance = place.money?.balance ?? null;
+  const walletBadge =
+    !balance && actions?.vouchersLoading
+      ? "…"
+      : moneyLabel(Math.max(balance?.available_cents ?? 0, 0), place.money?.currency ?? "mxn");
   return (
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       {/* RESERVE LEADS THE PINNED ROW again (MESITA-3426), IN THE INK (Pato,
@@ -313,7 +324,21 @@ export function MesitaActions({
         onClick={takesReservations ? onReserve : undefined}
         ariaLabel={takesReservations ? "Reserve a table" : "Reserve a table, not available at this place"}
       />
-      <MesitaTile Icon={Wallet} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
+      {/* Prepay wears the ticket since MESITA-3574: the wallet glyph is the
+          Wallet tile's, the bar's Wallet tab's own. */}
+      <MesitaTile Icon={Ticket} label="Prepay" amount="30% Bonus" badge="30% Bonus" tone="green" onClick={open("prepayment")} />
+      {/* WALLET (MESITA-3574): the guest's credit here, Available, from the
+          host's list-vouchers read (place.money.balance); $0MX when none,
+          a quiet "…" while the first read is out. Opens the Wallet at this
+          place's credit. */}
+      <MesitaTile
+        Icon={Wallet}
+        label="Wallet"
+        amount={walletBadge === "…" ? "loading" : `${walletBadge} of credits here`}
+        badge={walletBadge}
+        tone="green"
+        onClick={actions?.onOpenWallet}
+      />
       {/* PAY GOES TO /pay (MESITA-3501, Pato: "pay must redirect to the actual
           /pay page"); Prepay keeps opening the Offers page. */}
       <MesitaTile Icon={QrCode} label="Pay" amount="5% Back" badge="5% Back" tone="green" onClick={actions?.onPay} />
