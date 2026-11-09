@@ -602,7 +602,7 @@ export function VouchersPane({
                       }
                     />
                   </span>
-                  <span className="text-muted-foreground truncate text-sm tabular-nums" aria-hidden>
+                  <span className="text-muted-foreground text-sm leading-snug tabular-nums" aria-hidden>
                     {opening
                       ? "Opening…"
                       : `Pay ${pay} · Get ${get} ${readyIn(p.key)}`}
