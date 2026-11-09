@@ -39,7 +39,7 @@ describe("Vouchers tab", () => {
     const html = render(OFFER, () => {});
     // A row for sale carries a selector; one Buy at the foot (MESITA-3487).
     expect(html).toContain('aria-label="Choose the Small voucher');
-    expect(html).toContain('aria-label="Choose the Mid voucher');
+    expect(html).toContain('aria-label="Choose the Medium voucher');
     expect(html).toContain('aria-label="Choose the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
     expect(html).not.toContain('aria-label="Choose the Welcome voucher');
     expect(html).toContain("You had yours here");
