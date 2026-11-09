@@ -13,7 +13,6 @@ import {
 } from "@/components/consumer/me/settings-rows";
 import { PhoneRow } from "@/components/consumer/me/PhoneRow";
 import { SocialNameRow } from "@/components/consumer/me/SocialNameRow";
-import { DeleteAccountRow } from "@/components/consumer/DeleteAccountSheet";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
@@ -21,8 +20,9 @@ import { cn } from "@/lib/utils";
 // Only rows that do something. Push, Location, Language and Default location
 // saved to localStorage and nothing read them; Export my data was a mailto;
 // Delete account went with them (Pato, MESITA-2589: "remove stupid fake
-// buttons from settings") and came back (MESITA-3049): it was never fake.
-// The server writes here are Delete account and Sign out.
+// buttons from settings"), came back (MESITA-3049) and left again
+// (MESITA-3468: "remove the stupid delete account button"); Contact is the
+// way to ask. The one server write here is Sign out.
 // Social has one switch, "Public profile" (MESITA-2590, MESITA-2594): off, you
 // still show, by first name, without photo or handle (MESITA-2612). Nothing makes a member disappear from Social
 // (MESITA-2552: "if you connect your … instagram, is because you want to be
@@ -105,8 +105,6 @@ export function SettingsModal() {
             label="Contact"
             sub="Talk to us"
           />
-          <RowDivider />
-          <DeleteAccountRow />
         </>
       }
       social={<SocialNameRow />}
