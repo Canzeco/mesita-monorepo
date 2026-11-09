@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ReceiptText, Wallet as WalletIcon } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
@@ -159,6 +159,15 @@ export function WalletPage() {
     ].map(balanceRow);
   }, [wallet]);
 
+  // The open sheet follows the latest read (MESITA-3549): a re-read while it
+  // is open (settling, a pending entry turning Available) updates it.
+  const liveMethod = useMemo<Method | null>(() => {
+    if (method?.kind !== "place" || !credits) return method;
+    const row = credits.find((r) => r.card.key === method.card.key);
+    return row ? { ...method, card: row.card, balance: row.balance } : method;
+  }, [method, credits]);
+  const reread = useCallback(() => setNonce((n) => n + 1), []);
+
   let shown = 0;
 
   return (
@@ -223,7 +232,7 @@ export function WalletPage() {
         </div>
       ) : null}
 
-      <MethodSheet method={method} onClose={() => setMethod(null)} />
+      <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} />
     </div>
   );
 }
