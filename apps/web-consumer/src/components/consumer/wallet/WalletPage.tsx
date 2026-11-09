@@ -2,21 +2,30 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Wallet as WalletIcon } from "lucide-react";
+import { ReceiptText, Wallet as WalletIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { apiFillAreaPool, apiListAreaPool, type Place } from "@/lib/api/places";
-import { apiGetWallet, ENTRY_LABEL, entryDate, money, type WaitingStory, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, money, type WaitingStory, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { WalletCard, WalletCardPanel, WalletCardSkeleton, type WalletCardModel } from "./WalletCard";
+import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
+import { WalletCard, type WalletCardModel } from "./WalletCard";
+import { AddTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
 
-// THE WALLET IS A LIST OF CARDS (Pato, MESITA-3511, 2026-11-08: "a list of
+// TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
+// page called Wallet, and then at the right that icon for transactions ...
+// TWO HORIZONTAL CAROUSELS with cards. only that in that page"): the header
+// (Wallet, and Transactions on the right), then Money Payment Methods and
+// Credits Payment Methods, each led by Add (WalletRails). A card's history
+// lives in Me › Transactions now; a credit card opens its place.
+//
+// Before: THE WALLET IS A LIST OF CARDS (Pato, MESITA-3511, 2026-11-08: "a list of
 // all your cards, using card dimensions and mentioning how much you have on
 // each"). The bar's Wallet tab, /wallet: one house card per place
 // (`WalletCard`). "Your credit" holds the places where the guest has money
@@ -52,7 +61,6 @@ const SETTLING_RETRY_MS = 4_000;
 const FILL_CHUNK = 100;
 /** Photos of the first cards load eagerly; the rest lazily. */
 const EAGER_CARDS = 3;
-const HEADING = "text-muted-foreground mt-5 mb-2 text-sm font-semibold";
 
 function sayOutcome(w: Wallet) {
   switch (w.outcome) {
@@ -71,7 +79,7 @@ function sayOutcome(w: Wallet) {
   }
 }
 
-type Row = { card: WalletCardModel; balance: WalletBalance | null };
+type Row = { card: WalletCardModel };
 
 function hasMoney(b: WalletBalance): boolean {
   return b.available_cents > 0 || b.pending_cents > 0;
@@ -83,14 +91,14 @@ function newestFirst(a: WalletBalance, b: WalletBalance): number {
 
 function balanceRow(b: WalletBalance, cat: Place | undefined): Row {
   const name = b.place?.name ?? cat?.name ?? "A Mesita place";
-  const tap: WalletCardModel["tap"] =
-    b.entries.length > 0
-      ? { kind: "expand" }
-      : b.place
-        ? { kind: "link", href: placeHref(b.place.slug ?? b.place.id) }
-        : { kind: "plain" };
+  // In a rail a card cannot unfold its history (Me › Transactions has it):
+  // it opens the place, where its Offers are.
+  const tap: WalletCardModel["tap"] = b.place
+    ? { kind: "link", href: placeHref(b.place.slug ?? b.place.id) }
+    : cat
+      ? { kind: "link", href: placeHref(cat.slug || cat.id) }
+      : { kind: "plain" };
   return {
-    balance: b,
     card: {
       key: `${b.place_id}:${b.currency}`,
       name,
@@ -108,7 +116,6 @@ function balanceRow(b: WalletBalance, cat: Place | undefined): Row {
 
 function catalogRow(p: Place): Row {
   return {
-    balance: null,
     card: {
       key: `${p.id}:mxn`,
       name: p.name,
@@ -129,7 +136,7 @@ export function WalletPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
-  const [open, setOpen] = useState<string | null>(null);
+  const [story, setStory] = useState<WaitingStory | null>(null);
   const [catalog, setCatalog] = useState<Place[]>([]);
   const [catalogSettled, setCatalogSettled] = useState(!WALLET_SHOWS_EVERY_PLACE);
 
@@ -216,39 +223,27 @@ export function WalletPage() {
         ...rest.map((b) => balanceRow(b, byId.get(b.place_id))),
         ...catalog.filter((p) => !balanceIds.has(p.id)).map(catalogRow),
       ],
-      noBalances: wallet.balances.length === 0,
     };
   }, [wallet, catalog]);
 
-  const toggle = (key: string) => setOpen((o) => (o === key ? null : key));
-  let shown = 0;
-  const renderRows = (rows: Row[]) => (
-    <div className="flex flex-col gap-3">
-      {rows.map((row) => {
-        const eager = shown++ < EAGER_CARDS;
-        const isOpen = open === row.card.key;
-        return (
-          <div key={row.card.key}>
-            <WalletCard card={row.card} open={isOpen} onToggle={() => toggle(row.card.key)} eager={eager} />
-            {isOpen && row.balance ? (
-              <WalletCardPanel>
-                <History balance={row.balance} />
-              </WalletCardPanel>
-            ) : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-
   const loadingMore = WALLET_SHOWS_EVERY_PLACE && !catalogSettled;
+  let shown = 0;
+  const credits = groups ? [...groups.credit, ...groups.every] : [];
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
-      <p className="text-muted-foreground type-body mt-1">
-        Your credit at each place, ready for your next visit.
-      </p>
+      {/* THE HEADER (MESITA-3530): Wallet, and Transactions on the right. */}
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
+        <Link
+          href={CONSUMER_ROUTES.mePages.transactions}
+          aria-label="Transactions"
+          className="border-border bg-card hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl border transition"
+          data-wallet-transactions
+        >
+          <ReceiptText className="h-5 w-5" aria-hidden />
+        </Link>
+      </header>
       {wallet?.test_mode ? <TestBand className="mt-3" /> : null}
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-3 text-sm" role="status">
@@ -256,64 +251,41 @@ export function WalletPage() {
         </p>
       ) : null}
 
-      {wallet?.waiting_stories?.length ? (
-        <div className="mt-5 flex flex-col gap-3" data-waiting-stories>
-          {wallet.waiting_stories.map((s) => <WaitingStoryCard key={s.purchase_id} story={s} />)}
+      <WalletRail title="Money Payment Methods">
+        <AddTile
+          label="Add"
+          line="Saving a card comes soon"
+          onClick={() => toast("Saving a card comes soon. Today you pick card, Apple Pay or Google Pay at checkout.")}
+        />
+        <CheckoutMethodTile />
+      </WalletRail>
+
+      <WalletRail title="Credits Payment Methods">
+        <AddTile label="Add" line="Buy credits on a place's Offers" href={CONSUMER_ROUTES.home} />
+        {wallet?.waiting_stories?.map((s) => <StoryTile key={s.purchase_id} story={s} onOpen={() => setStory(s)} />)}
+        {credits.map((row) => (
+          <div key={row.card.key} className={RAIL_TILE}>
+            <WalletCard card={row.card} eager={shown++ < EAGER_CARDS} />
+          </div>
+        ))}
+        {!groups && !failed ? <RailSkeleton /> : null}
+        {groups && loadingMore ? <RailSkeleton count={1} /> : null}
+      </WalletRail>
+
+      {failed && !wallet ? (
+        <div className="mt-5 flex flex-1 flex-col">
+          <EmptyState
+            icon={WalletIcon}
+            title="Couldn't load Wallet"
+            description="Check your connection and try again."
+            action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
+          />
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col">
-        {groups ? (
-          groups.credit.length === 0 && groups.every.length === 0 && !loadingMore && !wallet?.waiting_stories?.length ? (
-            <div className="mt-5 flex flex-1 flex-col">
-              <EmptyState
-                icon={WalletIcon}
-                title="No credit yet"
-                description="Tap Prepay on a place to buy one. The credit shows up here."
-                action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
-              />
-            </div>
-          ) : (
-            <>
-              {groups.credit.length > 0 ? (
-                <section>
-                  <h2 className={HEADING}>Your credit</h2>
-                  {renderRows(groups.credit)}
-                </section>
-              ) : null}
-              {groups.every.length > 0 || loadingMore ? (
-                <section>
-                  <h2 className={HEADING}>Every place</h2>
-                  {groups.noBalances ? (
-                    <p className="text-muted-foreground -mt-1 mb-3 text-sm">
-                      Buy credit on a place&apos;s Offers to pay with it here.
-                    </p>
-                  ) : null}
-                  {renderRows(groups.every)}
-                  {loadingMore ? (
-                    <div className={groups.every.length > 0 ? "mt-3" : undefined}>
-                      <WalletCardSkeleton count={1} />
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
-            </>
-          )
-        ) : failed ? (
-          <div className="mt-5 flex flex-1 flex-col">
-            <EmptyState
-              icon={WalletIcon}
-              title="Couldn't load Wallet"
-              description="Check your connection and try again."
-              action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
-            />
-          </div>
-        ) : (
-          <div className="mt-5">
-            <WalletCardSkeleton />
-          </div>
-        )}
-      </div>
+      <LocalDialog open={story !== null} onClose={() => setStory(null)} ariaLabel="Story voucher activation">
+        {story ? <WaitingStoryCard story={story} /> : null}
+      </LocalDialog>
     </div>
   );
 }
@@ -335,53 +307,6 @@ function WaitingStoryCard({ story }: { story: WaitingStory }) {
       </div>
       <QRCodeSVG value={story.url} size={176} marginSize={0} aria-label="Story voucher activation code" />
     </section>
-  );
-}
-
-/** One place's history under its open card: today's entries, then the place. */
-function History({ balance }: { balance: WalletBalance }) {
-  return (
-    <>
-      <ul>
-        {balance.entries.map((e, i) => {
-          const row = (
-            <>
-              <span>
-                {ENTRY_LABEL[e.kind] ?? e.kind}
-                <span className="text-muted-foreground"> · {entryDate(e.at)}</span>
-              </span>
-              <span className="font-semibold tabular-nums">
-                {e.amount_cents > 0 ? "+" : ""}
-                {money(e.amount_cents, balance.currency)}
-                {e.pending ? <span className="text-muted-foreground font-normal"> · pending</span> : null}
-              </span>
-            </>
-          );
-          return (
-            <li key={i}>
-              {e.kind === "spend" && e.payment_id ? (
-                <Link
-                  href={`${CONSUMER_ROUTES.pay}?payment=${encodeURIComponent(e.payment_id)}`}
-                  className="flex items-center justify-between py-2 text-sm underline-offset-4 hover:underline"
-                >
-                  {row}
-                </Link>
-              ) : (
-                <div className="flex items-center justify-between py-2 text-sm">{row}</div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {balance.place ? (
-        <Link
-          href={placeHref(balance.place.slug ?? balance.place.id)}
-          className="mt-1 block py-2 text-sm font-semibold underline-offset-4 hover:underline"
-        >
-          Open place
-        </Link>
-      ) : null}
-    </>
   );
 }
 
