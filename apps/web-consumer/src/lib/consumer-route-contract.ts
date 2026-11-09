@@ -55,7 +55,7 @@ export const CONSUMER_ROUTES = {
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
   // redirect to /me until this.
   share: "/share",
-  // Me is the hub: identity header + three pairs of DestTiles, each a real
+  // Me is the hub: identity header + a 3×3 grid of DestTiles and a Settings row, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
   // 308s any other one-segment address onto the hub.
   me: "/me",

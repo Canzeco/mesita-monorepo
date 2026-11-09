@@ -89,8 +89,9 @@ export function ProfileClient() {
           instagramConnected={igFacts.igConnected || igFacts.unknown}
         />
       }
-      tile={(cell) => (
+      tile={(cell, shape) => (
         <DestTile
+          shape={shape}
           Icon={cell.Icon}
           title={cell.title}
           summary={cell.summary}

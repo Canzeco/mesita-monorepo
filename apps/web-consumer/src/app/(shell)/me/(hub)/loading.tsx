@@ -9,13 +9,11 @@ import { IdentityBarSkeleton } from "../me-skeletons";
 //
 //   the app bar          IdentityBar's band and its skeleton card, the same
 //                        one the page draws while its profile read is out
-//   2 · 2 · 2 · 2 · 2    the ten tiles, from the page's own rows
+//   3 · 3 · 3 · 1        the nine grid cells, then the Settings row
 //
-// The rows, the scroller and the words are hub-tiles.tsx's, the page's own
-// source. Each tile prints its title and summary as itself: most summaries
-// wrap to two lines on a phone, and a one-line bar drew the grid short, so
-// it jumped when the page landed. Only the strings cross into the tile; the
-// Icon is a function and cannot (MESITA-2129).
+// The cells, their shapes, the scroller and the words are hub-tiles.tsx's,
+// the page's own source, so the page lands without a jump. Only the strings
+// cross into the tile; the Icon is a function and cannot (MESITA-2129).
 //
 // It sits in (hub) with the page so it wraps the hub only, never a /me/<box>
 // (see page.tsx). The /me/[tab] catch-all re-exports it: it redirects here.
@@ -23,8 +21,12 @@ export default function MeLoading() {
   return (
     <MeHubFrame
       bar={<IdentityBarSkeleton />}
-      tile={(cell) => (
-        <DestTileSkeleton title={cell.title} summary={cell.summary} />
+      tile={(cell, shape) => (
+        <DestTileSkeleton
+          shape={shape}
+          title={cell.title}
+          summary={cell.summary}
+        />
       )}
     >
       <p role="status" className="sr-only">

@@ -8,7 +8,7 @@ import {
   isModalContractPath,
 } from "@/lib/consumer-route-contract";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
-import { ME_HUB_ROWS } from "@/app/(shell)/me/hub-tiles";
+import { ME_HUB_GRID, ME_HUB_SETTINGS } from "@/app/(shell)/me/hub-tiles";
 import nextConfig from "../../../next.config";
 
 // STRUCTURAL route guards (MESITA-1062 S0).
@@ -353,7 +353,13 @@ describe("the bar is Home · Search · Pay · Wallet · Me", () => {
   }
 
   it("is exactly Home · Search · Pay · Wallet · Me (MESITA-3295)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Wallet", "Me"]);
+    expect(await tabLabels()).toEqual([
+      "Home",
+      "Search",
+      "Pay",
+      "Wallet",
+      "Me",
+    ]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -599,22 +605,22 @@ describe("T6 — Activity's sections are pages on Me", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a 2-up grid (MESITA-1628). In a grid a dead cell reads as broken
+// Me is a 3-up grid and a Settings row (MESITA-1628, MESITA-3450). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is eleven live cells", () => {
+describe("T8 — Me's grid is ten live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
-  // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_ROWS, the one
-  // source ProfileClient and /me's loading.tsx both map, so the fallback
-  // draws the page's own rows. These read the rows themselves.
-  const HUB = readFileSync(join(SHELL, "me", "hub-tiles.tsx"), "utf8");
-  /** The cells' titles, in render order. */
-  const gridTitles = () => ME_HUB_ROWS.flat().map((cell) => cell.title);
+  // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
+  // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
+  // map, so the fallback draws the page's own cells. These read the cells.
+  /** Every cell, in render order: the grid, then Settings. */
+  const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
+  const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders eleven cells in Pato's order", () => {
+  it("renders ten cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -660,23 +666,13 @@ describe("T8 — Me's grid is eleven live cells", () => {
     expect(gridTitles()).not.toContain("Support");
   });
 
-  it("rows are pairs, Settings last; nothing spans", () => {
-    // Five pairs since Visits left (MESITA-3299; it had made the cells odd,
-    // MESITA-3264). Each row is one DestGrid (MeHubFrame), and DestGrid has
-    // no `cols`.
-    expect(ME_HUB_ROWS.map((row) => row.length)).toEqual([2, 2, 2, 2, 2]);
-    expect(HUB).toContain("<DestGrid key=");
-    expect([...HUB.matchAll(/^\s*full$/gm)]).toHaveLength(0);
-    expect(HUB).not.toMatch(/<DestGrid cols=/);
-  });
-
   it("no cell is compact or parked — every cell says what it holds", () => {
     // The four-up bought its width by dropping the summary line, which left
     // Activity as the only cells on Me that named a destination without
     // saying what was in it. A cell is an Icon, a title, a summary and an
     // href and nothing else — no `compact`, no `soon` — so a "make it fit"
     // or "coming soon" change cannot reintroduce either idea by hand.
-    for (const cell of ME_HUB_ROWS.flat()) {
+    for (const cell of cells()) {
       expect(Object.keys(cell).sort(), cell.title).toEqual([
         "Icon",
         "href",
@@ -722,19 +718,6 @@ describe("T8 — Me's grid is eleven live cells", () => {
     expect(src).not.toContain("opacity-[0.22]");
     expect(src).not.toMatch(/absolute right-2\.5 bottom-2/);
     expect(src).not.toMatch(/\btint\??:/);
-  });
-
-  // Pato, MESITA-2596: "make these settings boxes a bit shorter … still keep
-  // two columns". The chip sits beside the text: one row, not a stack.
-  it("each cell is one short row — chip beside the text — in two columns", () => {
-    const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
-    expect(src).toContain(
-      "relative flex w-full items-center gap-2.5 overflow-hidden rounded-2xl border p-3",
-    );
-    expect(src).not.toMatch(
-      /relative flex w-full flex-col overflow-hidden rounded-2xl/,
-    );
-    expect(src).toContain('className="grid grid-cols-2 items-stretch gap-2"');
   });
 
   it("the More drawer is gone from the codebase", () => {
