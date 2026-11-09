@@ -123,11 +123,13 @@ export function CashTile() {
       <div
         role="img"
         aria-label={`Cash: ${CASH_BACK}`}
-        className={cn(TILE_SHAPE, "relative flex w-full items-center justify-center overflow-hidden bg-emerald-600 text-white")}
+        className={cn(TILE_SHAPE, "relative flex w-full items-center justify-center overflow-hidden bg-green-400 text-neutral-950")}
         data-wallet-method="cash"
       >
-        <span className="absolute inset-1.5 rounded-lg border border-white/40" aria-hidden />
-        <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/80 text-lg font-bold" aria-hidden>
+        {/* MESITA-3584 (Pato: "go for 1"): the place screen's green with a
+            black $ coin, one colour for money that pays you back. */}
+        <span className="absolute inset-1.5 rounded-lg border border-neutral-950/20" aria-hidden />
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-950 text-lg font-bold text-green-400" aria-hidden>
           $
         </span>
         <span className="absolute bottom-2.5 left-3 text-xs font-semibold" aria-hidden>
