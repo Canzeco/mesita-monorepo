@@ -85,9 +85,9 @@ export function CallLog() {
     <div
       data-testid="call-log"
       className={cn(
-        // Right of the card (left edge, 1rem in, 28rem wide — MobileFrame),
+        // Right of the card (left edge, 1rem in, 30rem wide — MobileFrame),
         // under the route badge, to 1rem from the window's right edge.
-        "fixed top-10 bottom-2 hidden gap-3 select-none md:right-4 md:left-[29.75rem] md:flex",
+        "fixed top-10 bottom-2 hidden gap-3 select-none md:right-4 md:left-[31.75rem] md:flex",
         "type-label font-mono leading-tight tabular-nums",
         Z_ROUTE_BADGE,
       )}

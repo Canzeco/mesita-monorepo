@@ -18,7 +18,7 @@ import { useKeyboardInset } from "@/lib/use-keyboard-inset";
  *   - Card: the actual app surface. STRICT height on BOTH breakpoints —
  *     \`h-full\` (= h-dvh) on mobile, \`h-[calc(100dvh-2rem)]\` on desktop —
  *     so the visualizer fills almost the entire viewport height and
- *     leaves just a small margin. Width stays mobile-narrow (\`max-w-md\`);
+ *     leaves just a small margin. Width stays mobile-narrow (\`max-w-md\`, 30rem on desktop — MESITA-3525);
  *     it's a vertical visualizer, not a desktop layout.
  *     The shell layout inside lays out as flex-col:
  *       [body flex-1][BottomNav]
@@ -66,7 +66,7 @@ export function MobileFrame({
           // pages have no top header, so without this the app background runs
           // flush to the viewport edge and scrolling reads as one boundless
           // sheet — the border gives the screen a contained edge all around.
-          "bg-background border-border relative flex h-full w-full max-w-md flex-col overflow-hidden border",
+          "bg-background border-border relative flex h-full w-full max-w-md flex-col md:max-w-[30rem] overflow-hidden border",
           // Desktop: fill almost the whole viewport height (thin py-4 margin),
           // keeping the mobile-narrow width — a tall vertical visualizer.
           // Rounded corners + elevation only kick in at md+.

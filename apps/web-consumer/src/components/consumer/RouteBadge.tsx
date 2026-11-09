@@ -35,8 +35,8 @@ export function RouteBadge() {
       className={cn(
         "pointer-events-none fixed top-2 left-2 select-none",
         // Desktop: over the call log, 0.75rem right of the card, which sits
-        // at the left edge, 1rem in, 28rem wide (MobileFrame, MESITA-3518).
-        "md:left-[29.75rem]",
+        // at the left edge, 1rem in, 30rem wide (MobileFrame, MESITA-3518).
+        "md:left-[31.75rem]",
         "bg-card/80 text-muted-foreground border-border rounded-full border px-2.5 py-1",
         "type-label font-mono leading-none tracking-tight tabular-nums backdrop-blur-sm",
         Z_ROUTE_BADGE,
