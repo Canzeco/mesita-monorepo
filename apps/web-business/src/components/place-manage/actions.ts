@@ -193,6 +193,9 @@ export async function getPlaceAndRole(
   manager: { method: string; expires_at: string; role: "owner" | "editor" } | null;
   /** Whether the place code is set (MESITA-3299: it lives on Settings). */
   codeSet: boolean;
+  /** MESITA-3384: the Stripe account charges in the server's mode; null when
+   *  unknown (the read failed, or an older EF), so no nudge is drawn. */
+  canSell: boolean | null;
 }>> {
   const r = await efInvoke<{
     place: AdminPlace | null;
@@ -200,6 +203,7 @@ export async function getPlaceAndRole(
     profile?: unknown;
     manager?: { method: string; expires_at: string; role: "owner" | "editor" } | null;
     code_set?: boolean;
+    can_sell?: boolean | null;
   }>("business-web-get-place", { place_id: placeId });
   if (!r.ok) return { ok: false, error: r.error, code: r.code };
   const place = r.data.place ?? null;
@@ -219,6 +223,7 @@ export async function getPlaceAndRole(
       profile,
       manager: r.data.manager ?? null,
       codeSet: r.data.code_set === true,
+      canSell: typeof r.data.can_sell === "boolean" ? r.data.can_sell : null,
     },
   };
 }

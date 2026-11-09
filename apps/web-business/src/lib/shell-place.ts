@@ -13,6 +13,11 @@ import { useEffect, useSyncExternalStore } from "react";
 
 export type NamedPlace = { id: string; name: string | null; photo: string | null };
 
+/** MESITA-3384: the open place's Stripe account cannot charge yet, so the menu
+ *  draws one quiet dot on Payments. Set only by the place layout, which read
+ *  it from the server; never remembered across reloads. */
+let connectStripeFor: string | null = null;
+
 const STORE_KEY = "mesita.business.selected-place";
 
 function readStored(): NamedPlace | null {
@@ -35,9 +40,12 @@ function subscribe(fn: () => void) {
   };
 }
 
-function set(next: NamedPlace | null) {
-  if (current?.id === next?.id && current?.name === next?.name && current?.photo === next?.photo) return;
-  current = next;
+function set(next: NamedPlace | null, connectStripe = false) {
+  const nudge = connectStripe && next ? next.id : null;
+  if (current?.id === next?.id && current?.name === next?.name && current?.photo === next?.photo && nudge === connectStripeFor) return;
+  // A fresh object, so the snapshot changes when only the nudge does.
+  current = next ? { id: next.id, name: next.name, photo: next.photo } : null;
+  connectStripeFor = nudge;
   try {
     if (next) window.localStorage.setItem(STORE_KEY, JSON.stringify(next));
     else window.localStorage.removeItem(STORE_KEY);
@@ -57,10 +65,15 @@ export function useShellPlace(): NamedPlace | null {
   return useSyncExternalStore(subscribe, () => current, () => null);
 }
 
+/** Whether the menu shows the Connect Stripe dot on this place's Payments. */
+export function needsStripeConnect(placeId: string | null): boolean {
+  return !!placeId && connectStripeFor === placeId;
+}
+
 /** Rendered by the place layout: names its place in the side menu. */
-export function ShellPlaceName({ id, name, photo }: NamedPlace) {
+export function ShellPlaceName({ id, name, photo, connectStripe = false }: NamedPlace & { connectStripe?: boolean }) {
   useEffect(() => {
-    set({ id, name, photo });
-  }, [id, name, photo]);
+    set({ id, name, photo }, connectStripe);
+  }, [id, name, photo, connectStripe]);
   return null;
 }

@@ -29,7 +29,12 @@ export default async function PlaceLayout({
 
   return (
     <PlaceManageShell placeId={id} initialPlace={manage.place} initialProfile={manage.profile}>
-      <ShellPlaceName id={id} name={manage.place.name ?? null} photo={manage.place.profile_photo ?? manage.place.photos?.[0] ?? null} />
+      <ShellPlaceName
+        id={id}
+        name={manage.place.name ?? null}
+        photo={manage.place.profile_photo ?? manage.place.photos?.[0] ?? null}
+        connectStripe={manage.canSell === false}
+      />
       {/* Mesita is filling in the profile (MESITA-3140). */}
       <PlaceTabTitle right={enrichmentView(manage.place).enriching ? <EnrichingTag /> : null} />
       <div className="flex min-h-0 flex-1 flex-col gap-4">

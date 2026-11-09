@@ -1,6 +1,7 @@
 "use client";
 
-// Payments (MESITA-3296, four sections since MESITA-3408): the place's own
+// Payments (MESITA-3296, four sections since MESITA-3408): while the account
+// cannot charge, a Connect card leads (MESITA-3384). Then the place's own
 // Stripe account, with the one button its state calls for; the owner's money
 // (MESITA-3307: totals, the fee note, the rows; owners only); Visit
 // Checkout, the bill in its order (House Credits, Mesita Pay, Outside
@@ -142,6 +143,14 @@ function accountReason(a: PaymentAccount): string {
   if (a.state === "restricted") return a.requirements_due > 0 ? "Stripe needs more information" : "Stripe paused this account";
   return "Finish Stripe onboarding";
 }
+
+/** The Connect nudge (MESITA-3384): while the account cannot charge, the page
+ *  leads with what connecting opens, in the catalog's numbers (the voucher
+ *  bonuses above, the 5% fee of PER_100). Objective: what the guest pays and
+ *  gets, what Mesita takes; nothing sold. */
+const CONNECT_TITLE = "Connect Stripe to sell vouchers and take payments";
+const CONNECT_LINE =
+  "Guests pay the bill from their phone with Mesita Pay and buy prepaid vouchers: you get the money up front, they get 10% to 30% more credit to spend here. Mesita's fee is 5% of what guests pay by card.";
 
 /** Where the account was opened. Permanent on the account (Stripe). */
 const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
@@ -296,6 +305,22 @@ export function PaymentsPanel({
   return (
     <>
       {testMode ? <TestBand detail="Guests pay with Stripe's test card." /> : null}
+      {!account.charges_enabled ? (
+        <Card className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+            <StripeLogoIcon size={22} weight="fill" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1 text-sm">
+            <h2 className="font-semibold">{CONNECT_TITLE}</h2>
+            <p className="text-muted-foreground">{CONNECT_LINE}</p>
+          </div>
+          {canEdit && copy.button && !copy.open ? (
+            <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0 self-start sm:self-center")} disabled={pending} onClick={() => void stripe()}>
+              {busy === "stripe" ? "Opening…" : copy.button}
+            </button>
+          ) : null}
+        </Card>
+      ) : null}
       {fee.hold ? (
         <p className={cn(ERROR_BOX_CLASS, "flex flex-wrap items-center justify-between gap-3")} data-fee-hold>
           <span>
