@@ -296,21 +296,44 @@ export const PAY_REFUSAL: Record<string, string> = {
   locked: "Card payments here are paused for a few minutes.",
 };
 
-/** How a bill splits between the credit the guest holds and a card part.
- *  `credit` covers it; `mixed` and `card` put the rest on the card where
- *  the place takes one; `over` is more than the credit at a place that
- *  takes no card, so the form says so and offers nothing. The server is the
- *  last word on every part. */
-export function splitPayment(
-  amountCents: number,
-  spendableCents: number,
-  cardOk: boolean,
-): { credit_cents: number; card_cents: number; kind: "credit" | "mixed" | "card" | "over" } {
-  const credit = Math.min(amountCents, Math.max(spendableCents, 0));
-  const card = amountCents - credit;
-  if (card === 0) return { credit_cents: credit, card_cents: 0, kind: "credit" };
-  if (!cardOk) return { credit_cents: credit, card_cents: card, kind: "over" };
-  return { credit_cents: credit, card_cents: card, kind: credit === 0 ? "card" : "mixed" };
+// ── The Pay tab's list (MESITA-3457) ────────────────────────────────────────
+
+/** One place the guest can pay at now: their credit there, whether Mesita
+ *  Pay takes a card part, the card minimum and cashback rate, and the last
+ *  12 hours' payment. Every number is the server's. */
+export type PayPlace = {
+  place_id: string;
+  name: string | null;
+  marks: { tier: number | null; mesita_pay: boolean };
+  /** Null without a location, or for a place with no coordinates. */
+  distance_m: number | null;
+  currency: string;
+  card_ok: boolean;
+  /** Spendable now: Available minus credit held by open payments. */
+  available_cents: number;
+  pending_cents: number;
+  /** What a card part earns back here; 0 when Cashback is off. */
+  cashback_bps: number;
+  test_mode: boolean;
+  /** Stripe's minimum on card + tip (the start refuses below it). */
+  card_min_cents: number;
+  paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
+};
+
+/** The places, credit first then nearest. `at` is rounded by the caller and
+ *  never stored by the server. A `bad_location` answer is retried once
+ *  without it. */
+export async function apiListPayPlaces(
+  client: SupabaseClient,
+  at: { lat: number; lng: number } | null,
+): Promise<PayPlace[]> {
+  try {
+    const r = await invokeEF<{ places: PayPlace[] }>(client, "consumer-web-list-pay-places", at ? { lat: at.lat, lng: at.lng } : {});
+    return r.places ?? [];
+  } catch (e) {
+    if (at && (e as { code?: string }).code === "bad_location") return await apiListPayPlaces(client, null);
+    throw e;
+  }
 }
 
 /** One tap's request id. A retry of the same place and amount keeps it (the
