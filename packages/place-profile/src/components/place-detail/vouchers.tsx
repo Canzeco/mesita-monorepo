@@ -348,6 +348,9 @@ function readyIn(key: MoneyVoucherKey): string {
  *  transferable to friends too"; "you don't need to prepay all the bill";
  *  MESITA-3496: prepaid credits earn no cashback). */
 const CREDIT_FACTS = [
+  // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
+  // then pay the bill with it ... everywhere, that is super important".
+  "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
   "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
   "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get no 5% back.",
@@ -548,6 +551,10 @@ export function VouchersPane({
           id="rewards-prepayment"
           title="Prepayment Offers"
         />
+        {/* SEVERAL VOUCHERS, ONE BILL (MESITA-3505): said on the page, not only in an (i). */}
+        <p className="text-muted-foreground -mt-1 text-sm" data-vouchers-add-up>
+          Buy several vouchers: the credits add up in one wallet and pay one bill together.
+        </p>
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
             const line = catalog[p.key];
