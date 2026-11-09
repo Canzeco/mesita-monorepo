@@ -472,27 +472,37 @@ export function VouchersPane({
           card only says what paying here earns. */}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        {/* THE SAME CARD AS A VOUCHER (MESITA-3476, Pato: "payment offer box
-            must be same height as prepayment offers"): a third of the row,
-            on the green, no button (MESITA-3474) — "Any visit" in Buy's slot. */}
-        <ul className="grid grid-cols-3 gap-1.5" data-cashback>
-          <OfferCard
-            name="Cashback"
-            bonus="5% bonus"
-            unit="back"
-            lines={["Pay by card", "Back as credits"]}
-            pay=""
-            get=""
-            label={`5% Cashback: pay the bill here by card, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
-            faded={!loading && !cashback && dim}
-            face={CASHBACK_FACE}
-            action={
-              <span className="flex h-7 items-center justify-center text-center text-[10px] leading-tight font-semibold text-neutral-950/70">
-                {canPay || loading ? "Any visit" : cashbackTag}
-              </span>
-            }
-          />
-        </ul>
+        {/* WIDE AND SHORT (MESITA-3479, Pato: "make payment offer shorter
+            and wider, 3 columns"): the voucher card's green face across the
+            row's three columns, its parts side by side; no button
+            (MESITA-3474). It was a voucher-sized third (MESITA-3476). */}
+        <div
+          className={cn(
+            "flex items-center gap-3 rounded-2xl px-3 py-2.5",
+            CASHBACK_FACE.card,
+            !loading && !cashback && dim && "opacity-50",
+          )}
+          aria-label={`5% Cashback: pay the bill here by card, 5% comes back as credits. ${loading ? "" : cashbackTag}`}
+          data-cashback
+        >
+          <span className="flex shrink-0 flex-col" aria-hidden>
+            <span className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase", CASHBACK_FACE.muted)}>
+              <BadgePercent className="h-3 w-3" strokeWidth={2.5} />
+              Cashback
+            </span>
+            <span className="flex items-baseline gap-1">
+              <span className="text-3xl leading-none font-extrabold tabular-nums">+5%</span>
+              <span className="text-[11px] font-semibold">back</span>
+            </span>
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col text-xs leading-snug font-semibold" aria-hidden>
+            <span>Pay by card</span>
+            <span>Back as credits</span>
+          </span>
+          <span className={cn("shrink-0 text-[10px] font-semibold", CASHBACK_FACE.muted)} aria-hidden>
+            {canPay || loading ? "Any visit" : cashbackTag}
+          </span>
+        </div>
       </section>
       {/* ONE CATALOG (MESITA-3472, Pato: "it doesn't make sense to divide
           ... PREPAYMENTS: Welcome, Story, VIP / Small, Mid, Big. don't
