@@ -201,6 +201,20 @@ export async function runVoucherCard(
   return r.ok ? done(r.step) : r;
 }
 
+/** The row a tap's request_id already opened, if any. */
+export async function readRequestRow(
+  admin: SupabaseClient,
+  consumerId: string,
+  requestId: string,
+): Promise<{ id: string; voucher: string | null; place_id: string; currency: string; status: string; stripe_checkout_session_id: string | null } | null> {
+  const { data, error } = await admin.from("wallet_purchases")
+    .select("id, voucher, place_id, currency, status, stripe_checkout_session_id")
+    .eq("consumer_id", consumerId).eq("request_id", requestId)
+    .maybeSingle();
+  if (error) throw new Error(`purchase_read: ${error.message}`);
+  return (data as { id: string; voucher: string | null; place_id: string; currency: string; status: string; stripe_checkout_session_id: string | null } | null) ?? null;
+}
+
 /** The whole saved-card buy after every gate passed: the row (or the same
  *  tap's row again), then runVoucherCard. */
 export async function openVoucherCard(
@@ -224,12 +238,7 @@ export async function openVoucherCard(
   if (!opened.ok) return opened;
   let purchaseId: string;
   if (opened.duplicate) {
-    const { data, error } = await admin.from("wallet_purchases")
-      .select("id, voucher, place_id, status, stripe_checkout_session_id")
-      .eq("consumer_id", args.consumerId).eq("request_id", args.requestId)
-      .maybeSingle();
-    if (error) throw new Error(`purchase_read: ${error.message}`);
-    const row = data as { id: string; voucher: string | null; place_id: string; status: string; stripe_checkout_session_id: string | null } | null;
+    const row = await readRequestRow(admin, args.consumerId, args.requestId);
     if (!row) {
       // Welcome's once-per-guest index refused it, not the request id.
       if (args.voucher !== "voucher_welcome") return refuse(409, "in_progress", "Your purchase is already on its way.");

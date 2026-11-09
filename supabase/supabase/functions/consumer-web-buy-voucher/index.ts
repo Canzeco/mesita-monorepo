@@ -40,7 +40,8 @@ import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isPaymentMethodId, ownCard, paymentsPublishableKey } from "../_shared/tab-card.ts";
-import { openVoucherCard } from "../_shared/voucher-card.ts";
+import { openVoucherCard, readRequestRow, runVoucherCard } from "../_shared/voucher-card.ts";
+import { purchaseStore } from "../_shared/purchase-pi.ts";
 import { buyRefusal, mexicoToday, openVoucherCheckout, readStoryGuest, readVipGuest, storyRefusal, vipRefusal, voucherOffer } from "../_shared/vouchers.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
@@ -77,6 +78,41 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   if (!place || place.state !== "active") return json({ ok: false, error: "This place can't sell vouchers" }, 404);
 
   const livemode = paymentsLivemode();
+
+  // The same saved-card tap again (the screen asks once Stripe.js finished
+  // a bank check, or after a lost answer): the gates ran when its row was
+  // opened, and they would now count that very row (Welcome used, one per
+  // visit), so it only reads where its PaymentIntent stands.
+  if (withCard) {
+    const replay = await readRequestRow(admin, userId, requestId);
+    if (replay) {
+      const key = paymentsStripeKey();
+      if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
+      const stripe = stripeClient(key);
+      const customer = await readCustomer(admin, userId, livemode);
+      if (!customer || !(await ownCard(stripe, customer, cardPmId as string))) {
+        return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
+      }
+      if (replay.place_id !== placeId || replay.voucher !== voucher || replay.stripe_checkout_session_id) {
+        return json({ ok: false, code: "in_progress", error: "Your purchase is already on its way." }, 409);
+      }
+      const res = await runVoucherCard(purchaseStore(admin), stripe, {
+        purchaseId: replay.id,
+        customer,
+        platformPm: cardPmId as string,
+        currency: replay.currency,
+        placeId,
+        placeName: place.name ?? null,
+        consumerId: userId,
+        voucher: voucher as MoneyVoucherKey,
+        publishableKey: paymentsPublishableKey(livemode),
+        nowMs: Date.now(),
+      });
+      if (!res.ok) return json({ ok: false, code: res.code, error: res.error, ...(res.detail ?? {}) }, res.status);
+      return json({ ok: true, purchase_id: res.purchase_id, card: res.card });
+    }
+  }
+
   const [offer, account] = await Promise.all([voucherOffer(admin, place, userId, livemode), readAccount(admin, placeId)]);
   const refusal = buyRefusal(offer, voucher as MoneyVoucherKey, account);
   if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
