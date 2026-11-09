@@ -30,8 +30,8 @@ function render(money: PlaceMoney | undefined, onBuyVoucher?: () => void): strin
 }
 
 describe("Vouchers tab", () => {
-  it("wears the TestBand from the server's test_mode flag", () => {
-    expect(render(OFFER)).toContain(TEST_BAND_TEXT);
+  it("shows no test notice on the Offers page, test mode or not (MESITA-3454, Pato's call for now)", () => {
+    expect(render(OFFER)).not.toContain(TEST_BAND_TEXT);
     expect(render({ ...OFFER, test_mode: false })).not.toContain(TEST_BAND_TEXT);
   });
 
@@ -69,7 +69,7 @@ describe("Vouchers tab", () => {
     expect(pesos(120000, "mxn")).toBe("MX$1,200");
     expect(pesos(1050, "mxn")).toBe("MX$10.50");
     expect(render(OFFER)).toContain("Pay MX$1,000, Get MX$1,200");
-    expect(render(OFFER)).toContain("30% Bonus");
+    expect(render(OFFER)).toContain("30% bonus");
   });
 });
 
