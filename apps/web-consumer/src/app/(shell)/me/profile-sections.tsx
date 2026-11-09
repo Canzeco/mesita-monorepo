@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { MeIcon } from "./me-icons";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Skeleton } from "@/components/shared";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
@@ -21,12 +21,10 @@ import { cn } from "@/lib/utils";
 // MESITA-2596 set the chip BESIDE the title and summary (one row) in a
 // two-up grid; MESITA-3450 stacks it over the title in a three-up grid.
 //
-// COLOUR SINCE MESITA-3538 (Pato: "build some fucking better icons, like
-// color icons ... like in the uber eats and in the didi app", "only for the
-// me page"). The neutral ink chip (MESITA-1132) is gone from this grid: each
-// cell's Icon (me-icons.tsx) draws its own wash and two-tone glyph, so the
-// chip here is only the box. There is still no `tint` prop: the colour
-// belongs to the icon, one per cell, never chosen at the call site.
+// NEUTRAL STILL (decision: Pato, MESITA-1132). Every chip is the same grey and
+// every glyph the same ink: tinted per-cell chips give equal emphasis to every
+// destination, so nothing leads. There is no `tint` prop, deliberately: a
+// neutral cell cannot drift back one tile at a time.
 //
 // THREE COLUMNS (Pato, MESITA-3450: "Here in Me do 3 columns for boxes
 // instead of 2"). At 375px a cell is ~109px, ~93px inside its padding: room
@@ -58,9 +56,9 @@ const TILE_FRAME: Record<DestShape, string> = {
   row: cn(TILE_MATERIAL, "items-center gap-2.5 p-3"),
 };
 
-/** The 36px icon box. The colour icon draws its own wash inside it
- *  (MESITA-3538); the loading tile pulses the same box (MESITA-2701). */
-const DEST_CHIP = cn(ICON_CHIP_CLASS, "overflow-hidden");
+/** The 36px icon chip: the page grey, the glyph at full ink. The loading
+ *  tile pulses the same box (MESITA-2701). */
+const DEST_CHIP = cn(ICON_CHIP_CLASS, "bg-muted text-foreground");
 
 /** The title over the summary, the tile's and its skeleton's: the words are
  *  fixed (hub-tiles.tsx), so the loading tile prints them too and a summary
@@ -106,7 +104,7 @@ export function DestTile({
   href,
 }: {
   shape: DestShape;
-  Icon: MeIcon;
+  Icon: LucideIcon;
   title: string;
   /** THREE WORDS OR FEWER — see the note above. */
   summary: string;
@@ -125,7 +123,7 @@ export function DestTile({
       {/* Decorative. The title and summary already say everything, so the
           chip is hidden rather than described. */}
       <span className={DEST_CHIP} aria-hidden data-dest-chip>
-        <Icon className="h-9 w-9" />
+        <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
       </span>
       <TileText shape={shape} title={title} summary={summary} />
     </Link>

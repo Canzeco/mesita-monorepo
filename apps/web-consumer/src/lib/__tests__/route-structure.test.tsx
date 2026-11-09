@@ -707,16 +707,26 @@ describe("T8 — Me's grid is twelve live cells", () => {
     expect(src).not.toContain("<button");
   });
 
-  // Pato, MESITA-2569: "those gray icons … have a 2010 app aesthetic"; the
-  // icon leads in a chip. MESITA-3538: "color icons ... only for the me
-  // page" — each cell's own colour glyph, drawn by me-icons.tsx.
-  it("each cell leads with its own colour icon in the chip box", () => {
+  // Pato, MESITA-2569: "those gray icons … have a 2010 app aesthetic". The
+  // icon leads in one neutral ink chip; the faint corner outline is gone.
+  // MESITA-3538 tried a colour icon per cell; Pato undid it the same day
+  // (MESITA-3579: "keep the gray normal. too much colors").
+  it("each cell leads with its icon in one neutral ink chip", () => {
     const src = readFileSync(join(SHELL, "me", "profile-sections.tsx"), "utf8");
+    expect(src).toContain("data-dest-chip");
+    // DEST_CHIP: one string for the chip and its loading box (MESITA-2701),
+    // built on the box every Me row icon wears (MESITA-2983).
+    expect(src).toContain('cn(ICON_CHIP_CLASS, "bg-muted text-foreground")');
+    const rows = readFileSync(
+      join(APP_DIR, "..", "components", "consumer", "me", "settings-rows.tsx"),
+      "utf8",
+    );
+    expect(rows).toContain(
+      '"flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"',
+    );
     expect(src).toContain("className={DEST_CHIP} aria-hidden data-dest-chip");
-    expect(src).not.toContain("lucide-react");
-    const icons = cells().map((c) => c.Icon);
-    // One icon per cell, never shared: two cells in one glyph read as one place.
-    expect(new Set(icons).size).toBe(icons.length);
+    expect(src).not.toContain("opacity-[0.22]");
+    expect(src).not.toMatch(/absolute right-2\.5 bottom-2/);
     expect(src).not.toMatch(/\btint\??:/);
   });
 
