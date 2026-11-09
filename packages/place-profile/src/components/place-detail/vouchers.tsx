@@ -461,31 +461,13 @@ export function VouchersPane({
     // Card last ("maybe move the House Card to the bottom").
     // ONE SCREEN SINCE MESITA-3452 (Pato: "fit all in one screen"): 16px
     // titles, no subtitles, 10px between blocks.
-    <div className="bg-card -mx-4 -mt-4 flex flex-col gap-2.5 px-4 pt-3 pb-4" data-promos-page>
+    <div className="bg-card -mx-4 -mt-4 flex flex-1 shrink-0 flex-col gap-2.5 px-4 pt-3 pb-4" data-promos-page>
       {/* NO TEST NOTICE (MESITA-3454, Pato: "remove the test advice i don't
           care. for the moment"). Stripe's test mode still decides the charge. */}
       {/* FOUR SECTIONS (MESITA-3474, Pato: "Visit Checkout: PAY BILL
           REDIRECTION / Payments Offers: Cashback (no button) / Prepayments
           Offers / Card & Credits"). Pay bill leads, full width; the cashback
           card only says what paying here earns. */}
-      {loading || canPay ? (
-        <section className="flex flex-col gap-2" aria-labelledby="rewards-checkout" data-promos="checkout">
-          <h3 id="rewards-checkout" className={OFFERS_TITLE_CLASS}>Visit Checkout</h3>
-          {loading ? (
-            <div className={cn(PLACE_BONE_CLASS, "h-12 w-full rounded-xl")} aria-hidden data-reward-loading />
-          ) : (
-            <button
-              type="button"
-              onClick={actions?.onPay}
-              aria-label="Pay the bill here with Mesita"
-              className={cn(ACTION_BUTTON, "h-12 min-h-12 gap-2 rounded-xl text-base")}
-            >
-              <QrCode className="h-5 w-5" aria-hidden />
-              Pay bill
-            </button>
-          )}
-        </section>
-      ) : null}
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
         {/* THE SAME CARD AS A VOUCHER (MESITA-3476, Pato: "payment offer box
@@ -528,6 +510,26 @@ export function VouchersPane({
           <HouseCard place={place} currency={currency} />
         )}
       </section>
+      {/* PAY BILL, FIXED AT THE BOTTOM (MESITA-3477, Pato: "move pay bill to
+          the bottom, like a fixed button"): sticky to the foot of the page's
+          scroller, on a white bar with a hairline; where Pay would show. */}
+      {loading || canPay ? (
+        <div className="bg-card border-border sticky bottom-0 -mx-4 mt-auto -mb-4 border-t px-4 py-3" data-promos="checkout">
+          {loading ? (
+            <div className={cn(PLACE_BONE_CLASS, "h-12 w-full rounded-xl")} aria-hidden data-reward-loading />
+          ) : (
+            <button
+              type="button"
+              onClick={actions?.onPay}
+              aria-label="Pay the bill here with Mesita"
+              className={cn(ACTION_BUTTON, "h-12 min-h-12 gap-2 rounded-xl text-base")}
+            >
+              <QrCode className="h-5 w-5" aria-hidden />
+              Pay bill
+            </button>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

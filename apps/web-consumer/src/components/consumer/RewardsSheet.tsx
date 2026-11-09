@@ -44,7 +44,7 @@ export function RewardsSheet({
         onMore={actions.onMore}
       />
       </div>
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4">
+      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4">
         {drawn != null ? <VouchersPane place={place} actions={actions} focus={drawn} /> : null}
       </div>
     </LocalSheet>
