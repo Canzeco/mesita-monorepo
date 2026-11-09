@@ -3,6 +3,8 @@ import { assertEquals } from "jsr:@std/assert@1";
 import {
   resolveMode,
   deepModuleFlags,
+  deepOutage,
+  unknownModeResponse,
   laneDedupeKeys,
   mergeNameDeepQueries,
   takeFastLane,
@@ -209,17 +211,41 @@ Deno.test("Deep source never calls searchNearbyPlaces", async () => {
 });
 
 // The Mesita Name lane is retired (MESITA-2896): an older client still
-// sending `mesita` gets the deep Google lane.
-Deno.test("resolveMode: mesita now resolves to deep, unknown still falls back to fast", () => {
+// sending `mesita` gets the deep Google lane. An unknown mode is a 400
+// `unknown_mode`, never a silent fast search (MESITA-2894).
+Deno.test("resolveMode: mesita resolves to deep, an unknown mode is null", () => {
   assertEquals(resolveMode("mesita"), "deep");
   assertEquals(resolveMode("deep"), "deep");
   assertEquals(resolveMode("fast"), "fast");
   assertEquals(resolveMode(undefined), "fast");
   assertEquals(resolveMode(null), "fast");
-  // An older client sending nonsense must never silently reach Google
-  // with Pay's intent, and must never crash: fast is the safe default.
-  assertEquals(resolveMode("MESITA"), "fast");
-  assertEquals(resolveMode("embeddings"), "fast");
+  assertEquals(resolveMode("MESITA"), null);
+  assertEquals(resolveMode("embeddings"), null);
+  assertEquals(resolveMode(""), null);
+});
+
+Deno.test("unknownModeResponse: 400 unknown_mode", async () => {
+  const res = unknownModeResponse("embeddings");
+  assertEquals(res.status, 400);
+  const body = await res.json();
+  assertEquals(body.ok, false);
+  assertEquals(body.code, "unknown_mode");
+});
+
+// A Google outage is not "nothing found" (MESITA-2894).
+Deno.test("deepOutage: both queries failed answers the envelope; one failed keeps the list", () => {
+  const a = { ok: false, code: "google_quota_exceeded" };
+  const t = { ok: false, code: "google_unreachable" };
+  const both = { wantAuto: true, wantText: true };
+  assertEquals(deepOutage({ ...both, auto: a, text: t }), a);
+  assertEquals(deepOutage({ ...both, auto: a }), null);
+  assertEquals(deepOutage({ ...both, text: t }), null);
+  assertEquals(deepOutage({ ...both }), null);
+  // Only the queries that ran count: one query run and failed is an outage.
+  assertEquals(deepOutage({ wantAuto: false, wantText: true, text: t }), t);
+  assertEquals(deepOutage({ wantAuto: true, wantText: false, auto: a }), a);
+  // Nothing run (both caps 0) is an empty list, not an outage.
+  assertEquals(deepOutage({ wantAuto: false, wantText: false }), null);
 });
 
 // ── Locations: Word's second entity (MESITA-1403) ─────────────────────
@@ -408,12 +434,42 @@ Deno.test("fetchAutocomplete: a 200 with an unreadable body is an envelope, not 
   }
 });
 
-Deno.test("fetchTextSearch: a 200 with an unreadable body is an empty lane, not a throw", async () => {
+Deno.test("fetchTextSearch: a 200 with an unreadable body is an envelope, not a throw or an empty lane", async () => {
   const orig = globalThis.fetch;
   globalThis.fetch = () => Promise.resolve(new Response("not json", { status: 200 }));
   try {
     const gate = { ...DISCOVERY_DEFAULTS.map };
-    assertEquals(await fetchTextSearch("taco", "k", gate, null, 5), []);
+    const res = await fetchTextSearch("taco", "k", gate, null, 5);
+    assertEquals(res.items, []);
+    assertEquals(res.errorEnvelope?.code, "google_unreachable");
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+Deno.test("fetchTextSearch: a network failure or a Google error is an envelope", async () => {
+  const orig = globalThis.fetch;
+  const gate = { ...DISCOVERY_DEFAULTS.map };
+  try {
+    globalThis.fetch = () => Promise.reject(new TypeError("network down"));
+    assertEquals((await fetchTextSearch("taco", "k", gate, null, 5)).errorEnvelope?.code, "google_unreachable");
+    globalThis.fetch = () => Promise.resolve(new Response("{}", { status: 500 }));
+    const res = await fetchTextSearch("taco", "k", gate, null, 5);
+    assertEquals(res.errorEnvelope?.ok, false);
+    assertEquals(res.errorEnvelope?.httpStatus, 500);
+  } finally {
+    globalThis.fetch = orig;
+  }
+});
+
+Deno.test("fetchTextSearch: Google genuinely empty is an empty list with no envelope", async () => {
+  const orig = globalThis.fetch;
+  globalThis.fetch = () => Promise.resolve(new Response("{}", { status: 200 }));
+  try {
+    const gate = { ...DISCOVERY_DEFAULTS.map };
+    const res = await fetchTextSearch("taco", "k", gate, null, 5);
+    assertEquals(res.items, []);
+    assertEquals(res.errorEnvelope, undefined);
   } finally {
     globalThis.fetch = orig;
   }

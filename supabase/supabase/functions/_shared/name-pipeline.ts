@@ -317,7 +317,9 @@ export async function nameGooglePlaces(
   if (!query || cap <= 0) return [];
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return [];
-  const hits = await fetchTextSearch(query, keyRes.key, map, origin, cap);
+  // A Google failure reads as "not found" here: the Chat Agent answers
+  // from Mesita, never with an error card.
+  const { items: hits } = await fetchTextSearch(query, keyRes.key, map, origin, cap);
   const order = [...new Set(hits.map((h) => h.placeId).filter(Boolean))];
   if (order.length === 0) return [];
   const base = admin
@@ -353,11 +355,23 @@ function originOf(
   return null;
 }
 
-export function resolveMode(raw?: string | null): SuggestPlacesMode {
-  // `mesita` was the Mesita Name lane (retired, MESITA-2896): its callers
-  // get Google's names now.
+/** The mode a request asked for, or null for one the lane does not know
+ *  (MESITA-2894): an unknown mode is a 400 `unknown_mode`, never a silent
+ *  fast search. No mode at all is fast. `mesita` was the Mesita Name lane
+ *  (retired, MESITA-2896): an older client sending it gets Google's names. */
+export function resolveMode(raw?: string | null): SuggestPlacesMode | null {
+  if (raw == null || raw === "fast") return "fast";
   if (raw === "deep" || raw === "mesita") return "deep";
-  return "fast";
+  return null;
+}
+
+/** The 400 an unknown mode answers, at both entry EFs. */
+export function unknownModeResponse(raw: unknown): Response {
+  return json({
+    ok: false,
+    code: "unknown_mode",
+    error: `Unknown mode ${JSON.stringify(raw)}: use fast or deep.`,
+  }, 400);
 }
 
 /**
@@ -433,17 +447,18 @@ async function nameLaneItems(
   if (!keyRes.ok) return fail(keyRes.response);
   const apiKey = keyRes.key;
 
+  const mode = resolveMode(args.mode);
+  if (mode === null) return fail(unknownModeResponse(args.mode));
   const input = (args.input ?? "").toString().trim();
   const sessionToken = (args.sessionToken ?? "").toString();
   if (input.length < 2) {
-    return { ok: true, items: [], mode: resolveMode(args.mode), idleSec: 0, tooShort: true };
+    return { ok: true, items: [], mode, idleSec: 0, tooShort: true };
   }
   if (!sessionToken) return fail(json({ ok: false, error: "Missing sessionToken" }, 400));
 
   const admin = adminClient(env);
   const origin = originOf(args.lat, args.lng);
   const cfg = await loadDiscoveryConfig(admin);
-  const mode = resolveMode(args.mode);
   const locations = shape.locations(cfg);
   const name = shape.name(cfg);
 
@@ -473,8 +488,9 @@ async function nameLaneItems(
 
   // Every Google failure is a 502, rate limits included: one rule, the same
   // as reverse-geocode, and a 429 would invite automatic retries from proxies
-  // and SDKs. Fast mode answers the error rather than a partial list; Deep
-  // drops a failed Autocomplete lane instead (MESITA-2855).
+  // and SDKs. Fast mode answers the error rather than a partial list. Deep
+  // answers it only when every Google query it ran failed; one failed query
+  // keeps the other's list (MESITA-2855, MESITA-2894).
   if ("errorEnvelope" in predictions) {
     return fail(json(predictions.errorEnvelope, 502));
   }
@@ -602,6 +618,22 @@ export function deepModuleFlags(args: {
   };
 }
 
+/** Deep mode's outage rule (MESITA-2894): the envelope to answer when every
+ *  Google query that ran failed, else null. One failed query keeps the
+ *  other's list; no query run (both caps 0) is an empty list, not an outage.
+ *  Autocomplete's envelope wins a tie: it carries Google's own status. */
+export function deepOutage(args: {
+  auto?: Record<string, unknown>;
+  text?: Record<string, unknown>;
+  wantAuto: boolean;
+  wantText: boolean;
+}): Record<string, unknown> | null {
+  if (!args.wantAuto && !args.wantText) return null;
+  if (args.wantAuto && !args.auto) return null;
+  if (args.wantText && !args.text) return null;
+  return args.auto ?? args.text ?? null;
+}
+
 async function runDeepSearch(
   admin: SupabaseClient,
   apiKey: string,
@@ -612,7 +644,7 @@ async function runDeepSearch(
   sessionToken: string,
   origin: { lat: number; lng: number } | null,
   locations: boolean,
-): Promise<LaneItem[]> {
+): Promise<LaneItem[] | { errorEnvelope: Record<string, unknown> }> {
   const deep = name.deep;
   const gate = map;
   const { wantAuto, wantText } = deepModuleFlags({
@@ -626,7 +658,7 @@ async function runDeepSearch(
   const [googleAuto, googleText] = await Promise.all([
     wantAuto
       ? fetchAutocomplete(input, sessionToken, apiKey, origin)
-      : Promise.resolve({ predictions: [] as LaneItem[] }),
+      : Promise.resolve<Awaited<ReturnType<typeof fetchAutocomplete>>>({ predictions: [] }),
     wantText
       ? fetchTextSearch(
         input,
@@ -637,12 +669,20 @@ async function runDeepSearch(
         locations,
         textListings,
       )
-      : Promise.resolve([] as LaneItem[]),
+      : Promise.resolve<Awaited<ReturnType<typeof fetchTextSearch>>>({ items: [] }),
   ]);
 
-  const autoPreds = "errorEnvelope" in googleAuto && googleAuto.errorEnvelope
-    ? []
-    : googleAuto.predictions;
+  // A Google failure is not an empty result (MESITA-2894): when every query
+  // that ran failed, the bar answers the envelope (502) like fast mode, so a
+  // guest reads "Search is unavailable", never "No matches found".
+  const outage = deepOutage({
+    auto: wantAuto ? googleAuto.errorEnvelope : undefined,
+    text: wantText ? googleText.errorEnvelope : undefined,
+    wantAuto,
+    wantText,
+  });
+  if (outage) return { errorEnvelope: outage };
+  const autoPreds = googleAuto.errorEnvelope ? [] : googleAuto.predictions;
 
   // Deep keeps Location rows from its Autocomplete query only: Text Search
   // returns Places even for "Ciudad de México".
@@ -657,7 +697,7 @@ async function runDeepSearch(
       { cap: deep.autoCount, known: textListings },
     ),
     stampGoogleAgainstCatalog(
-      googleText,
+      googleText.items,
       admin,
       apiKey,
       gate,

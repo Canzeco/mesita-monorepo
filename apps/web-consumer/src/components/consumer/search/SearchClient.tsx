@@ -97,6 +97,7 @@ import {
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg } from "@/lib/utils";
+import { EFError } from "@/lib/api/_invoke";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { useMapFilters } from "@/lib/use-map-filters";
 import {
@@ -170,6 +171,7 @@ import {
 // first answer the bar waits DEFAULT_IDLE_MS.
 const DEFAULT_IDLE_MS = 1000;
 const MIN_QUERY = 2;
+const SEARCH_UNAVAILABLE = "Search is unavailable right now. Try again.";
 /** A due reload under a resting finger checks again this often. */
 const FINGER_RECHECK_MS = 250;
 
@@ -421,7 +423,13 @@ export function SearchClient({ apiKey }: { apiKey: string }) {
       } catch (err) {
         if (cancelled) return;
         setPredictions([]);
-        setSearchError(errMsg(err, "Search failed — try again."));
+        // A Google outage (502, MESITA-2894) reads as one plain line, never
+        // Google's operator text and never "No matches found".
+        setSearchError(
+          err instanceof EFError && err.status === 502
+            ? SEARCH_UNAVAILABLE
+            : errMsg(err, "Search failed — try again."),
+        );
         setSearching(false);
       }
     }, idleMsRef.current);
