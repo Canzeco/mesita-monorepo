@@ -124,7 +124,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         class: "/me/class",
         connector: "/me/connector",
         transactions: "/me/transactions",
-        cards: "/me/cards",
         refunds: "/me/refunds",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",

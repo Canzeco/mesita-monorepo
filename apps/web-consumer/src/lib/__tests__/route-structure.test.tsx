@@ -642,7 +642,6 @@ describe("T8 — Me's grid is twelve live cells", () => {
       // Transactions and Cards made the grid a full 3×4 (MESITA-3465, Pato:
       // "add two other boxes, maybe some for transactions").
       "Transactions",
-      "Cards",
       // Refunds: credit a closed place can't honour (MESITA-3517).
       "Refunds",
       // Connector until MESITA-3561.
@@ -660,8 +659,9 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Integrations",
       "Friends",
       "Diamond",
-      // "Cards" came back as the guest's saved ways to pay, Soon, at Pato's
-      // ask (MESITA-3465); the Second Stage's card door stays gone.
+      // Cards was a Soon cell (MESITA-3465) until MESITA-3561: saved ways to
+      // pay live on Wallet.
+      "Cards",
       "Metrics",
     ]) {
       expect(gridTitles(), gone).not.toContain(gone);
