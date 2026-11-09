@@ -16,7 +16,9 @@
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok,
-//                          entries: [{ kind, amount_cents, at, pending, payment_id }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id }] }],
+//   available_at (MESITA-3549) rides a pending entry: when it turns
+//   Available. Null on an Available entry.
 //   spendable_cents (MESITA-3304) is Available minus credit held by open
 //   payments, from wallet_balances: what the Pay tab can spend there now.
 //   place.boost_tier is Premier's stored tier and place.mesita_pay the

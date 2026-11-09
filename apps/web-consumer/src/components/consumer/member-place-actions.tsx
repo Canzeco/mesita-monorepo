@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode 
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
 import { SocialLine } from "@mesita/place-profile";
 import { EFError } from "@/lib/api/_invoke";
-import { apiBuyVoucher, apiListVouchers, BUY_REFUSAL } from "@/lib/api/wallet";
+import { apiBuyVoucher, apiListVouchers, buyRefusalAction } from "@/lib/api/wallet";
 import { PlaceContactSheet } from "@/components/consumer/PlaceContactSheet";
 import { RewardsSheet } from "@/components/consumer/RewardsSheet";
 import { PlaceSocialList } from "@/components/consumer/PlaceSocialList";
@@ -299,10 +299,15 @@ function usePlaceVouchers(placeId: string): {
           window.location.assign(r.url);
         })
         .catch((err: unknown) => {
+          // MESITA-3549: an open Checkout resumes; place_cap keeps the offer.
+          const action = err instanceof EFError ? buyRefusalAction(err.code, err.body) : buyRefusalAction(null, null);
+          if (action.kind === "open") {
+            window.location.assign(action.url);
+            return;
+          }
           setBuying(null);
-          const code = err instanceof EFError ? err.code : null;
-          toast((code && BUY_REFUSAL[code]) || BUY_REFUSAL.checkout_failed, { tone: "error" });
-          load();
+          toast(action.line, { tone: "error" });
+          if (action.reload) load();
         });
     },
     // getSupabase is a stable lazy getter (MESITA-3207).

@@ -13,6 +13,9 @@ export type WalletEntry = {
   amount_cents: number;
   at: string;
   pending: boolean;
+  /** When a pending entry turns Available (MESITA-3549); null otherwise.
+   *  Absent from a server before MESITA-3549. */
+  available_at?: string | null;
   /** A spend's payment (MESITA-3304): the Wallet links it to its proof. */
   payment_id?: string | null;
 };
@@ -109,8 +112,25 @@ export const BUY_REFUSAL: Record<string, string> = {
   few_followers: "The Story voucher is for Instagram accounts with more than 1,000 followers.",
   welcome_used: "You already had your Welcome voucher here.",
   below_minimum: "This amount is below the card minimum.",
+  place_cap: "This place can't take more credit for now. Try again later.",
+  in_progress: "Your checkout for this voucher is still open.",
   checkout_failed: "Couldn't open checkout. Try again.",
 };
+
+/** What a refused buy does (MESITA-3549). A refusal that carries the open
+ *  Checkout's `url` (in_progress) resumes it; place_cap only says its line
+ *  (the offer has not changed); anything else says its line and reloads the
+ *  offer, which may have changed under the guest. Never computes money. */
+export type BuyRefusalAction =
+  | { kind: "open"; url: string }
+  | { kind: "say"; line: string; reload: boolean };
+
+export function buyRefusalAction(code: string | null, body: Record<string, unknown> | null): BuyRefusalAction {
+  const url = body && typeof body.url === "string" && body.url.startsWith("https://") ? body.url : null;
+  if (url) return { kind: "open", url };
+  const line = (code && BUY_REFUSAL[code]) || BUY_REFUSAL.checkout_failed;
+  return { kind: "say", line, reload: code !== "place_cap" };
+}
 
 /** "$500MX" / "$25" — whole amounts drop the cents. One formatter with the
  *  staff's proof page (web-visit), so both screens print the same peso. */
