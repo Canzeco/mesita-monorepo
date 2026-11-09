@@ -74,6 +74,10 @@ export type AdminPlace = {
   phone: string | null;
   hours: Record<string, { open: string; close: string }[]> | null;
   photos: string[] | null;
+  /** The round profile picture (MESITA-3528): the owner's pick, else the cover. */
+  profile_photo?: string | null;
+  /** The place's own pick, null while it follows the cover (MESITA-3528). */
+  profile_photo_pick?: string | null;
   reservations_enabled?: boolean;
   payments_enabled?: boolean;
   /** Vision text keyed by the gallery URL. Absent until a Full run describes it. */

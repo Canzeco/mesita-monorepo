@@ -54,6 +54,8 @@ const COLUMNS: readonly string[] = [
   "description",
   // The one gallery (MESITA-2794).
   "photos",
+  // The round profile picture (MESITA-3528): the owner's pick, else the cover.
+  "profile_photo",
   "menu_pdf_url",
   // Optional display name for menu_pdf_url, e.g. "Dinner menu" /
   // "Wine list". Null = consumer falls back to "Full menu" copy.

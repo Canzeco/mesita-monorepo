@@ -43,6 +43,8 @@ export type Place = {
   pitch: string | null;
   story: string | null;
   photos: string[];
+  /** The round profile picture (MESITA-3528): the owner's pick, else the cover. */
+  profile_photo?: string | null;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;

@@ -170,6 +170,9 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
+  // The place's raw profile picture pick after a save; the profiles view only
+  // answers it coalesced with the cover (MESITA-3528).
+  "_shared/place-update-apply.ts",
   "business-web-reload-place-reviews/index.ts",
   "_shared/reviews-update.ts", // Update Reviews' links read: google_place_id, instagram_url, facebook_url (MESITA-3159)
   "business-web-update-place/index.ts", // the links before a save, to run Update Reviews on a change (MESITA-3161)

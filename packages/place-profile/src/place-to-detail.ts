@@ -200,6 +200,10 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
             : "listed",
 
     photos: arr<string>(row.photos),
+    profilePhoto:
+      typeof row.profile_photo === "string" && row.profile_photo.startsWith("https://")
+        ? row.profile_photo
+        : arr<string>(row.photos)[0] ?? null,
 
     tags: profileTagChips(catalogTags, row.google_tags),
     families: familyChips(row.families),

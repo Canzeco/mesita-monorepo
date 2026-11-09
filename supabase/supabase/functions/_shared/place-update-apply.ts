@@ -49,6 +49,8 @@ export const OWNER_WRITABLE_FIELDS = [
   // The gallery, hero first (MESITA-3504): only what the place already
   // shows or uploaded itself (firstForeignPhoto).
   "photos",
+  // The round profile picture (MESITA-3528): same guard as photos.
+  "profile_photo",
   // Basics' Reset hands an edited field back to Enrich; an owner may undo
   // their own edit.
   "reset_fields",
@@ -94,18 +96,24 @@ export async function applyPlaceUpdate(
     return json({ ok: false, code: "read_only_field", error: `${readOnly} is inferred, not edited` }, 400);
   }
 
-  if ("photos" in body && Array.isArray(body.photos)) {
+  const pickedPicture = typeof body.profile_photo === "string" && body.profile_photo.trim() !== ""
+    ? body.profile_photo.trim()
+    : null;
+  if (("photos" in body && Array.isArray(body.photos)) || pickedPicture) {
     const { data: cur, error: curErr } = await admin.from("profiles").select("photos").eq("id", placeId).maybeSingle();
     if (curErr) return json({ ok: false, error: curErr.message }, 500);
     if (!cur) return json({ ok: false, error: "Place not found" }, 404);
-    const foreign = firstForeignPhoto(
-      (body.photos as unknown[]).filter((u): u is string => typeof u === "string").map((u) => u.trim()).filter(Boolean),
-      {
-        current: Array.isArray(cur.photos) ? (cur.photos as string[]) : [],
-        placeId,
-        supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
-      },
-    );
+    // The profile picture passes the same guard (MESITA-3528): a photo the
+    // gallery shows (before or after this save) or one the place uploaded.
+    const sent = Array.isArray(body.photos)
+      ? (body.photos as unknown[]).filter((u): u is string => typeof u === "string").map((u) => u.trim()).filter(Boolean)
+      : [];
+    const current = Array.isArray(cur.photos) ? (cur.photos as string[]) : [];
+    const ctx = { placeId, supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "" };
+    // The gallery: only what it already shows, or this place's uploads.
+    // The picture: also any photo the same save puts in the gallery.
+    const foreign = firstForeignPhoto(sent, { ...ctx, current }) ??
+      (pickedPicture ? firstForeignPhoto([pickedPicture], { ...ctx, current: [...current, ...sent] }) : null);
     if (foreign) {
       return json({ ok: false, code: "photo_not_ours", error: "A photo must be one the place shows or uploaded here" }, 400);
     }
@@ -114,7 +122,21 @@ export async function applyPlaceUpdate(
   const families = await fetchPlaceFamilies(admin);
   const built = buildPlaceUpdate(body, families);
   if (!built.ok) return built.response;
-  const { update, familyKeys, resetFields } = built;
+  const { update: builtUpdate, familyKeys, resetFields } = built;
+  // profile_photo lives on place_profiles only: the profiles view computes it
+  // (coalesce with the cover) and its INSTEAD OF writer would drop it.
+  const { profile_photo: profilePhoto, ...update } = builtUpdate as Record<string, unknown>;
+  if ("profile_photo" in builtUpdate) {
+    const picRes = await writePlace(admin, {
+      table: "place_profiles",
+      mode: "update",
+      id: placeId,
+      patch: { profile_photo: (profilePhoto as string | null) ?? null },
+    });
+    if (!picRes.ok) {
+      return json({ ok: false, error: `profile_photo: ${picRes.error}`, code: picRes.code ?? null }, 400);
+    }
+  }
 
   // Families first, so the profile row read back below already carries them
   // (profiles.family_keys is the stored list, MESITA-2891).
@@ -191,6 +213,15 @@ export async function applyPlaceUpdate(
   });
   if (!marks.ok) return json({ ok: false, error: `operator_fields: ${marks.error}` }, 500);
   place.operator_fields = marks.fields;
+  // The place's own profile picture pick (MESITA-3528), as the place read
+  // sends it, so a save never reads as "follows the cover".
+  const { data: pickRow, error: pickErr } = await admin
+    .from("place_profiles")
+    .select("profile_photo")
+    .eq("id", placeId)
+    .maybeSingle();
+  if (pickErr) return json({ ok: false, error: `profile_photo: ${pickErr.message}` }, 500);
+  place.profile_photo_pick = (pickRow as { profile_photo?: string | null } | null)?.profile_photo ?? null;
 
   // The on_update row's `embedding` cell re-synthesises when the blurb inputs
   // change. A disabled row buys nothing.

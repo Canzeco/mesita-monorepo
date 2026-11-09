@@ -1,5 +1,5 @@
 /** Stable keys registered via PlaceContext.setSectionDirty. */
-const DIRTY_SECTION_ORDER = ["place", "photos", "products"] as const;
+const DIRTY_SECTION_ORDER = ["place", "photos", "profile_photo", "products"] as const;
 
 export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 
@@ -11,6 +11,7 @@ export type DirtySectionKey = (typeof DIRTY_SECTION_ORDER)[number];
 const DIRTY_SECTION_LABELS: Record<DirtySectionKey, string> = {
   place: "Place",
   photos: "Photos",
+  profile_photo: "Profile picture",
   products: "Menus",
 };
 

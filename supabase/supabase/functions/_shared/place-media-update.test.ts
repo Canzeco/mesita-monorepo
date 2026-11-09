@@ -134,3 +134,19 @@ Deno.test("products.menu: rejects non-object entries", async () => {
   const body = await res!.json();
   assertEquals(body.error, "each products.menu entry must be an object");
 });
+
+Deno.test("profile_photo: an https URL, or null to follow the cover (MESITA-3528)", async () => {
+  const set: Record<string, unknown> = {};
+  assertEquals(applyMediaUpdates({ profile_photo: " https://x.co/a.jpg " }, set), null);
+  assertEquals(set.profile_photo, "https://x.co/a.jpg");
+  for (const v of [null, ""]) {
+    const cleared: Record<string, unknown> = {};
+    assertEquals(applyMediaUpdates({ profile_photo: v }, cleared), null);
+    assertEquals(cleared.profile_photo, null);
+  }
+  const bad: Record<string, unknown> = {};
+  const res = applyMediaUpdates({ profile_photo: "http://x.co/a.jpg" }, bad);
+  assertEquals(res?.status, 400);
+  assertEquals("profile_photo" in bad, false);
+  await res!.body?.cancel();
+});

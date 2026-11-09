@@ -109,6 +109,8 @@ export type PlaceProfileRow = {
   pitch: string | null;
   story: string | null;
   photos: string[];
+  /** The owner's profile picture (MESITA-3528); null follows the cover. Written on place_profiles only: the profiles view answers coalesce(profile_photo, photos[1]). */
+  profile_photo: string | null;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;
@@ -184,6 +186,7 @@ export const PLACE_PROFILE_PATCH_KEYS = [
   "pitch",
   "story",
   "photos",
+  "profile_photo",
   "website_url",
   "instagram_url",
   "facebook_url",
@@ -322,7 +325,7 @@ const PLACE_PLAIN_STRING_KEYS = new Set<string>([
   "didi_food_url", "description",
   "menu_pdf_url", "menu_pdf_name",
   "zone", "city", "category_label",
-  "embedding_source_text", "google_name", "name",
+  "embedding_source_text", "google_name", "name", "profile_photo",
   "reservation_target", "embedding",
   "google_place_id",
   "enriched_at", "business_state_at",

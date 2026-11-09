@@ -7,6 +7,8 @@ type MediaUpdateBody = {
   /** The one gallery, hero first. Create, Enrich and Update write it; since
    *  MESITA-3504 the place's Profile does too (reorder, remove, upload). */
   photos?: unknown;
+  /** The profile picture (MESITA-3528): a URL, or null to follow the cover. */
+  profile_photo?: unknown;
   mesita_photos?: unknown;
   menu_pdf_url?: unknown;
   menu_pdf_name?: unknown;
@@ -161,6 +163,17 @@ export function applyMediaUpdates(
       return json({ ok: false, code: "too_many_photos", error: `a gallery holds at most ${GALLERY_MAX} photos` }, 400);
     }
     update.photos = photos;
+  }
+
+  if ("profile_photo" in body) {
+    const raw = body.profile_photo;
+    if (raw == null || (typeof raw === "string" && raw.trim() === "")) {
+      update.profile_photo = null;
+    } else if (!isUrl(raw)) {
+      return json({ ok: false, code: "invalid_profile_photo", error: "profile_photo must be an https:// URL or null" }, 400);
+    } else {
+      update.profile_photo = (raw as string).trim();
+    }
   }
 
   if ("menu_pdf_url" in body) {
