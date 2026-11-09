@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgePercent, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
+import { BadgePercent, Banknote, Crown, PartyPopper, QrCode, Wallet, type LucideIcon } from "lucide-react";
 import { Instagram } from "../brand-icons";
 
 import type { PlaceActions, RewardsSection } from "../../actions";
@@ -115,15 +115,15 @@ type Product = {
 // of the thing should be Welcome, Story, VIP, Standard, Medium Standard,
 // Large Standard"): the deal line carries the amounts.
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small", brief: "As many as you like" },
-  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid", brief: "As many as you like" },
-  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big", brief: "As many as you like" },
+  { key: "voucher_200", name: "Small", line: "Pay MX$200, get MX$220.", limit: "As many as you like.", bonus: "10% bonus", short: "Small Bonus", brief: "As many as you like" },
+  { key: "voucher_1000", name: "Mid", line: "Pay MX$1,000, get MX$1,200.", limit: "As many as you like.", bonus: "20% bonus", short: "Mid Bonus", brief: "As many as you like" },
+  { key: "voucher_5000", name: "Big", line: "Pay MX$5,000, get MX$6,500.", limit: "As many as you like.", bonus: "30% bonus", short: "Big Bonus", brief: "As many as you like" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome", brief: "First visit only" },
-  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% bonus", short: "Story", brief: "Post a story · 1/day" },
-  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP", brief: "VIP guests · 1/day" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay MX$100, get MX$130.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome Bonus", brief: "First visit only" },
+  { key: "voucher_story", name: "Story", line: "Pay MX$100, get MX$130.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
+  { key: "voucher_vip", name: "VIP", line: "Pay MX$100, get MX$130.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
 
 /** "MX$1,200" from cents. Formatting only, never arithmetic. */
@@ -315,7 +315,9 @@ export function VouchersPane({
   const buying = actions?.buyingVoucher != null;
 
   const [picked, setPicked] = useState<MoneyVoucherKey | null>(null);
-  const products = [...SPECIAL, ...STANDARD];
+  // SIZES FIRST (MESITA-3484, Pato: "Small Bonus, Mid Bonus, Big Bonus /
+  // Welcome Bonus, Story Bonus, VIP Bonus").
+  const products = [...STANDARD, ...SPECIAL];
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   const ROW = "flex items-center gap-3 px-4 py-3";
 
@@ -408,31 +410,43 @@ export function VouchersPane({
             })}
           </ul>
         </fieldset>
-        <p className={cn(PLACE_META_CLASS, "text-[11px] leading-snug")}>
-          Credits are ready in an hour, Story's at once. Welcome: first visit · Story: post a story, 1/day · VIP: VIP guests, 1/day.
-        </p>
       </section>
       <section className="flex flex-col gap-2" aria-labelledby="rewards-payment" data-promos="payment">
         <h3 id="rewards-payment" className={OFFERS_TITLE_CLASS}>Payment Offers</h3>
-        <ul className="border-border divide-border overflow-hidden rounded-2xl border divide-y" data-cashback>
+        {/* TWO BOXES, HORIZONTAL RECTANGLES (MESITA-3484, Pato: "Mesita Pay,
+            External ... the others horizontal rectangles"), half and half. */}
+        <ul className="grid grid-cols-2 gap-2" data-cashback>
           <li
-            className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Pay with Mesita: 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            className={cn("flex flex-col gap-1 rounded-2xl p-3", CASHBACK_FACE.card, !loading && !cashback && dim && "opacity-50")}
+            aria-label={`Mesita Pay: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-              <span className="text-foreground text-sm leading-snug font-semibold">Pay with Mesita</span>
-              <span className="text-muted-foreground text-[11px]">
-                {canPay || loading ? "Get 5% back in credits, any visit" : cashbackTag}
-              </span>
+            <span className={cn("flex items-center gap-1 text-[10px] font-semibold uppercase", CASHBACK_FACE.muted)} aria-hidden>
+              <BadgePercent className="h-3 w-3" strokeWidth={2.5} />
+              Mesita Pay
             </span>
-            <span className={cn("shrink-0 rounded-md px-2 py-1 text-xs font-bold", CASHBACK_FACE.card)} aria-hidden>5% Back</span>
+            <span className="flex items-baseline gap-1" aria-hidden>
+              <span className="text-2xl leading-none font-extrabold">+5%</span>
+              <span className="text-[11px] font-semibold">back</span>
+            </span>
+            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
+              {canPay || loading ? "In credits, any visit" : cashbackTag}
+            </span>
           </li>
-          <li className={ROW} aria-label="Pay the place directly, by cash or their terminal: nothing back.">
-            <span className="flex min-w-0 flex-1 flex-col" aria-hidden>
-              <span className="text-foreground text-sm leading-snug font-semibold">Pay the place directly</span>
-              <span className="text-muted-foreground text-[11px]">Cash or their terminal, nothing back</span>
+          <li
+            className="bg-muted text-muted-foreground ring-border flex flex-col gap-1 rounded-2xl p-3 ring-1"
+            aria-label="External: pay the place directly, by cash or their terminal. Nothing back."
+          >
+            <span className="flex items-center gap-1 text-[10px] font-semibold uppercase" aria-hidden>
+              <Banknote className="h-3 w-3" strokeWidth={2.5} />
+              External
             </span>
-            <span className="bg-muted text-muted-foreground shrink-0 rounded-md px-2 py-1 text-xs font-bold" aria-hidden>0% Back</span>
+            <span className="flex items-baseline gap-1" aria-hidden>
+              <span className="text-2xl leading-none font-extrabold">0%</span>
+              <span className="text-[11px] font-semibold">back</span>
+            </span>
+            <span className="text-[11px] leading-tight font-semibold" aria-hidden>
+              Cash or their terminal
+            </span>
           </li>
         </ul>
       </section>
