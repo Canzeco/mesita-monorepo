@@ -454,7 +454,9 @@ export function VouchersPane({
             ... external means that you get nothing in return ... Mesita Pay
             you need to pay to get your cashback"): two voucher-sized cards;
             no button (MESITA-3474), Pay bill is the fixed bar below. */}
-        <ul className="grid grid-cols-3 gap-1.5" data-cashback>
+        {/* HALF AND HALF, ONE HEIGHT (MESITA-3482, Pato: "occupy two columns
+            there 50% and 50%"): the grid stretches both cards to one row. */}
+        <ul className="grid grid-cols-2 items-stretch gap-1.5" data-cashback>
           <OfferCard
             name="External"
             bonus=""
