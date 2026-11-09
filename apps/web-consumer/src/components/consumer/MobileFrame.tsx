@@ -12,8 +12,9 @@ import { useKeyboardInset } from "@/lib/use-keyboard-inset";
  * Two-box model:
  *   - Outer: gradient page background. Mobile uses STRICT viewport
  *     height (\`h-dvh\`) so the inner card can never grow past the
- *     visible viewport. Desktop centers the card on the hero gradient
- *     with only a thin margin (\`py-4\`).
+ *     visible viewport. Desktop parks the card at the LEFT edge of the
+ *     hero gradient (MESITA-3518) with a thin margin (\`p-4\`); the call
+ *     log and the request/response panel fill the room to its right.
  *   - Card: the actual app surface. STRICT height on BOTH breakpoints —
  *     \`h-full\` (= h-dvh) on mobile, \`h-[calc(100dvh-2rem)]\` on desktop —
  *     so the visualizer fills almost the entire viewport height and
@@ -55,7 +56,7 @@ export function MobileFrame({
 
   return (
     <div
-      className="bg-background md:bg-hero flex h-[calc(100dvh-var(--kb,0px))] items-stretch justify-center md:min-h-[calc(100dvh-var(--kb,0px))] md:items-center md:py-4"
+      className="bg-background md:bg-hero flex h-[calc(100dvh-var(--kb,0px))] items-stretch justify-center md:min-h-[calc(100dvh-var(--kb,0px))] md:items-center md:justify-start md:px-4 md:py-4"
       style={{ "--kb": `${keyboardInset}px` } as CSSProperties}
     >
       <div
