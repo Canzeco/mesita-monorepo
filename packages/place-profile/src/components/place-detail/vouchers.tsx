@@ -10,7 +10,7 @@ import { cn, firstInitial } from "../../lib/format";
 import {
   PLACE_META_CLASS,
 } from "../../lib/ui";
-import { moneyState, type MoneyVoucherKey, type VoucherReason } from "../../money-state";
+import { moneyState, type MoneyVoucherKey, STORY_MIN_FOLLOWERS, type VoucherReason } from "../../money-state";
 import type { PlaceDetail, VoucherCatalogLine } from "../../place-detail";
 import { SizedImg } from "../SizedPhoto";
 
@@ -399,11 +399,12 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
 function offerStatus(
   key: MoneyVoucherKey,
   can: boolean,
-  lock: "vip" | "instagram" | null,
+  lock: "vip" | "instagram" | "followers" | null,
   reason: VoucherReason | undefined,
 ): InfoStatus {
   if (lock === "vip") return { ok: false, text: "You're not in the VIP Class yet." };
   if (lock === "instagram") return { ok: false, text: "Link your Instagram to use Story offers." };
+  if (lock === "followers") return { ok: false, text: `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.` };
   if (can) {
     if (key === "voucher_vip") return { ok: true, text: "You're in the VIP Class. You can buy this." };
     if (key === "voucher_welcome") return { ok: true, text: "Available: your first visit here." };
@@ -517,10 +518,14 @@ export function VouchersPane({
   // THE GUEST'S OWN LOCKS (MESITA-3502): VIP is for the VIP Class, Story needs
   // a linked Instagram. Unknown guest (no profile read), no lock.
   const guest = actions?.guest;
-  const guestLock = (k: MoneyVoucherKey): "vip" | "instagram" | null => {
+  const guestLock = (k: MoneyVoucherKey): "vip" | "instagram" | "followers" | null => {
     if (!guest) return null;
     if (k === "voucher_vip" && !guest.vip) return "vip";
     if (k === "voucher_story" && !guest.instagramLinked) return "instagram";
+    // MESITA-3507: the server refuses Story at STORY_MIN_FOLLOWERS or fewer.
+    if (k === "voucher_story" && guest.instagramFollowers != null && guest.instagramFollowers <= STORY_MIN_FOLLOWERS) {
+      return "followers";
+    }
     return null;
   };
   // Buyable: for sale, or in test mode any row the server has not used up or
@@ -610,7 +615,9 @@ export function VouchersPane({
                           ? "VIP Class only"
                           : lock === "instagram"
                             ? "Link your Instagram first"
-                            : tag(reason)}
+                            : lock === "followers"
+                              ? `More than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} Instagram followers only`
+                              : tag(reason)}
                   </span>
                 </span>
               </>

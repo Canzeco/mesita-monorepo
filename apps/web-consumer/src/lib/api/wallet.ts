@@ -40,10 +40,24 @@ export type WalletBalance = {
 /** What happened to the Checkout the guest came back from. */
 export type PrepayOutcome = "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none";
 
+/** A paid Story voucher staff have not activated yet (MESITA-3507): no
+ *  credit until they see the guest's story and scan this QR. */
+export type WaitingStory = {
+  purchase_id: string;
+  place: WalletBalance["place"];
+  place_id: string;
+  credit_cents: number;
+  currency: string;
+  paid_at: string | null;
+  url: string;
+};
+
 export type Wallet = {
   /** Stripe is in test mode: the TestBand shows, no real money moves. */
   test_mode?: boolean;
   balances: WalletBalance[];
+  /** Absent from a server before MESITA-3507: reads as none. */
+  waiting_stories?: WaitingStory[];
   outcome?: PrepayOutcome;
   /** The read ran out of time confirming a purchase with Stripe; it is
    *  confirmed on the next read or by the server on its own. */
@@ -81,7 +95,8 @@ export const BUY_REFUSAL: Record<string, string> = {
   not_available: "This place doesn't sell that voucher.",
   not_yet: "This voucher isn't on sale yet.",
   needs_card_payments: "This voucher arrives with card payments.",
-  needs_instagram: "This voucher arrives with the Instagram connection.",
+  needs_instagram: "Link your Instagram to buy the Story voucher.",
+  few_followers: "The Story voucher is for Instagram accounts with more than 1,000 followers.",
   welcome_used: "You already had your Welcome voucher here.",
   below_minimum: "This amount is below the card minimum.",
   checkout_failed: "Couldn't open checkout. Try again.",

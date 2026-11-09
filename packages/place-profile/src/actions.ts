@@ -52,7 +52,8 @@ export type PlaceActions = {
   /** The guest's own facts for the Offers (i) status (MESITA-3502): VIP needs
    *  the VIP Class, Story a linked Instagram. Absent (signed out, admin's
    *  preview, profile not read yet), no guest lock is drawn. */
-  guest?: { vip: boolean; instagramLinked: boolean };
+  /** instagramFollowers (MESITA-3507): Story needs more than STORY_MIN_FOLLOWERS; absent reads as unknown, no lock. */
+  guest?: { vip: boolean; instagramLinked: boolean; instagramFollowers?: number | null };
   /** Request VIP in the VIP (i): the host's VIP Class page. */
   onJoinVip?: () => void;
   /** Link Instagram in the Story (i): the host's Instagram page. */

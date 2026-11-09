@@ -3,11 +3,12 @@
 import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Wallet as WalletIcon } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
-import { apiGetWallet, ENTRY_LABEL, entryDate, money, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, ENTRY_LABEL, entryDate, money, type WaitingStory, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -102,9 +103,15 @@ export function WalletPage() {
         </p>
       ) : null}
 
+      {wallet?.waiting_stories?.length ? (
+        <div className="mt-5 flex flex-col gap-3" data-waiting-stories>
+          {wallet.waiting_stories.map((s) => <WaitingStoryCard key={s.purchase_id} story={s} />)}
+        </div>
+      ) : null}
+
       <div className="mt-5 flex min-h-0 flex-1 flex-col">
         {wallet ? (
-          wallet.balances.length === 0 ? (
+          wallet.balances.length === 0 && !wallet.waiting_stories?.length ? (
             <EmptyState
               icon={WalletIcon}
               title="No credit yet"
@@ -137,6 +144,26 @@ export function WalletPage() {
         )}
       </div>
     </div>
+  );
+}
+
+/** A STORY WAITING FOR STAFF (MESITA-3507, Pato: "first buy it, then ...
+ *  activate it by posting an instagram story tagging the place and showing
+ *  it [to] the waiter"): paid, no credit yet. The QR opens the staff page on
+ *  visit.mesita.ai, where staff see the story and tap Activate. */
+function WaitingStoryCard({ story }: { story: WaitingStory }) {
+  const name = story.place?.name ?? "this place";
+  return (
+    <section className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border p-4 text-center">
+      <div>
+        <h2 className="text-sm font-semibold">Activate your Story voucher at {name}</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {money(story.credit_cents, story.currency)} of credit waits for step 2: post an Instagram story at the
+          place, tag it, and show the story and this QR to the staff.
+        </p>
+      </div>
+      <QRCodeSVG value={story.url} size={176} marginSize={0} aria-label="Story voucher activation code" />
+    </section>
   );
 }
 

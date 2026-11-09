@@ -157,7 +157,13 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The Offers (i) status (MESITA-3502): VIP needs the VIP Class, Story a
     // linked Instagram; each lock's action opens the page that lifts it.
     ...(profile
-      ? { guest: { vip: profile.guest_class === "vip", instagramLinked: Boolean(profile.instagram_handle) } }
+      ? {
+        guest: {
+          vip: profile.guest_class === "vip",
+          instagramLinked: Boolean(profile.instagram_handle),
+          instagramFollowers: profile.instagram_followers_count ?? null,
+        },
+      }
       : {}),
     onJoinVip: () => {
       setRewards(null);
