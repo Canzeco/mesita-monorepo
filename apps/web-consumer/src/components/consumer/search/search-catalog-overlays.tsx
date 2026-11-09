@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 
 import { AddPlaceButton } from "./AddPlaceButton";
 import { RailCard, RailCardSkeleton } from "./SearchRailCard";
+import { VoucherBand } from "@/components/consumer/offer-button";
 
 /** How much narrower than the carousel one card page is. A page is the
  *  carousel less 96px (Pato, MESITA-3030: "make these boxes less wide";
@@ -296,6 +297,13 @@ export function SearchRailOverlay({
             </div>
           </div>
         ) : (
+          <>
+            {/* What vouchers give, over the cards, only when one of them
+                sells some (MESITA-3380); it hides no card and takes no tap. */}
+            <VoucherBand
+              places={places}
+              className="shadow-rest pointer-events-none mx-auto mb-1.5 w-fit max-w-[calc(100%-48px)] rounded-full"
+            />
           <div className={RAIL_ROW}>
             <div
               ref={railScrollRef}
@@ -336,6 +344,7 @@ export function SearchRailOverlay({
               ))}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>

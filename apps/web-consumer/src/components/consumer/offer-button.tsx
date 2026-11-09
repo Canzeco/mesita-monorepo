@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
+import { isGoogleOnlyPlace } from "@/lib/place-placeholder";
 import { CARD_BUTTON_BOX } from "@/components/consumer/place-card";
 import { useOfferBeat, useReducedMotion } from "@/components/consumer/offer-beat";
 
@@ -25,6 +26,9 @@ export type OfferSlide = {
   section: "payment" | "prepayment" | "special";
   /** The box's colour and ink while this slide shows (MESITA-3475). */
   tone: string;
+  /** A voucher's bonus in percent; the list band reads the best one
+   *  (MESITA-3380). Cashback has none. */
+  bonus?: number;
 };
 
 // THE WORDS AND COLOURS ARE PATO'S (MESITA-3475: "Pay (5% Back) / Prepay
@@ -36,12 +40,12 @@ const GREEN = "bg-green-400 text-neutral-950";
 const OFFER_SLIDES: OfferSlide[] = [
   { key: "cashback", lead: "Mesita Pay", pill: "+5% Cashback", spoken: "Mesita Pay, 5% cashback", section: "payment", tone: GREEN },
   // "$X Prepay", never "Prepay $X"; "Mesita Pay +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
-  { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN },
-  { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN },
-  { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN },
-  { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white" },
-  { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950" },
-  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white" },
+  { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
+  { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
+  { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
+  { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
+  { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
+  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
 ];
 
 /** The place's slides, in the fixed order; none = no button. */
@@ -50,6 +54,48 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
   if (!offers) return [];
   const sell = new Set(offers.sell);
   return OFFER_SLIDES.filter((s) => (s.key === "cashback" ? offers.cashback : sell.has(s.key)));
+}
+
+/** The best bonus the listed places' vouchers give, in percent, or null
+ *  when none of them sells one (MESITA-3380). The same `offers.sell` the
+ *  tiles' slides read; a Google-only place sells nothing. */
+export function bestVoucherBonus(places: ReadonlyArray<Pick<Place, "offers" | "googleOnly" | "from_google">>): number | null {
+  let best: number | null = null;
+  for (const place of places) {
+    if (isGoogleOnlyPlace(place)) continue;
+    for (const slide of offerSlides(place)) {
+      if (slide.bonus !== undefined && (best === null || slide.bonus > best)) best = slide.bonus;
+    }
+  }
+  return best;
+}
+
+/** THE VOUCHER BAND (MESITA-3380): one line above Home's tiles and Search's
+ *  cards naming what vouchers give, drawn only when a listed place sells
+ *  one. It hides nothing: no place is filtered by it, and with no seller it
+ *  is not drawn at all. Not a link (each place's own green button opens its
+ *  vouchers). */
+export function VoucherBand({
+  places,
+  className,
+}: {
+  places: ReadonlyArray<Pick<Place, "offers" | "googleOnly" | "from_google">>;
+  className?: string;
+}) {
+  const bonus = bestVoucherBonus(places);
+  if (bonus === null) return null;
+  return (
+    <p
+      className={cn("px-2.5 py-1.5 text-center font-sans text-xs font-semibold", GREEN, className)}
+      data-voucher-band
+    >
+      Up to{" "}
+      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
+        +{bonus}% Bonus
+      </span>{" "}
+      at places that sell vouchers
+    </p>
+  );
 }
 
 function offersLabel(name: string, slides: OfferSlide[]): string {
