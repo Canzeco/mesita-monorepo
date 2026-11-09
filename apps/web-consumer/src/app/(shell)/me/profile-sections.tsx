@@ -34,8 +34,12 @@ import { cn } from "@/lib/utils";
 // Write the class as a whole string — Tailwind scans source TEXT, so
 // `grid-cols-${cols}` never enters the build and the grid silently collapses
 // to one column.
+// TWO COLUMNS AGAIN, SHORTER (Pato, MESITA-3469: "return to the two columns
+// instead, but make shit shorter. only icon and name, not more"): a cell is
+// the chip beside its title in one row, no summary on screen; the summary
+// stays the second half of its accessible name.
 export function DestGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-3 items-stretch gap-2">{children}</div>;
+  return <div className="grid grid-cols-2 items-stretch gap-2">{children}</div>;
 }
 
 // ONE MATERIAL (MESITA-1633). Everything below the header is a `DestTile`:
@@ -48,7 +52,7 @@ export type DestShape = "cell" | "row";
 const TILE_MATERIAL =
   "border-border bg-card shadow-rest relative flex w-full overflow-hidden rounded-2xl border";
 const TILE_FRAME: Record<DestShape, string> = {
-  cell: cn(TILE_MATERIAL, "flex-col items-center gap-2 px-2 py-3"),
+  cell: cn(TILE_MATERIAL, "items-center gap-2.5 px-3 py-2.5"),
   row: cn(TILE_MATERIAL, "items-center gap-2.5 p-3"),
 };
 
@@ -73,7 +77,7 @@ function TileText({
     // The title alone, centred and `truncate`d: a long one ends in "…" at
     // 320px rather than pushing the grid.
     return (
-      <span className="block w-full truncate text-center text-sm font-bold tracking-tight">
+      <span className="block min-w-0 flex-1 truncate text-sm font-bold tracking-tight">
         {title}
       </span>
     );
