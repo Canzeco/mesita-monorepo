@@ -8,7 +8,9 @@
 // Body: { place_id: uuid }
 // Response: { ok: true, can_edit, test_mode,
 //             account: { state: none|onboarding|ready|restricted, ... },
-//             settings: { cashback, voucher_200, ..., voucher_vip } }
+//             settings: { cashback, voucher_200, ..., voucher_vip },
+//             code_set }   whether the place code is set: the waiter's charge
+//                          (MESITA-3306) needs it, so Payments says so
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -43,11 +45,14 @@ serveJson("business-web-get-payments", async (req) => {
     }
   }
   const settings = await readSettings(admin, placeId);
+  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
+  if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
   return json({
     ok: true,
     can_edit: canManage(access.role),
     test_mode: !boostLivemode(),
     account: accountView(account),
     settings,
+    code_set: !!code,
   });
 });

@@ -429,13 +429,23 @@ export type PaymentAccount = {
   details_submitted: boolean;
   requirements_due: number;
 };
-export type PlacePayments = { can_edit: boolean; test_mode: boolean; account: PaymentAccount; settings: PaymentSettings };
+export type PlacePayments = {
+  can_edit: boolean;
+  test_mode: boolean;
+  account: PaymentAccount;
+  settings: PaymentSettings;
+  /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
+  code_set: boolean;
+};
 
 /** The Stripe account as Stripe last said it stands, and every switch. */
 export async function getPlacePayments(placeId: string): Promise<Result<PlacePayments>> {
   const r = await efInvoke<PlacePayments>("business-web-get-payments", { place_id: placeId });
   if (!r.ok) return fail(r);
-  return { ok: true, data: { can_edit: r.data.can_edit, test_mode: r.data.test_mode, account: r.data.account, settings: r.data.settings } };
+  return {
+    ok: true,
+    data: { can_edit: r.data.can_edit, test_mode: r.data.test_mode, account: r.data.account, settings: r.data.settings, code_set: r.data.code_set === true },
+  };
 }
 
 /** One switch: Cashback or one voucher. Returns every switch as it now stands. */
