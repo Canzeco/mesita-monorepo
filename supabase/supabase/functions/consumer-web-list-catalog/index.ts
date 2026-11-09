@@ -2,9 +2,9 @@
 //
 // THE CATALOG PIPELINE (Home's Places; split from Area by MESITA-2909,
 // `_shared/area-pipeline.ts`). Every ready Mesita place (the family row's
-// families pushed into the read) is gated, scored and ranked from its
-// scoring columns, and only the first page of that ranked list keeps its
-// cards (MESITA-3044, Pato: "sort all catalog places in one run, but don't
+// families pushed into the read) is gated, scored and ranked in SQL
+// (`catalog_rank`, MESITA-3059: one statement, no row cap), and only the
+// first page of that ranked list keeps its cards (MESITA-3044, Pato: "sort all catalog places in one run, but don't
 // load them all … never stop until the catalog is gone"). Ties break on
 // distance then id, so the order is stable (MESITA-2921: a capped id-ordered
 // read ranked a random 1000).
@@ -55,14 +55,14 @@
 //   places: [... { area }], summary }.
 //   order     every ranked id, best first
 //   total     every ranked place (the list the pages walk)
-//   summary.read      pass-1 rows read (scoring columns)
+//   summary.read      rows the SQL rank read (before the Family gate)
 //   summary.total     rows that passed the gates and were ranked
 //   summary.returned  places emitted (the first page)
 //   summary.chunks    pass-2 card reads
-//   summary.scanCapped  10,000 rows read and more remain: cut by id again
 //   summary.missing   kept ids pass 2 did not return
 // Error: 502 { ok: false, code: "catalog_read_failed", error, pass, page |
-//   chunk, requestId }; the PostgREST message is logged, never sent.
+//   chunk, requestId }; pass 1 is the SQL rank (page 0), pass 2 a card
+//   chunk. The PostgREST message is logged, never sent.
 //   Read-only, safe to retry.
 //
 // Local:  supabase functions serve consumer-web-list-catalog
@@ -231,6 +231,8 @@ serveJson("consumer-web-list-catalog", async (req) => {
   let pool: Awaited<ReturnType<typeof selectCatalogPool<PoolRow>>>;
   try {
     pool = await selectCatalogPool<PoolRow>({
+      // The rank itself is SQL (MESITA-3059): every gated place, no row cap.
+      rank: (args) => admin.rpc("catalog_rank", args),
       read,
       cfg,
       location,
@@ -246,17 +248,6 @@ serveJson("consumer-web-list-catalog", async (req) => {
   } catch (err) {
     if (!(err instanceof CatalogReadError)) throw err;
     return readError(err);
-  }
-
-  if (pool.summary.scanCapped) {
-    console.warn(JSON.stringify({
-      fn: "consumer-web-list-catalog",
-      event: "catalog_scan_capped",
-      requestId,
-      read: pool.summary.read,
-      lastId: pool.lastId,
-      trigger: "MESITA-2921: rank in SQL or page the server",
-    }));
   }
 
   // The tile's voucher line (MESITA-3312), two reads for the page.
