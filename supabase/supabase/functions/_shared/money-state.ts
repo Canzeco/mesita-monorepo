@@ -65,15 +65,14 @@ export type VoucherReason =
    *  bought one here for every visit (a paid bill with a card part). */
   | "needs_visit";
 
-/** Vouchers in the catalog that no wave sells yet, and why. W1b sells the
- *  other three; MX$5,000 waits for its own wave, VIP for card payments
- *  (W2b). Story sells since MESITA-3507: its gates are the guest's own
- *  (a linked Instagram above STORY_MIN_FOLLOWERS) and staff activate its
- *  credit after seeing the story, so no wave holds it back. */
-export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {
-  voucher_5000: "not_yet",
-  voucher_vip: "needs_card_payments",
-};
+/** Vouchers in the catalog that no wave sells yet, and why. Empty since
+ *  MESITA-3550: every voucher sells where its owner switches it on (the
+ *  owner's switch is the owner's yes; the admin pause still stops all).
+ *  Story's and VIP's gates are the guest's own, checked by the buy EF:
+ *  Story a linked Instagram above STORY_MIN_FOLLOWERS (MESITA-3507), VIP the
+ *  VIP class (MESITA-3550), and both sell one each new visit (MESITA-3463).
+ *  Kept so a later voucher can wait for its wave with one line. */
+export const NOT_YET_SELLABLE: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
 
 /** Story is for guests whose linked Instagram has MORE than this many
  *  followers (MESITA-3507, Pato: "only available for users that have more

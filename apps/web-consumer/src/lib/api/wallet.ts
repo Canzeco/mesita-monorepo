@@ -117,6 +117,7 @@ export const BUY_REFUSAL: Record<string, string> = {
   needs_card_payments: "This voucher arrives with card payments.",
   needs_instagram: "Link your Instagram to buy the Story voucher.",
   few_followers: "The Story voucher is for Instagram accounts with more than 1,000 followers.",
+  not_vip: "The VIP voucher is for VIP guests.",
   welcome_used: "You already had your Welcome voucher here.",
   needs_visit: "One per visit. Pay a bill here by card to buy another.",
   below_minimum: "This amount is below the card minimum.",

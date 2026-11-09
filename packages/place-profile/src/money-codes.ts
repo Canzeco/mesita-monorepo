@@ -68,6 +68,8 @@ export const MONEY_CODES = [
   "taken_back",
   // Story and VIP, one each new visit (MESITA-3463): bought for every visit
   "needs_visit",
+  // VIP (MESITA-3550): the guest is not of the VIP class
+  "not_vip",
 ] as const;
 
 export type MoneyCode = (typeof MONEY_CODES)[number];
