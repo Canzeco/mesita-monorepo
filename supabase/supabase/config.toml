@@ -614,6 +614,11 @@ verify_jwt = true
 [functions.admin-web-reopen-settle]
 verify_jwt = true
 
+# Pay at the table card spike (MESITA-3571): TEMPORARY, test mode only,
+# super-admin; retired in T2b (MESITA-3563).
+[functions.admin-web-try-card-pay]
+verify_jwt = true
+
 # Manage › Money's connected places (MESITA-3383): every place with a
 # Stripe account, its state, switches and outstanding credit. Super-admin only.
 [functions.admin-web-list-connected-places]
