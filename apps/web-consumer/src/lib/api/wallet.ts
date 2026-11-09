@@ -239,6 +239,44 @@ export async function apiGetPayment(client: SupabaseClient, paymentId: string): 
   };
 }
 
+/** Back from a cancelled Checkout (MESITA-3458): the open session is
+ *  expired and the credit hold released, so the form can pay again. The
+ *  payment as it now stands, and the ticket it carried, so the form shows
+ *  the same amount, tip and ticket. `paid` when Stripe had already taken the
+ *  money; `pending` when Stripe still reports it open. */
+export type PayRelease = {
+  outcome: "released" | "paid" | "unchanged" | "pending";
+  payment: PayProof;
+  place_id: string | null;
+  ticket: string | null;
+};
+
+export async function apiReleasePayment(client: SupabaseClient, paymentId: string): Promise<PayRelease> {
+  const r = await invokeEF<
+    Omit<PayProof, "place_name"> & { place: { id: string; name: string | null }; outcome: PayRelease["outcome"]; ticket: string | null }
+  >(client, "consumer-web-release-payment", { payment_id: paymentId });
+  return {
+    outcome: r.outcome,
+    place_id: r.place?.id ?? null,
+    ticket: r.ticket ?? null,
+    payment: {
+      payment_id: r.payment_id,
+      place_name: r.place?.name ?? null,
+      status: r.status,
+      amount_cents: r.amount_cents,
+      credit_cents: r.credit_cents,
+      card_cents: r.card_cents,
+      tip_cents: r.tip_cents,
+      cashback_cents: r.cashback_cents,
+      currency: r.currency,
+      paid_at: r.paid_at,
+      proof_seen_at: r.proof_seen_at,
+      proof: r.proof,
+      test_mode: r.test_mode,
+    },
+  };
+}
+
 /** What the guest reads when a payment is refused, by the server's code.
  *  `insufficient` prints the server's spendable_cents instead; `in_progress`
  *  offers the open Checkout. */

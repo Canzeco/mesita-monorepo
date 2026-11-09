@@ -13,6 +13,7 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   apiGetPayment,
   apiGetWallet,
+  apiReleasePayment,
   apiStartPayment,
   attemptFor,
   money,
@@ -48,8 +49,21 @@ import { cn } from "@/lib/utils";
 // Checkout on the place's account. Checkout returns to `/pay?payment=<id>`,
 // where the read settles the payment; while it is still open the page says
 // so, offers to resume the Checkout, and asks again every 5 s.
+//
+// Back from a cancelled Checkout (MESITA-3458): Stripe returns to
+// `/pay?payment=<id>&checkout=cancel`. The page releases it first
+// (consumer-web-release-payment expires the session and frees the held
+// credit), re-reads the Wallet, and shows the form again with the same
+// place, amount, tip and ticket and a quiet "Payment cancelled". A paid
+// return reads "Confirming…" for 30 s, then "Still confirming" with
+// Refresh; "Payment didn't go through" only when the server says expired
+// or failed.
 
 const PAYMENT_PARAM = "payment";
+const CHECKOUT_PARAM = "checkout";
+const CHECKOUT_CANCEL = "cancel";
+/** How long a paid return reads "Confirming…" before "Still confirming". */
+const CONFIRM_PATIENCE_MS = 30_000;
 const POLL_FAST_MS = 5_000;
 const POLL_SLOW_MS = 15_000;
 const POLL_SLOW_AFTER_MS = 2 * 60_000;
@@ -69,11 +83,18 @@ function setPaymentParam(id: string | null) {
   const params = new URLSearchParams(window.location.search);
   if (id) params.set(PAYMENT_PARAM, id);
   else params.delete(PAYMENT_PARAM);
+  params.delete(CHECKOUT_PARAM);
   const q = params.toString();
   window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
 }
 
 const keyOf = (b: WalletBalance) => `${b.place_id}:${b.currency}`;
+
+/** What the form shows again after a cancelled Checkout. */
+type Refill = { placeId: string; amountCents: number; tipCents: number; ticket: string };
+
+/** A payment that is neither settled nor closed: the page keeps confirming. */
+const isOpen = (p: PayProof) => p.status === "open" || p.status === "opening";
 
 export function PayPage() {
   const getSupabase = useLazyBrowserSupabase();
@@ -87,16 +108,42 @@ export function PayPage() {
   const [walletNonce, setWalletNonce] = useState(0);
   const [proof, setProof] = useState<PayProof | null>(null);
   const [proofDone, setProofDone] = useState(false);
+  const [refill, setRefill] = useState<Refill | null>(null);
 
   // Boot: a ?payment= load reads that payment; otherwise (and after Done)
   // the Wallet answers what can pay.
   useEffect(() => {
     let cancelled = false;
-    const id = new URLSearchParams(window.location.search).get(PAYMENT_PARAM);
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get(PAYMENT_PARAM);
     if (id && !proofDone) {
-      void apiGetPayment(getSupabase(), id)
+      const cancelledCheckout = params.get(CHECKOUT_PARAM) === CHECKOUT_CANCEL;
+      // Back from a cancelled Checkout: release it, then the form again.
+      const read = cancelledCheckout
+        ? apiReleasePayment(getSupabase(), id).then((r) => {
+          if (r.payment.status === "expired" || r.payment.status === "failed") {
+            if (!cancelled && r.place_id) {
+              setRefill({
+                placeId: r.place_id,
+                amountCents: r.payment.amount_cents,
+                tipCents: r.payment.tip_cents ?? 0,
+                ticket: r.ticket ?? "",
+              });
+            }
+            return null;
+          }
+          return r.payment;
+        })
+        : apiGetPayment(getSupabase(), id);
+      void read
         .then((p) => {
-          if (!cancelled) setProof(p);
+          if (cancelled) return;
+          if (p) {
+            setProof(p);
+            return;
+          }
+          setPaymentParam(null);
+          setProofDone(true);
         })
         .catch((e) => {
           if (cancelled) return;
@@ -140,6 +187,7 @@ export function PayPage() {
   }
 
   function done() {
+    setRefill(null);
     setPaymentParam(null);
     setProof(null);
     setProofDone(true);
@@ -158,7 +206,13 @@ export function PayPage() {
         ) : askedPayment && !proofDone && !walletFailed ? (
           <ProofSkeleton />
         ) : wallet ? (
-          <PayForm wallet={wallet} onPaid={showProof} onTaken={openPayment} onRefresh={() => setWalletNonce((n) => n + 1)} />
+          <PayForm
+            wallet={wallet}
+            refill={refill}
+            onPaid={showProof}
+            onTaken={openPayment}
+            onRefresh={() => setWalletNonce((n) => n + 1)}
+          />
         ) : walletFailed ? (
           <EmptyState
             icon={WalletIcon}
@@ -178,11 +232,14 @@ export function PayPage() {
 
 function PayForm({
   wallet,
+  refill,
   onPaid,
   onTaken,
   onRefresh,
 }: {
   wallet: Wallet;
+  /** The cancelled Checkout's place, amount, tip and ticket (MESITA-3458). */
+  refill: Refill | null;
   onPaid: (p: PayProof) => void;
   onTaken: (paymentId: string) => void;
   onRefresh: () => void;
@@ -191,10 +248,14 @@ function PayForm({
   // A place pays when the guest holds credit there, or when it takes cards
   // (a card-only payment where the credit ran out, MESITA-3305).
   const payable = wallet.balances.filter((b) => b.available_cents > 0 || b.card_ok === true);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [amount, setAmount] = useState("");
-  const [tip, setTip] = useState("");
-  const [ticket, setTicket] = useState("");
+  const [picked, setPicked] = useState<string | null>(() => {
+    const b = refill ? payable.find((x) => x.place_id === refill.placeId) : undefined;
+    return b ? keyOf(b) : null;
+  });
+  const [amount, setAmount] = useState(() => (refill ? amountText(refill.amountCents) : ""));
+  const [tip, setTip] = useState(() => (refill && refill.tipCents > 0 ? amountText(refill.tipCents) : ""));
+  const [ticket, setTicket] = useState(() => refill?.ticket ?? "");
+  const [cancelNote, setCancelNote] = useState(refill !== null);
   const [busy, setBusy] = useState(false);
   const [resume, setResume] = useState<string | null>(null);
   const attempt = useRef<PayAttempt | null>(null);
@@ -244,6 +305,7 @@ function PayForm({
     setTip("");
     setTicket("");
     setResume(null);
+    setCancelNote(false);
   }
 
   async function pay() {
@@ -252,6 +314,7 @@ function PayForm({
     attempt.current = a;
     setBusy(true);
     setResume(null);
+    setCancelNote(false);
     try {
       const started = await apiStartPayment(getSupabase(), {
         place_id: place.place_id,
@@ -318,6 +381,11 @@ function PayForm({
   return (
     <div className="flex flex-col">
       {wallet.test_mode ? <TestBand className="mb-3" /> : null}
+      {cancelNote ? (
+        <p className="text-muted-foreground mb-3 text-sm" role="status">
+          Payment cancelled
+        </p>
+      ) : null}
       <div className="border-border bg-card overflow-hidden rounded-2xl border" role="radiogroup" aria-label="Place">
         {payable.map((b, i) => {
           const lit = keyOf(b) === keyOf(place);
@@ -444,6 +512,35 @@ function ProofView({
   const review = proof.status === "needs_review";
   const seen = proof.proof_seen_at;
   const watch = (!seen && !refunded && !closed && !review) || open;
+  // A paid return reads "Confirming…" for 30 s, then "Still confirming".
+  const [slow, setSlow] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => setSlow(true), CONFIRM_PATIENCE_MS);
+    return () => clearTimeout(t);
+  }, [open, proof.payment_id]);
+
+  function refresh() {
+    setRefreshing(true);
+    void apiGetPayment(getSupabase(), proof.payment_id)
+      .then(onChange)
+      .catch(() => toast(NETWORK_FAILURE, { tone: "error" }))
+      .finally(() => setRefreshing(false));
+  }
+
+  // Leaving an unconfirmed payment reads it once more: a payment that went
+  // through in the meantime shows its proof, never the form.
+  function leave() {
+    if (!open) {
+      onDone();
+      return;
+    }
+    void apiGetPayment(getSupabase(), proof.payment_id)
+      .then((p) => (isOpen(p) || p.status === "expired" || p.status === "failed" ? onDone() : onChange(p)))
+      .catch(() => onDone());
+  }
 
   // Re-read while unseen, so the screen turns to Seen when the waiter taps.
   useEffect(() => {
@@ -482,9 +579,16 @@ function ProofView({
       {proof.test_mode ? <TestBand className="mb-3 w-full text-left" /> : null}
       <div className="border-border bg-card flex w-full flex-col items-center rounded-2xl border px-6 py-6">
         {open ? (
-          <p className="text-sm font-semibold" role="status">Confirming your card payment…</p>
+          slow ? (
+            <>
+              <p className="text-sm font-semibold" role="status">Still confirming</p>
+              <p className="text-muted-foreground mt-1 text-sm">We&apos;ll show the proof as soon as Stripe answers.</p>
+            </>
+          ) : (
+            <p className="text-sm font-semibold" role="status">Confirming…</p>
+          )
         ) : closed ? (
-          <p className="text-sm font-semibold" role="status">Checkout cancelled. Nothing was charged.</p>
+          <p className="text-sm font-semibold" role="status">Payment didn&apos;t go through</p>
         ) : review ? (
           <p className="text-sm font-semibold" role="status">We&apos;re checking this payment.</p>
         ) : refunded ? null : seen ? (
@@ -514,12 +618,24 @@ function ProofView({
         <p className="mt-2 text-sm font-semibold">{proof.place_name ?? "A Mesita place"}</p>
         {proof.paid_at ? <p className="text-muted-foreground mt-0.5 text-sm">Paid · {clockTime(proof.paid_at)}</p> : null}
       </div>
-      {open && proof.url ? (
+      {open ? (
         <>
-          <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
-            Resume card payment
-          </Button>
-          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={onDone}>
+          {proof.url ? (
+            <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
+              Resume card payment
+            </Button>
+          ) : null}
+          {slow ? (
+            <button
+              type="button"
+              className={cn(QUIET_BUTTON_CLASS, proof.url ? "mt-3" : "mt-6")}
+              disabled={refreshing}
+              onClick={refresh}
+            >
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+          ) : null}
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={leave}>
             Done
           </button>
         </>

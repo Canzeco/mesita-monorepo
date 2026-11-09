@@ -7,7 +7,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { type StripeCall, StripeError } from "./boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "./money.ts";
-import { cardCheckoutParams, cardRefusal, lockedFor, startCardPayment } from "./pay-card.ts";
+import { cardCheckoutParams, cardRefusal, lockedFor, releaseCardPayment, startCardPayment } from "./pay-card.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
 import { readCardPart } from "./pay.ts";
 import { classifySession } from "./checkout-session.ts";
@@ -258,4 +258,65 @@ Deno.test("settlePayment: paid → wallet_settle_payment on the row's account; e
   assertEquals(await settlePayment(fake3.client, stripe, noSession, T0 + 1000), "pending");
   assertEquals(await settlePayment(fake3.client, stripe, noSession, T0 + (WALLET_CHECKOUT_TTL_SEC + 1) * 1000), "expired");
   assertEquals(fake3.rpcs, [{ name: "wallet_release_payment", args: { p_payment_id: ROW, p_status: "failed", p_error: "no_session" } }]);
+});
+
+// ── Back from a cancelled Checkout (MESITA-3458) ────────────────────────────
+
+Deno.test("cancel, change the amount, pay again: the release expires the session and frees the hold, so the next start opens a new Checkout", async () => {
+  const OPEN = { id: ROW, status: "open", stripe_checkout_session_id: "cs_old", stripe_account_id: "acct_place", created_at: new Date(T0).toISOString(), expires_at: "2026-11-08T12:31:00Z" };
+  let rowStatus = "open";
+  const calls: Array<{ method: string; path: string; opts?: Record<string, unknown> }> = [];
+  const stripe: StripeCall = (method, path, _p, opts) => {
+    calls.push({ method, path, opts: opts as Record<string, unknown> });
+    if (path === "checkout/sessions/cs_old/expire") return Promise.resolve({ id: "cs_old", status: "expired" });
+    if (path === "checkout/sessions/cs_old") return Promise.resolve({ id: "cs_old", status: rowStatus === "open" ? "open" : "expired", url: "https://checkout.stripe.com/c/old" });
+    return Promise.resolve({ id: "cs_new", url: "https://checkout.stripe.com/c/new", status: "open" });
+  };
+  const fake = fakeAdmin({
+    // The open-row read sees the row until it is released.
+    table: (op) => op.filters.status === "open" && rowStatus === "open" ? { data: [{ ...OPEN, request_id: REQUEST }] } : { data: [] },
+    rpc: (name, args) => {
+      if (name === "wallet_release_payment") {
+        rowStatus = String(args.p_status);
+        return { data: { ok: true, outcome: "released" } };
+      }
+      if (name === "wallet_hold_payment") return { data: { ok: true, outcome: "held", payment_id: "00000000-0000-4000-8000-0000000e3458", expires_at: "x" } };
+      return { data: { ok: true } };
+    },
+  });
+
+  // Before the release, a new amount under a new request id is in_progress.
+  const NEW_REQUEST = "00000000-0000-4000-8000-0000000f3458";
+  const before = await startCardPayment(fake.client, stripe, startArgs({ input: { ...startArgs().input, requestId: NEW_REQUEST, amountCents: 3000, cardCents: 1000 } }));
+  assertEquals(!before.ok && before.code, "in_progress");
+
+  assertEquals(await releaseCardPayment(fake.client, stripe, OPEN, T0 + 60_000), "released");
+  assertEquals(calls.find((c) => c.path === "checkout/sessions/cs_old/expire")?.opts?.stripeAccount, "acct_place");
+  // Expired, never failed: three cancels do not lock the guest out.
+  assertEquals(fake.rpcs.find((x) => x.name === "wallet_release_payment")?.args, { p_payment_id: ROW, p_status: "expired", p_error: "cancelled" });
+
+  const after = await startCardPayment(fake.client, stripe, startArgs({ input: { ...startArgs().input, requestId: NEW_REQUEST, amountCents: 3000, cardCents: 1000 } }));
+  if (!after.ok || after.kind !== "open") throw new Error(`expected open, got ${JSON.stringify(after)}`);
+  assertEquals(after.start.url, "https://checkout.stripe.com/c/new");
+  assertEquals(after.start.card_cents, 1000);
+});
+
+Deno.test("release: a session Stripe already paid is settled, never released; a closed row is unchanged; no session releases at once", async () => {
+  const row = { id: ROW, status: "open", stripe_checkout_session_id: "cs_paid", stripe_account_id: "acct_place", created_at: new Date(T0).toISOString(), expires_at: null };
+  const paid: StripeCall = (method) =>
+    method === "POST"
+      ? Promise.reject(new StripeError("checkout/sessions/cs_paid/expire", "invalid_request_error", "checkout_session_not_open", 400, "not open"))
+      : Promise.resolve({ metadata: { payment_id: ROW }, payment_status: "paid", status: "complete", payment_intent: "pi_1" });
+  const fake = fakeAdmin({ rpc: () => ({ data: { ok: true, outcome: "paid" } }) });
+  assertEquals(await releaseCardPayment(fake.client, paid, row, T0), "paid");
+  assertEquals(fake.rpcs.map((x) => x.name), ["wallet_settle_payment"]);
+
+  const fake2 = fakeAdmin({});
+  assertEquals(await releaseCardPayment(fake2.client, paid, { ...row, status: "paid" }, T0), "unchanged");
+  assertEquals(fake2.rpcs, []);
+
+  const fake3 = fakeAdmin({});
+  const never: StripeCall = () => Promise.reject(new Error("no Stripe call expected"));
+  assertEquals(await releaseCardPayment(fake3.client, never, { ...row, status: "opening", stripe_checkout_session_id: null }, T0), "released");
+  assertEquals(fake3.rpcs, [{ name: "wallet_release_payment", args: { p_payment_id: ROW, p_status: "expired", p_error: "cancelled" } }]);
 });
