@@ -38,9 +38,9 @@ describe("Vouchers tab", () => {
   it("offers Buy only on what the server lists in `sell`, and never on a read without it", () => {
     const html = render(OFFER, () => {});
     // Every card for sale carries its own Buy (MESITA-3446).
-    expect(html).toContain('aria-label="Buy the Standard voucher');
-    expect(html).toContain('aria-label="Buy the Standard Medium voucher');
-    expect(html).toContain('aria-label="Buy the Standard Large voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
+    expect(html).toContain('aria-label="Buy the Small voucher');
+    expect(html).toContain('aria-label="Buy the Medium voucher');
+    expect(html).toContain('aria-label="Buy the Big voucher'); // test mode: buyable, the server decides at the tap (MESITA-3342)
     expect(html).not.toContain('aria-label="Buy the Welcome voucher');
     expect(html).toContain("You had yours here");
     // An older read: switches on, no `sell`: nothing for sale.
@@ -61,7 +61,7 @@ describe("Vouchers tab", () => {
     expect(html).toContain("MX$220");
     expect(html).toContain("MX$100");
     // No credit: the House Card says credit is optional to pay (MESITA-3451).
-    expect(render({ ...OFFER, balance: null })).toContain("You can pay the bill without credit.");
+    expect(render({ ...OFFER, balance: null })).toContain("No credit needed to pay.");
   });
 
   it("formats cents and never adds", () => {
