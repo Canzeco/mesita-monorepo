@@ -12,6 +12,10 @@
 //   settle_give_up_ticks 48 (4 hours): then needs_review with the last
 //                        Stripe code; a Stripe 404 gives up at once
 //   an `opening` row older than 10 minutes never got its Checkout: failed
+//   a payment with a PaymentIntent and no session (an in-app card part,
+//     MESITA-3568) is read by its PI: succeeded settles; unfinished after
+//     10 minutes is cancelled first, released only when Stripe says
+//     canceled
 //   a stored expires_at in the past that Stripe reports expired: settled
 //     once (released) and not re-read
 //   paid waiter's charges are deleted 24 h after paid_at, expired unpaid
@@ -136,12 +140,22 @@ export async function settleRow(deps: TickDeps, cfg: SettleConfig, row: BatchRow
 
   try {
     if (row.kind === "payment") {
+      // A payment with no Checkout session may be an in-app card part
+      // (MESITA-3568): the batch does not carry its PaymentIntent, one read
+      // does.
+      let pi: string | null = null;
+      if (!row.stripe_checkout_session_id) {
+        const { data, error } = await admin.from("wallet_payments").select("stripe_payment_intent_id").eq("id", row.id).maybeSingle();
+        if (error) throw new Error(`payment_pi_read: ${error.message}`);
+        pi = (data as { stripe_payment_intent_id: string | null } | null)?.stripe_payment_intent_id ?? null;
+      }
       return await settlePayment(admin, stripe, {
         id: row.id,
         stripe_checkout_session_id: row.stripe_checkout_session_id,
         stripe_account_id: row.stripe_account_id,
         created_at: row.created_at,
         expires_at: row.expires_at,
+        stripe_payment_intent_id: pi,
       }, nowMs);
     }
     const purchase: OpenPurchase = {

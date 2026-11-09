@@ -41,6 +41,11 @@ export const CONNECT_EVENT_TYPES = [
   "charge.dispute.created",
   "charge.dispute.closed",
   "account.updated",
+  // MESITA-3568: an in-app card part (Pay at the table) settles by its
+  // PaymentIntent. Pato enables these three on the Connect endpoint.
+  "payment_intent.succeeded",
+  "payment_intent.canceled",
+  "payment_intent.payment_failed",
 ] as const;
 
 // ── The signature ──────────────────────────────────────────────────────────
@@ -229,6 +234,29 @@ async function rowByPaymentIntent(admin: SupabaseClient, pi: string): Promise<Le
   return null;
 }
 
+/** The payment a Mesita PaymentIntent pays: metadata.payment_id first,
+ *  then the stored PI id (MESITA-3568). */
+async function paymentForIntent(
+  admin: SupabaseClient,
+  meta: Record<string, unknown>,
+  piId: string,
+): Promise<{ id: string; sessionId: string | null } | null> {
+  const cols = "id, stripe_checkout_session_id";
+  const byMeta = typeof meta.payment_id === "string" && /^[0-9a-f-]{36}$/i.test(meta.payment_id)
+    ? await admin.from("wallet_payments").select(cols).eq("id", meta.payment_id).maybeSingle()
+    : null;
+  if (byMeta?.error) throw new Error(`payments_read: ${byMeta.error.message}`);
+  let data = byMeta?.data ?? null;
+  if (!data) {
+    const byPi = await admin.from("wallet_payments").select(cols).eq("stripe_payment_intent_id", piId).maybeSingle();
+    if (byPi.error) throw new Error(`payments_read: ${byPi.error.message}`);
+    data = byPi.data;
+  }
+  if (!data) return null;
+  const r = data as { id: string; stripe_checkout_session_id: string | null };
+  return { id: r.id, sessionId: r.stripe_checkout_session_id };
+}
+
 function idOfField(v: unknown): string | null {
   if (typeof v === "string") return v || null;
   if (v && typeof v === "object") return String((v as { id?: unknown }).id ?? "") || null;
@@ -383,6 +411,37 @@ async function dispatch(
       const refunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : 0;
       const res = await refundRow(admin, row, goneCents(charge, refunded, disputed), "dispute_lost");
       return { status: 200, body: { ok: true, [`${row.kind}_id`]: row.id, outcome: res.outcome ?? "applied", status: res.status ?? null, reason: "dispute_lost" } };
+    }
+
+    case "payment_intent.succeeded":
+    case "payment_intent.canceled":
+    case "payment_intent.payment_failed": {
+      // The place's own sales arrive on the same endpoint: only Mesita's
+      // payments carry mesita_kind; anything else is acknowledged, never a
+      // 500 (Stripe disables an endpoint that keeps failing).
+      const meta = (obj.metadata ?? {}) as Record<string, unknown>;
+      const piId = typeof obj.id === "string" ? obj.id : null;
+      if (meta.mesita_kind !== "wallet_payment" || !piId) return ignored("not_mesita");
+      const row = await paymentForIntent(admin, meta, piId);
+      if (!row) {
+        console.log("[connect-events] pi_unknown", tag, piId);
+        return ignored("unknown_payment");
+      }
+      if (event.type === "payment_intent.payment_failed") {
+        // A decline leaves the PI requires_payment_method: the guest may try
+        // again; the cron cancels it after ten minutes and frees the credit.
+        const err = (obj.last_payment_error ?? {}) as Record<string, unknown>;
+        console.log("[connect-events] pi_failed", tag, row.id, String(err.code ?? err.decline_code ?? ""));
+        return { status: 200, body: { ok: true, payment_id: row.id, outcome: "payment_failed_logged" } };
+      }
+      if (event.type === "payment_intent.succeeded") {
+        const outcome = await settlePaidPayment(admin, row.id, piId);
+        return { status: 200, body: { ok: true, payment_id: row.id, outcome } };
+      }
+      // Canceled: a Checkout's own PI is checkout.session.expired's to release.
+      if (row.sessionId) return { status: 200, body: { ok: true, payment_id: row.id, ignored: "checkout_owns_it" } };
+      await releasePayment(admin, row.id, "failed", "pi_canceled");
+      return { status: 200, body: { ok: true, payment_id: row.id, outcome: "released" } };
     }
 
     case "account.updated": {
