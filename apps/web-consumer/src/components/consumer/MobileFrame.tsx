@@ -6,15 +6,18 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { useKeyboardInset } from "@/lib/use-keyboard-inset";
 
+import { CARD_INSET, useConsoleMode } from "./console-layout";
+
 /**
  * Consumer surface frame — a mobile / vertical visualizer.
  *
  * Two-box model:
  *   - Outer: gradient page background. Mobile uses STRICT viewport
  *     height (\`h-dvh\`) so the inner card can never grow past the
- *     visible viewport. Desktop parks the card at the LEFT edge of the
- *     hero gradient (MESITA-3518) with a thin margin (\`p-4\`); the call
- *     log and the request/response panel fill the room to its right.
+ *     visible viewport. Desktop parks the card by console mode
+ *     (MESITA-3580, console-layout.ts): centered alone (Phone), centered
+ *     with the call log (Functions), or at the left edge with the log and
+ *     the request/response panel to its right (Terminal).
  *   - Card: the actual app surface. STRICT height on BOTH breakpoints —
  *     \`h-full\` (= h-dvh) on mobile, \`h-[calc(100dvh-2rem)]\` on desktop —
  *     so the visualizer fills almost the entire viewport height and
@@ -53,10 +56,15 @@ export function MobileFrame({
   // next one to rediscover the bug. `--kb` is 0px whenever the keyboard is
   // closed, so the calc() collapses to the value it always had.
   const keyboardInset = useKeyboardInset();
+  // Desktop: where the card sits follows the console mode (MESITA-3580).
+  const mode = useConsoleMode();
 
   return (
     <div
-      className="bg-background md:bg-hero flex h-[calc(100dvh-var(--kb,0px))] items-stretch justify-center md:min-h-[calc(100dvh-var(--kb,0px))] md:items-center md:justify-start md:px-4 md:py-4"
+      className={cn(
+        "bg-background md:bg-hero flex h-[calc(100dvh-var(--kb,0px))] items-stretch justify-center md:min-h-[calc(100dvh-var(--kb,0px))] md:items-center md:justify-start md:pr-4 md:py-4",
+        CARD_INSET[mode],
+      )}
       style={{ "--kb": `${keyboardInset}px` } as CSSProperties}
     >
       <div

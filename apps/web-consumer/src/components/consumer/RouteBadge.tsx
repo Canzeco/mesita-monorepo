@@ -6,6 +6,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Z_ROUTE_BADGE } from "@/lib/z-index";
 
+import { BESIDE_CARD, useConsoleMode } from "./console-layout";
+
 /**
  * Prints the current route into the page.
  *
@@ -27,6 +29,7 @@ export function RouteBadge() {
   // client rendering — hence the split: the path paints immediately and the
   // query string fills in on hydration.
   const pathname = usePathname() ?? "/";
+  const mode = useConsoleMode();
 
   return (
     <div
@@ -34,9 +37,9 @@ export function RouteBadge() {
       data-testid="route-badge"
       className={cn(
         "pointer-events-none fixed top-2 left-2 select-none",
-        // Desktop: over the call log, 0.75rem right of the card, which sits
-        // at the left edge, 1rem in, 30rem wide (MobileFrame, MESITA-3518).
-        "md:left-[31.75rem]",
+        // Desktop: 0.75rem right of the card, wherever the console mode
+        // puts it (console-layout.ts, MESITA-3580).
+        BESIDE_CARD[mode],
         "bg-card/80 text-muted-foreground border-border rounded-full border px-2.5 py-1",
         "type-label font-mono leading-none tracking-tight tabular-nums backdrop-blur-sm",
         Z_ROUTE_BADGE,
