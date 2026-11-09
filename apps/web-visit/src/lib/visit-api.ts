@@ -115,6 +115,8 @@ export type OpenedCharge = {
   code: string;
   charge_token: string;
   amount_cents: number;
+  /** The tip staff typed after asking (MESITA-3545). */
+  tip_cents: number;
   currency: string;
   ticket: string | null;
   expires_at: string;
@@ -127,6 +129,15 @@ export type OpenedCharge = {
 export type ChargeRead = {
   state: "open" | "paid";
   amount_cents: number;
+  /** The charge's tip until the guest's payment binds it, then the payment's. */
+  tip_cents: number;
+  /** What moved on Mesita once paid (credit + card); less than the bill when
+   *  the guest paid the rest at the table. */
+  paid_cents: number | null;
+  /** The guest is paying outside and waits for Received (MESITA-3545). */
+  outside: { cents: number; tip_cents: number; expires_at: string | null } | null;
+  /** Paid outside and confirmed by Received. */
+  paid_outside: boolean;
   currency: string;
   ticket: string | null;
   expires_at: string;
@@ -166,6 +177,7 @@ export async function openCharge(args: {
   place_id: string;
   place_code: string;
   amount_cents: number;
+  tip_cents: number;
   ticket: string | null;
 }): Promise<OpenedCharge> {
   const { data } = await post("visit-web-open-charge", args);
@@ -184,6 +196,16 @@ export async function getCharge(token: string): Promise<ChargeRead | "gone" | "f
   return "failed";
 }
 
+/** The waiter's Received on a bill the guest pays outside (MESITA-3545):
+ *  `paid`, or the server's words to show ("Cancelled by the guest",
+ *  "Expired", "Not paying outside yet"), or `failed` (no answer: tap again). */
+export async function confirmCharge(token: string): Promise<{ paid_at: string } | { refused: string } | "failed"> {
+  const { res, data } = await post("visit-web-confirm-charge", { token });
+  if (data?.ok) return { paid_at: String(data.paid_at) };
+  if (!res || res.status >= 500 || !data) return "failed";
+  return { refused: typeof data.error === "string" ? data.error : "Couldn't confirm. Try again." };
+}
+
 // ── The staff list of payments (MESITA-3462) ────────────────────────────────
 
 /** One payment as staff read it: never who paid. */
@@ -196,6 +218,10 @@ export type StaffPayment = {
   ticket: string | null;
   seen: boolean;
   refunded: boolean;
+  /** Paid outside, confirmed by a Received at paid_at (MESITA-3545). */
+  outside?: boolean;
+  /** An outside bill nobody confirmed: "Outside · Expired". */
+  expired?: boolean;
 };
 
 export type PaymentList = {
