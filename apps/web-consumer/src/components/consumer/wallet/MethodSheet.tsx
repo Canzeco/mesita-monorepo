@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, CreditCard } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
@@ -16,7 +16,7 @@ import { WalletCard, type WalletCardModel } from "./WalletCard";
 // A PAYMENT METHOD, FULL SCREEN (Pato, MESITA-3533, 2026-11-09: "when you
 // click one method, then you open a full screen modal"). Every card on the
 // two Wallet rails opens here, in the house full-screen sheet (the Offers
-// page's shape): a place's credits, the checkout method, or a Story waiting
+// page's shape): a place's credits, a saved card, or a Story waiting
 // for staff. Every amount is the server's (consumer-web-get-wallet); this
 // screen formats, never adds.
 //
@@ -45,7 +45,6 @@ export type Method =
     /** Links sent at this place that nobody took yet. */
     sentLinks: SentLink[];
   }
-  | { kind: "checkout" }
   | { kind: "card"; card: SavedCard }
   | { kind: "story"; story: WaitingStory };
 
@@ -89,7 +88,6 @@ export function MethodSheet({
       </div>
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {method?.kind === "place" ? <PlaceBody method={method} onReread={onReread} /> : null}
-        {method?.kind === "checkout" ? <CheckoutBody /> : null}
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} /> : null}
       </div>
@@ -223,29 +221,6 @@ function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "plac
           Open place
         </Link>
       )}
-    </>
-  );
-}
-
-function CheckoutBody() {
-  return (
-    <>
-      <div className="flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-white p-5 ring-1 ring-black/10">
-        <span className="bg-muted flex h-10 w-10 items-center justify-center rounded-full" aria-hidden>
-          <CreditCard className="h-5 w-5" />
-        </span>
-        <div>
-          <p className="text-base font-semibold">Card · Apple Pay · Google Pay</p>
-          <p className="text-muted-foreground mt-0.5 text-sm">Chosen at checkout, every time you pay</p>
-        </div>
-      </div>
-      <div className="mt-4 flex flex-col gap-3 text-sm leading-relaxed">
-        <p>When you pay a bill or buy credits with Mesita Pay, you pick a card, Apple Pay or Google Pay on the checkout page.</p>
-        <p>Cards you save with Add sit beside this one. Stripe keeps the number; Mesita only sees the last four digits.</p>
-      </div>
-      <Link href={CONSUMER_ROUTES.pay} className={`${PRIMARY} mt-5`}>
-        Pay a bill
-      </Link>
     </>
   );
 }

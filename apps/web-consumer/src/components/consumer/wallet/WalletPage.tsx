@@ -16,7 +16,7 @@ import { toast } from "@/lib/toast";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
-import { AddTile, CashTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
+import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
 
 // TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
 // page called Wallet, and then at the right that icon for transactions ...
@@ -53,7 +53,7 @@ const PREPAY_PARAM = "prepay";
 // SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
 // Add on the Money rail opens Stripe's own page in setup mode; it returns
 // here with `?card=<session>`, the page says "Card saved." and drops the
-// parameter. Each saved card is a tile after the checkout one; its sheet
+// parameter. Each saved card is a tile after Cash (no generic "card at checkout" tile: Pato, MESITA-3557, "that card is fake and should not exist"); its sheet
 // removes it. The list is the server's (consumer-web-list-cards), read on
 // mount and after every add or remove.
 
@@ -150,7 +150,7 @@ export function WalletPage() {
         if (!cancelled) setCards(r.cards);
       })
       .catch(() => {
-        // The rail keeps Add and the checkout card; a failed list shows none.
+        // The rail keeps Add and Cash; a failed list shows no cards.
         if (!cancelled) setCards([]);
       });
     return () => {
@@ -275,7 +275,6 @@ export function WalletPage() {
       <WalletRail title="Money Payment Methods">
         <AddTile label={adding ? "Opening…" : "Add"} line="Save a card" onClick={() => void addCard()} />
         <CashTile />
-        <CheckoutMethodTile onOpen={() => setMethod({ kind: "checkout" })} />
         {cards?.map((c) => <SavedCardTile key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
       </WalletRail>
 
