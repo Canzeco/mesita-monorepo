@@ -3,19 +3,17 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ReceiptText, Wallet as WalletIcon } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { apiFillAreaPool, apiListAreaPool, type Place } from "@/lib/api/places";
-import { apiGetWallet, money, type WaitingStory, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
-import { placeHref } from "@/lib/place-route";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { LocalDialog } from "@/components/consumer/overlay/LocalOverlay";
 import { WalletCard, type WalletCardModel } from "./WalletCard";
+import { type Method, MethodSheet } from "./MethodSheet";
 import { AddTile, CheckoutMethodTile, RAIL_TILE, RailSkeleton, StoryTile, WalletRail } from "./WalletRails";
 
 // TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09: "add some header to the
@@ -79,7 +77,7 @@ function sayOutcome(w: Wallet) {
   }
 }
 
-type Row = { card: WalletCardModel };
+type Row = { card: WalletCardModel; balance: WalletBalance | null; placeId: string; placeSlug: string };
 
 function hasMoney(b: WalletBalance): boolean {
   return b.available_cents > 0 || b.pending_cents > 0;
@@ -91,14 +89,13 @@ function newestFirst(a: WalletBalance, b: WalletBalance): number {
 
 function balanceRow(b: WalletBalance, cat: Place | undefined): Row {
   const name = b.place?.name ?? cat?.name ?? "A Mesita place";
-  // In a rail a card cannot unfold its history (Me › Transactions has it):
-  // it opens the place, where its Offers are.
-  const tap: WalletCardModel["tap"] = b.place
-    ? { kind: "link", href: placeHref(b.place.slug ?? b.place.id) }
-    : cat
-      ? { kind: "link", href: placeHref(cat.slug || cat.id) }
-      : { kind: "plain" };
+  // Every card opens its method sheet (MESITA-3533): history, Pay here,
+  // Buy credits and the place live there.
+  const tap: WalletCardModel["tap"] = { kind: "open" };
   return {
+    balance: b,
+    placeId: b.place_id,
+    placeSlug: b.place?.slug ?? cat?.slug ?? b.place_id,
     card: {
       key: `${b.place_id}:${b.currency}`,
       name,
@@ -116,6 +113,9 @@ function balanceRow(b: WalletBalance, cat: Place | undefined): Row {
 
 function catalogRow(p: Place): Row {
   return {
+    balance: null,
+    placeId: p.id,
+    placeSlug: p.slug || p.id,
     card: {
       key: `${p.id}:mxn`,
       name: p.name,
@@ -126,7 +126,7 @@ function catalogRow(p: Place): Row {
       available_cents: 0,
       pending_cents: 0,
       hasBalance: false,
-      tap: { kind: "link", href: placeHref(p.slug || p.id) },
+      tap: { kind: "open" },
     },
   };
 }
@@ -136,7 +136,7 @@ export function WalletPage() {
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
-  const [story, setStory] = useState<WaitingStory | null>(null);
+  const [method, setMethod] = useState<Method | null>(null);
   const [catalog, setCatalog] = useState<Place[]>([]);
   const [catalogSettled, setCatalogSettled] = useState(!WALLET_SHOWS_EVERY_PLACE);
 
@@ -257,15 +257,20 @@ export function WalletPage() {
           line="Saving a card comes soon"
           onClick={() => toast("Saving a card comes soon. Today you pick card, Apple Pay or Google Pay at checkout.")}
         />
-        <CheckoutMethodTile />
+        <CheckoutMethodTile onOpen={() => setMethod({ kind: "checkout" })} />
       </WalletRail>
 
       <WalletRail title="Credits Payment Methods">
         <AddTile label="Add" line="Buy credits on a place's Offers" href={CONSUMER_ROUTES.home} />
-        {wallet?.waiting_stories?.map((s) => <StoryTile key={s.purchase_id} story={s} onOpen={() => setStory(s)} />)}
+        {wallet?.waiting_stories?.map((s) => <StoryTile key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
         {credits.map((row) => (
           <div key={row.card.key} className={RAIL_TILE}>
-            <WalletCard card={row.card} eager={shown++ < EAGER_CARDS} />
+            <WalletCard
+              card={row.card}
+              eager={shown++ < EAGER_CARDS}
+              onToggle={() =>
+                setMethod({ kind: "place", card: row.card, balance: row.balance, placeId: row.placeId, placeSlug: row.placeSlug })}
+            />
           </div>
         ))}
         {!groups && !failed ? <RailSkeleton /> : null}
@@ -283,30 +288,8 @@ export function WalletPage() {
         </div>
       ) : null}
 
-      <LocalDialog open={story !== null} onClose={() => setStory(null)} ariaLabel="Story voucher activation">
-        {story ? <WaitingStoryCard story={story} /> : null}
-      </LocalDialog>
+      <MethodSheet method={method} onClose={() => setMethod(null)} />
     </div>
-  );
-}
-
-/** A STORY WAITING FOR STAFF (MESITA-3507, Pato: "first buy it, then ...
- *  activate it by posting an instagram story tagging the place and showing
- *  it [to] the waiter"): paid, no credit yet. The QR opens the staff page on
- *  visit.mesita.ai, where staff see the story and tap Activate. */
-function WaitingStoryCard({ story }: { story: WaitingStory }) {
-  const name = story.place?.name ?? "this place";
-  return (
-    <section className="border-border bg-card flex flex-col items-center gap-3 rounded-2xl border p-4 text-center">
-      <div>
-        <h2 className="text-sm font-semibold">Activate your Story voucher at {name}</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {money(story.credit_cents, story.currency)} of credit waits for step 2: post an Instagram story at the
-          place, tag it, and show the story and this QR to the staff.
-        </p>
-      </div>
-      <QRCodeSVG value={story.url} size={176} marginSize={0} aria-label="Story voucher activation code" />
-    </section>
   );
 }
 

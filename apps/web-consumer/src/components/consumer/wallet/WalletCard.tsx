@@ -32,7 +32,7 @@ export type WalletCardModel = {
   /** A balance row exists for this card (a $0 catalog card has none). */
   hasBalance: boolean;
   /** Tap: expand the history, open the place, or nothing. */
-  tap: { kind: "expand" } | { kind: "link"; href: string } | { kind: "plain" };
+  tap: { kind: "expand" } | { kind: "link"; href: string } | { kind: "open" } | { kind: "plain" };
 };
 
 const CARD_CLASS =
@@ -54,6 +54,14 @@ export function WalletCard({
   if (card.tap.kind === "expand") {
     return (
       <button type="button" onClick={onToggle} aria-expanded={open} aria-label={label} className={CARD_CLASS}>
+        {face}
+      </button>
+    );
+  }
+  // "open" (MESITA-3533): the card opens its method sheet, full screen.
+  if (card.tap.kind === "open") {
+    return (
+      <button type="button" onClick={onToggle} aria-label={label} className={CARD_CLASS}>
         {face}
       </button>
     );
@@ -110,7 +118,7 @@ function CardFace({ card, open, eager }: { card: WalletCardModel; open: boolean;
         </div>
         {card.tap.kind === "expand" ? (
           <ChevronDown className={cn("h-5 w-5 shrink-0 text-white/60 transition", open && "rotate-180")} aria-hidden />
-        ) : card.tap.kind === "link" ? (
+        ) : card.tap.kind === "link" || card.tap.kind === "open" ? (
           <ArrowUpRight className="h-5 w-5 shrink-0 text-white/60" aria-hidden />
         ) : null}
       </div>

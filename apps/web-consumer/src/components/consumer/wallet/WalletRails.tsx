@@ -72,22 +72,23 @@ export function AddTile({
 /** Money's one real method today: Mesita Pay charges by card, Apple Pay or
  *  Google Pay at Stripe's checkout. No card is saved on Mesita yet, so this
  *  rail never invents one. */
-export function CheckoutMethodTile() {
+export function CheckoutMethodTile({ onOpen }: { onOpen: () => void }) {
   return (
-    <div
-      role="group"
+    <button
+      type="button"
+      onClick={onOpen}
       aria-label="Card, Apple Pay or Google Pay, chosen at checkout"
-      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-white p-5 ring-1 ring-black/10")}
+      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-white p-5 text-left ring-1 ring-black/10")}
       data-wallet-method="checkout"
     >
       <span className="bg-muted flex h-10 w-10 items-center justify-center rounded-full" aria-hidden>
         <CreditCard className="h-5 w-5" />
       </span>
-      <div>
-        <p className="text-base font-semibold">Card · Apple Pay · Google Pay</p>
-        <p className="text-muted-foreground mt-0.5 text-sm">Chosen at checkout, every time you pay</p>
-      </div>
-    </div>
+      <span>
+        <span className="block text-base font-semibold">Card · Apple Pay · Google Pay</span>
+        <span className="text-muted-foreground mt-0.5 block text-sm">Chosen at checkout, every time you pay</span>
+      </span>
+    </button>
   );
 }
 
