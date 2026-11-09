@@ -12,21 +12,22 @@
 //
 // LAZY: the query is embedded only here, once, and only for a usable query.
 // No other pipeline pays for an embedding it does not read. Candidate
-// summary vectors are precomputed (`place_profiles.embedding`); the cosine
-// runs in process over a bounded pool. A place with no summary vector
-// cannot be judged and is left out, not ranked as a mismatch.
+// summary vectors are precomputed (`place_profiles.embedding`).
+//
+// NO POOL CAP (MESITA-2330): the kNN runs in Postgres (`deep_knn`), which
+// orders EVERY gated place by cosine distance and returns the nearest
+// `limit`. The cosine here (`descriptionSimilarity`) stays the scoring
+// contract: it re-scores and re-sorts what comes back. A place with no
+// summary vector cannot be judged and is left out, not ranked as a mismatch.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { descriptionSimilarity } from "./pipeline-signals.ts";
-import { applyGeneralGateQuery, type GeneralGateQuery } from "./discovery-general-gate.ts";
 import type { DeepConfig, GeneralConfig } from "./discovery-config.ts";
 import { embedSingle } from "./embeddings-http.ts";
 import { resolveEmbeddingModel } from "./embeddings.ts";
 
 /** A query shorter than this is not a description of anything. */
 export const DEEP_MIN_QUERY = 3;
-/** In-process cosine budget: a bounded pool, not every vector. */
-export const DEEP_POOL = 300;
 
 export type DeepRow = {
   id: string;
@@ -59,8 +60,9 @@ export type DeepDeps = {
   config: DeepConfig;
   /** Embeds the query; called at most once. Null = cannot embed. */
   embed: (text: string) => Promise<number[] | null>;
-  /** Mesita Places Search for Deep; null on error. */
-  pool: () => Promise<DeepRow[] | null>;
+  /** Mesita Places Search for Deep: the nearest places to the query
+   *  vector across the whole gated catalog; null on error. */
+  pool: (vector: number[], config: DeepConfig) => Promise<DeepRow[] | null>;
 };
 
 const ABOUT_MAX = 280;
@@ -70,8 +72,10 @@ export async function runDeepPipeline(
 ): Promise<{ places: DeepPlace[]; embedded: boolean }> {
   const query = deps.query.trim();
   if (query.length < DEEP_MIN_QUERY) return { places: [], embedded: false };
-  const [vector, rows] = await Promise.all([deps.embed(query), deps.pool()]);
-  if (!vector || !rows) return { places: [], embedded: Boolean(vector) };
+  const vector = await deps.embed(query);
+  if (!vector) return { places: [], embedded: false };
+  const rows = await deps.pool(vector, deps.config);
+  if (!rows) return { places: [], embedded: true };
   const places = rows
     .map((row) => ({ row, sim: descriptionSimilarity(vector, row.embedding) }))
     .filter((x): x is { row: DeepRow; sim: number } =>
@@ -97,11 +101,9 @@ export async function runDeepPipeline(
   return { places, embedded: true };
 }
 
-const DEEP_COLUMNS =
-  "id, slug, name, address, family_keys, google_stars_overall, google_review_count, description, embedding";
-
 /** The production sources for Deep: OpenAI for the one query vector, and
- *  Mesita Places Search over active, ready places with a summary vector. */
+ *  Mesita Places Search (`deep_knn`) over active, ready places with a
+ *  summary vector, gated by Discovery › General. */
 export function deepDepsFor(
   admin: SupabaseClient,
   general: GeneralConfig,
@@ -117,20 +119,15 @@ export function deepDepsFor(
         return null;
       }
     },
-    pool: async () => {
-      const base = admin
-        .from("profiles")
-        .select(DEEP_COLUMNS)
-        .eq("state", "active")
-        .eq("content_state", "ready")
-        .not("embedding", "is", null)
-        // The same capped slice every time (MESITA-2338).
-        .order("id", { ascending: true });
-      const query = applyGeneralGateQuery(
-        base as unknown as GeneralGateQuery,
-        general,
-      ) as unknown as typeof base;
-      const { data, error } = await query.limit(DEEP_POOL);
+    pool: async (vector, config) => {
+      // The kNN in Postgres over every gated place (MESITA-2330): no cap
+      // can drop a matching place.
+      const { data, error } = await admin.rpc("deep_knn", {
+        p_query: JSON.stringify(vector),
+        p_limit: config.limit,
+        p_min_similarity: config.minSimilarity,
+        p_require_active: general.requireActive,
+      });
       if (error) {
         console.error("[deep-pipeline] pool:", error.message);
         return null;
