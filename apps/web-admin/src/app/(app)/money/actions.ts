@@ -90,3 +90,35 @@ export async function closeOutPlace(placeId: string): Promise<ActionResult<Close
   if (!r.ok) return failure(r);
   return { ok: true, ...r.data };
 }
+
+// ── Connected places (MESITA-3383) ─────────────────────────────────────────
+
+export type ConnectedPlaceRow = {
+  place_id: string;
+  place_name: string | null;
+  created_at: string;
+  state: "none" | "onboarding" | "ready" | "restricted";
+  payouts_enabled: boolean;
+  disabled_reason: string | null;
+  requirements_due: number;
+  switches_on: string[];
+  available_cents: number;
+  pending_cents: number;
+  last_event_at: string | null;
+};
+
+export type PlaceCursor = { created_at: string; place_id: string } | null;
+
+export type ConnectedPlaces = { rows: ConnectedPlaceRow[]; next: PlaceCursor; cap_cents: number | null; test_mode: boolean };
+
+export async function listConnectedPlaces(before: PlaceCursor = null): Promise<ActionResult<ConnectedPlaces>> {
+  const r = await efInvoke<ConnectedPlaces>("admin-web-list-connected-places", before ? { before } : {});
+  if (!r.ok) return failure(r);
+  return {
+    ok: true,
+    rows: r.data.rows ?? [],
+    next: r.data.next ?? null,
+    cap_cents: r.data.cap_cents ?? null,
+    test_mode: r.data.test_mode !== false,
+  };
+}

@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Pause, RotateCcw, Undo2, Store } from "lucide-react";
+import { AlertTriangle, Landmark, Pause, RotateCcw, Undo2, Store } from "lucide-react";
 import { ErrorNote } from "@/components/ErrorNote";
 import { Button, ChoicePill, SectionCard, Switch, TextField } from "@/components/admin-ui/config";
 import { PageContainer, PageHeader } from "@/components/PageContainer";
 import {
   closeOutPlace,
+  type ConnectedPlaceRow,
+  type ConnectedPlaces,
   type Cursor,
+  listConnectedPlaces,
   listNeedsReview,
   type MoneyConfig,
   type NeedsReviewRow,
@@ -27,6 +30,9 @@ import {
 //              (Stripe, on the place's account), then a payment's credit part
 //              back as credit.
 //   Close out  every guest's unspent credit at one place back to their card.
+//   Places     every place with a Stripe account in this mode (MESITA-3383):
+//              state, switches on, credit outstanding against the test cap,
+//              last Connect event; Close out fills the form below.
 //
 // Every act is one tap and answers the server's verdict; nothing is guessed.
 
@@ -52,11 +58,13 @@ export function MoneyClient({
   initialConfig,
   initialRows,
   initialNext,
+  initialPlaces,
   loadError,
 }: {
   initialConfig: MoneyConfig | null;
   initialRows: NeedsReviewRow[];
   initialNext: Cursor;
+  initialPlaces: ConnectedPlaces | null;
   loadError: string | null;
 }) {
   const [config, setConfig] = useState(initialConfig);
@@ -71,6 +79,7 @@ export function MoneyClient({
   const [amount, setAmount] = useState("");
   const [placeId, setPlaceId] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
+  const [places, setPlaces] = useState(initialPlaces);
 
   async function run<T>(key: string, fn: () => Promise<T>): Promise<T> {
     setBusy(key);
@@ -117,6 +126,18 @@ export function MoneyClient({
     );
     setRowId("");
     setAmount("");
+  }
+
+  async function reloadPlaces(more = false) {
+    const r = await run("places", () => listConnectedPlaces(more ? (places?.next ?? null) : null));
+    if (!r.ok) return setError(r.error);
+    setPlaces(more && places ? { ...r, rows: [...places.rows, ...r.rows] } : r);
+  }
+
+  function pickCloseOut(row: ConnectedPlaceRow) {
+    setPlaceId(row.place_id);
+    setConfirmClose(false);
+    document.getElementById("close-out")?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   async function closeOut() {
@@ -234,6 +255,39 @@ export function MoneyClient({
       </SectionCard>
 
       <SectionCard
+        icon={<Landmark className="h-4 w-4" />}
+        title={`Connected places${places ? (places.test_mode ? " · test" : " · live") : ""}`}
+        subtitle={
+          places?.cap_cents
+            ? `Every place with a Stripe account, newest first. Credit outstanding is Available plus Pending against the ${mxn(places.cap_cents)} test cap.`
+            : "Every place with a Stripe account, newest first. Credit outstanding is Available plus Pending."
+        }
+        state={
+          <Button tone="secondary" size="sm" pending={busy === "places"} onClick={() => void reloadPlaces()}>
+            Refresh
+          </Button>
+        }
+      >
+        {!places || places.rows.length === 0 ? (
+          <p className="text-muted-foreground mt-4 text-sm">No place has a Stripe account yet.</p>
+        ) : (
+          <ul className="divide-border border-border mt-4 divide-y rounded-xl border">
+            {places.rows.map((row) => (
+              <ConnectedPlaceItem key={row.place_id} row={row} cap={places.cap_cents} onCloseOut={() => pickCloseOut(row)} />
+            ))}
+          </ul>
+        )}
+        {places?.next ? (
+          <div className="mt-3">
+            <Button tone="ghost" size="sm" pending={busy === "places"} onClick={() => void reloadPlaces(true)}>
+              Older
+            </Button>
+          </div>
+        ) : null}
+      </SectionCard>
+
+      <div id="close-out">
+      <SectionCard
         icon={<Store className="h-4 w-4" />}
         title="Close out a place"
         subtitle="Every guest's unspent credit at this place goes back to their card, newest voucher first. It cannot be undone."
@@ -247,6 +301,77 @@ export function MoneyClient({
           </div>
         </div>
       </SectionCard>
+      </div>
     </PageContainer>
+  );
+}
+
+const STATE_TONE: Record<ConnectedPlaceRow["state"], string> = {
+  ready: "text-foreground",
+  onboarding: "text-muted-foreground",
+  restricted: "text-destructive",
+  none: "text-muted-foreground",
+};
+
+/** "voucher_1000" → "1000", "pay_cards" → "cards": the short words a row lists. */
+function switchWord(key: string): string {
+  return key.replace(/^voucher_/, "").replace(/^pay_/, "");
+}
+
+function ConnectedPlaceItem({
+  row,
+  cap,
+  onCloseOut,
+}: {
+  row: ConnectedPlaceRow;
+  cap: number | null;
+  onCloseOut: () => void;
+}) {
+  const outstanding = row.available_cents + row.pending_cents;
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-semibold">
+          {row.place_name ?? row.place_id}
+        </span>
+        <span className="text-muted-foreground block">
+          <span className={STATE_TONE[row.state]}>{row.state}</span>
+          {row.requirements_due ? ` · ${row.requirements_due} due` : ""}
+          {row.disabled_reason ? ` · ${row.disabled_reason}` : ""}
+          {row.payouts_enabled ? "" : " · payouts off"}
+          {" · "}
+          {row.switches_on.length
+            ? row.switches_on.map(switchWord).join(", ")
+            : "every switch off"}
+        </span>
+        <span className="text-muted-foreground block">
+          Last event {row.last_event_at ? when(row.last_event_at) : "none"} ·
+          account since {when(row.created_at)}
+        </span>
+      </span>
+      <span className="text-right tabular-nums">
+        <span className="block font-semibold">
+          {mxn(outstanding)}
+          {cap ? (
+            <span className="text-muted-foreground font-normal">
+              {" "}
+              / {mxn(cap)}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-muted-foreground block text-xs">
+          {mxn(row.available_cents)} available · {mxn(row.pending_cents)}{" "}
+          pending
+        </span>
+      </span>
+      <Button
+        size="sm"
+        tone="secondary"
+        icon={<Store className="h-3.5 w-3.5" />}
+        onClick={onCloseOut}
+      >
+        Close out
+      </Button>
+    </li>
   );
 }
