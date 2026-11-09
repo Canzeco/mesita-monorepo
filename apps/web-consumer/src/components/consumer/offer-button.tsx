@@ -35,9 +35,10 @@ const GREEN = "bg-green-400 text-neutral-950";
 
 const OFFER_SLIDES: OfferSlide[] = [
   { key: "cashback", lead: "Pay", pill: "5% Back", spoken: "Pay, 5% back", section: "payment", tone: GREEN },
-  { key: "voucher_200", lead: "Prepay $200", pill: "10% Bonus", spoken: "Prepay $200, 10% bonus", section: "prepayment", tone: GREEN },
-  { key: "voucher_1000", lead: "Prepay $1,000", pill: "20% Bonus", spoken: "Prepay $1,000, 20% bonus", section: "prepayment", tone: GREEN },
-  { key: "voucher_5000", lead: "Prepay $5,000", pill: "30% Bonus", spoken: "Prepay $5,000, 30% bonus", section: "prepayment", tone: GREEN },
+  // MX$, the currency named (MESITA-3481, Pato: "mention currency here").
+  { key: "voucher_200", lead: "Prepay MX$200", pill: "10% Bonus", spoken: "Prepay MX$200, 10% bonus", section: "prepayment", tone: GREEN },
+  { key: "voucher_1000", lead: "Prepay MX$1,000", pill: "20% Bonus", spoken: "Prepay MX$1,000, 20% bonus", section: "prepayment", tone: GREEN },
+  { key: "voucher_5000", lead: "Prepay MX$5,000", pill: "30% Bonus", spoken: "Prepay MX$5,000, 30% bonus", section: "prepayment", tone: GREEN },
   { key: "voucher_story", lead: "Story Prepay", pill: "30% Bonus", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white" },
   { key: "voucher_vip", lead: "VIP Prepay", pill: "30% Bonus", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950" },
   { key: "voucher_welcome", lead: "Welcome Prepay", pill: "30% Bonus", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white" },
