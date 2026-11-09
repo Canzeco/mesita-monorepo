@@ -281,6 +281,10 @@ export function PaymentsPanel({ placeId, initial, back }: { placeId: string; ini
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">
         <h2 className={HEAD}>Prepaid Vouchers</h2>
+        {/* MESITA-3505: several vouchers fund one wallet and pay one bill. */}
+        <p className="text-muted-foreground px-5 pb-3 text-sm sm:px-6">
+          A guest can buy several vouchers: the credits add up in one wallet and pay one bill together.
+        </p>
         <ul className="divide-border divide-y">{[...STANDARD, ...SPECIAL].map(row)}</ul>
       </Card>
       {back === "return" && account.state !== "ready" && !error ? (
