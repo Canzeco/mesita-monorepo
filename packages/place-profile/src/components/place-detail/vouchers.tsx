@@ -295,9 +295,9 @@ function readyIn(key: MoneyVoucherKey): string {
  *  transferable to friends too"; "you don't need to prepay all the bill";
  *  MESITA-3496: prepaid credits earn no cashback). */
 const CREDIT_FACTS = [
-  "Spend your credits on your bill here, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
+  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
-  "The part of a bill you pay with credits doesn't earn the 5% Mesita Pay Cashback.",
+  "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get no 5% back.",
 ];
 
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
@@ -557,9 +557,10 @@ export function VouchersPane({
                 <InfoButton
                   title="Mesita Pay Cashback"
                   text={[
-                    "Pay your bill in the Mesita app and get 5% of it back as credits at this place, for your next visit.",
+                    "Pay your bill in the Mesita app and get 5% of it back as credits at this place. Use them whenever you want.",
                     "Any amount, every visit.",
-                    "The 5% counts only on the part you don't pay with prepaid credits. Example: a $500MX bill, $200MX from credits and $300MX with Mesita Pay, gives you $15MX back.",
+                    "Neither prepaid credits nor tips earn cashback: the 5% counts only on the part of the bill you pay with Mesita Pay, without the tip.",
+                    "Example: a $500MX bill plus a $50MX tip, with $200MX from credits and $300MX with Mesita Pay, gives you $15MX back.",
                     "You can mix: part of the bill with credits, the rest with Mesita Pay.",
                   ]}
                 />
