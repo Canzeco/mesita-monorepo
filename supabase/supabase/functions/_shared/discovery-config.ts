@@ -13,8 +13,8 @@
 //              Popularity floor is the quality cut (MESITA-2721).
 //   chat       The Chat Agent's system prompt. Blank → memo_config, then the
 //              in-code persona (memo-prompt.ts).
-//   premier    Premier's monthly prices per plan, in US cents (MESITA-3043;
-//              code constants until then). Read by every Premier quote
+//   premier    Premier's yearly prices per plan, in US cents (MESITA-3043, yearly
+//              since MESITA-3285; code constants until then). Read by every Premier quote
 //              (premier-flow.ts) and Billing's Keep line; the Premier Prices
 //              box edits it. A top-level key, not `params.premier`: `params`
 //              is the signal numbers, and the Catalog box saves all of it.
@@ -77,7 +77,7 @@ import {
   PROXIMITY_HALF_KM_MIN,
 } from "./pipeline-signals.ts";
 import { errorMessage } from "./errors.ts";
-import { PREMIER_MONTHLY_CENTS, PREMIER_TIERS, type PremierPrices } from "./boost.ts";
+import { PREMIER_TIERS, PREMIER_YEARLY_CENTS, type PremierPrices } from "./boost.ts";
 
 /**
  * The stored signal numbers (MESITA-3083): Proximity's half distance (km)
@@ -236,19 +236,20 @@ export type GeneralConfig = {
 };
 
 /**
- * Premier's prices (MESITA-3043): the monthly price of each plan in US
- * cents, whole. A year is ten months (`PREMIER_YEAR_MONTHS`, a constant).
- * A price is stored on the pledge when bought, so a change reaches new
- * purchases and plan changes, never a renewal already promised.
+ * Premier's prices (MESITA-3043): the yearly price of each plan in US
+ * cents, whole; plans are sold yearly only (MESITA-3285, `yearlyCents`
+ * replaced `monthlyCents`, which was never set live). A price is stored on
+ * the pledge when bought, so a change reaches new purchases and plan
+ * changes, never a renewal already promised.
  */
-export type PremierConfig = { monthlyCents: PremierPrices };
+export type PremierConfig = { yearlyCents: PremierPrices };
 
-/** Bounds of one monthly price, in cents: $1 (over Stripe's 50-cent floor)
- *  to $10,000. */
-export const PREMIER_MONTHLY_CENTS_MIN = 100;
-export const PREMIER_MONTHLY_CENTS_MAX = 1_000_000;
+/** Bounds of one yearly price, in cents: $1 (over Stripe's 50-cent floor)
+ *  to $100,000. */
+export const PREMIER_YEARLY_CENTS_MIN = 100;
+export const PREMIER_YEARLY_CENTS_MAX = 10_000_000;
 
-export const DEFAULT_PREMIER: PremierConfig = { monthlyCents: PREMIER_MONTHLY_CENTS };
+export const DEFAULT_PREMIER: PremierConfig = { yearlyCents: PREMIER_YEARLY_CENTS };
 
 export type DiscoveryConfig = {
   params: SignalParams;
@@ -390,14 +391,14 @@ export const DISCOVERY_DEFAULTS: DiscoveryConfig = {
  *  its default, and a retired tier (`boost_10x`) drops on the next save. */
 export function normalizePremierConfig(raw: unknown): PremierConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
-  const m = (r.monthlyCents ?? {}) as Record<string, unknown>;
-  const monthlyCents = {} as PremierPrices;
+  const m = (r.yearlyCents ?? {}) as Record<string, unknown>;
+  const yearlyCents = {} as PremierPrices;
   for (const tier of PREMIER_TIERS) {
-    monthlyCents[tier] = Math.round(
-      num(m[tier], DEFAULT_PREMIER.monthlyCents[tier], PREMIER_MONTHLY_CENTS_MIN, PREMIER_MONTHLY_CENTS_MAX),
+    yearlyCents[tier] = Math.round(
+      num(m[tier], DEFAULT_PREMIER.yearlyCents[tier], PREMIER_YEARLY_CENTS_MIN, PREMIER_YEARLY_CENTS_MAX),
     );
   }
-  return { monthlyCents };
+  return { yearlyCents };
 }
 
 export function normalizeDeepConfig(raw: unknown): DeepConfig {
@@ -642,7 +643,7 @@ export async function loadDiscoveryConfig(
 }
 
 /**
- * Premier's monthly prices for a quote that becomes a charge (MESITA-3043).
+ * Premier's yearly prices for a quote that becomes a charge (MESITA-3043).
  * Unlike `loadDiscoveryConfig` this never falls back on a failed read: a
  * guest shown or charged a default the operator replaced would be paying a
  * price nobody set, so the caller answers 500 instead.
@@ -655,5 +656,5 @@ export async function loadPremierPrices(admin: SupabaseClient): Promise<PremierP
     .maybeSingle();
   if (error) throw new Error(`premier_prices: ${error.message}`);
   const raw = (data?.discovery_config ?? {}) as Record<string, unknown>;
-  return normalizePremierConfig(raw.premier).monthlyCents;
+  return normalizePremierConfig(raw.premier).yearlyCents;
 }

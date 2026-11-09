@@ -78,15 +78,16 @@ export type GeneralConfig = {
 };
 
 /** Mirrors PremierConfig in _shared/discovery-config.ts (MESITA-3043):
- *  each plan's monthly price, whole US cents. A year is ten months. */
+ *  each plan's yearly price, whole US cents; plans are sold yearly only
+ *  (MESITA-3285). */
 export type PremierTier = "boost_2x" | "boost_5x";
-export type PremierConfig = { monthlyCents: Record<PremierTier, number> };
+export type PremierConfig = { yearlyCents: Record<PremierTier, number> };
 export const PREMIER_TIERS: readonly PremierTier[] = ["boost_2x", "boost_5x"];
-/** Mirrors PREMIER_MONTHLY_CENTS_* in _shared/discovery-config.ts. */
-export const PREMIER_MONTHLY_CENTS_MIN = 100;
-export const PREMIER_MONTHLY_CENTS_MAX = 1_000_000;
-/** Mirrors PREMIER_MONTHLY_CENTS in _shared/boost.ts (2X $10, 5X $100). */
-export const DEFAULT_PREMIER: PremierConfig = { monthlyCents: { boost_2x: 1000, boost_5x: 10000 } };
+/** Mirrors PREMIER_YEARLY_CENTS_* in _shared/discovery-config.ts. */
+export const PREMIER_YEARLY_CENTS_MIN = 100;
+export const PREMIER_YEARLY_CENTS_MAX = 10_000_000;
+/** Mirrors PREMIER_YEARLY_CENTS in _shared/boost.ts (Pro $99, Max $999 a year). */
+export const DEFAULT_PREMIER: PremierConfig = { yearlyCents: { boost_2x: 9900, boost_5x: 99900 } };
 
 export type DiscoveryConfig = {
   params: SignalParams;
@@ -294,14 +295,14 @@ export function coerceConfig(raw: unknown): DiscoveryConfig {
 
 /** Mirrors `normalizePremierConfig`: whole cents, clamped, default per plan. */
 function coercePremier(raw: unknown): PremierConfig {
-  const m = ((raw ?? {}) as { monthlyCents?: Record<string, unknown> }).monthlyCents ?? {};
-  const monthlyCents = {} as Record<PremierTier, number>;
+  const m = ((raw ?? {}) as { yearlyCents?: Record<string, unknown> }).yearlyCents ?? {};
+  const yearlyCents = {} as Record<PremierTier, number>;
   for (const tier of PREMIER_TIERS) {
-    monthlyCents[tier] = Math.round(
-      num(m[tier], DEFAULT_PREMIER.monthlyCents[tier], PREMIER_MONTHLY_CENTS_MIN, PREMIER_MONTHLY_CENTS_MAX),
+    yearlyCents[tier] = Math.round(
+      num(m[tier], DEFAULT_PREMIER.yearlyCents[tier], PREMIER_YEARLY_CENTS_MIN, PREMIER_YEARLY_CENTS_MAX),
     );
   }
-  return { monthlyCents };
+  return { yearlyCents };
 }
 
 function coerceGeneral(raw: unknown): GeneralConfig {

@@ -23,6 +23,7 @@ import {
   type Pledge,
   pledgeCheckoutParams,
   quote,
+  quotes,
   renewalChargeParams,
   runEndAtOrAbove,
   staleChargeAction,
@@ -92,18 +93,28 @@ function period(over: Partial<Period> & { id: string }): Period {
 
 const PAYER = pledge({ id: "a" });
 
-Deno.test("premier: two plans, $10 · $100 a month, a year for the price of ten months (MESITA-3041)", () => {
-  assertEquals(boostAmountCents("boost_2x", "month"), 1000);
-  assertEquals(boostAmountCents("boost_5x", "month"), 10000);
-  assertEquals(boostAmountCents("boost_2x", "year"), 10000);
-  assertEquals(boostAmountCents("boost_5x", "year"), 100000);
+Deno.test("premier: two plans, yearly only, Pro $99 · Max $999 (MESITA-3285)", () => {
+  assertEquals(boostAmountCents("boost_2x"), 9900);
+  assertEquals(boostAmountCents("boost_5x"), 99900);
   assertEquals(PREMIER_TIERS, ["boost_2x", "boost_5x"]);
+  const q = quote({ tier: "boost_2x", running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
+  assertEquals(q.new_ends_at, intervalEnd(new Date(T0), "year").toISOString(), "a new plan runs a year");
+  const all = quotes({ running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
+  assertEquals(Object.keys(all.boost_2x), ["year"], "no monthly quote");
+});
+
+Deno.test("premier: monthly is refused at the door, even from an old build (MESITA-3285)", () => {
+  const ok = { place_id: "11111111-1111-4111-8111-111111111111", tier: "boost_2x", return_url: "https://business.mesita.ai/x" };
+  const month = parseBoostStart({ ...ok, interval: "month" });
+  assertEquals(month.ok ? null : month.code, "interval_retired");
+  const none = parseBoostStart(ok);
+  assertEquals(none.ok ? none.start.interval : null, "year");
 });
 
 Deno.test("premier: the operator's prices reach the quote, and its price is what the Checkout carries (MESITA-3043)", () => {
   const prices = { boost_2x: 1500, boost_5x: 20000 };
-  assertEquals(boostAmountCents("boost_5x", "year", prices), 200000);
-  const q = quote({ tier: "boost_2x", interval: "month", running: null, charging: false, viewer: "stranger", subscription: null, now: T0, prices });
+  assertEquals(boostAmountCents("boost_5x", prices), 20000);
+  const q = quote({ tier: "boost_2x", running: null, charging: false, viewer: "stranger", subscription: null, now: T0, prices });
   assertEquals([q.price_cents, q.charge_cents], [1500, 1500]);
   const pay = pledgeCheckoutParams({
     mode: "payment",
@@ -113,7 +124,7 @@ Deno.test("premier: the operator's prices reach the quote, and its price is what
     placeId: "p1",
     consumerId: "c1",
     tier: "boost_2x",
-    interval: "month",
+    interval: "year",
     quote: q,
     placeName: "Cafe",
     returnUrl: "https://mesita.ai/x",
@@ -123,15 +134,14 @@ Deno.test("premier: the operator's prices reach the quote, and its price is what
   assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 1500);
 });
 
-Deno.test("premier: 2X → 5X credit at day 0 and mid-period, month and year (MESITA-3041)", () => {
-  for (const interval of ["month", "year"] as const) {
-    const price2 = boostAmountCents("boost_2x", interval);
-    const price5 = boostAmountCents("boost_5x", interval);
+Deno.test("premier: 2X → 5X credit at day 0 and mid-period, from a legacy month or a year (MESITA-3041, MESITA-3285)", () => {
+  for (const [interval, price2] of [["month", 1000], ["year", 9900]] as const) {
+    const price5 = boostAmountCents("boost_5x");
     const ends = new Date(intervalEnd(new Date(T0), interval)).toISOString();
     const running = period({ id: "p", backing_id: "a", tier: 1, billing_interval: interval, price_cents: price2, ends_at: ends });
     const length = intervalEnd(new Date(T0), interval).getTime() - T0;
     for (const at of [0, Math.floor(length / 2)]) {
-      const q = quote({ tier: "boost_5x", interval, running, charging: false, viewer: "payer", subscription: PAYER, now: T0 + at });
+      const q = quote({ tier: "boost_5x", running, charging: false, viewer: "payer", subscription: PAYER, now: T0 + at });
       const credit = Math.floor((price2 * (length - at)) / length);
       assertEquals([q.price_cents, q.credit_cents, q.charge_cents], [price5, credit, price5 - credit], `${interval} +${at}`);
     }
@@ -155,18 +165,17 @@ Deno.test("premier: credit is the unused share of a paid period; a grant credits
   assertEquals(creditCents(period({ id: "y", billing_interval: "year", price_cents: 10000, ends_at: new Date(T0 + 365 * DAY).toISOString() }), T0 + 73 * DAY), 8000);
 });
 
-Deno.test("premier: Pato's example — a half-used $10 2X upgraded to 5X costs $45 today", () => {
+Deno.test("premier: a half-used legacy $10 monthly 2X upgraded to a year of 5X ($999) costs $994 today", () => {
   const running = period({ id: "p", backing_id: "a" });
   const q = quote({
     tier: "boost_5x",
-    interval: "month",
     running,
     charging: false,
     viewer: "payer",
     subscription: PAYER,
     now: T0 + 15 * DAY,
   });
-  assertEquals(q.charge_cents, 9500);
+  assertEquals(q.charge_cents, 99400);
   assertEquals(q.credit_cents, 500);
   assertEquals(q.kind, "change");
   assertEquals(q.checkout, "payment");
@@ -180,7 +189,7 @@ Deno.test("premier: nobody else can buy while a subscription stands or a paid pe
     ["running, payer stopped", { running, subscription: null }],
     ["between periods", { running: null, subscription: PAYER }],
   ] as const) {
-    const q = quote({ tier: "boost_5x", interval: "month", charging: false, viewer: "stranger", now: T0 + DAY, ...args });
+    const q = quote({ tier: "boost_5x", charging: false, viewer: "stranger", now: T0 + DAY, ...args });
     assertEquals([q.kind, q.blocked_by, q.charge_cents, q.checkout], ["blocked", "taken", 0, "none"], label);
   }
 });
@@ -199,10 +208,10 @@ Deno.test("premier: the former payer resumes at or below their level ($0 now, re
   const viewer = viewerOf({ consumerId: "c-a", subscription: null, running, pledges: stopped });
   assertEquals(viewer, "former_payer");
   assertEquals(canResume({ viewer, running, pledges: stopped, charging: false }), true);
-  const q = quote({ tier: "boost_2x", interval: "month", running, charging: false, viewer, subscription: null, now: T0 });
+  const q = quote({ tier: "boost_2x", running, charging: false, viewer, subscription: null, now: T0 });
   assertEquals([q.kind, q.charge_cents, q.checkout, q.renews_at], ["resume", 0, "setup", running.ends_at]);
   // Above their level it is an upgrade with their own credit.
-  const up = quote({ tier: "boost_5x", interval: "month", running: period({ id: "p", backing_id: "a", tier: 1 }), charging: false, viewer, subscription: null, now: T0 });
+  const up = quote({ tier: "boost_5x", running: period({ id: "p", backing_id: "a", tier: 1 }), charging: false, viewer, subscription: null, now: T0 });
   assertEquals([up.kind, up.checkout], ["change", "payment"]);
   for (const reason of ["taken_over", "stopped_by_place", "declined"] as const) {
     const ended = [pledge({ id: "a", consumer_id: "c-a", status: "ended", ended_reason: reason })];
@@ -212,45 +221,45 @@ Deno.test("premier: the former payer resumes at or below their level ($0 now, re
 });
 
 Deno.test("premier: credit above the new price is never lost — it becomes extra days", () => {
-  // A fresh yearly period stored at $150 upgraded to monthly 5X ($100):
-  // $50 left over becomes half a month.
+  // A fresh yearly period stored at $1,500 upgraded to a year of 5X ($999):
+  // $501 left over becomes 183 days.
   const running = period({
     id: "p",
     backing_id: "a",
     billing_interval: "year",
-    price_cents: 15000,
+    price_cents: 150000,
     ends_at: new Date(T0 + 365 * DAY).toISOString(),
   });
-  const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, viewer: "former_payer", subscription: null, now: T0 });
+  const q = quote({ tier: "boost_5x", running, charging: false, viewer: "former_payer", subscription: null, now: T0 });
   assertEquals(q.charge_cents, 0);
-  assertEquals(q.credit_cents, 10000);
-  assertEquals(q.extra_days, 15);
+  assertEquals(q.credit_cents, 99900);
+  assertEquals(q.extra_days, 183);
   assertEquals(q.checkout, "setup");
   assertEquals(extraDays(0, 10000, "month", T0), 0);
 });
 
 Deno.test("premier: a charge under 50 cents is not charged (Stripe's minimum)", () => {
-  // 5X monthly ($100) with $99.60 of credit left: a 40-cent charge becomes 0.
-  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 9960 });
-  const q = quote({ tier: "boost_5x", interval: "month", running, charging: false, viewer: "payer", subscription: PAYER, now: T0 });
+  // 5X yearly ($999) with $998.60 of credit left: a 40-cent charge becomes 0.
+  const running = period({ id: "p", backing_id: "a", tier: 1, price_cents: 99860 });
+  const q = quote({ tier: "boost_5x", running, charging: false, viewer: "payer", subscription: PAYER, now: T0 });
   assertEquals(q.charge_cents, 0);
   assertEquals(q.checkout, "none", "the payer's saved card: no Checkout");
 });
 
 Deno.test("premier: nothing running and no subscription → anyone buys at full price now", () => {
-  const q = quote({ tier: "boost_2x", interval: "year", running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
-  assertEquals([q.charge_cents, q.credit_cents, q.kind, q.checkout], [10000, 0, "buy", "payment"]);
+  const q = quote({ tier: "boost_2x", running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
+  assertEquals([q.charge_cents, q.credit_cents, q.kind, q.checkout], [9900, 0, "buy", "payment"]);
   assertEquals(q.new_ends_at, "2027-11-01T00:00:00.000Z");
 });
 
 Deno.test("premier: the payer changing at or below the running level keeps the period they bought", () => {
   const running = period({ id: "p", backing_id: "a", tier: 2 });
-  const q = quote({ tier: "boost_2x", interval: "month", running, charging: false, viewer: "payer", subscription: PAYER, now: T0 });
+  const q = quote({ tier: "boost_2x", running, charging: false, viewer: "payer", subscription: PAYER, now: T0 });
   assertEquals([q.charge_cents, q.kind, q.checkout, q.renews_at], [0, "change", "none", running.ends_at]);
 });
 
 Deno.test("premier: while a renewal is charging nothing starts", () => {
-  const q = quote({ tier: "boost_5x", interval: "month", running: null, charging: true, viewer: "payer", subscription: PAYER, now: T0 });
+  const q = quote({ tier: "boost_5x", running: null, charging: true, viewer: "payer", subscription: PAYER, now: T0 });
   assertEquals([q.kind, q.blocked_by, q.charge_cents], ["blocked", "charging", 0]);
 });
 
@@ -296,7 +305,7 @@ Deno.test("premier: one idempotency key per attempt row", () => {
 });
 
 Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves it; setup only saves", () => {
-  const q = quote({ tier: "boost_2x", interval: "month", running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
+  const q = quote({ tier: "boost_2x", running: null, charging: false, viewer: "stranger", subscription: null, now: T0 });
   const pay = pledgeCheckoutParams({
     mode: "payment",
     kind: "buy",
@@ -305,7 +314,7 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
     placeId: "p1",
     consumerId: "c1",
     tier: "boost_2x",
-    interval: "month",
+    interval: "year",
     quote: q,
     placeName: "Cafe",
     returnUrl: "https://mesita.ai/web/place/x?tab=premier",
@@ -314,7 +323,7 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
   assertEquals(pay.mode, "payment");
   assertEquals(at(pay, "payment_intent_data", "capture_method"), "manual");
   assertEquals(at(pay, "payment_intent_data", "setup_future_usage"), "off_session");
-  assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 1000);
+  assertEquals(at(pay, "line_items", 0, "price_data", "unit_amount"), 9900);
   assertEquals(at(pay, "line_items", 0, "price_data", "recurring"), undefined);
   assertEquals(pay.success_url, "https://mesita.ai/web/place/x?tab=premier&boost={CHECKOUT_SESSION_ID}");
   assertEquals(pay.expires_at, 1000 + 31 * 60);
@@ -328,7 +337,7 @@ Deno.test("premier: pays-now Checkout holds the card (manual capture) and saves 
     placeId: "p1",
     consumerId: "c1",
     tier: "boost_2x" as const,
-    interval: "month" as const,
+    interval: "year" as const,
     quote: q,
     placeName: "Cafe",
     returnUrl: "https://mesita.ai/x",
@@ -392,11 +401,11 @@ Deno.test("premier: the factor is the tier's number; a Google stub is never Prem
 // MESITA-3091: Manual Premier is Mesita's free lift; nothing at or below its
 // level is for sale, and above it the quote is the plain paid one.
 Deno.test("quote: Manual 2X leaves only 5X for sale; Manual 5X leaves nothing", () => {
-  const base = { interval: "month" as const, running: null, charging: false, viewer: "stranger" as const, subscription: null, now: T0 };
+  const base = { running: null, charging: false, viewer: "stranger" as const, subscription: null, now: T0 };
   const at2 = quote({ ...base, tier: "boost_2x", manualTier: 1 });
   const at5 = quote({ ...base, tier: "boost_5x", manualTier: 1 });
   assertEquals([at2.covered, at2.charge_cents, at2.checkout], [true, 0, "none"]);
-  assertEquals([at5.covered, at5.charge_cents, at5.checkout], [false, 10000, "payment"]);
+  assertEquals([at5.covered, at5.charge_cents, at5.checkout], [false, 99900, "payment"]);
   for (const tier of ["boost_2x", "boost_5x"] as const) {
     assertEquals(quote({ ...base, tier, manualTier: 2 }).covered, true, tier);
   }
@@ -427,7 +436,7 @@ Deno.test("runEndAtOrAbove: the back-to-back run at or above the tier; a gap, a 
 });
 
 Deno.test("quote: subscribe early in the last 7 days of the Refill run; day 8 is still covered", () => {
-  const base = { interval: "month" as const, running: null, charging: false, viewer: "stranger" as const, subscription: null, now: T0, manualTier: 1 };
+  const base = { running: null, charging: false, viewer: "stranger" as const, subscription: null, now: T0, manualTier: 1 };
   const day7 = quote({ ...base, tier: "boost_2x", manual: [refill("a", 1, -3, 7)] });
   assertEquals(
     [day7.kind, day7.checkout, day7.covered, day7.charge_cents, day7.renews_at],

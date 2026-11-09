@@ -238,7 +238,6 @@ export async function startPremier(
     } else {
       q = quote({
         tier: start.tier,
-        interval: start.interval,
         running,
         charging,
         viewer,
@@ -254,7 +253,7 @@ export async function startPremier(
       if (q.kind === "blocked") return refuse("charging", "A renewal is being charged. Try again in a few minutes.");
       kind = q.kind === "buy" ? "buy" : q.kind === "resume" ? "resume" : "change";
     }
-    const amount = boostAmountCents(start.tier, start.interval, prices);
+    const amount = boostAmountCents(start.tier, prices);
 
     if (q.checkout === "none" && subscription && viewer === "payer") {
       if (running && TIER_RANK[start.tier] > running.tier) {

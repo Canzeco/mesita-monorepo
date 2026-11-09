@@ -29,14 +29,16 @@
 // flight and runs renewals. Every period write is a `premier_*` RPC, and a
 // pledge becomes `ready` only through premier_make_payer.
 //
-// Prices are an operator setting since MESITA-3043 (`params.premier.
-// monthlyCents` on discovery_config, Admin › Discovery › Premier Prices);
-// PREMIER_MONTHLY_CENTS is only its default. The promise to guests already
-// paying holds without a PR: a quote's price is stored on the pledge
-// (`amount_cents`) and the period (`price_cents`) when it is bought, and
-// every renewal charges the stored amount, so a new price reaches new
-// purchases and plan changes only.
-// decision (Pato, MESITA-2789): a yearly plan costs ten months for twelve.
+// Plans are sold yearly only since MESITA-3285 (Pato: "Plans become yearly
+// only: Pro 99, Max 999"). Prices are an operator setting (MESITA-3043,
+// `premier.yearlyCents` on discovery_config, Admin › Discovery ›
+// Premier Prices); PREMIER_YEARLY_CENTS is only its default. The promise to
+// guests already paying holds without a PR: a quote's price is stored on the
+// pledge (`amount_cents`) and the period (`price_cents`) when it is bought,
+// and every renewal charges the stored amount at the stored interval, so a
+// monthly subscription bought before MESITA-3285 renews monthly at its price
+// until its payer changes plan or leaves; a new price or interval reaches
+// new purchases and plan changes only.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { isUuid } from "./place-id.ts";
@@ -47,20 +49,20 @@ export type BoostInterval = "month" | "year";
 
 export const PREMIER_TIERS = ["boost_2x", "boost_5x"] as const satisfies readonly BoostTier[];
 
-/** Monthly price per tier, in US cents. */
+/** Yearly price per tier, in US cents. */
 export type PremierPrices = Record<BoostTier, number>;
 
-/** The DEFAULT monthly price in US cents, read when the operator's
- *  `params.premier.monthlyCents` is unset: two plans, 2X $10 and 5X $100
- *  (Pato, MESITA-3041: "Premier must be only 2 options, 10usd for 2x and
- *  100usd for 5x"; 10X retired). */
-export const PREMIER_MONTHLY_CENTS: PremierPrices = {
-  boost_2x: 1000,
-  boost_5x: 10000,
+/** The DEFAULT yearly price in US cents, read when the operator's
+ *  `premier.yearlyCents` is unset: Pro (2X) $99, Max (5X) $999 a year
+ *  (Pato, MESITA-3285; $10 / $100 a month or ten months for twelve before). */
+export const PREMIER_YEARLY_CENTS: PremierPrices = {
+  boost_2x: 9900,
+  boost_5x: 99900,
 };
 
-/** A year is billed as this many months. */
-export const PREMIER_YEAR_MONTHS = 10;
+/** The one interval a plan is sold at (MESITA-3285). "month" survives only on
+ *  pledges and periods bought before it. */
+export const PREMIER_SOLD_INTERVAL = "year" satisfies BoostInterval;
 
 export const PREMIER_CURRENCY = "usd";
 
@@ -96,15 +98,10 @@ export function premierRankOf(boostTier: number): 0 | TierRank {
   return boostTier === 1 || boostTier === 2 ? boostTier : 0;
 }
 
-/** What the guest pays per interval, at the operator's monthly prices
+/** What a new year of `tier` costs, at the operator's yearly prices
  *  (`loadPremierPrices`; the defaults when none are passed). */
-export function boostAmountCents(
-  tier: BoostTier,
-  interval: BoostInterval,
-  prices: PremierPrices = PREMIER_MONTHLY_CENTS,
-): number {
-  const monthly = prices[tier];
-  return interval === "year" ? monthly * PREMIER_YEAR_MONTHS : monthly;
+export function boostAmountCents(tier: BoostTier, prices: PremierPrices = PREMIER_YEARLY_CENTS): number {
+  return prices[tier];
 }
 
 /** Calendar interval, like the SQL `premier_interval_end`: one month or one
@@ -359,11 +356,10 @@ export type Quote = {
   covered: boolean;
 };
 
-/** What choosing `tier`/`interval` means for this guest right now. The UI
+/** What choosing `tier` (a year of it) means for this guest right now. The UI
  *  shows exactly this; it never computes money. */
 export function quote(args: {
   tier: BoostTier;
-  interval: BoostInterval;
   running: Period | null;
   charging: boolean;
   viewer: Viewer;
@@ -375,11 +371,12 @@ export function quote(args: {
   /** The place's Refill rows and time zone, for subscribing early. */
   manual?: Manual[];
   timeZone?: string | null;
-  /** The operator's monthly prices (MESITA-3043); the defaults if absent. */
+  /** The operator's yearly prices (MESITA-3043); the defaults if absent. */
   prices?: PremierPrices;
 }): Quote {
-  const { tier, interval, running, charging, viewer, subscription, now, manualTier = 0 } = args;
-  const price = boostAmountCents(tier, interval, args.prices);
+  const { tier, running, charging, viewer, subscription, now, manualTier = 0 } = args;
+  const interval = PREMIER_SOLD_INTERVAL;
+  const price = boostAmountCents(tier, args.prices);
   const rank = TIER_RANK[tier];
   const nothing = { price_cents: price, charge_cents: 0, credit_cents: 0, extra_days: 0, new_ends_at: null, renews_at: null };
 
@@ -434,15 +431,11 @@ export function quote(args: {
   };
 }
 
-/** Every tier × interval, for the plan rows. */
-export function quotes(args: Omit<Parameters<typeof quote>[0], "tier" | "interval">): Record<BoostTier, Record<BoostInterval, Quote>> {
-  const out = {} as Record<BoostTier, Record<BoostInterval, Quote>>;
-  for (const tier of PREMIER_TIERS) {
-    out[tier] = {
-      month: quote({ ...args, tier, interval: "month" }),
-      year: quote({ ...args, tier, interval: "year" }),
-    };
-  }
+/** Every tier, a year of it, for the plan rows (the only interval sold
+ *  since MESITA-3285). */
+export function quotes(args: Omit<Parameters<typeof quote>[0], "tier">): Record<BoostTier, { year: Quote }> {
+  const out = {} as Record<BoostTier, { year: Quote }>;
+  for (const tier of PREMIER_TIERS) out[tier] = { year: quote({ ...args, tier }) };
   return out;
 }
 
@@ -508,7 +501,7 @@ export function isAllowedReturnUrl(raw: string): boolean {
 
 export function parseBoostStart(
   body: Record<string, unknown>,
-): { ok: true; start: BoostStart } | { ok: false; error: string; code?: "tier_retired" | "tier_invalid" } {
+): { ok: true; start: BoostStart } | { ok: false; error: string; code?: "tier_retired" | "tier_invalid" | "interval_retired" } {
   const placeId = body.place_id;
   if (!isUuid(placeId)) return { ok: false, error: "place_id must be a Mesita place id" };
   const returnUrl = body.return_url;
@@ -516,7 +509,7 @@ export function parseBoostStart(
     return { ok: false, error: "return_url is not a Mesita address" };
   }
   if (body.kind === "update_card") {
-    return { ok: true, start: { placeId, tier: "boost_2x", interval: "month", returnUrl, updateCard: true } };
+    return { ok: true, start: { placeId, tier: "boost_2x", interval: PREMIER_SOLD_INTERVAL, returnUrl, updateCard: true } };
   }
   const tier = body.tier;
   if (tier === "boost_10x") {
@@ -530,10 +523,12 @@ export function parseBoostStart(
       error: `tier ${JSON.stringify(String(tier).slice(0, 32))} is not offered; use boost_2x or boost_5x`,
     };
   }
-  const interval = body.interval ?? "month";
-  if (interval !== "month" && interval !== "year") {
-    return { ok: false, error: "interval must be month or year" };
+  const interval = body.interval ?? PREMIER_SOLD_INTERVAL;
+  if (interval === "month") {
+    // Retired by MESITA-3285; a cached old build may still send it.
+    return { ok: false, code: "interval_retired", error: "Plans are yearly only now. Reload the page and choose again." };
   }
+  if (interval !== PREMIER_SOLD_INTERVAL) return { ok: false, error: "interval must be year" };
   return { ok: true, start: { placeId, tier: tier as BoostTier, interval, returnUrl, updateCard: false } };
 }
 

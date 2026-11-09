@@ -10,7 +10,7 @@ import {
   type Manual,
   type Period,
   type Pledge,
-  PREMIER_MONTHLY_CENTS,
+  PREMIER_YEARLY_CENTS,
   type PremierPrices,
   runEndAtOrAbove,
   runningPeriod,
@@ -88,7 +88,7 @@ export function billingView(args: {
   viewerId: string;
   card: Card | null;
   now: number;
-  /** The operator's monthly prices (MESITA-3043); the defaults if absent. */
+  /** The operator's yearly prices (MESITA-3043); the defaults if absent. */
   prices?: PremierPrices;
 }): BillingView {
   const { pledges, periods, viewerId, card, now } = args;
@@ -198,7 +198,7 @@ export function billingView(args: {
       const runEnd = runEndAtOrAbove(args.manual, t, now);
       if (!runEnd) continue;
       if (inEarlyWindow(runEnd, now, tz)) {
-        keep ??= { tier: t, ends_at: runEnd, price_cents: (args.prices ?? PREMIER_MONTHLY_CENTS)[TIER_BY_RANK[t]] };
+        keep ??= { tier: t, ends_at: runEnd, price_cents: (args.prices ?? PREMIER_YEARLY_CENTS)[TIER_BY_RANK[t]] };
       } else {
         subscribeFrom[t] = dayString(localDay(ms(runEnd), tz) - 7);
       }
