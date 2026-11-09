@@ -273,6 +273,14 @@ verify_jwt = true
 [functions.admin-web-list-place-reports]
 verify_jwt = true
 
+# App feedback (MESITA-3029): Settings › Send feedback writes one row per
+# send to app_feedback; Activity › Feedback reads them (super-admin only).
+[functions.consumer-web-send-feedback]
+verify_jwt = true
+
+[functions.admin-web-list-app-feedback]
+verify_jwt = true
+
 # Premier (MESITA-3092; Boost MESITA-2789, Spotlight MESITA-1998): one Paid
 # subscription per place (its one ready pledge, sold by the Business app); a
 # declined renewal ends it. place_premier_periods holds the paid stretches;

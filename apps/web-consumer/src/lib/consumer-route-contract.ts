@@ -82,6 +82,8 @@ export const CONSUMER_ROUTES = {
     refunds: "/me/refunds",
     settings: "/me/settings",
     settingsContact: "/me/settings/contact",
+    // Feedback about the app itself, not a place (MESITA-3029).
+    settingsFeedback: "/me/settings/feedback",
     notifications: "/me/notifications",
     // Favorites and Reservations, each its own page (Pato, MESITA-2565:
     // "the page and route containing both reservations and saved its gone").
