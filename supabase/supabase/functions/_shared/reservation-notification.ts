@@ -26,6 +26,12 @@ import { errorMessage } from "./errors.ts";
 /** The kinds Me › Notifications renders — web-consumer's RESERVATION_KINDS. */
 export const RESERVATION_NOTIFICATION_KINDS = ["reservation", "booking"] as const;
 
+/** Every kind Me › Notifications lists: the reservation kinds and
+ *  credit_ready (Pending credit turned Available, written in SQL by
+ *  wallet_notify_ready_credit from the settle cron, MESITA-3293) —
+ *  web-consumer's NOTIFICATION_KINDS. */
+export const CONSUMER_NOTIFICATION_KINDS = [...RESERVATION_NOTIFICATION_KINDS, "credit_ready"] as const;
+
 export type ReservationOutcome =
   | "confirmed"
   | "counter_offer"

@@ -1,15 +1,27 @@
+import Link from "next/link";
 import { SizedImage } from "@mesita/place-profile";
-import { CalendarCheck, MapPin } from "lucide-react";
+import { CalendarCheck, MapPin, WalletCards } from "lucide-react";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import type { ConsumerNotification } from "@/lib/api/notifications";
+import { money } from "@/lib/api/wallet";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
-// The kinds a booking writes — the only rows Me › Notifications renders
-// (NotificationsClient filters on this set), so every row is a reservation
-// update.
+// The kinds a booking writes.
 export const RESERVATION_KINDS: ReadonlySet<string> = new Set([
   "reservation",
   "booking",
+]);
+
+// Pending credit turned Available (MESITA-3293): the settle cron's
+// wallet_notify_ready_credit writes one per guest, place and ready time.
+export const CREDIT_READY_KIND = "credit_ready";
+
+// Every kind Me › Notifications renders (NotificationsClient filters on this
+// set); a kind outside it never reaches the list.
+export const NOTIFICATION_KINDS: ReadonlySet<string> = new Set([
+  ...RESERVATION_KINDS,
+  CREDIT_READY_KIND,
 ]);
 
 // `payload` is free-form JSON on the row. The two strings a booking row can
@@ -19,6 +31,21 @@ function payloadString(payload: unknown, key: string): string | null {
   if (!payload || typeof payload !== "object") return null;
   const v = (payload as Record<string, unknown>)[key];
   return typeof v === "string" && v.length > 0 ? v : null;
+}
+
+function payloadNumber(payload: unknown, key: string): number | null {
+  if (!payload || typeof payload !== "object") return null;
+  const v = (payload as Record<string, unknown>)[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/** A credit_ready row's line: "MX$550 is ready to spend". */
+function creditReadyLabel(payload: unknown): string {
+  const cents = payloadNumber(payload, "amount_cents");
+  const currency = payloadString(payload, "currency");
+  return cents !== null && cents > 0 && currency
+    ? `${money(cents, currency)} is ready to spend`
+    : "Your credit is ready to spend";
 }
 
 // What the place answered, in the guest's words. The writer
@@ -62,8 +89,10 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
   const placeName = payloadString(n.payload, "place_name");
   const placePhoto = payloadString(n.payload, "place_photo_url");
   const outcome = payloadString(n.payload, "outcome");
+  const credit = n.kind === CREDIT_READY_KIND;
+  const Icon = credit ? WalletCards : CalendarCheck;
 
-  return (
+  const card = (
     <article className={ROW_CARD}>
       <div className={cn("bg-muted", ROW_PHOTO)}>
         {placePhoto ? (
@@ -93,8 +122,8 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
             ROW_OUTCOME,
           )}
         >
-          <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
-          {outcomeLabel(outcome)}
+          <Icon className="h-3.5 w-3.5 shrink-0" />
+          {credit ? creditReadyLabel(n.payload) : outcomeLabel(outcome)}
         </p>
         <p className={cn("text-muted-foreground", ROW_DATE)}>
           {new Date(n.created_at).toLocaleString(undefined, {
@@ -106,6 +135,15 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
         </p>
       </div>
     </article>
+  );
+
+  // A credit row opens the Wallet, where the credit now reads Available.
+  return credit ? (
+    <Link href={CONSUMER_ROUTES.wallet} className="block">
+      {card}
+    </Link>
+  ) : (
+    card
   );
 }
 
