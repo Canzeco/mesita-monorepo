@@ -13,7 +13,7 @@ import { IconChip, SettingsGroup } from "./settings-rows";
 
 export function ConnectorModal() {
   return (
-    <MeScreen title="Connector">
+    <MeScreen title="MCP">
       <SettingsGroup>
         <div className="flex items-start gap-3 px-4 py-3" data-connector>
           <IconChip>

@@ -1,6 +1,5 @@
 import { Fragment, type ReactNode } from "react";
 import {
-  CardsIcon,
   ClassIcon,
   ConnectorIcon,
   FavoritesIcon,
@@ -148,12 +147,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Payments and credit",
     href: CONSUMER_ROUTES.mePages.transactions,
   },
-  {
-    Icon: CardsIcon,
-    title: "Cards",
-    summary: "Ways to pay",
-    href: CONSUMER_ROUTES.mePages.cards,
-  },
+  // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
+  // already used in the wallet. its redundant"). /me/cards now redirects to the
+  // hub through the /me/[tab] catch-all.
   // REFUNDS (Pato, MESITA-3517): if a place closes for good with the guest's
   // credit unspent, Mesita refunds it. The page is the view only, empty.
   {
@@ -164,7 +160,9 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
   {
     Icon: ConnectorIcon,
-    title: "Connector",
+    // MCP (Pato, MESITA-3561: "Rename Connector to MCP"). The label only:
+    // the route stays /me/connector.
+    title: "MCP",
     summary: "ChatGPT or Claude",
     href: CONSUMER_ROUTES.mePages.connector,
   },

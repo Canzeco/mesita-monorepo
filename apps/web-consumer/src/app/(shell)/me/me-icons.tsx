@@ -16,7 +16,7 @@ import type { ReactNode } from "react";
 //
 // Hues, one per cell, spread round the wheel so no two neighbours match:
 // indigo · Instagram · gold · violet · orange · red · pink · blue · slate ·
-// green · lime · cyan · grey.
+// green · lime · cyan · grey (slate left with Cards, MESITA-3561).
 
 export type MeIcon = (props: { className?: string }) => ReactNode;
 
@@ -188,17 +188,6 @@ export const TransactionsIcon: MeIcon = ({ className }) => (
     <rect x="15" y="13.5" width="10" height="2.2" rx="1.1" fill="#fff" />
     <rect x="15" y="18.5" width="10" height="2.2" rx="1.1" fill="#fff" fillOpacity={0.85} />
     <rect x="15" y="23.5" width="6" height="2.2" rx="1.1" fill="#fff" fillOpacity={0.7} />
-  </Frame>
-);
-
-export const CardsIcon: MeIcon = ({ className }) => (
-  <Frame id="me-ic-card" from="#475569" to="#0F172A" wash="#334155" className={className}>
-    <rect x="7" y="11.5" width="26" height="17.5" rx="3.6" fill="url(#me-ic-card)" />
-    <rect x="10.5" y="16" width="5.6" height="4.4" rx="1.1" fill="#FBBF24" />
-    <rect x="10.5" y="24" width="10" height="1.8" rx="0.9" fill="#fff" fillOpacity={0.55} />
-    <circle cx="25.6" cy="24.4" r="2.6" fill="#EF4444" />
-    <circle cx="28.8" cy="24.4" r="2.6" fill="#F59E0B" fillOpacity={0.9} />
-    <rect x="9" y="13" width="14" height="1.2" rx="0.6" fill="#fff" fillOpacity={0.22} />
   </Frame>
 );
 
