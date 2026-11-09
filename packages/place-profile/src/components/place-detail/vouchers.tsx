@@ -556,10 +556,6 @@ export function VouchersPane({
           id="rewards-prepayment"
           title="Prepayment Offers"
         />
-        {/* SEVERAL VOUCHERS, ONE BILL (MESITA-3505): said on the page, not only in an (i). */}
-        <p className="text-muted-foreground -mt-1 text-sm" data-vouchers-add-up>
-          Buy several vouchers: the credits add up in one wallet and pay one bill together.
-        </p>
         <ul className="border-border divide-border divide-y rounded-2xl border" data-voucher-catalog>
           {products.map((p) => {
             const line = catalog[p.key];
