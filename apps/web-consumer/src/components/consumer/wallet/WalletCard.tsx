@@ -35,22 +35,28 @@ export type WalletCardModel = {
   tap: { kind: "expand" } | { kind: "link"; href: string } | { kind: "open" } | { kind: "plain" };
 };
 
-const CARD_CLASS =
-  "relative z-10 flex aspect-[1.586/1] w-full flex-col justify-between rounded-2xl bg-neutral-950 p-5 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
+const CARD_BASE =
+  "relative z-10 flex aspect-[1.586/1] w-full flex-col justify-between bg-neutral-950 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
+/** Full size on the method sheet; compact on a Wallet rail, 2.5 across (MESITA-3534). */
+const cardClass = (compact: boolean) => cn(CARD_BASE, compact ? "rounded-xl p-3" : "rounded-2xl p-5");
 
 export function WalletCard({
   card,
   open = false,
   onToggle,
   eager = false,
+  compact = false,
 }: {
   card: WalletCardModel;
   open?: boolean;
   onToggle?: () => void;
   eager?: boolean;
+  /** A rail card, 2.5 across the screen (MESITA-3534): smaller face. */
+  compact?: boolean;
 }) {
   const label = ariaLabel(card);
-  const face = <CardFace card={card} open={open} eager={eager} />;
+  const face = compact ? <CompactFace card={card} eager={eager} /> : <CardFace card={card} open={open} eager={eager} />;
+  const CARD_CLASS = cardClass(compact);
   if (card.tap.kind === "expand") {
     return (
       <button type="button" onClick={onToggle} aria-expanded={open} aria-label={label} className={CARD_CLASS}>
@@ -77,6 +83,31 @@ export function WalletCard({
     <div role="group" aria-label={label} className={CARD_CLASS}>
       {face}
     </div>
+  );
+}
+
+/** The rail's small card: photo and name on top, the amount at the foot. */
+function CompactFace({ card, eager }: { card: WalletCardModel; eager: boolean }) {
+  const amount = cardAmount(card);
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white" aria-hidden>
+          {card.photo ? (
+            <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center type-meta font-semibold">
+              {firstInitial(card.name)}
+            </span>
+          )}
+        </span>
+        <span className="min-w-0 truncate text-xs font-semibold">{card.name}</span>
+      </div>
+      <div className="min-w-0" aria-hidden>
+        <span className="block text-base leading-tight font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
+        <span className="block truncate type-label text-white/60">{amount.pending ? "Pending" : card.available_cents > 0 ? "Credits" : "No credits yet"}</span>
+      </div>
+    </>
   );
 }
 
