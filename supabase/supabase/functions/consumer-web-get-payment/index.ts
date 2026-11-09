@@ -95,7 +95,7 @@ serveJson("consumer-web-get-payment", async (req) => {
     }
   }
   if (!res.ok || !res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
-  const marks = await readPlaceMarks(admin, res.row.place_id);
+  const marks = await readPlaceMarks(admin, res.row.place_id, res.placeTier ?? null);
   const view = paymentView(res.row, res.placeName, marks);
   return json({ ok: true, ...view, ...(view.status === "open" || view.status === "opening" ? { url: url ?? null, expires_at: res.row.expires_at ?? null } : {}) });
 });

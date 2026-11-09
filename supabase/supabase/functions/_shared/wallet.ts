@@ -213,7 +213,14 @@ export function balancesOf(
 // ── Place reads (kept last: the write-surface scan reads 2000 characters
 // after a `.from("profiles")`) ─────────────────────────────────────────────
 
-export type VoucherPlace = { id: string; name: string | null; state: string | null; currency: string | null };
+export type VoucherPlace = {
+  id: string;
+  name: string | null;
+  state: string | null;
+  currency: string | null;
+  /** The Premier tier, the red mark beside the name on a Pay proof (MESITA-3539). */
+  boost_tier?: number | null;
+};
 
 /** The place a guest buys a voucher at: its name for the receipt, its state
  *  and its currency. */
@@ -223,7 +230,7 @@ export async function readVoucherPlace(
 ): Promise<{ ok: true; place: VoucherPlace | null } | { ok: false; error: string }> {
   const { data, error } = await admin
     .from("profiles")
-    .select("id, name, state, currency")
+    .select("id, name, state, currency, boost_tier")
     .eq("id", placeId)
     .maybeSingle();
   if (error) return { ok: false, error: `place_read: ${error.message}` };

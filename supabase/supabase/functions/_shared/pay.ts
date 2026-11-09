@@ -245,20 +245,15 @@ export function paymentView(row: PaymentRow, placeName: string | null, marks?: P
 }
 
 /** The place's marks for the proof: its Premier tier (profiles.boost_tier,
- *  as the Pay list reads it) and moneyState's Mesita Pay mark. A failed read
- *  answers no marks; the proof still shows. */
-export async function readPlaceMarks(admin: SupabaseClient, placeId: string): Promise<PlaceMarksView | null> {
+ *  read with the name, as the Pay list reads it) and moneyState's Mesita Pay
+ *  mark. A failed switch read answers no green mark; the proof still shows. */
+export async function readPlaceMarks(admin: SupabaseClient, placeId: string, tier: number | null): Promise<PlaceMarksView> {
   try {
-    const [profile, money] = await Promise.all([
-      admin.from("profiles").select("boost_tier").eq("id", placeId).maybeSingle(),
-      withVouchersUpTo(admin, [{ id: placeId }]),
-    ]);
-    if (profile.error) throw new Error(profile.error.message);
-    const tier = (profile.data as { boost_tier: number | null } | null)?.boost_tier ?? null;
+    const money = await withVouchersUpTo(admin, [{ id: placeId }]);
     return { tier, mesita_pay: money[0]?.mesita_pay ?? false };
   } catch (err) {
     console.error("[pay] marks_read_failed", JSON.stringify({ place_id: placeId, error: String(err) }));
-    return null;
+    return { tier, mesita_pay: false };
   }
 }
 
@@ -269,7 +264,7 @@ export async function readPayment(
   admin: SupabaseClient,
   consumerId: string,
   paymentId: string,
-): Promise<{ ok: true; row: PaymentRow | null; placeName: string | null } | { ok: false; error: string }> {
+): Promise<{ ok: true; row: PaymentRow | null; placeName: string | null; placeTier?: number | null } | { ok: false; error: string }> {
   const { data, error } = await admin
     .from("wallet_payments")
     .select(PAYMENT_COLUMNS)
@@ -281,7 +276,7 @@ export async function readPayment(
   if (!row) return { ok: true, row: null, placeName: null };
   const place = await readVoucherPlace(admin, row.place_id);
   if (!place.ok) return { ok: false, error: place.error };
-  return { ok: true, row, placeName: place.place?.name ?? null };
+  return { ok: true, row, placeName: place.place?.name ?? null, placeTier: place.place?.boost_tier ?? null };
 }
 
 /** The staff page's read: what Mesita received, nothing about who paid. */
