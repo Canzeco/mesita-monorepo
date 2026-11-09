@@ -17,7 +17,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { type StripeState, stripeStateByPlace } from "../_shared/payments.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import {
@@ -162,7 +162,7 @@ serveJson("admin-web-search-places", async (req) => {
   // current Stripe mode. Read per chunk beside the enrichment read; a chunk
   // whose read fails leaves its places unknown ("?"), never "none".
   const stripeState = new Map<string, StripeState>();
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   for (const idPart of chunked(ids, ID_CHUNK)) {
     const [enrichmentRes, states] = await Promise.all([
       admin

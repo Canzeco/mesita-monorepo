@@ -18,7 +18,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, openCharge, readOpenChargeBody, staffTryKey, supabaseChargeStore } from "../_shared/charge.ts";
@@ -57,5 +57,5 @@ serveJson("visit-web-open-charge", async (req) => {
   }
   // Never the code or the token in a log line.
   console.log("[visit-web-open-charge]", JSON.stringify({ outcome: "open", place_id: input.placeId, amount_cents: input.amountCents }));
-  return json({ ok: true, ...res.charge, place: { name: place.name ?? null }, test_mode: !boostLivemode() });
+  return json({ ok: true, ...res.charge, place: { name: place.name ?? null }, test_mode: !paymentsLivemode() });
 });

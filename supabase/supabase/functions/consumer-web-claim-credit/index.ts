@@ -19,7 +19,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { giftRefusalStatus, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
 
@@ -47,7 +47,7 @@ serveJson("consumer-web-claim-credit", async (req) => {
   if (!isGiftToken(token)) return json({ ok: false, error: "token must be a credit link's key" }, 400);
 
   const admin = adminClient(envRes.env);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const tokenHash = await hashGiftToken(token);
 
   if (bodyRes.body.look === true) {

@@ -6,7 +6,7 @@
 // Mesita never holds the money) and answers a Stripe-hosted onboarding link.
 // Calling it again on an account still onboarding answers a fresh link. The
 // owner and Mesita staff only: the account is the place's own Stripe
-// relationship. Test mode until Pato flips STRIPE_MODE; agents never do.
+// relationship. Test mode until Pato flips PAYMENTS_STRIPE_MODE; agents never do.
 //
 // No charge is made here, ever: this is the account layer only.
 //
@@ -18,7 +18,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, isAllowedReturnUrl, StripeError, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, StripeError, stripeClient } from "../_shared/boost.ts";
 import {
   accountCreateParams,
   ACCOUNT_COLUMNS,
@@ -52,10 +52,10 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, code: "stripe_off", error: "Stripe isn't set up on this server" }, 503);
   const stripe = stripeClient(key);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
 
   try {
     let account = await readAccount(admin, placeId);

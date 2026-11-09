@@ -22,7 +22,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { handleConnectEvent, isConnectEvent, MAX_BODY_BYTES, verifyStripeSignature } from "../_shared/connect-events.ts";
 
 serveJson("stripe-connect-receive-event", async (req) => {
@@ -57,10 +57,10 @@ serveJson("stripe-connect-receive-event", async (req) => {
   }
   if (!isConnectEvent(event)) return json({ ok: false, error: "Not a Stripe event" }, 400);
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, code: "not_configured", error: "Stripe isn't set up on this server" }, 503);
   const answer = await handleConnectEvent(
-    { admin: adminClient(envRes.env), stripe: stripeClient(key), livemode: boostLivemode() },
+    { admin: adminClient(envRes.env), stripe: stripeClient(key), livemode: paymentsLivemode() },
     event,
   );
   return json(answer.body, answer.status);

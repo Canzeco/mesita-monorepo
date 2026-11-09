@@ -8,6 +8,8 @@ import {
   boostAmountCents,
   boostLivemode,
   boostStripeKey,
+  paymentsLivemode,
+  paymentsStripeKey,
   chargeKey,
   chargeOutcome,
   creditCents,
@@ -386,6 +388,22 @@ Deno.test("premier: test mode unless live is set AND allowed; never the other mo
   );
   assertEquals(boostLivemode(env({ STRIPE_MODE: "live" })), false);
   assertEquals(boostLivemode(env({ STRIPE_MODE: "live", STRIPE_ALLOW_LIVE: "true" })), true);
+});
+
+Deno.test("payments have their own mode: Premier going live never takes payments live (MESITA-3279)", () => {
+  const env = (vars: Record<string, string>) => (k: string) => vars[k];
+  const keys = { STRIPE_ALLOW_LIVE: "true", STRIPE_SECRET_KEY_LIVE: "sk_live", STRIPE_SECRET_KEY_TEST: "sk_test" };
+  // Premier live, payments untouched: payments stay on the test key.
+  assertEquals(paymentsStripeKey(env({ ...keys, STRIPE_MODE: "live" })), "sk_test");
+  assertEquals(paymentsLivemode(env({ ...keys, STRIPE_MODE: "live" })), false);
+  // Payments live, Premier untouched: Premier stays on the test key.
+  assertEquals(paymentsStripeKey(env({ ...keys, PAYMENTS_STRIPE_MODE: "live" })), "sk_live");
+  assertEquals(paymentsLivemode(env({ ...keys, PAYMENTS_STRIPE_MODE: "live" })), true);
+  assertEquals(boostStripeKey(env({ ...keys, PAYMENTS_STRIPE_MODE: "live" })), "sk_test");
+  assertEquals(boostLivemode(env({ ...keys, PAYMENTS_STRIPE_MODE: "live" })), false);
+  // The same guard: live without STRIPE_ALLOW_LIVE is refused, never the test key.
+  assertEquals(paymentsStripeKey(env({ PAYMENTS_STRIPE_MODE: "live", STRIPE_SECRET_KEY_LIVE: "sk_live", STRIPE_SECRET_KEY_TEST: "sk_test" })), null);
+  assertEquals(paymentsLivemode(env({ PAYMENTS_STRIPE_MODE: "live" })), false);
 });
 
 Deno.test("premier: the factor is the tier's number; a Google stub is never Premier (MESITA-2925)", () => {

@@ -4,7 +4,7 @@
 // (vouchers and card parts net of refunds), Mesita's fee, credit outstanding
 // (Available and Pending) and tips, then 50 rows newest first with a date
 // range and a (created_at, id) cursor. The owner and Mesita staff only; an
-// editor gets 403 `forbidden`. The universe is STRIPE_MODE's, never the
+// editor gets 403 `forbidden`. The universe is PAYMENTS_STRIPE_MODE's, never the
 // body's, so a live row never shows under test. Who paid is the guest's
 // name, else two characters of the email's local part; never the email.
 //
@@ -17,7 +17,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { maskGuest } from "../_shared/money-admin.ts";
 
 function isoOr(v: unknown, fallback: string): string | null {
@@ -68,7 +68,7 @@ serveJson("business-web-get-place-money", async (req) => {
     return json({ ok: false, error: "before must be { created_at, id }" }, 400);
   }
 
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const { data, error } = await admin.rpc("place_money_summary", {
     p_place_id: b.place_id,
     p_from: from,

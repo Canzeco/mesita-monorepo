@@ -15,7 +15,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
 import { runSettleTick, settleConfigFrom } from "../_shared/settle-cron.ts";
 
@@ -29,13 +29,13 @@ serveJson("supabase-cron-settle-wallet", async (req) => {
   const caller = requireInternalCaller(req, envRes.env);
   if (!caller.ok) return caller.response;
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: true, skipped: "no_stripe_key" });
   const admin = adminClient(envRes.env);
   const cfgRes = await readAppConfig(admin, "money_config", "money_config_read");
   const cfg = settleConfigFrom(cfgRes.ok ? (cfgRes.row as { money_config?: unknown } | null)?.money_config : null);
 
-  const report = await runSettleTick({ admin, stripe: stripeClient(key), livemode: boostLivemode(), now: () => Date.now() }, cfg);
+  const report = await runSettleTick({ admin, stripe: stripeClient(key), livemode: paymentsLivemode(), now: () => Date.now() }, cfg);
   console.log("[supabase-cron-settle-wallet]", JSON.stringify(report));
   return json({ ok: true, ...report });
 });

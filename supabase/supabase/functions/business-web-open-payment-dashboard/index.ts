@@ -13,7 +13,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, StripeError, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, StripeError, stripeClient } from "../_shared/boost.ts";
 import { readAccount } from "../_shared/payments.ts";
 
 serveJson("business-web-open-payment-dashboard", async (req) => {
@@ -30,10 +30,10 @@ serveJson("business-web-open-payment-dashboard", async (req) => {
   if (access instanceof Response) return access;
   if (!canManage(access.role)) return ownerOnly();
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, code: "stripe_off", error: "Stripe isn't set up on this server" }, 503);
   const account = await readAccount(admin, placeId);
-  if (!account || account.livemode !== boostLivemode()) {
+  if (!account || account.livemode !== paymentsLivemode()) {
     return json({ ok: false, code: "no_account", error: "Connect Stripe first" }, 409);
   }
   try {

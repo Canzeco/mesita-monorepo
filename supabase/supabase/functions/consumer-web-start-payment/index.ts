@@ -43,7 +43,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readCardPart, readPayBody, startPayment } from "../_shared/pay.ts";
 import { startCardPayment } from "../_shared/pay-card.ts";
@@ -109,7 +109,7 @@ serveJson("consumer-web-start-payment", async (req) => {
   const settings = await readSettings(admin, input.placeId);
   // Places store "MXN"; the ledger "mxn" (the RPC lowercases too).
   const currency = String(place.currency ?? MONEY_CURRENCY).toLowerCase();
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
 
   // One guest per charge: claimed before any money moves.
   if (charge && charges && !(await charges.claim(charge.id, userId))) {
@@ -125,7 +125,7 @@ serveJson("consumer-web-start-payment", async (req) => {
 
   try {
     if (card.cardCents > 0) {
-      const key = boostStripeKey();
+      const key = paymentsStripeKey();
       if (!key) return json({ ok: false, code: "no_account", error: "Payments are not available right now" }, 503);
       const account = await readAccount(admin, input.placeId);
       const res = await startCardPayment(admin, stripeClient(key), {

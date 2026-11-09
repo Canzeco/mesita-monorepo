@@ -28,7 +28,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment, readPlaceMarks } from "../_shared/pay.ts";
 import { settlePayment } from "../_shared/settle-payment.ts";
@@ -59,7 +59,7 @@ serveJson("consumer-web-get-payment", async (req) => {
   // Still open with a card part: ask Stripe now, under a budget.
   let url: string | null | undefined;
   if (res.row.status === "open" || res.row.status === "opening") {
-    const key = boostStripeKey();
+    const key = paymentsStripeKey();
     if (key && res.row.stripe_checkout_session_id && res.row.stripe_account_id) {
       const stripe = stripeClient(key);
       const controller = new AbortController();

@@ -23,7 +23,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state.ts";
 import { readAccount } from "../_shared/payments.ts";
@@ -59,7 +59,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
   const place = placeRes.place;
   if (!place || place.state !== "active") return json({ ok: false, error: "This place can't sell vouchers" }, 404);
 
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const [offer, account] = await Promise.all([voucherOffer(admin, place, userId, livemode), readAccount(admin, placeId)]);
   const refusal = buyRefusal(offer, voucher as MoneyVoucherKey, account);
   if (refusal) return json({ ok: false, code: refusal.code, error: refusal.error }, refusal.status);
@@ -75,7 +75,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     if (vip) return json({ ok: false, code: vip.code, error: vip.error }, vip.status);
   }
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: false, error: "Payments are not available right now" }, 503);
 
   const res = await openVoucherCheckout(admin, stripeClient(key), {

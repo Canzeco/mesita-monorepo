@@ -557,6 +557,32 @@ export function boostLivemode(read: ReadEnv = envRead): boolean {
   return stripeLive(read) && (read("STRIPE_ALLOW_LIVE") ?? "").trim() === "true";
 }
 
+// ── Payments' own mode (MESITA-3279) ─────────────────────────────────────
+// Money on places' connected accounts (vouchers, the Pay card part, the
+// waiter's charge, cashback, the 5% fee invoices, refunds, close-out) reads
+// PAYMENTS_STRIPE_MODE, never STRIPE_MODE, so taking Premier live cannot
+// take payments live by accident, and the other way round. Same platform
+// account and the same keys; the same STRIPE_ALLOW_LIVE=true guard; a value
+// other than exactly `live` is test. Pato flips it; agents never do.
+
+function paymentsLive(read: ReadEnv): boolean {
+  return (read("PAYMENTS_STRIPE_MODE") ?? "").trim() === "live";
+}
+
+/** The secret key for payments' universe, or null (see boostStripeKey). */
+export function paymentsStripeKey(read: ReadEnv = envRead): string | null {
+  const live = paymentsLive(read);
+  if (live && (read("STRIPE_ALLOW_LIVE") ?? "").trim() !== "true") return null;
+  const key = (read(live ? "STRIPE_SECRET_KEY_LIVE" : "STRIPE_SECRET_KEY_TEST") ?? "").trim();
+  return key === "" ? null : key;
+}
+
+/** True when payments run on the live key: every livemode column a payment
+ *  row, account row or fee row carries is compared against this. */
+export function paymentsLivemode(read: ReadEnv = envRead): boolean {
+  return paymentsLive(read) && (read("STRIPE_ALLOW_LIVE") ?? "").trim() === "true";
+}
+
 /** Stripe's form encoding: nested keys as a[b][c], arrays as a[0][b]. */
 export function stripeForm(params: Record<string, unknown>): string {
   const out = new URLSearchParams();

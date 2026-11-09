@@ -22,7 +22,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
@@ -46,7 +46,7 @@ serveJson("consumer-web-send-credit", async (req) => {
   const input = parsed.input;
 
   const admin = adminClient(envRes.env);
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const config = await readMoneyConfig(admin);
   if (!sendingOn(config, livemode)) {
     return json({ ok: false, code: "not_live", error: "Sending credit isn't open yet" }, 409);

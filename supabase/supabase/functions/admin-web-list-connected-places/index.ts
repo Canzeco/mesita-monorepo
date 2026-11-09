@@ -1,7 +1,7 @@
 // Supabase Edge Function — admin-web-list-connected-places
 //
 // MESITA-3383: Manage › Money's connected places. Every place with a
-// place_payment_accounts row in STRIPE_MODE's universe (never the body's, so
+// place_payment_accounts row in PAYMENTS_STRIPE_MODE's universe (never the body's, so
 // a live row never shows under test): its name, the account's state (ready /
 // onboarding / restricted, as Business › Payments words it), the switches
 // the owner has on, credit outstanding (Available and Pending) against the
@@ -15,7 +15,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
 import { accountState } from "../_shared/payments.ts";
 import { PLACE_CAP_CENTS } from "../_shared/vouchers.ts";
 
@@ -46,7 +46,7 @@ serveJson("admin-web-list-connected-places", async (req) => {
     return json({ ok: false, error: "before must be { created_at, place_id }" }, 400);
   }
 
-  const livemode = boostLivemode();
+  const livemode = paymentsLivemode();
   const { data, error } = await admin.rpc("admin_connected_places", {
     p_livemode: livemode,
     p_before: before ? before.created_at : null,

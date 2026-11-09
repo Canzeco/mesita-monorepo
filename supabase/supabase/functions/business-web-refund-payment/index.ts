@@ -19,7 +19,7 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
   type PaymentRow,
@@ -52,8 +52,8 @@ serveJson("business-web-refund-payment", async (req) => {
     return json({ ok: false, code: "forbidden", error: "Only the place's owner refunds its payments" }, 403);
   }
 
-  const key = boostStripeKey();
-  const livemode = boostLivemode();
+  const key = paymentsStripeKey();
+  const livemode = paymentsLivemode();
   const table = kind === "purchase" ? "wallet_purchases" : "wallet_payments";
   const { data, error } = await admin
     .from(table)

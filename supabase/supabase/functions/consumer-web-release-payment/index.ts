@@ -19,7 +19,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment } from "../_shared/pay.ts";
@@ -50,7 +50,7 @@ serveJson("consumer-web-release-payment", async (req) => {
 
     let outcome: ReleaseOutcome = "unchanged";
     if (res.row.status === "open" || res.row.status === "opening") {
-      const key = boostStripeKey();
+      const key = paymentsStripeKey();
       if (key) {
         outcome = await releaseCardPayment(admin, stripeClient(key), res.row, Date.now());
       } else if (!res.row.stripe_checkout_session_id) {

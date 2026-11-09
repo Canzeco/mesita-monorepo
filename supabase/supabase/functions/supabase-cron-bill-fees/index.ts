@@ -14,7 +14,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
 import { requireInternalCaller } from "../_shared/internal.ts";
-import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/boost.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { runFeeBillingTick } from "../_shared/fee-billing.ts";
 
 const DEFAULT_LIMIT = 200;
@@ -30,12 +30,12 @@ serveJson("supabase-cron-bill-fees", async (req) => {
   const caller = requireInternalCaller(req, envRes.env);
   if (!caller.ok) return caller.response;
 
-  const key = boostStripeKey();
+  const key = paymentsStripeKey();
   if (!key) return json({ ok: true, skipped: "no_stripe_key" });
   const body = await readJsonOr<{ limit?: number }>(req, {});
   const limit = Math.min(Math.max(Number(body.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT);
 
-  const report = await runFeeBillingTick({ admin: adminClient(envRes.env), stripe: stripeClient(key), livemode: boostLivemode(), limit });
+  const report = await runFeeBillingTick({ admin: adminClient(envRes.env), stripe: stripeClient(key), livemode: paymentsLivemode(), limit });
   console.log("[supabase-cron-bill-fees]", JSON.stringify(report));
   return json({ ok: true, ...report });
 });
