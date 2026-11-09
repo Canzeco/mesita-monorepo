@@ -3,7 +3,8 @@
 // Manage › Guests (MESITA-2550). The 50 newest guests, or those whose name,
 // member number or Instagram handle matches `q`, with their Class and Plan
 // (MESITA-2553) and who last set the class. Closed accounts are left out.
-// Also every VIP partner (MESITA-2556), for the partner choice on a VIP row.
+// Also every VIP partner (MESITA-2556), for the partner choice on a VIP row,
+// and the newest VIP invitation codes (MESITA-3540; null when that read failed).
 // Read-only; super-admin only.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -17,6 +18,7 @@ import {
   toGuestRow,
 } from "../_shared/guest-standing.ts";
 import { loadVipPartners } from "../_shared/vip-partners.ts";
+import { loadVipCodes } from "../_shared/vip-codes.ts";
 
 serveJson("admin-web-list-guests", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");
@@ -63,9 +65,14 @@ serveJson("admin-web-list-guests", async (req) => {
   const partners = await loadVipPartners(admin);
   if (!partners.ok) return json({ ok: false, error: partners.error }, 500);
 
+  // VIP invitation codes (MESITA-3540). A failed read never fails the list.
+  const codes = await loadVipCodes(admin);
+  if (!codes.ok) console.warn("vip_codes_list_failed", JSON.stringify({ error: codes.error }));
+
   return json({
     ok: true,
     guests: rows.map((r) => toGuestRow(r, (id) => emails.get(id) ?? null)),
     partners: partners.partners,
+    vipCodes: codes.ok ? codes.codes : null,
   });
 });
