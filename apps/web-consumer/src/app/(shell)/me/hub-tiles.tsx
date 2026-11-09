@@ -1,19 +1,20 @@
 import { Fragment, type ReactNode } from "react";
 import {
-  Bell,
-  CalendarCheck,
-  CreditCard,
-  Crown,
-  Heart,
-  Plug,
-  ReceiptText,
-  Settings as SettingsIcon,
-  Share2,
-  UserRound,
-  HandCoins,
-  type LucideIcon,
-} from "lucide-react";
-import { Instagram } from "@/components/shared/instagram-icon";
+  CardsIcon,
+  ClassIcon,
+  ConnectorIcon,
+  FavoritesIcon,
+  InstagramIcon,
+  NotificationsIcon,
+  PlanIcon,
+  ProfileIcon,
+  RefundsIcon,
+  ReservationsIcon,
+  SettingsIcon,
+  ShareIcon,
+  TransactionsIcon,
+  type MeIcon,
+} from "./me-icons";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { DestGrid, type DestShape } from "./profile-sections";
 
@@ -76,7 +77,8 @@ import { DestGrid, type DestShape } from "./profile-sections";
 /** One cell: a destination, a route to `/me/<box>` — or `/share`, the one
  *  page Me opens outside its own namespace (MESITA-2887). */
 export type HubTile = {
-  Icon: LucideIcon;
+  /** Its own colour glyph (me-icons.tsx, MESITA-3538). */
+  Icon: MeIcon;
   title: string;
   /** THREE WORDS OR FEWER (profile-sections.tsx). */
   summary: string;
@@ -89,13 +91,13 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // member number is on /me/profile, with its copy button; the tile only
   // names the page (MESITA-2607).
   {
-    Icon: UserRound,
+    Icon: ProfileIcon,
     title: "Profile",
     summary: "Name and photo",
     href: CONSUMER_ROUTES.mePages.profile,
   },
   {
-    Icon: Instagram,
+    Icon: InstagramIcon,
     title: "Instagram",
     summary: "Connect your account",
     href: CONSUMER_ROUTES.mePages.instagram,
@@ -106,25 +108,25 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // never the guest's own (MESITA-2607). Class is joinable again (MESITA-3054;
   // it read "Soon" under MESITA-3027).
   {
-    Icon: Crown,
+    Icon: ClassIcon,
     title: "Class",
     summary: "Regular or VIP",
     href: CONSUMER_ROUTES.mePages.class,
   },
   {
-    Icon: CreditCard,
+    Icon: PlanIcon,
     title: "Plan",
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
   },
   {
-    Icon: Bell,
+    Icon: NotificationsIcon,
     title: "Notifications",
     summary: "Bookings and updates",
     href: CONSUMER_ROUTES.mePages.notifications,
   },
   {
-    Icon: CalendarCheck,
+    Icon: ReservationsIcon,
     title: "Reservations",
     summary: "Upcoming and past",
     href: CONSUMER_ROUTES.mePages.reservations,
@@ -135,19 +137,19 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // sat beside Favorites (MESITA-3264) until the discount product left
   // (MESITA-3299), so Connector is back in that cell.
   {
-    Icon: Heart,
+    Icon: FavoritesIcon,
     title: "Favorites",
     summary: "Places you saved",
     href: CONSUMER_ROUTES.mePages.favorites,
   },
   {
-    Icon: ReceiptText,
+    Icon: TransactionsIcon,
     title: "Transactions",
     summary: "Payments and credit",
     href: CONSUMER_ROUTES.mePages.transactions,
   },
   {
-    Icon: CreditCard,
+    Icon: CardsIcon,
     title: "Cards",
     summary: "Ways to pay",
     href: CONSUMER_ROUTES.mePages.cards,
@@ -155,13 +157,13 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // REFUNDS (Pato, MESITA-3517): if a place closes for good with the guest's
   // credit unspent, Mesita refunds it. The page is the view only, empty.
   {
-    Icon: HandCoins,
+    Icon: RefundsIcon,
     title: "Refunds",
     summary: "If a place closes",
     href: CONSUMER_ROUTES.mePages.refunds,
   },
   {
-    Icon: Plug,
+    Icon: ConnectorIcon,
     title: "Connector",
     summary: "ChatGPT or Claude",
     href: CONSUMER_ROUTES.mePages.connector,
@@ -169,7 +171,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   // Share wears the three joined dots it wore on the bar (MESITA-2568,
   // MESITA-2887).
   {
-    Icon: Share2,
+    Icon: ShareIcon,
     title: "Share",
     summary: "Invite your friends",
     href: CONSUMER_ROUTES.share,
