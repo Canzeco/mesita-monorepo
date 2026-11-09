@@ -29,7 +29,9 @@ export function WalletRail({ title, children }: { title: string; children: React
     <section className="mt-5" aria-label={title}>
       <h2 className="font-display mb-2 text-base font-semibold tracking-tight">{title}</h2>
       {/* Full bleed: the rail runs to the screen edges, its first card on the page's inset. */}
-      <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1">
+      {/* Top-aligned: a money tile carries its cashback line under it, and a
+          stretched row would pull the other tiles out of their card shape. */}
+      <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-1">
         {children}
       </div>
     </section>
@@ -73,24 +75,71 @@ export function AddTile({
   );
 }
 
-/** Money's one real method today: Mesita Pay charges by card, Apple Pay or
+// EACH MONEY METHOD SAYS ITS CASHBACK UNDER IT (Pato, MESITA-3542: "below
+// add the cashbacks in the money payment methods ... the money payment
+// method of the right must be Cash, a green bill with $ sign ... 2% back as
+// credits ... then list the cards and below all the cards mention 5% back").
+// The two standard rates of Payments Flow v2 (MESITA-3541): Mesita Pay 5%,
+// cash 2%, both as credit at that place. Cash earns through the waiter's
+// Received on the charge page (MESITA-3541 step 3).
+const CARD_BACK = "5% back as credits";
+const CASH_BACK = "2% back as credits";
+
+/** A money tile and its cashback line under it, one rail slot. */
+function MoneySlot({ back, children }: { back: string; children: ReactNode }) {
+  return (
+    <div className={RAIL_TILE}>
+      {children}
+      <p className="mt-1.5 px-0.5 text-xs font-semibold text-emerald-700" data-wallet-back>
+        {back}
+      </p>
+    </div>
+  );
+}
+
+/** Cash, right after Add: a green bill with the $ in its middle. Nothing to
+ *  open; the line under it says what paying cash earns. */
+export function CashTile() {
+  return (
+    <MoneySlot back={CASH_BACK}>
+      <div
+        role="img"
+        aria-label={`Cash: ${CASH_BACK}`}
+        className={cn(TILE_SHAPE, "relative flex w-full items-center justify-center overflow-hidden bg-emerald-600 text-white")}
+        data-wallet-method="cash"
+      >
+        <span className="absolute inset-1.5 rounded-lg border border-white/40" aria-hidden />
+        <span className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-white/80 text-lg font-bold" aria-hidden>
+          $
+        </span>
+        <span className="absolute bottom-2.5 left-3 text-xs font-semibold" aria-hidden>
+          Cash
+        </span>
+      </div>
+    </MoneySlot>
+  );
+}
+
+/** Money's card method today: Mesita Pay charges by card, Apple Pay or
  *  Google Pay at Stripe's checkout. No card is saved on Mesita yet, so this
- *  rail never invents one. */
+ *  rail never invents one; a saved card will sit beside it with the same line. */
 export function CheckoutMethodTile({ onOpen }: { onOpen: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label="Card, Apple Pay or Google Pay, chosen at checkout"
-      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-white p-3 text-left ring-1 ring-black/10")}
-      data-wallet-method="checkout"
-    >
-      <CreditCard className="h-5 w-5" aria-hidden />
-      <span>
-        <span className="block text-xs leading-tight font-semibold">Card · Apple Pay · Google Pay</span>
-        <span className="text-muted-foreground block type-label">At checkout</span>
-      </span>
-    </button>
+    <MoneySlot back={CARD_BACK}>
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Card, Apple Pay or Google Pay, chosen at checkout: ${CARD_BACK}`}
+        className={cn(TILE_SHAPE, "flex w-full flex-col justify-between bg-white p-3 text-left ring-1 ring-black/10")}
+        data-wallet-method="checkout"
+      >
+        <CreditCard className="h-5 w-5" aria-hidden />
+        <span>
+          <span className="block text-xs leading-tight font-semibold">Card · Apple Pay · Google Pay</span>
+          <span className="text-muted-foreground block type-label">At checkout</span>
+        </span>
+      </button>
+    </MoneySlot>
   );
 }
 
