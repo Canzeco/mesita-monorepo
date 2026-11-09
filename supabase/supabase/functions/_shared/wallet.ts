@@ -163,7 +163,16 @@ export type Balance = {
    *  held by open payments, from SQL (wallet_balances), never below zero. */
   spendable_cents: number;
   last_at: string;
-  entries: Array<{ kind: string; amount_cents: number; at: string; pending: boolean; payment_id: string | null }>;
+  /** `available_at` rides a pending entry only (MESITA-3549): the Wallet's
+   *  method sheet counts down to it; an Available entry carries null. */
+  entries: Array<{
+    kind: string;
+    amount_cents: number;
+    at: string;
+    pending: boolean;
+    available_at: string | null;
+    payment_id: string | null;
+  }>;
 };
 
 /** The key balancesOf and a spendable map share. */
@@ -202,7 +211,14 @@ export function balancesOf(
     if (pending) b.pending_cents += e.amount_cents;
     else b.available_cents += e.amount_cents;
     if (e.created_at > b.last_at) b.last_at = e.created_at;
-    b.entries.push({ kind: e.kind, amount_cents: e.amount_cents, at: e.created_at, pending, payment_id: e.payment_id ?? null });
+    b.entries.push({
+      kind: e.kind,
+      amount_cents: e.amount_cents,
+      at: e.created_at,
+      pending,
+      available_at: pending ? e.available_at ?? null : null,
+      payment_id: e.payment_id ?? null,
+    });
   }
   const out = [...byKey.values()];
   for (const b of out) b.entries.sort((x, y) => (x.at < y.at ? 1 : x.at > y.at ? -1 : 0));

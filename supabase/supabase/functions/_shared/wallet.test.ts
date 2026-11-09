@@ -68,6 +68,9 @@ Deno.test("balancesOf: one balance per place, newest first, Pending split from A
   ]);
   assertEquals(b[0].entries.map((e) => [e.amount_cents, e.pending]), [[-5000, false], [20000, false], [2000, false]]);
   assertEquals(b[1].entries[0].pending, true);
+  // MESITA-3549: a pending entry says when it turns Available; an Available one does not.
+  assertEquals(b[1].entries[0].available_at, "2026-11-07T12:30:00Z");
+  assertEquals(b[0].entries.map((e) => e.available_at), [null, null, null]);
 });
 
 Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read goes on and names what is still open", async () => {
