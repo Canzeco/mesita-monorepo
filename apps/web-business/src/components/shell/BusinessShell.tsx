@@ -10,8 +10,8 @@
 //   │ Views · Visits · Money                       │  MESITA-3301/3308; the pages
 //   └──────────────────────────────────────────────┘  stand before payments
 //   ┌ Capabilities (MESITA-3152; was Products) ────┐
-//   │ Profile · Reviews · Premier · Payments · All │  All: MESITA-3238, every
-//   └──────────────────────────────────────────────┘  product, current and future
+//   │ Profile · Premier · Payments · Reservations · All │  All: MESITA-3238,
+//   └───────────────────────────────────────────────────┘  every product
 //   ┌ Manage ─────────────────────────────────┐
 //   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
@@ -95,6 +95,8 @@ function menu(
         // One quiet dot until the place's Stripe account can charge
         // (MESITA-3384); Payments leads with the Connect card meanwhile.
         { ...tab("payments"), ...(connectStripe ? { dot: "Connect Stripe" } : {}) },
+        // Its one On/Off switch (MESITA-3600; was Settings › Actions).
+        tab("reservations"),
         // Last: every product, current and future (MESITA-3238).
         tab("all"),
       ],

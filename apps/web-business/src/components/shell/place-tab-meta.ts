@@ -4,6 +4,7 @@
 
 import type { Icon } from "@phosphor-icons/react";
 import {
+  CalendarCheckIcon,
   CreditCardIcon,
   DotsThreeCircleIcon,
   EyeIcon,
@@ -30,6 +31,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
   payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on Operations › Money." },
+  reservations: { label: "Reservations", icon: CalendarCheckIcon, sub: "Whether guests can ask for a table here." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
   // line is about Mesita, not the page (Pato, MESITA-3237).
   all: {

@@ -3,20 +3,19 @@
 // Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
 // Configuration only (MESITA-3596, Pato: "in payments its just to configure"):
 // the owner's money and its log live on Operations › Money, and there is no
-// table QR (the guest shows the QR). Laid out as Pato's approved mockup
-// (MESITA-3597): the test pill, an unpaid fee banner (MESITA-3461), a setup
-// strip of four steps (Agreement → House Credits → Waiter code → Stripe
-// Account; the first not done is outlined with its one action), three cards
-// (House Credits · Cash Payments · Mesita Payments; one column on phones),
-// one Stripe Account row (seven values), then Mesita Prepayments.
-// Three things, never "Mesita Pay" (Pato, 2026-11-10: "Stripe Account,
-// Mesita Payments, Mesita Prepayments ... Different products but with lots of
-// symmetries"): Mesita Payments and Mesita Prepayments wear the same card,
-// a title, one line, their switch, On/Off, what they need with a fix for each
-// missing line, and their inner settings: Mesita Payments its
-// Cashback-as-Credits (Off or 5%), Mesita Prepayments its voucher grid, each
-// voucher its own switch, selling only while Mesita Prepayments is on. Cash
-// Payments has its Cashback-as-Credits too (Off or 2%).
+// table QR (the guest shows the QR). One list again (MESITA-3600, Pato on the
+// card grid: "make the list UI again. that looks like shit and its
+// confusing"): the test pill, an unpaid fee banner (MESITA-3461), then
+// section cards of rows, each row a mark, a title and one line, its value and
+// its control:
+//   Stripe Account · one row, its state and one button;
+//   House Credits · the Agreement, then House Credits;
+//   Cash Payments · the Waiter code (moved from Settings, MESITA-3600), Cash
+//     Payments, then its Cashback-as-Credits (Off or 2%);
+//   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
+//   Mesita Prepayments · Mesita Prepayments, then one row per voucher.
+// A switch that can't turn on is disabled and its row says the one missing
+// step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
 // The House Credits Agreement is independent of Stripe (Pato, 2026-11-09):
 // signing opens a plain Agree dialog whose text is a placeholder until a
 // lawyer writes it. A guest's credit is the place's debt: House Credits Off
@@ -28,17 +27,13 @@ import { CARD_BILL_PAY_LIVE, moneyState, TestBand, type VoucherReason } from "@m
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
-  CheckCircleIcon,
-  CheckIcon,
-  ClockIcon,
   CoinsIcon,
   DeviceMobileIcon,
   MoneyIcon,
   PiggyBankIcon,
+  SignatureIcon,
   StripeLogoIcon,
   TicketIcon,
-  LockSimpleIcon,
-  WarningCircleIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { Card } from "@/components/shell/Page";
 import { Switch } from "@/components/ui/config";
@@ -59,11 +54,14 @@ import {
   signHouseCreditsContract,
   startPaymentOnboarding,
 } from "@/lib/business-api";
+import { WaiterCodeRow } from "./WaiterCode";
 
-/** One line of a service's checklist: done, or missing with its fix. */
-type Check = { label: string; done: boolean; fix?: React.ReactNode };
-
+/** One row: mark · title and line · value · control; the line wraps, the rest hold. */
+const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
+const HEAD = "px-5 pt-4 pb-2 font-semibold sm:px-6";
 const NOTE = "text-muted-foreground text-xs";
+const BLOCKED = "text-xs text-amber-800 dark:text-amber-300";
+const SECTION = "flex flex-col p-0 sm:p-0";
 
 /** A voucher: its bonus in its own colour (MESITA-3298) and one objective line. */
 type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string };
@@ -117,14 +115,6 @@ const STAGE_LABEL: Record<StripeStage, string> = {
 
 const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
 
-function accountChecks(a: PaymentAccount): { label: string; done: boolean }[] {
-  return [
-    { label: "Card payments", done: a.charges_enabled },
-    { label: "Payouts to your bank", done: a.payouts_enabled },
-    { label: "Details verified", done: a.details_submitted && a.requirements_due === 0 },
-  ];
-}
-
 /** Open Stripe leaves the app, so it is the quiet grey button. */
 const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
 
@@ -148,7 +138,7 @@ function accountCopy(a: PaymentAccount): { line: string; button: string | null; 
 function signedOn(c: HouseCreditsContract): string {
   if (!c.signed_at) return "Signed";
   const d = new Date(c.signed_at);
-  return `Signed on ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
+  return `Signed ${d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}`;
 }
 
 export function PaymentsPanel({
@@ -165,7 +155,9 @@ export function PaymentsPanel({
   const [agreeing, setAgreeing] = useState(false);
   const [busy, setBusy] = useState<PaymentKey | PaymentRateKey | "stripe" | "contract" | null>(null);
   const [error, setError] = useState<string | null>(back === "refresh" ? "The Stripe setup link expired. Open it again." : null);
-  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSet, fee } = initial;
+  const { account, can_edit: canEdit, test_mode: testMode, code_set: codeSetAtLoad, fee } = initial;
+  // The Waiter code row sets it here, so Cash Payments unlocks without a reload.
+  const [codeSet, setCodeSet] = useState(codeSetAtLoad);
   const chargeUrl = `${VISIT_ORIGIN}/charge/${encodeURIComponent(placeId)}`;
   const staffListUrl = `${VISIT_ORIGIN}/payments/${encodeURIComponent(placeId)}`;
   const copy = accountCopy(account);
@@ -225,46 +217,27 @@ export function PaymentsPanel({
     </span>
   );
 
-  const onOffPill = (on: boolean, text?: string) => (
-    <span className={cn("self-start rounded-full px-2.5 py-0.5 text-xs font-semibold", on ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground")}>
-      {text ?? (on ? "On" : "Off")}
-    </span>
+  /** The one missing step, linked to the row (or page) that does it. */
+  const step = (text: string, href: string) => (
+    <a className="underline underline-offset-2" href={href}>
+      {text}
+    </a>
   );
+  const needsContract = step("Sign the House Credits Agreement first.", "#house-credits-agreement");
+  const needsHouseCredits = step("Turn House Credits on first.", "#house-credits");
+  const needsStripe = step("Connect the Stripe Account first.", "#stripe-account");
+  const needsCode = step("Set the waiter code first.", "#waiter-code");
+  const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
+  const needsPrepayments = step("Turn Mesita Prepayments on first.", "#mesita-prepayments");
 
-  /** A fix link inside a checklist: a link to another page, or a button here. */
-  const fix = (label: string, to: string | (() => void)) =>
-    typeof to === "string" ? (
-      <a className="ml-auto shrink-0 font-semibold underline" href={to}>
-        {label}
-      </a>
-    ) : (
-      <button type="button" className="ml-auto shrink-0 font-semibold underline disabled:opacity-60" disabled={pending} onClick={to}>
-        {label}
-      </button>
-    );
+  /** A row's one line under its title: the missing step if blocked, else its note. */
+  const under = (blocked: React.ReactNode, note: React.ReactNode) =>
+    blocked ? <p className={BLOCKED}>{blocked}</p> : note ? <p className={NOTE}>{note}</p> : null;
 
-  /** What a service needs before it works: each line done, or missing with its fix. */
-  const checklist = (items: Check[]) =>
-    items.length ? (
-      <ul className="border-border flex flex-col gap-2 border-t pt-3 text-sm">
-        {items.map((c) => (
-          <li key={c.label} className="flex items-center gap-2">
-            {c.done ? (
-              <CheckCircleIcon size={18} weight="fill" className="shrink-0 text-emerald-600" aria-hidden />
-            ) : (
-              <WarningCircleIcon size={18} weight="fill" className="shrink-0 text-amber-600" aria-hidden />
-            )}
-            <span className={cn("min-w-0", !c.done && "text-muted-foreground")}>{c.label}</span>
-            <span className="sr-only">{c.done ? ": done" : ": missing"}</span>
-            {!c.done && c.fix ? c.fix : null}
-          </li>
-        ))}
-      </ul>
-    ) : null;
-
-  /** One service: its mark, name, line and switch, On/Off, what it needs, and its Cashback-as-Credits. */
-  const serviceCard = (args: {
+  /** One on/off state: its value, its switch, and the step that unlocks it. */
+  const switchRow = (args: {
     key: PaymentKey;
+    id: string;
     name: string;
     line: string;
     icon: Icon;
@@ -272,10 +245,6 @@ export function PaymentsPanel({
     /** Why it can't turn on yet; the switch stays off and disabled. */
     blocked?: React.ReactNode;
     note?: React.ReactNode;
-    checks: Check[];
-    /** The product's own settings inside its card: a Cashback-as-Credits, or the voucher grid. */
-    inner?: React.ReactNode;
-    className?: string;
     /** Needs the Stripe Account to take cards: Off and disabled until it does. */
     stripe?: boolean;
   }) => {
@@ -283,118 +252,69 @@ export function PaymentsPanel({
     const on = settings[args.key] && !gated;
     const blocked = gated ? needsStripe : !on && args.blocked;
     return (
-      <Card key={args.key} className={cn("flex min-w-0 flex-col gap-4", on && "border-emerald-300", args.className)}>
-        <div className="flex items-start gap-3" data-place-state={args.key}>
-          {mark(args.icon, on, args.tone)}
-          <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">{args.name}</h2>
-            <p className="text-muted-foreground text-sm">{args.line}</p>
-          </div>
-          <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(args.key, !on)} label={`${args.name}: ${on ? "on" : "off"}`} />
+      <li key={args.key} id={args.id} className={MARK_ROW} data-place-state={args.key}>
+        {mark(args.icon, on, args.tone)}
+        <div className="min-w-0">
+          <p className="font-medium">{args.name}</p>
+          <p className="text-muted-foreground">{args.line}</p>
+          {under(blocked, args.note)}
         </div>
-        {onOffPill(on)}
-        {blocked ? <p className={NOTE}>{blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
-        {checklist(args.checks)}
-        {args.inner}
-      </Card>
+        <p className={cn("font-semibold whitespace-nowrap", !on && "text-muted-foreground")}>{on ? "On" : "Off"}</p>
+        <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(args.key, !on)} label={`${args.name}: ${on ? "on" : "off"}`} />
+      </li>
     );
   };
 
-  /** One Cashback-as-Credits: a switch between Off and its one rate, inside its payment card. */
-  const cashbackBox = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode; stripe?: boolean }) => {
+  /** One Cashback-as-Credits: a switch between Off and its one rate. */
+  const rateRow = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode; stripe?: boolean }) => {
     const gated = args.stripe === true && !takesCards;
     const value = gated ? null : settings[args.key];
     const on = value !== null;
     const blocked = gated ? needsStripe : args.blocked;
     const fixed = pct(CASHBACK_BPS[args.key]);
-    const lit = on && !blocked;
     return (
-      <div
-        key={args.key}
-        className={cn("mt-auto flex flex-col gap-1 rounded-xl p-3 text-sm", lit ? "bg-emerald-50 text-emerald-900" : "bg-muted text-muted-foreground")}
-        data-place-state={args.key}
-      >
-        <div className="flex items-center gap-3">
-          <CoinsIcon size={20} weight={lit ? "fill" : "regular"} className="shrink-0" aria-hidden />
-          <p className="min-w-0 flex-1 font-medium">Cashback-as-Credits</p>
-          <p className="font-semibold whitespace-nowrap tabular-nums">{on ? pct(value) : `Off · ${fixed}`}</p>
-          <Switch
-            on={on}
-            pending={pending || gated || (!on && !!blocked)}
-            onClick={() => void rate(args.key, on ? null : CASHBACK_BPS[args.key])}
-            label={`${args.name}: ${on ? fixed : "off"}`}
-          />
+      <li key={args.key} className={MARK_ROW} data-place-state={args.key}>
+        {mark(CoinsIcon, on && !blocked, "bg-amber-100 text-amber-700")}
+        <div className="min-w-0">
+          <p className="font-medium">Cashback-as-Credits</p>
+          <p className="text-muted-foreground">{args.line}</p>
+          {under(blocked, args.note)}
         </div>
-        <p className="text-xs">{args.line}</p>
-        {blocked ? <p className="text-xs">{blocked}</p> : args.note ? <p className="text-xs">{args.note}</p> : null}
-      </div>
-    );
-  };
-
-  const voucherCard = ({ key, name, line, value, tone }: Product) => {
-    const on = settings[key] && takesCards;
-    const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
-    const blocked = !takesCards || (!on && !settings.house_credits);
-    const note = on && settings.prepayments && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
-    return (
-      <li key={key} className="border-border flex min-w-0 flex-col gap-2 rounded-xl border p-4 text-sm">
-        <div className="flex items-center gap-2">
-          <span className={cn("rounded-md px-2 py-0.5 text-xs font-bold tabular-nums", on ? tone : "bg-muted text-muted-foreground")}>{value}</span>
-          <span className="ml-auto">
-            <Switch on={on} pending={pending || blocked} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
-          </span>
-        </div>
-        <p className="font-medium">{name}</p>
-        <p className="text-muted-foreground">{line}</p>
-        {note ? <p className={NOTE}>{note}</p> : null}
+        <p className={cn("font-semibold whitespace-nowrap tabular-nums", (!on || blocked) && "text-muted-foreground")}>{on ? pct(value) : `Off · ${fixed}`}</p>
+        <Switch
+          on={on}
+          pending={pending || gated || (!on && !!blocked)}
+          onClick={() => void rate(args.key, on ? null : CASHBACK_BPS[args.key])}
+          label={`${args.name}: ${on ? fixed : "off"}`}
+        />
       </li>
     );
   };
 
-  const needsContract = <>Sign the House Credits Agreement first.</>;
-  const needsHouseCredits = <>Turn House Credits on first.</>;
-  const needsCode = (
-    <a className="underline" href={placeTabHref(placeId, "settings")}>
-      Set a place code on Settings first: your waiters confirm cash with it.
-    </a>
-  );
-  const settingsHref = placeTabHref(placeId, "settings");
-
-  // The setup strip: four steps in order; the first not done is the next one, with its one action.
-  const steps: { key: string; name: string; line: string; done: boolean; action: React.ReactNode }[] = [
-    {
-      key: "step_agreement",
-      name: "Agreement",
-      line: contract.signed ? signedOn(contract) : "House Credits terms",
-      done: contract.signed,
-      action: fix("Sign", () => setAgreeing(true)),
-    },
-    {
-      key: "step_house_credits",
-      name: "House Credits",
-      line: settings.house_credits ? "On" : "Credit to spend here",
-      done: settings.house_credits,
-      action: contract.signed ? fix("Turn on", () => void flip("house_credits", true)) : null,
-    },
-    {
-      key: "step_waiter_code",
-      name: "Waiter code",
-      line: codeSet ? "Set" : "For cash bills",
-      done: codeSet,
-      action: fix("Set", settingsHref),
-    },
-    {
-      key: "step_stripe",
-      name: "Stripe Account",
-      line: ready ? STAGE_LABEL[stage] : "For Payments + Prepayments",
-      done: ready,
-      action: copy.button && !copy.open ? fix(copy.button, () => void stripe()) : null,
-    },
-  ];
-  const next = steps.find((s) => !s.done)?.key;
-  const stripeFix = copy.button && !copy.open ? fix(copy.button.replace(" Stripe", ""), () => void stripe()) : undefined;
-  const needsStripe = <>Connect the Stripe Account first.</>;
-  const feeCheck: Check[] = fee.hold ? [{ label: "Mesita's invoice unpaid", done: false, fix: fee.invoice?.url ? fix("Pay", fee.invoice.url) : undefined }] : [];
+  const voucherRow = ({ key, name, line, value, tone }: Product) => {
+    const on = settings[key] && takesCards;
+    const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
+    const blocked = !takesCards ? needsStripe : !on && !settings.house_credits ? needsHouseCredits : null;
+    const note = on
+      ? settings.prepayments
+        ? reason && NOT_SELLING[reason]
+          ? NOT_SELLING[reason]
+          : null
+        : needsPrepayments
+      : null;
+    return (
+      <li key={key} className={MARK_ROW} data-place-state={key}>
+        {mark(TicketIcon, on, tone)}
+        <div className="min-w-0">
+          <p className="font-medium">{name}</p>
+          <p className="text-muted-foreground">{line}</p>
+          {under(blocked, note)}
+        </div>
+        <p className={cn("font-semibold whitespace-nowrap tabular-nums", !on && "text-muted-foreground")}>{value}</p>
+        <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(key, !on)} label={`${name}: ${on ? "on" : "off"}`} />
+      </li>
+    );
+  };
 
   return (
     <>
@@ -413,181 +333,146 @@ export function PaymentsPanel({
           ) : null}
         </p>
       ) : null}
-      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Setup" data-setup-steps>
-        {steps.map((s, n) => (
-          <li
-            key={s.key}
-            className={cn(
-              "border-border bg-card flex min-w-0 items-center gap-3 rounded-2xl border p-4 text-sm",
-              s.key === next && "border-foreground ring-foreground ring-1",
-            )}
-          >
-            <span
-              className={cn(
-                "grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold",
-                s.done ? "bg-emerald-500 text-white" : "border-border text-muted-foreground border",
-              )}
-            >
-              {s.done ? <CheckIcon size={14} weight="bold" aria-hidden /> : n + 1}
-            </span>
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Stripe Account</h2>
+        <ul className="divide-border divide-y">
+          <li id="stripe-account" className={MARK_ROW} data-place-state="stripe">
+            {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
             <div className="min-w-0">
-              <p className="font-semibold">{s.name}</p>
-              <p className="text-muted-foreground truncate text-xs">{s.line}</p>
+              <p className="font-medium">Stripe Account</p>
+              <p className="text-muted-foreground">
+                {ready
+                  ? [account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live", copy.line].filter(Boolean).join(" · ")
+                  : `${copy.line}${testMode ? " Sandbox." : ""}`}
+              </p>
             </div>
-            <span className="sr-only">{s.done ? ": done" : s.key === next ? ": next" : ": to do"}</span>
-            {s.key === next && canEdit ? s.action : null}
+            <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
+            {copy.button ? (
+              <button type="button" className={cn(PILL_BUTTON_CLASS, ready && QUIET_PILL_CLASS, "shrink-0")} disabled={pending} onClick={() => void stripe()}>
+                {busy === "stripe" ? "Opening…" : copy.button}
+                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
+              </button>
+            ) : (
+              <span />
+            )}
           </li>
-        ))}
-      </ol>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {serviceCard({
-          key: "house_credits",
-          name: "House Credits",
-          line: "Guests earn and buy credit to spend here. It is your debt, always honoured.",
-          icon: PiggyBankIcon,
-          tone: "bg-emerald-100 text-emerald-700",
-          blocked: contract.signed ? undefined : needsContract,
-          note: settings.house_credits ? null : "Off: no new credit. Guests still spend what they already hold.",
-          checks: [
-            {
-              label: contract.signed ? `House Credits Agreement: ${signedOn(contract).toLowerCase()}` : "House Credits Agreement not signed",
-              done: contract.signed,
-              fix: fix("Sign", () => setAgreeing(true)),
-            },
-          ],
-        })}
-        {serviceCard({
-          key: "cash_payments",
-          name: "Cash Payments",
-          line: "Guests pay cash or your terminal; your waiter taps Received on visit.mesita.ai.",
-          icon: MoneyIcon,
-          tone: "bg-lime-100 text-lime-700",
-          blocked: codeSet ? undefined : needsCode,
-          checks: [
-            { label: codeSet ? "Waiter code set" : "Waiter code not set", done: codeSet, fix: fix("Set it", settingsHref) },
-            { label: settings.house_credits ? "House Credits on, for its Cashback-as-Credits" : "House Credits off, so no Cashback-as-Credits", done: settings.house_credits },
-          ],
-          inner: (
-            <>
-              {codeSet ? (
-                <p className={NOTE} data-waiter-charge>
-                  Waiter&apos;s screen:{" "}
-                  <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
-                    {chargeUrl.replace("https://", "")}
-                  </a>
-                  {" · "}Staff list:{" "}
-                  <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
-                    {staffListUrl.replace("https://", "")}
-                  </a>
-                </p>
-              ) : null}
-              {cashbackBox({
-                key: "cash_cashback_bps",
-                name: "Cash Payments Cashback-as-Credits",
-                line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
-                blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? "Turn Cash Payments on first." : undefined,
-              })}
-            </>
-          ),
-        })}
-        {serviceCard({
-          key: "pay_cards",
-          name: "Mesita Payments",
-          line: "Guests pay the bill by card inside the app.",
-          icon: DeviceMobileIcon,
-          tone: "bg-sky-100 text-sky-700",
-          stripe: true,
-          note: settings.pay_cards
-            ? fee.hold
-                ? "Off until Mesita's invoice is paid."
-                : !CARD_BILL_PAY_LIVE
-                  ? ARRIVES_SOON
-                  : PER_100
-            : "Guests still pay from credit here.",
-          checks: [
-            { label: takesCards ? "Stripe Account takes cards" : "Stripe Account not taking cards", done: takesCards, fix: stripeFix },
-            { label: settings.house_credits ? "House Credits on, for its Cashback-as-Credits" : "House Credits off, so no Cashback-as-Credits", done: settings.house_credits },
-            ...feeCheck,
-          ],
-          inner: cashbackBox({
+        </ul>
+      </Card>
+      <Card className={SECTION}>
+        <h2 className={HEAD}>House Credits</h2>
+        <ul className="divide-border divide-y">
+          <li id="house-credits-agreement" className={MARK_ROW} data-place-state="house_credits_contract">
+            {mark(SignatureIcon, contract.signed, "bg-emerald-100 text-emerald-700")}
+            <div className="min-w-0">
+              <p className="font-medium">House Credits Agreement</p>
+              <p className="text-muted-foreground">Your agreement with Mesita to run House Credits. Separate from Stripe.</p>
+            </div>
+            <p className={cn("font-semibold whitespace-nowrap", !contract.signed && "text-muted-foreground")}>{contract.signed ? signedOn(contract) : "Not signed"}</p>
+            {contract.signed ? (
+              <span />
+            ) : (
+              <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0")} disabled={pending} onClick={() => setAgreeing(true)}>
+                Agree
+              </button>
+            )}
+          </li>
+          {switchRow({
+            key: "house_credits",
+            id: "house-credits",
+            name: "House Credits",
+            line: "Guests earn and buy credit to spend here. It is your debt, always honoured.",
+            icon: PiggyBankIcon,
+            tone: "bg-emerald-100 text-emerald-700",
+            blocked: contract.signed ? undefined : needsContract,
+            note: settings.house_credits ? null : "Off: no new credit. Guests still spend what they already hold.",
+          })}
+        </ul>
+      </Card>
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Cash Payments</h2>
+        <ul className="divide-border divide-y">
+          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
+          {switchRow({
+            key: "cash_payments",
+            id: "cash-payments",
+            name: "Cash Payments",
+            line: "Guests pay cash or your terminal; your waiter taps Received on visit.mesita.ai.",
+            icon: MoneyIcon,
+            tone: "bg-lime-100 text-lime-700",
+            blocked: codeSet ? undefined : needsCode,
+          })}
+          {rateRow({
+            key: "cash_cashback_bps",
+            name: "Cash Payments Cashback-as-Credits",
+            line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
+            blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
+          })}
+        </ul>
+        {codeSet ? (
+          <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
+            Waiter&apos;s screen:{" "}
+            <a className="underline" href={chargeUrl} target="_blank" rel="noreferrer">
+              {chargeUrl.replace("https://", "")}
+            </a>
+            {" · "}Staff list:{" "}
+            <a className="underline" href={staffListUrl} target="_blank" rel="noreferrer">
+              {staffListUrl.replace("https://", "")}
+            </a>
+          </p>
+        ) : null}
+      </Card>
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Mesita Payments</h2>
+        <ul className="divide-border divide-y">
+          {switchRow({
+            key: "pay_cards",
+            id: "mesita-payments",
+            name: "Mesita Payments",
+            line: "Guests pay the bill by card inside the app.",
+            icon: DeviceMobileIcon,
+            tone: "bg-sky-100 text-sky-700",
+            stripe: true,
+            note: settings.pay_cards
+              ? fee.hold
+                  ? "Off until Mesita's invoice is paid."
+                  : !CARD_BILL_PAY_LIVE
+                    ? ARRIVES_SOON
+                    : PER_100
+              : "Guests still pay from credit here.",
+          })}
+          {rateRow({
             key: "card_cashback_bps",
             name: "Mesita Payments Cashback-as-Credits",
             line: "Back as credit here on the card part of the bill. Never on the tip or the credit part.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
             stripe: true,
             note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Payments takes cards." : null,
-          }),
-        })}
-      </div>
-      <Card className="flex flex-col gap-4" >
-        <div className="flex flex-wrap items-center gap-4 text-sm" data-place-state="stripe">
-          {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
-          <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 font-semibold">
-              Stripe Account {onOffPill(ready, STAGE_LABEL[stage])}
-            </p>
-            <p className="text-muted-foreground">
-              {ready
-                ? [account.country ? COUNTRY[account.country] ?? account.country : null, testMode ? "Sandbox" : "Live"].filter(Boolean).join(" · ")
-                : `${copy.line}${testMode ? " Sandbox." : ""}`}
-            </p>
-          </div>
-          {copy.button ? (
-            <button type="button" className={cn(PILL_BUTTON_CLASS, ready && QUIET_PILL_CLASS, "shrink-0")} disabled={pending} onClick={() => void stripe()}>
-              {busy === "stripe" ? "Opening…" : copy.button}
-              {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-            </button>
-          ) : null}
-        </div>
-        {ready ? (
-          <ul className="grid gap-2 sm:grid-cols-3">
-            {accountChecks(account).map(({ label, done }) => (
-              <li key={label} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium", done ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800")}>
-                {done ? <CheckCircleIcon size={18} weight="fill" aria-hidden /> : <ClockIcon size={18} weight="bold" aria-hidden />}
-                <span>{label}</span>
-                <span className="sr-only">{done ? ": done" : ": waiting on Stripe"}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+          })}
+        </ul>
       </Card>
-      {serviceCard({
-        key: "prepayments",
-        name: "Mesita Prepayments",
-        line: "Guests pay ahead by card and get extra credit. Several vouchers add up in one wallet and pay one bill together.",
-        icon: TicketIcon,
-        tone: "bg-emerald-100 text-emerald-700",
-        blocked: !settings.house_credits ? needsHouseCredits : undefined,
-        stripe: true,
-        note: settings.prepayments
-          ? fee.hold
-              ? "Off until Mesita's invoice is paid."
-              : state.sell.length === 0
-                ? "Switch on at least one voucher to sell."
-                : null
-          : null,
-        checks: [
-          {
-            label: settings.house_credits ? "House Credits on" : "House Credits off",
-            done: settings.house_credits,
-            fix: contract.signed ? fix("Turn on", () => void flip("house_credits", true)) : fix("Sign", () => setAgreeing(true)),
-          },
-          { label: takesCards ? "Stripe Account takes cards" : "Stripe Account not taking cards", done: takesCards, fix: stripeFix },
-          ...feeCheck,
-        ],
-        inner: (
-          <>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-place-state="vouchers">
-              {[...STANDARD, ...SPECIAL].map(voucherCard)}
-            </ul>
-            {!settings.prepayments ? (
-              <p className="text-muted-foreground flex items-center gap-2 text-sm" data-vouchers-locked>
-                <LockSimpleIcon size={16} weight="bold" aria-hidden /> Which vouchers you sell, once Mesita Prepayments is on.
-              </p>
-            ) : null}
-          </>
-        ),
-      })}
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Mesita Prepayments</h2>
+        <ul className="divide-border divide-y" data-place-state="vouchers">
+          {switchRow({
+            key: "prepayments",
+            id: "mesita-prepayments",
+            name: "Mesita Prepayments",
+            line: "Guests pay ahead by card and get extra credit. Several vouchers add up in one wallet and pay one bill together.",
+            icon: TicketIcon,
+            tone: "bg-emerald-100 text-emerald-700",
+            blocked: !settings.house_credits ? needsHouseCredits : undefined,
+            stripe: true,
+            note: settings.prepayments
+              ? fee.hold
+                  ? "Off until Mesita's invoice is paid."
+                  : state.sell.length === 0
+                    ? "Switch on at least one voucher to sell."
+                    : null
+              : null,
+          })}
+          {[...STANDARD, ...SPECIAL].map(voucherRow)}
+        </ul>
+      </Card>
       {agreeing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>
           <div

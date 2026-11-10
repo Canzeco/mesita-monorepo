@@ -30,7 +30,9 @@ export const ACCOUNT = "/account";
 // a place's ways to pay live on Payments.
 // No Reviews tab (MESITA-3393, Pato: "move reviews inside Profile"): the
 // reviews boxes sit under the Profile editor; /reviews redirects there.
-export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "all", "billing", "settings", "admin"] as const;
+// Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
+// configure no or yes") holds its one switch, moved from Settings › Actions.
+export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "reservations", "all", "billing", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
