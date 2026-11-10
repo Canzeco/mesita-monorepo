@@ -12,21 +12,15 @@
 //   409 paying | paid | paid_part | expired | waiting_bill | billed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { callTabRpc, rpcRefusal } from "../_shared/tab.ts";
-import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("consumer-web-cancel-tab", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to pay" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const { tab_id: tabId, mode } = bodyRes.body;
@@ -34,9 +28,9 @@ serveJson("consumer-web-cancel-tab", async (req) => {
   if (mode !== "cancel" && mode !== "change") return json({ ok: false, error: "mode is cancel or change" }, 400);
 
   try {
-    const r = await callTabRpc(adminClient(envRes.env), "pay_tab_change", {
+    const r = await callTabRpc(admin, "pay_tab_change", {
       p_tab_id: tabId,
-      p_consumer_id: authRes.user.id,
+      p_consumer_id: user.id,
       p_mode: mode,
     });
     if (r.ok !== true) {
@@ -46,8 +40,6 @@ serveJson("consumer-web-cancel-tab", async (req) => {
     console.log("[consumer-web-cancel-tab]", JSON.stringify({ outcome: r.outcome, tab_id: tabId }));
     return json({ ok: true, outcome: r.outcome, bill_version: r.bill_version ?? null });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[consumer-web-cancel-tab]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't cancel. Try again.", request_id }, 500);
+    return failWithRequestId("consumer-web-cancel-tab", "Couldn't cancel. Try again.", err);
   }
 });

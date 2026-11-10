@@ -10,28 +10,22 @@
 //   400 · 401 sign_in · 404 gone (not the caller's) · 409 claimed · 500
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { giftRefusalStatus } from "../_shared/gift.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-take-back-credit", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to take it back" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to take it back" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const giftId = bodyRes.body.gift_id;
   if (!isUuid(giftId)) return json({ ok: false, error: "gift_id must be a uuid" }, 400);
 
-  const admin = adminClient(envRes.env);
-  const { data, error } = await admin.rpc("wallet_take_back_gift", { p_gift_id: giftId, p_sender_id: authRes.user.id });
+  const { data, error } = await admin.rpc("wallet_take_back_gift", { p_gift_id: giftId, p_sender_id: user.id });
   if (error) {
     console.error("[consumer-web-take-back-credit] rpc", error.message);
     return json({ ok: false, error: "Couldn't take it back. Try again." }, 500);

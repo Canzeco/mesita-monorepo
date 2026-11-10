@@ -23,28 +23,21 @@
 // fixture's DB effects (enriched_at, fields, media).
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · start · smoke-enrich.
-// Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
+// Auth: verify_jwt = true + requireInternalRequest (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { startSmokeEnrich } from "../_shared/smoke-enrich.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const SOURCE = "supabase-edgefunc-start-smoke-enrich";
 
 serveJson("supabase-edgefunc-start-smoke-enrich", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, callerName } = ctx;
 
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const caller = requireInternalCaller(req, envRes.env);
-  if (!caller.ok) return caller.response;
-
-  const admin = adminClient(envRes.env);
   const started = await startSmokeEnrich(admin);
   await recordAdminOperatorEvent(admin, {
     verb: "enrich",
@@ -52,7 +45,7 @@ serveJson("supabase-edgefunc-start-smoke-enrich", async (req) => {
     placeId: started.placeId ?? null,
     actorUserId: null,
     source: SOURCE,
-    detail: { smoke: true, caller: caller.callerName, ...(started.ok ? {} : { error: started.error }) },
+    detail: { smoke: true, caller: callerName, ...(started.ok ? {} : { error: started.error }) },
   });
   if (!started.ok) return json({ ok: false, error: started.error }, started.status);
   return json({ ok: true, placeId: started.placeId, task: started.task });

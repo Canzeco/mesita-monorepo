@@ -13,29 +13,18 @@
 // Deploy: supabase functions deploy consumer-web-delete-account
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 import { boostStripeKey, endConsumerPledges, stripeClient } from "../_shared/boost.ts";
 
 serveJson("consumer-web-delete-account", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
   // Account close is self-only — the JWT identifies which row to
   // tombstone or hard-delete. No body needed.
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
-
-  const admin = adminClient(envRes.env);
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   // Premier (MESITA-2995): settle any charge in flight and take every pledge
   // out of its line (cards detached) before the account goes, or a renewal

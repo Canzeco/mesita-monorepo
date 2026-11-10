@@ -17,8 +17,8 @@
 // body field, so a guest can only ever write under their own id.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import {
   fromWire,
   SAVED_LOCATION_COLUMNS,
@@ -30,20 +30,14 @@ import {
 type Body = { op?: string; location?: unknown; front?: boolean; id?: unknown };
 
 serveJson("consumer-web-save-location", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const consumerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
-  const admin = adminClient(envRes.env);
 
   if (body.op === "remove") {
     const id = typeof body.id === "string" ? body.id.trim() : "";

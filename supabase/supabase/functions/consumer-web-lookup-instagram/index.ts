@@ -36,15 +36,9 @@
 //   500 sync_write_failed (+ requestId) · 502 scrape · 503 unavailable
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import {
-  corsPreflight,
-  json,
-  readJson,
-  rejectUnlessMethods,
-  serveJson,
-} from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
 import {
   adoptInstagramAvatar,
   type InstagramAvatarResult,
@@ -222,15 +216,10 @@ async function sync(
 }
 
 serveJson("consumer-web-lookup-instagram", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const consumerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -244,7 +233,6 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
     }, 400);
   }
 
-  const admin = adminClient(envRes.env);
   const provider = readInstagramLookup();
 
   if (body.action === "sync") {
@@ -255,7 +243,7 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
         code: "unavailable",
       }, 503);
     }
-    return await sync(admin, envRes.env.url, consumerId, provider);
+    return await sync(admin, env.url, consumerId, provider);
   }
 
   const username = normalizeHandle(body.username);
@@ -284,7 +272,7 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
   // The handle already connected: that is a Sync, with its limits.
   const current = await readInstagramSyncState(admin, consumerId);
   if (current.ok && current.handle === username && !current.deleted) {
-    return await sync(admin, envRes.env.url, consumerId, provider);
+    return await sync(admin, env.url, consumerId, provider);
   }
 
   const refused = await claimScrape(admin, consumerId, "connect");
@@ -321,7 +309,7 @@ serveJson("consumer-web-lookup-instagram", async (req) => {
 
   const photo = await adoptInstagramAvatar(
     admin,
-    envRes.env.url,
+    env.url,
     consumerId,
     profile.profilePictureUrl,
   );

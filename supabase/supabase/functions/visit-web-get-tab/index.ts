@@ -14,28 +14,23 @@
 //   400 (not a token) · 404 not_found
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { isTabToken, readTabByToken, readTabParts, staffTabView } from "../_shared/tab.ts";
-import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("visit-web-get-tab", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isTabToken(token)) return json({ ok: false, error: "That is not a tab" }, 400);
 
   try {
-    const admin = adminClient(envRes.env);
     const tab = await readTabByToken(admin, token);
     if (!tab) return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     const [parts, settings, placeRes] = await Promise.all([
@@ -49,8 +44,6 @@ serveJson("visit-web-get-tab", async (req) => {
       tab: staffTabView(tab, parts, { placeName: placeRes.place?.name ?? null, cashBackBps: moneyState({ ...settings, has_place_code: true }, null, null).cash_cashback_bps, nowMs: Date.now() }),
     });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[visit-web-get-tab]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't read the tab. Try again.", request_id }, 500);
+    return failWithRequestId("visit-web-get-tab", "Couldn't read the tab. Try again.", err);
   }
 });

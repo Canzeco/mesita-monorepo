@@ -16,24 +16,21 @@
 //   400 (not a token) · 404 gone
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { getCharge, isChargeToken, supabaseChargeStore } from "../_shared/charge.ts";
 
 serveJson("visit-web-get-charge", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isChargeToken(token)) return json({ ok: false, error: "That is not a charge" }, 400);
 
-  const view = await getCharge(supabaseChargeStore(adminClient(envRes.env)), token, Date.now());
+  const view = await getCharge(supabaseChargeStore(admin), token, Date.now());
   if (!view) return json({ ok: false, code: "gone", error: "This charge is over. Open a new charge." }, 404);
   return json({ ok: true, ...view });
 });

@@ -20,26 +20,20 @@
 // (discovery_config.chat.prompt).
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · get · memo-config.
-// Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
+// Auth: verify_jwt = true + requireInternalRequest (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { loadModelsConfig } from "../_shared/models-config.ts";
 import { normalizeMemoConfig } from "../_shared/memo-config.ts";
 import { normalizeDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("supabase-edgefunc-get-memo-config", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const callerRes = requireInternalCaller(req, envRes.env);
-  if (!callerRes.ok) return callerRes.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, callerName } = ctx;
 
   // Body is unused today, but read it so a malformed POST fails the same way
   // every other EF fails rather than throwing mid-handler.
@@ -54,11 +48,10 @@ serveJson("supabase-edgefunc-get-memo-config", async (req) => {
     greeting: null,
     instructions: null,
     model: null,
-    caller: callerRes.callerName,
+    caller: callerName,
   };
 
   try {
-    const admin = adminClient(envRes.env);
     const [{ data, error }, models] = await Promise.all([
       admin
         .from("app_config")
@@ -90,7 +83,7 @@ serveJson("supabase-edgefunc-get-memo-config", async (req) => {
       greeting: greeting.length > 0 ? greeting : null,
       instructions: instructions.length > 0 ? instructions : null,
       model: models.memoModel,
-      caller: callerRes.callerName,
+      caller: callerName,
     });
   } catch (e) {
     console.error("[get-memo-config] threw:", errorMessage(e));

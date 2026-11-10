@@ -27,32 +27,20 @@
 // The decisions live in join.ts (handleJoin), tested with no network.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {
-  corsPreflight,
-  json,
-  readJson,
-  rejectUnlessMethods,
-  serveJson,
-} from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { readClassJoinRow, redeemVipInvitation, writeOwnGuestClass } from "../_shared/consumer-doc.ts";
 import { handleJoin } from "./join.ts";
 
 serveJson("consumer-web-join-class", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
-  const admin = adminClient(envRes.env);
-  const userId = authRes.user.id;
+  const userId = user.id;
   const res = await handleJoin(bodyRes.body, {
     redeemCode: (code) => redeemVipInvitation(admin, userId, code),
     readRow: () => readClassJoinRow(admin, userId),

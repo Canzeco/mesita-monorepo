@@ -31,8 +31,8 @@
 //   this guest)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
@@ -45,23 +45,17 @@ import { guestTabView, readTabById, readTabParts } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("consumer-web-get-tab", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to pay" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const tabId = bodyRes.body.tab_id;
   if (!isUuid(tabId)) return json({ ok: false, error: "tab_id must be a tab id" }, 400);
 
   try {
-    const admin = adminClient(envRes.env);
     const tab = await readTabById(admin, tabId);
-    if (!tab || tab.consumer_id !== authRes.user.id) {
+    if (!tab || tab.consumer_id !== user.id) {
       return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     }
     const key = paymentsStripeKey();
@@ -92,7 +86,7 @@ serveJson("consumer-web-get-tab", async (req) => {
     const [settings, placeRes, balance, account] = await Promise.all([
       readSettings(admin, tab.place_id),
       readVoucherPlace(admin, tab.place_id),
-      readPlaceBalance(admin, authRes.user.id, tab.place_id, tab.currency, tab.livemode),
+      readPlaceBalance(admin, user.id, tab.place_id, tab.currency, tab.livemode),
       readAccount(admin, tab.place_id),
     ]);
     if (!placeRes.ok) throw new Error(placeRes.error);
@@ -102,7 +96,7 @@ serveJson("consumer-web-get-tab", async (req) => {
 
     let cards: Array<Record<string, unknown>> | undefined;
     if (bodyRes.body.with_cards === true && rates.card_available && stripe) {
-      const customer = await readCustomer(admin, authRes.user.id, livemode);
+      const customer = await readCustomer(admin, user.id, livemode);
       try {
         cards = customer
           ? (await listCards(stripe, customer, new Set())).map((c) => ({ id: c.id, brand: c.brand, last4: c.last4, exp_month: c.exp_month, exp_year: c.exp_year }))
@@ -129,8 +123,6 @@ serveJson("consumer-web-get-tab", async (req) => {
       ...(cardError ? { card_error: cardError } : {}),
     });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[consumer-web-get-tab]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't read the tab. Try again.", request_id }, 500);
+    return failWithRequestId("consumer-web-get-tab", "Couldn't read the tab. Try again.", err);
   }
 });

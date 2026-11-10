@@ -12,23 +12,21 @@
 // Response: { ok: true, name: string | null }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { anonClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { anonClient } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
 
 serveJson("consumer-web-get-pay-place-name", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
-  const { data, error } = await anonClient(envRes.env)
+  const { data, error } = await anonClient(env)
     .from("profiles")
     .select("name")
     .eq("id", placeId)

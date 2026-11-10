@@ -22,8 +22,8 @@
 // Deploy: supabase functions deploy consumer-web-suggest-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { readEFEnv } from "../_shared/auth.ts";
+import { readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { runConsumerNamePipeline } from "../_shared/name-pipeline.ts";
 import { runLocationAnchor, runPlacePreview } from "./handlers.ts";
 
@@ -40,13 +40,9 @@ type Body = {
 };
 
 serveJson("consumer-web-suggest-places", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;

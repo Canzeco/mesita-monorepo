@@ -9,7 +9,7 @@ import type { PlaceFamily } from "./categories.ts";
 import { isOperatorField, type OperatorField } from "./operator-fields.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
-import { optString } from "./place-update-utils.ts";
+import { optString } from "./input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import { readFamilyKeysBody } from "./place-families-body.ts";
 

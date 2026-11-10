@@ -157,12 +157,6 @@ export const CATALOG_FAMILIES: readonly {
   { slug: "undefined", label: "Undefined", emoji: "·", sort_order: 999 },
 ];
 
-const FAMILY_SET = new Set<string>(CATALOG_FAMILIES.map((f) => f.slug));
-
-export function isCatalogFamily(value: string): value is FamilyKey {
-  return FAMILY_SET.has(value);
-}
-
 /**
  * Not social, still (MESITA-2468, kept by MESITA-2888): the sport, fitness
  * and beauty places a guest goes to alone. Every one sits in no family;

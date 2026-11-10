@@ -16,8 +16,6 @@
 import { type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
-export { sanitizePlaceTags } from "./tags-sanitize.ts";
-
 /** Mesita tags per place: the one cap every writer uses. */
 export const MAX_PLACE_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 

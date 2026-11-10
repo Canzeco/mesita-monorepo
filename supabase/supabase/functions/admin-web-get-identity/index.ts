@@ -15,20 +15,17 @@
 // Deploy: supabase functions deploy admin-web-get-identity
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, jsonOk, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, checkSuperAdmin, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { jsonOk, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { checkSuperAdmin, getAuthedUser } from "../_shared/auth.ts";
 
 serveJson("admin-web-get-identity", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
+  const authRes = await getAuthedUser(req, env);
   if (!authRes.ok) return authRes.response;
 
-  const admin = adminClient(envRes.env);
   const isSuperAdmin = await checkSuperAdmin(admin, authRes.user);
 
   return jsonOk({ email: authRes.user.email, isSuperAdmin });

@@ -11,6 +11,7 @@
 
 import { numOf } from "./parse-utils.ts";
 import { normalizeHandle } from "./instagram-claim.ts";
+import { timingSafeEqual } from "./timing-safe-equal.ts";
 
 /** The Graph API version the webhook calls. Bump on purpose, never `latest`. */
 export const META_GRAPH_VERSION = "v25.0";
@@ -133,12 +134,7 @@ export async function signatureIsValid(
     await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody)),
   );
   const got = header.slice("sha256=".length).toLowerCase();
-  if (got.length !== want.length) return false;
-  let diff = 0;
-  for (let i = 0; i < want.length; i++) {
-    diff |= want.charCodeAt(i) ^ got.charCodeAt(i);
-  }
-  return diff === 0;
+  return timingSafeEqual(got, want);
 }
 
 /** The bot's replies. Plain, one line each. */

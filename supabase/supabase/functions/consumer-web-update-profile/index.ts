@@ -5,15 +5,11 @@
 // onboarding works even if the user hasn't hit /qr yet to trigger
 // consumer-web-get-profile's lazy create.
 //
-// Self-contained: own JWT verification, own DB writes via the service role.
+// Self-contained: the consumer door verifies the JWT; own DB writes via the service role.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { clean } from "../_shared/input.ts";
 import { isInstagramAvatar } from "../_shared/instagram-avatar.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
@@ -35,15 +31,10 @@ const CONSUMER_PROFILE_SELECT =
   "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, use_instagram_photo, appear_anonymous, guest_class, plan";
 
 serveJson("consumer-web-update-profile", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<UpdateProfileBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -75,11 +66,9 @@ serveJson("consumer-web-update-profile", async (req) => {
   if (!birthdayRes.ok) return birthdayRes.response;
   const { birthday } = birthdayRes;
 
-  const avatarRes = parseAvatarUrl(body.avatar_url, userId, envRes.env.url);
+  const avatarRes = parseAvatarUrl(body.avatar_url, userId, env.url);
   if (!avatarRes.ok) return avatarRes.response;
   const { avatarUrl } = avatarRes;
-
-  const admin = adminClient(envRes.env);
 
   // Ensure a consumer row exists. If not, create it with a generated code so
   // the validator can scan the QR immediately after onboarding.
@@ -156,9 +145,9 @@ serveJson("consumer-web-update-profile", async (req) => {
 
   // A new upload gets the three sizes screens load (MESITA-2966).
   if (typeof avatarUrl === "string" && avatarUrl !== existing.data?.avatar_url) {
-    const base = envRes.env.url.replace(/\/+$/, "");
+    const base = env.url.replace(/\/+$/, "");
     const path = avatarUrl.slice(`${base}/storage/v1/object/public/${AVATAR_BUCKET}/`.length);
-    runInBackground(savePhotoSizes(admin, envRes.env.url, AVATAR_BUCKET, path));
+    runInBackground(savePhotoSizes(admin, env.url, AVATAR_BUCKET, path));
   }
 
   return json({ ok: true, consumer: update.row });

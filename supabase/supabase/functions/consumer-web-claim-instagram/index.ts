@@ -42,8 +42,8 @@
 //     pending claim is left to expire. The app asks to confirm first.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, jsonError, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, jsonError, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { APIFY_ACTORS, runApifyActor } from "../_shared/apify.ts";
 import { isDeadIgStub } from "../_shared/enrich-instagram-match.ts";
 import { adoptInstagramAvatar, pickProfilePicUrl } from "../_shared/instagram-avatar.ts";
@@ -66,21 +66,15 @@ const QUIET_PHOTO_REASONS = new Set(["no_photo", "photo_off"]);
 const SCRAPE_TIMEOUT_MS = 45_000;
 
 serveJson("consumer-web-claim-instagram", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const consumerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const body = bodyRes.body;
 
-  const admin = adminClient(envRes.env);
   const now = Date.now();
 
   if (body.action === "channel") {
@@ -248,7 +242,7 @@ serveJson("consumer-web-claim-instagram", async (req) => {
 
     const photo = await adoptInstagramAvatar(
       admin,
-      envRes.env.url,
+      env.url,
       consumerId,
       pickProfilePicUrl(profile),
       now,

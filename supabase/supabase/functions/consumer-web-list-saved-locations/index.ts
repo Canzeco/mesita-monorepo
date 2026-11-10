@@ -13,8 +13,8 @@
 // and the consumer's backfill names it again.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import {
   SAVED_LOCATION_COLUMNS,
   SAVED_LOCATIONS_MAX,
@@ -23,19 +23,14 @@ import {
 } from "../_shared/saved-locations.ts";
 
 serveJson("consumer-web-list-saved-locations", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const { data, error } = await adminClient(envRes.env)
+  const { data, error } = await admin
     .from("saved_locations")
     .select(SAVED_LOCATION_COLUMNS)
-    .eq("consumer_id", authRes.user.id)
+    .eq("consumer_id", user.id)
     .order("ordered_at", { ascending: false })
     .limit(SAVED_LOCATIONS_MAX);
   if (error) {

@@ -29,14 +29,14 @@
 // (rotating run_id), so an overlapping poll loses the swap and skips.
 //
 // Body: { limit?: number } — per-sweep batch cap (default 25).
-// Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
+// Auth: verify_jwt = true + requireInternalRequest (the pg_cron vault key).
 //
 // Deploy: supabase functions deploy supabase-cron-retry-reservations
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, readLimit, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { invokeInternalCaller, requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJsonOr, readLimit, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
+import { invokeInternalCaller } from "../_shared/internal.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { validateReservationPatch } from "../_shared/reservation-doc.ts";
 
@@ -55,19 +55,13 @@ const EXPIRE_AFTER_MS = 4 * 3600_000; // mirrors the app's passed-grace window
 const STALE_CLAIM_MS = 10 * 60_000; // any leg's longest legal run is < 5 min
 
 serveJson("supabase-cron-retry-reservations", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = requireInternalCaller(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const body = await readJsonOr<{ limit?: number }>(req, {});
   const limit = readLimit(body.limit, DEFAULT_LIMIT, MAX_LIMIT);
 
-  const admin = adminClient(envRes.env);
   const nowIso = new Date().toISOString();
   const expiryFloor = new Date(Date.now() - EXPIRE_AFTER_MS).toISOString();
   const staleClaim = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
@@ -160,7 +154,7 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
     let woken = 0;
     for (const id of ids) {
       const res = await invokeInternalCaller(
-        envRes.env,
+        env,
         "supabase-cron-retry-reservations",
         "supabase-edgefunc-place-reservation-call",
         intent === "book" ? { reservation_id: id } : { reservation_id: id, intent },

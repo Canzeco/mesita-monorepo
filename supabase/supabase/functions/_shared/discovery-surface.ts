@@ -344,12 +344,6 @@ export function signalByKey(key: DiscoverySignalKey): DiscoverySignalFact {
   return found;
 }
 
-export function gateByKey(key: DiscoveryGateKey): DiscoveryGateFact {
-  const found = DISCOVERY_GATES.find((g) => g.key === key);
-  if (!found) throw new Error(`unknown gate ${key}`);
-  return found;
-}
-
 /** DERIVED: a source can feed a signal or gate when it provides every field
  *  that signal or gate reads. */
 export function sourceProvides(

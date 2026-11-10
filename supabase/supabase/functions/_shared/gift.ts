@@ -9,6 +9,7 @@
 // sees the link once, and a lost link is taken back and sent again.
 
 import { isProofToken, mintProofToken } from "./proof.ts";
+import { isUuid } from "./place-id.ts";
 import { MAX_PAYMENT_INPUT_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 
@@ -26,15 +27,13 @@ export async function hashGiftToken(token: string): Promise<string> {
 export type SendInput = { placeId: string; amountCents: number; requestId: string };
 export type Refusal = { ok: false; status: number; code?: MoneyCode; error: string };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /** The send body: a place, a whole number of cents within one payment's
  *  cap, and one request id per tap. */
 export function readSendBody(b: Record<string, unknown>): { ok: true; input: SendInput } | Refusal {
-  if (typeof b.place_id !== "string" || !UUID.test(b.place_id)) {
+  if (!isUuid(b.place_id)) {
     return { ok: false, status: 400, error: "place_id must be a Mesita place id" };
   }
-  if (typeof b.request_id !== "string" || !UUID.test(b.request_id)) {
+  if (!isUuid(b.request_id)) {
     return { ok: false, status: 400, error: "request_id must be a uuid" };
   }
   const a = b.amount_cents;

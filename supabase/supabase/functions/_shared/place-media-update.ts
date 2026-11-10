@@ -1,6 +1,6 @@
 import { json } from "./http.ts";
 import { isUrl } from "./place-urls.ts";
-import { optString } from "./place-update-utils.ts";
+import { optString } from "./input.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 
 type MediaUpdateBody = {

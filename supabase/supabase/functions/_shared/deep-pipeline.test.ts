@@ -125,10 +125,10 @@ Deno.test("the persona allows recommending from Deep's list and never contradict
 
 Deno.test("Memo's only database client feeds the config read and the three pipelines", async () => {
   const chat = await Deno.readTextFile(new URL("../consumer-web-ask-memo/index.ts", import.meta.url));
-  const uses = chat.match(/adminClient\(/g) ?? [];
-  assertEquals(uses.length, 1);
+  // The one client is the door's (MESITA-3612): no second one is made here.
+  assertEquals(chat.includes("adminClient("), false);
+  assert(chat.includes("const { env, admin } = ctx;") || chat.includes("const { admin, env } = ctx;"));
   const fn = chat.slice(chat.indexOf("async function chatPlacesFor"));
-  assert(fn.includes("adminClient(env)"));
   assert(fn.includes("loadDiscoveryConfig(admin)"));
   // The client reaches data only through the pipeline modules (MESITA-2339).
   assert(chat.includes("nameGooglePlaces(admin,"));

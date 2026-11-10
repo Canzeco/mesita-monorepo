@@ -31,8 +31,8 @@
 //   401 sign_in · 404 gone (not theirs)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment, readPlaceMarks } from "../_shared/pay.ts";
@@ -42,22 +42,16 @@ import { settlePayment } from "../_shared/settle-payment.ts";
 const SETTLE_BUDGET_MS = 3000;
 
 serveJson("consumer-web-get-payment", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to see your payment" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to see your payment" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const paymentId = bodyRes.body.payment_id;
   if (!isUuid(paymentId)) return json({ ok: false, error: "payment_id must be a uuid" }, 400);
 
-  const admin = adminClient(envRes.env);
-  let res = await readPayment(admin, authRes.user.id, paymentId);
+  let res = await readPayment(admin, user.id, paymentId);
   if (!res.ok) return json({ ok: false, error: res.error }, 500);
   if (!res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
 
@@ -78,7 +72,7 @@ serveJson("consumer-web-get-payment", async (req) => {
           expires_at: res.row.expires_at,
         }, Date.now(), { signal: controller.signal });
         if (outcome !== "pending") {
-          const again = await readPayment(admin, authRes.user.id, paymentId);
+          const again = await readPayment(admin, user.id, paymentId);
           if (again.ok && again.row) res = again;
         } else {
           // Still open: the url to resume it, read on the connected account.

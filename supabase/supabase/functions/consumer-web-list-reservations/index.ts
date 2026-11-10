@@ -13,8 +13,8 @@
 // Deploy: supabase functions deploy consumer-web-list-reservations
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { clampIntRange, corsPreflight, json, rejectUnlessMethods, readJsonOr, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { clampIntRange, json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
@@ -34,15 +34,10 @@ type Scope = "upcoming" | "past" | "all";
 type Body = { limit?: number; scope?: Scope };
 
 serveJson("consumer-web-list-reservations", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "GET", "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const consumerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req, { methods: ["GET", "POST"] });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const consumerId = user.id;
 
   let limit = DEFAULT_LIMIT;
   let scope: Scope = "upcoming";
@@ -53,8 +48,6 @@ serveJson("consumer-web-list-reservations", async (req) => {
     }
     if (body.scope === "past" || body.scope === "all") scope = body.scope;
   }
-
-  const admin = adminClient(envRes.env);
 
   // NO place embed — reservations→places is a two-hop FK chain and PostgREST
   // rejects it ("no relationship … in the schema cache"). attachPlaces does the

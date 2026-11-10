@@ -31,7 +31,6 @@ import { isProofToken, mintProofToken, tabUrl } from "./proof.ts";
 import { clientAddress, readTicket, staffTryKey } from "./charge.ts";
 import { staffAccess, supabaseStaffStore } from "./staff.ts";
 
-export const TAB_TTL_SEC = 30 * 60;
 export const WAITER_NAME_MAX = 40;
 
 export type TabRefusal = { ok: false; status: number; code: string; error: string; detail?: Record<string, unknown> };

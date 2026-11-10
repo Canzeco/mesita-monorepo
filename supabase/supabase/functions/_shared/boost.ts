@@ -1442,25 +1442,3 @@ export async function readBoostPlace(
   if (error) return { ok: false, error: `place_read: ${error.message}` };
   return { ok: true, place: data ?? null };
 }
-
-/** First names of the given payers, in order: the admin console only, never a
- *  guest (MESITA-2928). */
-export async function readBackerNames(
-  admin: SupabaseClient,
-  consumerIds: string[],
-  fallback: string,
-): Promise<string[]> {
-  if (consumerIds.length === 0) return [];
-  const { data, error } = await admin
-    .from("consumers")
-    .select("id, first_name")
-    .in("id", consumerIds);
-  if (error) {
-    console.error("[boost] backer names:", error.message);
-    return [];
-  }
-  const byId = new Map(
-    (data ?? []).map((p: { id: string; first_name: string | null }) => [p.id, p.first_name?.trim() || fallback]),
-  );
-  return consumerIds.map((id) => byId.get(id) ?? fallback);
-}

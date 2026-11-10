@@ -22,14 +22,13 @@
 // second round-trip.
 //
 // Auth: internal caller — verify_jwt = true, so the gateway verifies the
-// service_role JWT signature; requireInternalCaller then checks role=service_role.
+// service_role JWT signature; requireInternalRequest then checks role=service_role.
 //
 // Deploy: supabase functions deploy supabase-edgefunc-discover-places
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import { parseCldrRegionCode } from "../_shared/sourcing.ts";
 import {
@@ -70,22 +69,13 @@ type QueryResult = {
 };
 
 serveJson("supabase-edgefunc-discover-places", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
-
-  const callerRes = requireInternalCaller(req, env);
-  if (!callerRes.ok) return callerRes.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, callerName } = ctx;
 
   const keyRes = readGooglePlacesKey();
   if (!keyRes.ok) return keyRes.response;
   const apiKey = keyRes.key;
-
-  const admin = adminClient(env);
 
   const map = (await loadDiscoveryConfig(admin)).map;
 
@@ -262,10 +252,7 @@ serveJson("supabase-edgefunc-discover-places", async (req) => {
         mesitaMatchCount = byId.size;
       }
     } catch (err) {
-      mesitaLookupError =
-        err instanceof Error
-          ? `Mesita lookup threw: ${err.message}`
-          : `Mesita lookup threw: ${String(err)}`;
+      mesitaLookupError = `Mesita lookup threw: ${errorMessage(err)}`;
     }
   }
 
@@ -288,7 +275,7 @@ serveJson("supabase-edgefunc-discover-places", async (req) => {
     filteredOutCount,
     mesitaMatchCount,
     mesitaLookupError,
-    caller: callerRes.callerName,
+    caller: callerName,
   });
 });
 

@@ -33,7 +33,7 @@
 // { mode: "fleet", write_prompts: true } ALSO rewrites each fleet agent's
 // prompt + first message from the repo spec.
 //
-// Auth: verify_jwt = true + requireInternalCaller — invoke via pg_net with the
+// Auth: verify_jwt = true + requireInternalRequest — invoke via pg_net with the
 // vault scheduler_service_role_key, exactly like the cron schedulers do.
 //
 // Status: a read-back that fails verification on some agents (workflows,
@@ -48,9 +48,9 @@
 // Deploy: supabase functions deploy supabase-edgefunc-sync-reservationist
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
+import { adminClient } from "../_shared/auth.ts";
 import { reservationAgentId, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
 import { type AgentShape, elFetch, type ToolRow } from "./el-client.ts";
 import {
@@ -155,14 +155,9 @@ async function loadDonor(ws: WorkspaceCtx): Promise<DonorCtx | Response> {
 }
 
 serveJson("supabase-edgefunc-sync-reservationist", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = requireInternalCaller(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env } = ctx;
 
   const key = await resolveElevenLabsKey();
   if (!key?.startsWith("sk_")) {
@@ -180,7 +175,7 @@ serveJson("supabase-edgefunc-sync-reservationist", async (req) => {
   const mode = rawMode as Mode;
   const entry = MODES[mode];
 
-  const base: BaseCtx = { key, mode, body, env: envRes.env };
+  const base: BaseCtx = { key, mode, body, env };
   if (entry.stage === "base") return entry.run(base);
   const ws = await loadWorkspace(base);
   if (ws instanceof Response) return ws;

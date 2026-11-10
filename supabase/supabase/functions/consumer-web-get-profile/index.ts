@@ -8,12 +8,8 @@
 // service role, never calls another Edge Function.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { isCanonicalConsumerCode, writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   accountDeletedResponse,
@@ -21,17 +17,10 @@ import {
 } from "../_shared/delete-history-free.ts";
 
 serveJson("consumer-web-get-profile", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "GET", "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
-
-  const admin = adminClient(envRes.env);
+  const ctx = await requireConsumerRequest(req, { methods: ["GET", "POST"] });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const CONSUMER_PROFILE_SELECT =
     "id, code, full_name, first_name, last_name, sex, birthday, phone, avatar_url, instagram_handle, instagram_followers_count, instagram_verified_at, instagram_synced_at, use_instagram_photo, appear_anonymous, guest_class, plan, vip_partner_id, vip_until, deleted_at";

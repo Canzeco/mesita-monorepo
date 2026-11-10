@@ -15,8 +15,7 @@
 // local wall clock from the place's longitude, exactly like place recall —
 // one interpretation of "open", never two.
 
-import { localClock, type WeeklyHours } from "./local-time.ts";
-import { DAY_KEYS, isOpenAt, toMinutes } from "./local-time-open.ts";
+import { DAY_KEYS, isOpenAt, localClock, toMinutes, type WeeklyHours } from "./local-time.ts";
 
 const OPEN_RETRY_MINUTES = 5;
 const AFTER_OPENING_MINUTES = 30;

@@ -18,18 +18,14 @@
 //   closed | place_code_required | locked
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { callTabRpc, hashTabToken, readCashBody, readTabByToken, rpcRefusal, tabStaffAccess } from "../_shared/tab.ts";
-import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("visit-web-cash-tab", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const parsed = readCashBody(bodyRes.body);
@@ -37,11 +33,10 @@ serveJson("visit-web-cash-tab", async (req) => {
   const input = parsed.input;
 
   try {
-    const admin = adminClient(envRes.env);
     const tab = await readTabByToken(admin, input.token);
     if (!tab) return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
     const staff = await tabStaffAccess(admin, {
-      serviceKey: envRes.env.serviceKey,
+      serviceKey: env.serviceKey,
       headers: req.headers,
       placeId: tab.place_id,
       key: input,
@@ -80,8 +75,6 @@ serveJson("visit-web-cash-tab", async (req) => {
       ...minted,
     });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[visit-web-cash-tab]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't confirm. Try again.", request_id }, 500);
+    return failWithRequestId("visit-web-cash-tab", "Couldn't confirm. Try again.", err);
   }
 });

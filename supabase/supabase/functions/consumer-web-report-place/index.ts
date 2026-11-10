@@ -21,30 +21,24 @@
 // the place screen hides Report there.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { parsePlaceReport } from "../_shared/place-reports.ts";
 
 const HOURLY_CAP = 20;
 
 serveJson("consumer-web-report-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const parsed = parsePlaceReport(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, 400);
   const { placeId, reason, note } = parsed.report;
-  const consumerId = authRes.user.id;
+  const consumerId = user.id;
 
-  const admin = adminClient(envRes.env);
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const count = await admin
     .from("place_reports")

@@ -17,12 +17,11 @@
 // spent, per step, is stored as one place_enrichment_runs row (./run-cost.ts).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireEnrichWriteRequest } from "../_shared/request.ts";
 import { validateProfilePatch, writePlace } from "../_shared/place-doc.ts";
 import { mirrorPlacePhotos, saveGalleryAnalyses } from "../_shared/store-place-images.ts";
 import { pairedAnalyses } from "../_shared/photo-analysis.ts";
-import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
 import { activeFieldPins, readFieldPins, stripPinnedColumns } from "../_shared/enrich-corrections.ts";
 import { readOperatorFields, stripOperatorFields } from "../_shared/operator-fields.ts";
 import { applyInferredPlaceName } from "../_shared/place-name-door.ts";
@@ -36,24 +35,12 @@ import { enrichStepOutcomes } from "./steps.ts";
 import { readRunCost, recordRunCost } from "./run-cost.ts";
 
 serveJson("enricher-edgefunc-write-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const writeKey = Deno.env.get("ENRICH_WRITE_KEY")?.trim() ?? "";
-  if (!writeKey) return json({ ok: false, error: "Server misconfigured" }, 500);
-  const header = req.headers.get("Authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
-  if (!token || !timingSafeEqual(token, writeKey)) {
-    return json({ ok: false, error: "Unauthorized" }, 401);
-  }
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = requireEnrichWriteRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
   const bodyRes = await readJson<unknown>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
-  const admin = adminClient(envRes.env);
   const runCost = readRunCost(bodyRes.body);
   const stop = enrichmentStop(bodyRes.body);
   if (stop.kind === "invalid") return json({ ok: false, error: stop.error }, 400);
@@ -181,7 +168,7 @@ serveJson("enricher-edgefunc-write-place", async (req) => {
     patch = { ...patchWithoutGallery(patch), photos: gallery };
     stored = gallery.map((url) => ({ sourceUrl: url, publicUrl: url }));
   } else {
-    const durable = await mirrorPlacePhotos(admin, envRes.env.url, gallery);
+    const durable = await mirrorPlacePhotos(admin, env.url, gallery);
     if (durable.length > 0) {
       patch = {
         ...patchWithoutGallery(patch),
