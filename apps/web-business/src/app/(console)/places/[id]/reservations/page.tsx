@@ -6,7 +6,8 @@ export const metadata = { title: "Reservations" };
 // configure no or yes"): one switch, moved from Settings › Actions. Guests
 // ask for a table on Mesita and the Reservationist calls the place's phone to
 // book it (Pato: "Reservations are received via phone. There are no
-// operations logs"), so there is no list or log here. The place comes from
+// operations logs"), so there is no list or log here; the page holds the
+// switch and the Reservations phone (MESITA-3601). The place comes from
 // the place layout's PlaceContext, so a flip survives moving between tabs.
 export default function ReservationsPage() {
   return (
