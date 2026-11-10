@@ -98,7 +98,9 @@ function newestFirst(a: WalletBalance, b: WalletBalance): number {
 
 /** Money held always shows; a $0 balance only where Mesita Payments is on. */
 function shows(b: WalletBalance): boolean {
-  return hasMoney(b) || b.place?.mesita_pay === true;
+  // A pinned House Card shows at $0 (MESITA-3611); the server pins only
+  // where the place has House Credits On.
+  return hasMoney(b) || b.pinned === true || b.place?.mesita_pay === true;
 }
 
 function balanceRow(b: WalletBalance): Row {
