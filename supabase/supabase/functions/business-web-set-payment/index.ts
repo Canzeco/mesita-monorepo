@@ -5,20 +5,21 @@
 //
 // MESITA-3589: the Place states of Main §10. A switch (House Credits, Cash
 // Payments, Mesita Payments, or one of the six Prepaid Vouchers) on or off,
-// or a cashback rate (card or cash) as whole percents 1..20, or Off.
+// or a cashback (card or cash): Off, or its one rate (MESITA-3596: card 5%,
+// cash 2%).
 // The rules, each with the one step that unlocks it:
 //   - House Credits On needs a signed House Credits Contract (SQL refuses
 //     too). House Credits Off turns the vouchers off with it, since they
 //     sell House Credits; credit guests already hold stays spendable.
 //   - A voucher On needs House Credits On (SQL refuses too).
 //   - Cash Payments On needs the place code (the waiter's Received).
-//   - While Mesita Payments is on, the cash rate is never above the card
-//     rate (SQL refuses too; turning Mesita Pay on over it answers the same).
+//   - The rates are fixed, so cash (2%) is never above card (5%); the SQL
+//     guard stays as a backstop.
 //
 // Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|voucher_*, enabled: boolean }
-//    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 100..2000 (whole percents) | null }
+//    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 500 (card) | 200 (cash) | null }
 // Response: { ok: true, settings: { ...every setting } }
-//   409 { code: needs_contract | needs_house_credits | needs_place_code | cash_above_card }
+//   409 { code: needs_contract | needs_house_credits | needs_place_code }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -46,8 +47,8 @@ serveJson("business-web-set-payment", async (req) => {
   if (isPaymentKey(key) && typeof enabled !== "boolean") {
     return json({ ok: false, code: "invalid", error: "enabled must be true or false" }, 400);
   }
-  if (isRateKey(key) && bps !== null && !isValidCashbackBps(bps)) {
-    return json({ ok: false, code: "invalid", error: "Cashback is a whole percent from 1% to 20%, or Off" }, 400);
+  if (isRateKey(key) && bps !== null && !isValidCashbackBps(key, bps)) {
+    return json({ ok: false, code: "invalid", error: key === "card_cashback_bps" ? "Mesita Payments Cashback is Off or 5%." : "Cash Payments Cashback is Off or 2%." }, 400);
   }
 
   const access = await requirePlaceAccess(admin, user, placeId);
@@ -81,10 +82,6 @@ serveJson("business-web-set-payment", async (req) => {
     }
     patch[key] = on;
   } else {
-    const next = { ...current, [key]: bps as number | null };
-    if (next.pay_cards && next.cash_cashback_bps !== null && next.card_cashback_bps !== null && next.cash_cashback_bps > next.card_cashback_bps) {
-      return json({ ok: false, code: "cash_above_card", error: "Cash cashback can't be higher than Mesita Pay cashback." }, 409);
-    }
     patch[key] = bps;
   }
 
@@ -101,9 +98,6 @@ serveJson("business-web-set-payment", async (req) => {
     }
     if (error.message.includes("prepay_needs_house_credits")) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
-    }
-    if (error.message.includes("cash_le_card")) {
-      return json({ ok: false, code: "cash_above_card", error: "Cash cashback can't be higher than Mesita Pay cashback." }, 409);
     }
     return json({ ok: false, error: `place_payment_settings: ${error.message}` }, 500);
   }

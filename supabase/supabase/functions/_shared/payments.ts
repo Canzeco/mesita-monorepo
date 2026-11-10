@@ -55,11 +55,11 @@ export function isRateKey(v: unknown): v is RateKey {
   return typeof v === "string" && (RATE_KEYS as readonly string[]).includes(v);
 }
 
-/** The rate an owner may set: whole percents 1..20, as bps (Main §10). */
-export const CASHBACK_MIN_BPS = 100;
-export const CASHBACK_MAX_BPS = 2000;
-export function isValidCashbackBps(v: unknown): v is number {
-  return typeof v === "number" && Number.isInteger(v) && v >= CASHBACK_MIN_BPS && v <= CASHBACK_MAX_BPS && v % 100 === 0;
+/** The one rate each cashback may take when on (MESITA-3596, Pato: "OFF or
+ *  2% and OFF or 5%"): Mesita Payments 5%, Cash Payments 2%. Off is null. */
+export const CASHBACK_BPS: Record<RateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
+export function isValidCashbackBps(key: RateKey, v: unknown): v is number {
+  return v === CASHBACK_BPS[key];
 }
 
 /** Every column a settings read selects. */
