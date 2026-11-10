@@ -32,9 +32,6 @@ export function factOn(
   // place must never read Enriched off either it or content_state.
   if (key === "enriched") return hit.enriched;
   if (key === "enriching") return hit.enriching;
-  // Stripe (MESITA-3394): can take payments in the server's Stripe mode;
-  // null (a failed read, or an older EF) is unknown.
-  if (key === "stripe_connected") return hit.stripe_connected ?? "unknown";
   return "unknown";
 }
 
@@ -58,22 +55,5 @@ export function crenupCalled(
   return hit.enrich_crenup >= fn.n;
 }
 
-// The Stripe filter over a Mesita Search run (MESITA-3395). Three values an
-// operator chases, then "?" for a row the EF could not read and "Not on
-// Mesita" for a pasted ID with no place, so the counts always add up to the
-// run. "All" is the run itself.
-export const STRIPE_FILTERS = [
-  { key: "all", label: "All" },
-  { key: "none", label: "No account" },
-  { key: "onboarding", label: "Onboarding" },
-  { key: "charging", label: "Charging" },
-  { key: "unknown", label: "?" },
-  { key: "missing", label: "Not on Mesita" },
-] as const;
-
-export type StripeFilter = (typeof STRIPE_FILTERS)[number]["key"];
-
-export function stripeFilterOf(row: Row): Exclude<StripeFilter, "all"> {
-  if (!row.hit) return "missing";
-  return row.hit.stripe_state ?? "unknown";
-}
+// The Stripe filter (MESITA-3395) became a filter over every state of Main
+// §10, Stripe's seven values among them: place-state-cells.ts (MESITA-3595).

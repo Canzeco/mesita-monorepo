@@ -34,7 +34,7 @@ describe("the page chrome names the five surfaces", () => {
 });
 
 describe("Mesita Search returns the whole catalog too", () => {
-  it("walks the catalog in the EF — paged, capped, and honest about the cap", () => {
+  it("walks the catalog in the EF — paged, batched by a cursor, and honest about the total", () => {
     const ef = readFileSync(
       join(
         here,
@@ -47,10 +47,12 @@ describe("Mesita Search returns the whole catalog too", () => {
     // Pages, because PostgREST caps one response at db.max_rows.
     expect(ef).toContain("ALL_PAGE_SIZE");
     expect(ef).toContain("ALL_MAX_ROWS");
-    expect(ef).toContain(".range(from, to)");
+    // Keyset by id: each batch starts after the last id, and a full batch
+    // hands back `next` so the console reads the whole catalog (MESITA-3595).
+    expect(ef).toContain('q.gt("id", cursor)');
+    expect(ef).toContain("places, total, next");
     // `total` is what lets the console say a run was truncated.
     expect(ef).toContain('count: "exact", head: true');
-    expect(ef).toContain("places, total");
     // The two id-scoped side reads ride the URL, so ALL chunks them.
     expect(ef).toContain("chunked(ids, ID_CHUNK)");
   });

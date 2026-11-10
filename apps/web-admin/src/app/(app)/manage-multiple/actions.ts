@@ -4,6 +4,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
+import type { PlaceStatesFacts } from "./place-state-cells";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -92,12 +93,13 @@ export type PlaceHit = {
    *  0 · 1 · 2 = Off · 2X · 5X. Null when the payload does not
    *  carry it. */
   boost_tier?: number | null;
-  /** Stripe (MESITA-3394): the place's account can take payments in the
-   *  server's Stripe mode; null when the EF could not read it ("?"). */
-  stripe_connected?: boolean | null;
-  /** Stripe for the Multiple Places filter (MESITA-3395): no account ·
-   *  onboarding · charging, in the server's Stripe mode; null = not read. */
-  stripe_state?: "none" | "onboarding" | "charging" | null;
+  /** Reservations (Main §10): the guest Reserve CTA's switch; null = not
+   *  read. */
+  reservations_enabled?: boolean | null;
+  /** The raw Place States facts (MESITA-3595), per group; null = not read.
+   *  Chips come from placeStateChips (place-state-cells.ts), the same
+   *  calculation as Business › Admin. */
+  place_states?: PlaceStatesFacts | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */
   viewed?: number | null;
   saved?: number | null;
@@ -152,11 +154,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
     boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
     // A missing field (an EF older than this client) reads "?", never "no".
-    stripe_connected: typeof raw.stripe_connected === "boolean" ? raw.stripe_connected : null,
-    stripe_state:
-      raw.stripe_state === "none" || raw.stripe_state === "onboarding" || raw.stripe_state === "charging"
-        ? raw.stripe_state
-        : null,
+    reservations_enabled:
+      typeof raw.reservations_enabled === "boolean" ? raw.reservations_enabled : null,
+    place_states: raw.place_states && typeof raw.place_states === "object" ? raw.place_states : null,
     viewed: typeof raw.viewed === "number" ? raw.viewed : null,
     saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,
@@ -208,28 +208,38 @@ export async function searchPlacesByGoogleIds(
   return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
 }
 
+/** The most batches one All places run asks for (2,000 places each). A
+ *  run that stops here reads "N of total (capped)", never as complete. */
+const ALL_MAX_BATCHES = 50;
+
+type AllBatch = { places: RawPlaceHit[]; total?: number | null; next?: string | null };
+
 /**
  * Every place on Mesita — no paste, no query. Mesita Search's All places
- * button. The EF walks the whole catalog server-side and ships `total`
- * beside the rows, so a run that hits its ceiling can say so instead of
- * reading as a short catalog.
+ * button and Manage Single's empty search. The EF answers the catalog in
+ * batches by id with a `next` cursor; this asks until `next` is null, so
+ * the state filters cover every place (MESITA-3595). `total` rides beside
+ * the rows, so a run that stops short can say so.
  */
 export async function listAllPlaces(): Promise<
   Result<{ places: PlaceHit[]; total: number }>
 > {
-  const r = await efInvoke<{ places: RawPlaceHit[]; total?: number | null }>(
-    "admin-web-search-places",
-    { all: true },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  const places = (r.data.places ?? []).map(normalizePlaceHit);
-  return {
-    ok: true,
-    data: {
-      places,
-      total: typeof r.data.total === "number" ? r.data.total : places.length,
-    },
-  };
+  const places: PlaceHit[] = [];
+  let total: number | null = null;
+  let after: string | null = null;
+  for (let batch = 0; batch < ALL_MAX_BATCHES; batch++) {
+    const body: { all: true; after?: string } = after ? { all: true, after } : { all: true };
+    const r = await efInvoke<AllBatch>("admin-web-search-places", body);
+    if (!r.ok) return { ok: false, error: r.error };
+    places.push(...(r.data.places ?? []).map(normalizePlaceHit));
+    if (typeof r.data.total === "number") total = Math.max(total ?? 0, r.data.total);
+    const next: string | null = typeof r.data.next === "string" ? r.data.next : null;
+    // An EF without `next` (older than this client) answers one batch.
+    if (!next || next === after) break;
+    after = next;
+  }
+  places.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return { ok: true, data: { places, total: total ?? places.length } };
 }
 
 // ── State writes ─────────────────────────────────────────────────────────

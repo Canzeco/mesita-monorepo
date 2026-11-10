@@ -41,6 +41,25 @@ export { placeMoneyFrom } from "./place-to-detail";
 export { TestBand, TEST_BAND_TEXT } from "./components/TestBand";
 export { CARD_BILL_PAY_LIVE, moneyState, NOT_YET_SELLABLE, STORY_MIN_FOLLOWERS, type MoneyState, type VoucherReason } from "./money-state";
 export { MONEY_CODES, type MoneyCode } from "./money-codes";
+export {
+  FREE_PLAN,
+  moneyPlaceStates,
+  ownedChip,
+  ownedState,
+  PLACE_STATE_ROWS,
+  planName,
+  STRIPE_STATES,
+  stripeState,
+  type MoneyPlaceStates,
+  type OwnedState,
+  type PlaceStateKey,
+  type PlaceStatesAccount,
+  type PlaceStatesInput,
+  type PlaceStatesSettings,
+  type PlaceStateValue,
+  type StripeState,
+  type StripeStageKey,
+} from "./lib/place-states";
 export { cashbackFor, MIN_CARD_PART_CENTS, paySplit, type PaySplit } from "./pay-split";
 export { GOOGLE_TYPE_EMOJI, googleTypeEmoji } from "./lib/google-type-emoji";
 export { AboutBox } from "./components/AboutBox";

@@ -19,6 +19,8 @@ import { AlertTriangle, ExternalLink, Loader2, Plus } from "lucide-react";
 import { StatePill } from "@/app/(app)/manage-multiple/PlaceFacts";
 import { factOn } from "@/app/(app)/manage-multiple/mesita-search-facts";
 import { StateIcon, type BatchRowState } from "@/app/(app)/manage-multiple/StateIcon";
+import { PlaceStateCells, PlaceStateHeads } from "@/app/(app)/manage-multiple/PlaceStateCells";
+import { PLACE_STATE_ROWS } from "@mesita/place-profile/lib/place-states";
 import { businessPlaceHref } from "@/lib/business-url";
 import { PlaceDoor } from "@/components/PlaceDoor";
 import {
@@ -131,7 +133,8 @@ export function FindResults({
   const failed = new Set(result.failed);
   const ranks = variant === "search";
   const colSpan =
-    3 + GENERAL_STATE_FACTS.length + 1 + QUICK_STATS.length + (ranks ? WORD_RANK_COLUMNS.length : 0);
+    3 + GENERAL_STATE_FACTS.length + 1 + PLACE_STATE_ROWS.length + QUICK_STATS.length +
+    (ranks ? WORD_RANK_COLUMNS.length : 0);
 
   if (rows.length === 0) {
     const allFailed = ranks && WORD_RANK_COLUMNS.every((s) => failed.has(s.key));
@@ -190,6 +193,12 @@ export function FindResults({
                     ) : null}
                   </Fragment>
                 ))}
+                {/* Place States (Main §10, MESITA-3595): what the business
+                    decides, the same twelve Business › Admin prints. */}
+                <PlaceStateHeads
+                  className="px-3 py-3 text-center align-bottom font-semibold whitespace-nowrap"
+                  edgeClassName={GROUP_EDGE}
+                />
                 {QUICK_STATS.map((q, i) => (
                   <th
                     key={q.key}
@@ -528,6 +537,12 @@ function ProfileCells({ row, enrichingNow }: { row: FindRow; enrichingNow: boole
           ) : null}
         </Fragment>
       ))}
+      <PlaceStateCells
+        hit={hit}
+        className={CELL}
+        edgeClassName={GROUP_EDGE}
+        empty={(label) => (row.held ? <StatePill on="unknown" /> : <Miss label={label} />)}
+      />
       {QUICK_STATS.map((q, i) => (
         <td key={q.key} className={`${CELL} tabular-nums ${i === 0 ? GROUP_EDGE : ""}`}>
           {hit ? (

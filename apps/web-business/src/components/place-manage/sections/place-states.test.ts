@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PaymentAccount, PaymentSettings } from "@/lib/business-api";
-import { moneyPlaceStates, stripeState } from "./place-states";
+import { moneyPlaceStates, ownedChip, ownedState, stripeState } from "./place-states";
 
 // Money gating (MESITA-3588): which Place States say a guest can pay, earn
 // or prepay here. Wrong here means an operator reads "On" where money
@@ -33,6 +33,12 @@ const settings = (o: Partial<PaymentSettings> = {}): PaymentSettings => ({
 const base = { codeSet: false, feeHold: false, feeOverdue: false, reservations: false, contract: { signed: true, signed_at: "2026-11-09T00:00:00Z", terms_version: "draft-2026-11" } };
 
 describe("place states", () => {
+  it("reads Owned's three values: an owner wins over a pending claim", () => {
+    expect(ownedChip(ownedState(true, true))).toEqual({ on: true, chip: "Owned" });
+    expect(ownedChip(ownedState(false, true))).toEqual({ on: false, chip: "Claim pending" });
+    expect(ownedChip(ownedState(false, false))).toEqual({ on: false, chip: "Unclaimed" });
+  });
+
   it("reads Stripe's seven values from the account", () => {
     expect(stripeState(null)).toBe("None");
     expect(stripeState(acct({ state: "none" }))).toBe("None");

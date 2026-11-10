@@ -2,9 +2,16 @@
 //
 //   PROFILE STATES (6)  One box (Pato, 2026-10-13, MESITA-2176; Requested
 //                 dropped MESITA-2735 / discovery overhaul uc1b; Selected
-//                 died MESITA-2925; Stripe added MESITA-3394):
+//                 died MESITA-2925; Main §10, MESITA-3586):
 //                 Created · Pulsing (Google active) · Enriching · Enriched ·
-//                 Disabled · Stripe (can take payments).
+//                 Premier · Disabled.
+//   PLACE STATES (12)  What the business decides (Main §10): Owned · Plan ·
+//                 Billing · Stripe · Reservations · House Credits Contract ·
+//                 House Credits · Cash Payments · Cash Payments Cashback ·
+//                 Mesita Payments · Mesita Payments Cashback · Mesita
+//                 Prepayments. Words and calculation are
+//                 @mesita/place-profile's place-states.ts, shared with
+//                 Business › Admin (MESITA-3595).
 //   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
 //                 members from place_activity. No request count.
 //                 Premier (MESITA-2925, was Boost) is a tier, not a bool —
@@ -16,9 +23,8 @@
 //                 The MVP First Stage cut the commercial facts: Verified
 //                 (MESITA-2106), then Owned · Partnered · Rewards · Mesita
 //                 Pay · Mesita Credits (MESITA-2115). Money came back as
-//                 one fact, Stripe (Pato, 2026-11-07, MESITA-3394): the
-//                 place's Stripe account can take payments in the server's
-//                 Stripe mode, as of the account's last refresh.
+//                 one fact, Stripe (MESITA-3394), and moved to Place States
+//                 with every other money state (MESITA-3595).
 //   ENRICHMENT STEPS (8)  their own box: 1. Details Enriched …
 //                 8. Vectors Enriched, each a bool (called or not).
 //                 Seed is Create-only and is not a step on this box.
@@ -88,20 +94,19 @@ export function profileStatCountChip(value: unknown): string {
   return n === "unknown" ? "?" : String(n);
 }
 
-/** The six profile states, in the order the Profile States box prints them.
- *  Verified · Owned · Partnered · Rewards · Mesita Pay · Mesita Credits left
- *  with the MVP First Stage cut (MESITA-2106, MESITA-2115); Stripe came back
- *  on Pato's instruction of 2026-11-07 (MESITA-3394, "add as one general
- *  state if Stripe is connected"): yes = can take payments, and a no reads
- *  rose like every other state (MESITA-1684). Wire key `seeded` stays; the
- *  label is Created. */
+/** The yes/no Profile States (Main §10, MESITA-3586), in the order the
+ *  tables print them; Premier, a tier, prints after Enriched
+ *  (premierTierChip). The same five web-business's vocabulary lists.
+ *  Stripe left this list for Place States (MESITA-3595), where it has
+ *  Main §10's seven values (@mesita/place-profile's place-states.ts), so
+ *  it is no longer a yes/no here. Wire key `seeded` stays; the label is
+ *  Created. */
 export const GENERAL_STATE_FACTS = [
   { key: "seeded", label: "Created" },
   { key: "pulsing", label: "Pulsing" },
   { key: "enriching", label: "Enriching" },
   { key: "enriched", label: "Enriched" },
   { key: "disabled", label: "Disabled" },
-  { key: "stripe_connected", label: "Stripe" },
 ] as const;
 
 /** Profile Stats — unique member counts, read-only (MESITA-2735). */
