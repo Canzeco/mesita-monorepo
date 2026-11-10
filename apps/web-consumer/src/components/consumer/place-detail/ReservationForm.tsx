@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
-import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
   buildDateOptions,
   ClosedSlotNotice,
@@ -14,7 +13,6 @@ import {
 } from "@/components/consumer/reservation-pickers";
 import {
   apiCreateReservation,
-  apiListReservations,
   apiUpdateReservation,
   type EFReservationRow,
 } from "@/lib/api/reservations";
@@ -22,7 +20,7 @@ import { EFError } from "@/lib/api/_invoke";
 import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
-import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
+import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
 import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
 
@@ -41,16 +39,15 @@ const RESERVATION_LIMIT_MESSAGE =
 // in America/Mexico_City and it matches what the guest chose.
 
 /**
- * Everything the sheet needs from a place: the place id it books against and
- * a name to show. Deliberately narrower than PlaceDetail (which structurally
- * satisfies it) so the Scroll deck can open this straight from a deck card,
- * without fetching the full place-detail payload.
+ * Everything the form needs from a place: the place id it books against and a
+ * name to show. Deliberately narrower than PlaceDetail (which structurally
+ * satisfies it).
  *
- * `hours_table` rides along when the caller has it (the detail page does; a deck
- * card doesn't) — that's what turns the slot grid hours-aware. Absent, the sheet
- * behaves exactly as before: baseline window, no closed-hours warning.
+ * `hours_table` rides along when the caller has it — that's what turns the
+ * slot grid hours-aware. Absent, the form uses the baseline window and nothing
+ * is flagged closed.
  */
-type ReservationSheetPlace = {
+export type ReservationFormPlace = {
   id: string;
   name: string;
   hours_table?: Array<{ day: string; range: string }>;
@@ -77,14 +74,28 @@ function resolveSubmitLabel(args: {
     : `Reserve · ${args.whenLabel}`;
 }
 
-export function ReservationSheet({
+/**
+ * THE RESERVE FORM (MESITA-3609): the body of the old Reserve sheet, now
+ * drawn by the full Reserve page (/place/<id>/reserve), which owns the list
+ * of the guest's tables here and hands the first one in as `existing` for
+ * the duplicate guard (reschedule vs another).
+ */
+export function ReservationForm({
   place,
-  open,
-  onClose,
+  existing,
+  checking,
+  onBooked,
+  onDone,
 }: {
-  place: ReservationSheetPlace;
-  open: boolean;
-  onClose: () => void;
+  place: ReservationFormPlace;
+  /** The guest's live table at THIS place, if any (the duplicate guard). */
+  existing: EFReservationRow | null;
+  /** The page is still reading the guest's tables: submit waits. */
+  checking: boolean;
+  /** A booking or a move landed: the page re-reads its list. */
+  onBooked: () => void;
+  /** The confirmation's Done. */
+  onDone: () => void;
 }) {
   const supabase = useBrowserSupabase();
 
@@ -96,9 +107,8 @@ export function ReservationSheet({
   );
 
   // Recomputed every render (one month of tiny objects) rather than memoised:
-  // the sheet can sit mounted across midnight, and a stale "Today" pill would
-  // offer slots that are a day gone — and a stale last pill would sit a day
-  // beyond the one-month horizon.
+  // the page can sit open across midnight, and a stale "Today" pill would
+  // offer slots that are a day gone.
   const dateOptions = buildDateOptions(hours);
 
   const [dateChoice, setDateChoice] = useState("");
@@ -117,9 +127,6 @@ export function ReservationSheet({
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  // Duplicate guard: the caller's live booking at THIS place, if any.
-  const [checking, setChecking] = useState(false);
-  const [existing, setExisting] = useState<EFReservationRow | null>(null);
   const [choice, setChoice] = useState<DuplicateChoice | null>(null);
 
   // Selection is DERIVED, not stored: if the guest's pick has since passed (or
@@ -140,56 +147,19 @@ export function ReservationSheet({
   // whole point is that a second table is never created silently.
   const awaitingChoice = existing !== null && choice === null;
 
-  // Look for a live booking at this place whenever the sheet opens. `upcoming`
-  // is exactly "active" server-side: consumer-web-list-reservations filters to
-  // state pending|confirmed AND reserved_at >= now - 4h, so cancelled,
-  // declined, unreachable and long-gone bookings never come back.
+  // The profile's last name seeds the field, once.
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
-    (async () => {
-      setChecking(true);
-      // Both reads together: the profile's last name seeds the field, the
-      // list answers "is there already a table here".
-      const profilePromise = apiFetchConsumerProfile(supabase)
-        .then((r) => (r.consumer?.last_name ?? "").trim())
-        .catch(() => "");
-      try {
-        const { reservations } = await apiListReservations(supabase, {
-          scope: "upcoming",
-          limit: 100,
-        });
-        // place.id is place_profiles.id == places.id, the same id the list EF
-        // stitches onto each row via attachPlaces.
-        const hit = reservations.find((r) => r.place?.id === place.id) ?? null;
-        if (!cancelled) setExisting(hit);
-      } catch {
-        // Fail OPEN: a flaky list read must not block someone from booking.
-        // Worst case is the pre-existing behaviour (a possible second booking).
-        if (!cancelled) setExisting(null);
-      } finally {
-        const profileLast = await profilePromise;
-        if (!cancelled) {
-          if (profileLast) setLastName((v) => v || profileLast);
-          setChecking(false);
-        }
-      }
-    })();
+    apiFetchConsumerProfile(supabase)
+      .then((r) => (r.consumer?.last_name ?? "").trim())
+      .catch(() => "")
+      .then((profileLast) => {
+        if (!cancelled && profileLast) setLastName((v) => v || profileLast);
+      });
     return () => {
       cancelled = true;
     };
-  }, [open, place.id, supabase]);
-
-  function handleClose() {
-    onClose();
-    // Reset the transient states so a re-open starts clean; keep the picked
-    // slot so a mistap doesn't lose the selection.
-    setDone(false);
-    setError(null);
-    setSubmitting(false);
-    setChoice(null);
-    setExisting(null);
-  }
+  }, [supabase]);
 
   /** Move the existing table: seed the pickers from what's already booked. */
   function chooseReschedule() {
@@ -234,6 +204,7 @@ export function ReservationSheet({
         });
       }
       setDone(true);
+      onBooked();
     } catch (e) {
       if (e instanceof EFError && e.code === RESERVATION_LIMIT_CODE) {
         setError(RESERVATION_LIMIT_MESSAGE);
@@ -254,145 +225,131 @@ export function ReservationSheet({
     whenLabel,
   });
 
-  return (
-    <LocalSheet
-      open={open}
-      onClose={handleClose}
-      ariaLabel={`Reserve at ${place.name}`}
-    >
-      <div className={SHEET_BODY_CLASS}>
-        {done ? (
-          <div className="py-2 text-center">
-            <span className="bg-primary/10 text-primary mx-auto flex h-14 w-14 items-center justify-center rounded-full">
-              <PhoneCall className="h-6 w-6" />
-            </span>
-            <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
-              {rescheduling ? "Reservation updated" : "Reservation requested"}
-            </h2>
-            <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
-              Mesita is calling{" "}
-              <span className="text-foreground font-medium">{place.name}</span>{" "}
-              to {rescheduling ? "move" : "book"} your table for {party} on{" "}
-              {whenLabel}. We&apos;ll update this reservation once the place
-              confirms.
-            </p>
-            <button
-              type="button"
-              onClick={handleClose}
-              className="bg-primary text-primary-foreground mt-6 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold transition active:scale-[0.99]"
-            >
-              Done
-            </button>
-          </div>
-        ) : (
-          <>
-            <h2 className={SHEET_TITLE_CLASS}>
-              {rescheduling ? "Move your table" : "Reserve a table"}
-            </h2>
-            <p className="text-muted-foreground type-body truncate">{place.name}</p>
-
-            {existing && (
-              <DuplicateBanner
-                existing={existing}
-                choice={choice}
-                onReschedule={chooseReschedule}
-                onAnother={() => setChoice("another")}
-                onReset={() => setChoice(null)}
-              />
-            )}
-
-            <ReservationDatePicker
-              options={dateOptions}
-              value={date}
-              onChange={setDateChoice}
-            />
-            <ReservationTimePicker
-              value={time}
-              onChange={setTimeChoice}
-              date={date}
-              hours={hours}
-            />
-            <ClosedSlotNotice
-              date={date}
-              time={time}
-              hours={hours}
-              placeName={place.name}
-            />
-            <ReservationPartyPicker
-              value={party}
-              onChange={(u) => setParty(u)}
-            />
-
-            {!rescheduling && (
-              <div className="mt-4">
-                <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-                  Name
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <input
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    maxLength={60}
-                    placeholder="First name"
-                    autoComplete="off"
-                    aria-label="First name"
-                    className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
-                  />
-                  <input
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    maxLength={60}
-                    placeholder="Last name"
-                    autoComplete="family-name"
-                    aria-label="Last name"
-                    className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="mt-4">
-              <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-                Notes
-              </p>
-              <input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                maxLength={280}
-                placeholder="Optional"
-                aria-label="Notes"
-                className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none mt-2"
-              />
-            </div>
-
-            {error && (
-              <p className="type-body mt-3 rounded-xl bg-destructive/10 px-3 py-2 font-medium text-destructive">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="button"
-              onClick={submit}
-              disabled={submitting || checking || awaitingChoice || !time}
-              className="bg-primary text-primary-foreground mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {rescheduling ? "Updating…" : "Requesting…"}
-                </>
-              ) : (
-                submitLabel
-              )}
-            </button>
-            <p className="text-muted-foreground type-body mt-2 text-center">
-              Mesita calls the place and tells you the answer.
-            </p>
-          </>
-        )}
+  if (done) {
+    return (
+      <div className="py-6 text-center">
+        <span className="bg-primary/10 text-primary mx-auto flex h-14 w-14 items-center justify-center rounded-full">
+          <PhoneCall className="h-6 w-6" />
+        </span>
+        <h2 className={cn(SHEET_TITLE_CLASS, "mt-4")}>
+          {rescheduling ? "Reservation updated" : "Reservation requested"}
+        </h2>
+        <p className="text-muted-foreground type-body mx-auto mt-2 max-w-xs leading-relaxed">
+          Mesita is calling{" "}
+          <span className="text-foreground font-medium">{place.name}</span>{" "}
+          to {rescheduling ? "move" : "book"} your table for {party} on{" "}
+          {whenLabel}. We&apos;ll update this reservation once the place
+          confirms.
+        </p>
+        <button
+          type="button"
+          onClick={onDone}
+          className="bg-primary text-primary-foreground mt-6 inline-flex h-11 w-full items-center justify-center rounded-full text-sm font-semibold transition active:scale-[0.99]"
+        >
+          Done
+        </button>
       </div>
-    </LocalSheet>
+    );
+  }
+
+  return (
+    <>
+      {existing && (
+        <DuplicateBanner
+          existing={existing}
+          choice={choice}
+          onReschedule={chooseReschedule}
+          onAnother={() => setChoice("another")}
+          onReset={() => setChoice(null)}
+        />
+      )}
+
+      <ReservationDatePicker
+        options={dateOptions}
+        value={date}
+        onChange={setDateChoice}
+      />
+      <ReservationTimePicker
+        value={time}
+        onChange={setTimeChoice}
+        date={date}
+        hours={hours}
+      />
+      <ClosedSlotNotice
+        date={date}
+        time={time}
+        hours={hours}
+        placeName={place.name}
+      />
+      <ReservationPartyPicker value={party} onChange={(u) => setParty(u)} />
+
+      {!rescheduling && (
+        <div className="mt-4">
+          <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
+            Name
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              maxLength={60}
+              placeholder="First name"
+              autoComplete="off"
+              aria-label="First name"
+              className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            />
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              maxLength={60}
+              placeholder="Last name"
+              autoComplete="family-name"
+              aria-label="Last name"
+              className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4">
+        <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
+          Notes
+        </p>
+        <input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          maxLength={280}
+          placeholder="Optional"
+          aria-label="Notes"
+          className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+        />
+      </div>
+
+      {error && (
+        <p className="type-body bg-destructive/10 text-destructive mt-3 rounded-xl px-3 py-2 font-medium">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={submit}
+        disabled={submitting || checking || awaitingChoice || !time}
+        className="bg-primary text-primary-foreground mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
+      >
+        {submitting ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {rescheduling ? "Updating…" : "Requesting…"}
+          </>
+        ) : (
+          submitLabel
+        )}
+      </button>
+      <p className="text-muted-foreground type-body mt-2 text-center">
+        Mesita calls the place and tells you the answer.
+      </p>
+    </>
   );
 }
 

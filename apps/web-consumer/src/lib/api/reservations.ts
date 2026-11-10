@@ -130,6 +130,10 @@ export type EFReservationRow = {
   consumer_notify?: GuestNotify | null;
   consumer_confirmed_at?: string | null;
   alternatives?: PlaceAlternative[] | string[] | null;
+  /** The name the table is under (MESITA-3607); the list EF fills a null
+   *  with the guest's profile name (MESITA-3609). */
+  guest_first_name?: string | null;
+  guest_last_name?: string | null;
   place: {
     id: string;
     slug: string | null;

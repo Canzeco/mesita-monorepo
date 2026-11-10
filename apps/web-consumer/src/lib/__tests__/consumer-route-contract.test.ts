@@ -673,7 +673,7 @@ describe("consumer onboarding gates", () => {
     sex: "female",
   };
 
-  // What ReservationSheet renders its one extra field from.
+  // What the Reserve page renders its one extra field from.
   it("flags the last name as the only field a booking surface asks for", () => {
     expect(consumerNeedsLastName(complete)).toBe(false);
     expect(consumerNeedsLastName({ ...complete, last_name: null })).toBe(true);
