@@ -70,15 +70,15 @@ const SECTION = "flex flex-col p-0 sm:p-0";
 type Product = { key: PaymentKey; name: string; line: string; value: string; tone: string };
 
 const STANDARD: Product[] = [
-  { key: "voucher_200", name: "Standard voucher", line: "Guest pays $200MX, gets $220MX of credit.", value: "+10%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_1000", name: "Standard Medium voucher", line: "Guest pays $1,000MX, gets $1,200MX of credit.", value: "+20%", tone: "bg-emerald-100 text-emerald-700" },
-  { key: "voucher_5000", name: "Standard Large voucher", line: "Guest pays $5,000MX, gets $6,500MX of credit.", value: "+30%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_200", name: "Small Voucher", line: "Guest pays $200MX, gets $220MX of credit.", value: "+10%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_1000", name: "Medium Voucher", line: "Guest pays $1,000MX, gets $1,200MX of credit.", value: "+20%", tone: "bg-emerald-100 text-emerald-700" },
+  { key: "voucher_5000", name: "Big Voucher", line: "Guest pays $5,000MX, gets $6,500MX of credit.", value: "+30%", tone: "bg-emerald-100 text-emerald-700" },
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome voucher", line: "Guest pays $100MX, gets $130MX of credit. Once, on the first visit.", value: "+30%", tone: "bg-sky-100 text-sky-700" },
-  { key: "voucher_story", name: "Story voucher", line: "Guest pays $100MX, gets $130MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
-  { key: "voucher_vip", name: "VIP voucher", line: "Guest pays $100MX, gets $130MX of credit. VIP guests only.", value: "+30%", tone: "bg-violet-100 text-violet-700" },
+  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100MX, gets $130MX of credit. Once, on the first visit.", value: "+30%", tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100MX, gets $130MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
+  { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100MX, gets $130MX of credit. VIP guests only.", value: "+30%", tone: "bg-violet-100 text-violet-700" },
 ];
 
 /** What a card payment costs the place (MESITA-3461; the 5% fee is billed apart). */
