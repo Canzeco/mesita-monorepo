@@ -30,7 +30,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./boost.ts";
-import { CASHBACK_BPS, MIN_CHARGE_CENTS } from "./money.ts";
+import { MIN_CHARGE_CENTS } from "./money.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import { cardRefusal } from "./pay-card.ts";
@@ -51,8 +51,8 @@ export function isPaymentMethodId(v: unknown): v is string {
   return typeof v === "string" && /^pm_[A-Za-z0-9]{8,64}$/.test(v);
 }
 
-/** Whether card parts can be paid at this place now, and the 5% the card
- *  bill part earns. Pure. */
+/** Whether card parts can be paid at this place now, and what the card bill
+ *  part earns (the place's own Mesita Payments Cashback, MESITA-3589). Pure. */
 export function tabCardRates(args: {
   account: AccountRow | null;
   settings: PaymentSettings;
@@ -70,11 +70,11 @@ export function tabCardRates(args: {
     tipCents: 0,
   });
   const available = args.stripeReady && !gate;
-  const cashback = moneyState(args.settings, { charges_enabled: true }, null).cashback;
+  const cardBack = moneyState(args.settings, { charges_enabled: true }, null).card_cashback_bps;
   return {
     card_available: available,
     card_unavailable_code: available ? null : (gate?.code ?? "not_configured"),
-    card_back_bps: available && cashback ? CASHBACK_BPS : 0,
+    card_back_bps: available ? cardBack : 0,
     card_minimum_cents: min,
   };
 }

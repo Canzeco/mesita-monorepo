@@ -419,10 +419,29 @@ export async function decideVerification(
 /** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is
  *  never renamed, renaming resets live config). Cash and Credits left with
  *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
-export type PaymentKey = "pay_cards" | "cashback" | "voucher_200" | "voucher_1000" | "voucher_5000" | "voucher_welcome" | "voucher_story" | "voucher_vip";
-export type PaymentSettings = Record<PaymentKey, boolean>;
+/** The owner's on/off switches (Main §10, MESITA-3589): House Credits, Cash
+ *  Payments, Mesita Payments (`pay_cards`), and the six Prepaid Vouchers. */
+export type PaymentKey =
+  | "house_credits"
+  | "cash_payments"
+  | "pay_cards"
+  | "voucher_200"
+  | "voucher_1000"
+  | "voucher_5000"
+  | "voucher_welcome"
+  | "voucher_story"
+  | "voucher_vip";
+/** The place's own cashback rates in bps (MESITA-3589); null = Off. */
+export type PaymentRateKey = "card_cashback_bps" | "cash_cashback_bps";
+export type PaymentSettings = Record<PaymentKey, boolean> & Record<PaymentRateKey, number | null>;
+/** The House Credits Contract (MESITA-3589), independent of Stripe. */
+export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };
+/** Place Stripe's seven values (Main §10). */
+export type StripeStage = "none" | "onboarding" | "in_review" | "connected" | "action_needed" | "payouts_paused" | "restricted";
 export type PaymentAccount = {
   state: "none" | "onboarding" | "ready" | "restricted";
+  /** Main §10's seven values; older servers lack it. */
+  stage?: StripeStage;
   livemode: boolean;
   country: string | null;
   charges_enabled: boolean;
@@ -435,6 +454,8 @@ export type PlacePayments = {
   test_mode: boolean;
   account: PaymentAccount;
   settings: PaymentSettings;
+  /** The House Credits Contract (MESITA-3589); older servers lack it. */
+  contract?: HouseCreditsContract;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
   code_set: boolean;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
@@ -556,6 +577,20 @@ export async function setPlacePayment(placeId: string, key: PaymentKey, enabled:
   const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, enabled });
   if (!r.ok) return fail(r);
   return { ok: true, data: r.data.settings };
+}
+
+/** A cashback rate (MESITA-3589): whole percents 1..20 as bps, or null = Off. */
+export async function setPlacePaymentRate(placeId: string, key: PaymentRateKey, bps: number | null): Promise<Result<PaymentSettings>> {
+  const r = await efInvoke<{ settings: PaymentSettings }>("business-web-set-payment", { place_id: placeId, key, bps });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.settings };
+}
+
+/** The owner agrees to the House Credits Contract (MESITA-3589). */
+export async function signHouseCreditsContract(placeId: string): Promise<Result<HouseCreditsContract>> {
+  const r = await efInvoke<{ contract: HouseCreditsContract }>("business-web-sign-house-credits-contract", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.contract };
 }
 
 /** Creates the place's Stripe account if it has none and answers Stripe's hosted setup. */

@@ -23,7 +23,10 @@ const T0 = Date.parse("2026-11-08T12:00:00Z");
 
 const ALL_ON: PaymentSettings = {
   pay_cards: true,
-  cashback: true,
+  house_credits: true,
+  cash_payments: true,
+  card_cashback_bps: 500,
+  cash_cashback_bps: 200,
   voucher_200: true,
   voucher_1000: true,
   voucher_5000: true,
@@ -167,7 +170,7 @@ Deno.test("start: the cashback switch off stores rate 0; settle never re-reads t
     table: () => ({ data: [] }),
     rpc: (name) => name === "wallet_hold_payment" ? { data: { ok: true, outcome: "held", payment_id: ROW, expires_at: "x" } } : { data: { ok: true } },
   });
-  await startCardPayment(fake.client, () => Promise.resolve({ id: "cs", url: "u" }), startArgs({ settings: { ...ALL_ON, cashback: false } }));
+  await startCardPayment(fake.client, () => Promise.resolve({ id: "cs", url: "u" }), startArgs({ settings: { ...ALL_ON, card_cashback_bps: null } }));
   assertEquals(fake.rpcs.find((x) => x.name === "wallet_hold_payment")!.args.p_cashback_bps, 0);
 });
 

@@ -97,6 +97,11 @@ export function placeMoneyFrom(raw: unknown): PlaceDetail["money"] {
     cashback: m.cashback === true,
     // The waiter's 2% (MESITA-3545); the place screen's Pay reads it (MESITA-3581).
     outside_cashback: m.outside_cashback === true,
+    // The place's own rates and switches (MESITA-3589); absent on older reads.
+    ...(typeof m.card_cashback_bps === "number" ? { card_cashback_bps: m.card_cashback_bps } : {}),
+    ...(typeof m.cash_cashback_bps === "number" ? { cash_cashback_bps: m.cash_cashback_bps } : {}),
+    ...(typeof m.house_credits === "boolean" ? { house_credits: m.house_credits } : {}),
+    ...(typeof m.cash === "boolean" ? { cash: m.cash } : {}),
     vouchers,
     test_mode: m.test_mode === true,
     currency: typeof m.currency === "string" ? m.currency : "mxn",

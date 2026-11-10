@@ -15,7 +15,7 @@ describe("Payments in test mode", () => {
   });
 
   it("tells which switched-on vouchers are not for sale by the shared money rule", () => {
-    expect(PANEL).toContain("moneyState(settings, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null)");
+    expect(PANEL).toContain("moneyState({ ...settings, has_place_code: codeSet }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null)");
   });
 
   it("keeps the fee rates out of the TestBand, in the note under the owner's totals (MESITA-3307)", () => {

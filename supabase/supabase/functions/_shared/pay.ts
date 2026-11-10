@@ -17,7 +17,7 @@
 // the money already moved under that id: the page shows that payment's proof.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { MAX_PAYMENT_INPUT_CENTS, OUTSIDE_CASHBACK_BPS, OUTSIDE_MAX_PER_DAY } from "./money.ts";
+import { MAX_PAYMENT_INPUT_CENTS, OUTSIDE_MAX_PER_DAY } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { withVouchersUpTo } from "./payments.ts";
 import { isUuid } from "./place-id.ts";
@@ -227,11 +227,12 @@ export async function startOutsidePayment(
     requestId: string;
     currency: string;
     livemode: boolean;
-    cashbackOn: boolean;
+    /** The place's Cash Payments Cashback now, in bps (0 = none; MESITA-3589). */
+    cashBackBps: number;
     nowMs: number;
   },
 ): Promise<{ ok: true; started: StartedOutside } | PayRefusal> {
-  const bps = args.cashbackOn ? OUTSIDE_CASHBACK_BPS : 0;
+  const bps = Math.max(0, args.cashBackBps);
   const expiresAt = new Date(args.nowMs + OUTSIDE_TTL_SEC * 1000).toISOString();
   // The split is the SQL's, under the pair lock: credit = least(spendable, bill).
   const { data, error } = await admin.rpc("wallet_open_outside_capped", {

@@ -51,10 +51,12 @@ Deno.test({
       if (sErr || !s.session) throw sErr ?? new Error("no session");
       const jwt = s.session.access_token;
 
-      // A place with no Stripe account: Cashback on and a place code.
+      // A place with no Stripe account (MESITA-3589): a signed House Credits
+      // Contract, House Credits and Cash Payments on at 2%, and a place code.
       await admin.from("place_profiles").insert({ id: place, google_name: `Outside live ${stamp}` }).throwOnError();
       await admin.from("places").insert({ id: place, slug: `outside-live-${stamp}`, state: "active", content_state: "generating", currency: "MXN" }).throwOnError();
-      await admin.from("place_payment_settings").upsert({ place_id: place, cashback: true }).throwOnError();
+      await admin.from("house_credits_contracts").insert({ place_id: place, signed_by: userId, signer_role: "owner", terms_version: "draft-2026-11", text_sha256: "0".repeat(64) }).throwOnError();
+      await admin.from("place_payment_settings").upsert({ place_id: place, house_credits: true, cash_payments: true, cash_cashback_bps: 200 }).throwOnError();
       await admin.from("place_codes").insert({ place_id: place, code_hash: await hashPlaceCode(place, "123456") }).throwOnError();
 
       // 1. Received pays it.
@@ -99,6 +101,7 @@ Deno.test({
       }
       await admin.from("place_codes").delete().eq("place_id", place);
       await admin.from("place_payment_settings").delete().eq("place_id", place);
+      await admin.from("house_credits_contracts").delete().eq("place_id", place);
       await admin.from("places").delete().eq("id", place);
       await admin.from("place_profiles").delete().eq("id", place);
       if (userId) await admin.auth.admin.deleteUser(userId);
