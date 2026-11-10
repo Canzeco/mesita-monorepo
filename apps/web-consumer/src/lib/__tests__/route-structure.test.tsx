@@ -275,10 +275,12 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/pay/p1", "Pay"],
     ["/pay/tab/t1", "Pay"],
     ["/pay/receipt/r1", "Pay"],
-    // Wallet and a place's House Card or a gift link light Wallet.
-    ["/wallet", "Wallet"],
-    ["/wallet/p1", "Wallet"],
-    ["/wallet/gift/g1", "Wallet"],
+    // The Wallet lives under Pay (MESITA-3631): a place's House Card or a
+    // gift link lights Pay.
+    ["/wallet/p1", "Pay"],
+    ["/wallet/gift/g1", "Pay"],
+    // Activity, the money lines (MESITA-3631).
+    ["/activity", "Activity"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -312,7 +314,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   it.each([
     "/new-visit",
     "/visit/t1",
-    // /wallet itself is live again (MESITA-3295); its old children land on it.
+    // The old Wallet tab's children land on Pay (MESITA-3631).
     "/wallet/buy",
     "/wallet/balance/bal_1",
     "/credits",
@@ -323,6 +325,8 @@ describe("T5 — exactly one tab lights per surface", () => {
     "/gift/1234567890",
     "/me/diamond",
     "/me/settings/metrics",
+    // Me › Transactions is the Activity tab (MESITA-3631).
+    "/me/transactions",
   ])("%s is a redirect source that resolves in one hop", async (address) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));
@@ -337,11 +341,11 @@ describe("T5 — exactly one tab lights per surface", () => {
   });
 });
 
-// The bar is Home · Search · Pay · Wallet · Me (Pato, MESITA-3295; four tabs
-// from MESITA-2076 until then), and Pay is a LINK like the other four — the
+// The bar is Home · Search · Pay · Activity · Me (Pato, MESITA-3631; Wallet
+// held the fourth tab from MESITA-3295, four tabs from MESITA-2076 before), and Pay is a LINK like the other four — the
 // tab wears no tag (MESITA-3124). Two things MESITA-1119 cared about are
 // unchanged below: no class stamped into Me, and no Agents tab.
-describe("the bar is Home · Search · Pay · Wallet · Me", () => {
+describe("the bar is Home · Search · Pay · Activity · Me", () => {
   async function renderNav(pathname: string): Promise<string> {
     vi.resetModules();
     vi.doMock("next/navigation", () => ({
@@ -357,12 +361,12 @@ describe("the bar is Home · Search · Pay · Wallet · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Wallet · Me (MESITA-3295)", async () => {
+  it("is exactly Home · Search · Pay · Activity · Me (MESITA-3631)", async () => {
     expect(await tabLabels()).toEqual([
       "Home",
       "Search",
       "Pay",
-      "Wallet",
+      "Activity",
       "Me",
     ]);
   });
@@ -413,7 +417,7 @@ describe("the bar is Home · Search · Pay · Wallet · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
-      CONSUMER_ROUTES.wallet,
+      CONSUMER_ROUTES.activity,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
@@ -625,7 +629,7 @@ describe("T8 — Me's grid is twelve live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders thirteen cells in Pato's order", () => {
+  it("renders twelve cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -644,9 +648,8 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Notifications",
       "Reservations",
       "Favorites",
-      // Transactions and Cards made the grid a full 3×4 (MESITA-3465, Pato:
-      // "add two other boxes, maybe some for transactions").
-      "Transactions",
+      // Transactions sat here (MESITA-3465) until it became the bar's
+      // Activity tab (MESITA-3631).
       // Refunds: credit a closed place can't honour (MESITA-3517).
       "Refunds",
       // Connector until MESITA-3561.

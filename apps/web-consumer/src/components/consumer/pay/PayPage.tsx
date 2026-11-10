@@ -17,6 +17,7 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { OPEN_TAB_STATUSES, PlacePhoto, readOpenTabId, writeOpenTabId } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
+import { WalletSection } from "../wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -25,6 +26,10 @@ import { usePayPlaces } from "./use-pay-places";
 // A row is a door: /pay/<placeId> opens that place's bill at the table
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/tab/<id> and /pay/receipt/<id>.
+//
+// THE WALLET LIVES UNDER IT (Pato, 2026-11-09, MESITA-3631: "Merge wallet
+// and pay into the same page. Pay on top"): the places to pay at first, then
+// the Wallet's two rails (WalletSection). One TestBand leads the page.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
 // places near you"), rounded to 3 decimals and sent only to the list read.
@@ -58,7 +63,7 @@ function readNotNow(): boolean {
   }
 }
 
-export function PayPage() {
+export function PayPage({ giftToken = null }: { giftToken?: string | null }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
@@ -149,10 +154,13 @@ export function PayPage() {
   }
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
+    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+      {/* The white header bar the Wallet wore (MESITA-3534), held at the top. */}
+      <header className="border-border bg-card sticky top-0 z-10 -mx-4 flex min-h-[4.25rem] items-center border-b px-4 pt-5 pb-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
+      </header>
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col">
+      <div className="mt-5 flex flex-col">
         {places ? (
           <PlaceList
             places={places}
@@ -174,6 +182,8 @@ export function PayPage() {
           <ListSkeleton />
         )}
       </div>
+
+      <WalletSection giftToken={giftToken} testBandShown={!!places?.some((p) => p.test_mode)} />
     </div>
   );
 }

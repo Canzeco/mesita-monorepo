@@ -49,11 +49,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // hop. Deepest sources first so the intent survives a `:param` rewrite.
   { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
   { source: "/new-visit", destination: "/pay", permanent: true },
-  // The old Wallet tab's children land on the live /wallet (MESITA-3295).
-  { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
-  { source: "/wallet/buy", destination: "/wallet", permanent: true },
-  { source: "/wallet/gift", destination: "/wallet", permanent: true },
-  { source: "/wallet/redeem", destination: "/wallet", permanent: true },
+  // The old Wallet tab's children land on Pay, where the Wallet lives since
+  // MESITA-3631 (on the live /wallet from MESITA-3295 until then).
+  { source: "/wallet/balance/:id", destination: "/pay", permanent: true },
+  { source: "/wallet/buy", destination: "/pay", permanent: true },
+  { source: "/wallet/gift", destination: "/pay", permanent: true },
+  { source: "/wallet/redeem", destination: "/pay", permanent: true },
   { source: "/credits", destination: "/pay", permanent: true },
   { source: "/inbox/credits", destination: "/pay", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },
@@ -89,6 +90,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/passport", destination: "/me/profile", permanent: true },
   // Support (MESITA-2169). Terms and privacy live on Settings.
   { source: "/me/help", destination: "/me/settings", permanent: true },
+  // Me › Transactions is the bar's Activity tab (MESITA-3631).
+  { source: "/me/transactions", destination: "/activity", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF went to Places
   // when each tab got its own address (MESITA-2597); /home/social is live

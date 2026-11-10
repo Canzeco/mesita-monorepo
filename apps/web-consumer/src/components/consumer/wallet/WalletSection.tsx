@@ -1,13 +1,10 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ReceiptText, Wallet as WalletIcon } from "lucide-react";
+import { Wallet as WalletIcon } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
-import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -20,18 +17,18 @@ import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
 
-// THE WALLET TAB, /wallet. TWO RAILS SINCE MESITA-3530 (Pato, 2026-11-09:
-// "add some header to the page called Wallet, and then at the right that
-// icon for transactions ... TWO HORIZONTAL CAROUSELS with cards. only that
-// in that page"): the header (Wallet, and Transactions on the right), then
-// Money Payment Methods and Credits Payment Methods, each led by Add
-// (WalletRails). A place's card is a link to its House Card,
-// /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
-// sheet here. The money is useWallet's (consumer-web-get-wallet). In test
-// mode the TestBand leads the page.
+// THE WALLET, UNDER PAY (Pato, 2026-11-09, MESITA-3631: "Merge wallet and
+// pay into the same page. Pay on top"): the two rails, Money Payment Methods
+// and Credits Payment Methods, each led by Add (WalletRails), drawn by /pay
+// under the places list. Wallet was its own tab, /wallet, from MESITA-3295
+// to MESITA-3631; that address now forwards to /pay. A place's card is a
+// link to its House Card, /wallet/<placeId> (MESITA-3614); a saved card or a
+// waiting Story opens its sheet here. The money is useWallet's
+// (consumer-web-get-wallet). Its Transactions button left with the merge:
+// Activity is on the bar.
 //
-// /wallet/gift/<token> draws this screen with a friend's credit link open
-// over it (MESITA-3292); closing it leaves for /wallet.
+// /wallet/gift/<token> draws /pay with a friend's credit link open over it
+// (MESITA-3292); closing it leaves for /pay.
 
 // SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
 // Add on the Money rail opens Stripe's own page in setup mode; it returns
@@ -47,7 +44,14 @@ function cardRefusal(err: unknown): string {
 /** Photos of the first cards load eagerly; the rest lazily. */
 const EAGER_CARDS = 3;
 
-export function WalletPage({ giftToken = null }: { giftToken?: string | null }) {
+export function WalletSection({
+  giftToken = null,
+  testBandShown = false,
+}: {
+  giftToken?: string | null;
+  /** Pay already shows the TestBand above: never two. */
+  testBandShown?: boolean;
+}) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet();
@@ -60,7 +64,7 @@ export function WalletPage({ giftToken = null }: { giftToken?: string | null }) 
   const [gift, setGift] = useState(giftToken);
   const closeGift = useCallback(() => {
     setGift(null);
-    navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
+    navigateTo(router, CONSUMER_ROUTES.pay, { replace: true });
   }, [router]);
 
   // Saved cards: on mount, on Stripe's return, after a remove.
@@ -91,7 +95,7 @@ export function WalletPage({ giftToken = null }: { giftToken?: string | null }) 
     if (adding) return;
     setAdding(true);
     try {
-      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.wallet}`);
+      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.pay}`);
       window.location.assign(url);
     } catch (err) {
       toast.error(cardRefusal(err));
@@ -116,25 +120,10 @@ export function WalletPage({ giftToken = null }: { giftToken?: string | null }) 
   let shown = 0;
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      {/* THE HEADER (MESITA-3530): Wallet, and Transactions on the right. Its
-          own colour since MESITA-3534 (Pato: "add a header of different
-          color"): a white bar, full width, a hairline under it, held at the
-          top while the page scrolls. */}
-      <header className="border-border bg-card sticky top-0 z-10 -mx-4 flex items-center justify-between gap-3 border-b px-4 pt-5 pb-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">Wallet</h1>
-        <Link
-          href={CONSUMER_ROUTES.mePages.transactions}
-          aria-label="Transactions"
-          className="border-border bg-paper hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl border transition"
-          data-wallet-transactions
-        >
-          <ReceiptText className="h-5 w-5" aria-hidden />
-        </Link>
-      </header>
-      {wallet?.test_mode ? <TestBand className="mt-3" /> : null}
+    <div className="flex flex-col" data-wallet>
+      {wallet?.test_mode && !testBandShown ? <TestBand className="mt-5" /> : null}
       {wallet?.settling ? (
-        <p className="text-muted-foreground mt-3 text-sm" role="status">
+        <p className="text-muted-foreground mt-5 text-sm" role="status">
           Confirming a payment…
         </p>
       ) : null}
@@ -157,7 +146,7 @@ export function WalletPage({ giftToken = null }: { giftToken?: string | null }) 
       </WalletRail>
 
       {failed && !wallet ? (
-        <div className="mt-5 flex flex-1 flex-col">
+        <div className="mt-5 flex flex-col">
           <EmptyState
             icon={WalletIcon}
             title="Couldn't load Wallet"
@@ -176,27 +165,6 @@ export function WalletPage({ giftToken = null }: { giftToken?: string | null }) 
           reread();
         }}
       />
-    </div>
-  );
-}
-
-/** The old card of rows' bones, kept for Transactions (Me › Transactions). */
-export function WalletSkeleton() {
-  return (
-    <div className="border-border bg-card overflow-hidden rounded-2xl border" aria-hidden>
-      {[0, 1, 2].map((i) => (
-        <Fragment key={i}>
-          {i > 0 && <RowDivider />}
-          <div className="flex min-h-16 items-center gap-3 px-4 py-3">
-            <Skeleton className="h-11 w-11 rounded-lg" />
-            <span className="flex-1">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="mt-1.5 h-3 w-20" />
-            </span>
-            <Skeleton className="h-5 w-16" />
-          </div>
-        </Fragment>
-      ))}
     </div>
   );
 }

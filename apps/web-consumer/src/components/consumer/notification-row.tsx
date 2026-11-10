@@ -141,7 +141,7 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
   // Available (the Wallet when the row names no place).
   const placeId = payloadString(n.payload, "place_id");
   return credit ? (
-    <Link href={isRouteId(placeId) ? walletPlacePath(placeId) : CONSUMER_ROUTES.wallet} className="block">
+    <Link href={isRouteId(placeId) ? walletPlacePath(placeId) : CONSUMER_ROUTES.pay} className="block">
       {card}
     </Link>
   ) : (

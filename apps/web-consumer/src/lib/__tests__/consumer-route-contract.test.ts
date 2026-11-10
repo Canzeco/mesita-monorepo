@@ -87,6 +87,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.wallet,
     `${CONSUMER_ROUTES.walletPlace.prefix}:id`,
     `${CONSUMER_ROUTES.walletGift.prefix}:token`,
+    CONSUMER_ROUTES.activity,
     CONSUMER_ROUTES.share,
     CONSUMER_ROUTES.me,
     ...Object.values(CONSUMER_ROUTES.mePages),
@@ -117,10 +118,12 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       payPlace: { prefix: "/pay/" },
       payTab: { prefix: "/pay/tab/" },
       payReceipt: { prefix: "/pay/receipt/" },
-      // The Wallet tab's page: the prepaid balances (MESITA-3295).
+      // A door to /pay since the Wallet moved under Pay (MESITA-3631).
       wallet: "/wallet",
       walletPlace: { prefix: "/wallet/" },
       walletGift: { prefix: "/wallet/gift/" },
+      // The Activity tab: every money line (MESITA-3631).
+      activity: "/activity",
       // The Share tab's page (MESITA-2566).
       share: "/share",
       // Me's six boxes, each a route. NO diamond / diamondInvite / plan /
@@ -133,7 +136,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         plan: "/me/plan",
         class: "/me/class",
         connector: "/me/connector",
-        transactions: "/me/transactions",
         refunds: "/me/refunds",
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
@@ -190,6 +192,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         meSettingsMetrics: "/me/settings/metrics",
         mePassport: "/me/passport",
         meHelp: "/me/help",
+        meTransactions: "/me/transactions",
         subscribe: "/subscribe/premium",
         getTheApp: "/get-the-app",
         discoverFeed: "/discover/feed",
@@ -219,8 +222,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       home: "/home/",
       place: "/place",
       pay: "/pay",
-      // The Wallet tab (MESITA-3295); its old children 308 onto it.
+      // A House Card or a credit link lights Pay (MESITA-3631).
       wallet: "/wallet",
+      activity: "/activity",
       // NO `saved` key: Saved is a Me page (MESITA-2561), lit by Me's prefix.
       // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
       // the middleware never sees one.
@@ -410,10 +414,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/new-visit", destination: "/pay", permanent: true },
-      { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
-      { source: "/wallet/buy", destination: "/wallet", permanent: true },
-      { source: "/wallet/gift", destination: "/wallet", permanent: true },
-      { source: "/wallet/redeem", destination: "/wallet", permanent: true },
+      { source: "/wallet/balance/:id", destination: "/pay", permanent: true },
+      { source: "/wallet/buy", destination: "/pay", permanent: true },
+      { source: "/wallet/gift", destination: "/pay", permanent: true },
+      { source: "/wallet/redeem", destination: "/pay", permanent: true },
       { source: "/credits", destination: "/pay", permanent: true },
       { source: "/inbox/credits", destination: "/pay", permanent: true },
       { source: "/inbox/orders", destination: "/pay", permanent: true },
@@ -444,6 +448,7 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
       },
       { source: "/me/passport", destination: "/me/profile", permanent: true },
       { source: "/me/help", destination: "/me/settings", permanent: true },
+      { source: "/me/transactions", destination: "/activity", permanent: true },
       { source: "/invite", destination: "/me", permanent: true },
       // The retired Home hub's leaves (2026-09-01), and bare /home since each
       // tab got its own address (MESITA-2597). /home itself was live
@@ -570,7 +575,8 @@ describe("middleware auth wall (shouldGate)", () => {
     // `next`, like every other personal surface.
     "/pay",
     "/wallet",
-    // Gated although it only 308s to /wallet: middleware runs before the
+    "/activity",
+    // Gated although it only 308s to /pay: middleware runs before the
     // redirect, so the signed-out `next` keeps what the guest asked for.
     "/wallet/buy",
     "/reservations",

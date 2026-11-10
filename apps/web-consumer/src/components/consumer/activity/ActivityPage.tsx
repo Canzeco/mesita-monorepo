@@ -1,8 +1,9 @@
 "use client";
 
-// /me/transactions — every money line of the guest's in one list, newest
-// first (Pato, MESITA-3465: "add two other boxes, maybe some for transactions
-// or whatever"). The lines are the Wallet's own entries (consumer-web-get-
+// /activity — THE BAR'S ACTIVITY TAB (Pato, 2026-11-09, MESITA-3631: "Home
+// Search Pay Activity Me"): every money line of the guest's in one list,
+// newest first. It was Me › Transactions, /me/transactions (MESITA-3465),
+// which now 308s here. The lines are the Wallet's own entries (consumer-web-get-
 // wallet), across every place: prepaid, bonus, cashback, paid, refund. Each
 // row names the place, the kind and the date, and the signed amount. A Paid
 // row opens its proof on Pay, as on the Wallet. A cashback from a bill the
@@ -10,13 +11,12 @@
 // (MESITA-3554), so it is told apart from card cashback. This page never
 // adds money up; it only lists and formats what the server sent.
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { ReceiptText } from "lucide-react";
 
-import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
-import { WalletSkeleton } from "@/components/consumer/wallet/WalletPage";
+import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiGetWallet, ENTRY_LABEL, entryDate, money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES, payReceiptPath } from "@/lib/consumer-route-contract";
@@ -39,7 +39,7 @@ function linesOf(w: Wallet): Line[] {
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
 }
 
-export function TransactionsModal() {
+export function ActivityPage() {
   const getSupabase = useLazyBrowserSupabase();
   const [lines, setLines] = useState<Line[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -63,12 +63,12 @@ export function TransactionsModal() {
   }, [nonce]);
 
   return (
-    <MeScreen title="Transactions">
+    <ActivityFrame>
       {lines ? (
         lines.length === 0 ? (
           <EmptyState
             icon={ReceiptText}
-            title="No transactions yet"
+            title="No activity yet"
             description="Payments, credit and cashback at Mesita places show up here."
             action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
           />
@@ -118,13 +118,46 @@ export function TransactionsModal() {
       ) : failed ? (
         <EmptyState
           icon={ReceiptText}
-          title="Couldn't load transactions"
+          title="Couldn't load activity"
           description="Check your connection and try again."
           action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
         />
       ) : (
-        <WalletSkeleton />
+        <RowsSkeleton />
       )}
-    </MeScreen>
+    </ActivityFrame>
+  );
+}
+
+/** The tab's frame: the white header bar Pay wears (MESITA-3534), then the
+ *  page. The loading frame draws the same shape (MESITA-2701). */
+export function ActivityFrame({ children }: { children: ReactNode }) {
+  return (
+    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+      <header className="border-border bg-card sticky top-0 z-10 -mx-4 flex min-h-[4.25rem] items-center border-b px-4 pt-5 pb-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Activity</h1>
+      </header>
+      <div className="mt-5">{children}</div>
+    </div>
+  );
+}
+
+/** The list's bones: three rows in the card they land in. */
+export function RowsSkeleton() {
+  return (
+    <div className="border-border bg-card overflow-hidden rounded-2xl border" aria-busy>
+      {[0, 1, 2].map((i) => (
+        <Fragment key={i}>
+          {i > 0 && <RowDivider />}
+          <div className="flex min-h-14 items-center gap-3 px-4 py-2.5">
+            <span className="flex-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-1.5 h-3 w-20" />
+            </span>
+            <Skeleton className="h-5 w-16" />
+          </div>
+        </Fragment>
+      ))}
+    </div>
   );
 }
