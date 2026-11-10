@@ -15,9 +15,10 @@ import type { MoneyVoucherKey } from "./money-state.ts";
 export const MESITA_FEE_BPS_VOUCHER = 500;
 export const MESITA_FEE_BPS_PAYMENT = 500;
 
-// Cashback has no constant since MESITA-3589: each place sets its own rates
-// (place_payment_settings.card_cashback_bps / cash_cashback_bps, 1%..20%,
-// defaults 5% and 2% suggested on Business › Payments). moneyState turns
+// Cashback has no constant here since MESITA-3589: each place switches its
+// own (place_payment_settings.card_cashback_bps / cash_cashback_bps, Off or
+// 5% card and Off or 2% cash since MESITA-3596, CASHBACK_BPS in payments.ts).
+// moneyState turns
 // them into what applies now; the EFs store it on the row at start/open and
 // settle/Received/refund read the row, never the setting.
 

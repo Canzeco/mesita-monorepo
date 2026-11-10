@@ -1,15 +1,18 @@
 "use client";
 
 // Payments (MESITA-3296; the Place states of Main §10 since MESITA-3589).
-// While the account cannot charge, a Connect card leads (MESITA-3384). An
-// unpaid fee invoice (MESITA-3461, Billing: Past due) shows a banner on top.
-// Then the place's own Stripe account (Place Stripe, seven values), the
-// owner's money (MESITA-3307), and the money states in Main §10's order:
+// Configuration only (MESITA-3596, Pato: "in payments its just to configure"):
+// the owner's money and its log live on Operations › Money, and there is no
+// table QR (the guest shows the QR). An unpaid fee invoice (MESITA-3461,
+// Billing: Past due) shows a banner on top. Then one Stripe row (Place
+// Stripe, seven values; the separate Connect card of MESITA-3384 folded into
+// it), and the money states in Main §10's order:
 //   House Credits Agreement · House Credits · Cash Payments · Cash Payments
 //   Cashback · Mesita Payments · Mesita Payments Cashback · Mesita
 //   Prepayments (the six vouchers).
 // Each row says its value and, when it can't turn on yet, the one step that
-// unlocks it. The House Credits Agreement is independent of Stripe (Pato,
+// unlocks it. Each cashback is a switch with one rate (MESITA-3596: Cash
+// Payments Off or 2%, Mesita Payments Off or 5%). The House Credits Agreement is independent of Stripe (Pato,
 // 2026-11-09): signing opens a plain Agree dialog whose text is a placeholder
 // until a lawyer writes it. A guest's credit is the place's debt: House
 // Credits Off stops new credit, never what guests hold. The owner and Mesita
@@ -39,15 +42,12 @@ import { ERROR_BOX_CLASS, PILL_BUTTON_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import { placeTabHref, returnUrl } from "@/lib/routes";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { MoneySection } from "./MoneySection";
-import { TableQr } from "./TableQr";
 import {
   openPaymentDashboard,
   type HouseCreditsContract,
   type PaymentAccount,
   type PaymentKey,
   type PaymentRateKey,
-  type PlaceMoney,
   type PlacePayments,
   type StripeStage,
   setPlacePayment,
@@ -96,9 +96,8 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
   needs_instagram: "On sale once the Instagram connection is on.",
 };
 
-/** The cashback a place can set (Main §10): whole percents 1..20, or Off. */
-const RATE_OPTIONS = Array.from({ length: 20 }, (_, i) => (i + 1) * 100);
-const DEFAULT_RATE: Record<PaymentRateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
+/** Each cashback's one rate (Main §10, MESITA-3596): Off or this. The server takes nothing else. */
+const CASHBACK_BPS: Record<PaymentRateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
 const pct = (bps: number) => `${bps / 100}%`;
 
 /** Place Stripe's seven values, in the owner's words. */
@@ -111,10 +110,6 @@ const STAGE_LABEL: Record<StripeStage, string> = {
   payouts_paused: "Payouts paused",
   restricted: "Restricted",
 };
-
-const CONNECT_TITLE = "Connect Stripe to take card payments and sell vouchers";
-const CONNECT_LINE =
-  "Guests pay the bill from their phone with Mesita Pay and buy prepaid vouchers: you get the money up front, they get 10% to 30% more credit to spend here. Mesita's fee is 5% of what guests pay by card. House Credits and cash payments work without Stripe.";
 
 const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
 
@@ -132,7 +127,7 @@ const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opaci
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Where guests' card payments land. Yours, set up with Stripe.", button: "Connect Stripe", open: false };
+      return { line: "Card payments and vouchers land in your own Stripe account. House Credits and cash work without it.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -154,15 +149,11 @@ function signedOn(c: HouseCreditsContract): string {
 
 export function PaymentsPanel({
   placeId,
-  placeName,
   initial,
-  money,
   back,
 }: {
   placeId: string;
-  placeName: string | null;
   initial: PlacePayments;
-  money: PlaceMoney | null;
   back: "return" | "refresh" | null;
 }) {
   const [settings, setSettings] = useState(initial.settings);
@@ -252,37 +243,27 @@ export function PaymentsPanel({
     );
   };
 
-  /** One cashback rate: Off or a whole percent 1..20. */
-  const rateRow = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode; max?: number | null }) => {
+  /** One cashback: a switch between Off and its one rate. */
+  const rateRow = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode }) => {
     const value = settings[args.key];
+    const on = value !== null;
     const blocked = args.blocked;
-    const options = RATE_OPTIONS.filter((b) => args.max == null || b <= args.max);
+    const fixed = pct(CASHBACK_BPS[args.key]);
     return (
       <li key={args.key} className={MARK_ROW} data-place-state={args.key}>
-        {mark(CoinsIcon, value !== null && !blocked, "bg-amber-100 text-amber-700")}
+        {mark(CoinsIcon, on && !blocked, "bg-amber-100 text-amber-700")}
         <div className="min-w-0">
           <p className="font-medium">{args.name}</p>
           <p className="text-muted-foreground">{args.line}</p>
           {blocked ? <p className={NOTE}>{blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
         </div>
-        <p className={cn("font-semibold whitespace-nowrap tabular-nums", (value === null || blocked) && "text-muted-foreground")}>
-          {value === null ? "Off" : pct(value)}
-        </p>
-        <select
-          className="border-border bg-background h-9 rounded-lg border px-2 text-sm"
-          aria-label={`${args.name}: ${value === null ? "off" : pct(value)}`}
-          value={value === null ? "off" : String(value)}
-          disabled={pending}
-          onChange={(e) => void rate(args.key, e.target.value === "off" ? null : Number(e.target.value))}
-        >
-          <option value="off">Off</option>
-          {options.map((b) => (
-            <option key={b} value={String(b)}>
-              {pct(b)}
-              {b === DEFAULT_RATE[args.key] ? " (standard)" : ""}
-            </option>
-          ))}
-        </select>
+        <p className={cn("font-semibold whitespace-nowrap tabular-nums", (!on || blocked) && "text-muted-foreground")}>{on ? pct(value) : "Off"}</p>
+        <Switch
+          on={on}
+          pending={pending || (!on && !!blocked)}
+          onClick={() => void rate(args.key, on ? null : CASHBACK_BPS[args.key])}
+          label={`${args.name}: ${on ? fixed : "off"}`}
+        />
       </li>
     );
   };
@@ -319,22 +300,6 @@ export function PaymentsPanel({
   return (
     <>
       {testMode ? <TestBand detail="Stripe sandbox: guests pay with Stripe's test cards, no real money moves." /> : null}
-      {!account.charges_enabled ? (
-        <Card className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
-            <StripeLogoIcon size={22} weight="fill" aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1 text-sm">
-            <h2 className="font-semibold">{CONNECT_TITLE}</h2>
-            <p className="text-muted-foreground">{CONNECT_LINE}</p>
-          </div>
-          {canEdit && copy.button && !copy.open ? (
-            <button type="button" className={cn(PILL_BUTTON_CLASS, "shrink-0 self-start sm:self-center")} disabled={pending} onClick={() => void stripe()}>
-              {busy === "stripe" ? "Opening…" : copy.button}
-            </button>
-          ) : null}
-        </Card>
-      ) : null}
       {fee.hold ? (
         <p className={cn(ERROR_BOX_CLASS, "flex flex-wrap items-center justify-between gap-3")} data-fee-hold>
           <span>
@@ -385,7 +350,6 @@ export function PaymentsPanel({
           </li>
         </ul>
       </Card>
-      {money ? <MoneySection placeId={placeId} initial={money} /> : null}
       <Card className="flex flex-col p-0 sm:p-0">
         <h2 className={HEAD}>House Credits</h2>
         <ul className="divide-border divide-y">
@@ -431,8 +395,6 @@ export function PaymentsPanel({
             name: "Cash Payments Cashback",
             line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? "Turn Cash Payments on first." : undefined,
-            max: settings.card_cashback_bps,
-            note: settings.card_cashback_bps !== null ? `Up to ${pct(settings.card_cashback_bps)}: cash never earns more than Mesita Pay.` : null,
           })}
         </ul>
         {codeSet ? (
@@ -474,7 +436,6 @@ export function PaymentsPanel({
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
             note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Pay takes cards." : null,
           })}
-          <TableQr placeId={placeId} placeName={placeName} live={settings.pay_cards} />
         </ul>
       </Card>
       <Card className="flex flex-col p-0 sm:p-0">

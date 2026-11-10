@@ -1,7 +1,7 @@
 -- MESITA-3589 — the Place states of Main §10, the money and legal guards.
 -- The House Credits Contract is EF-only and one live per place; House Credits
--- On needs it; the vouchers need House Credits; the rates stay 1%..20% with
--- cash never above card; ending the contract turns House Credits and the
+-- On needs it; the vouchers need House Credits; the rates are Off or 5% (card)
+-- and Off or 2% (cash) since MESITA-3596; ending the contract turns House Credits and the
 -- vouchers off; and House Credits Off never stops a guest spending credit
 -- they already hold (a credit-only bill still settles).
 
@@ -54,22 +54,22 @@ select lives_ok(
 -- ━━━ The rates ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select throws_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 50 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'a rate under 1% is refused');
+  $$update public.place_payment_settings set card_cashback_bps = 700 where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'a card rate other than 5% is refused (MESITA-3596)');
 select throws_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 2100 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'a rate over 20% is refused');
+  $$update public.place_payment_settings set cash_cashback_bps = 300 where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'a cash rate other than 2% is refused (MESITA-3596)');
 select lives_ok(
-  $$update public.place_payment_settings set card_cashback_bps = 700, cash_cashback_bps = 300
+  $$update public.place_payment_settings set card_cashback_bps = 500, cash_cashback_bps = 200
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '7% card and 3% cash are taken');
+  '5% card and 2% cash are taken');
 select throws_ok(
-  $$update public.place_payment_settings set cash_cashback_bps = 800 where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  '23514', null, 'cash above card is refused while Mesita Payments is on');
+  $$update public.place_payment_settings set cash_cashback_bps = 500 where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'cash is never 5%');
 select lives_ok(
-  $$update public.place_payment_settings set pay_cards = false, cash_cashback_bps = 800
+  $$update public.place_payment_settings set pay_cards = false, card_cashback_bps = null
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  'with Mesita Payments off the card rate does not cap cash');
+  'Mesita Payments and its cashback turn Off, Cash 2% stays');
 
 -- ━━━ Ending the contract ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
