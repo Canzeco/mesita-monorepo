@@ -27,12 +27,15 @@ type AddState = "idle" | "adding" | "added" | "failed";
  *  note (MESITA-3524), else the body (admin's preview). */
 export function OffTileSheet({
   tile,
+  line,
   onClose,
   inWallet,
   onAddHouseCard,
   onOpenWallet,
 }: {
   tile: OffTile;
+  /** Says this instead of the tile's standard line (MESITA-3604). */
+  line?: string;
   onClose: () => void;
   inWallet?: boolean;
   onAddHouseCard?: () => Promise<boolean>;
@@ -46,7 +49,8 @@ export function OffTileSheet({
   }, [onClose]);
   if (typeof document === "undefined") return null;
   const host = document.getElementById("mesita-app-card");
-  const { title, text } = OFF_TILE_TEXT[tile];
+  const { title } = OFF_TILE_TEXT[tile];
+  const text = line ?? OFF_TILE_TEXT[tile].text;
   const inIt = inWallet === true || add === "added";
   const wallet = tile === "wallet";
   const note =

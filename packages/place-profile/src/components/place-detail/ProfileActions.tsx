@@ -331,6 +331,7 @@ export function MesitaActions({
       {offOpen ? (
         <OffTileSheet
           tile={offOpen}
+          line={row[offOpen].note}
           onClose={() => setOffOpen(null)}
           inWallet={actions?.houseCardInWallet}
           onAddHouseCard={actions?.onAddHouseCard}
