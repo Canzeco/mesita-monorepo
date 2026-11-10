@@ -37,6 +37,10 @@ type Body = {
   reserved_at?: string;
   party_size?: number;
   notes?: string;
+  /** The name the table is under (MESITA-3607). Older clients omit it and
+   *  book under the profile's last name. */
+  first_name?: string;
+  last_name?: string;
   consumer_notify?: string;
 };
 
@@ -153,7 +157,18 @@ serveJson("consumer-web-create-reservation", async (req) => {
   // by fuzzy first/last match. A first-name-only booking is a table nobody can
   // find. Tickets deliberately did NOT gate this way — validate-web-get-ticket
   // fell back to the first name at the door (retired, MESITA-2090).
-  if (!(consumerRow as { last_name?: string | null } | null)?.last_name) {
+  const cleanName = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
+  const firstName = cleanName(body.first_name);
+  const lastName = cleanName(body.last_name);
+  const typedName = firstName !== "" || lastName !== "";
+  if (typedName && (!firstName || !lastName)) {
+    return json({
+      ok: false,
+      code: "name_required",
+      error: "Add the first and last name the table is under.",
+    }, 400);
+  }
+  if (!typedName && !(consumerRow as { last_name?: string | null } | null)?.last_name) {
     return json({
       ok: false,
       code: "last_name_required",
@@ -227,6 +242,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
         state: "pending",
+        guest_first_name: typedName ? firstName : null,
+        guest_last_name: typedName ? lastName : null,
       },
       select:
         "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id",

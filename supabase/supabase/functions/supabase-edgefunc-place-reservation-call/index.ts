@@ -82,7 +82,7 @@ import {
 import { rowPlaceId } from "../_shared/place-id.ts";
 import { notifyReservationOutcome } from "../_shared/reservation-notification.ts";
 import { esDate, esTime } from "../_shared/es-speak.ts";
-import { guestName, type GuestNameParts } from "../_shared/reservation-guest-name.ts";
+import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
 import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -512,7 +512,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -662,7 +662,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const modificationOfIso = typeof r.modification_of === "string" ? r.modification_of : null;
   const legVars: ReservationLegVars = {
     placeName: place?.name?.trim() || "el lugar",
-    guestName: guestName(consumer, "el cliente"),
+    guestName: ticketGuestName({ guest_first_name: r.guest_first_name, guest_last_name: r.guest_last_name, consumer }, "el cliente"),
     guestPhone: consumerNumber,
     referenceCode: (r.reference_code ?? "").trim(),
     partySize: r.party_size,

@@ -27,7 +27,7 @@ import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
-import { guestName } from "./reservation-guest-name.ts";
+import { guestName, ticketGuestName } from "./reservation-guest-name.ts";
 
 // The guest display name lives in a leaf (the engine needs it without this
 // module); re-exported for the a1..a4 tools.
@@ -169,7 +169,7 @@ function nameKey(s: string): string {
  * — "ana lopez" matches "Ana María López", "lopez" alone matches too.
  */
 export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
-  const guest = nameKey(guestName(row.consumer, "(sin nombre)"));
+  const guest = nameKey(ticketGuestName(row, "(sin nombre)"));
   const words = nameKey(query).split(/\s+/).filter(Boolean);
   return words.length > 0 && words.every((w) => guest.includes(w));
 }
@@ -177,7 +177,7 @@ export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
 // ── Ticket reads ─────────────────────────────────────────────────────────────
 
 const TICKET_SELECT =
-  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, consumer:consumers(full_name, first_name, last_name, phone)";
+  "id, run_id, reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer_id, reported_verdict, alternatives, consumer_confirmed_at, negotiation_rounds, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)";
 
 export type TicketRow = {
   run_id: string | null;
@@ -195,6 +195,8 @@ export type TicketRow = {
   alternatives: unknown;
   consumer_confirmed_at: string | null;
   negotiation_rounds: number;
+  guest_first_name?: string | null;
+  guest_last_name?: string | null;
   consumer: {
     full_name: string | null;
     first_name: string | null;
@@ -235,6 +237,8 @@ export async function placeNames(
 export type SpeakableTicket =
   & Pick<TicketRow, "reference_code" | "reserved_at" | "party_size" | "state" | "notes" | "is_test">
   & {
+    guest_first_name?: string | null;
+    guest_last_name?: string | null;
     consumer: {
       full_name: string | null;
       first_name: string | null;
@@ -246,7 +250,7 @@ export type SpeakableTicket =
 export function speakable(r: SpeakableTicket, placeName: string) {
   return {
     reference_code: r.reference_code ?? null,
-    guest_name: guestName(r.consumer, "(sin nombre)"),
+    guest_name: ticketGuestName(r, "(sin nombre)"),
     place_name: placeName,
     date_es: esDate(r.reserved_at),
     time_es: esTime(r.reserved_at),

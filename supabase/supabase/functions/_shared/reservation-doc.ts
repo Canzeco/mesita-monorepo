@@ -231,6 +231,10 @@ export type ReservationDoc = {
   reminder_at: string | null;
   reminder_attempts: number;
   reminder_conversation_id: string | null;
+  /** The name the table is booked under (MESITA-3607); null on older tickets,
+   *  which use the consumer's profile name. */
+  guest_first_name: string | null;
+  guest_last_name: string | null;
 };
 
 // Every field a patch may touch — everything except `id` (server-generated,
@@ -288,6 +292,8 @@ export const RESERVATION_PATCH_KEYS = [
   "reminder_at",
   "reminder_attempts",
   "reminder_conversation_id",
+  "guest_first_name",
+  "guest_last_name",
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
@@ -505,6 +511,8 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
       "notice_conversation_id",
       "reminder_conversation_id",
       "run_id",
+      "guest_first_name",
+      "guest_last_name",
     ] as const
   ) {
     if (!(key in raw)) continue;

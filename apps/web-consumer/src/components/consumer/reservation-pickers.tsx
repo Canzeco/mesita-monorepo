@@ -1,9 +1,7 @@
 import { AlertTriangle, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  BOOKING_HORIZON_MONTHS,
   bookingWindowDays,
-  buildHourColumns,
   buildSlots,
   hoursLabelForDate,
   isDateSpent,
@@ -14,7 +12,6 @@ import {
 } from "@/lib/reservation-slots";
 import {
   isSlotPast,
-  PLACE_TZ_LABEL,
   placeDateIso,
   placeDateParts,
 } from "@mesita/place-profile/lib/place-time";
@@ -95,10 +92,7 @@ export function ReservationDatePicker({
   return (
     <div className="mt-5">
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Date
-      </p>
-      <p className="text-muted-foreground type-body mt-1">
-        Up to {BOOKING_HORIZON_MONTHS} month ahead
+        Day
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
         {options.map((d) => {
@@ -112,26 +106,19 @@ export function ReservationDatePicker({
               aria-disabled={d.disabled}
               title={d.disabled ? "No times left on this day" : undefined}
               className={cn(
-                "flex shrink-0 flex-col items-center rounded-2xl border px-3 py-2 transition",
+                "flex w-14 shrink-0 flex-col items-center rounded-2xl border py-2 transition",
                 d.disabled
-                  ? "border-border bg-muted/40 cursor-not-allowed opacity-45"
+                  ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
                   : active
-                    ? "border-border bg-muted"
-                    : "border-border bg-card",
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-foreground",
               )}
             >
-              <span className="type-meta text-muted-foreground font-semibold uppercase">
+              <span className={cn("type-meta font-semibold uppercase", !active && "text-muted-foreground")}>
                 {d.weekday}
               </span>
-              <span
-                className={cn(
-                  "font-display text-lg font-semibold tracking-tight",
-                  d.disabled ? "text-muted-foreground" : "text-foreground",
-                )}
-              >
-                {d.day}
-              </span>
-              <span className="text-muted-foreground type-meta">{d.month}</span>
+              <span className="text-lg font-semibold tabular-nums">{d.day}</span>
+              <span className={cn("type-meta", !active && "text-muted-foreground")}>{d.month}</span>
             </button>
           );
         })}
@@ -160,39 +147,22 @@ export function ReservationTimePicker({
   date?: string;
   hours?: WeeklyHours | null;
 }) {
-  const columns = buildHourColumns(buildSlots(date ?? "", hours));
-  const dayHours = date ? hoursLabelForDate(date, hours) : null;
+  const slots = buildSlots(date ?? "", hours);
   return (
     <div className="mt-4">
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-        Time
+        Hour
       </p>
-      <p className="text-muted-foreground type-body mt-1">
-        Times shown in {PLACE_TZ_LABEL}
-        {dayHours ? ` · open ${dayHours}` : ""}
-      </p>
-      <div className="scrollbar-hide -mx-5 mt-2 overflow-x-auto px-5 pb-1">
-        <div className="inline-flex flex-nowrap gap-2">
-          {columns.map((col) => (
-            <div
-              key={col.hour}
-              className="flex w-[4.5rem] shrink-0 flex-col gap-2"
-            >
-              <TimeSlotButton
-                slot={col.onHour}
-                date={date}
-                value={value}
-                onChange={onChange}
-              />
-              <TimeSlotButton
-                slot={col.onHalf}
-                date={date}
-                value={value}
-                onChange={onChange}
-              />
-            </div>
-          ))}
-        </div>
+      <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
+        {slots.filter((slot) => !(date && isSlotPast(date, slot.time))).map((slot) => (
+          <TimeSlotButton
+            key={slot.time}
+            slot={slot}
+            date={date}
+            value={value}
+            onChange={onChange}
+          />
+        ))}
       </div>
     </div>
   );
@@ -231,16 +201,14 @@ function TimeSlotButton({
               : undefined
       }
       className={cn(
-        "h-[42px] w-full rounded-xl border text-sm font-semibold tabular-nums transition",
+        "h-10 shrink-0 rounded-full border px-4 text-sm font-semibold tabular-nums transition",
         past
           ? "border-border bg-muted/40 text-muted-foreground cursor-not-allowed opacity-45"
-          : closed
-            ? active
-              ? "text-foreground border-border bg-muted"
-              : "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
-            : active
-              ? "text-foreground border-border bg-muted"
-              : "border-border bg-card text-muted-foreground hover:text-foreground",
+          : active
+            ? "border-foreground bg-foreground text-background"
+            : closed
+              ? "border-border bg-card text-muted-foreground hover:text-foreground border-dashed"
+              : "border-border bg-card text-foreground",
       )}
     >
       {slot.time}
@@ -298,7 +266,8 @@ export function ReservationPartyPicker({
       <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
         Party size
       </p>
-      <div className="border-border bg-card mt-2 flex items-center justify-between rounded-2xl border p-2">
+      <div className="border-border bg-card mt-2 flex items-center gap-4 rounded-2xl border py-2 pr-2 pl-4">
+        <span className="type-body flex-1">People</span>
         <button
           type="button"
           onClick={() => onChange((n) => Math.max(MIN_PARTY, n - 1))}
@@ -308,7 +277,7 @@ export function ReservationPartyPicker({
         >
           <Minus className="h-4 w-4" />
         </button>
-        <span className="font-display text-2xl font-semibold tracking-tight tabular-nums">
+        <span className="w-6 text-center text-lg font-semibold tabular-nums">
           {value}
         </span>
         <button
