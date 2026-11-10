@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { LoadingFill } from "@/components/shared";
+import { CONSUMER_ROUTES, isAtRoute } from "@/lib/consumer-route-contract";
 import { ShellLoadingFor } from "./(shell)/shell-loading";
 
 // The wait before a route's own loading.tsx can mount: the shell layout is
@@ -35,7 +36,7 @@ function fill() {
 export default async function RootLoading() {
   const bare = (await headers()).get("x-pathname") ?? "/";
   if (bare === "/" || bare.startsWith("/auth")) return fill();
-  if (bare === "/onboard" || bare.startsWith("/onboard/")) {
+  if (isAtRoute(bare, CONSUMER_ROUTES.onboard)) {
     return <MobileFrame>{fill()}</MobileFrame>;
   }
   return shellChrome(<ShellLoadingFor bare={bare} />);

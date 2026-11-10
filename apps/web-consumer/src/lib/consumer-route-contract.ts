@@ -1,13 +1,12 @@
 // Consumer route contract (canonical surface paths + modal paths).
-// Keep this as the single source of truth so nav, headers, middleware, and
-// route handlers don't drift into stringly-typed mismatches.
+// The single source of truth: nav, headers, the loading pickers, the
+// middleware's sign-in wall and route handlers read these, never a typed
+// path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// FIRST STAGE (Pato, MESITA-2087, 2026-10-10). The consumer app is Citywide
-// Catalog · Discovery Engines · Reservations Agent, and nothing else. Every
-// Second Stage surface — Visits/THE TICKET, Wallet and Credits, cards, Orders,
-// Diamond/Plan/classes, the referral Share deck, public gift links — is
-// DELETED, not parked; its addresses live only in `legacy` below and 308 to
-// the nearest live page.
+// The live app is the bar (Home · Search · Pay · Activity · Share · Me), the
+// place screen, reservations, and the money objects under Pay and Wallet.
+// Every address that shipped and no longer renders a page lives only in
+// `legacy` below and 308s to the nearest live page.
 
 export const CONSUMER_ROUTES = {
   onboard: "/onboard",
@@ -33,6 +32,10 @@ export const CONSUMER_ROUTES = {
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
+  },
+  // A Google place with no Mesita row yet: generated on open.
+  placeOpen: {
+    prefix: "/place/open/",
   },
   // The singular reservation DETAIL; the list is Me › Saved › Reservations.
   reservation: {
@@ -235,6 +238,13 @@ export const CONSUMER_ROUTE_PREFIX = {
 // Matches both the /reservations list and /reservation/[id] details
 // (`/reservations`.startsWith(`/reservation`) is intentional).
 export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
+
+/** `pathname` is `root` itself or under it (`/me` matches `/me/plan`,
+ *  never `/menu`). A trailing slash on `root` is ignored. */
+export function isAtRoute(pathname: string, root: string): boolean {
+  const r = root.endsWith("/") ? root.slice(0, -1) : root;
+  return pathname === r || pathname.startsWith(`${r}/`);
+}
 
 export function placePath(idOrSlug: string): string {
   return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;

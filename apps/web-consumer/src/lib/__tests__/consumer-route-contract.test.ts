@@ -111,6 +111,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       home: "/home/places",
       homeSocial: "/home/social",
       place: { prefix: "/place/" },
+      placeOpen: { prefix: "/place/open/" },
       reservation: { prefix: "/reservation/" },
       // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
       // default, no sections: the tab links here and lights here.

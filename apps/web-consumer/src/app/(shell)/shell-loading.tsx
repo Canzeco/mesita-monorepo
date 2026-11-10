@@ -1,3 +1,8 @@
+import {
+  CONSUMER_ROUTE_PREFIX,
+  CONSUMER_ROUTES as R,
+  isAtRoute,
+} from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
@@ -32,34 +37,35 @@ import ShareLoading from "./share/loading";
 // empty card. Any other route gets the plain background: its own loading.tsx
 // follows at once.
 export function ShellLoadingFor({ bare }: { bare: string }) {
-  const at = (root: string) => bare === root || bare.startsWith(`${root}/`);
-  if (at("/place/open")) {
+  const at = (root: string) => isAtRoute(bare, root);
+  const me = R.mePages;
+  if (at(R.placeOpen.prefix)) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <GeneratingPlaceScreen variant="page" />
       </div>
     );
   }
-  if (at("/place")) return <PlacePageSkeleton />;
-  if (at("/search/chat")) return <SearchChatLoading />;
-  if (at("/search")) return <SearchLoading />;
-  if (at("/home")) return <HomeLoadingFrame />;
-  if (bare === "/me") return <MeLoading />;
-  if (at("/me/settings/contact")) return <ContactLoading />;
-  if (at("/me/settings")) return <SettingsLoading />;
-  if (at("/me/profile")) return <ProfileLoading />;
-  if (at("/me/instagram")) return <InstagramLoading />;
-  if (at("/me/class")) return <ClassLoading />;
-  if (at("/me/plan")) return <PlanLoading />;
-  if (at("/me/notifications")) return <NotificationsLoading />;
-  if (at("/me/reservations")) return <ReservationsLoading />;
-  if (at("/me/favorites")) return <FavoritesLoading />;
-  if (at("/me/connector")) return <ConnectorLoading />;
-  if (at("/pay")) return <PayLoading />;
+  if (at(R.place.prefix)) return <PlacePageSkeleton />;
+  if (at(R.searchChat)) return <SearchChatLoading />;
+  if (at(R.search)) return <SearchLoading />;
+  if (at(CONSUMER_ROUTE_PREFIX.home)) return <HomeLoadingFrame />;
+  if (bare === R.me) return <MeLoading />;
+  if (at(me.settingsContact)) return <ContactLoading />;
+  if (at(me.settings)) return <SettingsLoading />;
+  if (at(me.profile)) return <ProfileLoading />;
+  if (at(me.instagram)) return <InstagramLoading />;
+  if (at(me.class)) return <ClassLoading />;
+  if (at(me.plan)) return <PlanLoading />;
+  if (at(me.notifications)) return <NotificationsLoading />;
+  if (at(me.reservations)) return <ReservationsLoading />;
+  if (at(me.favorites)) return <FavoritesLoading />;
+  if (at(me.connector)) return <ConnectorLoading />;
+  if (at(R.pay)) return <PayLoading />;
   // The Wallet lives under Pay (MESITA-3631): /wallet forwards there, and a
   // House Card draws its own loading.tsx at once.
-  if (bare === "/wallet" || at("/wallet/gift")) return <PayLoading />;
-  if (at("/activity")) return <ActivityLoading />;
-  if (at("/share")) return <ShareLoading />;
+  if (bare === R.wallet || at(R.walletGift.prefix)) return <PayLoading />;
+  if (at(R.activity)) return <ActivityLoading />;
+  if (at(R.share)) return <ShareLoading />;
   return <div className="bg-background min-h-0 flex-1" aria-busy />;
 }

@@ -4,6 +4,7 @@ import {
   PlaceSlideOverSkeleton,
   ReservationSlideOverSkeleton,
 } from "@/components/consumer/overlay/DetailSkeletons";
+import { CONSUMER_ROUTES as R } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { RouteSheetShell } from "@/components/consumer/overlay/RouteSheetShell";
 import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
@@ -18,28 +19,28 @@ import AskAiSheetPage from "./(.)search/chat/page";
 // navigation's request), so the open lands in one step (MESITA-2848).
 export default async function ModalLoading() {
   const bare = (await headers()).get("x-pathname") ?? "";
-  if (bare.startsWith("/place/open/")) {
+  if (bare.startsWith(R.placeOpen.prefix)) {
     return (
       <SlideOverShell>
         <GeneratingPlaceScreen variant="modal" />
       </SlideOverShell>
     );
   }
-  if (bare.startsWith("/place/")) {
+  if (bare.startsWith(R.place.prefix)) {
     return (
       <SlideOverShell>
         <PlaceSlideOverSkeleton />
       </SlideOverShell>
     );
   }
-  if (bare.startsWith("/reservation/")) {
+  if (bare.startsWith(R.reservation.prefix)) {
     return (
       <SlideOverShell>
         <ReservationSlideOverSkeleton />
       </SlideOverShell>
     );
   }
-  if (bare === "/search/chat") {
+  if (bare === R.searchChat) {
     return (
       <RouteSheetShell ariaLabel="Ask AI">
         <AskAiSheetPage />

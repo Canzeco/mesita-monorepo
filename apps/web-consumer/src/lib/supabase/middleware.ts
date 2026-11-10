@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
+import {
+  CONSUMER_RESERVATION_SURFACE_PREFIX,
+  CONSUMER_ROUTE_PREFIX,
+  CONSUMER_ROUTES,
+  isAtRoute,
+} from "@/lib/consumer-route-contract";
 
 // Routing rules. Two passes:
 //
@@ -40,30 +46,30 @@ import type { Database } from "./database.types";
 // live now; this proxy only refreshes the session and walls signed-out guests.
 
 const PROTECTED_PREFIXES = [
-  // The bar's tabs and what they open (MESITA-3013).
-  "/home",
-  "/search",
-  "/place",
-  // Still gated although it only 308s to /me (MESITA-1626): middleware runs
-  // before the redirect, so gating here keeps a logged-out visitor's `next`
-  // param pointing at what they asked for instead of at Me.
-  "/inbox",
-  "/me",
-  // The Pay tab — one page, the Soon state (MESITA-2087). A guest's tab, so
-  // it gets the same fast path as Me.
-  "/pay",
+  // The bar's tabs and what they open (MESITA-3013), read from the route
+  // contract so a renamed tab cannot fall off the wall (MESITA-3642).
+  CONSUMER_ROUTE_PREFIX.home,
+  CONSUMER_ROUTES.search,
+  CONSUMER_ROUTE_PREFIX.place,
+  CONSUMER_ROUTE_PREFIX.me,
+  // The Pay tab and its bills and receipts.
+  CONSUMER_ROUTE_PREFIX.pay,
   // The Wallet's House Cards and credit links (the rails live under Pay
   // since MESITA-3631), and the Activity tab, a guest's money lines.
-  "/wallet",
-  "/activity",
-  // The Share tab's page (MESITA-2566), a guest's tab like Pay.
-  "/share",
-  // Saved's old tab address and the Bookings tab before it; both forward
-  // under Me (MESITA-2521, MESITA-2561).
-  "/saved",
-  "/bookings",
-  "/reservations",
-  "/reservation",
+  CONSUMER_ROUTE_PREFIX.wallet,
+  CONSUMER_ROUTE_PREFIX.activity,
+  // The Share tab's page (MESITA-2566).
+  CONSUMER_ROUTES.share,
+  // Matches the /reservation/<id> detail.
+  CONSUMER_RESERVATION_SURFACE_PREFIX,
+  // RETIRED, still walled: middleware runs before next.config's 308, so
+  // gating these keeps a signed-out visitor's `next` pointing at what they
+  // asked for. /inbox forwards to Me (MESITA-1626); /saved, /bookings and
+  // /reservations forward under Me (MESITA-2521, MESITA-2561).
+  "/inbox",
+  CONSUMER_ROUTES.legacy.saved,
+  CONSUMER_ROUTES.legacy.bookings,
+  CONSUMER_ROUTES.legacy.reservations,
 ];
 
 // Routes where a signed-in visitor should be bounced through post-signin.
@@ -73,9 +79,7 @@ const SIGNED_IN_BOUNCE = new Set(["/"]);
 
 // Exported for the route-contract test suite (gate matrix).
 export function shouldGate(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return PROTECTED_PREFIXES.some((prefix) => isAtRoute(pathname, prefix));
 }
 
 // Refreshes Supabase auth cookies on every request. Env vars are read at
