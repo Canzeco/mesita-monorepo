@@ -35,9 +35,12 @@ export type WalletCardModel = {
 };
 
 const CARD_BASE =
-  "relative z-10 flex aspect-[1.586/1] w-full flex-col justify-between bg-neutral-950 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
+  "relative z-10 flex w-full flex-col justify-between bg-neutral-950 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
 /** Full size on the method sheet; compact on a Wallet rail, 2.5 across (MESITA-3534). */
-const cardClass = (compact: boolean) => cn(CARD_BASE, compact ? "rounded-xl p-3" : "rounded-2xl p-5");
+// A rail card is 2:1 since MESITA-3637 (shorter rails on Pay), the sheet's
+// full card stays a payment card.
+const cardClass = (compact: boolean) =>
+  cn(CARD_BASE, compact ? "aspect-[2/1] rounded-xl p-2.5" : "aspect-[1.586/1] rounded-2xl p-5");
 
 export function WalletCard({
   card,
@@ -91,7 +94,7 @@ function CompactFace({ card, eager }: { card: WalletCardModel; eager: boolean })
   return (
     <>
       <div className="flex items-center gap-1.5">
-        <span className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white" aria-hidden>
+        <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white" aria-hidden>
           {card.photo ? (
             <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
           ) : (
@@ -102,9 +105,9 @@ function CompactFace({ card, eager }: { card: WalletCardModel; eager: boolean })
         </span>
         <span className="min-w-0 truncate text-xs font-semibold">{card.name}</span>
       </div>
-      <div className="min-w-0" aria-hidden>
-        <span className="block text-base leading-tight font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
-        <span className="block truncate type-label text-white/60">{amount.pending ? "Pending" : card.available_cents > 0 ? "Credits" : "No credits yet"}</span>
+      <div className="flex min-w-0 items-baseline gap-1.5" aria-hidden>
+        <span className="text-base leading-tight font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
+        <span className="truncate type-label text-white/60">{amount.pending ? "Pending" : card.available_cents > 0 ? "Credits" : "No credits yet"}</span>
       </div>
     </>
   );

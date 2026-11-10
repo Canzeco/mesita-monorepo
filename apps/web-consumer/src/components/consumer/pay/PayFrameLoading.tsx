@@ -16,7 +16,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "proof" }) 
         <Skeleton className="mt-2 h-12 w-full rounded-2xl" />
         <Skeleton className="mt-3 h-56 w-full rounded-2xl" />
         <Skeleton className="mt-5 h-5 w-48 rounded-md" />
-        <Skeleton className="mt-2 h-28 w-full rounded-2xl" />
+        <Skeleton className="mt-2 h-16 w-full rounded-xl" />
       </div>
     );
   }

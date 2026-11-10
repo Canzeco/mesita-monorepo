@@ -13,8 +13,10 @@ import { cn } from "@/lib/utils";
 // CAROUSELS with cards. only that in that page. Top is Money Payment
 // Methods: Add, Card One, Card Two … Bottom is Credits Payment Methods:
 // Add, Card One, Card Two …"). Each rail scrolls sideways with snap; every
-// tile is payment-card shaped (ISO ID-1, 1.586:1) and the same width, so
-// the next card always peeks. Add leads each rail. Tapping a method opens
+// tile is the same width, so the next card always peeks. SHORTER SINCE
+// MESITA-3637 (Pato: "make the payment methods view shorter to leave space
+// for pay at the top"): a 2:1 tile, not the payment card's 1.586:1, and no
+// cashback bar under it. Add leads each rail. Tapping a method opens
 // its full-screen modal in a later issue; today a tile goes where it went.
 
 /** One tile's width: TWO AND A HALF across the screen (Pato, MESITA-3534:
@@ -23,15 +25,13 @@ import { cn } from "@/lib/utils";
  *  the right edge that is 100% + 16px, holding 2.5 tiles and two 12px gaps,
  *  so a tile is (100% + 16px - 24px) / 2.5. */
 export const RAIL_TILE = "w-[calc((100%-8px)/2.5)] shrink-0 snap-start";
-const TILE_SHAPE = "aspect-[1.586/1] rounded-xl";
+const TILE_SHAPE = "aspect-[2/1] rounded-xl";
 
 export function WalletRail({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-5" aria-label={title}>
       <h2 className="font-display mb-2 text-base font-semibold tracking-tight">{title}</h2>
       {/* Full bleed: the rail runs to the screen edges, its first card on the page's inset. */}
-      {/* Top-aligned: a money tile carries its cashback line under it, and a
-          stretched row would pull the other tiles out of their card shape. */}
       <div className="scrollbar-hide -mx-4 flex snap-x snap-mandatory scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-1">
         {children}
       </div>
@@ -76,53 +76,18 @@ export function AddTile({
   );
 }
 
-// EACH MONEY METHOD SAYS ITS CASHBACK UNDER IT (Pato, MESITA-3542: "below
-// add the cashbacks in the money payment methods ... the money payment
-// method of the right must be Cash, a green bill with $ sign ... 2% back as
-// credits ... then list the cards and below all the cards mention 5% back").
-// The two standard rates of Payments Flow v2 (MESITA-3541): Mesita Payments 5%,
-// cash 2%, both as credit at that place. Cash earns through the waiter's
-// Received on the charge page (MESITA-3541 step 3).
-const CARD_BACK = "5% back as credits";
-const CASH_BACK = "2% back as credits";
-
-/** The banner reads "5% Back as Credits", white on ink (Pato, MESITA-3566:
- *  "Back as Credits" ... "maybe all black, with white letters"); the green
- *  Pay-tile look is gone. The full sentence stays for screen readers. */
-const backRate = (back: string) => back.split(" ")[0];
-
-/** A money tile and its cashback, one rail slot. BOX A is the card; BOX B,
- *  under it and as wide as it (MESITA-3555), WEARS THE PLACE SCREEN'S PAY
- *  TILE'S INK (MESITA-3560, then MESITA-3566): one black bar, white
- *  "5% Back as Credits", centred. */
-function MoneySlot({ back, children }: { back: string; children: ReactNode }) {
-  return (
-    <div className={RAIL_TILE}>
-      {children}
-      <p
-        className="bg-foreground text-paper mt-1.5 flex h-9 w-full items-center justify-center gap-1 rounded-xl text-xs leading-none whitespace-nowrap"
-        data-wallet-back
-      >
-        <span className="font-bold tabular-nums" aria-hidden>
-          {backRate(back)}
-        </span>
-        <span className="font-semibold" aria-hidden>
-          Back as Credits
-        </span>
-        <span className="sr-only">{back}</span>
-      </p>
-    </div>
-  );
-}
+// NO CASHBACK UNDER A MONEY METHOD (Pato, MESITA-3637: "better don't show
+// the Cashback amount there. keep it clean"). The "2% / 5% Back as Credits"
+// bar of MESITA-3542/3566 is gone; the rates live on the place screen.
 
 /** Cash, right after Add: a green bill with the $ in its middle. Nothing to
- *  open; the line under it says what paying cash earns. */
+ *  open. */
 export function CashTile() {
   return (
-    <MoneySlot back={CASH_BACK}>
+    <div className={RAIL_TILE}>
       <div
         role="img"
-        aria-label={`Cash: ${CASH_BACK}`}
+        aria-label="Cash"
         className={cn(TILE_SHAPE, "relative flex w-full items-center justify-center overflow-hidden bg-green-400 text-neutral-950")}
         data-wallet-method="cash"
       >
@@ -132,35 +97,34 @@ export function CashTile() {
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-950 text-lg font-bold text-green-400" aria-hidden>
           $
         </span>
-        <span className="absolute bottom-2.5 left-3 text-xs font-semibold" aria-hidden>
+        <span className="absolute bottom-2 left-2.5 text-xs font-semibold" aria-hidden>
           Cash
         </span>
       </div>
-    </MoneySlot>
+    </div>
   );
 }
 
 /** A card the guest saved (MESITA-3523): Stripe's brand, the last four and
- *  the expiry, never more. It carries the card line; a tap opens its sheet
- *  (Remove). */
+ *  the expiry, never more. A tap opens its sheet (Remove). */
 export function SavedCardTile({ card, onOpen }: { card: SavedCard; onOpen: () => void }) {
   const brand = brandLabel(card.brand);
   return (
-    <MoneySlot back={CARD_BACK}>
+    <div className={RAIL_TILE}>
       <button
         type="button"
         onClick={onOpen}
-        aria-label={`${brand} ending in ${card.last4}, expires ${expiryLabel(card)}: ${CARD_BACK}`}
-        className={cn(TILE_SHAPE, "flex w-full flex-col justify-between bg-neutral-900 p-3 text-left text-white")}
+        aria-label={`${brand} ending in ${card.last4}, expires ${expiryLabel(card)}`}
+        className={cn(TILE_SHAPE, "flex w-full flex-col justify-between bg-neutral-900 p-2.5 text-left text-white")}
         data-wallet-method="saved-card"
       >
         <span className="truncate text-xs font-semibold">{brand}</span>
-        <span>
-          <span className="block text-sm leading-tight font-semibold tabular-nums">•••• {card.last4}</span>
-          <span className="block type-label text-white/70 tabular-nums">{expiryLabel(card)}</span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-sm leading-tight font-semibold tabular-nums">•••• {card.last4}</span>
+          <span className="type-label text-white/70 tabular-nums">{expiryLabel(card)}</span>
         </span>
       </button>
-    </MoneySlot>
+    </div>
   );
 }
 
@@ -173,16 +137,16 @@ export function StoryTile({ story, onOpen }: { story: WaitingStory; onOpen: () =
       type="button"
       onClick={onOpen}
       aria-label={`Story voucher at ${name}: ${money(story.credit_cents, story.currency)} waiting for activation. Show the QR`}
-      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-pink-200 p-3 text-left text-neutral-950")}
+      className={cn(RAIL_TILE, TILE_SHAPE, "flex flex-col justify-between bg-pink-200 p-2.5 text-left text-neutral-950")}
       data-wallet-story
     >
       <span className="flex items-center gap-1.5 text-xs font-semibold">
         <Instagram className="h-4 w-4 shrink-0" aria-hidden />
         <span className="min-w-0 truncate">{name}</span>
       </span>
-      <span>
-        <span className="block text-base leading-tight font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
-        <span className="block truncate type-label text-neutral-700">Show the QR</span>
+      <span className="flex min-w-0 items-baseline gap-1.5">
+        <span className="text-base leading-tight font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
+        <span className="truncate type-label text-neutral-700">Show the QR</span>
       </span>
     </button>
   );
