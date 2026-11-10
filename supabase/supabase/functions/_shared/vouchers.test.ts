@@ -123,7 +123,8 @@ Deno.test("the Checkout: payment mode, the fee as application fee, the row id in
   assertEquals(p.mode, "payment");
   assertEquals(p.client_reference_id, ROW);
   assertEquals(p.customer_email, "guest@example.com");
-  assertEquals(p.success_url, "https://mesita.ai/wallet?prepay={CHECKOUT_SESSION_ID}");
+  // The place's House Card, never the Wallet's rails (MESITA-3617).
+  assertEquals(p.success_url, `https://mesita.ai/wallet/${PLACE}?prepay={CHECKOUT_SESSION_ID}`);
   assertEquals(p.cancel_url, "https://mesita.ai/place/strana");
   assertEquals(p.expires_at, 1_000_000 + 31 * 60);
   const items = p.line_items as Array<{ quantity: number; price_data: { currency: string; unit_amount: number } }>;

@@ -14,7 +14,7 @@
 //             amount_cents, currency, token: string | null, test_mode }
 //   token is the link's key, shown once; a replay (already_sent) answers
 //   null, since only its hash is stored. The client builds the link:
-//   <its origin>/wallet?gift=<token>.
+//   <its origin>/wallet/gift/<token>.
 //   400 amount_required | above_cap · 401 sign_in · 404 gone ·
 //   409 not_live | insufficient (spendable_cents) | too_many_open | taken ·
 //   500 with request_id

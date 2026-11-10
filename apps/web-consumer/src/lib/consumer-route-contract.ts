@@ -62,8 +62,9 @@ export const CONSUMER_ROUTES = {
   payTab: { prefix: "/pay/tab/" },
   payReceipt: { prefix: "/pay/receipt/" },
   // WALLET IS ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search Pay
-  // Wallet Me"). A Mesita Prepay checkout returns to /wallet?prepay=, an
-  // added card to ?card=: one-shot events the page reads and drops.
+  // Wallet Me"). A Mesita Prepay checkout returns to the place's House Card
+  // with ?prepay= (MESITA-3617), an added card to /wallet?card=: one-shot
+  // events the page reads and drops.
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
