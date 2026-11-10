@@ -54,9 +54,18 @@ export function overlayExitMs(): number {
 // "pops in" with stale open state.
 export function useOverlayPresence(
   onExited: () => void,
-  { active = true }: { active?: boolean } = {},
+  {
+    active = true,
+    resume = true,
+  }: {
+    active?: boolean;
+    /** false: always play the enter slide, even while another shell is
+     *  still counted open (a full page pushed from inside a slide-over,
+     *  whose panel is on its way out, MESITA-3621). */
+    resume?: boolean;
+  } = {},
 ) {
-  const [open, setOpen] = useState(() => active && openShells > 0);
+  const [open, setOpen] = useState(() => resume && active && openShells > 0);
   useEffect(() => {
     if (!open) return;
     openShells += 1;

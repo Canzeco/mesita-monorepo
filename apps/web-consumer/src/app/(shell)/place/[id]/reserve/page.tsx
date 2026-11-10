@@ -3,7 +3,7 @@ import { ReservePageBody } from "@/components/consumer/ReservePageBody";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { apiFetchPlaceDetail } from "@/lib/api/places";
 import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
-import { CONSUMER_ROUTES, placePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +28,6 @@ export default async function PlaceReservePage({
   return (
     <ReservePageBody
       place={{ id: place.id, name: place.name, hours_table: place.hours_table }}
-      fallbackHref={placePath(id)}
     />
   );
 }
