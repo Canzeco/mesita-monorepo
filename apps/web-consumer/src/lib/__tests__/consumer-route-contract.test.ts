@@ -3,8 +3,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   CONSUMER_ROUTES,
-  CONSUMER_ROUTE_PREFIX,
-  CONSUMER_RESERVATION_SURFACE_PREFIX,
   isModalContractPath,
   placePath,
   reservationPath,
@@ -211,27 +209,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         savedPlacePrefix: "/saved/place/",
       },
     });
-  });
-
-  it("pins the middleware prefix map", () => {
-    expect(CONSUMER_ROUTE_PREFIX).toEqual({
-      // NO `discover` key (MESITA-1609) — Home and Search split that
-      // namespace and light DIFFERENT bottom tabs, so BottomNav matches each
-      // discoverTabs segment individually instead. NO `search` key: an exact
-      // top-level segment with no siblings. Home's two tabs light it
-      // (MESITA-2597).
-      home: "/home/",
-      place: "/place",
-      pay: "/pay",
-      // A House Card or a credit link lights Pay (MESITA-3631).
-      wallet: "/wallet",
-      activity: "/activity",
-      // NO `saved` key: Saved is a Me page (MESITA-2561), lit by Me's prefix.
-      // NO `inbox` key (MESITA-1626): every /inbox address 308s to /me, so
-      // the middleware never sees one.
-      me: "/me",
-    });
-    expect(CONSUMER_RESERVATION_SURFACE_PREFIX).toBe("/reservation");
   });
 
   // Nothing in the legacy block may be a live address: a redirect whose

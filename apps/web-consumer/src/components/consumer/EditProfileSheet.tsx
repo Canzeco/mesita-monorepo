@@ -23,7 +23,6 @@ import {
   uploadConsumerAvatar,
   validateAvatarFile,
 } from "@/lib/avatar-upload";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack as leave } from "@/lib/navigate";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -301,7 +300,7 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
   // Saved: slide away to the screen under (Me, or wherever Profile was
   // opened from), with Me as the landing for a cold open (MESITA-3644).
   function goBack() {
-    leave(router, CONSUMER_ROUTES.me);
+    leave(router);
   }
 
   const code = profile.code ?? null;

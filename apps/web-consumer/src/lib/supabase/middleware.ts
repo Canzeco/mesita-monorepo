@@ -2,10 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 import {
-  CONSUMER_RESERVATION_SURFACE_PREFIX,
-  CONSUMER_ROUTE_PREFIX,
   CONSUMER_ROUTES,
   isAtRoute,
+  shellRoots,
 } from "@/lib/consumer-route-contract";
 
 // Routing rules. Two passes:
@@ -45,23 +44,11 @@ import {
 // trip, and eleven patches chased the symptoms. Routes are served where they
 // live now; this proxy only refreshes the session and walls signed-out guests.
 
-const PROTECTED_PREFIXES = [
-  // The bar's tabs and what they open (MESITA-3013), read from the route
-  // contract so a renamed tab cannot fall off the wall (MESITA-3642).
-  CONSUMER_ROUTE_PREFIX.home,
-  CONSUMER_ROUTES.search,
-  CONSUMER_ROUTE_PREFIX.place,
-  CONSUMER_ROUTE_PREFIX.me,
-  // The Pay tab and its bills and receipts.
-  CONSUMER_ROUTE_PREFIX.pay,
-  // The Wallet's House Cards and credit links (the rails live under Pay
-  // since MESITA-3631), and the Activity tab, a guest's money lines.
-  CONSUMER_ROUTE_PREFIX.wallet,
-  CONSUMER_ROUTE_PREFIX.activity,
-  // The Share tab's page (MESITA-2566).
-  CONSUMER_ROUTES.share,
-  // Matches the /reservation/<id> detail.
-  CONSUMER_RESERVATION_SURFACE_PREFIX,
+const PROTECTED_PREFIXES: string[] = [
+  // Every first segment a shell screen lives under: /home, /search, /place,
+  // /reservation, /pay, /wallet, /activity, /me, /share. Read from the route
+  // map (MESITA-3646), so a new screen is walled the day it lands.
+  ...shellRoots(),
   // RETIRED, still walled: middleware runs before next.config's 308, so
   // gating these keeps a signed-out visitor's `next` pointing at what they
   // asked for. /inbox forwards to Me (MESITA-1626); /saved, /bookings and

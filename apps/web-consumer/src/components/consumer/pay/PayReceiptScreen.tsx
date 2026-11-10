@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ReceiptText } from "lucide-react";
 import { EFError } from "@/lib/api/_invoke";
 import { apiGetPayment, apiReleasePayment, type PayProof } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES, payReceiptPath } from "@/lib/consumer-route-contract";
+import { payReceiptPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -39,7 +39,7 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
   const [refill, setRefill] = useState<Refill | null>(null);
   const { places, refresh } = usePayPlaces(null);
   const refillPlace = refill && places ? places.find((p) => p.place_id === refill.placeId) ?? null : null;
-  const leave = () => goBack(router, CONSUMER_ROUTES.pay);
+  const leave = () => goBack(router);
 
   useEffect(() => {
     let cancelled = false;

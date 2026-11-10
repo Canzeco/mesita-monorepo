@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { parentHref, routeHref } from "@/lib/consumer-route-contract";
 
 // The hard-nav reservation's frame (/reservation/[id]): its header (the back
-// circle, a live link to Me; "Reservation" centred) and the scroller under
+// circle, a link to the reservations list it says it goes to, the route
+// map's parent, MESITA-3646; it went to Me before; "Reservation" centred) and the scroller under
 // it. The page and its loading.tsx (ReservationPageSkeleton) both draw THIS,
 // so the header shown while it loads is the one that stays (Pato,
 // MESITA-2701: "the placeholders must be similar to the page you are
@@ -15,7 +16,9 @@ export function ReservationPageFrame({ children }: { children: ReactNode }) {
     <div className="relative flex h-full flex-col">
       <header className="bg-background/85 z-20 flex shrink-0 items-center gap-2 px-3 py-3 backdrop-blur">
         <Link
-          href={CONSUMER_ROUTES.me}
+          // Only a cold open lands here (inside the app a reservation opens as
+          // a panel), so Back is its parent: Me › Reservations.
+          href={parentHref(routeHref("reservation"))}
           aria-label="Back to reservations"
           className="border-border bg-card text-foreground hover:bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition"
         >

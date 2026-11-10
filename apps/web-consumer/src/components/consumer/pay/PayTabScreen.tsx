@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CONSUMER_ROUTES, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
+import { payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { PayFormSheet } from "./PayForm";
@@ -31,7 +31,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   const { places, refresh } = usePayPlaces(null);
   const [formPlaceId, setFormPlaceId] = useState<string | null>(null);
   const formPlace = formPlaceId && places ? places.find((p) => p.place_id === formPlaceId) ?? null : null;
-  const leave = () => goBack(router, CONSUMER_ROUTES.pay);
+  const leave = () => goBack(router);
 
   return (
     <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">

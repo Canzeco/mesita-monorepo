@@ -1,8 +1,5 @@
-import {
-  CONSUMER_ROUTE_PREFIX,
-  CONSUMER_ROUTES as R,
-  isAtRoute,
-} from "@/lib/consumer-route-contract";
+import type { ReactNode } from "react";
+import { routeFor, type RouteId } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { HomeLoadingFrame } from "@/components/consumer/home/HomeLoadingFrame";
 import { PlacePageSkeleton } from "@/components/consumer/overlay/DetailSkeletons";
@@ -22,6 +19,55 @@ import ContactLoading from "./me/settings/contact/loading";
 import ActivityLoading from "./activity/loading";
 import PayLoading from "./pay/loading";
 import ShareLoading from "./share/loading";
+import RefundsLoading from "./me/refunds/loading";
+import FeedbackLoading from "./me/settings/feedback/loading";
+import ReservationPageLoading from "./reservation/[id]/loading";
+import WalletPlaceLoading from "./wallet/[placeId]/loading";
+import WalletGiftLoading from "./wallet/gift/[token]/loading";
+import PlaceReserveLoading from "./place/[id]/reserve/loading";
+import PayPlaceLoading from "./pay/[placeId]/loading";
+import PayTabLoading from "./pay/tab/[tabId]/loading";
+import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
+
+// One frame per screen in the route map (MESITA-3646): a screen without one
+// is a type error, never a blank card.
+const FRAMES: Record<RouteId, () => ReactNode> = {
+  home: () => <HomeLoadingFrame />,
+  homeSocial: () => <HomeLoadingFrame />,
+  search: () => <SearchLoading />,
+  searchChat: () => <SearchChatLoading />,
+  place: () => <PlacePageSkeleton />,
+  placeOpen: () => (
+    <div className="flex h-full min-h-0 flex-col">
+      <GeneratingPlaceScreen variant="page" />
+    </div>
+  ),
+  placeReserve: () => <PlaceReserveLoading />,
+  reservation: () => <ReservationPageLoading />,
+  pay: () => <PayLoading />,
+  payPlace: () => <PayPlaceLoading />,
+  payTab: () => <PayTabLoading />,
+  payReceipt: () => <PayReceiptLoading />,
+  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there.
+  wallet: () => <PayLoading />,
+  walletPlace: () => <WalletPlaceLoading />,
+  walletGift: () => <WalletGiftLoading />,
+  activity: () => <ActivityLoading />,
+  share: () => <ShareLoading />,
+  me: () => <MeLoading />,
+  meProfile: () => <ProfileLoading />,
+  meInstagram: () => <InstagramLoading />,
+  mePlan: () => <PlanLoading />,
+  meClass: () => <ClassLoading />,
+  meConnector: () => <ConnectorLoading />,
+  meRefunds: () => <RefundsLoading />,
+  meNotifications: () => <NotificationsLoading />,
+  meFavorites: () => <FavoritesLoading />,
+  meReservations: () => <ReservationsLoading />,
+  meSettings: () => <SettingsLoading />,
+  meSettingsContact: () => <ContactLoading />,
+  meSettingsFeedback: () => <FeedbackLoading />,
+};
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
 // "why spinning and then placeholder, don't do that. just use the
@@ -34,38 +80,10 @@ import ShareLoading from "./share/loading";
 // (lib/navigate.ts) lands here too, so it draws the profile's silhouette,
 // never a blank card with Home lit (Pato, MESITA-2973). Each Me box draws its
 // own frame too (MESITA-3013): a hard load of /me/profile used to land on an
-// empty card. Any other route gets the plain background: its own loading.tsx
-// follows at once.
+// empty card. The frame is the route map's (FRAMES above); an address with
+// no row (a redirect on its way) gets the plain background.
 export function ShellLoadingFor({ bare }: { bare: string }) {
-  const at = (root: string) => isAtRoute(bare, root);
-  const me = R.mePages;
-  if (at(R.placeOpen.prefix)) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <GeneratingPlaceScreen variant="page" />
-      </div>
-    );
-  }
-  if (at(R.place.prefix)) return <PlacePageSkeleton />;
-  if (at(R.searchChat)) return <SearchChatLoading />;
-  if (at(R.search)) return <SearchLoading />;
-  if (at(CONSUMER_ROUTE_PREFIX.home)) return <HomeLoadingFrame />;
-  if (bare === R.me) return <MeLoading />;
-  if (at(me.settingsContact)) return <ContactLoading />;
-  if (at(me.settings)) return <SettingsLoading />;
-  if (at(me.profile)) return <ProfileLoading />;
-  if (at(me.instagram)) return <InstagramLoading />;
-  if (at(me.class)) return <ClassLoading />;
-  if (at(me.plan)) return <PlanLoading />;
-  if (at(me.notifications)) return <NotificationsLoading />;
-  if (at(me.reservations)) return <ReservationsLoading />;
-  if (at(me.favorites)) return <FavoritesLoading />;
-  if (at(me.connector)) return <ConnectorLoading />;
-  if (at(R.pay)) return <PayLoading />;
-  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there, and a
-  // House Card draws its own loading.tsx at once.
-  if (bare === R.wallet || at(R.walletGift.prefix)) return <PayLoading />;
-  if (at(R.activity)) return <ActivityLoading />;
-  if (at(R.share)) return <ShareLoading />;
+  const id = routeFor(bare);
+  if (id) return FRAMES[id]();
   return <div className="bg-background min-h-0 flex-1" aria-busy />;
 }

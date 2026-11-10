@@ -8,7 +8,7 @@
 // re-ran the shell's two Oregon reads, so a slow tap became the slowest
 // possible navigation.
 
-import { isModalContractPath } from "./consumer-route-contract";
+import { isModalContractPath, parentHref } from "./consumer-route-contract";
 
 type NavOptions = { transitionTypes?: string[] };
 
@@ -147,11 +147,20 @@ export function replaceAddress(href: string): void {
   window.history.replaceState(null, "", href);
 }
 
-/** Back to the screen under this one, or `fallback` (in place of this one)
- *  when this one was opened from outside the app. */
-export function goBack(router: RouterLike & { back: () => void }, fallback: string): void {
+/** Back to the screen under this one, or, when this one was opened from
+ *  outside the app, to `fallback`: by default the route map's parent of this
+ *  screen (a bill → Pay, Reserve → its place, a reservation → Me ›
+ *  Reservations, MESITA-3646). */
+export function goBack(
+  router: RouterLike & { back: () => void },
+  fallback?: string,
+): void {
   if (hasInAppBack()) router.back();
-  else navigateTo(router, fallback, { replace: true, motion: "pop" });
+  else
+    navigateTo(router, fallback ?? parentHref(window.location.pathname), {
+      replace: true,
+      motion: "pop",
+    });
 }
 
 /** The Navigation API index of the current entry, when the browser has it

@@ -183,9 +183,8 @@ export default async function ConsumerShellLayout({
           {/* Body + modal host only: the @modal slot must not sit above
               BottomNav. An `inset-0` host as a sibling after the tab bar
               covered its hit targets even with pointer-events-none on the
-              wrapper (MESITA-2747). A route that needs the bar hidden hides
-              it itself through HideShellNav (the place profile as a page and
-              as a slide-over, MESITA-3300). */}
+              wrapper (MESITA-2747). Where the bar shows is the route
+              map's `bar` (the place screen hides it, MESITA-3300). */}
           {/* The stage: a drill-in slides the new screen in over the old
               one, Back slides it away (MESITA-3644). */}
           <ScreenStage>

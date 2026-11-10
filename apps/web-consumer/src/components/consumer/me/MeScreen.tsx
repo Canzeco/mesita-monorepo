@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { goBack } from "@/lib/navigate";
 import { ArrowLeft } from "lucide-react";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
 // The frame every Me box wears: back, title, body.
@@ -37,7 +36,7 @@ export function MeScreen({
 }) {
   const router = useRouter();
 
-  const onBack = useCallback(() => goBack(router, CONSUMER_ROUTES.me), [router]);
+  const onBack = useCallback(() => goBack(router), [router]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
