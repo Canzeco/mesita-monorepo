@@ -21,7 +21,8 @@ type ReservationStateMeta = {
   iconClass: string;
   /** Muted/struck treatment for the finished-and-not-happening phases. */
   spent: boolean;
-  /** Fallback banner when the row carries no stateNote. */
+  /** Fallback banner when the row carries no stateNote. Null when the pill
+   *  already says it all (MESITA-3649: a note never restates the state). */
   banner: string | null;
 };
 
@@ -60,7 +61,7 @@ const RESERVATION_STATE_META: Record<
     Icon: Clock,
     iconClass: "text-muted-foreground",
     spent: true,
-    banner: "Hope it was great. This table has come and gone.",
+    banner: null,
   },
   cancelled: {
     label: "Cancelled",
@@ -68,7 +69,7 @@ const RESERVATION_STATE_META: Record<
     Icon: X,
     iconClass: "text-muted-foreground",
     spent: true,
-    banner: "This reservation was cancelled.",
+    banner: null,
   },
   failed: {
     label: "Not booked",
@@ -76,7 +77,7 @@ const RESERVATION_STATE_META: Record<
     Icon: CircleSlash,
     iconClass: "text-muted-foreground",
     spent: true,
-    banner: "This booking didn't go through.",
+    banner: null,
   },
 };
 

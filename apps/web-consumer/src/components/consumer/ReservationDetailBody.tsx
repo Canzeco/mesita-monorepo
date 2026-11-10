@@ -1,37 +1,29 @@
 "use client";
 
 import { SizedImage } from "@mesita/place-profile";
-import { Calendar, Hash, Users } from "lucide-react";
-import { useState, type ComponentProps } from "react";
+import { Copy } from "lucide-react";
+import { useState } from "react";
 
 import type { ReservationItem } from "@/lib/reservation-types";
-import { cn, errMsg, guestNoun } from "@/lib/utils";
+import { cn, errMsg } from "@/lib/utils";
 import { RESERVATION_FLOW, stateMeta } from "@/lib/reservation-state";
-import { MetaRow } from "@/components/consumer/reservation-detail-ui";
 import { ReservationActions } from "@/components/consumer/reservation-actions";
 import { apiConfirmReservation } from "@/lib/api/reservations";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { toast } from "@/lib/toast";
 
 // Shared body for /reservation/[id]. Used by both the intercepted modal
 // (ReservationDetailModalShell) and the hard-nav page. Stays narrow on
 // purpose — the booking's lifecycle, its metadata, and the actions that can
 // move it. No full place detail (that lives on /place/[id]).
 
-/** The metadata card's rows, in order. Every reservation carries a
- *  reference code (8 digits, set on insert since 2026-07-27), so the loaded
- *  card holds all four. ReservationBodySkeleton draws one row per label
- *  here, so its card can never be a row short of this one (Pato,
- *  MESITA-2701: "the placeholders must be similar to the page you are
- *  loading, like the sizes"); it drew three, and everything under the card
- *  dropped a row when the reservation landed. */
-export const RESERVATION_META_LABELS = [
-  "When",
-  "Party",
-  "State",
-  "Reference",
-] as const;
-
-export type ReservationMetaLabel = (typeof RESERVATION_META_LABELS)[number];
+// THE TIME IS THE HEADLINE (Pato, MESITA-3649: "THIS UI LOOKS LIKE SHIT";
+// decided: the state once, the time first, no form table). One card holds
+// a short photo, the place and its state pill, then the time large and the
+// table's size under it. The state is said once, by the pill: no struck-out
+// name, no STATE row, no note that only restates it. The reference is one
+// quiet line under the card, copied on a tap. The When · Party · State ·
+// Reference table of uppercase labels it replaced read like a form.
 
 // The happy path as a stepper: created → booking → confirmed → passed. A
 // reservation that exited the path (cancelled / failed) shows the banner
@@ -90,17 +82,16 @@ export function ReservationDetailBody({
   const showOffers = r.state === "booking" && offers.length > 0;
   const showAck =
     r.state === "confirmed" && !r.guestConfirmedAt && r.guestNotify === "app";
-  // One entry per RESERVATION_META_LABELS; a row with nothing to say is
-  // null and draws nothing.
-  const metaRows: Record<
-    ReservationMetaLabel,
-    Omit<ComponentProps<typeof MetaRow>, "label"> | null
-  > = {
-    When: { Icon: Calendar, value: r.when },
-    Party: { Icon: Users, value: `${r.partySize} ${guestNoun(r.partySize)}` },
-    State: { Icon: meta.Icon, iconClass: meta.iconClass, value: meta.label },
-    Reference: r.referenceCode ? { Icon: Hash, value: r.referenceCode } : null,
-  };
+  const reference = r.referenceCode ?? null;
+  async function copyReference() {
+    if (!reference) return;
+    try {
+      await navigator.clipboard.writeText(reference);
+      toast.success("Reference copied.");
+    } catch {
+      toast.error("Couldn't copy. The reference is " + reference + ".");
+    }
+  }
 
   async function confirm(args?: { newDate?: string; newTime?: string }) {
     setConfirmBusy(true);
@@ -120,10 +111,8 @@ export function ReservationDetailBody({
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
-      {/* Hero — place photo + name + state pill stacked. Larger than the
-          list card so the screen reads as one reservation, not a list row. */}
       <section className="border-border bg-card overflow-hidden rounded-2xl border">
-        <div className="bg-muted relative aspect-[16/9] w-full">
+        <div className="bg-muted relative aspect-[5/2] w-full">
           {r.placePhoto ? (
             <SizedImage
               src={r.placePhoto}
@@ -131,36 +120,45 @@ export function ReservationDetailBody({
               alt={r.placeName}
               fill
               sizes="(max-width: 640px) 100vw, 480px"
-              className={cn(
-                "object-cover",
-                meta.spent && "opacity-80 grayscale",
-              )}
+              className={cn("object-cover", meta.spent && "opacity-60")}
             />
           ) : null}
         </div>
-        <div className="flex items-start justify-between gap-2 px-4 py-3">
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="min-w-0 truncate text-base font-semibold">{r.placeName}</p>
+            <span
+              className={cn(
+                "type-label inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-0.5 font-semibold",
+                meta.pillClass,
+              )}
+            >
+              {meta.label}
+            </span>
+          </div>
           <h1
             className={cn(
-              "font-display text-xl leading-tight font-semibold tracking-tight",
-              r.state === "cancelled" && "line-through",
+              "font-display mt-3 text-2xl leading-tight font-semibold tracking-tight tabular-nums",
+              meta.spent && "text-muted-foreground",
             )}
           >
-            {r.placeName}
+            {r.when}
           </h1>
-          <span
-            className={cn(
-              "type-label inline-flex shrink-0 items-center gap-1 rounded-md border px-2.5 py-0.5 font-semibold",
-              meta.pillClass,
-            )}
-          >
-            <meta.Icon
-              className={cn("h-3 w-3", meta.iconClass)}
-              strokeWidth={2.25}
-            />
-            {meta.label}
-          </span>
+          <p className="text-muted-foreground mt-1 text-base">Table for {r.partySize}</p>
         </div>
       </section>
+
+      {reference ? (
+        <button
+          type="button"
+          onClick={() => void copyReference()}
+          aria-label={`Copy reference ${reference}`}
+          className="text-muted-foreground hover:text-foreground -mt-1 flex items-center gap-1.5 self-start px-1 text-sm tabular-nums transition"
+        >
+          Reference {reference}
+          <Copy className="h-3.5 w-3.5" aria-hidden />
+        </button>
+      ) : null}
 
       <LifecycleStepper state={r.state} />
 
@@ -178,14 +176,6 @@ export function ReservationDetailBody({
           {banner}
         </p>
       )}
-
-      {/* Reservation metadata list. iOS Settings-style rows. */}
-      <section className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border">
-        {RESERVATION_META_LABELS.map((label) => {
-          const row = metaRows[label];
-          return row ? <MetaRow key={label} label={label} {...row} /> : null;
-        })}
-      </section>
 
       {showOffers && (
         <section className="border-border bg-card flex flex-col gap-2 rounded-2xl border p-3">
