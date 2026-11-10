@@ -10,6 +10,13 @@ import {
   TILE_PHOTO,
   TILE_TEXT,
 } from "./catalog-tile-classes";
+import {
+  GRID_FACT_LINE,
+  GRID_LIST,
+  GRID_NAME_LINE,
+  GRID_PHOTO,
+  GRID_TEXT,
+} from "./place-grid-classes";
 
 // HOME › PLACES WHILE ITS POOL LOADS (Pato, MESITA-2701: "the placeholders
 // must be similar to the page you are loading, like the sizes"): the tile
@@ -67,6 +74,40 @@ export function DiscoverFallback() {
       <ul aria-hidden className={PLACES_LIST}>
         {Array.from({ length: TILES }, (_, i) => (
           <CatalogTileSkeleton key={i} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** PlaceGridCard's silhouette, from its own boxes (place-grid-classes.ts):
+ *  the square photo, the name's line, the facts' line. */
+export function PlaceGridSkeleton() {
+  return (
+    <li className="min-w-0">
+      <div className={GRID_PHOTO}>
+        <Skeleton className="h-full w-full rounded-none" />
+      </div>
+      <div className={GRID_TEXT}>
+        <div className={`flex items-center ${GRID_NAME_LINE}`}>
+          <Skeleton className="h-3.5 w-3/4" />
+        </div>
+        <div className={`flex items-center ${GRID_FACT_LINE}`}>
+          <Skeleton className="h-3 w-1/2" />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** The grid while its pool loads (MESITA-3658): six silhouettes, about a
+ *  screen of them, in the grid's own gaps. */
+export function GridFallback() {
+  return (
+    <div className="pb-6" aria-busy>
+      <ul aria-hidden className={GRID_LIST}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <PlaceGridSkeleton key={i} />
         ))}
       </ul>
     </div>

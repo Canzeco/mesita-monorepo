@@ -83,7 +83,9 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
+import { DiscoverFallback, GridFallback, PLACES_LIST } from "./DiscoverFallback";
+import { PlaceGridCard } from "./PlaceGridCard";
+import { GRID_CHIPS, GRID_LIST } from "./place-grid-classes";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -119,19 +121,32 @@ export const TOP_LABEL = "Top";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"),
- *  each its own address (Pato, MESITA-2597: "we should have home/places and
- *  home/social"). */
+/** Home's three tabs, each its own address (MESITA-2517, MESITA-2597). The
+ *  first is THE GRID (Pato, MESITA-3658: "we are going to try a new UI for
+ *  home. Three sections: Places (New UI), Places, Social … leave the
+ *  previous one working"): a chip row over a two-column photo grid, at
+ *  /home/places, where every "go Home" lands. The second is the list Places
+ *  was, the family column beside big tiles, at /home/classic. */
 export const HOME_TABS = [
-  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
+  { key: "places", label: "Places (New UI)", href: CONSUMER_ROUTES.home },
+  { key: "classic", label: "Places", href: CONSUMER_ROUTES.homeClassic },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The tab a Home address shows: Social at /home/social, Places anywhere
- *  else under Home. */
+/** The tab a Home address shows: Social at /home/social, the old list at
+ *  /home/classic, the grid anywhere else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
+  if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
+  return pathname === CONSUMER_ROUTES.homeClassic ? "classic" : "places";
+}
+
+/** A place's family word for the grid's fact line: the first family the
+ *  server ranked it under, or null. */
+export function placeFamilyLabel(place: Place): string | null {
+  const key = place.area?.familyKeys?.[0];
+  if (!key) return null;
+  return FILTERABLE_PLACE_FAMILIES.find((f) => f.key === key)?.label ?? null;
 }
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
@@ -364,6 +379,9 @@ export function CatalogRails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked, order, requestKey, fillRetry]);
 
+  // The grid and the old list say which they are, so the two can be compared
+  // (MESITA-3658); the old list keeps the word it always sent.
+  const cardMode = tab === "places" ? "grid" : "places";
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
     source: place.area?.source ?? (place.googleOnly ? "google" : "mesita"),
@@ -376,7 +394,7 @@ export function CatalogRails() {
   // `home_card_save` with the tile's facts.
   const cards = useCardSaveShare((place, rank) =>
     trackEvent(supabase, "home_card_save", {
-      mode: "places",
+      mode: cardMode,
       place_id: place.id,
       ...tileFacts(place, rank),
     }),
@@ -502,14 +520,55 @@ export function CatalogRails() {
     </nav>
   );
 
-  // Home's header (the location alone, MESITA-2405) → the tabs → on Places
-  // the family column beside the tiles, on Social the feed full width; the
-  // pane scrolls on its own.
+  // THE GRID'S FAMILY CHIPS (MESITA-3658): the same rows as the old list's
+  // column, Top first, as one scrolling line of pills over the grid, so the
+  // places get the whole width. Words only; the chosen pill is ink. The row
+  // and the column share `chip`, so a family carries across the two tabs.
+  const chipRow = (
+    <nav
+      className={cn("bg-card", GRID_CHIPS)}
+      aria-label="Families"
+      data-places-chips
+    >
+      {chips.map((c) => {
+        const on = chip === c.key;
+        return (
+          <button
+            key={c.key}
+            type="button"
+            onClick={(e) => {
+              if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
+              setChip(c.key);
+              setFamilies(chipFamilies(c.key));
+              e.currentTarget.scrollIntoView({
+                block: "nearest",
+                inline: "center",
+              });
+            }}
+            aria-pressed={on}
+            className={cn(
+              "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+              on
+                ? "bg-foreground text-card font-semibold"
+                : "bg-border/60 text-foreground hover:bg-border",
+            )}
+          >
+            {c.label}
+          </button>
+        );
+      })}
+    </nav>
+  );
+
+  // Home's header (the location alone, MESITA-2405) → the tabs → on the grid
+  // the chip row over it, on the old list the family column beside the
+  // tiles, on Social the feed full width; the pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
+      {tab === "places" ? chipRow : null}
       <div className="flex min-h-0 flex-1">
-        {tab === "places" ? categories : null}
+        {tab === "classic" ? categories : null}
         <div
           className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
@@ -517,6 +576,36 @@ export function CatalogRails() {
           {inner}
         </div>
       </div>
+    </div>
+  );
+
+  // The grid (MESITA-3658): the same places, order and paging as the old
+  // list, drawn as PlaceGridCard. The family word shows on Top only; a
+  // family chip already says it.
+  const grid = (list: readonly Place[], label: string) => (
+    <div className="pb-6">
+      <ul role="list" aria-label={label} className={GRID_LIST}>
+        {list.map((place, i) => (
+          <PlaceGridCard
+            key={place.id}
+            place={withUserDistance(place, coords)}
+            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
+            saved={cards.isSaved(place)}
+            onToggle={() => cards.toggle(place, i + 1)}
+            onOpen={() =>
+              trackEvent(supabase, "home_card_open", {
+                mode: cardMode,
+                place_id: place.id,
+                ...tileFacts(place, i + 1),
+              })
+            }
+            onOpenGoogle={() => openGooglePlace(place)}
+          />
+        ))}
+        {hasMore ? (
+          <li ref={sentinel} aria-hidden className="h-px" data-places-more />
+        ) : null}
+      </ul>
     </div>
   );
 
@@ -541,7 +630,7 @@ export function CatalogRails() {
                   onShare={() => cards.share(place)}
                   onOpen={() =>
                     trackEvent(supabase, "home_card_open", {
-                      mode: "places",
+                      mode: cardMode,
                       place_id: place.id,
                       ...tileFacts(place, i + 1),
                     })
@@ -570,7 +659,8 @@ export function CatalogRails() {
   // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
   // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
   // drew one bare square before, so it grew to three, then to tiles.
-  if (waitingForFix) return shell(<DiscoverFallback />);
+  const waiting = tab === "places" ? <GridFallback /> : <DiscoverFallback />;
+  if (waitingForFix) return shell(waiting);
 
   if (fetchError) {
     return shell(
@@ -583,7 +673,7 @@ export function CatalogRails() {
     );
   }
 
-  if (pool === null) return shell(<DiscoverFallback />);
+  if (pool === null) return shell(waiting);
 
   const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   // The Catalog has no radius (MESITA-2909): an empty pool is an empty
@@ -602,5 +692,6 @@ export function CatalogRails() {
     />
   );
 
-  return shell(shown.length === 0 ? empty : tiles(shown, label, true));
+  if (shown.length === 0) return shell(empty);
+  return shell(tab === "places" ? grid(shown, label) : tiles(shown, label, true));
 }

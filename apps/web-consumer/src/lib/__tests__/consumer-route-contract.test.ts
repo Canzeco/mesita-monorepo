@@ -76,6 +76,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.search,
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
+    CONSUMER_ROUTES.homeClassic,
     CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
     `${CONSUMER_ROUTES.payPlace.prefix}:id`,
@@ -106,6 +107,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // HOME IS TWO TABS, EACH AN ADDRESS (Pato, MESITA-2597). Bare /home,
       // /discover and /discover/places are in the legacy block now.
       home: "/home/places",
+      homeClassic: "/home/classic",
       homeSocial: "/home/social",
       place: { prefix: "/place/" },
       placeOpen: { prefix: "/place/open/" },
