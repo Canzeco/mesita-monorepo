@@ -76,7 +76,7 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100MX, gets $130MX of credit. Once, on the first visit.", value: "+30%", tone: "bg-sky-100 text-sky-700" },
+  { key: "voucher_welcome", name: "Welcome Voucher", line: "Guest pays $100MX, gets $130MX of credit. One per guest at your place.", value: "+30%", tone: "bg-sky-100 text-sky-700" },
   { key: "voucher_story", name: "Story Voucher", line: "Guest pays $100MX, gets $130MX of credit after posting an Instagram story at your place.", value: "+30%", tone: "bg-pink-100 text-pink-700" },
   { key: "voucher_vip", name: "VIP Voucher", line: "Guest pays $100MX, gets $130MX of credit. VIP guests only.", value: "+30%", tone: "bg-violet-100 text-violet-700" },
 ];
