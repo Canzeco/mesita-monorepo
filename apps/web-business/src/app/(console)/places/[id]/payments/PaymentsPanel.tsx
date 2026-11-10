@@ -242,7 +242,7 @@ export function PaymentsPanel({
         <div className="min-w-0">
           <p className="font-medium">{args.name}</p>
           <p className="text-muted-foreground">{args.line}</p>
-          {blocked ? <p className={NOTE}>{args.blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
+          {blocked ? <p className={NOTE}>{blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
         </div>
         <p className={cn("font-semibold whitespace-nowrap", !on && "text-muted-foreground")}>{on ? "On" : "Off"}</p>
         <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(args.key, !on)} label={`${args.name}: ${on ? "on" : "off"}`} />
