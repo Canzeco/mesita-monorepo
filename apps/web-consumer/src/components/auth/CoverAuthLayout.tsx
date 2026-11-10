@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Outfit } from "next/font/google";
 import { Phone, X } from "lucide-react";
-import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
@@ -14,6 +15,10 @@ import { cn } from "@/lib/utils";
 // It fills the MobileFrame card (flex-1, absolute layers), so it is the
 // same on a phone and in the desktop visualizer. The keyboard shrinks the
 // frame (--kb), which keeps the sheet above it.
+//
+// The name is the mark plus "Mesita" in Outfit 700, as the app's header
+// writes it (ModeTabs), not the lockup's lowercase "mesita." (MESITA-3653).
+const wordmarkFont = Outfit({ subsets: ["latin"], weight: "700" });
 
 export function CoverAuthLayout({
   headline,
@@ -57,7 +62,12 @@ export function CoverAuthLayout({
           open && "opacity-0",
         )}
       >
-        <MesitaLogo variant="horizontal" className="h-7 w-auto self-start text-white" />
+        <span className="flex items-center gap-2 self-start text-white select-none">
+          <MesitaMark className="h-8 w-8" />
+          <span className={`${wordmarkFont.className} text-[28px] leading-none tracking-[-0.03em]`}>
+            Mesita
+          </span>
+        </span>
 
         <div className="flex flex-col gap-5">
           <div>
