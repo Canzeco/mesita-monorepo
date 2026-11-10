@@ -199,7 +199,7 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
   };
 })();
 
-/** Mesita Pay's face: the vouchers' light green (MESITA-3480). */
+/** Mesita Payments' face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
 
 function SectionTitle({ id, title }: { id: string; title: string }) {
@@ -358,7 +358,7 @@ const CREDIT_FACTS = [
   // MESITA-3505, Pato: "you can fund your wallet with multiple vouchers and
   // then pay the bill with it ... everywhere, that is super important".
   "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
-  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
+  "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Payments or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
   "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get none back.",
 ];
@@ -560,7 +560,7 @@ export function VouchersPane({
   const products = [...STANDARD, ...SPECIAL];
   const chosen = picked && !loading && buyable(picked) ? products.find((p) => p.key === picked) ?? null : null;
   // SHORTER ROWS, SYMMETRIC NAMES (MESITA-3490, Pato: "make the items a bit
-  // shorter"; "Mesita Pay Cashback ... External Pay Cashback").
+  // shorter"; "Mesita Payments Cashback ... External Pay Cashback").
   const ROW = "flex w-full items-center gap-3 px-4 py-2 text-left";
   const CHIP = "flex h-11 w-[72px] shrink-0 items-center justify-center rounded-xl text-xl font-extrabold tracking-tight tabular-nums";
 
@@ -673,16 +673,16 @@ export function VouchersPane({
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
             className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Mesita Pay Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            aria-label={`Mesita Payments Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
               {cardPct ? `+${cardPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
-                <span aria-hidden>Mesita Pay Cashback</span>
+                <span aria-hidden>Mesita Payments Cashback</span>
                 <InfoButton
-                  title="Mesita Pay Cashback"
+                  title="Mesita Payments Cashback"
                   status={
                     loading
                       ? undefined
@@ -694,8 +694,8 @@ export function VouchersPane({
                   text={[
                     `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
                     "Any amount, every visit. Each place sets its own rate.",
-                    "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Pay, without the tip.",
-                    "You can mix: part of the bill with credits, the rest with Mesita Pay.",
+                    "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Payments, without the tip.",
+                    "You can mix: part of the bill with credits, the rest with Mesita Payments.",
                   ]}
                 />
               </span>

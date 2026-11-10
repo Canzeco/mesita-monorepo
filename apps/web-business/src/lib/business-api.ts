@@ -416,15 +416,17 @@ export async function decideVerification(
 
 // ── Payments (MESITA-3296) ──────────────────────────────────────────────
 
-/** The owner's switches. `pay_cards` is the Mesita Pay switch (MESITA-3396; the key is
+/** The owner's switches. `pay_cards` is the Mesita Payments switch (MESITA-3396; the key is
  *  never renamed, renaming resets live config). Cash and Credits left with
  *  MESITA-3408. Mirrors PAYMENT_KEYS in supabase/_shared/payments.ts. */
 /** The owner's on/off switches (Main §10, MESITA-3589): House Credits, Cash
- *  Payments, Mesita Payments (`pay_cards`), and the six Prepaid Vouchers. */
+ *  Payments, Mesita Payments (`pay_cards`), Mesita Prepayments
+ *  (`prepayments`, MESITA-3597) and its six vouchers. */
 export type PaymentKey =
   | "house_credits"
   | "cash_payments"
   | "pay_cards"
+  | "prepayments"
   | "voucher_200"
   | "voucher_1000"
   | "voucher_5000"
@@ -436,7 +438,7 @@ export type PaymentRateKey = "card_cashback_bps" | "cash_cashback_bps";
 export type PaymentSettings = Record<PaymentKey, boolean> & Record<PaymentRateKey, number | null>;
 /** The House Credits Contract (MESITA-3589), independent of Stripe. */
 export type HouseCreditsContract = { signed: boolean; signed_at: string | null; terms_version: string | null; text?: string };
-/** Place Stripe's seven values (Main §10). */
+/** The Stripe Account's seven values (Main §10). */
 export type StripeStage = "none" | "onboarding" | "in_review" | "connected" | "action_needed" | "payouts_paused" | "restricted";
 export type PaymentAccount = {
   state: "none" | "onboarding" | "ready" | "restricted";

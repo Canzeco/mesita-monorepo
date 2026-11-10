@@ -30,7 +30,7 @@ import { buildDirectionsUrl } from "../../lib/maps-link";
 // and keep the dark colors"; MESITA-3314 had them as one row of 44px
 // buttons, "the three buttons instead of lines buttons, in one line:
 // Reserve, Prepay, Pay"; MESITA-2690 had three rows, Mesita Reserve full
-// width over Mesita Prepay and Mesita Pay halved; MESITA-2688/2689 had
+// width over Mesita Prepay and Mesita Payments halved; MESITA-2688/2689 had
 // Reserve and Pay side by side):
 //
 //   [ Save ] [ Maps ] [ Contact ] [ Share ] [ Upgrade ]      black, glyph over label (MESITA-3581)

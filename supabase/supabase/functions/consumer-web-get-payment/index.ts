@@ -16,7 +16,7 @@
 // Body: { payment_id: uuid }
 // MESITA-3539: the proof also answers the ticket the guest typed, how much
 // was refunded (card + tip, wallet_payments.refunded_cents) and the place's
-// marks (Premier tier, Mesita Pay) beside its name.
+// marks (Premier tier, Mesita Payments) beside its name.
 //
 // Response: { ok: true, payment_id, place: { id, name, marks?: { tier, mesita_pay } },
 //             status, amount_cents, credit_cents, card_cents, tip_cents,

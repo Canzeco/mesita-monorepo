@@ -330,7 +330,7 @@ const PAYMENT_COLUMNS =
   "proof_token, proof_seen_at, ticket, refunded_cents, livemode, stripe_checkout_session_id, stripe_account_id, created_at, expires_at";
 
 /** The place's two marks beside its name (MESITA-3321): the Premier tier
- *  (red) and the Mesita Pay mark (green). */
+ *  (red) and the Mesita Payments mark (green). */
 export type PlaceMarksView = { tier: number | null; mesita_pay: boolean };
 
 /** What the guest's Pay page shows for one of their payments: the proof
@@ -361,7 +361,7 @@ export function paymentView(row: PaymentRow, placeName: string | null, marks?: P
 }
 
 /** The place's marks for the proof: its Premier tier (profiles.boost_tier,
- *  read with the name, as the Pay list reads it) and moneyState's Mesita Pay
+ *  read with the name, as the Pay list reads it) and moneyState's Mesita Payments
  *  mark. A failed switch read answers no green mark; the proof still shows. */
 export async function readPlaceMarks(admin: SupabaseClient, placeId: string, tier: number | null): Promise<PlaceMarksView> {
   try {

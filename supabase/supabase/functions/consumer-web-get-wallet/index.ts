@@ -213,7 +213,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
   const places = placesRes.places;
   if (settingsRes.error) console.error(`[consumer-web-get-wallet] settings read: ${settingsRes.error.message}`);
-  // Mesita Pay On: only a row saying so (no row is Off, MESITA-3599).
+  // Mesita Payments On: only a row saying so (no row is Off, MESITA-3599).
   const cardsOn = new Set<string>();
   // via unknown: a template-string select widens `data` (as in payments.ts).
   const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<

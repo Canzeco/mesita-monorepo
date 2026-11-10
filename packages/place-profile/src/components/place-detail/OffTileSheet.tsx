@@ -15,7 +15,7 @@ export const OFF_TILE_TEXT: Record<OffTile, { title: string; text: string }> = {
   reserve: { title: "Reserve", text: "This place doesn't offer reservations." },
   prepay: { title: "Prepay", text: "This place doesn't accept prepayments." },
   wallet: { title: "Wallet", text: "You have no credits at this place yet." },
-  pay: { title: "Pay", text: "This place doesn't currently offer Mesita Pay." },
+  pay: { title: "Pay", text: "This place doesn't currently offer Mesita Payments." },
 };
 
 type AddState = "idle" | "adding" | "added" | "failed";

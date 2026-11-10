@@ -1,6 +1,6 @@
 -- MESITA-3589 — the Place states of Main §10, the money and legal guards.
 -- The House Credits Contract is EF-only and one live per place; House Credits
--- On needs it; the vouchers need House Credits; the rates are Off or 5% (card)
+-- On needs it; the vouchers and Mesita Prepayments (MESITA-3597) need House Credits; the rates are Off or 5% (card)
 -- and Off or 2% (cash) since MESITA-3596; ending the contract turns House Credits and the
 -- vouchers off; and House Credits Off never stops a guest spending credit
 -- they already hold (a credit-only bill still settles).
@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(17);
+select plan(20);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000a3589'), ('00000000-0000-4000-8000-0000000b3589');
 insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3589');
@@ -50,10 +50,14 @@ select throws_ok(
     values ('00000000-0000-4000-8000-000000013589', '00000000-0000-4000-8000-0000000b3589', 'owner', 'draft-2026-11', repeat('0', 64))$$,
   '23505', null, 'a place has one live contract');
 
+select throws_ok(
+  $$update public.place_payment_settings set prepayments = true where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'Mesita Prepayments On without House Credits is refused (MESITA-3597)');
+
 select lives_ok(
-  $$update public.place_payment_settings set house_credits = true, voucher_200 = true
+  $$update public.place_payment_settings set house_credits = true, prepayments = true, voucher_200 = true
      where place_id = '00000000-0000-4000-8000-000000013589'$$,
-  'signed: House Credits and a voucher turn on');
+  'signed: House Credits, Mesita Prepayments and a voucher turn on');
 
 -- ━━━ The rates ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -85,8 +89,14 @@ update public.house_credits_contracts set ended_at = now(), end_reason = 'test'
  where place_id = '00000000-0000-4000-8000-000000013589';
 
 select is(
-  (select (house_credits, voucher_200)::text from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
-  '(f,f)', 'ending the contract turns House Credits and the vouchers off');
+  (select (house_credits, prepayments, voucher_200)::text from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
+  '(f,f,f)', 'ending the contract turns House Credits, Mesita Prepayments and the vouchers off');
+select throws_ok(
+  $$update public.place_payment_settings set house_credits = false, prepayments = true where place_id = '00000000-0000-4000-8000-000000013589'$$,
+  '23514', null, 'Mesita Prepayments stays Off while House Credits is Off');
+select ok(
+  (select prepayments = false from public.place_payment_settings where place_id = '00000000-0000-4000-8000-000000013589'),
+  'the refused update left Mesita Prepayments Off');
 select throws_ok(
   $$update public.place_payment_settings set house_credits = true where place_id = '00000000-0000-4000-8000-000000013589'$$,
   '23514', null, 'an ended contract does not let House Credits back on');

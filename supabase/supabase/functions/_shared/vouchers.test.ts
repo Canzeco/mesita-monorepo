@@ -16,6 +16,7 @@ const ROW = "00000000-0000-4000-8000-0000000d3303";
 
 const ALL_ON: PaymentSettings = {
   pay_cards: true,
+  prepayments: true,
   house_credits: true,
   cash_payments: true,
   card_cashback_bps: 500,

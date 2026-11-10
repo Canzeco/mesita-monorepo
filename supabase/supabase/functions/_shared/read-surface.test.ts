@@ -6,7 +6,7 @@
 // column `project_id` off `visit_tickets` with a raw `.from().select()`,
 // PostgREST answered 42703 for the whole query — and the call destructured
 // `{ data }` alone, so the error vanished. A null row then read exactly like
-// "already closed by the synchronous path". The Mesita Pay reliability
+// "already closed by the synchronous path". The Mesita Payments reliability
 // backstop silently never fired.
 //
 // Belt 1 — THE DOOR ALLOWLIST (this issue's Shape). Mirror findWriters: every

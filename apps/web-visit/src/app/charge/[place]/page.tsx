@@ -322,7 +322,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
           </p>
         ) : null}
         {alert}
-        <p className="proof-line">The guest types this code on Mesita Pay</p>
+        <p className="proof-line">The guest types this code in the Mesita app</p>
         <p className="charge-code" aria-label={`Code ${c.code.split("").join(" ")}`}>
           {c.code}
         </p>

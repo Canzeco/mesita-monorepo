@@ -80,7 +80,7 @@ export function AddTile({
 // add the cashbacks in the money payment methods ... the money payment
 // method of the right must be Cash, a green bill with $ sign ... 2% back as
 // credits ... then list the cards and below all the cards mention 5% back").
-// The two standard rates of Payments Flow v2 (MESITA-3541): Mesita Pay 5%,
+// The two standard rates of Payments Flow v2 (MESITA-3541): Mesita Payments 5%,
 // cash 2%, both as credit at that place. Cash earns through the waiter's
 // Received on the charge page (MESITA-3541 step 3).
 const CARD_BACK = "5% back as credits";

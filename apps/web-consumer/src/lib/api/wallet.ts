@@ -35,7 +35,7 @@ export type WalletBalance = {
     photo: string | null;
     /** Premier's stored tier, the red mark (MESITA-3514). Absent reads 0. */
     boost_tier?: number;
-    /** The green Mesita Pay mark, by the list rows' rule (MESITA-3514).
+    /** The green Mesita Payments mark, by the list rows' rule (MESITA-3514).
      *  Absent reads as no. */
     mesita_pay?: boolean;
   } | null;
@@ -192,7 +192,7 @@ export const money = moneyLabel;
 export type PayProof = {
   payment_id: string;
   place_name: string | null;
-  /** The place's Premier tier and Mesita Pay mark beside its name
+  /** The place's Premier tier and Mesita Payments mark beside its name
    *  (MESITA-3539), when known. */
   place_marks?: { tier: number | null; mesita_pay: boolean } | null;
   /** The row's state: open (a card part's Checkout is still open), paid,

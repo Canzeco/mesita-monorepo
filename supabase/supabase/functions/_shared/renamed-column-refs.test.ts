@@ -4,7 +4,7 @@
 // 20260825005000_rename_project_id_to_place_id.sql. Two raw
 // selects were written after that migration and never got the memo:
 //
-//   stripe-webhook-handle-event/ticket-payment-intent.ts — the Mesita Pay
+//   stripe-webhook-handle-event/ticket-payment-intent.ts — the Mesita Payments
 //   reliability backstop. It asked for `project_id`, PostgREST answered 42703
 //   for the whole query, and the loader destructured `{ data }` alone — so the
 //   error vanished and a null row read exactly like "already closed by the

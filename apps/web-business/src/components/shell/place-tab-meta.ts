@@ -29,7 +29,7 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
   money: { label: "Money", icon: MoneyIcon, sub: "Every payment, voucher and cashback at your place." },
   profile: { label: "Profile", icon: StorefrontIcon, sub: "What guests read about your place." },
   premier: { label: "Premier", icon: MegaphoneIcon, sub: "Rank higher on Home and the Map. Marked as an ad." },
-  payments: { label: "Payments", icon: CreditCardIcon, sub: "How guests pay you, earn credit and pay ahead." },
+  payments: { label: "Payments", icon: CreditCardIcon, sub: "Choose how guests pay you and earn credit here. Money and payouts are on Operations › Money." },
   // Every product, current and future (MESITA-3238; was Soon, MESITA-3197). The
   // line is about Mesita, not the page (Pato, MESITA-3237).
   all: {

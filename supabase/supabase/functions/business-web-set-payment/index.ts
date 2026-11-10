@@ -4,22 +4,27 @@
 // Mesita staff only: it is the place's money.
 //
 // MESITA-3589: the Place states of Main §10. A switch (House Credits, Cash
-// Payments, Mesita Payments, or one of the six Prepaid Vouchers) on or off,
+// Payments, Mesita Payments, Mesita Prepayments (MESITA-3597), or one of its
+// six vouchers) on or off,
 // or a cashback (card or cash): Off, or its one rate (MESITA-3596: card 5%,
 // cash 2%).
 // The rules, each with the one step that unlocks it:
 //   - House Credits On needs a signed House Credits Contract (SQL refuses
 //     too). House Credits Off turns the vouchers off with it, since they
 //     sell House Credits; credit guests already hold stays spendable.
-//   - A voucher On needs House Credits On (SQL refuses too).
+//   - Mesita Prepayments On needs House Credits On (SQL refuses too) and,
+//     as below, the Stripe Account taking cards. House Credits Off turns it
+//     off too.
+//   - A voucher On needs House Credits On (SQL refuses too). It sells only
+//     while Mesita Prepayments is on as well (moneyState).
 //   - Cash Payments On needs the place code (the waiter's Received).
-//   - Mesita Pay, its cashback (card) and every voucher On need the place's
+//   - Mesita Payments, its cashback (card), Mesita Prepayments and every voucher On need the place's
 //     Stripe account, in the server's payments mode, to take cards
 //     (MESITA-3599; SQL refuses too, in either mode). Off never needs it.
 //   - The rates are fixed, so cash (2%) is never above card (5%); the SQL
 //     guard stays as a backstop.
 //
-// Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|voucher_*, enabled: boolean }
+// Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|prepayments|voucher_*, enabled: boolean }
 //    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 500 (card) | 200 (cash) | null }
 // Response: { ok: true, settings: { ...every setting } }
 //   409 { code: needs_contract | needs_house_credits | needs_place_code | needs_stripe }
@@ -33,7 +38,7 @@ import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
 import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
 
-const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect Stripe first: Mesita Pay, its cashback and the vouchers need an account that takes cards." };
+const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: Mesita Payments, its cashback and Mesita Prepayments need an account that takes cards." };
 
 serveJson("business-web-set-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -79,8 +84,12 @@ serveJson("business-web-set-payment", async (req) => {
       }
     }
     if (key === "house_credits" && !on) {
-      // Prepaid Vouchers sell House Credits: they go off with it.
+      // Mesita Prepayments sells House Credits: it and its vouchers go off with it.
+      patch.prepayments = false;
       for (const v of MONEY_VOUCHER_KEYS) patch[v] = false;
+    }
+    if (key === "prepayments" && on && !current.house_credits) {
+      return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
     if ((MONEY_VOUCHER_KEYS as readonly string[]).includes(key) && on && !current.house_credits) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
@@ -109,7 +118,7 @@ serveJson("business-web-set-payment", async (req) => {
       return json({ ok: false, code: "needs_contract", error: "Sign the House Credits Agreement first." }, 409);
     }
     if (error.message.includes("needs_stripe")) return json(NEEDS_STRIPE, 409);
-    if (error.message.includes("prepay_needs_house_credits")) {
+    if (error.message.includes("prepay_needs_house_credits") || error.message.includes("prepayments_needs_house_credits")) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
     return json({ ok: false, error: `place_payment_settings: ${error.message}` }, 500);

@@ -12,9 +12,10 @@
 // Credit is the place's debt (MESITA-3408): no switch stops a guest spending
 // it. `pay` is credit or both whenever spendable > 0.
 //
-// `mesita_pay` is the green Mesita Pay mark: on when a guest can do something
-// on Mesita Pay here now: pay the bill by card (W2b, CARD_BILL_PAY_LIVE) or
-// buy a voucher:
+// `mesita_pay` is the green mark (the key keeps its old name: renaming a key
+// breaks readers; the products are Mesita Payments and Mesita Prepayments,
+// MESITA-3597): on when a guest can pay the bill by card here now (Mesita
+// Payments, W2b, CARD_BILL_PAY_LIVE) or buy a voucher (Mesita Prepayments):
 //   mesita_pay = (CARD_BILL_PAY_LIVE && cards) || sell.length > 0
 // Three blind spots on purpose, because the list rows cannot see them: the
 // admin pause, Welcome-used and the fee hold (MESITA-3461) do not turn the
@@ -46,9 +47,13 @@ export type MoneyVoucherKey = (typeof MONEY_VOUCHER_KEYS)[number];
  *  place's own cashback in bps, null/absent = Off. `has_place_code` is not a
  *  switch but a fact the caller passes when it read place_codes
  *  (MESITA-3545): the waiter's Received needs one. Absent reads false.
- *  The six voucher switches are Mesita Prepayments' sub-settings. */
+ *  `prepayments` is Mesita Prepayments (MESITA-3597): a voucher sells only
+ *  when it AND the voucher's own switch are on; absent reads ON, so a reader
+ *  from before it keeps working. The six voucher switches are Mesita
+ *  Prepayments' sub-settings. */
 export type MoneySettings = {
   pay_cards?: boolean;
+  prepayments?: boolean;
   house_credits?: boolean;
   cash_payments?: boolean;
   card_cashback_bps?: number | null;
@@ -124,7 +129,7 @@ export type MoneyState = {
   house_credits: boolean;
   /** How a guest can pay here: from credit, by card, both, or not at all. */
   pay: PayWay;
-  /** The green Mesita Pay mark (see the header). */
+  /** The green mark: Mesita Payments or Mesita Prepayments here now (see the header). */
   mesita_pay: boolean;
 };
 
@@ -136,10 +141,12 @@ export function moneyState(settings: MoneySettings, account: MoneyAccount, balan
   const cards = charges && !billingDue && settings.pay_cards !== false;
   const houseCredits = settings.house_credits === true;
   const cash = settings.cash_payments === true && settings.has_place_code === true;
+  // Mesita Prepayments (MESITA-3597). Absent means on, as pay_cards.
+  const prepayments = settings.prepayments !== false;
   const sell: MoneyVoucherKey[] = [];
   const unavailable: Partial<Record<MoneyVoucherKey, VoucherReason>> = {};
   for (const key of MONEY_VOUCHER_KEYS) {
-    if (settings[key] !== true) unavailable[key] = "off";
+    if (settings[key] !== true || !prepayments) unavailable[key] = "off";
     else if (!houseCredits) unavailable[key] = "needs_house_credits";
     else if (!charges) unavailable[key] = "needs_account";
     else if (billingDue) unavailable[key] = "needs_billing";

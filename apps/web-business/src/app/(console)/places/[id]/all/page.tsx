@@ -37,7 +37,7 @@ const CURRENT: Array<{ tab: PlaceTab; line: string }> = [
   },
   {
     tab: "payments",
-    line: "Digital Payments, Payments Cashback and Prepaid Vouchers, and which of them are on at your place.",
+    line: "House Credits, Cash Payments, Mesita Payments, their Cashback-as-Credits, Mesita Prepayments and the Stripe Account, and which of them are on at your place.",
   },
 ];
 

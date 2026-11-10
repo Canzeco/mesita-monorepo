@@ -1,6 +1,6 @@
 // Supabase Edge Function — visit-web-list-payments
 //
-// MESITA-3462: the staff list of a place's Mesita Pay payments at
+// MESITA-3462: the staff list of a place's Mesita Payments at
 // visit.mesita.ai/payments/<place>. Staff identity is the place code
 // (_shared/staff.ts): the first read carries it and answers a 12-hour staff
 // token; every read after carries the token only. Changing the place code on

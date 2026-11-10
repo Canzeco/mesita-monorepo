@@ -2,7 +2,7 @@
 -- place_fee_claim bills what is owed once, net of refunds, and nets a late
 -- refund on the next one; rows from before the charge model changed are
 -- never billed; an overdue invoice sets fee_hold and paying it clears
--- fee_hold only: the owner's own Mesita Pay switch stays off.
+-- fee_hold only: the owner's own Mesita Payments switch stays off.
 
 begin;
 
@@ -18,7 +18,7 @@ insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000013461', 'mesita-3461-probe', 'active', 'generating', 'MXN');
 insert into public.place_payment_accounts (place_id, stripe_account_id, livemode, charges_enabled)
 values ('00000000-0000-4000-8000-000000013461', 'acct_test_3461', false, true);
--- The owner turned Mesita Pay off themselves.
+-- The owner turned Mesita Payments off themselves.
 insert into public.place_payment_settings (place_id, pay_cards)
 values ('00000000-0000-4000-8000-000000013461', false);
 
