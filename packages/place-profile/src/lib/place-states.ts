@@ -180,9 +180,9 @@ export const PLACE_STATE_ROWS = [
   { key: "houseCreditsContract", label: "House Credits Contract" },
   { key: "houseCredits", label: "House Credits" },
   { key: "cashPayments", label: "Cash Payments" },
-  { key: "cashPaymentsCashback", label: "Cash Payments Cashback" },
+  { key: "cashPaymentsCashback", label: "Cash Payments Cashback-as-Credits" },
   { key: "mesitaPayments", label: "Mesita Payments" },
-  { key: "mesitaPaymentsCashback", label: "Mesita Payments Cashback" },
+  { key: "mesitaPaymentsCashback", label: "Mesita Payments Cashback-as-Credits" },
   { key: "mesitaPrepayments", label: "Mesita Prepayments" },
 ] as const;
 
