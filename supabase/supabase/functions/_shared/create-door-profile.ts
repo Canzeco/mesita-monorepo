@@ -21,7 +21,10 @@ import { openaiChat } from "./enrich-config.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
 import { capPresentation } from "./presentation-cap.ts";
 import { loadModelsConfig } from "./models-config.ts";
-import { reservationsLikelyFromInference } from "./infer-place-reservations.ts";
+import {
+  RESERVATIONS_RULE,
+  reservationsLikelyFromInference,
+} from "./infer-place-reservations.ts";
 import { fetchPlaceFamilies } from "./categories.ts";
 import {
   FAMILIES_RULE,
@@ -104,6 +107,7 @@ export async function synthesizeDoorProfile(
     '"zone":"<the Mesita Zone, or null>"}. ' +
     FAMILIES_RULE + " " +
     ZONE_RULE + " " +
+    RESERVATIONS_RULE + " " +
     "MESITA NAME: strip slogans, legal forms (S.A. de C.V., LLC, Inc.), " +
     "store numbers and internal branch codes. FRANCHISE RULE — a chain " +
     "branch is named BRAND + WHERE IT IS. When the place is one location of " +
