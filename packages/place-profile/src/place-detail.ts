@@ -72,7 +72,7 @@ export type PlaceScore = {
 };
 
 export type PlaceDetail = {
-  /** Description/Actions — false only when this place has opted out of bookings. */
+  /** Reserve: the Reservations switch on AND a number to call (MESITA-3622). */
   reservations_enabled?: boolean;
   /** The money products the place has on (MESITA-3299): the owner's switches
    *  (Business › Payments) and whether its Stripe account can charge. The

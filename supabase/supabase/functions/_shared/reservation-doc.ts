@@ -38,8 +38,8 @@
 //     (pending/confirmed/declined/cancelled/unreachable/unresolved) — the
 //     exact Postgres enum type, read live via pg_enum. `no_show` had no
 //     writer and leaves the enum in MESITA-2144.
-//   - party_size, if set, is a positive integer — the exact DB CHECK
-//     (reservation_tickets_party_size_check: party_size > 0).
+//   - party_size, if set, is a whole number 1–10 — the exact DB CHECK
+//     (reservation_tickets_party_size_check: party_size between 1 and 10, MESITA-3622).
 //   - consumer_notify, if set, is 'call' | 'app' — the exact DB CHECK
 //     (reservation_tickets_consumer_notify_check).
 //   - reference_code, if set, matches ^\d{8}$ — not a DB CHECK (the column is
@@ -492,8 +492,8 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
   }
   if ("party_size" in raw) {
     const v = raw.party_size;
-    if (typeof v !== "number" || !Number.isInteger(v) || v <= 0) {
-      return { ok: false, error: "party_size must be a positive integer" };
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 1 || v > 10) {
+      return { ok: false, error: "party_size must be a whole number from 1 to 10" };
     }
     patch.party_size = v;
   }

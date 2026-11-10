@@ -134,12 +134,16 @@ const SPECS: ToolSpec[] = [
     name: "a4_find_reservation",
     ef: "eleven-a4-find-reservation",
     description:
-      "Busca reservaciones del lugar verificado por el nombre al que están («la reservación a nombre de Ana López»). Regresa las coincidencias con su código para usarlo en otras herramientas.",
-    schema: body("Búsqueda por nombre dentro del lugar del llamante.", ["caller_phone", "guest_name"], {
+      "Busca reservaciones del lugar verificado por el nombre al que están («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan. Solo encuentra reservaciones de este lugar. Regresa las coincidencias con su código para usarlo en otras herramientas.",
+    schema: body("Búsqueda por nombre o código dentro del lugar del llamante.", ["caller_phone"], {
       caller_phone: CALLER_PHONE,
       guest_name: {
         type: "string",
         description: "El nombre al que está la reservación, tal como lo dijeron (nombre y/o apellido).",
+      },
+      reference_code: {
+        type: "string",
+        description: "Solo si dictaron un código de Mesita: sus 8 dígitos (ej. 48291057).",
       },
     }),
   },

@@ -9,30 +9,12 @@ import { reservationsPatch } from "./action-patches";
 const place = (fields: Partial<AdminPlace>) => ({ id: "p1", ...fields }) as AdminPlace;
 
 describe("Actions switches write only their own columns", () => {
-  it("turns reservations off with channel none", () => {
-    expect(reservationsPatch(place({ reservations_enabled: true, reservation_channel: "whatsapp" }))).toEqual({
+  it.each([true, false])("flips reservations from %s and writes nothing else", (on) => {
+    expect(reservationsPatch(place({ reservations_enabled: on, reservation_channel: "whatsapp" }))).toEqual({
       id: "p1",
-      reservations_enabled: false,
-      reservation_channel: "none",
+      reservations_enabled: !on,
     });
   });
-
-  it("turns reservations on keeping the place's channel", () => {
-    expect(reservationsPatch(place({ reservations_enabled: false, reservation_channel: "web" }))).toEqual({
-      id: "p1",
-      reservations_enabled: true,
-      reservation_channel: "web",
-    });
-  });
-
-  it.each([null, undefined, "none"])("turns reservations on with phone when the channel is %s", (channel) => {
-    expect(reservationsPatch(place({ reservations_enabled: false, reservation_channel: channel }))).toEqual({
-      id: "p1",
-      reservations_enabled: true,
-      reservation_channel: "phone",
-    });
-  });
-
 });
 
 describe("Profile's save", () => {

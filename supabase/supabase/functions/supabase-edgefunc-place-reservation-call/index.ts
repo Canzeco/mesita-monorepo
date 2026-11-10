@@ -43,8 +43,8 @@
 // Number resolution, per side:
 //   business — reservations.place_phone when pre-resolved (test tickets),
 //     else config testCall (test mode defaults ON → never rings a real place
-//     by accident), else place_profiles.reservation_target when the channel is phone (MESITA-842 —
-//     voice-only; whatsapp/instagram picks ignored → place_profiles.phone fallback).
+//     by accident), else the Reservations phone (place_profiles.reservation_target),
+//     else Google's place_profiles.phone (MESITA-3622, _shared/place-reservable.ts).
 //   consumer — reservations.consumer_phone when pre-resolved, else the
 //     consumer's own phone; empty → leg 2 is skipped.
 //
@@ -92,6 +92,7 @@ import { notifyReservationOutcome } from "../_shared/reservation-notification.ts
 import { esDate, esTime } from "../_shared/es-speak.ts";
 import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
 import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
+import { dialNumber } from "../_shared/place-reservable.ts";
 import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -106,7 +107,6 @@ type PlaceRow = {
   name?: string | null;
   photos?: unknown;
   phone?: string | null;
-  reservation_channel?: string | null;
   reservation_target?: string | null;
   hours?: unknown;
   lng?: number | null;
@@ -606,38 +606,19 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
 
   const { data: placeRow } = await admin
     .from("place_profiles")
-    .select("name, photos, phone, reservation_channel, reservation_target, hours, lng")
+    .select("name, photos, phone, reservation_target, hours, lng")
     .eq("id", placeId)
     .maybeSingle();
   const place = (placeRow ?? null) as PlaceRow | null;
 
-  // ── Resolve the business number: row override → test mode → place endpoint ─
-  let businessNumber = (r.place_phone ?? "").trim();
-  let via = "row";
-  if (!businessNumber) {
-    if (cfg.testCall.enabled) {
-      businessNumber = cfg.testCall.number;
-      via = "test-mode number";
-    } else {
-      // Dial only when the door is Phone (or never picked — keep the
-      // place_profiles.phone fallback so existing rows still reach the place).
-      // WhatsApp / Instagram / Web / Not are not voice endpoints.
-      const channel = place?.reservation_channel ?? null;
-      if (
-        channel === "none" || channel === "web" ||
-        channel === "whatsapp" || channel === "instagram"
-      ) {
-        businessNumber = "";
-        via = `place ${channel} endpoint — no voice dial`;
-      } else {
-        const endpoint = channel === "phone"
-          ? (place?.reservation_target ?? "").trim()
-          : "";
-        businessNumber = endpoint || (place?.phone ?? "").trim();
-        via = endpoint ? "place phone endpoint" : "place.phone fallback";
-      }
-    }
-  }
+  // ── Resolve the business number (MESITA-3622): the ticket's own → the test
+  // line while testCall is on → the Reservations phone → Google's. Reservations
+  // are received by phone; the place's channel pick decides nothing.
+  const { number: businessNumber, via } = dialNumber({
+    ticketPhone: r.place_phone,
+    testNumber: cfg.testCall.enabled ? cfg.testCall.number : null,
+    place,
+  });
   const dialsPlace = intent === "book" ||
     (intent === "cancel_notice" && r.notice_kind === "place_cancel");
   if (!businessNumber && dialsPlace) {

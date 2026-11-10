@@ -16,7 +16,7 @@ import { resolvePlaceCategoryName } from "./lib/place-category";
 import { googleTagChips } from "./lib/google-atmosphere";
 import { relativeLabel } from "./lib/format";
 import { DEFAULT_CURRENCY } from "./lib/money";
-import { isReserveActionEnabled } from "./lib/place-profile-actions";
+import { isReservable } from "./lib/place-profile-actions";
 import type { Row } from "./place-to-detail-helpers";
 import {
   arr,
@@ -156,7 +156,7 @@ export function placeRowToDetail(row: Row, catalogTags?: ResolvedTag[]): PlaceDe
     relativeLabel(str(row.enriched_at) ?? str(row.created_at)) ?? "recently";
 
   return {
-    reservations_enabled: isReserveActionEnabled(row),
+    reservations_enabled: isReservable(row),
     id: str(row.id) ?? str(row.slug) ?? "",
     name: resolvePlaceDisplayName(row),
     category: categoryName,

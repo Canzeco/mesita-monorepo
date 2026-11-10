@@ -34,6 +34,11 @@ import {
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
+import {
+  RESERVATIONS_OFF_CODE,
+  RESERVATIONS_OFF_MESSAGE,
+  readReservable,
+} from "../_shared/place-reservable.ts";
 
 type Body = {
   reservation_id?: string;
@@ -92,11 +97,12 @@ serveJson("consumer-web-update-reservation", async (req) => {
     reschedules_today: number | null;
     reschedules_day: string | null;
     modification_of: string | null;
+    place_id: string;
   }>(
     admin,
     id,
     user.id,
-    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
+    "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of, place_id",
   );
   if (readErr) return json({ ok: false, error: readErr }, 500);
   if (!row) {
@@ -107,6 +113,14 @@ serveJson("consumer-web-update-reservation", async (req) => {
   }
   if (new Date(row.reserved_at).getTime() < Date.now() - PASSED_GRACE_MS) {
     return json({ ok: false, error: "This reservation already happened." }, 409);
+  }
+
+  // ── New terms ring the place again: it must still take reservations ──────
+  // (MESITA-3622) the switch on AND a number to call.
+  const reservable = await readReservable(admin, row.place_id);
+  if (reservable.error) return json({ ok: false, error: reservable.error }, 500);
+  if (!reservable.reservable) {
+    return json({ ok: false, code: RESERVATIONS_OFF_CODE, error: RESERVATIONS_OFF_MESSAGE }, 409);
   }
 
   // ── Reschedule cap (abuse guard, eng-review 2026-08-04) ───────────────────
