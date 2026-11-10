@@ -14,7 +14,7 @@ import {
 import { validateReservationPatch } from "./reservation-doc.ts";
 import type { ReservationOutcome } from "./reservation-notification.ts";
 
-const ALL: DeadEnd[] = ["no_number", "no_line", "outage", "no_key", "crash", "expired", "no_answer"];
+const ALL: DeadEnd[] = ["no_number", "no_line", "outage", "no_key", "crash", "expired", "closed", "no_answer", "offer_unanswered"];
 
 Deno.test("every dead end is terminal: nothing scheduled, no guest call owed", () => {
   for (const d of ALL) {

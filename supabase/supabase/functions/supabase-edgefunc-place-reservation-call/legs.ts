@@ -419,6 +419,11 @@ export async function runCancelNotice(input: {
   projectId: string;
   placeCallCap: number;
   guestNotify: "call" | "app";
+  /** Place side only: "offer_release" frees the options the place held
+   *  for an offer nobody took (MESITA-3630); else "cancellation". */
+  placeContext?: "cancellation" | "offer_release";
+  /** The offers, spoken — for "offer_release". */
+  alternativesText?: string;
 }): Promise<void> {
   const { admin, reservationId } = input;
   const record = (patch: Record<string, unknown>) =>
@@ -500,10 +505,11 @@ export async function runCancelNotice(input: {
       agentId: input.agentId,
       agentPhoneNumberId: isPlaceSide ? lines.placeLineId : lines.guestLineId,
       toNumber: input.toNumber,
-      // "cancelled_by_venue" is a wire key the a2 prompt reads
-      // (_shared/reservationist/a2.ts); it changes only with a sync.
+      // "cancelled_by_venue" and "offer_release" are wire keys the a2 / a1
+      // prompts read (_shared/reservationist/); they change only with a sync.
       dynamicVariables: legDynamicVariables(input.legVars, {
-        callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue",
+        callContext: isPlaceSide ? (input.placeContext ?? "cancellation") : "cancelled_by_venue",
+        placeAlternatives: isPlaceSide ? input.alternativesText ?? "" : "",
       }),
     });
     if (!call.ok) {

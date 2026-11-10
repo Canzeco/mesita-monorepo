@@ -15,10 +15,10 @@
 // Ownership is re-checked server-side. Cancelled or already-passed tickets
 // can't be rescheduled — booking those again is a NEW reservation.
 //
-// KNOWN RACE (accepted): if a run is mid-flight when the guest reschedules,
-// that background task can still write its stale outcome for a minute or two.
-// The window is small and the next run overwrites it; a proper run-generation
-// token is the follow-up.
+// A run mid-flight on the old terms writes nothing afterwards: run_id rotates
+// here, every engine write is guarded by it, and a late call result finds no
+// conversation id to land on (_shared/reservation-call-outcome.ts). The place
+// leg starts fresh attempts (freshPlaceRound, MESITA-3630).
 //
 // Deploy: supabase functions deploy consumer-web-update-reservation
 
@@ -34,6 +34,7 @@ import {
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { REMINDER_CLEAR } from "../_shared/reservation-reminder.ts";
+import { freshPlaceRound } from "../_shared/reservation-negotiation.ts";
 import {
   RESERVATIONS_OFF_CODE,
   RESERVATIONS_OFF_MESSAGE,
@@ -146,22 +147,19 @@ serveJson("consumer-web-update-reservation", async (req) => {
   // so a failed re-book still releases the hold — leg 5 via this door).
   // run_id rotation orphans any engine run mid-flight on the old terms.
   Object.assign(patch, {
+    ...freshPlaceRound(),
     run_id: crypto.randomUUID(),
     claimed_at: null,
-    outage_retries: 0,
     reschedules_today: usedToday + 1,
     reschedules_day: todayStr,
     modification_of: row.state === "confirmed"
       ? row.reserved_at
       : (row.modification_of ?? null),
     state: "pending",
-    reported_verdict: null,
-    alternatives: [],
     consumer_confirmed_at: null,
     confirmed_at: null,
     negotiation_rounds: 0,
     attempts: [],
-    call_attempts: 0,
     // 'idle' is this column's NOT NULL default — null is rejected outright
     // ("null value in column attempts_state violates not-null constraint").
     // Reset means back to the DEFAULT, not to nothing; same as callback_state.
@@ -172,10 +170,8 @@ serveJson("consumer-web-update-reservation", async (req) => {
     callback_conversation_id: null,
     callback_at: null,
     ...REMINDER_CLEAR,
-    // MUST clear: if the old ticket was parked for a retry, the pg_cron poller
-    // (run-reservation-retries) would still fire on that stale timestamp — a
-    // second call to the place on top of the one this EF triggers below.
-    next_attempt_at: null,
+    // next_attempt_at is cleared by freshPlaceRound: a stale parked retry
+    // would otherwise ring the place on top of the call fired below.
     last_conversation_id: null,
     last_called_at: null,
     last_call_state: "rescheduled by the guest — calling the place again",

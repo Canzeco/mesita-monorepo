@@ -127,6 +127,7 @@ type TicketRow = {
   outage_retries: unknown;
   attempts: unknown;
   alternatives: unknown;
+  reported_verdict: string | null;
 };
 
 /** Everything the handler resolved before an intent claims its ticket. */
@@ -219,6 +220,12 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
     kind === "place_cancel" && modificationOfIso && r.state !== "cancelled"
       ? { ...legVars, dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }
       : legVars;
+  // An offer nobody took (released by the cron, or cancelled by the guest
+  // while it was open): the place never booked the asked slot — it held its
+  // own options, so a1 asks it to free THOSE (MESITA-3630). A modification
+  // still releases the old booking above, which is what the place holds.
+  const offerRelease = kind === "place_cancel" && !modificationOfIso &&
+    r.reported_verdict === "counter_offer";
   runInBackground(
     runCancelNotice({
       admin,
@@ -237,6 +244,8 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
       projectId: placeId,
       placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
       guestNotify,
+      placeContext: offerRelease ? "offer_release" : "cancellation",
+      alternativesText: offerRelease ? alternativesToSpeech(normalizeAlternatives(r.alternatives)) : "",
     }),
   );
   return json({ ok: true, started: true, intent, reservation_id: reservationId });

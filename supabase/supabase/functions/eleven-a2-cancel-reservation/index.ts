@@ -41,7 +41,8 @@ serveJson("eleven-a2-cancel-reservation", async (req) => {
   }
 
   // A CONFIRMED table is being walked away from — the place is holding it and
-  // must hear (Docs › Reservations §B leg 5). Pending tickets owe nothing.
+  // must hear (Docs › Reservations §B leg 5), as does an open counter-offer
+  // (MESITA-3630). Other pending tickets owe nothing.
   const res = await cancelAsGuest(
     admin,
     env,

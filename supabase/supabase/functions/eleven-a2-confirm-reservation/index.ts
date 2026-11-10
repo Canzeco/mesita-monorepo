@@ -13,7 +13,8 @@
 // consumer ⇒ agent ⇒ business, double calls until both sides match. Partial
 // input is fine — a missing date or time defaults from the current reservation.
 // Capped at 2 negotiation rounds; past the cap the ticket parks in-app
-// (parked: true) instead of dialing again.
+// (parked: true) instead of dialing again. Each round starts fresh place
+// call attempts (MESITA-3630, _shared/reservation-negotiation.ts).
 // Auth: anon bearer + x-agent-secret (see _shared/agent-tools.ts).
 //
 // Deploy: supabase functions deploy eleven-a2-confirm-reservation
@@ -45,8 +46,10 @@ import {
   RESERVATIONS_OFF_CODE,
   readReservable,
 } from "../_shared/place-reservable.ts";
-
-const MAX_NEGOTIATION_ROUNDS = 2;
+import {
+  MAX_NEGOTIATION_ROUNDS,
+  negotiationRoundPatch,
+} from "../_shared/reservation-negotiation.ts";
 
 serveJson("eleven-a2-confirm-reservation", async (req) => {
   const ctx = await requireAgentRequest(req);
@@ -96,6 +99,18 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   }
 
   // ── Change: alternative picked or a new proposal → new place call ──────────
+  // Only a live ticket negotiates: one that ended (an unanswered offer was
+  // released, the place declined, nobody answered) is booked again as new.
+  if (ticket.state !== "pending" && ticket.state !== "confirmed") {
+    return json({
+      ok: false,
+      changed: false,
+      reference_code: ticket.reference_code,
+      error: `this reservation is ${ticket.state}`,
+      say:
+        "Esa reservación ya se cerró, así que no puedo cambiarla. Puede pedir una nueva desde la app de Mesita.",
+    }, 409);
+  }
   // Partial input defaults from the current reservation (place-local), so
   // "solo cambia la hora" works without the agent re-stating the date.
   const { date, time, next } = resolveRequestedSlot(
@@ -130,8 +145,25 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
       lastCallState: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
     });
     if (note) patch.outcome_note = note;
-    const confirm = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
+    // Still pending: the cron may have just released an unanswered offer.
+    const confirm = await writeReservation(admin, {
+      mode: "update",
+      id: ticket.id,
+      patch,
+      match: { state: "pending" },
+      select: "id",
+    });
     if (!confirm.ok) return json({ ok: false, error: confirm.error }, 500);
+    if (!confirm.row) {
+      return json({
+        ok: false,
+        changed: false,
+        reference_code: ticket.reference_code,
+        error: "the place's options are no longer held",
+        say:
+          "Esas opciones ya no están apartadas en el restaurante. Puede pedir una nueva reservación desde la app de Mesita.",
+      }, 409);
+    }
     return json({
       ok: true,
       guest_confirmed: true,
@@ -185,21 +217,30 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
     });
   }
 
-  const patch: ReservationPatch = {
-    reserved_at: next.toISOString(),
-    // New terms — the place hasn't agreed to them yet.
-    state: "pending",
-    reported_verdict: null,
-    consumer_confirmed_at: new Date().toISOString(),
-    negotiation_rounds: rounds + 1,
-    callback_attempts: 0,
-    callback_next_attempt_at: null,
-    reminder_state: "idle",
-    reminder_at: null,
-  };
+  // A new round: fresh place call attempts, the old offers dropped. The
+  // booking claim below rotates run_id, so nothing from round 1 lands here.
+  const patch = negotiationRoundPatch({ next, roundsDone: rounds });
   if (note) patch.outcome_note = note;
-  const write = await writeReservation(admin, { mode: "update", id: ticket.id, patch });
+  // Compare-and-swap on the state read above: an offer the cron released
+  // meanwhile must not be revived into a new round.
+  const write = await writeReservation(admin, {
+    mode: "update",
+    id: ticket.id,
+    patch,
+    match: { state: ticket.state },
+    select: "id",
+  });
   if (!write.ok) return json({ ok: false, error: write.error }, 500);
+  if (!write.row) {
+    return json({
+      ok: false,
+      changed: false,
+      reference_code: ticket.reference_code,
+      error: "the reservation changed meanwhile",
+      say:
+        "Esa reservación acaba de cambiar; Mesita le avisa por la app cómo quedó.",
+    }, 409);
+  }
 
   // The double call: fire the Booker at the place with the new terms. The
   // engine acks early; its run updates the ticket as it goes.

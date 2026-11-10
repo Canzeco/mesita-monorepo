@@ -354,18 +354,22 @@ export async function cancelTicket(
 /**
  * The guest walks away from their own ticket — the tail the three guest-side
  * cancel doors share (app, a2 Confirmer, a3 inbound). A CONFIRMED table means
- * the place is holding it and must hear (Docs › Reservations §B leg 5);
- * pending tickets owe nothing. Fires the notice hop when one is owed. Each
- * caller shapes its own response from the result.
+ * the place is holding it and must hear (Docs › Reservations §B leg 5); so
+ * does an open counter-offer — a1 asked the place to hold its options
+ * (MESITA-3630; the engine speaks it as an "offer_release"). Other pending
+ * tickets owe nothing. Fires the notice hop when one is owed. Each caller
+ * shapes its own response from the result.
  */
 export async function cancelAsGuest(
   admin: SupabaseClient,
   env: EFEnv,
   callerName: string,
-  ticket: { id: string; state: string },
+  ticket: { id: string; state: string; reported_verdict?: string | null },
   reason: string,
 ): Promise<{ ok: true; placeNotified: boolean } | { ok: false; error: string }> {
-  const notice = ticket.state === "confirmed" ? "place_cancel" as const : null;
+  const placeHolds = ticket.state === "confirmed" ||
+    (ticket.state === "pending" && ticket.reported_verdict === "counter_offer");
+  const notice = placeHolds ? "place_cancel" as const : null;
   const err = await cancelTicket(admin, ticket.id, "consumer", reason, notice);
   if (err) return { ok: false, error: err };
 

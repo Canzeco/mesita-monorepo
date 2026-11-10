@@ -47,7 +47,8 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     reserved_at: string;
     consumer_id: string;
     reference_code: string | null;
-  }>(admin, id, user.id, "id, state, reserved_at, consumer_id, reference_code");
+    reported_verdict: string | null;
+  }>(admin, id, user.id, "id, state, reserved_at, consumer_id, reference_code, reported_verdict");
   if (readErr) return json({ ok: false, error: readErr }, 500);
   // Same answer for "doesn't exist" and "not yours" — never leak existence.
   if (!row) {
@@ -63,8 +64,9 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
 
   // A CONFIRMED table means the place is holding it — it must HEAR about the
   // cancel or this becomes a Mesita-made no-show (Docs › Reservations §B
-  // leg 5). Pending tickets owe nothing: never ring a place to cancel what it
-  // never agreed to.
+  // leg 5). So does an open counter-offer: the place is holding its options
+  // (MESITA-3630). Other pending tickets owe nothing: never ring a place to
+  // cancel what it never agreed to.
   // ONE cancel write-shape for all four doors (app + a2/a3/a4 voice) —
   // cancelTicket owns it, including the run_id rotation that orphans any
   // mid-flight engine run. The cancel itself is done and instant; the
@@ -73,7 +75,7 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     admin,
     env,
     "consumer-web-cancel-reservation",
-    { id, state: row.state },
+    { id, state: row.state, reported_verdict: row.reported_verdict },
     reason,
   );
   if (!res.ok) return json({ ok: false, error: res.error }, 500);
