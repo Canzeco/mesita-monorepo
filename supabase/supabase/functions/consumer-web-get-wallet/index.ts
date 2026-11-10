@@ -213,14 +213,15 @@ serveJson("consumer-web-get-wallet", async (req) => {
   if (!placesRes.ok) return json({ ok: false, error: placesRes.error }, 500);
   const places = placesRes.places;
   if (settingsRes.error) console.error(`[consumer-web-get-wallet] settings read: ${settingsRes.error.message}`);
-  const cardsOff = new Set<string>();
+  // Mesita Pay On: only a row saying so (no row is Off, MESITA-3599).
+  const cardsOn = new Set<string>();
   // via unknown: a template-string select widens `data` (as in payments.ts).
   const settingRows = ((settingsRes.error ? [] : settingsRes.data) ?? []) as unknown as Array<
     { place_id: string } & Partial<Record<PaymentKey | RateKey, unknown>>
   >;
   const settingsById = new Map(settingRows.map((r) => [r.place_id, r]));
   for (const r of settingRows) {
-    if (r.pay_cards === false) cardsOff.add(r.place_id);
+    if (settingsFromRow(r).pay_cards) cardsOn.add(r.place_id);
   }
   // THE GREEN MARK (MESITA-3514): the list rows' rule, so a Wallet card
   // and a Home tile never disagree. A failed settings read reads as no row.
@@ -235,7 +236,7 @@ serveJson("consumer-web-get-wallet", async (req) => {
       place: places.get(place_id) ?? null,
       place_id,
       ...b,
-      card_ok: (charging?.has(place_id) ?? false) && !cardsOff.has(place_id),
+      card_ok: (charging?.has(place_id) ?? false) && cardsOn.has(place_id),
     })),
     waiting_stories: stories.map((st) => ({
       purchase_id: st.id,

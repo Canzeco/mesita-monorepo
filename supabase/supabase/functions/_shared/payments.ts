@@ -42,6 +42,23 @@ export const PAYMENT_KEYS = [
 ] as const;
 export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 
+/** The settings that need the place's Stripe account to take cards before
+ *  they turn On (MESITA-3599): Mesita Pay, its Cashback-as-Credits and the
+ *  six Prepaid Vouchers. House Credits and Cash Payments never do. */
+export const NEEDS_STRIPE_KEYS = [
+  "pay_cards",
+  "card_cashback_bps",
+  "voucher_200",
+  "voucher_1000",
+  "voucher_5000",
+  "voucher_welcome",
+  "voucher_story",
+  "voucher_vip",
+] as const;
+export function needsStripe(key: string): boolean {
+  return (NEEDS_STRIPE_KEYS as readonly string[]).includes(key);
+}
+
 export function isPaymentKey(v: unknown): v is PaymentKey {
   return typeof v === "string" && (PAYMENT_KEYS as readonly string[]).includes(v);
 }
@@ -67,12 +84,13 @@ export const SETTINGS_COLUMNS = [...PAYMENT_KEYS, ...RATE_KEYS].join(", ");
 
 export type PaymentSettings = Record<PaymentKey, boolean> & Record<RateKey, number | null>;
 
-/** No row = Mesita Payments on, everything else off. Mesita Payments reads
- *  off only when the row says `false` outright, so a row from before the
- *  column never switches a place off. */
+/** No row = everything Off (MESITA-3599, Pato: "neither Mesita Pay nor
+ *  Mesita Payments can be enabled without the Stripe Account"): Mesita Pay
+ *  is On only when the row says `true`, which the set EF and SQL allow only
+ *  once the place's Stripe account takes cards. */
 export function settingsFromRow(row: Partial<Record<PaymentKey | RateKey, unknown>> | null): PaymentSettings {
   const out = {} as PaymentSettings;
-  for (const k of PAYMENT_KEYS) out[k] = k === "pay_cards" ? row?.[k] !== false : row?.[k] === true;
+  for (const k of PAYMENT_KEYS) out[k] = row?.[k] === true;
   for (const k of RATE_KEYS) {
     const v = row?.[k];
     out[k] = typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null;

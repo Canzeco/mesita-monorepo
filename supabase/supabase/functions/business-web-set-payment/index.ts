@@ -13,13 +13,16 @@
 //     sell House Credits; credit guests already hold stays spendable.
 //   - A voucher On needs House Credits On (SQL refuses too).
 //   - Cash Payments On needs the place code (the waiter's Received).
+//   - Mesita Pay, its cashback (card) and every voucher On need the place's
+//     Stripe account, in the server's payments mode, to take cards
+//     (MESITA-3599; SQL refuses too, in either mode). Off never needs it.
 //   - The rates are fixed, so cash (2%) is never above card (5%); the SQL
 //     guard stays as a backstop.
 //
 // Body: { place_id: uuid, key: house_credits|cash_payments|pay_cards|voucher_*, enabled: boolean }
 //    or { place_id: uuid, key: card_cashback_bps|cash_cashback_bps, bps: 500 (card) | 200 (cash) | null }
 // Response: { ok: true, settings: { ...every setting } }
-//   409 { code: needs_contract | needs_house_credits | needs_place_code }
+//   409 { code: needs_contract | needs_house_credits | needs_place_code | needs_stripe }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
@@ -27,7 +30,10 @@ import { requireBusinessRequest } from "../_shared/business-request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
-import { isPaymentKey, isRateKey, isValidCashbackBps, readContract, readSettings } from "../_shared/payments.ts";
+import { paymentsLivemode } from "../_shared/boost.ts";
+import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
+
+const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect Stripe first: Mesita Pay, its cashback and the vouchers need an account that takes cards." };
 
 serveJson("business-web-set-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -57,6 +63,12 @@ serveJson("business-web-set-payment", async (req) => {
 
   const current = await readSettings(admin, placeId);
   const patch: Record<string, unknown> = {};
+
+  const turningOn = isPaymentKey(key) ? enabled === true : bps !== null;
+  if (turningOn && needsStripe(key)) {
+    const account = await readAccount(admin, placeId);
+    if (stripeStateOf(account, paymentsLivemode()) !== "charging") return json(NEEDS_STRIPE, 409);
+  }
 
   if (isPaymentKey(key)) {
     const on = enabled as boolean;
@@ -96,6 +108,7 @@ serveJson("business-web-set-payment", async (req) => {
     if (error.message.includes("house_credits_unsigned")) {
       return json({ ok: false, code: "needs_contract", error: "Sign the House Credits Agreement first." }, 409);
     }
+    if (error.message.includes("needs_stripe")) return json(NEEDS_STRIPE, 409);
     if (error.message.includes("prepay_needs_house_credits")) {
       return json({ ok: false, code: "needs_house_credits", error: "Turn House Credits on first." }, 409);
     }
