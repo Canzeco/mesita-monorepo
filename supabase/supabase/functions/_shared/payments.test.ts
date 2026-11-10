@@ -117,13 +117,13 @@ Deno.test("settings: eight switches; no row is products off and Pay by phone on;
 
 Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by card or buy a voucher", () => {
   // No settings row, charging account: Pay by phone defaults on, so card bill pay, mark on.
-  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: true, cashback: false });
+  assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: true, cashback: false, card_cashback_bps: 0 });
   // No charging account: nothing.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, voucher_200: true }, false), { sell: [], mesita_pay: false, cashback: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, voucher_200: true }, false), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
   // Pay by phone off, MX$200 on with House Credits, charging: sells and shows the mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true, cashback: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, pay_cards: false, voucher_200: true }, true), { sell: ["voucher_200"], mesita_pay: true, cashback: false, card_cashback_bps: 0 });
   // Pay by phone off, nothing on: no mark.
-  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, house_credits: true, card_cashback_bps: 500 }, true), { sell: [], mesita_pay: false, cashback: false });
+  assertEquals(listRowMoney({ ...settingsFromRow(null), pay_cards: false, house_credits: true, card_cashback_bps: 500 }, true), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
   // Card cashback with House Credits and cards: the offer button's Pay slide (MESITA-3467).
   assertEquals(listRowMoney({ ...settingsFromRow(null), house_credits: true, card_cashback_bps: 500 }, true).cashback, true);
   // Without House Credits no new credit is born: no cashback slide (MESITA-3589).
