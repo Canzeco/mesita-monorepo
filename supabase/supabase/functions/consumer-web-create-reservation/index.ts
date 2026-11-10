@@ -5,10 +5,18 @@
 //
 // Body:
 //   { project_id: uuid, reserved_at: iso8601, party_size: int, notes?: string,
-//     consumer_notify?: "call" | "app" }  // default "call" (MESITA-787)
+//     consumer_notify?: "call" | "app",  // default "call" (MESITA-787)
+//     request_id?: uuid }                 // one per Reserve request (MESITA-3619)
 //
 // Response:
-//   { ok: true, reservation: {…} }
+//   { ok: true, reservation: {…}, call_triggered, replayed? }
+//   409 { code: "already_reserved" } — a live ticket at this place and time
+//
+// A RESERVATION ALWAYS MOVES (MESITA-3619, _shared/reservation-create.ts):
+// the same request_id returns the ticket it already made; a second live
+// ticket for the same place and instant is refused; and the ticket is born
+// scheduled and due now, so the minute cron moves it if the immediate push
+// below is lost.
 //
 // Deploy: supabase functions deploy consumer-web-create-reservation
 
@@ -18,7 +26,17 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { generateReservationCode, isUniqueViolation } from "../_shared/reservation-code.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
+import {
+  ALREADY_RESERVED_CODE,
+  ALREADY_RESERVED_MESSAGE,
+  type CreateGuardStore,
+  type CreateTicket,
+  createdTicketSchedule,
+  guardCreate,
+  readRequestId,
+} from "../_shared/reservation-create.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
+import { fromPlaceIdRow } from "../_shared/place-id.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
 import {
@@ -42,7 +60,11 @@ type Body = {
   first_name?: string;
   last_name?: string;
   consumer_notify?: string;
+  request_id?: string;
 };
+
+const TICKET_COLUMNS =
+  "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id";
 
 serveJson("consumer-web-create-reservation", async (req) => {
   const ctx = await requireConsumerRequest(req);
@@ -79,6 +101,60 @@ serveJson("consumer-web-create-reservation", async (req) => {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);
   }
   const guestNotify = body.consumer_notify === "app" ? "app" : "call";
+  const requestId = readRequestId(body.request_id);
+  const reservedAtIso = reservedAt.toISOString();
+
+  // ── One tap, one reservation (MESITA-3619) ──────────────────────────────
+  // Before every other gate: a replay must return its ticket even if the
+  // cap has since filled.
+  const guardStore: CreateGuardStore = {
+    async byRequest(cid, rid) {
+      const { data, error } = await admin
+        .from("reservation_tickets")
+        .select(TICKET_COLUMNS)
+        .eq("consumer_id", cid)
+        .eq("request_id", rid)
+        .maybeSingle();
+      if (error) throw new Error(`request lookup failed: ${error.message}`);
+      return fromPlaceIdRow(data ?? null) as CreateTicket | null;
+    },
+    async liveAt(cid, pid, at) {
+      const { data, error } = await admin
+        .from("reservation_tickets")
+        .select(TICKET_COLUMNS)
+        .eq("consumer_id", cid)
+        .eq("place_id", pid)
+        .eq("reserved_at", at)
+        .in("state", ["pending", "confirmed"])
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(`duplicate lookup failed: ${error.message}`);
+      return fromPlaceIdRow(data ?? null) as CreateTicket | null;
+    },
+  };
+  let guard;
+  try {
+    guard = await guardCreate(guardStore, {
+      consumerId,
+      placeId: body.project_id,
+      reservedAtIso,
+      requestId,
+    });
+  } catch (e) {
+    return json({ ok: false, error: e instanceof Error ? e.message : String(e) }, 500);
+  }
+  if (guard.kind === "replay") {
+    const [withPlace] = await attachPlaces(admin, [guard.ticket as { project_id?: string | null }]);
+    return json({ ok: true, reservation: withPlace ?? guard.ticket, call_triggered: false, replayed: true });
+  }
+  if (guard.kind === "duplicate") {
+    return json({
+      ok: false,
+      code: ALREADY_RESERVED_CODE,
+      error: ALREADY_RESERVED_MESSAGE,
+      reservation_id: guard.ticket.id,
+    }, 409);
+  }
 
   // ── The place must still exist ──────────────────────────────────────────
   // Clients can hold a place id that has since been deleted — the swipe deck
@@ -230,16 +306,17 @@ serveJson("consumer-web-create-reservation", async (req) => {
         consumer_id: consumerId,
         project_id: body.project_id,
         reference_code: generateReservationCode(),
-        reserved_at: reservedAt.toISOString(),
+        reserved_at: reservedAtIso,
         party_size: partySize,
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
         state: "pending",
         guest_first_name: typedName ? firstName : null,
         guest_last_name: typedName ? lastName : null,
+        request_id: requestId,
+        ...createdTicketSchedule(),
       },
-      select:
-        "id, reference_code, reserved_at, party_size, state, notes, consumer_notify, created_at, place_id",
+      select: TICKET_COLUMNS,
     });
     if (ins.ok) {
       reservation = ins.row as { id: string } & Record<string, unknown>;
@@ -247,6 +324,14 @@ serveJson("consumer-web-create-reservation", async (req) => {
     } else {
       insertError = { message: ins.error };
       if (!isUniqueViolation({ code: ins.code })) break;
+      // The same request raced itself past the guard: return its ticket.
+      if (requestId) {
+        const prior = await guardStore.byRequest(consumerId, requestId).catch(() => null);
+        if (prior) {
+          const [withPlace] = await attachPlaces(admin, [prior as { project_id?: string | null }]);
+          return json({ ok: true, reservation: withPlace ?? prior, call_triggered: false, replayed: true });
+        }
+      }
     }
   }
   if (!reservation) {
@@ -260,7 +345,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
 
   // Attempt 1 is immediate: hand off to the Reservationist to phone the place.
   // Best-effort — the reservation already exists, so a call-trigger failure must
-  // NOT fail the request (the call EF returns 503 until ELEVENLABS_KEY is set).
+  // NOT fail the request: the ticket was born scheduled and due now, so the
+  // minute cron pushes it again (MESITA-3619).
   const call = await invokeInternalCaller(
     env,
     "consumer-web-create-reservation",

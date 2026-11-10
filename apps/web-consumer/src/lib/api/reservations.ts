@@ -29,6 +29,8 @@ type CreatedReservation = {
   };
   /** Whether the outbound-call trigger was accepted (best-effort; not required). */
   call_triggered?: boolean;
+  /** True when this request_id already made the ticket (MESITA-3619). */
+  replayed?: boolean;
 };
 
 type GuestNotify = "call" | "app";
@@ -53,6 +55,9 @@ export function apiCreateReservation(
     /** The name the table is booked under (MESITA-3607). */
     firstName: string;
     lastName: string;
+    /** One uuid per Reserve request; a retry reuses it and gets the same
+     *  ticket back (MESITA-3619). */
+    requestId?: string;
   },
 ): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
@@ -68,6 +73,7 @@ export function apiCreateReservation(
         consumer_notify: args.guestNotify === "app" ? "app" : "call",
         first_name: args.firstName.trim(),
         last_name: args.lastName.trim(),
+        ...(args.requestId ? { request_id: args.requestId } : {}),
       },
       "Couldn't create the reservation",
     ),

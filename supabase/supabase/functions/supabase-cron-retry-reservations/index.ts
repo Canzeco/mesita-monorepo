@@ -9,7 +9,8 @@
 // BEFORE live work is woken, so a recovery after a cron outage can never dial
 // a place about a slot that already passed.
 //
-//   1 · expiry     pending 4 h past reserved_at → 'unresolved' (no call).
+//   1 · expiry     pending 4 h past reserved_at → 'unresolved' (no call),
+//                  and the guest is told (Me › Notifications, MESITA-3619).
 //                  `passed` stays DERIVED in the app; confirmed rows are
 //                  never touched.
 //   2 · moot       owed notices whose slot is 4 h gone → 'skipped' — a
@@ -46,6 +47,7 @@ import { requireInternalRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { validateReservationPatch } from "../_shared/reservation-doc.ts";
+import { deadEndPatch, deadEndOutcome } from "../_shared/reservation-dead-end.ts";
 import { fetchConversation, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
 import {
   applyCallResult,
@@ -90,18 +92,24 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   // ── 1 · Expiry: bury stuck pending tickets FIRST ───────────────────────────
   const { data: expRows } = await admin
     .from("reservation_tickets")
-    .update(validated({
-      state: "unresolved",
-      attempts_state: "exhausted",
-      next_attempt_at: null,
-      callback_state: "skipped",
-      callback_next_attempt_at: null,
-      last_call_state: "expired: the reserved time passed while still unconfirmed",
-    }))
+    .update(validated(deadEndPatch(
+      "expired",
+      "expired: the reserved time passed while still unconfirmed",
+    )))
     .eq("state", "pending")
     .lt("reserved_at", expiryFloor)
     .or("attempts_state.is.null,attempts_state.neq.running")
-    .select("id");
+    .select("id, consumer_id, reference_code, place_id");
+  // A dead end tells the guest (_shared/reservation-dead-end.ts).
+  const expired = (expRows ?? []) as Array<
+    { id: string; consumer_id: string; reference_code: string | null; place_id: string | null }
+  >;
+  const store = supabaseOutcomeStore(admin, env, "supabase-cron-retry-reservations");
+  for (const t of expired) {
+    // A failed place read only costs the row its name and photo.
+    const place = t.place_id ? await store.place(t.place_id).catch(() => null) : null;
+    await store.notify(t as unknown as OutcomeTicket, place, deadEndOutcome("expired"));
+  }
 
   // ── 2 · Moot notices: nobody needs a release call about a passed slot ──────
   const { data: mootRows } = await admin
@@ -154,7 +162,6 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   // ── 3b · Owed outcomes: a placed call is read once, never redialed ───────
   const owed = { due: 0, applied: 0, waiting: 0 };
   const elevenKey = await resolveElevenLabsKey();
-  const store = supabaseOutcomeStore(admin, env, "supabase-cron-retry-reservations");
   for (const leg of Object.keys(AWAITING) as Array<keyof typeof AWAITING>) {
     const a = AWAITING[leg];
     const { data: rows } = await admin

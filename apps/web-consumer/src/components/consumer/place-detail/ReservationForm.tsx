@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import {
@@ -32,6 +32,10 @@ const DEFAULT_PARTY = 2;
 const RESERVATION_LIMIT_CODE = "reservation_limit_reached";
 const RESERVATION_LIMIT_MESSAGE =
   "You've reached this month's reservation limit.";
+
+// The guest already holds a live table here at that time
+// (_shared/reservation-create.ts); the server's message is shown as is.
+const ALREADY_RESERVED_CODE = "already_reserved";
 
 // MX_OFFSET (and everything else about the place's clock) lives in
 // @/lib/place-time — the single source of truth. The picked slot is the
@@ -129,6 +133,17 @@ export function ReservationForm({
 
   const [choice, setChoice] = useState<DuplicateChoice | null>(null);
 
+  // ONE REQUEST, ONE TABLE (MESITA-3619): the same booking keeps its
+  // request id across retries, so a lost response or a second tap gets the
+  // ticket the first one made. A changed booking is a new request.
+  const request = useRef<{ key: string; id: string } | null>(null);
+  function requestIdFor(key: string): string {
+    if (request.current?.key !== key) {
+      request.current = { key, id: crypto.randomUUID() };
+    }
+    return request.current.id;
+  }
+
   // Selection is DERIVED, not stored: if the guest's pick has since passed (or
   // they switched to today late at night), we fall through to the first slot
   // that's still ahead of the place's clock. No effect, nothing to desync.
@@ -201,6 +216,9 @@ export function ReservationForm({
           notes,
           firstName,
           lastName,
+          requestId: requestIdFor(
+            [place.id, reservedAt, party, notes.trim(), firstName.trim(), lastName.trim()].join("|"),
+          ),
         });
       }
       setDone(true);
@@ -208,6 +226,11 @@ export function ReservationForm({
     } catch (e) {
       if (e instanceof EFError && e.code === RESERVATION_LIMIT_CODE) {
         setError(RESERVATION_LIMIT_MESSAGE);
+        return;
+      }
+      if (e instanceof EFError && e.code === ALREADY_RESERVED_CODE) {
+        setError(errMsg(e, "You already have a reservation here at that time."));
+        onBooked(); // re-read the list so the table shows above the form
         return;
       }
       const msg = errMsg(e, "");

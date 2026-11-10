@@ -55,8 +55,9 @@
 // line rather than dropping a reservation that may already be confirmed.
 //
 // State transitions (reservation_state enum): pending → confirmed |
-// declined | unreachable | unresolved. Engine crashes leave state alone and
-// park attempts_state='error' with the reason in last_call_state. Every
+// declined | unreachable | unresolved. Every booking dead end — no number,
+// outage clock spent, missing key, crash — ENDS the ticket (unresolved) and
+// tells the guest (_shared/reservation-dead-end.ts, MESITA-3619). Every
 // verdict the guest must hear about — those four, plus a counter-offer —
 // also writes a Me › Notifications row (_shared/reservation-notification.ts).
 //
@@ -90,6 +91,7 @@ import { rowPlaceId } from "../_shared/place-id.ts";
 import { notifyReservationOutcome } from "../_shared/reservation-notification.ts";
 import { esDate, esTime } from "../_shared/es-speak.ts";
 import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
+import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
 import { runCallbackRetry, runCancelNotice, runIntents, runReminder } from "./legs.ts";
 
 // intent: "book" (default) = the two-leg booking run · "callback_retry" =
@@ -642,11 +644,33 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     // Only a place-dialing errand dies on a missing place number — and a
     // cancel notice must never corrupt attempts_state (it's 'cancelled').
     if (intent === "book") {
-      await writeReservation(admin, {
-        mode: "update",
-        id: reservationId,
-        patch: { attempts_state: "error", last_call_state: `no number to dial (${via})` },
-      });
+      // A dead end: end the ticket and tell the guest (MESITA-3619). Only a
+      // ticket still pending and unclaimed ends here.
+      await endAtDeadEnd(
+        {
+          write: async (patch) => {
+            const res = await writeReservation(admin, {
+              mode: "update",
+              id: reservationId,
+              patch: patch as ReservationPatch,
+              match: { state: "pending" },
+              select: "id",
+            });
+            return res.ok && !!res.row;
+          },
+          notify: (outcome) =>
+            notifyReservationOutcome(admin, {
+              consumerId: r.consumer_id,
+              reservationId,
+              referenceCode: r.reference_code ?? null,
+              outcome,
+              placeName: place?.name ?? null,
+              placePhotos: place?.photos ?? null,
+            }),
+        },
+        "no_number",
+        `no number to dial (${via})`,
+      );
     } else {
       await writeReservation(admin, {
         mode: "update",
