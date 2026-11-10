@@ -34,7 +34,7 @@ import {
 // ONBOARD_FIELDS — the field list the gate checks and the form renders.
 //
 // LAST NAME IS STILL NOT HERE, and that is not "not required". It is asked by
-// ReservationSheet at the moment the guest can see why: the place books the
+// the Reserve page at the moment the guest can see why: the place books the
 // table under their full name.
 //
 // ONE SCREEN (MESITA-2746): first name, birthday and sex together. A

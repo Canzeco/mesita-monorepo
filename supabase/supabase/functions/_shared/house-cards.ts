@@ -10,7 +10,20 @@ import type { Balance } from "./wallet.ts";
 
 export type Pin = { place_id: string; added_at: string };
 
-/** The guest's pins, newest first. */
+/** Of these places, the ones with House Credits On. A pin counts only there
+ *  (MESITA-3611): the place screen and the Wallet read the same rule. */
+async function houseCreditsOn(admin: SupabaseClient, placeIds: string[]): Promise<{ ok: true; on: Set<string> } | { ok: false; error: string }> {
+  if (placeIds.length === 0) return { ok: true, on: new Set() };
+  const { data, error } = await admin
+    .from("place_payment_settings")
+    .select("place_id")
+    .in("place_id", placeIds)
+    .eq("house_credits", true);
+  if (error) return { ok: false, error: `settings: ${error.message}` };
+  return { ok: true, on: new Set(((data ?? []) as Array<{ place_id: string }>).map((r) => r.place_id)) };
+}
+
+/** The guest's pins at places with House Credits On, newest first. */
 export async function readPins(
   admin: SupabaseClient,
   consumerId: string,
@@ -22,7 +35,10 @@ export async function readPins(
     .order("added_at", { ascending: false })
     .limit(200);
   if (error) return { ok: false, error: `house_cards: ${error.message}` };
-  return { ok: true, pins: (data ?? []) as Pin[] };
+  const pins = (data ?? []) as Pin[];
+  const on = await houseCreditsOn(admin, pins.map((p) => p.place_id));
+  if (!on.ok) return on;
+  return { ok: true, pins: pins.filter((p) => on.on.has(p.place_id)) };
 }
 
 /** A pinned place with no entries reads as a $0 card, after the cards that
@@ -49,21 +65,23 @@ export function withPins(balances: Balance[], pins: Pin[], currency: string): Ar
   return out;
 }
 
-/** Whether this place's card is in the guest's Wallet: pinned, or holding
- *  any entry there in this universe. */
+/** Whether this place's card is in the guest's Wallet: pinned where House
+ *  Credits is On, or holding any entry there in this universe. */
 export async function inWallet(
   admin: SupabaseClient,
   consumerId: string,
   placeId: string,
   livemode: boolean,
 ): Promise<{ ok: true; in_wallet: boolean } | { ok: false; error: string }> {
-  const [pin, entry] = await Promise.all([
+  const [pin, entry, on] = await Promise.all([
     admin.from("wallet_house_cards").select("place_id").eq("consumer_id", consumerId).eq("place_id", placeId).maybeSingle(),
     admin.from("wallet_entries").select("id").eq("consumer_id", consumerId).eq("place_id", placeId).eq("livemode", livemode).limit(1),
+    houseCreditsOn(admin, [placeId]),
   ]);
   if (pin.error) return { ok: false, error: `house_cards: ${pin.error.message}` };
   if (entry.error) return { ok: false, error: `entries: ${entry.error.message}` };
-  return { ok: true, in_wallet: !!pin.data || (entry.data ?? []).length > 0 };
+  if (!on.ok) return on;
+  return { ok: true, in_wallet: (!!pin.data && on.on.has(placeId)) || (entry.data ?? []).length > 0 };
 }
 
 /** The guest's money at a place in this universe, every entry summed (Pending

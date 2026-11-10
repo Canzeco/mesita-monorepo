@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ReservationSheet } from "@/components/consumer/place-detail/ReservationSheet";
 import { readCached, writeCached } from "@/lib/screen-cache";
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { PlaceActions, PlaceMenuItem, PlaceMoney, RewardsSection, VoucherKey } from "@mesita/place-profile";
@@ -28,6 +27,7 @@ import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
+import { placeReservePath } from "@/lib/consumer-route-contract";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 
@@ -88,7 +88,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const profile = useConsumerProfile().data;
   const saved = isSaved(place.id);
   const [contactOpen, setContactOpen] = useState(false);
-  const [reserveOpen, setReserveOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   // Prepay and Pay open the Rewards sheet at their section (MESITA-3412).
@@ -140,7 +139,8 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onShare: () => void sharePlace(place),
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
-    onReserve: () => setReserveOpen(true),
+    // The full Reserve page (MESITA-3609), not a sheet.
+    onReserve: () => navigateTo(router, placeReservePath(place.id)),
     onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
@@ -210,11 +210,6 @@ export function useMemberPlaceActions(place: PlaceDetail): {
         place={place}
         open={contactOpen}
         onClose={() => setContactOpen(false)}
-      />
-      <ReservationSheet
-        place={place}
-        open={reserveOpen}
-        onClose={() => setReserveOpen(false)}
       />
       <BoostSheet
         place={place}

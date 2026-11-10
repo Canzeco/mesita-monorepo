@@ -71,9 +71,9 @@ serveJson("consumer-web-create-reservation", async (req) => {
   if (reservedAt.getTime() < Date.now()) {
     return json({ ok: false, error: "Pick a time in the future." }, 400);
   }
-  // Keep in lock-step with consumer-web-update-reservation (MAX_PARTY=20)
+  // Keep in lock-step with consumer-web-update-reservation (MAX_PARTY=10)
   // and both consumer UIs — create must not accept sizes update rejects.
-  const MAX_PARTY = 20;
+  const MAX_PARTY = 10; // MESITA-3613
   const partySize = Math.trunc(Number(body.party_size));
   if (!Number.isFinite(partySize) || partySize < 1 || partySize > MAX_PARTY) {
     return json({ ok: false, error: `party_size must be 1..${MAX_PARTY}` }, 400);

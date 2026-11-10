@@ -290,6 +290,10 @@ const CONSUMER_READ_ALLOWLIST = [
   // member number for each guest who sent app feedback. Read-only.
   "admin-web-list-app-feedback/index.ts",
   "consumer-web-create-reservation/index.ts",
+  // The Reserve page's list (MESITA-3609): the caller's OWN first and last
+  // name, the fallback for tickets booked before the typed name. Read-only,
+  // error checked.
+  "consumer-web-list-reservations/index.ts",
   "consumer-web-get-profile/index.ts",
   "consumer-web-signin-phone/index.ts",
   "consumer-web-update-profile/index.ts",
