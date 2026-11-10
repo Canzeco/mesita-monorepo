@@ -84,7 +84,7 @@ export function CoverAuthLayout({
               {headline}
             </h1>
             <p className="mt-3 text-base leading-snug text-white/80">
-              Places, reservations and paying the bill, in one app.
+              Find a place, book a table, pay and earn credit back.
             </p>
           </div>
           <button
