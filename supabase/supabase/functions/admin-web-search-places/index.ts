@@ -18,7 +18,8 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
-import { type StripeState, stripeStateByPlace } from "../_shared/payments.ts";
+import { type StripeState } from "../_shared/payments.ts";
+import { type PlaceStatesFacts, readPlaceStatesFacts } from "../_shared/place-states-read.ts";
 import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   isPlaceEnriched,
@@ -88,7 +89,7 @@ serveJson("admin-web-search-places", async (req) => {
   // OPERATIONAL fact (Active).
   // Keep as a single string literal so supabase-js can type the select.
   const cols =
-    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, boost_tier, request_count, business_state, business_state_at, updated_at";
+    "id, slug, name, google_name, google_place_id, category, category_label, state, address, photos, zone, google_stars_overall, google_review_count, content_state, enriched_at, boost_tier, reservations_enabled, request_count, business_state, business_state_at, updated_at";
   let rows: Record<string, unknown>[] = [];
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
@@ -162,6 +163,10 @@ serveJson("admin-web-search-places", async (req) => {
   // current Stripe mode. Read per chunk beside the enrichment read; a chunk
   // whose read fails leaves its places unknown ("?"), never "none".
   const stripeState = new Map<string, StripeState>();
+  // Place States (Main §10, MESITA-3595): the raw facts Business › Admin's
+  // Place States card reads, one query per table per chunk. The browser turns
+  // them into chips with the shared moneyPlaceStates.
+  const placeStates = new Map<string, PlaceStatesFacts>();
   const livemode = paymentsLivemode();
   for (const idPart of chunked(ids, ID_CHUNK)) {
     const [enrichmentRes, states] = await Promise.all([
@@ -169,9 +174,10 @@ serveJson("admin-web-search-places", async (req) => {
         .from("place_profiles")
         .select("id, enrichment, google_found, instagram_found, facebook_found")
         .in("id", idPart),
-      stripeStateByPlace(admin, idPart, livemode),
+      readPlaceStatesFacts(admin, idPart, livemode),
     ]);
-    for (const [id, state] of states ?? []) stripeState.set(id, state);
+    for (const [id, state] of states.stripe) stripeState.set(id, state);
+    for (const [id, f] of states.facts) placeStates.set(id, f);
     // Best-effort: this lookup must never 500 the catalog. A failed read
     // or a missing/null row falls back to the CREATED-floor default below,
     // which reads as "less done than it is" — the safe direction for a state
@@ -240,6 +246,11 @@ serveJson("admin-web-search-places", async (req) => {
       // The Multiple Places filter (MESITA-3395): none · onboarding ·
       // charging · null when its chunk's read failed.
       stripe_state: stripeState.get(id) ?? null,
+      // Reservations (Main §10): the guest Reserve CTA's switch.
+      reservations_enabled: typeof v.reservations_enabled === "boolean" ? v.reservations_enabled : null,
+      // Place States (MESITA-3595): owned · plan_rank · payments, each null
+      // when its read failed.
+      place_states: placeStates.get(id) ?? null,
       // Missing when the read failed — the table says "?", never a false 0.
       viewed: stats.get(id)?.viewed ?? null,
       saved: stats.get(id)?.saved ?? null,
