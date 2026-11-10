@@ -30,6 +30,7 @@ import { purchaseStore } from "./purchase-pi.ts";
 import { releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { type StripeCall } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 export const SIGNATURE_TOLERANCE_SEC = 300;
 /** Stripe's events are a few KB; anything past this is not Stripe. */
@@ -177,7 +178,7 @@ export async function handleConnectEvent(deps: EventDeps, event: ConnectEvent): 
   try {
     answer = await dispatch(deps, event, acct as { place_id: string; last_event_created: number | null }, tag);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = errorMessage(err);
     console.error("[connect-events] settle_failed", tag, message);
     await forget(deps.admin, event.id);
     return failed(event, "settle_failed", message);

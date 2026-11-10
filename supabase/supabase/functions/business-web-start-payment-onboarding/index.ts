@@ -31,6 +31,7 @@ import {
   snapshotFromStripe,
 } from "../_shared/payments.ts";
 import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("business-web-start-payment-onboarding", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -102,7 +103,7 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
     return json({ ok: true, url: String(link.url) });
   } catch (err) {
     // Stripe's words go to the log; the owner reads one sentence.
-    console.error(`[business-web-start-payment-onboarding] ${placeId}: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[business-web-start-payment-onboarding] ${placeId}: ${errorMessage(err)}`);
     if (err instanceof StripeError) {
       return json({ ok: false, code: "stripe", error: "Stripe couldn't open the setup right now. Try again in a minute." }, 502);
     }

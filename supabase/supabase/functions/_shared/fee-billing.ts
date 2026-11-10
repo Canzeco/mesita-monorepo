@@ -32,6 +32,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "./money.ts";
 import { readVoucherPlace } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 /** An invoice is sent once this much is owed, whatever the week says. */
 export const FEE_THRESHOLD_CENTS = 500_00;
@@ -193,7 +194,7 @@ export async function issueFeeInvoice(
     await setInvoice(admin, args);
     return args.p_status;
   } catch (err) {
-    const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : err instanceof Error ? err.message : String(err);
+    const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : errorMessage(err);
     console.error("[fee-billing] issue_failed", JSON.stringify({ invoice_id: row.id, place_id: row.place_id, code }));
     await admin.rpc("place_fee_invoice_set", { p_invoice_id: row.id, p_status: "draft", p_error: String(code).slice(0, 500) });
     return "draft";
@@ -243,7 +244,7 @@ export async function runFeeBillingTick(deps: FeeTickDeps): Promise<FeeTickRepor
       else report.issued++;
     } catch (err) {
       report.failed++;
-      console.error("[fee-billing] claim_failed", JSON.stringify({ place_id: account.place_id, error: err instanceof Error ? err.message : String(err) }));
+      console.error("[fee-billing] claim_failed", JSON.stringify({ place_id: account.place_id, error: errorMessage(err) }));
     }
   }
 
@@ -265,7 +266,7 @@ export async function runFeeBillingTick(deps: FeeTickDeps): Promise<FeeTickRepor
       if (res.changed) res.fee_hold ? report.held++ : report.released++;
     } catch (err) {
       report.failed++;
-      console.error("[fee-billing] sync_failed", JSON.stringify({ invoice_id: row.id, error: err instanceof Error ? err.message : String(err) }));
+      console.error("[fee-billing] sync_failed", JSON.stringify({ invoice_id: row.id, error: errorMessage(err) }));
     }
   }
   return report;

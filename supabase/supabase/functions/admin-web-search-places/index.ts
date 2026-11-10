@@ -42,6 +42,7 @@ import {
   type FunctionState,
 } from "../_shared/schema-catalog.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 type Body = {
   limit?: unknown;
@@ -57,7 +58,6 @@ type Body = {
 // the console asks again from there until the catalog is done.
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serveJson("admin-web-search-places", async (req) => {
   const ctx = await requireAdminRequest(req);
@@ -113,7 +113,7 @@ serveJson("admin-web-search-places", async (req) => {
     if (countErr) return json({ ok: false, error: `search_failed: ${countErr.message}` }, 500);
     total = count ?? 0;
     const after = bodyRes.body.after;
-    if (after !== undefined && after !== null && (typeof after !== "string" || !UUID_RE.test(after))) {
+    if (after !== undefined && after !== null && !isUuid(after)) {
       return json({ ok: false, error: "after must be a place id" }, 400);
     }
     // Keyset by id, not offset: a place created mid-run can neither shift a

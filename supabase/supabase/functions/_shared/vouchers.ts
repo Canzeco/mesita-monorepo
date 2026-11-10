@@ -17,6 +17,7 @@ import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
 
@@ -511,7 +512,7 @@ export async function openVoucherCheckout(
     );
   } catch (err) {
     const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : "stripe_unreachable";
-    console.error("[vouchers] checkout_failed", JSON.stringify({ purchase_id: purchaseId, code, message: err instanceof Error ? err.message : String(err) }));
+    console.error("[vouchers] checkout_failed", JSON.stringify({ purchase_id: purchaseId, code, message: errorMessage(err) }));
     await admin.from("wallet_purchases")
       .update({ status: "failed", stripe_error: code, updated_at: new Date().toISOString() })
       .eq("id", purchaseId).eq("status", "opening");

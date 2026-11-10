@@ -89,6 +89,7 @@ import {
 import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 type Body = {
   lat?: number;
@@ -116,14 +117,13 @@ type Body = {
   fill?: unknown;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A fill's ids, duplicates collapsed, or null when the list is empty, too
  *  long or holds a non-uuid. */
 function readFill(v: unknown[]): string[] | null {
   const ids = [...new Set(v)];
   if (ids.length === 0 || ids.length > CATALOG_PAGE_SIZE_MAX) return null;
-  return ids.every((id) => typeof id === "string" && UUID.test(id)) ? ids as string[] : null;
+  return ids.every((id) => isUuid(id)) ? ids as string[] : null;
 }
 
 function wirePlaces(rows: unknown[]): PoolRow[] {

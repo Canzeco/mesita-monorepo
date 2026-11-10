@@ -5,6 +5,7 @@
 // Pure helpers plus the one Twilio Messages call.
 
 import { timingSafeEqual } from "./timing-safe-equal.ts";
+import { phoneDigits } from "./phone.ts";
 
 /** How long a Call pick waits for Auth's code. */
 export const SIGN_IN_CALL_PICK_SECONDS = 120;
@@ -23,7 +24,7 @@ export function signInSmsBody(code: string): string {
  *  Both become "+528125680835", or null when it can't be a phone. */
 export function signInPhone(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const digits = raw.replace(/\D/g, "");
+  const digits = phoneDigits(raw);
   return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
 }
 

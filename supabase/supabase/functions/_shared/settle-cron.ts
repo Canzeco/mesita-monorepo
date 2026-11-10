@@ -29,6 +29,7 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { settlePayment } from "./settle-payment.ts";
 import { availableAtFor, type OpenPurchase, settlePurchase } from "./wallet.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 export type SettleConfig = {
   settle_rows: number;
@@ -217,7 +218,7 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
         outcomes[await settleRow(deps, cfg, row)]++;
       } catch (err) {
         outcomes.error++;
-        console.error("[settle-cron] row", JSON.stringify({ kind: row.kind, id: row.id, error: err instanceof Error ? err.message : String(err) }));
+        console.error("[settle-cron] row", JSON.stringify({ kind: row.kind, id: row.id, error: errorMessage(err) }));
       }
     }
   };

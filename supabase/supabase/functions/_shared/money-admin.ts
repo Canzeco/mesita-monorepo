@@ -19,6 +19,7 @@
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 // ── Masking ───────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ async function stripeRefund(
       .from("wallet_refund_attempts")
       .update({ status: "failed", error_code: code, updated_at: new Date().toISOString() })
       .eq("id", attemptId);
-    return { ok: false, stripe_code: code, error: err instanceof Error ? err.message : String(err) };
+    return { ok: false, stripe_code: code, error: errorMessage(err) };
   }
 }
 
