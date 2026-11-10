@@ -11,7 +11,7 @@
 
 import { moneyState, type MoneySettings } from "../money-state";
 
-/** Place Stripe (Main §10): seven values, all from the account Stripe last
+/** Stripe Account (Main §10; was "Place Stripe"): seven values, all from the account Stripe last
  *  reported. Mesita Payments and Prepayments work in Connected, Action needed
  *  and Payouts paused. */
 export type StripeState =
@@ -131,7 +131,7 @@ export function moneyPlaceStates(i: PlaceStatesInput): MoneyPlaceStates {
       ? { on: true, chip: `${money.cash_cashback_bps / 100}%` }
       : { on: false, chip: "Off" },
     // Mesita Payments: a guest can pay the bill by card in the app now
-    // (the Mesita Pay switch, the account taking cards, no fee hold).
+    // (the Mesita Payments switch, the account taking cards, no fee hold).
     mesitaPayments: onOff(money?.pay === "card"),
     mesitaPaymentsCashback: money && money.card_cashback_bps > 0
       ? { on: true, chip: `${money.card_cashback_bps / 100}%` }
@@ -175,7 +175,7 @@ export const PLACE_STATE_ROWS = [
   { key: "owned", label: "Owned" },
   { key: "plan", label: "Plan" },
   { key: "billing", label: "Billing" },
-  { key: "stripe", label: "Stripe" },
+  { key: "stripe", label: "Stripe Account" },
   { key: "reservations", label: "Reservations" },
   { key: "houseCreditsContract", label: "House Credits Contract" },
   { key: "houseCredits", label: "House Credits" },

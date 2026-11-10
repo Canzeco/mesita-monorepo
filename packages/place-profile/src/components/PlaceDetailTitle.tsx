@@ -27,7 +27,7 @@ export function PlaceDetailTitle({
   placeName: string | null;
   /** `boost_tier`: 1..3 draws the Premier mark, 0 nothing (MESITA-2925). */
   premierTier?: number;
-  /** The green Mesita Pay mark after the Premier one (MESITA-3321). */
+  /** The green Mesita Payments mark after the Premier one (MESITA-3321). */
   mesitaPay?: boolean;
   className?: string;
 }) {

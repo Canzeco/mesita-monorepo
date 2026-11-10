@@ -44,7 +44,7 @@ export function PlaceTopBar({
   name: string | null;
   /** `boost_tier`; 1..3 draws "Premier 2X" after the name (MESITA-2925). */
   premierTier?: number;
-  /** The place's account can charge: the green Mesita Pay mark after the
+  /** The place's account can charge: the green Mesita Payments mark after the
    *  Premier one (MESITA-3321). */
   mesitaPay?: boolean;
   onBack?: () => void;
