@@ -87,7 +87,7 @@ Deno.test("Stripe's Account object becomes the row, missing fields read as off",
   assertEquals(s.requirements_due, ["a"]);
 });
 
-Deno.test("settings: no row is everything Off, Mesita Pay included; unknown keys refused", () => {
+Deno.test("settings: no row is everything Off, Mesita Payments included; unknown keys refused", () => {
   const off = settingsFromRow(null);
   assertEquals(Object.keys(off).length, 12);
   // Mesita Prepayments (MESITA-3597) reads off with no row and from anything but true.
@@ -99,7 +99,7 @@ Deno.test("settings: no row is everything Off, Mesita Pay included; unknown keys
   assertEquals(off.card_cashback_bps, null);
   assertEquals(settingsFromRow({ card_cashback_bps: 700 }).card_cashback_bps, 700);
   assertEquals(settingsFromRow({ cash_cashback_bps: "200" }).cash_cashback_bps, null);
-  // Mesita Pay (MESITA-3599) is Off with no row and On only on an outright
+  // Mesita Payments (MESITA-3599) is Off with no row and On only on an outright
   // true: it needs a Stripe account that takes cards, which no row can say.
   assertEquals(off.pay_cards, false);
   assertEquals(settingsFromRow({ pay_cards: true }).pay_cards, true);
@@ -120,7 +120,7 @@ Deno.test("settings: no row is everything Off, Mesita Pay included; unknown keys
 });
 
 Deno.test("list rows (MESITA-3408): the mark lights where a guest can pay by card or buy a voucher", () => {
-  // No settings row, charging account: Mesita Pay is Off until the owner
+  // No settings row, charging account: Mesita Payments is Off until the owner
   // turns it on (MESITA-3599), so no mark.
   assertEquals(listRowMoney(undefined, true), { sell: [], mesita_pay: false, cashback: false, card_cashback_bps: 0 });
   // No charging account: nothing.

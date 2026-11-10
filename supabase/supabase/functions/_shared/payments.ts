@@ -89,7 +89,7 @@ export const SETTINGS_COLUMNS = [...PAYMENT_KEYS, ...RATE_KEYS].join(", ");
 export type PaymentSettings = Record<PaymentKey, boolean> & Record<RateKey, number | null>;
 
 /** No row = everything Off (MESITA-3599, Pato: "neither Mesita Pay nor
- *  Mesita Payments can be enabled without the Stripe Account"): Mesita Pay
+ *  Mesita Payments can be enabled without the Stripe Account"): Mesita Payments
  *  is On only when the row says `true`, which the set EF and SQL allow only
  *  once the place's Stripe account takes cards. */
 export function settingsFromRow(row: Partial<Record<PaymentKey | RateKey, unknown>> | null): PaymentSettings {
