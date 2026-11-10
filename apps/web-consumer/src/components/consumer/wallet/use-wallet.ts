@@ -12,8 +12,8 @@ import type { WalletCardModel } from "./WalletCard";
 // comes from consumer-web-get-wallet only; nothing here adds anything up
 // (MESITA-3098).
 //
-// Checkout comes back with `?prepay=<session>` (_shared/vouchers.ts): the
-// read credits it, the toast says what the server said, and the parameter
+// Checkout comes back with `?prepay=<session>` (_shared/vouchers.ts), on the
+// House Card of the place the guest bought at (MESITA-3617): the read credits it, the toast says what the server said, and the parameter
 // is dropped so a reload does not ask again. While the server is still
 // confirming a purchase (`settling`) the screen says so and asks again.
 //
@@ -85,11 +85,14 @@ export function useWallet(): {
   /** Shown balances as cards: money first, newest first; then $0 ones. */
   credits: CreditRow[] | null;
   reread: () => void;
+  /** A purchase is still being confirmed: its card may not be here yet. */
+  confirming: boolean;
 } {
   const getSupabase = useLazyBrowserSupabase();
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [failed, setFailed] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [awaiting, setAwaiting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,7 +111,9 @@ export function useWallet(): {
         setFailed(false);
         if (session) sayOutcome(w);
         // Still confirming: ask once more after a moment.
-        if (w.settling || (session && w.outcome === "pending")) {
+        const pending = w.settling || (session !== undefined && w.outcome === "pending");
+        setAwaiting(pending);
+        if (pending) {
           timer = setTimeout(() => {
             if (!cancelled) setNonce((n) => n + 1);
           }, SETTLING_RETRY_MS);
@@ -137,5 +142,5 @@ export function useWallet(): {
   }, [wallet]);
 
   const reread = useCallback(() => setNonce((n) => n + 1), []);
-  return { wallet, failed, credits, reread };
+  return { wallet, failed, credits, reread, confirming: awaiting };
 }

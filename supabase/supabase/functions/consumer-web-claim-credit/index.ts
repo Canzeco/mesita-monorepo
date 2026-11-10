@@ -1,6 +1,6 @@
 // Supabase Edge Function — consumer-web-claim-credit
 //
-// MESITA-3292: a friend opens a credit link (<origin>/wallet?gift=<token>)
+// MESITA-3292: a friend opens a credit link (<origin>/wallet/gift/<token>)
 // signed in. With `look: true` it only reads the link: how much, at which
 // place, whether it is still open, and whether it is the caller's own
 // link. Without it, it takes the credit (wallet_claim_gift: once, never by

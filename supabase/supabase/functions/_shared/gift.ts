@@ -2,7 +2,7 @@
 //
 // A guest picks an amount of their spendable credit at one place; the
 // credit leaves their balance at once and they get a one-time link
-// (<consumer origin>/wallet?gift=<token>). A signed-in friend who opens it
+// (<consumer origin>/wallet/gift/<token>). A signed-in friend who opens it
 // takes the credit at the same place; until then the sender can take it
 // back. The token is a proof-shaped 128-bit token and gates money, so it is
 // stored hashed (like the waiter's charge token, MESITA-3306): the sender

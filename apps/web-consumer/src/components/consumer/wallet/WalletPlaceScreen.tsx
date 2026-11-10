@@ -20,19 +20,23 @@ import { WalletCardSkeleton } from "./WalletCard";
 // Credits rail and straight from the place screen's Wallet tile, so the
 // tile no longer lands on the Wallet and then pops a sheet. Back lands where
 // the guest came from (goBack), or on the Wallet when opened from outside.
-// A place the Wallet holds no card for sends the guest to the Wallet.
+// A place the Wallet holds no card for sends the guest to the Wallet. A
+// voucher bought at the place comes back here from Stripe (?prepay=,
+// MESITA-3617), so the new credit shows on its own card.
 
 export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
-  const { wallet, failed, credits, reread } = useWallet();
+  const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
   const back = useCallback(() => goBack(router, CONSUMER_ROUTES.wallet), [router]);
 
-  // No House Card here: the Wallet is the nearest true screen.
+  // No House Card here: the Wallet is the nearest true screen. Not while a
+  // purchase here is still confirming: a first one brings the card with it
+  // (MESITA-3617).
   useEffect(() => {
-    if (credits && !row) navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
-  }, [credits, row, router]);
+    if (credits && !row && !confirming) navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
+  }, [credits, row, confirming, router]);
 
   // Remove from Wallet (MESITA-3605): a pinned $0 House Card leaves, and so
   // does its page.
@@ -70,6 +74,11 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
       </header>
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
         {wallet?.test_mode ? <TestBand className="mb-3" /> : null}
+        {confirming ? (
+          <p className="text-muted-foreground mb-3 text-sm" role="status">
+            Confirming a payment…
+          </p>
+        ) : null}
         {row ? (
           <PlaceCredit
             row={row}
