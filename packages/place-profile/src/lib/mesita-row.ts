@@ -19,13 +19,17 @@ export function ratePct(bps: number): string {
 /** The pill while the first money read is out. */
 export const MESITA_ROW_LOADING = "…";
 
-export type MesitaTileState = { works: boolean; pill: string };
+/** `note`: what the Off sheet says instead of its standard line (MESITA-3604). */
+export type MesitaTileState = { works: boolean; pill: string; note?: string };
 export type MesitaRowState = {
   reserve: MesitaTileState;
   prepay: MesitaTileState;
   wallet: MesitaTileState;
   pay: MesitaTileState;
 };
+
+/** The Prepay Off sheet while Mesita pauses voucher sales. */
+export const PREPAY_PAUSED = "Prepay is paused for a moment. Try again soon.";
 
 const OFF: MesitaTileState = { works: false, pill: "Off" };
 const LOADING: MesitaTileState = { works: false, pill: MESITA_ROW_LOADING };
@@ -53,7 +57,13 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
       : { reserve, prepay: OFF, wallet: OFF, pay: OFF };
   }
   const bonus = bestVoucherBonusPct(money);
-  const prepay: MesitaTileState = (money.sell ?? []).length > 0 ? { works: true, pill: bonus > 0 ? `${bonus}% Bonus` : "On" } : OFF;
+  // Mesita's own "Pause voucher sales" is not the place's choice (MESITA-3604).
+  const paused = Object.values(money.unavailable ?? {}).includes("paused");
+  const prepay: MesitaTileState = (money.sell ?? []).length > 0
+    ? { works: true, pill: bonus > 0 ? `${bonus}% Bonus` : "On" }
+    : paused
+      ? { ...OFF, note: PREPAY_PAUSED }
+      : OFF;
   const available = Math.max(money.balance?.available_cents ?? 0, 0);
   const wallet: MesitaTileState = available > 0 ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") } : OFF;
   // The place's own rates (MESITA-3589); an older read without them says On.
