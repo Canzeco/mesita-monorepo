@@ -44,11 +44,11 @@ export const CUTOFF_BEFORE_SLOT_MS = 30 * 60_000;
  */
 export function deferToCallableHour(
   at: Date,
-  lng: number | null,
+  zone: string | null,
 ): { at: Date; deferred: boolean } {
   let deferred = false;
   for (let i = 0; i < 48; i++) {
-    const h = placeLocalHour(at, lng);
+    const h = placeLocalHour(at, zone);
     if (h >= QUIET_OPENS && h < QUIET_CLOSES) break;
     at = new Date(at.getTime() + 30 * 60_000);
     deferred = true;
@@ -65,7 +65,7 @@ export function deferToCallableHour(
  */
 export function nextGuestCallAt(
   attemptsDone: number,
-  lng: number | null,
+  zone: string | null,
   reservedAt: Date | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } | null {
@@ -81,7 +81,7 @@ export function nextGuestCallAt(
     reservedAt.getTime() - now.getTime() < URGENT_WINDOW_MS;
   let deferred = false;
   if (!urgent) {
-    ({ at, deferred } = deferToCallableHour(at, lng));
+    ({ at, deferred } = deferToCallableHour(at, zone));
     if (cutoff !== null && at.getTime() > cutoff) return null;
   }
 

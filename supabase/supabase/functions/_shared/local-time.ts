@@ -1,17 +1,20 @@
-// Local-time helpers: the Mexico zone for a longitude, the LOCAL wall clock,
-// the place-local hour, and the WeeklyHours shape stored on `places.hours`.
+// Local-time helpers: the place's ZONE, its LOCAL wall clock, the place-local
+// hour, and the WeeklyHours shape stored on `places.hours`.
 //
 // The Edge runtime clock is UTC. Deriving a daypart or an "is it open" signal
 // from UTC is wrong for our users: at 5am in Mexico (UTC−6) `getUTCHours()`
-// reads ~11am and a surface pitches brunch. This module gives callers the
-// user's LOCAL wall-clock — the same "when" fix consumer-web-ask-memo shipped
-// in PR #211, extracted here so every reader shares one implementation instead
-// of re-deriving it. Below it, the open/closed signal over stored weekly
-// hours ("demote, don't hide" ranking and the reservation retry).
+// reads ~11am and a surface pitches brunch. Below it, the open/closed signal
+// over stored weekly hours ("demote, don't hide" ranking and the reservation
+// retry).
 //
-// Timezone is a coarse Mexico-centric mapping by longitude (the market). We do
-// NOT read the DB `timezone` column here on purpose — memo established the
-// lng-band approach and Intl handles DST; keeping one derivation avoids drift.
+// ONE ZONE PER PLACE (MESITA-3626): `place_profiles.timezone` — the IANA zone
+// Create/Enrich stamps from Google's Time Zone API — is the place's clock for
+// every reservation decision: the slot the guest picks, the date and hour the
+// agents say, when a call may ring, and the day the per-place call meter
+// counts. `placeZone` reads it; a row without a usable stamp falls back to
+// the old longitude guess (`mexicoZone`), and a row with neither to
+// America/Mexico_City. Intl carries the offsets, DST-free Mexican zones
+// (Cancún −5, Hermosillo −7) and Tijuana's DST alike.
 
 // Weekly hours shape stored on `places.hours` (JSONB), normalised from Google
 // regularOpeningHours (migrations 0008 + 20252120001). Lowercase English day
@@ -21,41 +24,128 @@
 export type HourRange = { open: string; close: string };
 export type WeeklyHours = Record<string, HourRange[]>;
 
-// Coarse Mexico-centric timezone by longitude. Intl handles DST. Falls back to
-// Central (Monterrey/CDMX — most of Mexico, and the safest default when we have
-// no location). Mirrors consumer-web-ask-memo's `mexicoZone` (PR #211).
+/** The zone of last resort: most of Mexico, and the market. */
+export const DEFAULT_ZONE = "America/Mexico_City";
+
+// Coarse Mexico-centric timezone by longitude — the FALLBACK when a place has
+// no stamped zone (and the backfill's source for old rows, MESITA-3626).
 export function mexicoZone(lng: number | null): string {
-  if (lng === null) return "America/Mexico_City";
+  if (lng === null) return DEFAULT_ZONE;
   if (lng <= -110) return "America/Tijuana"; // Baja California / far NW (Pacific)
   if (lng >= -89) return "America/Cancun"; // Quintana Roo (UTC−5, no DST)
-  return "America/Mexico_City"; // Central — Monterrey, CDMX, most of Mexico
+  return DEFAULT_ZONE; // Central — Monterrey, CDMX, most of Mexico
 }
 
-// The user's LOCAL wall-clock derived from their longitude, not the UTC Edge
-// runtime clock. Returns null on a bad zone so callers keep a neutral default.
+const zoneOk = new Map<string, boolean>();
+
+/** True when `v` is an IANA zone this runtime knows. */
+export function isZone(v: unknown): v is string {
+  if (typeof v !== "string" || v.trim() === "") return false;
+  const z = v.trim();
+  let ok = zoneOk.get(z);
+  if (ok === undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: z });
+      ok = true;
+    } catch {
+      ok = false;
+    }
+    zoneOk.set(z, ok);
+  }
+  return ok;
+}
+
+/** A usable zone: `zone` when Intl knows it, else America/Mexico_City. */
+export function zoneOr(zone: string | null | undefined): string {
+  return isZone(zone) ? zone.trim() : DEFAULT_ZONE;
+}
+
+/** THE place's zone: its stamped `timezone`, else the longitude guess. */
+export function placeZone(
+  place: { timezone?: unknown; lng?: unknown } | null | undefined,
+): string {
+  if (isZone(place?.timezone)) return (place!.timezone as string).trim();
+  return mexicoZone(typeof place?.lng === "number" ? place.lng : null);
+}
+
+/** The place_profiles columns `placeZone` reads. */
+export const PLACE_ZONE_COLUMNS = "timezone, lng";
+
+/** Wall-clock parts of `at` in `zone` (24h; "24" at midnight folded to 0). */
+function wallParts(at: Date, zone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zoneOr(zone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(at);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    weekday: get("weekday").toLowerCase(),
+    hour: Number(get("hour")) % 24,
+    minute: Number(get("minute")),
+    second: Number(get("second")),
+  };
+}
+
+/** Minutes `zone` is ahead of UTC at `at` (Mexico City −360, Cancún −300). */
+export function zoneOffsetMinutes(zone: string, at: Date): number {
+  const p = wallParts(at, zone);
+  const asUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+  const whole = at.getTime() - (((at.getTime() % 1000) + 1000) % 1000);
+  return Math.round((asUtc - whole) / 60_000);
+}
+
+/** "YYYY-MM-DD" — the calendar day `at` falls on in `zone`. */
+export function zoneDay(at: Date, zone: string): string {
+  const p = wallParts(at, zone);
+  return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
+}
+
+/** "HH:mm" (24h) — the wall-clock time of `at` in `zone`. */
+export function zoneTime(at: Date, zone: string): string {
+  const p = wallParts(at, zone);
+  return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
+}
+
+/**
+ * The instant a place-local "YYYY-MM-DD" + "HH:mm" names in `zone`, or null
+ * when the pair doesn't parse. Two passes, so a zone with DST (Tijuana) gets
+ * the offset in force at that wall time, not at "now".
+ */
+export function zonedInstant(date: string, time: string, zone: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const wall = Date.parse(`${date}T${time}:00Z`);
+  if (!Number.isFinite(wall)) return null;
+  const z = zoneOr(zone);
+  const guess = wall - zoneOffsetMinutes(z, new Date(wall)) * 60_000;
+  return new Date(wall - zoneOffsetMinutes(z, new Date(guess)) * 60_000);
+}
+
+/** The first instant of the calendar month `at` falls in, in `zone`. */
+export function zoneMonthStart(at: Date, zone: string): Date {
+  const day = zoneDay(at, zone);
+  return zonedInstant(`${day.slice(0, 8)}01`, "00:00", zone) ?? at;
+}
+
+// The place's LOCAL wall clock at `at`. Returns null on a bad zone so callers
+// keep a neutral default.
 export function localClock(
-  lng: number | null,
+  zone: string | null,
   at: Date = new Date(),
 ): { weekday: string; hour: number; minutes: number } | null {
-  const timeZone = mexicoZone(lng);
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      weekday: "long",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: false,
-    }).formatToParts(at);
-    let weekday = "";
-    let hour = 12;
-    let minute = 0;
-    for (const p of parts) {
-      if (p.type === "weekday") weekday = p.value.toLowerCase();
-      else if (p.type === "hour") hour = parseInt(p.value, 10) % 24; // "24" at midnight → 0
-      else if (p.type === "minute") minute = parseInt(p.value, 10);
-    }
-    if (!weekday) return null;
-    return { weekday, hour, minutes: hour * 60 + minute };
+    const p = wallParts(at, zoneOr(zone));
+    if (!p.weekday || !Number.isFinite(p.hour)) return null;
+    return { weekday: p.weekday, hour: p.hour, minutes: p.hour * 60 + p.minute };
   } catch {
     // Bad zone → let the caller fall back to a neutral default; never throw.
     return null;
@@ -68,18 +158,10 @@ export function localClock(
 // its fallback is the UTC hour: a quiet-hours guard that silently read midday
 // on a bad zone would authorise a 3 a.m. call, so it degrades to a real (if
 // wrong-offset) hour instead of a convenient one.
-//
-// Was `hourAt`, written identically in reservation-reminder.ts and
-// reservation-callback.ts — the two modules that decide when a phone may ring.
-export function placeLocalHour(at: Date, lng: number | null): number {
+export function placeLocalHour(at: Date, zone: string | null): number {
   try {
-    const h = new Intl.DateTimeFormat("en-US", {
-      timeZone: mexicoZone(lng),
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(at);
-    const n = parseInt(h, 10);
-    return Number.isFinite(n) ? n : at.getUTCHours();
+    const h = wallParts(at, zoneOr(zone)).hour;
+    return Number.isFinite(h) ? h : at.getUTCHours();
   } catch {
     return at.getUTCHours();
   }

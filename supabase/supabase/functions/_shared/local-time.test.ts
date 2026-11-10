@@ -3,7 +3,15 @@
 //   deno test supabase/functions/_shared/local-time.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { isOpenAt, mexicoZone, type WeeklyHours } from "./local-time.ts";
+import {
+  isOpenAt,
+  mexicoZone,
+  placeZone,
+  type WeeklyHours,
+  zonedInstant,
+  zoneMonthStart,
+  zoneOffsetMinutes,
+} from "./local-time.ts";
 
 // Fri 6pm–2am (overnight), plus a same-day lunch shift on Saturday.
 const HOURS: WeeklyHours = {
@@ -59,4 +67,45 @@ Deno.test("mexicoZone: longitude bands", () => {
   assertEquals(mexicoZone(-116), "America/Tijuana"); // Baja
   assertEquals(mexicoZone(-99), "America/Mexico_City"); // CDMX
   assertEquals(mexicoZone(-86), "America/Cancun"); // Quintana Roo
+});
+
+// ── One zone per place (MESITA-3626) ──────────────────────────────────────
+
+Deno.test("placeZone: the stamped zone wins; else the longitude guess; else Mexico City", () => {
+  assertEquals(placeZone({ timezone: "America/Cancun", lng: -99 }), "America/Cancun");
+  assertEquals(placeZone({ timezone: "America/Hermosillo", lng: -111 }), "America/Hermosillo");
+  assertEquals(placeZone({ timezone: null, lng: -116 }), "America/Tijuana");
+  assertEquals(placeZone({ timezone: "Not/AZone", lng: -86 }), "America/Cancun");
+  assertEquals(placeZone(null), "America/Mexico_City");
+});
+
+Deno.test("zonedInstant: a place-local slot is the right instant in Cancún (UTC-5, no DST)", () => {
+  assertEquals(zonedInstant("2026-11-20", "21:00", "America/Cancun")?.toISOString(), "2026-11-21T02:00:00.000Z");
+  assertEquals(zonedInstant("2026-07-10", "21:00", "America/Cancun")?.toISOString(), "2026-07-11T02:00:00.000Z");
+});
+
+Deno.test("zonedInstant: Tijuana's offset follows its DST", () => {
+  // Summer UTC-7, winter UTC-8.
+  assertEquals(zonedInstant("2026-07-10", "20:00", "America/Tijuana")?.toISOString(), "2026-07-11T03:00:00.000Z");
+  assertEquals(zonedInstant("2026-12-11", "20:00", "America/Tijuana")?.toISOString(), "2026-12-12T04:00:00.000Z");
+  assertEquals(zoneOffsetMinutes("America/Tijuana", new Date("2026-07-11T03:00:00Z")), -420);
+  assertEquals(zoneOffsetMinutes("America/Tijuana", new Date("2026-12-12T04:00:00Z")), -480);
+});
+
+Deno.test("zonedInstant: Mexico City is UTC-6; a malformed pair is null", () => {
+  assertEquals(zonedInstant("2026-08-09", "19:00", "America/Mexico_City")?.toISOString(), "2026-08-10T01:00:00.000Z");
+  assertEquals(zonedInstant("12/08", "19:00", "America/Mexico_City"), null);
+  assertEquals(zonedInstant("2026-08-09", "7pm", "America/Mexico_City"), null);
+});
+
+Deno.test("zoneMonthStart: the guest's month is Mexico City's", () => {
+  // 03:00Z on Dec 1 is still Nov 30 in Mexico City.
+  assertEquals(
+    zoneMonthStart(new Date("2026-12-01T03:00:00Z"), "America/Mexico_City").toISOString(),
+    "2026-11-01T06:00:00.000Z",
+  );
+  assertEquals(
+    zoneMonthStart(new Date("2026-12-01T07:00:00Z"), "America/Mexico_City").toISOString(),
+    "2026-12-01T06:00:00.000Z",
+  );
 });

@@ -36,6 +36,7 @@ import type { EFEnv } from "./auth.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { ATTEMPTS } from "./reservations-config.ts";
 import { nextAttemptAt } from "./reservation-retry.ts";
+import { PLACE_ZONE_COLUMNS, placeZone } from "./local-time.ts";
 import { nextGuestCallAt, spentLadderPatch } from "./reservation-callback.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "./reservation-reminder.ts";
 import { classifyFailedConversation, noticeNextAt, outageRetryAt } from "./reservation-run.ts";
@@ -217,6 +218,8 @@ export type OutcomePlace = {
   photos?: unknown;
   hours?: unknown;
   lng?: number | null;
+  /** The place's IANA zone (MESITA-3626) — see placeZone. */
+  timezone?: string | null;
 };
 
 /** Which leg of this ticket is waiting on this very conversation, or null. */
@@ -251,7 +254,7 @@ export function decideLegOutcome(
   place: OutcomePlace | null,
   now: Date = new Date(),
 ): LegDecision {
-  const lng = typeof place?.lng === "number" ? place.lng : null;
+  const zone = placeZone(place);
   const reservedAt = t.reserved_at ? new Date(t.reserved_at) : null;
   const platformKill = r.final && !r.answered && r.status === "failed" &&
     classifyFailedConversation(r.errorCode) === "platform";
@@ -291,7 +294,7 @@ export function decideLegOutcome(
       };
     }
     const failNote = r.final ? "guest didn't answer" : "guest call outcome unknown";
-    const next = nextGuestCallAt(n, lng, reservedAt, now);
+    const next = nextGuestCallAt(n, zone, reservedAt, now);
     return {
       patch: next
         ? {
@@ -350,7 +353,7 @@ export function decideLegOutcome(
   const who = isPlaceSide ? "place" : "guest";
   const n = num(t.notice_attempts) + 1;
   const park = (failNote: string): LegDecision => {
-    const next = noticeNextAt(kind, n, place?.hours ?? null, lng, reservedAt, now);
+    const next = noticeNextAt(kind, n, place?.hours ?? null, zone, reservedAt, now);
     return {
       patch: next
         ? {
@@ -372,7 +375,7 @@ export function decideLegOutcome(
   if (r.answered) {
     // A message on a guest's machine is not a told guest: one more rung.
     if (!isPlaceSide && r.voicemail) {
-      const next = noticeNextAt(kind, n, place?.hours ?? null, lng, reservedAt, now);
+      const next = noticeNextAt(kind, n, place?.hours ?? null, zone, reservedAt, now);
       return {
         patch: next
           ? {
@@ -430,7 +433,7 @@ function decideBooking(
   platformKill: boolean,
   now: Date,
 ): LegDecision {
-  const lng = typeof place?.lng === "number" ? place.lng : null;
+  const zone = placeZone(place);
   const n = num(t.call_attempts);
   const planned = num(t.attempts_planned) || ATTEMPTS;
   const attempts: ReservationAttempt[] = Array.isArray(t.attempts)
@@ -477,7 +480,7 @@ function decideBooking(
     setResult("no_answer");
     if (n < planned) {
       // The place's own hours decide when we try again; the cron wakes it.
-      const next = nextAttemptAt(place?.hours ?? null, lng, now);
+      const next = nextAttemptAt(place?.hours ?? null, zone, now);
       return {
         patch: {
           attempts,
@@ -544,7 +547,7 @@ function decideBooking(
   if (verdict === "unreachable") {
     setResult("unreachable");
     if (n < planned) {
-      const next = nextAttemptAt(place?.hours ?? null, lng, now);
+      const next = nextAttemptAt(place?.hours ?? null, zone, now);
       return {
         patch: {
           attempts,
@@ -589,7 +592,7 @@ function decideBooking(
         outage_retries: 0,
         // A confirmed MODIFICATION moved the booking on this very call.
         modification_of: null,
-        ...reminderParkPatch(lng, t.reserved_at ? new Date(t.reserved_at) : null, appOnly ? "app" : "call", now),
+        ...reminderParkPatch(zone, t.reserved_at ? new Date(t.reserved_at) : null, appOnly ? "app" : "call", now),
         last_call_state: appOnly
           ? `intent ${n}: place confirmed — guest prefers app-only; no call`
           : `intent ${n}: place confirmed — calling the guest`,
@@ -711,7 +714,7 @@ export function supabaseOutcomeStore(admin: SupabaseClient, env: EFEnv, caller: 
     async place(placeId) {
       const { data, error } = await admin
         .from("place_profiles")
-        .select("name, photos, hours, lng")
+        .select(`name, photos, hours, ${PLACE_ZONE_COLUMNS}`)
         .eq("id", placeId)
         .maybeSingle();
       // A failed read must not decide the outcome on default hours.

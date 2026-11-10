@@ -11,6 +11,8 @@
 //   no_key        unresolved   the calling key is missing
 //   crash         unresolved   the run crashed
 //   expired       unresolved   the reserved time passed while still Booking
+//   closed        unresolved   the place opens too late to call before the slot
+//                              (the first call waits for opening, MESITA-3626)
 //   no_answer     unreachable  every attempt rang out (the ladder ran dry)
 //
 // One patch for all of them, so "ended" means the same thing everywhere: a
@@ -27,6 +29,7 @@ export type DeadEnd =
   | "no_key"
   | "crash"
   | "expired"
+  | "closed"
   | "no_answer";
 
 export function deadEndOutcome(d: DeadEnd): Extract<ReservationOutcome, "unreachable" | "unresolved"> {

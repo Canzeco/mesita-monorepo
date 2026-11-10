@@ -12,6 +12,7 @@
 
 import { nextAttemptAt } from "./reservation-retry.ts";
 import { nextGuestCallAt } from "./reservation-callback.ts";
+import { zoneDay } from "./local-time.ts";
 
 /** Attempts a1 gets to deliver a place-release notice (leg 5). */
 export const PLACE_NOTICE_ATTEMPTS = 2;
@@ -81,13 +82,22 @@ export function noticeNextAt(
   kind: "place_cancel" | "guest_cancel",
   attemptsDone: number,
   placeHours: unknown,
-  placeLng: number | null,
+  placeZone: string | null,
   reservedAt: Date | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } | null {
   if (kind === "place_cancel") {
     if (attemptsDone >= PLACE_NOTICE_ATTEMPTS) return null;
-    return nextAttemptAt(placeHours, placeLng, now);
+    return nextAttemptAt(placeHours, placeZone, now);
   }
-  return nextGuestCallAt(attemptsDone, placeLng, reservedAt, now);
+  return nextGuestCallAt(attemptsDone, placeZone, reservedAt, now);
+}
+
+/**
+ * The day the per-place call meter counts a call on: the place's own
+ * calendar day (MESITA-3626), so 7 p.m. in Mexico City is that day's call
+ * and not the next UTC day's. Passed to bump_reservation_call_counter.
+ */
+export function placeCallDay(placeZone: string, now: Date = new Date()): string {
+  return zoneDay(now, placeZone);
 }

@@ -23,6 +23,7 @@ import { json } from "./http.ts";
 import { invokeInternalCaller } from "./internal.ts";
 import { phoneDigits } from "./phone.ts";
 import { esDate, esTime } from "./es-speak.ts";
+import { PLACE_ZONE_COLUMNS, placeZone, zoneDay, zonedInstant, zoneTime } from "./local-time.ts";
 import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
@@ -74,6 +75,8 @@ export type CallerPlace = {
   name: string | null;
   phone: string | null;
   reservation_target: string | null;
+  timezone?: string | null;
+  lng?: number | null;
 };
 
 /**
@@ -87,7 +90,7 @@ export async function placeByCallerLine(
 ): Promise<CallerPlace | null> {
   const { data: candidates } = await admin
     .from("place_profiles")
-    .select("id, name, phone, reservation_target")
+    .select(`id, name, phone, reservation_target, ${PLACE_ZONE_COLUMNS}`)
     .or(`phone.ilike.%${tail}%,reservation_target.ilike.%${tail}%`)
     .limit(10);
   const matches = ((candidates ?? []) as CallerPlace[]).filter((p) =>
@@ -104,33 +107,20 @@ export async function placeByCallerLine(
 // import them from the module they already use.
 export { esDate, esTime };
 
-/** Place-local "YYYY-MM-DD" + "HH:mm" → Date (Mexico City, fixed UTC-6). */
-export function parsePlaceLocal(date: unknown, time: unknown): Date | null {
+/** Place-local "YYYY-MM-DD" + "HH:mm" → Date, in the place's zone (MESITA-3626). */
+export function parsePlaceLocal(date: unknown, time: unknown, zone: string): Date | null {
   if (typeof date !== "string" || typeof time !== "string") return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date.trim())) return null;
-  if (!/^\d{2}:\d{2}$/.test(time.trim())) return null;
-  const d = new Date(`${date.trim()}T${time.trim()}:00-06:00`);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return zonedInstant(date.trim(), time.trim(), zone);
 }
 
-/** ISO instant → place-local "YYYY-MM-DD" (CDMX) — defaulting for partial changes. */
-export function placeLocalDate(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Mexico_City",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
+/** ISO instant → place-local "YYYY-MM-DD" — defaulting for partial changes. */
+export function placeLocalDate(iso: string, zone: string): string {
+  return zoneDay(new Date(iso), zone);
 }
 
-/** ISO instant → place-local "HH:mm" (CDMX, 24h). */
-export function placeLocalTime(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Mexico_City",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date(iso));
+/** ISO instant → place-local "HH:mm" (24h). */
+export function placeLocalTime(iso: string, zone: string): string {
+  return zoneTime(new Date(iso), zone);
 }
 
 // ── Guest-name matching (the PRIMARY lookup key — the code is secondary) ─────
@@ -205,19 +195,23 @@ function asTickets(rows: unknown): TicketRow[] {
 }
 
 /**
- * Place id → name. `fallback` stands in for a place with no name: the a3
- * tools say "(sin nombre)", eleven-agent-get-reservation sends "".
+ * Place id → name and zone (the zone the agents speak its times in,
+ * MESITA-3626). `fallback` stands in for a place with no name: the a3 tools
+ * say "(sin nombre)", eleven-agent-get-reservation sends "".
  */
 export async function placeNames(
   admin: SupabaseClient,
   ids: string[],
   fallback = "(sin nombre)",
-): Promise<Map<string, string>> {
+): Promise<Map<string, { name: string; zone: string }>> {
   if (ids.length === 0) return new Map();
-  const { data } = await admin.from("place_profiles").select("id, name").in("id", ids);
-  return new Map<string, string>(
-    ((data ?? []) as { id: string; name: string | null }[]).map(
-      (p) => [p.id, p.name ?? fallback],
+  const { data } = await admin
+    .from("place_profiles")
+    .select(`id, name, ${PLACE_ZONE_COLUMNS}`)
+    .in("id", ids);
+  return new Map(
+    ((data ?? []) as { id: string; name: string | null; timezone?: unknown; lng?: unknown }[]).map(
+      (p) => [p.id, { name: p.name ?? fallback, zone: placeZone(p) }],
     ),
   );
 }
@@ -235,14 +229,14 @@ export type SpeakableTicket =
     } | null;
   };
 
-/** The shape every agent tool speaks — es-MX ready. */
-export function speakable(r: SpeakableTicket, placeName: string) {
+/** The shape every agent tool speaks — es-MX ready, in the place's zone. */
+export function speakable(r: SpeakableTicket, placeName: string, zone: string) {
   return {
     reference_code: r.reference_code ?? null,
     guest_name: ticketGuestName(r, "(sin nombre)"),
     place_name: placeName,
-    date_es: esDate(r.reserved_at),
-    time_es: esTime(r.reserved_at),
+    date_es: esDate(r.reserved_at, zone),
+    time_es: esTime(r.reserved_at, zone),
     reserved_at: r.reserved_at,
     party_size: r.party_size,
     state: r.state,

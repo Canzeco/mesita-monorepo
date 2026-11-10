@@ -28,6 +28,7 @@ import {
   speakable,
   ticketsOfConsumers,
 } from "../_shared/agent-tools.ts";
+import { placeZone } from "../_shared/local-time.ts";
 
 serveJson("eleven-a3-verify-caller", async (req) => {
   const ctx = await requireAgentRequest(req);
@@ -65,6 +66,6 @@ serveJson("eleven-a3-verify-caller", async (req) => {
     ok: true,
     verified: true,
     consumer: { name: guestName(first, "(sin nombre)"), first_name: first.first_name ?? "" },
-    tickets: tickets.map((t) => speakable(t, names.get(t.project_id) ?? "")),
+    tickets: tickets.map((t) => speakable(t, names.get(t.project_id)?.name ?? "", names.get(t.project_id)?.zone ?? placeZone(null))),
   });
 });

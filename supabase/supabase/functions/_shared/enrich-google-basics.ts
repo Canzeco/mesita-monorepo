@@ -12,6 +12,7 @@
 // the same status codes the old seed used (409/422/502/503).
 
 import { classifyLinks } from "./channels.ts";
+import { mexicoZone } from "./local-time.ts";
 import { googleFetch } from "./google-fetch.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { ENRICH_FIELD_LIMITS } from "./enrich-field-limits.ts";
@@ -294,9 +295,11 @@ export async function fetchGoogleBasics(
   const placesPhotos = photosResult.status === "fulfilled"
     ? photosResult.value
     : [];
-  const timezone = timezoneResult.status === "fulfilled"
-    ? timezoneResult.value
-    : null;
+  // One zone per place (MESITA-3626): Google's Time Zone API, else the
+  // longitude guess — never null, because every reservation time is read in it.
+  const lngForZone = details.location?.longitude;
+  const timezone = (timezoneResult.status === "fulfilled" ? timezoneResult.value : null) ??
+    mexicoZone(typeof lngForZone === "number" ? lngForZone : null);
   const photos = placesPhotos.map((p) => p.photoUri).filter(Boolean).slice(
     0,
     photoKeepCap,

@@ -22,6 +22,7 @@ import {
   speakable,
   ticketsOfPlace,
 } from "../_shared/agent-tools.ts";
+import { placeZone } from "../_shared/local-time.ts";
 
 serveJson("eleven-a4-verify-caller", async (req) => {
   const ctx = await requireAgentRequest(req);
@@ -45,6 +46,6 @@ serveJson("eleven-a4-verify-caller", async (req) => {
     ok: true,
     verified: true,
     place: { name: place.name ?? "(sin nombre)" },
-    tickets: tickets.map((t) => speakable(t, place.name ?? "")),
+    tickets: tickets.map((t) => speakable(t, place.name ?? "", placeZone(place))),
   });
 });

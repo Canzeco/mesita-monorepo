@@ -30,6 +30,7 @@ import {
   ticketsOfPlace,
   type TicketRow,
 } from "../_shared/agent-tools.ts";
+import { placeZone } from "../_shared/local-time.ts";
 
 
 serveJson("eleven-a4-find-reservation", async (req) => {
@@ -71,6 +72,6 @@ serveJson("eleven-a4-find-reservation", async (req) => {
     verified: true,
     place: { name: place.name ?? "(sin nombre)" },
     found: found.length > 0,
-    tickets: found.map((t) => speakable(t, place.name ?? "")),
+    tickets: found.map((t) => speakable(t, place.name ?? "", placeZone(place))),
   });
 });

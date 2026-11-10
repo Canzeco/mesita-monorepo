@@ -36,6 +36,7 @@ import {
   type SpeakableTicket,
   ticketMatchesGuestName,
 } from "../_shared/agent-tools.ts";
+import { placeZone } from "../_shared/local-time.ts";
 
 type Body = {
   reference_code?: unknown;
@@ -118,7 +119,7 @@ async function searchReservations(
   // A nameless place speaks as "" here (the a3 tools say "(sin nombre)").
   const placeName = await placeNames(admin, [...new Set(rows.map((r) => r.place_id))], "");
 
-  return rows.map((r) => speakable(r, placeName.get(r.place_id) ?? ""));
+  return rows.map((r) => speakable(r, placeName.get(r.place_id)?.name ?? "", placeName.get(r.place_id)?.zone ?? placeZone(null)));
 }
 
 serveJson("eleven-agent-get-reservation", async (req) => {

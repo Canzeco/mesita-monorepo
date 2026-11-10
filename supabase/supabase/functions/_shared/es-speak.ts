@@ -18,14 +18,15 @@
 // the agent reads the raw value and the human hears something odd, which is
 // recoverable in a way a 500 mid-call is not.
 
-const TZ = "America/Mexico_City";
+import { zoneOr } from "./local-time.ts";
+
 const LOCALE = "es-MX";
 
 /** e.g. "sábado 2 de agosto". Returns `iso` untouched when it can't parse. */
-export function esDate(iso: string): string {
+export function esDate(iso: string, zone: string): string {
   try {
     return new Intl.DateTimeFormat(LOCALE, {
-      timeZone: TZ,
+      timeZone: zoneOr(zone),
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -36,10 +37,10 @@ export function esDate(iso: string): string {
 }
 
 /** e.g. "8:30 p.m.". Returns `iso` untouched when it can't parse. */
-export function esTime(iso: string): string {
+export function esTime(iso: string, zone: string): string {
   try {
     return new Intl.DateTimeFormat(LOCALE, {
-      timeZone: TZ,
+      timeZone: zoneOr(zone),
       hour: "numeric",
       minute: "2-digit",
       hour12: true,

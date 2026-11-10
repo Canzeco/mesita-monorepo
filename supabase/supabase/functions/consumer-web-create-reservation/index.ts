@@ -16,7 +16,8 @@
 // the same request_id returns the ticket it already made; a second live
 // ticket for the same place and instant is refused; and the ticket is born
 // scheduled and due now, so the minute cron moves it if the immediate push
-// below is lost.
+// below is lost. The engine decides WHEN the first call rings (MESITA-3626):
+// now when the place is open, else at its opening time.
 //
 // Deploy: supabase functions deploy consumer-web-create-reservation
 
@@ -36,6 +37,7 @@ import {
   readRequestId,
 } from "../_shared/reservation-create.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
+import { DEFAULT_ZONE, zoneMonthStart } from "../_shared/local-time.ts";
 import { fromPlaceIdRow } from "../_shared/place-id.ts";
 import { accountDeletedResponse, isDeletedConsumer } from "../_shared/delete-history-free.ts";
 import { isPlaceProfileReady } from "../_shared/place-state.ts";
@@ -260,9 +262,11 @@ serveJson("consumer-web-create-reservation", async (req) => {
     const cap = monthlyReservationCap(
       consumerRow as { plan?: unknown; reservation_cap_override?: unknown } | null,
     );
-    const monthStart = new Date();
-    monthStart.setUTCDate(1);
-    monthStart.setUTCHours(0, 0, 0, 0);
+    // The guest's month is Mexico City's (MESITA-3626): the cap is the
+    // guest's, not a place's, and the market's calendar is the one they live
+    // by — a booking at 7 p.m. on the 31st counts in that month, not the next
+    // UTC one.
+    const monthStart = zoneMonthStart(new Date(), DEFAULT_ZONE);
     const { count, error: countErr } = await admin
       .from("reservation_tickets")
       .select("id", { count: "exact", head: true })
@@ -340,7 +344,9 @@ serveJson("consumer-web-create-reservation", async (req) => {
     reservation as { project_id?: string | null },
   ]);
 
-  // Attempt 1 is immediate: hand off to the Reservationist to phone the place.
+  // Hand off to the Reservationist: it rings the place now if it is open, or
+  // parks the ticket for opening time (_shared/reservation-retry.ts
+  // firstCallPlan).
   // Best-effort — the reservation already exists, so a call-trigger failure must
   // NOT fail the request: the ticket was born scheduled and due now, so the
   // minute cron pushes it again (MESITA-3619).

@@ -37,7 +37,7 @@ import {
 import { type ReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
 import {
   onTheSpotConfirmPatch,
-  placeLng,
+  placeZoneOf,
   resolveRequestedSlot,
 } from "../_shared/reservation-confirm.ts";
 
@@ -73,6 +73,8 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
 
   const wantsChange = body.new_date !== undefined || body.new_time !== undefined;
   const note = cleanNote(body.note);
+  // Dates and times a2 hears and says are the place's (MESITA-3626).
+  const zone = await placeZoneOf(admin, ticket.project_id);
 
   // ── No change: the guest accepts what the place confirmed ──────────────────
   if (!wantsChange) {
@@ -88,19 +90,20 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
       changed: false,
       both_confirmed: ticket.state === "confirmed",
       reference_code: ticket.reference_code,
-      date_es: esDate(ticket.reserved_at),
-      time_es: esTime(ticket.reserved_at),
+      date_es: esDate(ticket.reserved_at, zone),
+      time_es: esTime(ticket.reserved_at, zone),
     });
   }
 
   // ── Change: alternative picked or a new proposal → new place call ──────────
-  // Partial input defaults from the current reservation (place-local CDMX), so
+  // Partial input defaults from the current reservation (place-local), so
   // "solo cambia la hora" works without the agent re-stating the date.
   const { date, time, next } = resolveRequestedSlot(
     ticket.reserved_at,
     body.new_date,
     body.new_time,
     { trim: false },
+    zone,
   );
   if (!next) {
     return json({
@@ -117,12 +120,12 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   // counter-offer close asks the place to hold what it offered, so acting on
   // it here is a promise the place already made, not an assumption.
   const offered = normalizeAlternatives(ticket.alternatives);
-  if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
+  if (matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at, zone))) {
     // a2 is ON the phone with the guest right now — there is nothing left
     // to call them back about.
     const patch = onTheSpotConfirmPatch({
       next,
-      lng: await placeLng(admin, ticket.project_id),
+      zone,
       notify: "call",
       lastCallState: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
     });
@@ -137,8 +140,8 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
       both_confirmed: true,
       needs_new_place_call: false,
       reference_code: ticket.reference_code,
-      date_es: esDate(next.toISOString()),
-      time_es: esTime(next.toISOString()),
+      date_es: esDate(next.toISOString(), zone),
+      time_es: esTime(next.toISOString(), zone),
       say:
         "Listo, esa opción ya la tenía apartada el restaurante: su mesa queda confirmada. No hace falta otra llamada.",
     });
@@ -212,8 +215,8 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
     guest_confirmed: true,
     changed: true,
     reference_code: ticket.reference_code,
-    date_es: esDate(next.toISOString()),
-    time_es: esTime(next.toISOString()),
+    date_es: esDate(next.toISOString(), zone),
+    time_es: esTime(next.toISOString(), zone),
     needs_new_place_call: true,
     place_call_started: fired.ok,
     round: rounds + 1,

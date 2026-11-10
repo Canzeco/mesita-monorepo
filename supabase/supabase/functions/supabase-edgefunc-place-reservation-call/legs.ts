@@ -20,10 +20,15 @@ import {
   resolveElevenLabsKey,
   resolvePhoneNumberId,
 } from "../_shared/elevenlabs.ts";
-import { nextAttemptAt } from "../_shared/reservation-retry.ts";
+import { firstCallPlan, nextAttemptAt } from "../_shared/reservation-retry.ts";
 import { nextGuestCallAt, spentLadderPatch } from "../_shared/reservation-callback.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "../_shared/reservation-reminder.ts";
-import { classifyPlacementFailure, noticeNextAt, outageRetryAt } from "../_shared/reservation-run.ts";
+import {
+  classifyPlacementFailure,
+  noticeNextAt,
+  outageRetryAt,
+  placeCallDay,
+} from "../_shared/reservation-run.ts";
 import { legDynamicVariables, type ReservationLegVars } from "../_shared/reservation-legs.ts";
 import {
   type ReservationAttempt,
@@ -68,10 +73,17 @@ async function guardedRecord(
 }
 
 // Per-place daily place-call meter (abuse guard): atomic bump, returns the
-// count AFTER this call. Failure to count must never block a call — the
-// meter is a guard, not a ledger.
-async function bumpPlaceCalls(admin: SupabaseClient, projectId: string): Promise<number | null> {
-  const { data, error } = await admin.rpc("bump_reservation_call_counter", { pid: projectId });
+// count AFTER this call. The day is the PLACE's (MESITA-3626). Failure to
+// count must never block a call — the meter is a guard, not a ledger.
+async function bumpPlaceCalls(
+  admin: SupabaseClient,
+  projectId: string,
+  placeTz: string,
+): Promise<number | null> {
+  const { data, error } = await admin.rpc("bump_reservation_call_counter", {
+    pid: projectId,
+    local_day: placeCallDay(placeTz),
+  });
   if (error) {
     console.error(`[reservation-call] place-call counter failed: ${error.message}`);
     return null;
@@ -124,7 +136,7 @@ async function callGuest(input: {
   /** Guest calls already placed for this errand (ladder position). */
   attemptsDone: number;
   outageRetries: number;
-  placeLng: number | null;
+  placeTz: string;
   reservedAtIso: string;
   /** MESITA-787 — app = skip a2; ticket is the notification. */
   guestNotify: "call" | "app";
@@ -159,7 +171,7 @@ async function callGuest(input: {
   const parkOrGiveUp = async (failNote: string) => {
     const next = nextGuestCallAt(
       n,
-      input.placeLng,
+      input.placeTz,
       input.reservedAtIso ? new Date(input.reservedAtIso) : null,
     );
     if (next) {
@@ -237,7 +249,7 @@ export async function runCallbackRetry(input: {
   legVars: ReservationLegVars;
   attemptsDone: number;
   outageRetries: number;
-  placeLng: number | null;
+  placeTz: string;
   reservedAtIso: string;
   guestNotify: "call" | "app";
 }): Promise<void> {
@@ -271,7 +283,7 @@ export async function runReminder(input: {
   legVars: ReservationLegVars;
   outageRetries: number;
   reservedAtIso: string;
-  placeLng: number | null;
+  placeTz: string;
   guestNotify: "call" | "app";
   reminderEnabled: boolean;
 }): Promise<void> {
@@ -292,7 +304,7 @@ export async function runReminder(input: {
     if (!input.reminderEnabled) {
       const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
       await record({
-        ...reminderParkPatch(input.placeLng, reservedAt, input.guestNotify),
+        ...reminderParkPatch(input.placeTz, reservedAt, input.guestNotify),
         last_call_state: "reminder — operator knob off; park kept",
       });
       return;
@@ -402,7 +414,7 @@ export async function runCancelNotice(input: {
   agentId: string;
   legVars: ReservationLegVars;
   placeHours: unknown;
-  placeLng: number | null;
+  placeTz: string;
   reservedAtIso: string;
   projectId: string;
   placeCallCap: number;
@@ -425,7 +437,7 @@ export async function runCancelNotice(input: {
   const n = input.attemptsDone + 1;
   const reservedAt = input.reservedAtIso ? new Date(input.reservedAtIso) : null;
   const park = async (failNote: string) => {
-    const next = noticeNextAt(input.kind, n, input.placeHours, input.placeLng, reservedAt);
+    const next = noticeNextAt(input.kind, n, input.placeHours, input.placeTz, reservedAt);
     if (next) {
       await record({
         notice_attempts: n,
@@ -467,7 +479,7 @@ export async function runCancelNotice(input: {
   };
   try {
     if (isPlaceSide) {
-      const calls = await bumpPlaceCalls(admin, input.projectId);
+      const calls = await bumpPlaceCalls(admin, input.projectId, input.placeTz);
       if (calls !== null && calls > input.placeCallCap) {
         await record({
           notice_state: "scheduled",
@@ -542,9 +554,11 @@ export async function runIntents(input: {
   attemptsDone: number;
   /** Log carried across runs so the ticket keeps its full history. */
   priorAttempts: ReservationAttempt[];
-  /** The place's weekly hours + lng — when the next try is allowed to fire. */
+  /** The place's weekly hours + zone — when the next try is allowed to fire. */
   placeHours: unknown;
-  placeLng: number | null;
+  placeTz: string;
+  /** The slot — the first call must ring at least 30 min before it. */
+  reservedAtIso: string;
   businessNumber: string;
   bookerAgentId: string; // eleven-a1 (fallback: the original agent)
   legVars: ReservationLegVars;
@@ -585,6 +599,25 @@ export async function runIntents(input: {
   const end = (d: DeadEnd, reason: string, extra: Record<string, unknown> = {}) =>
     endAtDeadEnd(deadEndIo, d, reason, { ...releaseOldHold, ...extra });
   try {
+    // The first call waits until the place is open (MESITA-3626): a request
+    // made at 3 a.m. parks until opening time and the minute cron wakes it;
+    // a slot the place doesn't open in time for ends here, and the guest is
+    // told. Retries already pace by hours (nextAttemptAt).
+    if (input.attemptsDone === 0) {
+      const plan = firstCallPlan(input.placeHours, input.placeTz, new Date(input.reservedAtIso));
+      if (plan.kind === "too_late") {
+        await end("closed", plan.reason);
+        return;
+      }
+      if (plan.kind === "wait") {
+        await record({
+          attempts_state: "scheduled",
+          next_attempt_at: plan.at.toISOString(),
+          last_call_state: plan.reason.slice(0, 200),
+        });
+        return;
+      }
+    }
     const key = await resolveElevenLabsKey();
     if (!key?.startsWith("sk_")) {
       await end("no_key", "no ELEVENLABS_KEY");
@@ -625,7 +658,7 @@ export async function runIntents(input: {
       });
 
       // Per-place daily meter — booking calls and place notices share it.
-      const meter = await bumpPlaceCalls(admin, input.projectId);
+      const meter = await bumpPlaceCalls(admin, input.projectId, input.placeTz);
       if (meter !== null && meter > input.placeCallCap) {
         attempts.pop(); // never rang — the entry must not count
         await record({
@@ -676,7 +709,7 @@ export async function runIntents(input: {
         }
         entry.result = `placement failed: ${call.error}`.slice(0, 160);
         if (n < attemptsPlanned) {
-          const next = nextAttemptAt(input.placeHours, input.placeLng);
+          const next = nextAttemptAt(input.placeHours, input.placeTz);
           await record({
             attempts,
             attempts_state: "scheduled",

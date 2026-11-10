@@ -23,11 +23,13 @@
 //
 // Note which side each column lives on, because the old embeds got that
 // wrong as well:
-//   place_profiles   → name, category, photos, address, price_level, lat, lng
+//   place_profiles   → name, category, photos, address, price_level, lat, lng,
+//                      timezone
 //   places → slug
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { rowPlaceId } from "./place-id.ts";
+import { placeZone } from "./local-time.ts";
 
 export type PlaceSummary = {
   id: string;
@@ -41,6 +43,8 @@ export type PlaceSummary = {
   price_level: number | null;
   lat: number | null;
   lng: number | null;
+  /** The place's IANA zone (MESITA-3626) — every slot is its wall clock. */
+  timezone: string;
 };
 
 type RowWithPlace = {
@@ -69,7 +73,7 @@ export async function attachPlaces<T extends RowWithPlace>(
     const { data } = await admin
       .from("places")
       .select(
-        "id, slug, place:place_profiles(id, name, google_name, category, photos, address, price_level, lat, lng)",
+        "id, slug, place:place_profiles(id, name, google_name, category, photos, address, price_level, lat, lng, timezone)",
       )
       .in("id", ids);
     type Row = {
@@ -86,6 +90,7 @@ export async function attachPlaces<T extends RowWithPlace>(
           price_level: number | null;
           lat: number | null;
           lng: number | null;
+          timezone: string | null;
         }
         | null;
     };
@@ -102,6 +107,7 @@ export async function attachPlaces<T extends RowWithPlace>(
         price_level: p.place?.price_level ?? null,
         lat: p.place?.lat ?? null,
         lng: p.place?.lng ?? null,
+        timezone: placeZone(p.place),
       });
     }
   }

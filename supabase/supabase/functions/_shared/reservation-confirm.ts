@@ -10,10 +10,11 @@ import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { parsePlaceLocal, placeLocalDate, placeLocalTime } from "./agent-tools.ts";
 import type { ReservationPatch } from "./reservation-doc.ts";
 import { reminderParkPatch } from "./reservation-reminder.ts";
+import { PLACE_ZONE_COLUMNS, placeZone } from "./local-time.ts";
 
 /**
- * The slot the guest asked for. Partial input defaults from the current
- * reservation (place-local CDMX), so "solo cambia la hora" works without
+ * The slot the guest asked for, in the place's zone. Partial input defaults
+ * from the current reservation (place-local), so "solo cambia la hora" works without
  * restating the date. `trim` returns the trimmed string (the app); without it
  * the raw string rides through (a2 — parsePlaceLocal trims on its own).
  * `next` is null when the pair doesn't parse.
@@ -23,32 +24,34 @@ export function resolveRequestedSlot(
   newDate: unknown,
   newTime: unknown,
   opts: { trim: boolean },
+  zone: string,
 ): { date: string; time: string; next: Date | null } {
   const pick = (v: unknown, dflt: string) =>
     typeof v === "string" && v.trim() ? (opts.trim ? v.trim() : v) : dflt;
-  const date = pick(newDate, placeLocalDate(reservedAt));
-  const time = pick(newTime, placeLocalTime(reservedAt));
-  return { date, time, next: parsePlaceLocal(date, time) };
+  const date = pick(newDate, placeLocalDate(reservedAt, zone));
+  const time = pick(newTime, placeLocalTime(reservedAt, zone));
+  return { date, time, next: parsePlaceLocal(date, time, zone) };
 }
 
-/** The place's longitude (its timezone for the reminder); null when unknown. */
-export async function placeLng(
+/** The place's zone (_shared/local-time.ts placeZone): its slots, its
+ *  spoken times and its reminder window. A failed read falls back like a
+ *  place with no stamp. */
+export async function placeZoneOf(
   admin: SupabaseClient,
   placeId: string,
-): Promise<number | null> {
+): Promise<string> {
   const { data, error } = await admin
     .from("place_profiles")
-    .select("lng")
+    .select(PLACE_ZONE_COLUMNS)
     .eq("id", placeId)
     .maybeSingle();
-  if (error) return null;
-  return typeof data?.lng === "number" ? data.lng : null;
+  return placeZone(error ? null : (data as { timezone?: unknown; lng?: unknown } | null));
 }
 
 /** The confirm-on-the-spot write: both sides agree, nothing left to call about. */
 export function onTheSpotConfirmPatch(args: {
   next: Date;
-  lng: number | null;
+  zone: string | null;
   notify: "call" | "app";
   lastCallState: string;
   now?: Date;
@@ -67,7 +70,7 @@ export function onTheSpotConfirmPatch(args: {
     // to call them back about.
     callback_state: "skipped",
     callback_next_attempt_at: null,
-    ...reminderParkPatch(args.lng, args.next, args.notify, now),
+    ...reminderParkPatch(args.zone, args.next, args.notify, now),
     last_call_state: args.lastCallState,
   };
 }
