@@ -7,7 +7,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CHARGE_REFUSAL } from "@/lib/api/wallet";
 
-const PAY = readFileSync(join(__dirname, "..", "..", "components", "consumer", "pay", "PayPage.tsx"), "utf8");
+// The form lives in its own module since MESITA-3614.
+const PAY = readFileSync(join(__dirname, "..", "..", "components", "consumer", "pay", "PayForm.tsx"), "utf8");
 
 describe("the waiter's code on Pay", () => {
   it("draws no code field until the link is tapped", () => {

@@ -111,11 +111,14 @@ const OFFER_BOX =
  *  the button holds that slide while a finger or keyboard focus is on it. */
 export function OfferButton({
   href,
+  payHref,
   name,
   slides,
   className,
 }: {
   href: string;
+  /** Where the Payment slide goes: the place's bill, /pay/<placeId>. */
+  payHref: string;
   name: string;
   slides: OfferSlide[];
   className?: string;
@@ -129,7 +132,7 @@ export function OfferButton({
   const release = () => setHeld(null);
   return (
     <Link
-      href={slide.section === "payment" ? "/pay" : `${href}?rewards=${slide.section}`}
+      href={slide.section === "payment" ? payHref : `${href}?rewards=${slide.section}`}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
       onFocus={hold}

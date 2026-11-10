@@ -4,7 +4,7 @@ import { CalendarCheck, MapPin, WalletCards } from "lucide-react";
 import { Skeleton, SkeletonLine } from "@/components/shared";
 import type { ConsumerNotification } from "@/lib/api/notifications";
 import { money } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, isRouteId, walletPlacePath } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
 // The kinds a booking writes.
@@ -137,9 +137,11 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
     </article>
   );
 
-  // A credit row opens the Wallet, where the credit now reads Available.
+  // A credit row opens that place's House Card, where the credit now reads
+  // Available (the Wallet when the row names no place).
+  const placeId = payloadString(n.payload, "place_id");
   return credit ? (
-    <Link href={CONSUMER_ROUTES.wallet} className="block">
+    <Link href={isRouteId(placeId) ? walletPlacePath(placeId) : CONSUMER_ROUTES.wallet} className="block">
       {card}
     </Link>
   ) : (

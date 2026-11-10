@@ -27,7 +27,7 @@ import { sharePlace } from "@/lib/share-place";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
-import { placeReservePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, placeReservePath, walletPlacePath } from "@/lib/consumer-route-contract";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 
@@ -158,16 +158,18 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     buyingVoucher: vouchers.buying,
     onLoadVouchers: vouchers.load,
     vouchersLoading: vouchers.loading,
-    // The Cashback card's Pay (MESITA-3352): the bar's Pay page; the sheet
-    // closes on the way out.
+    // Pay (the pinned row's tile and the Cashback card's, MESITA-3352): this
+    // place's bill, /pay/<placeId> (MESITA-3614), the one door every "pay
+    // here" uses; the sheet closes on the way out.
     onPay: () => {
       setRewards(null);
       setAskDismissed(true);
-      navigateTo(router, "/pay");
+      navigateTo(router, payPlacePath(place.id));
     },
-    // The pinned row's Wallet tile (MESITA-3574): the Wallet, opened at this
-    // place's credit; its pill reads the list-vouchers balance below.
-    onOpenWallet: () => navigateTo(router, `/wallet?place=${encodeURIComponent(place.id)}`),
+    // The pinned row's Wallet tile (MESITA-3574): this place's House Card,
+    // /wallet/<placeId> (MESITA-3614); its pill reads the list-vouchers
+    // balance below.
+    onOpenWallet: () => navigateTo(router, walletPlacePath(place.id)),
     // The Wallet tile's Off sheet (MESITA-3583): "Add card to Wallet" pins
     // this place's House Card with $0; the sheet says when it already is.
     ...(isMesitaPlaceId(place.id)
@@ -186,11 +188,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       : {}),
     onJoinVip: () => {
       setRewards(null);
-      navigateTo(router, "/me/class");
+      navigateTo(router, CONSUMER_ROUTES.mePages.class);
     },
     onLinkInstagram: () => {
       setRewards(null);
-      navigateTo(router, "/me/instagram");
+      navigateTo(router, CONSUMER_ROUTES.mePages.instagram);
     },
   };
 

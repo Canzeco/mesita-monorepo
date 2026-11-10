@@ -270,10 +270,15 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
     ["/search", "Search"],
-    // Pay is one page and lights its own tab there.
+    // Pay and every money address under it light Pay (MESITA-3614).
     ["/pay", "Pay"],
-    // Wallet is one page and lights its own tab there (MESITA-3295).
+    ["/pay/p1", "Pay"],
+    ["/pay/tab/t1", "Pay"],
+    ["/pay/receipt/r1", "Pay"],
+    // Wallet and a place's House Card or a gift link light Wallet.
     ["/wallet", "Wallet"],
+    ["/wallet/p1", "Wallet"],
+    ["/wallet/gift/g1", "Wallet"],
     // Me and the detail route it owns: a reservation is reached from a place
     // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
     // MESITA-2518 until Share took its slot, MESITA-2561).
@@ -832,20 +837,44 @@ describe("T7 — every former url still resolves after the move", () => {
   });
 });
 
-// ── T9 — Pay is one page ────────────────────────────────────────────────────
+// ── T9 — the money tree, and the Second Stage trees are gone ───────────────
 //
-// Pay is one page with nothing under it (the reward steps of MESITA-3254 left
-// with the discount product, MESITA-3299), and the Second Stage route trees are
-// deleted, not emptied. A change that grows Pay a child or brings a tree back
-// has to delete these lines to do it, which is the review moment.
-describe("T9 — Pay is one page, and the Second Stage trees are gone", () => {
-  it("(shell)/pay is a page with no subdirectory", () => {
+// Pay and Wallet hold exactly these addresses (MESITA-3614: every money
+// object under the tab that owns it): /pay/<placeId>, /pay/tab/<id>,
+// /pay/receipt/<id>, /wallet/<placeId> and /wallet/gift/<token>. The Second
+// Stage route trees are deleted, not emptied. A change that grows either
+// tab another child or brings a tree back has to edit these lines to do it,
+// which is the review moment.
+const childDirs = (dir: string) =>
+  readdirSync(dir).filter((e) => statSync(join(dir, e)).isDirectory()).sort();
+
+describe("T9 — the money tree, and the Second Stage trees are gone", () => {
+  it("(shell)/pay holds the door, the bill and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
-    const children = readdirSync(pay).filter((e) =>
-      statSync(join(pay, e)).isDirectory(),
-    );
-    expect(children).toEqual([]);
+    expect(childDirs(pay)).toEqual(["[placeId]", "receipt", "tab"]);
+    expect(childDirs(join(pay, "tab"))).toEqual(["[tabId]"]);
+    expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
+  });
+
+  it("(shell)/wallet holds a place's House Card and the gift link, and nothing else", () => {
+    const wallet = join(SHELL, "wallet");
+    expect(existsSync(join(wallet, "page.tsx"))).toBe(true);
+    expect(childDirs(wallet)).toEqual(["[placeId]", "gift"]);
+    expect(childDirs(join(wallet, "gift"))).toEqual(["[token]"]);
+  });
+
+  // A redirect whose source matches a live money address shadows it: the
+  // page never renders and every gate stays green.
+  it.each([
+    "/pay/00000000-0000-4000-8000-000000000001",
+    "/pay/tab/00000000-0000-4000-8000-000000000001",
+    "/pay/receipt/00000000-0000-4000-8000-000000000001",
+    "/wallet/00000000-0000-4000-8000-000000000001",
+    "/wallet/gift/abc",
+  ])("no redirect shadows %s", async (address) => {
+    const redirects = await nextConfig.redirects!();
+    expect(redirects.find((r) => matches(r.source, address))).toBeUndefined();
   });
 
   it("no Second Stage route tree exists", () => {

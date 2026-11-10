@@ -19,6 +19,7 @@ import {
   cardFacts,
 } from "@/components/consumer/place-card";
 import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
+import { CONSUMER_ROUTES, isRouteId, payPlacePath } from "@/lib/consumer-route-contract";
 import {
   TILE_ACTIONS,
   TILE_BAND,
@@ -247,7 +248,7 @@ export function CatalogTile({
               : undefined
           }
         />
-        {vouchers ? <OfferButton href={href} name={place.name} slides={slides} className="pointer-events-auto" /> : null}
+        {vouchers ? <OfferButton href={href} payHref={isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay} name={place.name} slides={slides} className="pointer-events-auto" /> : null}
       </div>
     </li>
   );

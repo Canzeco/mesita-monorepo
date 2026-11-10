@@ -6,7 +6,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
 import { moneyLabel } from "@mesita/place-profile/lib/money";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { walletGiftPath } from "@/lib/consumer-route-contract";
 import { invokeEF } from "./_invoke";
 
 export type WalletEntry = {
@@ -527,12 +527,10 @@ export const ENTRY_LABEL: Record<string, string> = {
 /** A link the guest sent that nobody took yet. */
 export type SentLink = { gift_id: string; place_id: string; amount_cents: number; currency: string; created_at: string };
 
-/** The query parameter a credit link carries on /wallet. */
-export const GIFT_PARAM = "gift";
-
-/** The link a friend opens: this app's own Wallet with the key. */
+/** The link a friend opens: this app's own Wallet with the key,
+ *  /wallet/gift/<token> (MESITA-3614; links sent as /wallet?gift= forward). */
 export function giftLink(token: string, origin: string = typeof window === "undefined" ? "" : window.location.origin): string {
-  return `${origin}${CONSUMER_ROUTES.wallet}?${GIFT_PARAM}=${encodeURIComponent(token)}`;
+  return `${origin}${walletGiftPath(token)}`;
 }
 
 /** Sends credit at one place as a one-time link. `token` is null on a

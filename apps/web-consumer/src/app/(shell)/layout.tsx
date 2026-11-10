@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { PendingScreen } from "@/components/consumer/PendingScreen";
+import { ShellEntry } from "@/components/consumer/ShellEntry";
 import { ShellLoadingFor } from "./shell-loading";
 import { ConsumerLocalDataGuard } from "@/components/consumer/ConsumerLocalDataGuard";
 import { PlaceGoneNotice } from "@/components/consumer/PlaceGoneNotice";
@@ -164,6 +165,8 @@ export default async function ConsumerShellLayout({
           consumer never inherits the previous account's localStorage-backed
           favorites / reservations (survives sign-out + DB reset). */}
       <ConsumerLocalDataGuard consumerId={user.id} />
+      {/* Where Back lands (MESITA-3614): the entry the app opened on. */}
+      <ShellEntry />
       {/* Turns the place-detail 404 bounce into a stated reason + prunes the
           dead id. Suspense because it reads useSearchParams. */}
       <Suspense fallback={null}>
