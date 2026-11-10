@@ -1,5 +1,6 @@
 "use client";
 
+import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, MapPin, QrCode, Search } from "lucide-react";
@@ -154,7 +155,7 @@ export function PayPage({ giftToken = null }: { giftToken?: string | null }) {
   }
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       {/* The white header bar the Wallet wore (MESITA-3534), held at the top. */}
       <header className="border-border bg-card sticky top-0 z-10 -mx-4 flex min-h-[4.25rem] items-center border-b px-4 pt-5 pb-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
@@ -184,7 +185,7 @@ export function PayPage({ giftToken = null }: { giftToken?: string | null }) {
       </div>
 
       <WalletSection giftToken={giftToken} testBandShown={!!places?.some((p) => p.test_mode)} />
-    </div>
+    </KeptScroll>
   );
 }
 

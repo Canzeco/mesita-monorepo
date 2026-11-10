@@ -2,7 +2,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// Share wears the pushed-page frame, whose Back reads the router.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, push() {}, replace() {} }) }));
 
 import { SharePage } from "@/components/consumer/share/SharePage";
 import {

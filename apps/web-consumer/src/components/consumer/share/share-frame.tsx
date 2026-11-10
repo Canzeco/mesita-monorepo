@@ -1,3 +1,4 @@
+import { Screen } from "@/components/consumer/nav/Screen";
 import type { HTMLAttributes, ReactNode } from "react";
 
 import { SectionEyebrow } from "@/components/consumer/me/settings-rows";
@@ -46,29 +47,27 @@ export function ShareFrame({
   doors: ReactNode;
   children?: ReactNode;
 } & Omit<HTMLAttributes<HTMLDivElement>, "className" | "children">) {
+  // Me's Share tile opens it as a pushed page: the one frame, with Back
+  // (MESITA-3647; it had no way back but the bar).
   return (
-    <div
-      className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8"
-      {...rest}
-    >
-      <h1 className="font-display text-2xl font-semibold tracking-tight">
-        Share Mesita
-      </h1>
-      <p className="text-muted-foreground type-body mt-1">{APP_SHARE_TEXT}</p>
+    <Screen title="Share Mesita" flush>
+      <div className="flex flex-col px-4 pt-5 pb-8" {...rest}>
+        <p className="text-muted-foreground type-body">{APP_SHARE_TEXT}</p>
 
-      <div className="mt-5">{card}</div>
+        <div className="mt-5">{card}</div>
 
-      <div className="mt-6 flex flex-col gap-3">
-        <SectionEyebrow>Send it</SectionEyebrow>
-        <div className="grid grid-cols-4 gap-2">{doors}</div>
+        <div className="mt-6 flex flex-col gap-3">
+          <SectionEyebrow>Send it</SectionEyebrow>
+          <div className="grid grid-cols-4 gap-2">{doors}</div>
+        </div>
+        <p
+          className="text-muted-foreground type-body mt-5 text-center"
+          data-share-preview
+        >
+          Sends: “{SHARE_BODY}”
+        </p>
+        {children}
       </div>
-      <p
-        className="text-muted-foreground type-body mt-5 text-center"
-        data-share-preview
-      >
-        Sends: “{SHARE_BODY}”
-      </p>
-      {children}
-    </div>
+    </Screen>
   );
 }

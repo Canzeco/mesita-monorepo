@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { TEST_BAND_TEXT, TestBand } from "@mesita/place-profile";
 import { clockTime, readAmount } from "@mesita/place-profile/lib/money";
@@ -320,7 +320,7 @@ export function TabView({
 
   if (gone) {
     return (
-      <Shell onBack={onDone}>
+      <Shell>
         <p className="border-border bg-card rounded-2xl border px-4 py-4 text-base font-semibold" role="status">
           This bill isn&apos;t on your account
         </p>
@@ -333,7 +333,7 @@ export function TabView({
 
   if (openFailed && !tab) {
     return (
-      <Shell onBack={onDone}>
+      <Shell>
         <p className="border-border bg-card rounded-2xl border px-4 py-4 text-base font-semibold" role="status">
           Couldn&apos;t open your bill. Check your connection.
         </p>
@@ -355,7 +355,7 @@ export function TabView({
   if (status === "waiting_bill") {
     const placeId = tab?.place.id ?? (start.kind === "place" ? start.placeId : null);
     return (
-      <Shell onBack={onDone} testMode={tab?.test_mode ?? false}>
+      <Shell testMode={tab?.test_mode ?? false}>
         <QrScreen
           qr={qr}
           placeName={tab?.place.name ?? null}
@@ -382,7 +382,7 @@ export function TabView({
 
   if (!tab) {
     return (
-      <Shell onBack={onDone}>
+      <Shell>
         <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-6 py-6" aria-busy>
           <Skeleton className="h-4 w-40" />
           <Skeleton className="mt-4 h-64 w-64 rounded-xl" />
@@ -394,7 +394,7 @@ export function TabView({
 
   if (tab.status === "billed") {
     return (
-      <Shell onBack={onDone} testMode={tab.test_mode}>
+      <Shell testMode={tab.test_mode}>
         <SplitScreen
           key={tab.bill_version}
           tab={tab}
@@ -414,7 +414,7 @@ export function TabView({
   if (tab.status === "paying") {
     const cardGoing = tab.parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open"));
     return (
-      <Shell onBack={onDone} testMode={tab.test_mode}>
+      <Shell testMode={tab.test_mode}>
         {cardGoing || checking ? (
           <CardScreen
             tab={tab}
@@ -435,7 +435,7 @@ export function TabView({
   // Expired or cancelled.
   const expired = tab.status === "expired";
   return (
-    <Shell onBack={onDone} testMode={tab.test_mode}>
+    <Shell testMode={tab.test_mode}>
       <div className="border-border bg-card rounded-2xl border px-4 py-4" role="status">
         <p className="text-base font-semibold">{expired ? "This bill expired" : "This bill was cancelled"}</p>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -452,17 +452,10 @@ export function TabView({
   );
 }
 
-function Shell({ onBack, testMode = false, children }: { onBack: () => void; testMode?: boolean; children: React.ReactNode }) {
+// Back lives in the screen's own header (Screen, MESITA-3647).
+function Shell({ testMode = false, children }: { testMode?: boolean; children: React.ReactNode }) {
   return (
     <div className="flex flex-col" data-pay-tab>
-      <button
-        type="button"
-        aria-label="Back to places"
-        onClick={onBack}
-        className="hover:bg-muted -ml-2 mb-2 flex h-11 w-11 items-center justify-center rounded-full"
-      >
-        <ArrowLeft className="h-5 w-5" aria-hidden />
-      </button>
       {testMode ? <TestBand className="mb-3" /> : null}
       {children}
     </div>

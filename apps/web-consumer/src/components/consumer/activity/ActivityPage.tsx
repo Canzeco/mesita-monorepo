@@ -29,6 +29,7 @@
 // This page never computes a balance; it lists and formats what the server
 // sent (a payment's cashback entries are summed into its one field). Each source fails on its own: a failed one leaves the other's rows.
 
+import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Ban, CalendarCheck, Gift, History, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
@@ -413,13 +414,13 @@ function EventRow({ ev }: { ev: Ev }) {
  *  the same shape (MESITA-2701). */
 export function ActivityFrame({ rail, children }: { rail?: ReactNode; children: ReactNode }) {
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <header className="border-border bg-card sticky top-0 z-10 -mx-4 border-b px-4 pt-5 pb-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Activity</h1>
         {rail ?? <RailSkeleton />}
       </header>
       <div className="mt-5">{children}</div>
-    </div>
+    </KeptScroll>
   );
 }
 

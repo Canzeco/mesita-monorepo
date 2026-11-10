@@ -1,3 +1,4 @@
+import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode } from "react";
 import {
   Bell,
@@ -195,7 +196,7 @@ export function MeHubFrame({
   return (
     <div className="flex h-full flex-col">
       {bar}
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
+      <KeptScroll className="scrollbar-hide flex-1 overflow-y-auto px-4 pt-3 pb-8">
         <div className="flex flex-col gap-2">
           <DestGrid>
             {ME_HUB_GRID.map((cell) => (
@@ -206,7 +207,7 @@ export function MeHubFrame({
             {tile(ME_HUB_SETTINGS, "cell")}
           </DestGrid>
         </div>
-      </div>
+      </KeptScroll>
       {children}
     </div>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Screen } from "@/components/consumer/nav/Screen";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -82,9 +83,8 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
   }, [paymentId]);
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
-      <div className="mt-5 flex min-h-0 flex-1 flex-col">
+    <Screen title="Pay" onBack={leave} flush>
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-8">
         {proof ? (
           <ProofView proof={proof} onChange={setProof} onDone={leave} />
         ) : failed || refill ? (
@@ -114,6 +114,6 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
         onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
         onRefresh={refresh}
       />
-    </div>
+    </Screen>
   );
 }
