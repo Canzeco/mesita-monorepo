@@ -235,6 +235,9 @@ export type ReservationDoc = {
    *  which use the consumer's profile name. */
   guest_first_name: string | null;
   guest_last_name: string | null;
+  /** The Reserve request that made this ticket (MESITA-3619); a retried
+   *  create with the same id returns this ticket. Null on older tickets. */
+  request_id: string | null;
 };
 
 // Every field a patch may touch — everything except `id` (server-generated,
@@ -294,6 +297,7 @@ export const RESERVATION_PATCH_KEYS = [
   "reminder_conversation_id",
   "guest_first_name",
   "guest_last_name",
+  "request_id",
 ] as const satisfies readonly (keyof Omit<ReservationDoc, "id" | "created_at">)[];
 
 // Compile-time exhaustiveness check the other direction — same discipline
@@ -394,6 +398,7 @@ const CLOSED_SET_FIELDS: ReadonlyArray<
 const REFERENCE_CODE_RE = /^\d{8}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM_RE = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isNonNegativeInt(v: unknown): v is number {
   return typeof v === "number" && Number.isInteger(v) && v >= 0;
@@ -519,6 +524,13 @@ export function validateReservationPatch(input: unknown): ReservationValidationR
     const v = raw[key];
     if (!isNullableString(v)) return { ok: false, error: `${key} must be a string or null` };
     patch[key] = v;
+  }
+  if ("request_id" in raw) {
+    const v = raw.request_id;
+    if (v !== null && (typeof v !== "string" || !UUID_RE.test(v))) {
+      return { ok: false, error: "request_id must be a uuid or null" };
+    }
+    patch.request_id = v as string | null;
   }
   if ("reference_code" in raw) {
     const v = raw.reference_code;

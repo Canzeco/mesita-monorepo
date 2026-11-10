@@ -41,12 +41,10 @@ export async function readReservationsSection(
   // is the reader. Every terminal-bad state a human must act on:
   //   · notice_state=failed      cancel notice never delivered (held table /
   //                              uninformed guest)
-  //   · attempts_state=error     booking run died (platform outage persisted,
-  //                              no number, crash)
+  //   · attempts_state=error     booking run died — older tickets only: since
+  //                              MESITA-3619 every booking dead end ends the
+  //                              ticket and tells the guest
   //   · callback_state=failed    guest leg could not be placed at all
-  //   · confirmed-but-unheard    place said yes, the guest ladder ran dry and
-  //                              nobody picked up — the table exists and its
-  //                              owner doesn't know
   const { data: attention } = await admin
     .from("reservation_tickets")
     .select(
@@ -56,8 +54,7 @@ export async function readReservationsSection(
       "notice_state.eq.failed," +
         "attempts_state.eq.error," +
         "callback_state.eq.failed," +
-        "reminder_state.eq.failed," +
-        "and(state.eq.confirmed,consumer_confirmed_at.is.null,callback_state.in.(no_answer,unknown),callback_next_attempt_at.is.null)",
+        "reminder_state.eq.failed",
     )
     .order("reserved_at", { ascending: false })
     .limit(30);

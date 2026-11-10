@@ -31,6 +31,7 @@ import {
   writeReservation,
 } from "../_shared/reservation-doc.ts";
 import type { ReservationOutcome } from "../_shared/reservation-notification.ts";
+import { type DeadEnd, type DeadEndIo, endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
 
 // Thrown by a guarded write whose run was orphaned (reschedule / cancel /
 // console action rotated run_id). The runner must STOP — its ticket moved on,
@@ -567,23 +568,43 @@ export async function runIntents(input: {
   const releaseOldHold = input.modificationOfIso
     ? { notice_kind: "place_cancel", notice_state: "pending", notice_attempts: 0, notice_next_at: null }
     : {};
+  // Every dead end ends the ticket and tells the guest (MESITA-3619,
+  // _shared/reservation-dead-end.ts) — never 'error' on a still-pending row.
+  const deadEndIo: DeadEndIo = {
+    write: async (patch) => {
+      try {
+        await record(patch);
+        return true;
+      } catch (e) {
+        if (e instanceof OrphanedRunError) return false;
+        throw e;
+      }
+    },
+    notify,
+  };
+  const end = (d: DeadEnd, reason: string, extra: Record<string, unknown> = {}) =>
+    endAtDeadEnd(deadEndIo, d, reason, { ...releaseOldHold, ...extra });
   try {
     const key = await resolveElevenLabsKey();
     if (!key?.startsWith("sk_")) {
-      await record({
-        attempts_state: "error",
-        callback_state: "skipped",
-        last_call_state: "no ELEVENLABS_KEY",
-      });
+      await end("no_key", "no ELEVENLABS_KEY");
       return;
     }
     const lines = await resolveLines(key);
     if (!lines.ok) {
-      await record({
-        attempts_state: "error",
-        callback_state: "skipped",
-        last_call_state: `failed: ${lines.error}`.slice(0, 200),
-      });
+      // Our calling line, not the place: ride the outage clock like any
+      // platform failure, and end the ticket once it is spent.
+      const next = outageRetryAt(input.outageRetries);
+      if (next) {
+        await record({
+          outage_retries: input.outageRetries + 1,
+          attempts_state: "scheduled",
+          next_attempt_at: next.at.toISOString(),
+          last_call_state: `line resolution failed: ${lines.error} — ${next.reason}`.slice(0, 200),
+        });
+      } else {
+        await end("no_line", `line resolution failed: ${lines.error} — outage clock spent`);
+      }
       return;
     }
 
@@ -646,13 +667,9 @@ export async function runIntents(input: {
                   .slice(0, 200),
             });
           } else {
-            await record({
+            await end("outage", `intent ${n}: platform outage persisted — ended`, {
               attempts,
               call_attempts: n - 1,
-              attempts_state: "error",
-              next_attempt_at: null,
-              last_call_state:
-                `intent ${n}: platform outage persisted — needs attention`.slice(0, 200),
             });
           }
           return;
@@ -706,30 +723,31 @@ export async function runIntents(input: {
       return;
     }
 
-    await record({
-      attempts_state: "exhausted",
-      next_attempt_at: null,
-      state: "unreachable",
-      callback_state: "skipped",
-      ...releaseOldHold,
-      last_call_state: `no answer after ${attemptsPlanned} intent${
-        attemptsPlanned === 1 ? "" : "s"
-      }`,
-    });
-    await notify("unreachable");
+    await end(
+      "no_answer",
+      `no answer after ${attemptsPlanned} intent${attemptsPlanned === 1 ? "" : "s"}`,
+    );
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     // Guarded by run_id directly: if the run was orphaned between the throw
-    // and here, this error write must not clobber the ticket's new life.
-    await writeReservation(admin, {
-      mode: "update",
-      id: reservationId,
-      patch: {
-        attempts_state: "error",
-        callback_state: "skipped",
-        last_call_state: `failed: ${e instanceof Error ? e.message : "run crashed"}`.slice(0, 200),
+    // and here, this write must not clobber the ticket's new life.
+    await endAtDeadEnd(
+      {
+        write: async (patch) => {
+          const res = await writeReservation(admin, {
+            mode: "update",
+            id: reservationId,
+            patch: patch as ReservationPatch,
+            match: { run_id: input.runId },
+            select: "id",
+          });
+          return res.ok && !!res.row;
+        },
+        notify,
       },
-      match: { run_id: input.runId },
-    });
+      "crash",
+      `failed: ${e instanceof Error ? e.message : "run crashed"}`,
+      releaseOldHold,
+    );
   }
 }
