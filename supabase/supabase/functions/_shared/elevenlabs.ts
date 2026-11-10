@@ -217,45 +217,18 @@ export async function getConversationStatus(
 }
 
 export type OutboundCallResult =
-  | {
-    ok: true;
-    conversationId: string | null;
-    callSid: string | null;
-    /** Whether the per-call prompt/first-message override actually rode along. */
-    usedOverrides: boolean;
-  }
+  | { ok: true; conversationId: string | null; callSid: string | null }
   | { ok: false; error: string; httpStatus: number | null };
-
-/** Per-call agent override — the per-leg brief (see _shared/reservation-legs.ts). */
-export type CallOverrides = {
-  prompt?: string;
-  firstMessage?: string;
-  language?: string;
-};
-
-// Per-call overrides are HARD-GATED behind ELEVENLABS_ALLOW_OVERRIDES, default
-// OFF. A non-whitelisted override is NOT rejected at placement — the POST
-// succeeds, the Twilio leg connects, and ElevenLabs kills the conversation at
-// initiation, i.e. the callee hears an immediate hang-up (observed live
-// 2026-07-27, MESITA-757). So a placement-time fallback can never catch it.
-// Flip the env on ONLY after enabling prompt + first-message + language
-// overrides in the agent's ElevenLabs Security tab. Until then calls go
-// vars-only — call_direction still rides along for a branching console prompt.
-function overridesAllowed(): boolean {
-  const v = (Deno.env.get("ELEVENLABS_ALLOW_OVERRIDES") ?? "").trim().toLowerCase();
-  return v === "1" || v === "true" || v === "yes";
-}
 
 /**
  * Place an outbound Convai call over the agent's Twilio number.
  * POST /v1/convai/twilio/outbound-call. Returns quickly with the conversation_id
  * (the join key for the post-call webhook); it does NOT wait for the call to end.
  *
- * `overrides` sends a per-call conversation_config_override (prompt / first
- * message / language). Each overridden field must be whitelisted in the agent's
- * ElevenLabs Security tab; if the placement is REJECTED with overrides on, we
- * retry once without them (the dynamic variables still carry call_direction,
- * so a branching console prompt keeps working) and report usedOverrides=false.
+ * Only dynamic variables ride along. What the agent says is synced from
+ * _shared/reservationist/; no per-call prompt override is ever sent (a
+ * non-whitelisted override is accepted at placement and then killed at
+ * initiation — the callee hears an immediate hang-up; MESITA-757).
  */
 export async function placeOutboundCall(
   key: string,
@@ -264,67 +237,42 @@ export async function placeOutboundCall(
     agentPhoneNumberId: string;
     toNumber: string;
     dynamicVariables: Record<string, string | number | boolean>;
-    overrides?: CallOverrides;
   },
 ): Promise<OutboundCallResult> {
-  const attempt = async (withOverrides: boolean): Promise<OutboundCallResult> => {
-    const initData: Record<string, unknown> = {
-      dynamic_variables: input.dynamicVariables,
-    };
-    if (withOverrides && input.overrides) {
-      const agent: Record<string, unknown> = {};
-      if (input.overrides.prompt) agent.prompt = { prompt: input.overrides.prompt };
-      if (input.overrides.firstMessage) agent.first_message = input.overrides.firstMessage;
-      if (input.overrides.language) agent.language = input.overrides.language;
-      if (Object.keys(agent).length) {
-        initData.conversation_config_override = { agent };
-      }
-    }
-    let r: Response;
-    try {
-      r = await fetch(`${EL_BASE}/v1/convai/twilio/outbound-call`, {
-        method: "POST",
-        headers: elHeaders(key),
-        body: JSON.stringify({
-          agent_id: input.agentId,
-          agent_phone_number_id: input.agentPhoneNumberId,
-          to_number: input.toNumber,
-          conversation_initiation_client_data: initData,
-        }),
-      });
-    } catch (e) {
-      return {
-        ok: false,
-        error: e instanceof Error ? e.message : "outbound-call fetch failed",
-        httpStatus: null,
-      };
-    }
-    let body: unknown;
-    try {
-      body = await r.json();
-    } catch {
-      return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})`, httpStatus: r.status };
-    }
-    if (!r.ok) {
-      const detail = (body as { detail?: { message?: string } | string } | null)?.detail;
-      const msg = typeof detail === "string"
-        ? detail
-        : detail?.message ?? `outbound-call HTTP ${r.status}`;
-      return { ok: false, error: msg, httpStatus: r.status };
-    }
-    const b = body as Record<string, unknown>;
+  let r: Response;
+  try {
+    r = await fetch(`${EL_BASE}/v1/convai/twilio/outbound-call`, {
+      method: "POST",
+      headers: elHeaders(key),
+      body: JSON.stringify({
+        agent_id: input.agentId,
+        agent_phone_number_id: input.agentPhoneNumberId,
+        to_number: input.toNumber,
+        conversation_initiation_client_data: { dynamic_variables: input.dynamicVariables },
+      }),
+    });
+  } catch (e) {
     return {
-      ok: true,
-      conversationId: typeof b.conversation_id === "string" ? b.conversation_id : null,
-      callSid: typeof b.callSid === "string" ? b.callSid : null,
-      usedOverrides: withOverrides && !!input.overrides,
+      ok: false,
+      error: e instanceof Error ? e.message : "outbound-call fetch failed",
+      httpStatus: null,
     };
+  }
+  let body: unknown;
+  try {
+    body = await r.json();
+  } catch {
+    return { ok: false, error: `outbound-call returned non-JSON (HTTP ${r.status})`, httpStatus: r.status };
+  }
+  if (!r.ok) {
+    const detail = (body as { detail?: { message?: string } | string } | null)?.detail;
+    const msg = typeof detail === "string" ? detail : detail?.message ?? `outbound-call HTTP ${r.status}`;
+    return { ok: false, error: msg, httpStatus: r.status };
+  }
+  const b = body as Record<string, unknown>;
+  return {
+    ok: true,
+    conversationId: typeof b.conversation_id === "string" ? b.conversation_id : null,
+    callSid: typeof b.callSid === "string" ? b.callSid : null,
   };
-
-  const wantOverrides = !!input.overrides && overridesAllowed();
-  const first = await attempt(wantOverrides);
-  if (first.ok || !wantOverrides) return first;
-  // Placement rejected with overrides on — retry vars-only (belt & braces; the
-  // dangerous failure mode is the init-time kill documented above).
-  return await attempt(false);
 }

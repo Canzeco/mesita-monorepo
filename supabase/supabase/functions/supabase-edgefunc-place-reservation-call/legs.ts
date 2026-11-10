@@ -25,20 +25,7 @@ import {
   outageRetryAt,
 } from "../_shared/reservation-run.ts";
 import { alternativesToSpeech, normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
-import {
-  businessLegFirstMessage,
-  businessLegPrompt,
-  guestCancelNoticeFirstMessage,
-  guestCancelNoticePrompt,
-  guestLegFirstMessage,
-  guestLegPrompt,
-  guestReminderFirstMessage,
-  guestReminderPrompt,
-  legDynamicVariables,
-  placeCancelNoticeFirstMessage,
-  placeCancelNoticePrompt,
-  type ReservationLegVars,
-} from "../_shared/reservation-legs.ts";
+import { legDynamicVariables, type ReservationLegVars } from "../_shared/reservation-legs.ts";
 import {
   type ReservationAttempt,
   type ReservationPatch,
@@ -281,15 +268,10 @@ async function callGuest(input: {
     agentId: input.confirmerAgentId,
     agentPhoneNumberId: input.phoneNumberId,
     toNumber: input.consumerNumber,
-    dynamicVariables: legDynamicVariables("guest_confirmation", input.legVars, {
+    dynamicVariables: legDynamicVariables(input.legVars, {
       callContext: input.context,
       placeAlternatives: input.alternativesText,
     }),
-    overrides: {
-      prompt: guestLegPrompt(input.legVars),
-      firstMessage: guestLegFirstMessage(input.legVars),
-      language: "es",
-    },
   });
   if (!call.ok) {
     if (classifyPlacementFailure(call.httpStatus) === "platform") {
@@ -448,14 +430,7 @@ export async function runReminder(input: {
       agentId: input.confirmerAgentId,
       agentPhoneNumberId: lines.guestLineId,
       toNumber: input.consumerNumber,
-      dynamicVariables: legDynamicVariables("guest_confirmation", input.legVars, {
-        callContext: "reminder",
-      }),
-      overrides: {
-        prompt: guestReminderPrompt(input.legVars),
-        firstMessage: guestReminderFirstMessage(input.legVars),
-        language: "es",
-      },
+      dynamicVariables: legDynamicVariables(input.legVars, { callContext: "reminder" }),
     });
     if (!call.ok) {
       if (classifyPlacementFailure(call.httpStatus) === "platform") {
@@ -611,26 +586,11 @@ export async function runCancelNotice(input: {
       agentId: input.agentId,
       agentPhoneNumberId: isPlaceSide ? lines.placeLineId : lines.guestLineId,
       toNumber: input.toNumber,
-      dynamicVariables: legDynamicVariables(
-        isPlaceSide ? "business_booking" : "guest_confirmation",
-        input.legVars,
-        {
-          // "cancelled_by_venue" is a live ElevenLabs Reservationist prompt
-          // literal (_shared/reservationist-fleet.ts) — renames only together
-          // with a synced agent config (MESITA-1591); deferred, not touched.
-          callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue",
-          placeAlternatives: "",
-        },
-      ),
-      overrides: {
-        prompt: isPlaceSide
-          ? placeCancelNoticePrompt(input.legVars)
-          : guestCancelNoticePrompt(input.legVars),
-        firstMessage: isPlaceSide
-          ? placeCancelNoticeFirstMessage(input.legVars)
-          : guestCancelNoticeFirstMessage(input.legVars),
-        language: "es",
-      },
+      // "cancelled_by_venue" is a wire key the a2 prompt reads
+      // (_shared/reservationist/a2.ts); it changes only with a sync.
+      dynamicVariables: legDynamicVariables(input.legVars, {
+        callContext: isPlaceSide ? "cancellation" : "cancelled_by_venue",
+      }),
     });
     if (!call.ok) {
       if (classifyPlacementFailure(call.httpStatus) === "platform") {
@@ -860,14 +820,9 @@ export async function runIntents(input: {
         agentId: input.bookerAgentId,
         agentPhoneNumberId: lines.placeLineId,
         toNumber: input.businessNumber,
-        dynamicVariables: legDynamicVariables("business_booking", legVars, {
+        dynamicVariables: legDynamicVariables(legVars, {
           callContext: input.modificationOfIso ? "modification" : "booking",
         }),
-        overrides: {
-          prompt: businessLegPrompt(legVars),
-          firstMessage: businessLegFirstMessage(legVars),
-          language: "es",
-        },
       });
 
       if (!call.ok) {

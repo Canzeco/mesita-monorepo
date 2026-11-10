@@ -580,9 +580,8 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     return json({ ok: true, skipped: "kill switch on — parked 30 min" });
   }
 
-  // Fleet routing: leg 1 rides eleven-a1 (booker), leg 2 eleven-a2
-  // (confirmer) — ids written by sync-reservationist mode "fleet"; fallback is
-  // the original single agent, whose prompt branches on {{call_direction}}.
+  // Fleet routing: calls to the place ride a1, calls to the guest a2 — ids
+  // written by sync-reservationist mode "fleet"; the fallback is a1's id.
   const fleet = ((settings?.agents_config as Record<string, unknown> | null)?.agents ?? null) as
     | Record<string, { id?: string } | undefined>
     | null;
@@ -655,7 +654,6 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const legVars: ReservationLegVars = {
     placeName: place?.name?.trim() || "el lugar",
     guestName: ticketGuestName({ guest_first_name: r.guest_first_name, guest_last_name: r.guest_last_name, consumer }, "el cliente"),
-    guestPhone: consumerNumber,
     referenceCode: (r.reference_code ?? "").trim(),
     partySize: r.party_size,
     dateEs: esDate(r.reserved_at),

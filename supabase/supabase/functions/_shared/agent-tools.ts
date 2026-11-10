@@ -26,7 +26,7 @@ import { esDate, esTime } from "./es-speak.ts";
 import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
-import { guestName, ticketGuestName } from "./reservation-guest-name.ts";
+import { guestName, ticketGuestName, type TicketNameParts } from "./reservation-guest-name.ts";
 
 // The guest display name lives in a leaf (the engine needs it without this
 // module); re-exported for the a1..a4 tools.
@@ -141,10 +141,11 @@ function nameKey(s: string): string {
 }
 
 /**
- * True when every word of the spoken query appears in the ticket's guest name
- * — "ana lopez" matches "Ana María López", "lopez" alone matches too.
+ * True when every word of the spoken query appears in the name the
+ * reservation is under (typed on Reserve, else the profile name) — "ana
+ * lopez" matches "Ana María López", "lopez" alone matches too.
  */
-export function ticketMatchesGuestName(row: TicketRow, query: string): boolean {
+export function ticketMatchesGuestName(row: TicketNameParts, query: string): boolean {
   const guest = nameKey(ticketGuestName(row, "(sin nombre)"));
   const words = nameKey(query).split(/\s+/).filter(Boolean);
   return words.length > 0 && words.every((w) => guest.includes(w));

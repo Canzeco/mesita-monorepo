@@ -8,8 +8,10 @@
 // Body: { mode?: "inspect" | "fleet" | "prune" | "workflows" | "knowledge"
 //          | "phones" }
 //
-//   inspect    read-only report: donor agent, workspace agents/tools, fleet.
-//   fleet      upsert the 9 fleet tools + agents; store ids in agents_config.
+//   inspect    read-only: each agent read back and compared with the repo
+//              (prompt hash, tools, knowledge doc, end_call, workflow).
+//   fleet      upsert the 9 tools, then push every agent's prompt, first
+//              message, tools and settings; store ids + hash in agents_config.
 //   prune      delete non-fleet agents (fleet tools are managed by fleet mode
 //              and never deleted here).
 //   workflows  Commit AgentWorkflowRequestModel for a1–a4 from fleetWorkflows()
@@ -22,16 +24,14 @@
 //              single line one side always hears "no Mesita account with this
 //              number". Idempotent: imports what is missing, re-binds what is
 //              pointed at the wrong agent, leaves correct rows untouched.
-//   knowledge  Upsert the curated Mesita brief (Notion-sourced, repo-held) as
-//              ONE KB text doc PER AGENT (a1-kb-v1 …); each fleet agent ends
-//              with exactly that doc attached on Main (usage_mode=prompt).
-//              The pre-fleet shared doc is deleted once detached.
+//   knowledge  Push knowledgeFor(agent) as ONE KB text doc PER AGENT
+//              (a1-kb-v6 …); each agent ends with exactly that doc attached
+//              on Main (usage_mode=prompt). Docs are renamed in place.
 //
-// PROMPTS ARE WRITTEN ONLY AT AGENT CREATION. On every later run the fleet
-// mode PATCHes name + prompt.tool_ids exclusively and verifies the prompt
-// text length is unchanged — console tuning survives. EXCEPTION, opt-in:
-// { mode: "fleet", write_prompts: true } ALSO rewrites each fleet agent's
-// prompt + first message from the repo spec.
+// THE REPO WINS. Everything the agents say and how they sound lives in
+// _shared/reservationist/; every fleet run pushes all of it. A console edit
+// lasts until the next run and shows as drift in inspect. Run the three
+// writing modes in order: fleet, knowledge, workflows.
 //
 // Auth: verify_jwt = true + requireInternalRequest — invoke via pg_net with the
 // vault scheduler_service_role_key, exactly like the cron schedulers do.
@@ -51,12 +51,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
 import { adminClient } from "../_shared/auth.ts";
-import { reservationAgentId, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
-import { type AgentShape, elFetch, type ToolRow } from "./el-client.ts";
+import { resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
+import { elFetch, type ToolRow } from "./el-client.ts";
 import {
   type BaseCtx,
   type ConfiguredAgents,
-  type DonorCtx,
   type Mode,
   MODE_NAMES,
   type ModeBody,
@@ -74,12 +73,11 @@ import { fleet } from "./modes/fleet.ts";
 // Each mode names the context stage it needs; the handler loads exactly that.
 type ModeEntry =
   | { stage: "base"; run: (ctx: BaseCtx) => Promise<Response> }
-  | { stage: "workspace"; run: (ctx: WorkspaceCtx) => Promise<Response> }
-  | { stage: "donor"; run: (ctx: DonorCtx) => Promise<Response> };
+  | { stage: "workspace"; run: (ctx: WorkspaceCtx) => Promise<Response> };
 
 const MODES: Record<Mode, ModeEntry> = {
-  inspect: { stage: "donor", run: inspect },
-  fleet: { stage: "donor", run: fleet },
+  inspect: { stage: "workspace", run: inspect },
+  fleet: { stage: "workspace", run: fleet },
   prune: { stage: "workspace", run: prune },
   workflows: { stage: "workspace", run: workflows },
   knowledge: { stage: "workspace", run: knowledge },
@@ -138,22 +136,6 @@ async function loadWorkspace(base: BaseCtx): Promise<WorkspaceCtx | Response> {
   };
 }
 
-// The donor agent (a1) + its prompt shape. Donor = a1 from live fleet config;
-// env / DEFAULT only for brand-new workspaces.
-async function loadDonor(ws: WorkspaceCtx): Promise<DonorCtx | Response> {
-  const donorId = ws.configuredAgents.a1?.id?.trim() || reservationAgentId();
-  const agentRes = await elFetch(ws.key, `/v1/convai/agents/${encodeURIComponent(donorId)}`);
-  if (!agentRes.ok) return json({ ok: false, error: agentRes.error }, 502);
-  const donor = agentRes.body as AgentShape;
-  const donorCc = donor.conversation_config ?? {};
-  const donorPrompt = donorCc.agent?.prompt ?? {};
-  const promptCharsBefore = typeof donorPrompt.prompt === "string" ? donorPrompt.prompt.length : 0;
-  const toolIdsBefore: string[] = Array.isArray(donorPrompt.tool_ids)
-    ? [...donorPrompt.tool_ids]
-    : [];
-  return { ...ws, donorId, donor, donorCc, donorPrompt, promptCharsBefore, toolIdsBefore };
-}
-
 serveJson("supabase-edgefunc-sync-reservationist", async (req) => {
   const ctx = requireInternalRequest(req);
   if (ctx instanceof Response) return ctx;
@@ -179,8 +161,5 @@ serveJson("supabase-edgefunc-sync-reservationist", async (req) => {
   if (entry.stage === "base") return entry.run(base);
   const ws = await loadWorkspace(base);
   if (ws instanceof Response) return ws;
-  if (entry.stage === "workspace") return entry.run(ws);
-  const donor = await loadDonor(ws);
-  if (donor instanceof Response) return donor;
-  return entry.run(donor);
+  return entry.run(ws);
 });

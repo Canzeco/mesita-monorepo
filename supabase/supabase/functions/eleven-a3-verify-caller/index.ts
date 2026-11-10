@@ -7,6 +7,10 @@
 //
 //   { caller_phone }
 //
+// `consumer.name` is the ACCOUNT holder (the person calling); each
+// reservation's `guest_name` is the name it is under — typed on Reserve, else
+// the profile (speakable → ticketGuestName), which is what the agent reads.
+//
 // Matching is by the last 10 digits so +52 / +521 / bare MX forms compare
 // equal. The LLM's claims are never the authority — identity comes only from
 // this lookup. Auth: anon bearer + x-agent-secret.
