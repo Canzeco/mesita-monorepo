@@ -11,7 +11,7 @@
 // its control:
 //   Stripe Account · one row, its state and one button;
 //   House Credits · the Agreement, then House Credits;
-//   Cash Payments · the Waiter code (moved from Settings, MESITA-3600), Cash
+//   Cash Payments · (the Waiter code sits last, MESITA-3625; moved from Settings, MESITA-3600), Cash
 //     Payments, then its Cashback-as-Credits (Off or 2%);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
 //   Mesita Prepayments · Mesita Prepayments, then one row per voucher.
@@ -432,7 +432,6 @@ export function PaymentsPanel({
       <Card className={SECTION}>
         <h2 className={HEAD}>Cash Payments</h2>
         <ul className="divide-border divide-y">
-          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
           {switchRow({
             key: "cash_payments",
             id: "cash-payments",
@@ -448,6 +447,7 @@ export function PaymentsPanel({
             line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
           })}
+          <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
         </ul>
         {codeSet ? (
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>
