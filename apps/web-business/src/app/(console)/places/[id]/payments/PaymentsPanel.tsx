@@ -168,6 +168,10 @@ export function PaymentsPanel({
   const ready = account.state === "ready";
   const stage: StripeStage = account.stage ?? (ready ? "connected" : account.state === "none" ? "none" : "onboarding");
   const pending = !canEdit || busy !== null;
+  // Mesita Pay, its cashback and every voucher need Stripe to take cards in
+  // the server's mode (MESITA-3599, the set EF and SQL refuse otherwise):
+  // until then they read Off and cannot be switched.
+  const takesCards = account.charges_enabled && account.livemode === !testMode;
   // The same rule the server sells and pays by (money-state, one source).
   const state = moneyState({ ...settings, has_place_code: codeSet }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null);
 
@@ -226,16 +230,19 @@ export function PaymentsPanel({
     /** Why it can't turn on yet; the switch stays off and disabled. */
     blocked?: React.ReactNode;
     note?: React.ReactNode;
+    /** Needs Stripe to take cards: Off and disabled until it does. */
+    stripe?: boolean;
   }) => {
-    const on = settings[args.key];
-    const blocked = !on && args.blocked;
+    const gated = args.stripe === true && !takesCards;
+    const on = settings[args.key] && !gated;
+    const blocked = gated ? needsStripe : !on && args.blocked;
     return (
       <li key={args.key} className={MARK_ROW} data-place-state={args.key}>
         {mark(args.icon, on, args.tone)}
         <div className="min-w-0">
           <p className="font-medium">{args.name}</p>
           <p className="text-muted-foreground">{args.line}</p>
-          {blocked ? <p className={NOTE}>{args.blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
+          {blocked ? <p className={NOTE}>{blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
         </div>
         <p className={cn("font-semibold whitespace-nowrap", !on && "text-muted-foreground")}>{on ? "On" : "Off"}</p>
         <Switch on={on} pending={pending || !!blocked} onClick={() => void flip(args.key, !on)} label={`${args.name}: ${on ? "on" : "off"}`} />
@@ -244,10 +251,11 @@ export function PaymentsPanel({
   };
 
   /** One cashback: a switch between Off and its one rate. */
-  const rateRow = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode }) => {
-    const value = settings[args.key];
+  const rateRow = (args: { key: PaymentRateKey; name: string; line: string; blocked?: React.ReactNode; note?: React.ReactNode; stripe?: boolean }) => {
+    const gated = args.stripe === true && !takesCards;
+    const value = gated ? null : settings[args.key];
     const on = value !== null;
-    const blocked = args.blocked;
+    const blocked = gated ? needsStripe : args.blocked;
     const fixed = pct(CASHBACK_BPS[args.key]);
     return (
       <li key={args.key} className={MARK_ROW} data-place-state={args.key}>
@@ -260,7 +268,7 @@ export function PaymentsPanel({
         <p className={cn("font-semibold whitespace-nowrap tabular-nums", (!on || blocked) && "text-muted-foreground")}>{on ? pct(value) : "Off"}</p>
         <Switch
           on={on}
-          pending={pending || (!on && !!blocked)}
+          pending={pending || gated || (!on && !!blocked)}
           onClick={() => void rate(args.key, on ? null : CASHBACK_BPS[args.key])}
           label={`${args.name}: ${on ? fixed : "off"}`}
         />
@@ -269,10 +277,10 @@ export function PaymentsPanel({
   };
 
   const voucherRow = ({ key, name, line, value, icon: Mark, tone }: Product) => {
-    const on = settings[key];
+    const on = settings[key] && takesCards;
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
-    const blocked = !on && !settings.house_credits;
-    const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
+    const blocked = !takesCards || (!on && !settings.house_credits);
+    const note = !takesCards ? needsStripe : on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
       <li key={key} className={MARK_ROW}>
         <span className={cn("grid size-10 shrink-0 place-items-center rounded-xl", tone)}>
@@ -291,6 +299,7 @@ export function PaymentsPanel({
 
   const needsContract = <>Sign the House Credits Agreement first.</>;
   const needsHouseCredits = <>Turn House Credits on first.</>;
+  const needsStripe = <>Connect Stripe first.</>;
   const needsCode = (
     <a className="underline" href={placeTabHref(placeId, "settings")}>
       Set a place code on Settings first: your waiters confirm cash with it.
@@ -419,10 +428,9 @@ export function PaymentsPanel({
             line: "Guests pay the bill by card inside the app.",
             icon: DeviceMobileIcon,
             tone: "bg-sky-100 text-sky-700",
+            stripe: true,
             note: settings.pay_cards
-              ? !account.charges_enabled
-                ? "Needs Stripe: on once the account takes cards."
-                : fee.hold
+              ? fee.hold
                   ? "Off until Mesita's invoice is paid."
                   : !CARD_BILL_PAY_LIVE
                     ? ARRIVES_SOON
@@ -434,6 +442,7 @@ export function PaymentsPanel({
             name: "Mesita Payments Cashback-as-Credits",
             line: "Back as credit here on the card part of the bill. Never on the tip or the credit part.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
+            stripe: true,
             note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Pay takes cards." : null,
           })}
         </ul>
