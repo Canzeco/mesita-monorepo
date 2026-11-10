@@ -11,10 +11,11 @@ export const CODE_MINUTES = 10;
 /** Wrong tries before the code is spent. */
 export const CODE_TRIES = 5;
 
-/** Calls are live (MESITA-3400, reversing MESITA-3148): each claim gets a
- *  fresh random code said by a real call. False makes Call the place store
- *  TEST_CODE and dial no one. */
-export const CALLS_LIVE = true;
+/** Calls are OFF while we test on the Stripe sandbox (MESITA-3594, Pato:
+ *  "do enable hardcode code"; reverses MESITA-3400 for now, as MESITA-3148
+ *  did): Call the place stores TEST_CODE and dials no one, so no real
+ *  restaurant gets a call. Set back to true before real places are claimed. */
+export const CALLS_LIVE = false;
 export const TEST_CODE = "123456";
 
 /** Six random digits, leading zeros kept. */
