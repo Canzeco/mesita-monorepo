@@ -10,7 +10,7 @@ import Link from "next/link";
 import { CheckCircle2, Store } from "lucide-react";
 import type { MyPlace, MyPlaceState } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { selectShellPlace, useShellPlace } from "@/lib/shell-place";
+import { selectShellPlace, useTrustedShellPlace } from "@/lib/shell-place";
 import { claimHref, placeTabHref } from "@/lib/routes";
 
 const STATE_COPY: Record<MyPlaceState, string> = {
@@ -45,10 +45,10 @@ function BoxTitle({ title, sub }: { title: string; sub: string }) {
 
 export function PlacesBoard({ places, isSuperAdmin }: { places: MyPlace[]; isSuperAdmin: boolean }) {
   const run = places.filter((p) => p.state === "owner");
-  const stored = useShellPlace();
   // The same choice the side menu makes: your pick while you still run it
-  // (staff: any place they opened), else the first place you run.
-  const picked = stored && (isSuperAdmin || run.some((p) => p.place_id === stored.id)) ? stored : null;
+  // (staff: any place they opened that still opens, MESITA-3590), else the
+  // first place you run.
+  const picked = useTrustedShellPlace(isSuperAdmin, run.map((p) => p.place_id));
   const mine = run.find((p) => p.place_id === (picked?.id ?? run[0]?.place_id)) ?? null;
   const selected = picked
     ? { id: picked.id, name: mine?.name ?? picked.name, photo: mine?.photo ?? picked.photo, role: mine?.role ?? null }

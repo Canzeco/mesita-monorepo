@@ -4,6 +4,7 @@ import { apiConsumerSigninPhone } from "@/lib/api/auth";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { safeNextPath, withNext } from "@/lib/auth-redirect";
 import { errMsg } from "@/lib/utils";
+import { clearSessionHref, isTransientAuthError } from "@/lib/stale-session";
 
 // Post-sign-in router. The sign-in surface redirects here. We:
 //
@@ -26,11 +27,17 @@ export default async function PostSigninPage({
   const supabase = await createServerSupabase();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
-  if (!user) redirect("/");
-
   const params = await searchParams;
   const explicitNext = safeNextPath(params.next);
+  if (!user) {
+    // MESITA-3590: a cookie naming a deleted user looped `/` ↔ here. Clear
+    // it in the Route Handler (a page cannot write cookies); an Auth outage
+    // goes to the error page rather than looping or signing anyone out.
+    if (isTransientAuthError(userError)) throw userError;
+    redirect(clearSessionHref(explicitNext));
+  }
 
   let consumerResult: Awaited<
     ReturnType<typeof apiConsumerSigninPhone>

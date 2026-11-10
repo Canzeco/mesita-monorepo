@@ -7,6 +7,7 @@ import { OnboardForm, type OnboardInitialValues } from "./OnboardForm";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { safeNextPath, withNext } from "@/lib/auth-redirect";
+import { clearSessionHref, isTransientAuthError } from "@/lib/stale-session";
 import { errMsg } from "@/lib/utils";
 
 // Consumer onboarding — server-side gated. The middleware already blocks
@@ -34,8 +35,14 @@ export default async function ConsumerOnboardPage({
   const supabase = await createServerSupabase();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
-  if (!user) redirect(withNext("/", withNext(CONSUMER_ROUTES.onboard, nextTarget)));
+  if (!user) {
+    // MESITA-3590: clear a cookie naming a deleted user first, or the proxy
+    // bounces `/` back through post-signin to here (lib/stale-session.ts).
+    if (isTransientAuthError(userError)) throw userError;
+    redirect(clearSessionHref(withNext(CONSUMER_ROUTES.onboard, nextTarget)));
+  }
 
   // Completeness predicate is `consumerCanBrowse` — the SAME one the (shell)
   // layout gates on. Two copies of "complete enough" is how a user ends up

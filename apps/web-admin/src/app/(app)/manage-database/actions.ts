@@ -24,9 +24,47 @@ type ResetResponse = {
     // Set when the DB wipe committed but the storage purge stopped on an
     // error — the reset DID happen, some files are still there.
     storage_purge_error?: string | null;
+    /** Test-mode Stripe ids nothing in the DB points at any more. */
+    stripe_left_behind?: {
+      connected_accounts?: string[];
+      customers?: string[];
+    };
     reset_at?: string;
   };
 };
+
+// MESITA-3590: the SQL refuses (and changes nothing) while money is open or a
+// Stripe row is live; the EF answers 409 with code "reset_refused" and this.
+type RefusedResult = {
+  refused?: string[];
+  open_money?: { table: string; id: string; status: string }[];
+  open_money_count?: number;
+  livemode_rows?: { table: string; id: string }[];
+};
+
+/** The refusal as one sentence per reason, naming each blocking row. */
+function refusalMessage(r: RefusedResult): string {
+  const parts: string[] = [];
+  const open = r.open_money ?? [];
+  if (open.length > 0) {
+    const total = r.open_money_count ?? open.length;
+    const rows = open.map((o) => `${o.table} ${o.id} (${o.status})`).join(", ");
+    const more = total > open.length ? `, and ${total - open.length} more` : "";
+    parts.push(
+      `Reset refused: ${total} payment(s) are still open — ${rows}${more}. ` +
+        `Settle, cancel or let them expire first.`,
+    );
+  }
+  const live = r.livemode_rows ?? [];
+  if (live.length > 0) {
+    parts.push(
+      `Reset refused: live Stripe rows — ` +
+        live.map((l) => `${l.table} ${l.id}`).join(", ") +
+        `. A reset would strand live Stripe accounts or customers.`,
+    );
+  }
+  return parts.join(" ") || "Reset refused.";
+}
 
 type ResetResult = ActionResult<{
   truncatedTables: number | null;
@@ -35,6 +73,8 @@ type ResetResult = ActionResult<{
   remainingStorageObjects: number;
   storageDone: boolean;
   storagePurgeError: string | null;
+  stripeAccountsLeft: string[];
+  stripeCustomersLeft: string[];
 }>;
 
 // The EF re-checks super_admins and requires confirm === "RESET", so these
@@ -47,7 +87,13 @@ async function invokeReset(
     confirm,
     ...(storageOnly ? { storageOnly: true } : {}),
   });
-  if (!r.ok) return { ok: false, error: r.error };
+  if (!r.ok) {
+    if (r.code === "reset_refused") {
+      const refused = (r.data as { result?: RefusedResult } | null)?.result;
+      return { ok: false, error: refusalMessage(refused ?? {}) };
+    }
+    return { ok: false, error: r.error };
+  }
   const result = r.data.result;
   return {
     ok: true,
@@ -59,6 +105,8 @@ async function invokeReset(
     // than looping forever against a deployment that can't answer.
     storageDone: result?.storage_done ?? true,
     storagePurgeError: result?.storage_purge_error ?? null,
+    stripeAccountsLeft: result?.stripe_left_behind?.connected_accounts ?? [],
+    stripeCustomersLeft: result?.stripe_left_behind?.customers ?? [],
   };
 }
 

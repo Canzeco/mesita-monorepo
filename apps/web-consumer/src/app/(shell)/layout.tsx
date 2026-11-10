@@ -20,6 +20,7 @@ import { ConsumerIdentityProvider } from "@/lib/identity-context";
 import { consumerCanBrowse } from "@/lib/consumer-onboarding";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { withNext } from "@/lib/auth-redirect";
+import { clearSessionHref, isTransientAuthError } from "@/lib/stale-session";
 
 // Every route under /(shell) calls supabase.auth.getUser() via this layout
 // and therefore can never be prerendered to static HTML. Mark the segment
@@ -75,11 +76,21 @@ export default async function ConsumerShellLayout({
     (value) => ({ ok: true as const, value }),
     (error: unknown) => ({ ok: false as const, error }),
   );
-  const user = (await supabase.auth.getUser()).data.user;
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  const user = userData.user;
   // ONE WALL (MESITA-2137): no anonymous sessions, so a visitor without an
   // account goes to the phone sign-in. A leftover anonymous session from the
   // MESITA-2066 era counts as none.
-  if (!user || user.is_anonymous) {
+  //
+  // MESITA-3590: no user goes through /auth/clear-session, which clears a
+  // cookie naming a deleted user before `/` (the proxy would otherwise bounce
+  // `/` back to post-signin while the cookie lives). An Auth outage throws
+  // to the error boundary instead of signing anyone out.
+  if (!user) {
+    if (isTransientAuthError(userError)) throw userError;
+    redirect(clearSessionHref(here));
+  }
+  if (user.is_anonymous) {
     redirect(withNext("/", here));
   }
 

@@ -17,6 +17,12 @@
 //      auth.users delete is keyed on that table, so an empty one deletes every
 //      account including the operator's, and nothing can re-grant admin
 //      afterwards because granting runs through checkSuperAdmin (MESITA-1192).
+//   4. In SQL (MESITA-3590): open money (a payment, purchase, Premier charge,
+//      checkout, fee invoice, tab or waiter's charge not yet final) or a
+//      livemode Stripe account or customer row refuses the wipe; the result
+//      lists what blocks it and this EF answers 409 without purging files.
+//      A wipe returns the test-mode Stripe ids it leaves behind
+//      (stripe_left_behind) and deletes auth.flow_state rows of gone users.
 //
 // The DB half lives in the public.admin_reset_database() SQL function
 // (security definer, service-role only), which discovers the tables to
@@ -76,6 +82,17 @@ serveJson("admin-web-reset-database", async (req) => {
       return json({ ok: false, error: `reset_failed: ${error.message}` }, 500);
     }
     result = (data ?? {}) as Record<string, unknown>;
+    // MESITA-3590: the SQL function refuses (and changes nothing) while
+    // money is open or a Stripe row is live. Nothing was wiped, so the
+    // storage purge must not run either: the files still belong to rows.
+    if (result.ok === false) {
+      return json({
+        ok: false,
+        code: "reset_refused",
+        error: "Reset refused: money is open or a Stripe row is live.",
+        result,
+      }, 409);
+    }
   }
 
   // --- Then collect the media the wipe orphaned, for one budget's worth. ---
