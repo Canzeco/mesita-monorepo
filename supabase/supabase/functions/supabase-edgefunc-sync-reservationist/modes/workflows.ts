@@ -11,7 +11,8 @@ import {
   type VersionedAgentShape,
 } from "../el-client.ts";
 import { json } from "../../_shared/http.ts";
-import { FLEET_AGENTS, fleetWorkflows } from "../../_shared/reservationist-fleet.ts";
+import { FLEET_AGENTS } from "../../_shared/reservationist-fleet.ts";
+import { fleetWorkflows } from "../../_shared/reservationist-workflows.ts";
 
 export async function workflows(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, configuredAgents, toolIdByName } = ctx;
