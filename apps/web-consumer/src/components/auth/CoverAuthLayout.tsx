@@ -1,0 +1,126 @@
+"use client";
+
+import { useState } from "react";
+import Image from "next/image";
+import { Phone, X } from "lucide-react";
+import { MesitaLogo } from "@/components/brand/MesitaLogo";
+import { cn } from "@/lib/utils";
+
+// Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
+// the cover, the wordmark, one line and "Continue with phone"; the phone
+// and code steps (the caller's children) rise as a sheet over the photo
+// only after that tap, and the X lowers it back to the cover.
+//
+// It fills the MobileFrame card (flex-1, absolute layers), so it is the
+// same on a phone and in the desktop visualizer. The keyboard shrinks the
+// frame (--kb), which keeps the sheet above it.
+
+export function CoverAuthLayout({
+  headline,
+  title,
+  subtitle,
+  children,
+  footer,
+}: {
+  headline: string;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative flex-1 overflow-hidden bg-black text-white">
+      <Image
+        src="/auth/cover.jpg"
+        alt=""
+        fill
+        priority
+        sizes="(min-width: 768px) 30rem, 100vw"
+        className={cn(
+          "object-cover object-[center_40%] transition-transform duration-700 ease-out",
+          open && "scale-105",
+        )}
+      />
+      {/* Legibility: a light veil at the top for the logo, a deep one at the
+          bottom for the copy and the button. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-35% to-black/90"
+      />
+
+      <div
+        inert={open}
+        className={cn(
+          "absolute inset-0 flex flex-col justify-between p-6 transition-opacity duration-300",
+          open && "opacity-0",
+        )}
+      >
+        <MesitaLogo variant="horizontal" className="h-7 w-auto self-start text-white" />
+
+        <div className="flex flex-col gap-5">
+          <div>
+            <h1 className="font-display text-4xl leading-[1.05] font-semibold tracking-[-0.02em] text-balance">
+              {headline}
+            </h1>
+            <p className="mt-3 text-base leading-snug text-white/80">
+              Places, reservations and paying the bill, in one app.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-semibold text-black transition active:scale-[0.98]"
+          >
+            <Phone className="h-4 w-4" />
+            Continue with phone
+          </button>
+        </div>
+      </div>
+
+      {/* Dims the photo behind the sheet; a tap on it closes the sheet. */}
+      <button
+        type="button"
+        aria-label="Close"
+        tabIndex={-1}
+        onClick={() => setOpen(false)}
+        className={cn(
+          "absolute inset-0 bg-black/40 transition-opacity duration-300",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
+
+      <section
+        inert={!open}
+        aria-hidden={!open}
+        className={cn(
+          "bg-background text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-3xl px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
+          open ? "translate-y-0" : "translate-y-full",
+        )}
+      >
+        <div aria-hidden className="bg-border mx-auto mb-4 h-1 w-10 rounded-full" />
+        <header className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em]">
+              {title}
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm leading-[1.55]">{subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Back to the cover"
+            className="bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        {children}
+        {footer && (
+          <p className="text-muted-foreground type-body mt-6 text-center">{footer}</p>
+        )}
+      </section>
+    </div>
+  );
+}

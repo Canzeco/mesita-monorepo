@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { PhoneOtpForm } from "@/components/auth/PhoneOtpForm";
-import { EnterpriseAuthLayout } from "@/components/auth/EnterpriseAuthLayout";
+import { CoverAuthLayout } from "@/components/auth/CoverAuthLayout";
 import { consumerAuthDestination, payPlaceFromNext } from "@/lib/auth-redirect";
 import { apiGetPayPlaceName } from "@/lib/api/auth";
 
@@ -41,7 +41,8 @@ export default async function ConsumerRootPage({
     : null;
 
   return (
-    <EnterpriseAuthLayout
+    <CoverAuthLayout
+      headline={payPlaceName ? `Pay at ${payPlaceName}` : "Every table in Monterrey"}
       title={payPlaceName ? `Sign in to pay at ${payPlaceName}` : "Sign in with your phone"}
       subtitle="We'll text you a one-time code."
       footer={
@@ -52,6 +53,6 @@ export default async function ConsumerRootPage({
       }
     >
       <PhoneOtpForm redirectAfter={afterAuth} />
-    </EnterpriseAuthLayout>
+    </CoverAuthLayout>
   );
 }
