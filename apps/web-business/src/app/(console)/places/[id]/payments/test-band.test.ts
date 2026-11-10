@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const PANEL = readFileSync(join(__dirname, "PaymentsPanel.tsx"), "utf8");
-const MONEY = readFileSync(join(__dirname, "MoneySection.tsx"), "utf8");
+const MONEY = readFileSync(join(__dirname, "..", "money", "MoneyPanel.tsx"), "utf8");
 
 describe("Payments in test mode", () => {
   it("renders the TestBand from the server's test_mode flag", () => {
@@ -18,7 +18,7 @@ describe("Payments in test mode", () => {
     expect(PANEL).toContain("moneyState({ ...settings, has_place_code: codeSet }, { charges_enabled: account.charges_enabled, fee_hold: fee.hold }, null)");
   });
 
-  it("keeps the fee rates out of the TestBand, in the note under the owner's totals (MESITA-3307)", () => {
+  it("keeps the fee rates out of the TestBand, in the note under the owner's totals (MESITA-3307; on Operations › Money since MESITA-3596)", () => {
     expect(PANEL).not.toMatch(/<TestBand detail="[^"]*fee/);
     expect(MONEY).toContain("data-fee-note");
   });

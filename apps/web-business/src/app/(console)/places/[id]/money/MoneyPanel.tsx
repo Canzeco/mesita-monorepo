@@ -1,10 +1,13 @@
 "use client";
 
-// The owner's money on Business › Payments (MESITA-3307, W3): one card of
+// The owner's money on Operations › Money (MESITA-3307, W3; moved off
+// Payments by MESITA-3596, Pato: "that box of MONEY goes into operations
+// money, not in payments. in payments its just to configure"): one card of
 // four rows (Money received · Mesita's fee · Credit outstanding · Tips), the
-// fee rates and the test-mode cap in one grey note under it, then the rows:
-// what each guest paid, newest first, 50 at a time, with a date range. The
-// owner and Mesita staff only (the server answers editors 403). Who paid is
+// fee rates and the test-mode cap in one grey note under it, then the Log:
+// what each guest paid, newest first, 50 at a time, Older for more. No date
+// inputs (MESITA-3596). The owner and Mesita staff only (the server answers
+// editors 403). Who paid is
 // masked by the server; the page never sees an email. Each row the guest
 // still has money on carries Refund (MESITA-3381): the owner gives back all
 // of it or part, the card part to the card first, then the credit part as
@@ -74,14 +77,6 @@ function when(iso: string): string {
   return new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-/** A yyyy-mm-dd day as the start of that day, local time, in ISO. */
-function dayStart(day: string, plusDays = 0): string | undefined {
-  if (!day) return undefined;
-  const d = new Date(`${day}T00:00:00`);
-  d.setDate(d.getDate() + plusDays);
-  return d.toISOString();
-}
-
 /** Pesos typed by the owner as cents, or null when it is not a positive amount. */
 function centsOf(text: string): number | null {
   const n = Number(text.replace(/[$,\s]/g, ""));
@@ -136,21 +131,15 @@ function RefundAction({ placeId, row, onDone }: { placeId: string; row: PlaceMon
   );
 }
 
-export function MoneySection({ placeId, initial }: { placeId: string; initial: PlaceMoney }) {
+export function MoneyPanel({ placeId, initial }: { placeId: string; initial: PlaceMoney }) {
   const [money_, setMoney] = useState(initial);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function load(more: boolean, nextFrom = from, nextTo = to) {
+  async function load(more: boolean) {
     setBusy(true);
     setError(null);
-    const r = await getPlaceMoney(placeId, {
-      from: dayStart(nextFrom),
-      to: dayStart(nextTo, 1),
-      before: more ? money_.next : null,
-    });
+    const r = await getPlaceMoney(placeId, { before: more ? money_.next : null });
     setBusy(false);
     if (!r.ok) return setError(r.error);
     setMoney(more ? { ...r.data, rows: [...money_.rows, ...r.data.rows] } : r.data);
@@ -175,8 +164,8 @@ export function MoneySection({ placeId, initial }: { placeId: string; initial: P
   const bills = billsOf(money_.rows);
 
   return (
-    <>
-      <Card className="flex flex-col p-0 sm:p-0">
+    <div className="grid grid-cols-1 items-start gap-4 pb-8 lg:grid-cols-2 lg:gap-5">
+      <Card className="flex min-w-0 flex-col p-0 sm:p-0">
         <h2 className="px-5 pt-4 pb-2 font-semibold sm:px-6">Money</h2>
         <ul className="divide-border divide-y">
           {totals.map((t) => (
@@ -195,7 +184,7 @@ export function MoneySection({ placeId, initial }: { placeId: string; initial: P
         </p>
         {share && share.total > 0 ? (
           <p className={`${NOTE} px-5 pb-4 sm:px-6`} data-received-share>
-            {share.received} of {share.total} waiter&apos;s bills in these dates ended in Received (paid in cash).
+            {share.received} of {share.total} waiter&apos;s bills ended in Received (paid in cash).
           </p>
         ) : null}
         {ceiling > 0 && (money_.outside_cashback_today_cents ?? 0) > 0 ? (
@@ -205,37 +194,14 @@ export function MoneySection({ placeId, initial }: { placeId: string; initial: P
         ) : null}
       </Card>
 
-      <Card className="flex flex-col p-0 sm:p-0">
-        <div className="flex flex-wrap items-end gap-3 px-5 pt-4 pb-3 sm:px-6">
-          <h2 className="flex-1 font-semibold">Payments received</h2>
-          <label className="flex flex-col text-xs">
-            <span className="text-muted-foreground">From</span>
-            <input
-              type="date"
-              className="border-border bg-background h-9 rounded-lg border px-2 text-sm"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.target.value);
-                void load(false, e.target.value, to);
-              }}
-            />
-          </label>
-          <label className="flex flex-col text-xs">
-            <span className="text-muted-foreground">To</span>
-            <input
-              type="date"
-              className="border-border bg-background h-9 rounded-lg border px-2 text-sm"
-              value={to}
-              onChange={(e) => {
-                setTo(e.target.value);
-                void load(false, from, e.target.value);
-              }}
-            />
-          </label>
+      <Card className="flex min-w-0 flex-col p-0 sm:p-0">
+        <div className="px-5 pt-4 pb-3 sm:px-6">
+          <h2 className="font-semibold">Log</h2>
+          <p className="text-muted-foreground text-sm">Every payment, voucher and refund, newest first.</p>
         </div>
         {money_.rows.length === 0 ? (
           <p className="text-muted-foreground px-5 pb-5 text-sm sm:px-6">
-            {from || to ? "Nothing in these dates." : "No payments yet. Vouchers guests buy and bills they pay on Mesita show here."}
+            No payments yet. Vouchers guests buy and bills they pay on Mesita show here.
           </p>
         ) : (
           <ul className="divide-border divide-y border-t">
@@ -287,7 +253,7 @@ export function MoneySection({ placeId, initial }: { placeId: string; initial: P
           </button>
         ) : null}
       </Card>
-      {error ? <p className={ERROR_BOX_CLASS}>{error}</p> : null}
-    </>
+      {error ? <p className={`${ERROR_BOX_CLASS} lg:col-span-2`}>{error}</p> : null}
+    </div>
   );
 }
