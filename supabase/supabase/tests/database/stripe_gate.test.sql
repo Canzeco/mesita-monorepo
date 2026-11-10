@@ -3,13 +3,13 @@
 -- account to take cards (Pato, 2026-11-10: "neither Mesita Pay nor Mesita
 -- Payments can be enabled without the Stripe Account"). Mesita Pay defaults
 -- Off; turning Off never needs Stripe; House Credits and Cash Payments are
--- independent of Stripe.
+-- independent of Stripe. Mesita Prepayments (MESITA-3597) needs it too.
 
 begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(11);
+select plan(12);
 
 insert into auth.users (id) values ('00000000-0000-4000-8000-0000000b3599');
 insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000013599', 'Stripe Gate Probe');
@@ -44,6 +44,9 @@ select throws_ok(
 select throws_ok(
   $$update public.place_payment_settings set voucher_vip = true where place_id = '00000000-0000-4000-8000-000000013599'$$,
   '23514', null, 'a voucher On without Stripe is refused');
+select throws_ok(
+  $$update public.place_payment_settings set prepayments = true where place_id = '00000000-0000-4000-8000-000000013599'$$,
+  '23514', null, 'Mesita Prepayments On without Stripe is refused (MESITA-3597)');
 
 -- ━━━ An account that cannot charge yet ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

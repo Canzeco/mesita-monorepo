@@ -26,13 +26,16 @@ import { vouchersUpToPct } from "./money.ts";
  *  renaming resets live config). `house_credits` is House Credits (On only
  *  while a signed House Credits Contract exists: SQL refuses otherwise).
  *  `cash_payments` is Cash Payments (the waiter's Received; the set EF
- *  refuses On without the place code). The six vouchers are Mesita
- *  Prepayments' sub-switches and need House Credits On (SQL refuses
+ *  refuses On without the place code). `prepayments` is Mesita Prepayments
+ *  (MESITA-3597): its own On/Off, needing House Credits (SQL) and a Stripe
+ *  Account taking cards (the set EF). The six vouchers are its sub-switches
+ *  (which vouchers it sells) and need House Credits On (SQL refuses
  *  otherwise). The old `cashback` switch moved into the two rates below. */
 export const PAYMENT_KEYS = [
   "house_credits",
   "cash_payments",
   "pay_cards",
+  "prepayments",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",
@@ -43,11 +46,12 @@ export const PAYMENT_KEYS = [
 export type PaymentKey = (typeof PAYMENT_KEYS)[number];
 
 /** The settings that need the place's Stripe account to take cards before
- *  they turn On (MESITA-3599): Mesita Pay, its Cashback-as-Credits and the
- *  six Prepaid Vouchers. House Credits and Cash Payments never do. */
+ *  they turn On (MESITA-3599): Mesita Payments, its Cashback-as-Credits,
+ *  Mesita Prepayments (MESITA-3597) and its six vouchers. House Credits and Cash Payments never do. */
 export const NEEDS_STRIPE_KEYS = [
   "pay_cards",
   "card_cashback_bps",
+  "prepayments",
   "voucher_200",
   "voucher_1000",
   "voucher_5000",

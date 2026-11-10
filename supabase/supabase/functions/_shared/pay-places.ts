@@ -1,7 +1,7 @@
 // THE PAY TAB'S LIST (MESITA-3457): the places a signed-in guest can pay at
 // now. The union of places where they hold credit (any switch: credit is the
 // place's debt, MESITA-3408) and places that take a card part (`card_ok`:
-// the account charges in this universe and Mesita Pay is on). Credit places
+// the account charges in this universe and Mesita Payments is on). Credit places
 // first, then by distance.
 //
 // MESITA-3545 (Payments Flow v2): a place with a place code is also listed
@@ -9,7 +9,7 @@
 // there and pays the bill outside, earning `outside_bps` when the Cashback
 // switch is on. Outside-only places count like card places below.
 //
-// While fewer than OPEN_ALL_BELOW places have Mesita Pay on, every one of
+// While fewer than OPEN_ALL_BELOW places have Mesita Payments on, every one of
 // them is listed, nearest first (the /autoplan gate d3a of 2026-11-08: an
 // empty list in a young city reads as a broken tab); from OPEN_ALL_BELOW on,
 // only those within NEAR_RADIUS_M. The guest's location is never stored and
@@ -20,7 +20,7 @@
 
 /** Card places listed past this many: only those within NEAR_RADIUS_M. */
 export const OPEN_ALL_BELOW = 20;
-/** The radius once the city has OPEN_ALL_BELOW Mesita Pay places. */
+/** The radius once the city has OPEN_ALL_BELOW Mesita Payments places. */
 export const NEAR_RADIUS_M = 2000;
 /** The hard cap on one answer. */
 export const PAY_PLACES_LIMIT = 50;
@@ -88,7 +88,7 @@ export type PayPlace = Omit<PayPlaceInput, "lat" | "lng" | "tier" | "mesita_pay"
 };
 
 /** Which places the answer lists, in order. Pure: the EF reads the rows,
- *  this decides. `cardPlaceCount` is how many places have Mesita Pay on in
+ *  this decides. `cardPlaceCount` is how many places have Mesita Payments on in
  *  this universe (the d3a switch). */
 export function payPlaces(
   rows: PayPlaceInput[],

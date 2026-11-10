@@ -43,7 +43,7 @@ export type VoucherOffer = {
   house_credits: boolean;
   /** Cash Payments is On here (the owner's switch and the place code). */
   cash: boolean;
-  /** The green Mesita Pay mark, moneyState's, before the pause and
+  /** The green Mesita Payments mark, moneyState's, before the pause and
    *  Welcome-used filters so the place screen and the list rows agree. */
   mesita_pay: boolean;
   /** The owner's switches, as before (MESITA-3299 readers keep working). */
@@ -109,7 +109,7 @@ export function offerFrom(i: OfferInput): VoucherOffer {
     else if (i.perVisitUsed?.[k as PerVisitVoucher]) unavailable[k] = "needs_visit";
     else sell.push(k);
   }
-  // The guest's offer carries the voucher switches alone; the Mesita Pay switch
+  // The guest's offer carries the voucher switches alone; the Mesita Payments switch
   // (MESITA-3396) is already folded into `cashback` and the mark.
   const vouchers = Object.fromEntries(MONEY_VOUCHER_KEYS.map((k) => [k, i.settings[k] === true])) as Record<MoneyVoucherKey, boolean>;
   return {

@@ -410,7 +410,7 @@ verify_jwt = false
 [functions.visit-web-cash-tab]
 verify_jwt = false
 
-# MESITA-3462: the staff list of a place's Mesita Pay payments. No sign-in on
+# MESITA-3462: the staff list of a place's Mesita Payments. No sign-in on
 # visit.mesita.ai: the place code answers a 12-hour staff token (HMAC over
 # the place's current code hash), and the 15 s reads carry the token.
 [functions.visit-web-list-payments]

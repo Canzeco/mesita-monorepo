@@ -1,7 +1,7 @@
 // Supabase Edge Function — consumer-web-list-pay-places
 //
 // MESITA-3457: the Pay tab's list. The places a signed-in guest can pay at
-// now: where they hold credit (any switch, MESITA-3408) and where Mesita Pay
+// now: where they hold credit (any switch, MESITA-3408) and where Mesita Payments
 // takes a card part (`card_ok`), nearest first (MESITA-3536). Which
 // card places are listed, the radius and the cap are _shared/pay-places.ts.
 // consumer-web-start-payment is unchanged: this only lists.
@@ -20,7 +20,7 @@
 //   MESITA-3545: outside_ok = the place has a place code (the waiter's
 //   charge, so the bill can be paid outside); outside_bps is what a bill paid
 //   outside and confirmed earns (0 with the Cashback switch off). An
-//   outside-only place carries no Mesita Pay mark.
+//   outside-only place carries no Mesita Payments mark.
 //   401 sign_in · 400 bad_location (+field; the client asks again without
 //   one) · 500 with request_id.
 

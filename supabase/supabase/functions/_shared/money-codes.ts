@@ -14,7 +14,7 @@ export const MONEY_CODES = [
   "currency_mismatch",
   "paused",
   "not_available",
-  // the Mesita Pay switch is off here (MESITA-3396): no card part, no cashback
+  // the Mesita Payments switch is off here (MESITA-3396): no card part, no cashback
   "cards_off",
   "welcome_used",
   "place_code_required",

@@ -35,6 +35,13 @@ Deno.test("a switch on with charges_enabled sells, every voucher since MESITA-35
   assertEquals(s.cashback, true);
 });
 
+Deno.test("Mesita Prepayments Off (MESITA-3597) sells no voucher, whatever the voucher switches read; absent reads on", () => {
+  const s = moneyState({ ...allOn, prepayments: false }, can, null);
+  assertEquals(s.sell, []);
+  assertEquals(s.unavailable.voucher_200, "off");
+  assertEquals(moneyState({ ...allOn, prepayments: true }, can, null).sell.length, 6);
+});
+
 Deno.test("a switch on without charges_enabled sells nothing and says the account is missing", () => {
   const s = moneyState(allOn, cannot, null);
   assertEquals(s.sell, []);
