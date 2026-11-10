@@ -55,6 +55,9 @@ export type UpdateBody = {
   /** Profile's Actions toggle, sent with the operator's reservation channel. */
   reservations_enabled?: boolean;
   reservation_channel?: string;
+  /** Business › Reservations' Reservations phone (MESITA-3601): the number
+   *  the Reservationist dials; null = Google's (place_profiles.phone). */
+  reservation_target?: string | null;
   /** Profile's Actions: Mesita Prepayments Enabled (MESITA-3098). */
   prepay_enabled?: boolean;
   /** Basics' Reset (MESITA-2829): hand these fields back to Enrich. */
@@ -185,6 +188,25 @@ export function buildPlaceUpdate(
     update.reservations_enabled = body.reservations_enabled;
     update.reservation_channel = channel;
   }
+  // Business › Reservations' Reservations phone (MESITA-3601, Pato: "You can
+  // add another phone number for Reservations, not necessarily the one in
+  // Google"). The Reservationist dials reservation_target when the channel is
+  // phone, else place_profiles.phone (Google's), so null hands it back to
+  // Google's number. Enrich never writes it. Ten bare digits are Mexican.
+  if ("reservation_target" in body) {
+    const target = reservationPhone(body.reservation_target);
+    if (target === undefined) {
+      return fail(json(
+        {
+          ok: false,
+          code: "reservation_phone_invalid",
+          error: "Type the full phone number with its country code, e.g. +52 81 8378 2164.",
+        },
+        400,
+      ));
+    }
+    update.reservation_target = target;
+  }
   // Profile's Actions: Mesita Prepayments Enabled (MESITA-3098). On, the
   // place screen's Mesita Prepay sells a Wallet balance here. Nothing else
   // writes it, so it needs no channel.
@@ -207,4 +229,17 @@ export function buildPlaceUpdate(
     return fail(json({ ok: false, error: "No editable fields provided" }, 400));
   }
   return { ok: true, update, familyKeys, resetFields };
+}
+
+/** A Reservations phone as E.164: `+` and 10–15 digits; ten bare digits get
+ *  +52. Null or blank clears (null); anything else unreadable is undefined. */
+export function reservationPhone(raw: unknown): string | null | undefined {
+  if (raw === null) return null;
+  if (typeof raw !== "string") return undefined;
+  const t = raw.trim();
+  if (!t) return null;
+  if (!/^\+?[0-9 ()\-.]+$/.test(t)) return undefined;
+  const digits = t.replace(/\D/g, "");
+  if (!t.startsWith("+")) return digits.length === 10 ? `+52${digits}` : undefined;
+  return digits.length >= 10 && digits.length <= 15 && digits[0] !== "0" ? `+${digits}` : undefined;
 }

@@ -89,6 +89,24 @@ Deno.test("Prepayments flips on its own (MESITA-3098)", () => {
   assertEquals(r.update, { prepay_enabled: true });
 });
 
+Deno.test("the Reservations phone is stored as E.164; blank hands it back to Google's (MESITA-3601)", async () => {
+  const set = buildPlaceUpdate({ id: "p1", reservation_target: "+52 (81) 8378-2164" }, FAMILIES);
+  assert(set.ok);
+  assertEquals(set.update, { reservation_target: "+528183782164" });
+  const bare = buildPlaceUpdate({ id: "p1", reservation_target: "81 8378 2164" }, FAMILIES);
+  assert(bare.ok);
+  assertEquals(bare.update, { reservation_target: "+528183782164" });
+  const cleared = buildPlaceUpdate({ id: "p1", reservation_target: "  " }, FAMILIES);
+  assert(cleared.ok);
+  assertEquals(cleared.update, { reservation_target: null });
+  for (const bad of ["8378 2164", "+1 555", "call me", 5218183782164]) {
+    assertEquals(
+      (await refused({ id: "p1", reservation_target: bad } as unknown as UpdateBody)).body.code,
+      "reservation_phone_invalid",
+    );
+  }
+});
+
 Deno.test("families with no vocabulary loaded is a 500, never a clear", async () => {
   assertEquals(await refused({ id: "p1", family_keys: ["tacos"] }, []), {
     status: 500,
