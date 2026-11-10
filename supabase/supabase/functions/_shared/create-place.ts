@@ -63,6 +63,7 @@ import { googleTypesPrimaryFirst } from "./google-table-b.ts";
 import { googlePlacesKeyOrNull } from "./google-places.ts";
 import { humanizeCategorySlug } from "./parse-utils.ts";
 import { mainGoogleCategoryOnMesita } from "./categories.ts";
+import { decideReservations } from "./infer-place-reservations.ts";
 import { googleMetricsFromDetails, reviewSourcePatch } from "./review-sources.ts";
 /** The Google numbers a create stores: the same patch a Reviews reload
  *  writes (`google_found` + stars + count), built from the Details response
@@ -365,6 +366,14 @@ export async function createMinimalPlace(opts: {
 
   // ── 7 DESCRIPTION + 8 EMBEDDING at the door (§8.4 v4, gate D1) ─────────
   // Best-effort — nothing here ever fails the create.
+  // The Reserve seed (MESITA-3623). Without the door's model read it still
+  // lands from Google and the booking link, so the column's default (on)
+  // never stands in for an answer.
+  const reservationEvidence = {
+    googleReservable: basicsRes.googleReservable,
+    bookingUrl: basicsRes.basics.opentable_url ?? basicsRes.basics.resy_url,
+  };
+  let reservationsSeeded = false;
   try {
     const openaiKey = Deno.env.get("OPENAI_KEY")?.trim();
     if (openaiKey) {
@@ -395,8 +404,13 @@ export async function createMinimalPlace(opts: {
         // Google neighborhood the spine seeded; none keeps the seed.
         if (door.zone) patch.zone = door.zone;
         // The seed for a place nobody has answered for yet; an operator's
-        // channel pick supersedes it from then on (MESITA-1737).
-        patch.reservations_enabled = door.reservationsLikely;
+        // channel pick supersedes it from then on (MESITA-1737). Google's
+        // answer, then a booking link, then the model; a miss is off
+        // (MESITA-3623).
+        patch.reservations_enabled = decideReservations({
+          ...reservationEvidence,
+          modelSaysLikely: door.reservationsLikely,
+        });
         if (door.semanticSummary) {
           patch.embedding_source_text = door.semanticSummary;
         }
@@ -406,6 +420,7 @@ export async function createMinimalPlace(opts: {
           id: saved.place_id,
           patch,
         });
+        reservationsSeeded = doorWrite.ok;
         if (door.mesitaNameCandidate) {
           await applyInferredPlaceName(
             admin,
@@ -427,6 +442,14 @@ export async function createMinimalPlace(opts: {
             ),
         });
       }
+    }
+    if (!reservationsSeeded) {
+      await writePlace(admin, {
+        table: "place_profiles",
+        mode: "update",
+        id: saved.place_id,
+        patch: { reservations_enabled: decideReservations(reservationEvidence) },
+      });
     }
     // 8 EMBEDDING — embed-only summary vector of what the door just wrote; the
     // embedding stamp lands where the vector write is observed

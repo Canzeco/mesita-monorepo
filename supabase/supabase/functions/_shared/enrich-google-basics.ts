@@ -187,6 +187,9 @@ export type GoogleBasicsResult =
     googleTypes: string[];
     businessStatus: string | null;
     editorialSummary: string | null;
+    /** Google's own "takes reservations": true, false, or null when Google
+     *  does not say. The Create door's first word on Reserve (MESITA-3623). */
+    googleReservable?: boolean | null;
   }
   | { ok: false; code: string; error: string; status: number };
 
@@ -330,6 +333,9 @@ export async function fetchGoogleBasics(
     googleTypes,
     businessStatus: details.businessStatus?.trim().toUpperCase() || null,
     editorialSummary: details.editorialSummary?.text ?? null,
+    googleReservable: typeof (details as Record<string, unknown>).reservable === "boolean"
+      ? (details as Record<string, unknown>).reservable as boolean
+      : null,
     basics: {
       google_place_id: placeIdSpine,
       // google_name is a CACHED OBSERVATION of Google's display name, not an
