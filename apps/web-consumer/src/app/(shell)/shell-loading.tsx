@@ -14,9 +14,9 @@ import ProfileLoading from "./me/profile/loading";
 import ReservationsLoading from "./me/reservations/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
+import ActivityLoading from "./activity/loading";
 import PayLoading from "./pay/loading";
 import ShareLoading from "./share/loading";
-import WalletLoading from "./wallet/loading";
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
 // "why spinning and then placeholder, don't do that. just use the
@@ -56,7 +56,10 @@ export function ShellLoadingFor({ bare }: { bare: string }) {
   if (at("/me/favorites")) return <FavoritesLoading />;
   if (at("/me/connector")) return <ConnectorLoading />;
   if (at("/pay")) return <PayLoading />;
-  if (at("/wallet")) return <WalletLoading />;
+  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there, and a
+  // House Card draws its own loading.tsx at once.
+  if (bare === "/wallet" || at("/wallet/gift")) return <PayLoading />;
+  if (at("/activity")) return <ActivityLoading />;
   if (at("/share")) return <ShareLoading />;
   return <div className="bg-background min-h-0 flex-1" aria-busy />;
 }

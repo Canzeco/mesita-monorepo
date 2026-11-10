@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User, Wallet as WalletIcon } from "lucide-react";
+import { QrCode, ReceiptText, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -24,19 +24,21 @@ import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 
-// FIVE tabs, in this order (Pato, 2026-11-06, MESITA-3295: "Home Search Pay
-// Wallet Me", settled at the fourth gate on MESITA-3272). It was four from
+// FIVE tabs, in this order (Pato, 2026-11-09, MESITA-3631: "Merge wallet and
+// pay into the same page ... Home Search Pay Activity Me"). Wallet held the
+// fourth tab from MESITA-3295 (2026-11-06) until its rails moved under Pay. It was four from
 // MESITA-2076 ("BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.";
 // MESITA-2518 added Bookings, MESITA-2521 renamed it Saved; MESITA-2561
 // moved Saved under Me and made the fourth a Share tab, MESITA-2566 gave it
 // its own page):
 //
-//   Home · Search · Pay · Wallet · Me
+//   Home · Search · Pay · Activity · Me
 //
-//   PAY AND WALLET OWN THEIR MONEY (MESITA-3614): each tab lights on every
-//   address under it (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>;
-//   /wallet/<placeId>, /wallet/gift/<token>), so a bill or a House Card
-//   keeps its own tab lit.
+//   PAY OWNS THE MONEY (MESITA-3614, MESITA-3631): it lights on every
+//   address under /pay (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>)
+//   and under /wallet (/wallet/<placeId>, /wallet/gift/<token>), so a bill
+//   or a House Card keeps Pay lit. Activity is every money line, the list
+//   that was Me › Transactions.
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
@@ -92,13 +94,13 @@ const ITEMS: Item[] = [
     // Pay again (Pato, MESITA-3291: "rename the page Reward to Pay"; it read
     // Reward from MESITA-3211 until then).
     label: "Pay",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay],
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay, CONSUMER_ROUTE_PREFIX.wallet],
   },
   {
-    href: CONSUMER_ROUTES.wallet,
-    Icon: WalletIcon,
-    label: "Wallet",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.wallet],
+    href: CONSUMER_ROUTES.activity,
+    Icon: ReceiptText,
+    label: "Activity",
+    matchPrefixes: [CONSUMER_ROUTE_PREFIX.activity],
   },
   {
     href: CONSUMER_ROUTES.me,

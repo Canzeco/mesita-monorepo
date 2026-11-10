@@ -6,7 +6,6 @@ import {
   Crown,
   Heart,
   Plug,
-  ReceiptText,
   Settings as SettingsIcon,
   Share2,
   UserRound,
@@ -140,12 +139,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Places you saved",
     href: CONSUMER_ROUTES.mePages.favorites,
   },
-  {
-    Icon: ReceiptText,
-    title: "Transactions",
-    summary: "Payments and credit",
-    href: CONSUMER_ROUTES.mePages.transactions,
-  },
+  // TRANSACTIONS LEFT FOR THE BAR (MESITA-3631): it is the Activity tab.
   // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
   // already used in the wallet. its redundant"). /me/cards now redirects to the
   // hub through the /me/[tab] catch-all.

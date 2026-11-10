@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(__dirname, "../..");
 const read = (...path: string[]) => readFileSync(join(SRC, "components", "consumer", ...path), "utf8");
-const WALLET = read("wallet", "WalletPage.tsx");
+// The Wallet's rails, drawn under Pay since MESITA-3631.
+const WALLET = read("wallet", "WalletSection.tsx");
 // A place's House Card, /wallet/<placeId> (MESITA-3614).
 const HOUSE_CARD = read("wallet", "WalletPlaceScreen.tsx");
 // Pay is a screen per address since MESITA-3614: the list, the form, the proof.
@@ -20,8 +21,12 @@ describe("Wallet in test mode", () => {
   it("renders the TestBand from the server's test_mode flag, on the rails and on a House Card", () => {
     for (const src of [WALLET, HOUSE_CARD]) {
       expect(src).toContain('import { TestBand } from "@mesita/place-profile"');
-      expect(src).toMatch(/wallet\?\.test_mode \? <TestBand/);
     }
+    expect(HOUSE_CARD).toMatch(/wallet\?\.test_mode \? <TestBand/);
+    // Under Pay the rails skip their band only when Pay's list already
+    // shows one (never two, never none).
+    expect(WALLET).toMatch(/wallet\?\.test_mode && !testBandShown \? <TestBand/);
+    expect(PAY_LIST).toMatch(/testBandShown=\{!!places\?\.some\(\(p\) => p\.test_mode\)\}/);
   });
 
   it("never computes a balance: every amount shown is a server field", () => {

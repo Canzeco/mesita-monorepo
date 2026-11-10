@@ -48,7 +48,8 @@ export const CONSUMER_ROUTES = {
   //                              becomes /pay/tab/<id> (the table QR's door)
   //   /pay/tab/<tabId>           the bill at the table (MESITA-3564)
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    the Wallet's two rails (the tab)
+  //   /wallet                    a door to /pay since MESITA-3631: the
+  //                              Wallet's two rails live under Pay
   //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //
@@ -61,13 +62,18 @@ export const CONSUMER_ROUTES = {
   payPlace: { prefix: "/pay/" },
   payTab: { prefix: "/pay/tab/" },
   payReceipt: { prefix: "/pay/receipt/" },
-  // WALLET IS ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search Pay
-  // Wallet Me"). A Mesita Prepay checkout returns to the place's House Card
-  // with ?prepay= (MESITA-3617), an added card to /wallet?card=: one-shot
-  // events the page reads and drops.
+  // WALLET MERGED INTO PAY (Pato, 2026-11-09, MESITA-3631: "Merge wallet
+  // and pay into the same page. Pay on top"). It was the bar's fourth tab
+  // from MESITA-3295. /wallet stays a server page that forwards to /pay
+  // (keeping the one-shot ?card= an older Stripe return carries); its
+  // children are live. A Mesita Prepay checkout returns to the place's House
+  // Card with ?prepay= (MESITA-3617), an added card to /pay?card=.
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
+  // ACTIVITY IS ON THE BAR (MESITA-3631): every money line, newest first.
+  // It was Me › Transactions, /me/transactions (MESITA-3465).
+  activity: "/activity",
   // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
   // redirect to /me until this.
@@ -90,9 +96,6 @@ export const CONSUMER_ROUTES = {
     // Use Mesita from an AI assistant (ChatGPT, Claude). Not built: the page
     // says Soon (MESITA-2562).
     connector: "/me/connector",
-    // Every money line, newest first (MESITA-3465). Cards sat beside it until
-    // MESITA-3561: saved ways to pay live on Wallet.
-    transactions: "/me/transactions",
     // Mesita refunds credit a place that closed for good can no longer honour.
     // The view only, empty and with no button (MESITA-3517).
     refunds: "/me/refunds",
@@ -175,6 +178,8 @@ export const CONSUMER_ROUTES = {
     payQr: "/pay/qr",
     ticketPrefix: "/ticket/",
     qr: "/qr",
+    // Me › Transactions became the bar's Activity tab (MESITA-3631).
+    meTransactions: "/me/transactions",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
     // /me/plan (MESITA-2134) and /me/class (MESITA-2562) are live again.
@@ -223,6 +228,7 @@ export const CONSUMER_ROUTE_PREFIX = {
   place: "/place",
   pay: "/pay",
   wallet: "/wallet",
+  activity: "/activity",
   me: "/me",
 } as const;
 
