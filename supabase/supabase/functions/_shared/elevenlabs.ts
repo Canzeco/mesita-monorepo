@@ -143,38 +143,17 @@ export async function resolvePhoneNumberId(
   };
 }
 
-export type ConversationStatusResult =
-  | {
-    ok: true;
-    status: string;
-    callDurationSecs: number | null;
-    /**
-     * The post-call verdict, once `status` is done: analysis.call_successful
-     * ("success" | "failure" | "unknown"). null until the analysis exists —
-     * "success" is what the intent loop reads as "the place CONFIRMED".
-     */
-    callSuccessful: string | null;
-    /**
-     * metadata.error.code when the platform killed the call (1002 = out of
-     * credits) — how the engine tells OUR outage from THEIR silence.
-     */
-    errorCode: number | null;
-    /** Whether voicemail answered — detection tool fired / termination says so. */
-    voicemailDetected: boolean;
-  }
-  | { ok: false; error: string };
-
 /**
- * Read a Convai conversation's lifecycle status — how the playground's intent
- * loop learns whether an outbound call was answered. GET
- * /v1/convai/conversations/{id}; `status` walks initiated → in-progress →
- * processing → done, or lands on failed (which is what an unanswered/declined
- * Twilio leg becomes).
+ * Read one Convai conversation — GET /v1/convai/conversations/{id}. The body
+ * has the same shape as the post-call webhook's `data`, so
+ * readConversation (_shared/reservation-call-outcome.ts) reads both. Only
+ * the retry cron calls this now: once per sweep for a placed call whose
+ * outcome is still owed 10 min after its claim (MESITA-3618).
  */
-export async function getConversationStatus(
+export async function fetchConversation(
   key: string,
   conversationId: string,
-): Promise<ConversationStatusResult> {
+): Promise<{ ok: true; body: unknown } | { ok: false; error: string }> {
   let r: Response;
   try {
     r = await fetch(
@@ -185,35 +164,11 @@ export async function getConversationStatus(
     return { ok: false, error: e instanceof Error ? e.message : "conversation fetch failed" };
   }
   if (!r.ok) return { ok: false, error: `conversation HTTP ${r.status}` };
-  let body: unknown;
   try {
-    body = await r.json();
+    return { ok: true, body: await r.json() };
   } catch {
     return { ok: false, error: "conversation returned non-JSON" };
   }
-  const b = body as Record<string, unknown>;
-  const meta = (b.metadata ?? null) as Record<string, unknown> | null;
-  const duration = meta && typeof meta.call_duration_secs === "number"
-    ? meta.call_duration_secs
-    : null;
-  const analysis = (b.analysis ?? null) as Record<string, unknown> | null;
-  const err = (meta?.error ?? null) as Record<string, unknown> | null;
-  // Voicemail: the platform's own detection is authoritative when it fired;
-  // the transcript scan catches it wherever the tool call landed, and
-  // termination_reason is the belt-and-braces.
-  const voicemail = JSON.stringify(b.transcript ?? "").includes("voicemail_detection") ||
-    (typeof meta?.termination_reason === "string" &&
-      meta.termination_reason.toLowerCase().includes("voicemail"));
-  return {
-    ok: true,
-    status: typeof b.status === "string" ? b.status : "unknown",
-    callDurationSecs: duration,
-    callSuccessful: analysis && typeof analysis.call_successful === "string"
-      ? analysis.call_successful
-      : null,
-    errorCode: err && typeof err.code === "number" ? err.code : null,
-    voicemailDetected: voicemail,
-  };
 }
 
 export type OutboundCallResult =

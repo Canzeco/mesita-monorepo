@@ -1,15 +1,20 @@
 // supabase-edgefunc-place-reservation-call · the leg runners.
 //
 // Everything that runs AFTER the HTTP response, inside the background task:
-// the booking run (legs 1→2), the guest callback ladder (leg 3), the
-// cancellation notice (legs 5/6) and the reminder (leg 7). index.ts validates,
-// claims the ticket (rotating run_id) and hands one of these to
-// runInBackground. Every ticket write here is guarded by that run_id.
+// the booking call (leg 1), the guest call (legs 2/3), the cancellation
+// notice (legs 5/6) and the reminder (leg 7). index.ts validates, claims the
+// ticket (rotating run_id) and hands one of these to runInBackground. Every
+// ticket write here is guarded by that run_id.
+//
+// A runner PLACES one call, saves its conversation_id on the ticket and
+// returns (MESITA-3618). It never watches the call: how the call ended
+// arrives by message — eleven-webhook-post-call, or the cron's one read of a
+// call still owed after 10 min — and _shared/reservation-call-outcome.ts
+// applies it. A placed call is never redialed by a crash.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
   consumerFromNumber,
-  getConversationStatus,
   placeOutboundCall,
   reservationFromNumber,
   resolveElevenLabsKey,
@@ -18,13 +23,7 @@ import {
 import { nextAttemptAt } from "../_shared/reservation-retry.ts";
 import { nextGuestCallAt, spentLadderPatch } from "../_shared/reservation-callback.ts";
 import { REMINDER_MAX_ATTEMPTS, reminderParkPatch } from "../_shared/reservation-reminder.ts";
-import {
-  classifyFailedConversation,
-  classifyPlacementFailure,
-  noticeNextAt,
-  outageRetryAt,
-} from "../_shared/reservation-run.ts";
-import { alternativesToSpeech, normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
+import { classifyPlacementFailure, noticeNextAt, outageRetryAt } from "../_shared/reservation-run.ts";
 import { legDynamicVariables, type ReservationLegVars } from "../_shared/reservation-legs.ts";
 import {
   type ReservationAttempt,
@@ -32,36 +31,6 @@ import {
   writeReservation,
 } from "../_shared/reservation-doc.ts";
 import type { ReservationOutcome } from "../_shared/reservation-notification.ts";
-
-// ── Run pacing — one background task under the edge-runtime ~400s wall ───────
-const WATCH_POLL_MS = 8_000;
-const ANSWER_BUDGET_MS = 60_000;
-const VERDICT_BUDGET_MS = 130_000;
-const CALLBACK_BUDGET_MS = 60_000;
-
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-// Watch one placed call until we can tell whether it was answered. On failed,
-// errorCode (metadata.error.code) lets the caller separate a platform kill
-// (quota — OUR outage, don't charge the ticket) from a genuine no-answer.
-type AnswerWatch = { outcome: "answered" | "no_answer" | "unknown"; errorCode: number | null };
-async function watchUntilAnswered(
-  key: string,
-  conversationId: string,
-  budgetMs: number,
-): Promise<AnswerWatch> {
-  const deadline = Date.now() + budgetMs;
-  while (Date.now() < deadline) {
-    await delay(WATCH_POLL_MS);
-    const s = await getConversationStatus(key, conversationId);
-    if (!s.ok) continue; // transient fetch trouble — keep watching until budget
-    if (s.status === "failed") return { outcome: "no_answer", errorCode: s.errorCode };
-    if (s.status === "in-progress" || s.status === "processing" || s.status === "done") {
-      return { outcome: "answered", errorCode: null };
-    }
-  }
-  return { outcome: "unknown", errorCode: null };
-}
 
 // Thrown by a guarded write whose run was orphaned (reschedule / cancel /
 // console action rotated run_id). The runner must STOP — its ticket moved on,
@@ -107,46 +76,6 @@ async function bumpPlaceCalls(admin: SupabaseClient, projectId: string): Promise
     return null;
   }
   return typeof data === "number" ? data : null;
-}
-
-// What the Booker explicitly recorded mid-call via a1_report_outcome — the
-// authoritative verdict; the analysis heuristic is only the fallback.
-async function readReportedVerdict(
-  admin: SupabaseClient,
-  id: string,
-): Promise<{ verdict: string | null; alternativesText: string; note: string }> {
-  const { data } = await admin
-    .from("reservation_tickets")
-    .select("reported_verdict, alternatives, outcome_note")
-    .eq("id", id)
-    .maybeSingle();
-  // Structured now ({time,date?,note?}); the helper still reads legacy strings.
-  return {
-    verdict: (data?.reported_verdict as string | null) ?? null,
-    alternativesText: alternativesToSpeech(normalizeAlternatives(data?.alternatives)),
-    // a1 puts the human-readable reason here — e.g. which farmacia answered.
-    note: typeof data?.outcome_note === "string" ? data.outcome_note : "",
-  };
-}
-
-// After the place answered, wait for the post-call verdict.
-async function watchVerdict(
-  key: string,
-  conversationId: string,
-): Promise<"confirmed" | "declined" | "unknown"> {
-  const deadline = Date.now() + VERDICT_BUDGET_MS;
-  while (Date.now() < deadline) {
-    await delay(WATCH_POLL_MS);
-    const s = await getConversationStatus(key, conversationId);
-    if (!s.ok) continue;
-    if (s.status === "done") {
-      if (s.callSuccessful === "success") return "confirmed";
-      if (s.callSuccessful === "failure") return "declined";
-      return "unknown";
-    }
-    if (s.status === "failed") return "unknown"; // dropped mid-call — no verdict
-  }
-  return "unknown";
 }
 
 // One line per audience: the place leg dials from the business line, the guest
@@ -281,31 +210,17 @@ async function callGuest(input: {
     }
     return;
   }
+  if (!call.conversationId) {
+    // No id = no way to learn how it ended; count it as a missed rung.
+    await parkOrGiveUp("guest call placed without a conversation id");
+    return;
+  }
+  // Placed. How it ended arrives by message (_shared/reservation-call-outcome.ts).
   await record({
     callback_state: "ringing",
     callback_conversation_id: call.conversationId,
     last_call_state: `${label} — calling the guest`,
   });
-  const watch: AnswerWatch = call.conversationId
-    ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
-    : { outcome: "unknown", errorCode: null };
-  if (watch.outcome === "answered") {
-    await record({
-      callback_attempts: n,
-      callback_state: "answered",
-      callback_next_attempt_at: null,
-      outage_retries: 0,
-      last_call_state: `${label} — guest notified`,
-    });
-    return;
-  }
-  if (watch.outcome === "no_answer" && classifyFailedConversation(watch.errorCode) === "platform") {
-    await outagePark(`platform killed the call (code ${watch.errorCode})`);
-    return;
-  }
-  await parkOrGiveUp(
-    watch.outcome === "no_answer" ? "guest didn't answer" : "guest call outcome unknown",
-  );
 }
 
 // Leg 3 resume — the cron woke a parked callback; same call, next rung.
@@ -445,34 +360,20 @@ export async function runReminder(input: {
       }
       return;
     }
+    if (!call.conversationId) {
+      await record({
+        reminder_attempts: REMINDER_MAX_ATTEMPTS,
+        reminder_state: "skipped",
+        reminder_at: null,
+        last_call_state: "reminder placed without a conversation id — app is the fallback",
+      });
+      return;
+    }
+    // Placed. How it ended arrives by message (_shared/reservation-call-outcome.ts).
     await record({
       reminder_state: "ringing",
       reminder_conversation_id: call.conversationId,
       last_call_state: "reminder — calling the guest",
-    });
-    const watch: AnswerWatch = call.conversationId
-      ? await watchUntilAnswered(input.key, call.conversationId, CALLBACK_BUDGET_MS)
-      : { outcome: "unknown", errorCode: null };
-    if (watch.outcome === "answered") {
-      await record({
-        reminder_attempts: REMINDER_MAX_ATTEMPTS,
-        reminder_state: "answered",
-        reminder_at: null,
-        outage_retries: 0,
-        last_call_state: "reminder — guest reached",
-      });
-      return;
-    }
-    if (watch.outcome === "no_answer" && classifyFailedConversation(watch.errorCode) === "platform") {
-      await outagePark(`platform killed the call (code ${watch.errorCode})`);
-      return;
-    }
-    // Cap 1: voicemail / no-answer is NOT retried. The app is the fallback.
-    await record({
-      reminder_attempts: REMINDER_MAX_ATTEMPTS,
-      reminder_state: "skipped",
-      reminder_at: null,
-      last_call_state: "reminder — guest didn't answer; app is the fallback",
     });
   } catch (e) {
     if (e instanceof OrphanedRunError) return;
@@ -600,66 +501,16 @@ export async function runCancelNotice(input: {
       }
       return;
     }
+    if (!call.conversationId) {
+      await park("call placed without a conversation id");
+      return;
+    }
+    // Placed; notice_state stays 'running' until the outcome arrives by
+    // message (_shared/reservation-call-outcome.ts).
     await record({
       notice_conversation_id: call.conversationId,
       last_call_state: `cancel notice (${who}) — ringing`,
     });
-    const watch: AnswerWatch = call.conversationId
-      ? await watchUntilAnswered(input.key, call.conversationId, ANSWER_BUDGET_MS)
-      : { outcome: "unknown", errorCode: null };
-    if (watch.outcome === "answered") {
-      // Guest side: wait for the call to END and check whether a VOICEMAIL
-      // answered — a message on a machine is not a told guest. One more rung
-      // (if the ladder allows) before delivery is claimed.
-      if (!isPlaceSide && call.conversationId) {
-        const finalState = await waitForVoicemailVerdict(input.key, call.conversationId);
-        if (finalState === "voicemail") {
-          const next = noticeNextAt(
-            input.kind,
-            n,
-            input.placeHours,
-            input.placeLng,
-            reservedAt,
-          );
-          if (next) {
-            await record({
-              notice_attempts: n,
-              notice_state: "scheduled",
-              notice_next_at: next.at.toISOString(),
-              outage_retries: 0,
-              last_call_state:
-                `cancel notice (guest) — voicemail answered; message left, retrying live — ${next.reason}`
-                  .slice(0, 200),
-            });
-            return;
-          }
-          await record({
-            notice_attempts: n,
-            notice_state: "done",
-            notice_next_at: null,
-            outage_retries: 0,
-            last_call_state: "cancel notice (guest) delivered — voicemail only",
-          });
-          return;
-        }
-      }
-      await record({
-        notice_attempts: n,
-        notice_state: "done",
-        notice_next_at: null,
-        outage_retries: 0,
-        last_call_state: `cancel notice (${who}) delivered`,
-      });
-      return;
-    }
-    if (
-      watch.outcome === "no_answer" &&
-      classifyFailedConversation(watch.errorCode) === "platform"
-    ) {
-      await outagePark(`platform killed the call (code ${watch.errorCode})`);
-      return;
-    }
-    await park(watch.outcome === "no_answer" ? "no answer" : "outcome unknown");
   } catch (e) {
     if (e instanceof OrphanedRunError) return; // ticket moved on — stop quietly
     await writeReservation(admin, {
@@ -677,28 +528,11 @@ export async function runCancelNotice(input: {
   }
 }
 
-// After an answered guest call ends, was it a human or a machine? Polls the
-// conversation to terminal, then reads the voicemail signal. "human" on any
-// doubt — an extra ring for a heard guest is worse than none for an unheard
-// one, and the voicemail branch already left the message either way.
-async function waitForVoicemailVerdict(
-  key: string,
-  conversationId: string,
-): Promise<"human" | "voicemail"> {
-  const deadline = Date.now() + VERDICT_BUDGET_MS;
-  while (Date.now() < deadline) {
-    await delay(WATCH_POLL_MS);
-    const s = await getConversationStatus(key, conversationId);
-    if (!s.ok) continue;
-    if (s.status === "done" || s.status === "failed") {
-      return s.voicemailDetected ? "voicemail" : "human";
-    }
-  }
-  return "human";
-}
-
-// The two-leg run — fires AFTER the HTTP response, updating the ticket as it
-// goes so every surface (admin tickets list, consumer app) shows live progress.
+// Leg 1 — fires AFTER the HTTP response: places ONE booking call (the next
+// intent) and returns once its conversation id is saved. A placement that
+// fails parks the ticket for the cron; the call's outcome (and the guest call
+// that follows a yes or a counter-offer) is applied by
+// _shared/reservation-call-outcome.ts.
 export async function runIntents(input: {
   admin: SupabaseClient;
   reservationId: string;
@@ -711,20 +545,14 @@ export async function runIntents(input: {
   placeHours: unknown;
   placeLng: number | null;
   businessNumber: string;
-  consumerNumber: string; // "" = no guest number → leg 2 skipped
   bookerAgentId: string; // eleven-a1 (fallback: the original agent)
-  confirmerAgentId: string; // eleven-a2 (fallback: the original agent)
   legVars: ReservationLegVars;
-  /** Guest calls already placed this errand — the leg-2 ladder resumes here. */
-  callbackAttemptsDone: number;
-  reservedAtIso: string;
   runId: string;
   projectId: string;
   outageRetries: number;
   placeCallCap: number;
   /** Old reserved_at when this run MODIFIES a confirmed booking (T3/eng-review). */
   modificationOfIso: string | null;
-  guestNotify: "call" | "app";
   /** Writes the guest's Me › Notifications row; never throws. */
   notify: (outcome: ReservationOutcome) => Promise<void>;
 }): Promise<void> {
@@ -739,31 +567,6 @@ export async function runIntents(input: {
   const releaseOldHold = input.modificationOfIso
     ? { notice_kind: "place_cancel", notice_state: "pending", notice_attempts: 0, notice_next_at: null }
     : {};
-  // Leg 2 with everything threaded — outcomes and the ladder live in callGuest.
-  const guestCall = (
-    key: string,
-    phoneNumberId: string,
-    context: "confirmation" | "counter_offer",
-    alternativesText: string,
-  ) =>
-    callGuest({
-      admin,
-      reservationId,
-      runId: input.runId,
-      key,
-      phoneNumberId,
-      context,
-      alternativesText,
-      consumerNumber: input.consumerNumber,
-      confirmerAgentId: input.confirmerAgentId,
-      legVars,
-      attemptsDone: input.callbackAttemptsDone,
-      outageRetries: 0,
-      placeLng: input.placeLng,
-      reservedAtIso: input.reservedAtIso,
-      guestNotify: input.guestNotify,
-    });
-
   try {
     const key = await resolveElevenLabsKey();
     if (!key?.startsWith("sk_")) {
@@ -872,68 +675,9 @@ export async function runIntents(input: {
         continue;
       }
 
-      entry.conversation_id = call.conversationId;
-      entry.result = "ringing";
-      await record({
-        attempts,
-        last_conversation_id: call.conversationId,
-        last_call_state: `intent ${n}: ringing`,
-      });
-
-      const watch: AnswerWatch = call.conversationId
-        ? await watchUntilAnswered(key, call.conversationId, ANSWER_BUDGET_MS)
-        : { outcome: "unknown", errorCode: null };
-      const outcome = watch.outcome;
-
-      if (outcome === "no_answer" && classifyFailedConversation(watch.errorCode) === "platform") {
-        // The platform killed a placed call (quota mid-evening). Same rule:
-        // park on the outage clock, attempt NOT charged.
-        attempts.pop();
-        const next = outageRetryAt(input.outageRetries);
-        if (next) {
-          await record({
-            attempts,
-            call_attempts: n - 1,
-            outage_retries: input.outageRetries + 1,
-            attempts_state: "scheduled",
-            next_attempt_at: next.at.toISOString(),
-            last_call_state:
-              `intent ${n}: platform killed the call (code ${watch.errorCode}) — ${next.reason}`
-                .slice(0, 200),
-          });
-        } else {
-          await record({
-            attempts,
-            call_attempts: n - 1,
-            attempts_state: "error",
-            next_attempt_at: null,
-            last_call_state: `intent ${n}: platform outage persisted — needs attention`
-              .slice(0, 200),
-          });
-        }
-        return;
-      }
-
-      if (outcome === "no_answer") {
-        entry.result = "no_answer";
-        if (n < attemptsPlanned) {
-          // Park it: the place's own hours decide when we try again, and a run
-          // can't sleep 30 minutes. supabase-cron-retry-reservations wakes it.
-          const next = nextAttemptAt(input.placeHours, input.placeLng);
-          await record({
-            attempts,
-            attempts_state: "scheduled",
-            next_attempt_at: next.at.toISOString(),
-            last_call_state: `intent ${n}: no answer — ${next.reason}`.slice(0, 200),
-          });
-          return;
-        }
-        await record({ attempts, last_call_state: `intent ${n}: no answer` });
-        continue;
-      }
-      if (outcome === "unknown") {
-        // Can't tell — the line may be mid-conversation. Stop rather than risk
-        // ringing it again on top of a live call.
+      if (!call.conversationId) {
+        // No id = no way to learn how it ended — and no way to tell whether
+        // the place picked up. Stop rather than risk ringing a live line.
         entry.result = "unknown";
         await record({
           attempts,
@@ -942,152 +686,23 @@ export async function runIntents(input: {
           state: "unresolved",
           callback_state: "skipped",
           ...releaseOldHold,
-          last_call_state: `intent ${n}: outcome unknown — not retrying`,
+          last_call_state: `intent ${n}: placed without a conversation id — not retrying`,
         });
         await notify("unresolved");
         return;
       }
 
-      // Answered — wait for the place's VERDICT before anything else.
-      entry.result = "answered";
+      // Placed. attempts_state stays 'running' and the conversation id is the
+      // join key: the outcome arrives by message (eleven-webhook-post-call,
+      // or the cron's one read after 10 min) and
+      // _shared/reservation-call-outcome.ts applies it. Never redialed.
+      entry.conversation_id = call.conversationId;
+      entry.result = "ringing";
       await record({
         attempts,
-        last_call_state: `intent ${n}: answered — awaiting verdict`,
+        last_conversation_id: call.conversationId,
+        last_call_state: `intent ${n}: ringing`,
       });
-      const analyzed = call.conversationId
-        ? await watchVerdict(key, call.conversationId)
-        : "unknown";
-      // a1's explicit report (a1_report_outcome) outranks the analysis.
-      const reported = await readReportedVerdict(admin, reservationId);
-      const REPORTABLE = [
-        "confirmed",
-        "declined",
-        "counter_offer",
-        "unreachable",
-        "wrong_number",
-      ];
-      const verdict = reported.verdict && REPORTABLE.includes(reported.verdict)
-        ? reported.verdict
-        : analyzed;
-
-      // The line is not this place. Terminal on the spot: redialling would just
-      // ring the same stranger, so this must NOT consume the retry path.
-      if (verdict === "wrong_number") {
-        entry.result = "wrong_number";
-        await record({
-          attempts,
-          attempts_state: "exhausted",
-          next_attempt_at: null,
-          state: "unresolved",
-          callback_state: "skipped",
-          last_call_state:
-            `intent ${n}: wrong number — the line isn't the place${
-              reported.note ? ` (${reported.note})` : ""
-            }`.slice(0, 200),
-        });
-        await notify("unresolved");
-        return;
-      }
-
-      // Answered, but we never got to anyone who could book (voicemail, IVR
-      // dead-end, "call back later"). Unlike `declined` this is not an answer —
-      // it's the absence of one, so it retries exactly like a no-answer.
-      if (verdict === "unreachable") {
-        entry.result = "unreachable";
-        if (n < attemptsPlanned) {
-          const next = nextAttemptAt(input.placeHours, input.placeLng);
-          await record({
-            attempts,
-            attempts_state: "scheduled",
-            next_attempt_at: next.at.toISOString(),
-            // Clear it so the next attempt starts from a blank verdict.
-            reported_verdict: null,
-            last_call_state: `intent ${n}: no one who books was reached — ${next.reason}`
-              .slice(0, 200),
-          });
-          return;
-        }
-        await record({
-          attempts,
-          attempts_state: "exhausted",
-          next_attempt_at: null,
-          state: "unreachable",
-          callback_state: "skipped",
-          ...releaseOldHold,
-          last_call_state: `intent ${n}: no one who books was reached — giving up`,
-        });
-        await notify("unreachable");
-        return;
-      }
-
-      if (verdict === "confirmed") {
-        entry.result = "confirmed";
-        await record({
-          attempts,
-          attempts_state: "answered",
-          next_attempt_at: null,
-          state: "confirmed",
-          confirmed_at: new Date().toISOString(),
-          callback_state: "calling",
-          callback_at: new Date().toISOString(),
-          outage_retries: 0,
-          // A confirmed MODIFICATION means the place moved the booking on
-          // this very call — the old hold is gone conversationally.
-          modification_of: null,
-          ...reminderParkPatch(
-            input.placeLng,
-            input.reservedAtIso ? new Date(input.reservedAtIso) : null,
-            input.guestNotify,
-          ),
-          last_call_state: `intent ${n}: place confirmed — calling the guest`,
-        });
-        await notify("confirmed");
-        await guestCall(key, lines.guestLineId, "confirmation", "");
-        return;
-      }
-      if (verdict === "counter_offer") {
-        // Place offered options — the ticket STAYS pending; the guest hears
-        // them on the Confirmer leg and their pick (via
-        // eleven-a2-confirm-reservation) re-fires this engine.
-        entry.result = "counter_offer";
-        await record({
-          attempts,
-          attempts_state: "answered",
-          next_attempt_at: null,
-          callback_state: "calling",
-          callback_at: new Date().toISOString(),
-          last_call_state: `intent ${n}: place counter-offer — calling the guest`,
-        });
-        await notify("counter_offer");
-        await guestCall(key, lines.guestLineId, "counter_offer", reported.alternativesText);
-        return;
-      }
-      if (verdict === "declined") {
-        // The place ANSWERED and said no — terminal.
-        entry.result = "declined";
-        await record({
-          attempts,
-          attempts_state: "answered",
-          next_attempt_at: null,
-          state: "declined",
-          callback_state: "skipped",
-          // Modification declined: a1's brief asks the place to drop the old
-          // booking too, so the decline settles both slots — no notice owed.
-          modification_of: null,
-          last_call_state: `intent ${n}: place declined — no guest call`,
-        });
-        await notify("declined");
-        return;
-      }
-      entry.result = "unresolved";
-      await record({
-        attempts,
-        attempts_state: "answered",
-        state: "unresolved",
-        callback_state: "skipped",
-        last_call_state: `intent ${n}: answered, verdict unknown — no guest call`,
-      });
-      await notify("unresolved");
       return;
     }
 

@@ -145,7 +145,9 @@ const RESERVATION_TICKET_READ_ALLOWLIST = [
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-retry-reservations/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",
-  "supabase-edgefunc-place-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
+  // The ticket a finished call belongs to, by conversation id; columns name
+  // place_id directly, error checked (MESITA-3618).
+  "_shared/reservation-call-outcome.ts",
 ];
 
 Deno.test("RESERVATION READ: no new raw reader of reservation_tickets outside the allowlist", async () => {
@@ -168,6 +170,7 @@ const PLACE_PROFILE_READ_ALLOWLIST = [
   "_shared/smoke-enrich.ts", // the smoke fixture's id by its Google id (MESITA-2803)
   "_shared/agent-enrich.ts", // the agent Enrich's place ids by Google id (MESITA-3242)
   "_shared/reservation-confirm.ts", // lng only, for the on-the-spot confirm's reminder (MESITA-2981)
+  "_shared/reservation-call-outcome.ts", // hours, lng, name, photos for a finished call's outcome (MESITA-3618)
   "admin-web-search-places/index.ts",
   // The place screen's one read, admin's and the Business app's (MESITA-3103).
   "_shared/place-overview.ts",
@@ -396,7 +399,6 @@ const SWALLOWED_TODAY = [
   "eleven-agent-get-reservation/index.ts",
   "supabase-cron-retry-reservations/index.ts",
   "supabase-edgefunc-place-reservation-call/index.ts",
-  "supabase-edgefunc-place-reservation-call/legs.ts", // readReportedVerdict, moved out of index.ts (MESITA-2986)
 ];
 
 Deno.test("READ SURFACE: no NEW raw read of a doored table discards its error", async () => {

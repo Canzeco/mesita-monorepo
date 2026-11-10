@@ -9,9 +9,16 @@
 //   · eleven-a2-confirm-reservation    (negotiation re-fire: the guest picked
 //     an alternative or proposed a new datetime → fresh Booker call)
 //
-// ACK-EARLY: validates + marks attempts_state='running', then the legs run in
+// ACK-EARLY: validates + marks attempts_state='running', then the leg runs in
 // an EdgeRuntime background task and the response returns immediately — the
 // creator EFs never block on a phone call.
+//
+// CALLS END BY MESSAGE (MESITA-3618): a run PLACES one call, saves its
+// conversation_id on the ticket and returns. It never watches the call. How
+// the call ended arrives from eleven-webhook-post-call (or the retry cron's
+// one read of a call still owed after 10 min) and
+// _shared/reservation-call-outcome.ts applies it — so a crash mid-call can
+// neither lose a yes nor redial the place.
 //
 //   Leg 1 · consumer → business  up to ATTEMPTS (fixed 2) call intents — the
 //     agent calls the place ON BEHALF OF the guest; no answer → next intent.
@@ -20,8 +27,9 @@
 //     post-call analysis heuristic (call_successful=success → CONFIRMED).
 //   Leg 2 · business → consumer  after a confirmation (call_context
 //     "confirmation") OR a counter-offer (call_context "counter_offer", the
-//     alternatives ride venue_alternatives) the agent calls the human guest
-//     (callback_* columns). Skipped when the ticket has no guest number. On a
+//     alternatives ride venue_alternatives) the outcome door parks the guest
+//     call due now and kicks this engine with intent callback_retry (leg 3's
+//     launcher). Skipped when the ticket has no guest number. On a
 //     counter-offer the ticket STAYS pending — the guest's pick lands through
 //     eleven-a2-confirm-reservation, which re-fires this engine (≤2 rounds).
 //
@@ -184,6 +192,9 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
   const noticeClaimValidated = validateReservationPatch({
     notice_state: "running",
     notice_next_at: null,
+    // 'running' spans dialing AND the placed call: a stale id from the last
+    // rung must never match a late webhook (reservation-call-outcome.ts).
+    notice_conversation_id: null,
     run_id: runId,
     claimed_at: new Date().toISOString(),
   });
@@ -274,6 +285,7 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
     patch: {
       callback_state: "calling",
       callback_next_attempt_at: null,
+      callback_conversation_id: null,
       run_id: runId,
       claimed_at: new Date().toISOString(),
     },
@@ -341,6 +353,7 @@ async function launchReminder(ctx: LaunchCtx): Promise<Response> {
     patch: {
       reminder_state: "calling",
       reminder_at: null,
+      reminder_conversation_id: null,
       run_id: runId,
       claimed_at: new Date().toISOString(),
     },
@@ -383,8 +396,6 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
     via,
     consumerNumber,
     bookerAgentId,
-    confirmerAgentId,
-    guestNotify,
     runId,
     modificationOfIso,
     legVars,
@@ -408,8 +419,16 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
     // A stale verdict from a previous negotiation round must never be read
     // as this run's outcome — and a new errand starts a fresh guest ladder.
     reported_verdict: null,
+    // 'running' spans dialing AND the placed call; the id is set only once
+    // this run's call is placed (reservation-call-outcome.ts joins on it).
+    last_conversation_id: null,
     callback_attempts: 0,
     callback_next_attempt_at: null,
+    // A guest call still ringing from the last round (a2 re-fired this
+    // engine mid-call) owes this round nothing: its late outcome must not
+    // land here, and the reaper must not re-ring it.
+    callback_state: "none",
+    callback_conversation_id: null,
   });
   if (!bookClaimValidated.ok) {
     return json({ ok: false, error: bookClaimValidated.error }, 500);
@@ -435,18 +454,13 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
       placeHours: place?.hours ?? null,
       placeLng,
       businessNumber,
-      consumerNumber,
       bookerAgentId,
-      confirmerAgentId,
       legVars,
-      callbackAttemptsDone: 0,
-      reservedAtIso: r.reserved_at,
       runId,
       projectId: placeId,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
       modificationOfIso,
-      guestNotify,
       notify: (outcome) =>
         notifyReservationOutcome(admin, {
           consumerId: r.consumer_id,
@@ -504,7 +518,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const { data: r, error: rErr } = await admin
     .from("reservation_tickets")
     .select(
-      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)",
+      "id, consumer_id, reference_code, reserved_at, party_size, notes, state, place_id, is_test, place_phone, consumer_phone, attempts_state, attempts, call_attempts, callback_attempts, consumer_confirmed_at, consumer_notify, alternatives, notice_kind, notice_state, notice_attempts, reminder_state, reminder_attempts, outage_retries, modification_of, reported_verdict, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name, phone)",
     )
     .eq("id", reservationId)
     .maybeSingle();
@@ -543,7 +557,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     // callback_retry: only a still-live verdict warrants re-ringing the guest.
     const confirmationDue = r.state === "confirmed" && !r.consumer_confirmed_at;
     const counterDue = r.state === "pending" &&
-      normalizeAlternatives(r.alternatives).length > 0;
+      (normalizeAlternatives(r.alternatives).length > 0 || r.reported_verdict === "counter_offer");
     if (!confirmationDue && !counterDue) {
       return json({ ok: true, skipped: "callback no longer applicable" });
     }
