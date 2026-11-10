@@ -273,6 +273,7 @@ describe("T5 — exactly one tab lights per surface", () => {
   const MATRIX: [string, string][] = [
     ["/home/places", "Home"],
     ["/home/classic", "Home"],
+    ["/home/grid", "Home"],
     ["/home/social", "Home"],
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
@@ -508,6 +509,7 @@ describe("T5b — Home's header and Search's header", () => {
     const pages = new Set(allPages().map(pageUrl));
     expect(pages).toContain("/home/places");
     expect(pages).toContain("/home/classic");
+    expect(pages).toContain("/home/grid");
     expect(pages).toContain("/home/social");
     expect(pages).not.toContain("/home");
     expect(pages).not.toContain("/discover");

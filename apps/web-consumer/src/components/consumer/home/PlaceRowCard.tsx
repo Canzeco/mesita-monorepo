@@ -1,0 +1,211 @@
+"use client";
+
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { Clock, Star } from "lucide-react";
+import { PlaceMarks, SizedImage } from "@mesita/place-profile";
+import type { Place } from "@/lib/api/places";
+import { placeHref } from "@/lib/place-route";
+import {
+  cardPhoto,
+  isGoogleOnlyPlace,
+  placePlaceholder,
+} from "@/lib/place-placeholder";
+import { cn } from "@/lib/utils";
+import { CardActions, cardFacts } from "@/components/consumer/place-card";
+import { offerSlides } from "@/components/consumer/offer-button";
+import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
+
+/**
+ * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
+ * information at the right, two squares, information with buttons"):
+ *
+ *   ┌─────────┐ ┌─────────┐
+ *   │  photo  │ │ Name     │   name on up to two lines
+ *   │         │ │ $$ · Tacos│
+ *   │[+5% …]  │ │ ★ 4.7 (8.6K)
+ *   └─────────┘ │ ◷ Open · 3.3 km
+ *               │[♡ Save][Share]│
+ *               └─────────┘
+ *
+ * The photo square and the text open the place; Save and Share are the
+ * shared CardActions (a Google-only place gets Generate Profile instead), so
+ * a tap on them never navigates. The offer is a pill on the photo, as on the
+ * grid; the wide offer button stays on the place screen.
+ */
+export function PlaceRowCard({
+  place,
+  family,
+  saved,
+  onToggle,
+  onShare,
+  onOpen,
+  onOpenGoogle,
+}: {
+  place: Place;
+  /** The place's family word, or null where the chosen chip already says it. */
+  family: string | null;
+  saved: boolean;
+  onToggle: () => void;
+  onShare: () => void;
+  /** Any open of the card, for analytics. */
+  onOpen?: () => void;
+  /** The explicit open for a Google-only card (get-or-create, then route). */
+  onOpenGoogle?: () => void;
+}) {
+  const photo = cardPhoto(place);
+  const placeholder = placePlaceholder(place);
+  const google = isGoogleOnlyPlace(place);
+  const facts = cardFacts(place);
+  const offer = google ? undefined : offerSlides(place)[0];
+  // The family word on Top, the place's own kind under a family chip.
+  const kind = family ?? facts.kind ?? null;
+
+  const open = (children: ReactNode, className: string, label?: string) =>
+    google ? (
+      <button
+        type="button"
+        onClick={() => {
+          onOpen?.();
+          onOpenGoogle?.();
+        }}
+        aria-label={label}
+        className={className}
+      >
+        {children}
+      </button>
+    ) : (
+      <Link
+        href={placeHref(place.slug || place.id)}
+        onClick={onOpen}
+        aria-label={label}
+        className={className}
+      >
+        {children}
+      </Link>
+    );
+
+  const focus =
+    "focus-visible:ring-primary outline-none focus-visible:ring-2";
+
+  return (
+    <li className={ROW_PAIR} data-row-card>
+      {open(
+        <>
+          {photo ? (
+            <SizedImage
+              src={photo}
+              size="card"
+              alt=""
+              fill
+              sizes="(max-width: 640px) 50vw, 240px"
+              className="object-cover object-center"
+            />
+          ) : (
+            <div
+              className="text-muted-foreground absolute inset-0 flex items-center justify-center"
+              data-placeholder={placeholder.kind}
+            >
+              <span
+                className={cn(
+                  "leading-none select-none",
+                  placeholder.kind === "emoji"
+                    ? "text-4xl"
+                    : "font-display text-2xl font-bold tracking-tight",
+                )}
+                aria-hidden
+              >
+                {placeholder.kind === "emoji"
+                  ? placeholder.emoji
+                  : placeholder.text}
+              </span>
+            </div>
+          )}
+          {offer ? (
+            <span
+              className={cn(
+                "absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-xs leading-4 font-semibold",
+                offer.tone,
+              )}
+              data-row-offer
+            >
+              {offer.pill}
+            </span>
+          ) : null}
+        </>,
+        cn(ROW_PHOTO, "block", focus),
+        `Open ${place.name}`,
+      )}
+
+      <div className={ROW_INFO}>
+        {open(
+          <>
+            <p className="flex min-w-0 items-start gap-1 text-sm leading-5 font-semibold tracking-tight">
+              <span className="line-clamp-2">{place.name}</span>
+              <PlaceMarks
+                tier={place.boost_tier}
+                ad={(place.boost_tier ?? 0) > 0}
+              />
+            </p>
+            {facts.price || kind ? (
+              <p className="text-muted-foreground truncate text-xs leading-5">
+                {facts.price ? (
+                  <span className="text-fact-price font-semibold">
+                    {facts.price}
+                  </span>
+                ) : null}
+                {facts.price && kind ? " · " : null}
+                {kind}
+              </p>
+            ) : null}
+            {facts.rating ? (
+              <p className="text-muted-foreground flex items-center gap-1 text-xs leading-5">
+                <Star
+                  className="fill-fact-star text-fact-star h-3 w-3 shrink-0"
+                  aria-hidden
+                />
+                <span className="text-foreground">{facts.rating}</span>
+                {facts.reviews ? <span>({facts.reviews})</span> : null}
+              </p>
+            ) : null}
+            {facts.open !== null || facts.distance ? (
+              <p className="text-muted-foreground flex min-w-0 items-center gap-1 text-xs leading-5">
+                {facts.open !== null ? (
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1",
+                      facts.open ? "text-fact-open" : "text-fact-closed",
+                    )}
+                  >
+                    <Clock className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                    {facts.open ? "Open" : "Closed"}
+                  </span>
+                ) : null}
+                {facts.open !== null && facts.distance ? <span>·</span> : null}
+                {facts.distance ? (
+                  <span className="truncate">{facts.distance}</span>
+                ) : null}
+              </p>
+            ) : null}
+          </>,
+          cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
+        )}
+        <CardActions
+          name={place.name}
+          saved={saved}
+          onSave={onToggle}
+          onShare={onShare}
+          onGenerate={
+            google
+              ? () => {
+                  onOpen?.();
+                  onOpenGoogle?.();
+                }
+              : undefined
+          }
+          className="mt-auto"
+        />
+      </div>
+    </li>
+  );
+}

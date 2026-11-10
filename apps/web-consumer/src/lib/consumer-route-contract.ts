@@ -34,6 +34,9 @@ export const CONSUMER_ROUTES = {
   // The list Places was until the grid took its address (MESITA-3658, Pato:
   // "leave the previous one working"): the family column beside big tiles.
   homeClassic: "/home/classic",
+  // The photo grid, Places 2.0 (MESITA-3658), moved here when Places 3.0
+  // took /home/places (MESITA-3662).
+  homeGrid: "/home/grid",
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
@@ -334,6 +337,7 @@ const row = (
 export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
   homeClassic: row("/home/classic", "home", "tab", null),
+  homeGrid: row("/home/grid", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
   searchChat: row("/search/chat", "search", "sheet", "search"),
