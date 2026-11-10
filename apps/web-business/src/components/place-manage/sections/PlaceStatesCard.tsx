@@ -119,10 +119,10 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail={m.billing.on ? "No unpaid Mesita invoice." : "Mesita's invoice is unpaid: card payments are off until it is paid."}
         />
         <StateRow
-          name="Stripe"
+          name="Stripe Account"
           on={m.stripe.on}
           chip={money(m.stripe.chip)}
-          detail={payments === null ? "Couldn't read the Stripe account." : STRIPE_DETAIL[m.stripe.chip as StripeState] ?? ""}
+          detail={payments === null ? "Couldn't read the Stripe Account." : STRIPE_DETAIL[m.stripe.chip as StripeState] ?? ""}
         />
         <StateRow
           name="Reservations"
@@ -158,7 +158,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           name="Mesita Payments"
           on={m.mesitaPayments.on}
           chip={money(m.mesitaPayments.chip)}
-          detail="Guests pay the bill by card in the app. Needs Stripe taking cards and no unpaid Mesita invoice."
+          detail="Guests pay the bill by card in the app. Needs the Stripe Account taking cards and no unpaid Mesita invoice."
         />
         <StateRow
           name="Mesita Payments Cashback-as-Credits"
@@ -170,7 +170,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           name="Mesita Prepayments"
           on={m.mesitaPrepayments.on}
           chip={money(m.mesitaPrepayments.chip)}
-          detail="Guests can buy prepaid vouchers here now. Needs House Credits, a voucher switched on, Stripe taking cards and no unpaid invoice."
+          detail="Guests can buy prepaid vouchers here now. Needs the Mesita Prepayments switch, House Credits, a voucher switched on, the Stripe Account taking cards and no unpaid invoice."
         />
       </div>
     </SectionCard>

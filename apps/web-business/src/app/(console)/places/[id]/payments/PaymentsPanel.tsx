@@ -5,14 +5,18 @@
 // the owner's money and its log live on Operations › Money, and there is no
 // table QR (the guest shows the QR). Laid out as Pato's approved mockup
 // (MESITA-3597): the test pill, an unpaid fee banner (MESITA-3461), a setup
-// strip of four steps (Agreement → House Credits → Waiter code → Stripe; the
-// first not done is outlined with its one action), three service cards
-// (House Credits · Cash Payments · Mesita Pay; one column on phones), each
-// with its switch, On/Off, what it needs with a fix for each missing line,
-// and inside the two payment cards one Cashback-as-Credits switch (Pato:
-// "don't call it Cashback but Cashback-as-Credits"; MESITA-3596's rates:
-// Cash Payments Off or 2%, Mesita Pay Off or 5%), then one Stripe row (Place
-// Stripe, seven values) and Prepaid vouchers as a grid of small cards.
+// strip of four steps (Agreement → House Credits → Waiter code → Stripe
+// Account; the first not done is outlined with its one action), three cards
+// (House Credits · Cash Payments · Mesita Payments; one column on phones),
+// one Stripe Account row (seven values), then Mesita Prepayments.
+// Three things, never "Mesita Pay" (Pato, 2026-11-10: "Stripe Account,
+// Mesita Payments, Mesita Prepayments ... Different products but with lots of
+// symmetries"): Mesita Payments and Mesita Prepayments wear the same card,
+// a title, one line, their switch, On/Off, what they need with a fix for each
+// missing line, and their inner settings: Mesita Payments its
+// Cashback-as-Credits (Off or 5%), Mesita Prepayments its voucher grid, each
+// voucher its own switch, selling only while Mesita Prepayments is on. Cash
+// Payments has its Cashback-as-Credits too (Off or 2%).
 // The House Credits Agreement is independent of Stripe (Pato, 2026-11-09):
 // signing opens a plain Agree dialog whose text is a placeholder until a
 // lawyer writes it. A guest's credit is the place's debt: House Credits Off
@@ -32,6 +36,7 @@ import {
   MoneyIcon,
   PiggyBankIcon,
   StripeLogoIcon,
+  TicketIcon,
   LockSimpleIcon,
   WarningCircleIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -87,7 +92,7 @@ const isVoucherKey = (k: PaymentKey): k is VoucherKey => k.startsWith("voucher_"
 
 /** Why a switched-on voucher is not for sale yet (MESITA-3303). */
 const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
-  needs_account: "Not for sale until Stripe setup is complete.",
+  needs_account: "Not for sale until the Stripe Account takes cards.",
   needs_house_credits: "Not for sale until House Credits is on.",
   needs_billing: "Not for sale until Mesita's invoice is paid.",
   not_yet: "Not on sale yet.",
@@ -99,7 +104,7 @@ const NOT_SELLING: Partial<Record<VoucherReason, string>> = {
 const CASHBACK_BPS: Record<PaymentRateKey, number> = { card_cashback_bps: 500, cash_cashback_bps: 200 };
 const pct = (bps: number) => `${bps / 100}%`;
 
-/** Place Stripe's seven values, in the owner's words. */
+/** The Stripe Account's seven values, in the owner's words. */
 const STAGE_LABEL: Record<StripeStage, string> = {
   none: "Not connected",
   onboarding: "Onboarding",
@@ -126,7 +131,7 @@ const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opaci
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
   switch (a.state) {
     case "none":
-      return { line: "Card payments and vouchers land in your own Stripe account. House Credits and cash work without it.", button: "Connect Stripe", open: false };
+      return { line: "Your own account, where Mesita Payments and Mesita Prepayments land. Not needed for House Credits or cash.", button: "Connect Stripe", open: false };
     case "onboarding":
       return { line: "Setup not finished.", button: "Continue setup", open: false };
     case "restricted":
@@ -263,12 +268,14 @@ export function PaymentsPanel({
     blocked?: React.ReactNode;
     note?: React.ReactNode;
     checks: Check[];
-    cashback?: React.ReactNode;
+    /** The product's own settings inside its card: a Cashback-as-Credits, or the voucher grid. */
+    inner?: React.ReactNode;
+    className?: string;
   }) => {
     const on = settings[args.key];
     const blocked = !on && args.blocked;
     return (
-      <Card key={args.key} className={cn("flex min-w-0 flex-col gap-4", on && "border-emerald-300")}>
+      <Card key={args.key} className={cn("flex min-w-0 flex-col gap-4", on && "border-emerald-300", args.className)}>
         <div className="flex items-start gap-3" data-place-state={args.key}>
           {mark(args.icon, on, args.tone)}
           <div className="min-w-0 flex-1">
@@ -280,7 +287,7 @@ export function PaymentsPanel({
         {onOffPill(on)}
         {blocked ? <p className={NOTE}>{args.blocked}</p> : args.note ? <p className={NOTE}>{args.note}</p> : null}
         {checklist(args.checks)}
-        {args.cashback}
+        {args.inner}
       </Card>
     );
   };
@@ -319,7 +326,7 @@ export function PaymentsPanel({
     const on = settings[key];
     const reason = isVoucherKey(key) ? state.unavailable[key] : undefined;
     const blocked = !on && !settings.house_credits;
-    const note = on && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
+    const note = on && settings.prepayments && reason && NOT_SELLING[reason] ? NOT_SELLING[reason] : null;
     return (
       <li key={key} className="border-border flex min-w-0 flex-col gap-2 rounded-xl border p-4 text-sm">
         <div className="flex items-center gap-2">
@@ -369,14 +376,16 @@ export function PaymentsPanel({
     },
     {
       key: "step_stripe",
-      name: "Stripe",
-      line: ready ? STAGE_LABEL[stage] : "For cards and vouchers",
+      name: "Stripe Account",
+      line: ready ? STAGE_LABEL[stage] : "For Payments + Prepayments",
       done: ready,
       action: copy.button && !copy.open ? fix(copy.button, () => void stripe()) : null,
     },
   ];
   const next = steps.find((s) => !s.done)?.key;
   const stripeFix = copy.button && !copy.open ? fix(copy.button.replace(" Stripe", ""), () => void stripe()) : undefined;
+  const needsStripe = <>Connect the Stripe Account first: it has to take cards.</>;
+  const feeCheck: Check[] = fee.hold ? [{ label: "Mesita's invoice unpaid", done: false, fix: fee.invoice?.url ? fix("Pay", fee.invoice.url) : undefined }] : [];
 
   return (
     <>
@@ -449,7 +458,7 @@ export function PaymentsPanel({
             { label: codeSet ? "Waiter code set" : "Waiter code not set", done: codeSet, fix: fix("Set it", settingsHref) },
             { label: settings.house_credits ? "House Credits on, for its Cashback-as-Credits" : "House Credits off, so no Cashback-as-Credits", done: settings.house_credits },
           ],
-          cashback: (
+          inner: (
             <>
               {codeSet ? (
                 <p className={NOTE} data-waiter-charge>
@@ -474,13 +483,14 @@ export function PaymentsPanel({
         })}
         {serviceCard({
           key: "pay_cards",
-          name: "Mesita Pay",
+          name: "Mesita Payments",
           line: "Guests pay the bill by card inside the app.",
           icon: DeviceMobileIcon,
           tone: "bg-sky-100 text-sky-700",
+          blocked: account.charges_enabled ? undefined : needsStripe,
           note: settings.pay_cards
             ? !account.charges_enabled
-              ? "Needs Stripe: on once the account takes cards."
+              ? "On once the Stripe Account takes cards."
               : fee.hold
                 ? "Off until Mesita's invoice is paid."
                 : !CARD_BILL_PAY_LIVE
@@ -488,15 +498,16 @@ export function PaymentsPanel({
                   : PER_100
             : "Guests still pay from credit here.",
           checks: [
-            { label: account.charges_enabled ? "Stripe takes cards" : "Stripe not connected", done: account.charges_enabled, fix: stripeFix },
-            ...(fee.hold ? [{ label: "Mesita's invoice unpaid", done: false, fix: fee.invoice?.url ? fix("Pay", fee.invoice.url) : undefined }] : []),
+            { label: account.charges_enabled ? "Stripe Account takes cards" : "Stripe Account not connected", done: account.charges_enabled, fix: stripeFix },
+            { label: settings.house_credits ? "House Credits on, for its Cashback-as-Credits" : "House Credits off, so no Cashback-as-Credits", done: settings.house_credits },
+            ...feeCheck,
           ],
-          cashback: cashbackBox({
+          inner: cashbackBox({
             key: "card_cashback_bps",
             name: "Mesita Payments Cashback-as-Credits",
             line: "Back as credit here on the card part of the bill. Never on the tip or the credit part.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
-            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Pay takes cards." : null,
+            note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Payments takes cards." : null,
           }),
         })}
       </div>
@@ -505,7 +516,7 @@ export function PaymentsPanel({
           {mark(StripeLogoIcon, ready, "bg-indigo-100 text-indigo-700")}
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 font-semibold">
-              Stripe {onOffPill(ready, STAGE_LABEL[stage])}
+              Stripe Account {onOffPill(ready, STAGE_LABEL[stage])}
             </p>
             <p className="text-muted-foreground">
               {ready
@@ -532,24 +543,44 @@ export function PaymentsPanel({
           </ul>
         ) : null}
       </Card>
-      <Card className="flex flex-col gap-3">
-        <div>
-          <h2 className="font-semibold">Prepaid vouchers</h2>
-          <p className="text-muted-foreground text-sm">
-            Guests pay ahead and get extra credit. Several vouchers add up in one wallet and pay one bill together. Needs House Credits and Stripe.
-          </p>
-        </div>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">{[...STANDARD, ...SPECIAL].map(voucherCard)}</ul>
-        {!settings.house_credits ? (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm" data-vouchers-locked>
-            <LockSimpleIcon size={16} weight="bold" aria-hidden /> Locked until House Credits is on: vouchers sell House Credits.
-          </p>
-        ) : !account.charges_enabled ? (
-          <p className="text-muted-foreground flex items-center gap-2 text-sm" data-vouchers-locked>
-            <LockSimpleIcon size={16} weight="bold" aria-hidden /> Not for sale until Stripe is connected.
-          </p>
-        ) : null}
-      </Card>
+      {serviceCard({
+        key: "prepayments",
+        name: "Mesita Prepayments",
+        line: "Guests pay ahead by card and get extra credit. Several vouchers add up in one wallet and pay one bill together.",
+        icon: TicketIcon,
+        tone: "bg-emerald-100 text-emerald-700",
+        blocked: !settings.house_credits ? needsHouseCredits : !account.charges_enabled ? needsStripe : undefined,
+        note: settings.prepayments
+          ? !account.charges_enabled
+            ? "On once the Stripe Account takes cards."
+            : fee.hold
+              ? "Off until Mesita's invoice is paid."
+              : state.sell.length === 0
+                ? "Switch on at least one voucher to sell."
+                : null
+          : null,
+        checks: [
+          {
+            label: settings.house_credits ? "House Credits on" : "House Credits off",
+            done: settings.house_credits,
+            fix: contract.signed ? fix("Turn on", () => void flip("house_credits", true)) : fix("Sign", () => setAgreeing(true)),
+          },
+          { label: account.charges_enabled ? "Stripe Account takes cards" : "Stripe Account not connected", done: account.charges_enabled, fix: stripeFix },
+          ...feeCheck,
+        ],
+        inner: (
+          <>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" data-place-state="vouchers">
+              {[...STANDARD, ...SPECIAL].map(voucherCard)}
+            </ul>
+            {!settings.prepayments ? (
+              <p className="text-muted-foreground flex items-center gap-2 text-sm" data-vouchers-locked>
+                <LockSimpleIcon size={16} weight="bold" aria-hidden /> Which vouchers you sell, once Mesita Prepayments is on.
+              </p>
+            ) : null}
+          </>
+        ),
+      })}
       {agreeing ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" role="presentation" onClick={() => !pending && setAgreeing(false)}>
           <div

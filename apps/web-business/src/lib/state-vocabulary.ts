@@ -19,7 +19,7 @@
 //                 pays or redeems yet.
 //                 They came back as PLACE STATES (MESITA-3588, Main §10):
 //                 what the business decides — Owned · Plan · Billing ·
-//                 Stripe · Reservations · Cash Payments (+ Cashback-as-Credits) ·
+//                 Stripe Account · Reservations · Cash Payments (+ Cashback-as-Credits) ·
 //                 Mesita Payments (+ Cashback-as-Credits) · Mesita Prepayments, with
 //                 House Credits (never "Mesita Credits": credits are the
 //                 place's debt). Drawn by PlaceStatesCard / place-states.ts.
