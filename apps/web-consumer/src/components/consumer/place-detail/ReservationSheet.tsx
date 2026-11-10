@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarCheck, CalendarClock, Loader2, PhoneCall } from "lucide-react";
+import { CalendarClock, Loader2, PhoneCall } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import {
@@ -19,11 +19,7 @@ import {
   type EFReservationRow,
 } from "@/lib/api/reservations";
 import { EFError } from "@/lib/api/_invoke";
-import { apiFetchConsumerProfile, apiUpdateConsumerProfile } from "@/lib/api/profile";
-import {
-  consumerNeedsLastName,
-  LAST_NAME_REQUIRED_CODE,
-} from "@/lib/consumer-onboarding";
+import { apiFetchConsumerProfile } from "@/lib/api/profile";
 import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_BODY_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -78,7 +74,7 @@ function resolveSubmitLabel(args: {
   if (!args.time) return "No times left";
   return args.rescheduling
     ? `Move my table · ${args.whenLabel}`
-    : `Request reservation · ${args.whenLabel}`;
+    : `Reserve · ${args.whenLabel}`;
 }
 
 export function ReservationSheet({
@@ -111,18 +107,14 @@ export function ReservationSheet({
   const [timeChoice, setTimeChoice] = useState<string | null>(null);
   const [party, setParty] = useState(DEFAULT_PARTY);
   const [notes, setNotes] = useState("");
-  const [guestNotify, setGuestNotify] = useState<"call" | "app">("call");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // THE LAST NAME (MESITA-1806). Onboarding stopped asking for it — four
-  // fields in front of a stranger who hasn't seen a place yet is how you lose
-  // them — so this sheet asks, at the one moment the guest can see why: the
-  // place books the table under their full name, and the host system keys on
-  // "last name + party size". Null while the profile read is in flight, so
-  // the field doesn't flash in for someone who already has one.
-  const [needsLastName, setNeedsLastName] = useState<boolean | null>(null);
+  // THE NAME THE TABLE IS UNDER (MESITA-3607, Pato: "First Name and Last
+  // Name (don't prepopulate first name)"). Saved on the reservation, not the
+  // profile; the last name starts as the profile's.
+  const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
   // Duplicate guard: the caller's live booking at THIS place, if any.
@@ -157,16 +149,11 @@ export function ReservationSheet({
     let cancelled = false;
     (async () => {
       setChecking(true);
-      // Fire both reads together — the profile answers "do we need a last
-      // name", the list answers "is there already a table here". Neither
-      // blocks the other.
+      // Both reads together: the profile's last name seeds the field, the
+      // list answers "is there already a table here".
       const profilePromise = apiFetchConsumerProfile(supabase)
-        .then((r) => consumerNeedsLastName(r.consumer))
-        // Fail CLOSED-ish: assume nothing, leave the field hidden and let the
-        // EF's own gate turn a stale guess into the field on submit. A flaky
-        // profile read must not plant a redundant field on someone who has a
-        // last name already.
-        .catch(() => false);
+        .then((r) => (r.consumer?.last_name ?? "").trim())
+        .catch(() => "");
       try {
         const { reservations } = await apiListReservations(supabase, {
           scope: "upcoming",
@@ -181,9 +168,9 @@ export function ReservationSheet({
         // Worst case is the pre-existing behaviour (a possible second booking).
         if (!cancelled) setExisting(null);
       } finally {
-        const missing = await profilePromise;
+        const profileLast = await profilePromise;
         if (!cancelled) {
-          setNeedsLastName(missing);
+          if (profileLast) setLastName((v) => v || profileLast);
           setChecking(false);
         }
       }
@@ -220,24 +207,14 @@ export function ReservationSheet({
   async function submit() {
     if (!date || !time || submitting || checking || awaitingChoice) return;
     // Rescheduling moves a table that is already booked under a name, so it
-    // never has to ask for one.
-    const trimmedLastName = lastName.trim();
-    if (needsLastName && !rescheduling && !trimmedLastName) {
-      setError("Add your last name — it's the name your table is under.");
+    // never asks for one.
+    if (!rescheduling && (!firstName.trim() || !lastName.trim())) {
+      setError("Add the first and last name the table is under.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      // Persist the name BEFORE the booking, not alongside it: the EF reads
-      // consumers.last_name to build what it tells the place, so a name that
-      // rides in the same request would land too late to reach the call.
-      if (needsLastName && !rescheduling && trimmedLastName) {
-        await apiUpdateConsumerProfile(supabase, {
-          last_name: trimmedLastName,
-        });
-        setNeedsLastName(false);
-      }
       const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
       if (rescheduling) {
         await apiUpdateReservation(supabase, {
@@ -252,21 +229,12 @@ export function ReservationSheet({
           reservedAt,
           partySize: party,
           notes,
-          guestNotify,
+          firstName,
+          lastName,
         });
       }
       setDone(true);
     } catch (e) {
-      // The server runs the SAME gate (consumer-web-create-reservation), and
-      // it is the one that counts: a client that loaded before this shipped
-      // still has no field to type into. Surfacing the field on the 409 turns
-      // a dead end into the same one-field ask.
-      if (e instanceof EFError && e.code === LAST_NAME_REQUIRED_CODE) {
-        setNeedsLastName(true);
-        setError("Add your last name — it's the name your table is under.");
-        setSubmitting(false);
-        return;
-      }
       if (e instanceof EFError && e.code === RESERVATION_LIMIT_CODE) {
         setError(RESERVATION_LIMIT_MESSAGE);
         return;
@@ -318,19 +286,10 @@ export function ReservationSheet({
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-3">
-              <span className="bg-primary/10 text-primary flex h-12 w-12 shrink-0 items-center justify-center rounded-full">
-                <CalendarCheck className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className={SHEET_TITLE_CLASS}>
-                  {rescheduling ? "Move your table" : "Reserve a table"}
-                </h2>
-                <p className="text-muted-foreground truncate text-xs">
-                  {place.name} · Mesita calls the place for you
-                </p>
-              </div>
-            </div>
+            <h2 className={SHEET_TITLE_CLASS}>
+              {rescheduling ? "Move your table" : "Reserve a table"}
+            </h2>
+            <p className="text-muted-foreground type-body truncate">{place.name}</p>
 
             {existing && (
               <DuplicateBanner
@@ -364,69 +323,47 @@ export function ReservationSheet({
               onChange={(u) => setParty(u)}
             />
 
-            {needsLastName && !rescheduling && (
+            {!rescheduling && (
               <div className="mt-4">
                 <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-                  Last name
+                  Name
                 </p>
-                <input
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  maxLength={60}
-                  placeholder="Last name"
-                  autoComplete="family-name"
-                  aria-label="Last name"
-                  className="border-border bg-card focus:border-foreground/40 mt-2 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
-                />
-                <p className="text-muted-foreground type-body mt-2">
-                  This is the name your table is booked under.
-                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    maxLength={60}
+                    placeholder="First name"
+                    autoComplete="off"
+                    aria-label="First name"
+                    className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+                  />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    maxLength={60}
+                    placeholder="Last name"
+                    autoComplete="family-name"
+                    aria-label="Last name"
+                    className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
+                  />
+                </div>
               </div>
             )}
 
             <div className="mt-4">
               <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-                Notes for the place{" "}
-                <span className="tracking-normal normal-case">(optional)</span>
+                Notes
               </p>
-              <textarea
+              <input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={2}
                 maxLength={280}
-                placeholder="Birthday, terrace seating, high chair…"
-                className="border-border bg-card focus:border-foreground/40 mt-2 w-full resize-none rounded-2xl border px-4 py-3 text-sm outline-none"
+                placeholder="Optional"
+                aria-label="Notes"
+                className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none mt-2"
               />
             </div>
-
-            {!rescheduling && (
-              <div className="mt-4">
-                <p className="text-muted-foreground type-label font-medium tracking-[0.14em] uppercase">
-                  When Mesita has news
-                </p>
-                <div className="border-border mt-2 grid grid-cols-2 gap-2 rounded-2xl border p-1">
-                  {(
-                    [
-                      ["call", "Call me"],
-                      ["app", "App only"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setGuestNotify(key)}
-                      className={
-                        guestNotify === key
-                          ? "bg-primary text-primary-foreground rounded-xl px-3 py-2 text-sm font-semibold"
-                          : "text-muted-foreground rounded-xl px-3 py-2 text-sm font-medium"
-                      }
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {error && (
               <p className="type-body mt-3 rounded-xl bg-destructive/10 px-3 py-2 font-medium text-destructive">
@@ -450,9 +387,7 @@ export function ReservationSheet({
               )}
             </button>
             <p className="text-muted-foreground type-body mt-2 text-center">
-              {guestNotify === "app"
-                ? "Mesita's AI agent calls the place to book — you'll see the answer here."
-                : "Mesita's AI agent calls the place to book — then calls you to confirm."}
+              Mesita calls the place and tells you the answer.
             </p>
           </>
         )}

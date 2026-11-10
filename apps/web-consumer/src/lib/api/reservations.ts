@@ -50,6 +50,9 @@ export function apiCreateReservation(
     notes?: string;
     /** MESITA-787 — default "call". */
     guestNotify?: GuestNotify;
+    /** The name the table is booked under (MESITA-3607). */
+    firstName: string;
+    lastName: string;
   },
 ): Promise<CreatedReservation> {
   const notes = args.notes?.trim();
@@ -63,6 +66,8 @@ export function apiCreateReservation(
         party_size: args.partySize,
         ...(notes ? { notes } : {}),
         consumer_notify: args.guestNotify === "app" ? "app" : "call",
+        first_name: args.firstName.trim(),
+        last_name: args.lastName.trim(),
       },
       "Couldn't create the reservation",
     ),
