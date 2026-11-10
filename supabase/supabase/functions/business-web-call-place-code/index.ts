@@ -68,14 +68,18 @@ serveJson("business-web-call-place-code", async (req) => {
     return json({ ok: false, code: "claimed", error: "Someone else already runs this place on Mesita. If that's wrong, report it to Mesita." }, 409);
   }
 
-  const { data: slot, error: slotErr } = await admin.rpc("place_take_verification_send", {
-    p_place_id: placeId,
-    p_consumer_id: user.id,
-    p_channel: "call",
-  });
-  if (slotErr) return json({ ok: false, error: slotErr.message }, 500);
-  if (slot !== "ok") {
-    return json({ ok: false, code: "too_many_calls", error: "No more calls to this place today. Try tomorrow, or ask Mesita to check by hand." }, 429);
+  // The daily call limit guards the place's phone; with calls off nothing
+  // dials, so the test code never spends a slot (MESITA-3594).
+  if (CALLS_LIVE) {
+    const { data: slot, error: slotErr } = await admin.rpc("place_take_verification_send", {
+      p_place_id: placeId,
+      p_consumer_id: user.id,
+      p_channel: "call",
+    });
+    if (slotErr) return json({ ok: false, error: slotErr.message }, 500);
+    if (slot !== "ok") {
+      return json({ ok: false, code: "too_many_calls", error: "No more calls to this place today. Try tomorrow, or ask Mesita to check by hand." }, 429);
+    }
   }
 
   const code = CALLS_LIVE ? newCode() : TEST_CODE;
