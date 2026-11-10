@@ -1,5 +1,6 @@
 "use client";
 
+import { Screen } from "@/components/consumer/nav/Screen";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
@@ -34,9 +35,8 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   const leave = () => goBack(router);
 
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8">
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
-      <div className="mt-5 flex min-h-0 flex-1 flex-col">
+    <Screen title="Pay" onBack={leave} flush>
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-8">
         <TabView
           start={start}
           getSupabase={getSupabase}
@@ -60,6 +60,6 @@ export function PayTabScreen({ start }: { start: TabStart }) {
         onTaken={(id) => navigateTo(router, payReceiptPath(id), { replace: true })}
         onRefresh={refresh}
       />
-    </div>
+    </Screen>
   );
 }

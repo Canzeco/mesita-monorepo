@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const toast = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ toast }));
+// Share wears the pushed-page frame, whose Back reads the router.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ back() {}, push() {}, replace() {} }) }));
 
 import { SharePage } from "@/components/consumer/share/SharePage";
 import {

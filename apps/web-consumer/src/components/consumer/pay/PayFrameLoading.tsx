@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/shared";
+import { Screen } from "@/components/consumer/nav/Screen";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -20,10 +21,12 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "proof" }) 
       </div>
     );
   }
+  // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647).
   return (
-    <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pt-6 pb-8" aria-busy>
-      <h1 className="font-display text-2xl font-semibold tracking-tight">Pay</h1>
-      <Skeleton className="mt-5 h-[26rem] w-full rounded-2xl" />
-    </div>
+    <Screen title="Pay" flush>
+      <div className="px-4 pt-5 pb-8" aria-busy>
+        <Skeleton className="h-[26rem] w-full rounded-2xl" />
+      </div>
+    </Screen>
   );
 }

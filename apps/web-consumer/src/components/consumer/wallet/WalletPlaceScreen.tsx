@@ -1,8 +1,9 @@
 "use client";
 
+import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Wallet as WalletIcon } from "lucide-react";
+import { Wallet as WalletIcon } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
@@ -60,19 +61,8 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
     : [];
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <header className="border-border bg-card sticky top-0 z-10 flex items-center gap-2 border-b px-2 py-2">
-        <button
-          type="button"
-          onClick={back}
-          aria-label="Back"
-          className="hover:bg-muted flex h-11 w-11 items-center justify-center rounded-xl transition"
-        >
-          <ChevronLeft className="h-6 w-6" aria-hidden />
-        </button>
-        <h1 className="min-w-0 truncate text-base font-semibold">{row?.card.name ?? "Wallet"}</h1>
-      </header>
-      <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
+    <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush>
+      <div className="flex flex-1 flex-col px-4 pt-5 pb-8">
         {wallet?.test_mode ? <TestBand className="mb-3" /> : null}
         {confirming ? (
           <p className="text-muted-foreground mb-3 text-sm" role="status">
@@ -98,6 +88,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
           <WalletCardSkeleton count={1} />
         )}
       </div>
-    </div>
+    </Screen>
   );
 }
