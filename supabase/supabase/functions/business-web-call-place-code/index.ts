@@ -5,7 +5,7 @@
 // into business-web-check-place-code. 3 calls per place and 5 per guest a
 // rolling day (place_take_verification_send). Refuses `claimed` while
 // someone else holds the owner seat (MESITA-3155).
-// Calls are live (MESITA-3400). Were CALLS_LIVE false, no call would go out:
+// Calls are OFF while we test (MESITA-3594; CALLS_LIVE in _shared/place-call-code.ts). With it false, no call goes out:
 // the code would be TEST_CODE and the reply would say `test: true`.
 //
 // Body: { place_id: uuid }
