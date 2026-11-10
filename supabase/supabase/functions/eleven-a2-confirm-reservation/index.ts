@@ -19,8 +19,8 @@
 // Deploy: supabase functions deploy eleven-a2-confirm-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAgentRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
   matchesOffer,
@@ -31,7 +31,6 @@ import {
   esDate,
   esTime,
   placeLocalDate,
-  requireAgentSecret,
   staleRunReply,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
@@ -45,15 +44,9 @@ import {
 const MAX_NEGOTIATION_ROUNDS = 2;
 
 serveJson("eleven-a2-confirm-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const admin = adminClient(envRes.env);
-  const denied = await requireAgentSecret(req, admin);
-  if (denied) return denied;
+  const ctx = await requireAgentRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const body = await readJsonOr<{
     reference_code?: unknown;
@@ -187,7 +180,7 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
   // The double call: fire the Booker at the place with the new terms. The
   // engine acks early; its run updates the ticket as it goes.
   const fired = await invokeInternalCaller(
-    envRes.env,
+    env,
     "eleven-a2-confirm-reservation",
     "supabase-edgefunc-place-reservation-call",
     { reservation_id: ticket.id },
