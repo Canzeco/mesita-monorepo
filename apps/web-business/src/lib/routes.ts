@@ -32,17 +32,18 @@ export const ACCOUNT = "/account";
 // reviews boxes sit under the Profile editor; /reviews redirects there.
 // Reservations (MESITA-3600, Pato: "in capabilities add Reservations, only
 // configure no or yes") holds its one switch, moved from Settings › Actions.
-export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "reservations", "all", "billing", "settings", "admin"] as const;
+export const PLACE_TABS = ["views", "visits", "money", "profile", "premier", "payments", "reservations", "all", "settings", "admin"] as const;
 export type PlaceTab = (typeof PLACE_TABS)[number];
 
 export function placeTabHref(placeId: string, tab: PlaceTab): string {
   return `/places/${encodeURIComponent(placeId)}/${tab}`;
 }
 
-/** A place's Billing page (MESITA-3160), optionally scrolled to its plans
- *  with one picked (MESITA-3173: the plans moved here from Premier). */
-export function billingHref(placeId: string, plans?: { plan?: "boost_2x" | "boost_5x" | null }): string {
-  const base = placeTabHref(placeId, "billing");
+/** A place's Premier page, optionally scrolled to its plans with one picked.
+ *  The plans and their Stripe Checkout live here since MESITA-3620 (Billing
+ *  folded in; cards are Stripe Checkout's, never the app's). */
+export function premierHref(placeId: string, plans?: { plan?: "boost_2x" | "boost_5x" | null }): string {
+  const base = placeTabHref(placeId, "premier");
   if (!plans) return base;
   return `${base}${plans.plan ? `?plan=${plans.plan}` : ""}#plans`;
 }

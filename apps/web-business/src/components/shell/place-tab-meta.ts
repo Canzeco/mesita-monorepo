@@ -12,7 +12,6 @@ import {
   GearIcon,
   MegaphoneIcon,
   MoneyIcon,
-  ReceiptIcon,
   ShieldCheckIcon,
   StorefrontIcon,
 } from "@phosphor-icons/react/dist/ssr";
@@ -39,7 +38,6 @@ export const PLACE_TAB_META: Record<PlaceTab, { label: string; icon: Icon; sub: 
     icon: DotsThreeCircleIcon,
     sub: "Mesita Suite is the marketing, payments and operations platform for independent restaurants.",
   },
-  billing: { label: "Billing", icon: ReceiptIcon, sub: "What's running, what it costs and every charge." },
   settings: { label: "Settings", icon: GearIcon, sub: "Place and team." },
   admin: { label: "Admin", icon: ShieldCheckIcon, sub: "Mesita staff only." },
 };

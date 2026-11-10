@@ -2,7 +2,7 @@
 
 // The three plans as boxes (MESITA-3173, Pato: "you actually buy access to all
 // the software, don't separate premier"; boxes MESITA-3183): Free · Pro · Max.
-// They live on Billing only (MESITA-3186). Visibility is the one perk, so it is
+// They live on Premier (Billing folded in, MESITA-3620). Visibility is the one perk, so it is
 // each box's anchor (Pato: "make the visibility most notorious"): 1X · 2X · 5X,
 // then the tag it wears, the price, one action. Two sizes only (Pato: "don't use
 // lots of different sizes"): that headline, the rest body. Pro and Max are the boost_2x /
@@ -21,7 +21,7 @@ import { PremierRosette } from "@mesita/place-profile";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostTier, type PlacePremier } from "@/lib/business-api";
-import { billingHref, returnUrl } from "@/lib/routes";
+import { premierHref, returnUrl } from "@/lib/routes";
 import { FREE_PLAN, FREE_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY } from "@/lib/plans";
 
 const PLANS: Array<{ key: BoostTier; rank: number }> = [
@@ -122,7 +122,7 @@ export function PlansCard({
 }: {
   placeId: string;
   initial: PlacePremier | null;
-  /** A plan Billing's Keep button picked. */
+  /** A plan picked by `?plan=` (Keep links). */
   picked?: BoostTier | null;
 }) {
   const router = useRouter();
@@ -139,7 +139,7 @@ export function PlansCard({
   const quotes = data.quotes;
   const payer = data.viewer === "payer";
   const notice = data.outcome && OUTCOME[data.outcome] ? OUTCOME[data.outcome] : null;
-  const home = billingHref(placeId);
+  const home = premierHref(placeId);
   const onRank = data.paid?.tier ?? 0;
 
   async function reload() {

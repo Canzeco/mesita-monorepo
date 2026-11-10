@@ -13,7 +13,7 @@
 //   │ Profile · Premier · Payments · Reservations · All │  All: MESITA-3238,
 //   └───────────────────────────────────────────────────┘  every product
 //   ┌ Manage ─────────────────────────────────┐
-//   │ Billing · Settings · Admin (staff)     │  Admin: MESITA-3122
+//   │ Settings · Admin (staff)               │  Admin: MESITA-3122
 //   └─────────────────────────────────────────┘
 //   …
 //   Account   — at the foot: email, sign-out, What you pay
@@ -101,8 +101,7 @@ function menu(
         tab("all"),
       ],
       manage: [
-        // Billing first in Manage (Pato, MESITA-3160: "Billing, Settings").
-        tab("billing"),
+        // Billing folded into Premier (MESITA-3620).
         tab("settings"),
         // Mesita staff only (MESITA-3122): the place's staff page. The server
         // refuses anyone else.

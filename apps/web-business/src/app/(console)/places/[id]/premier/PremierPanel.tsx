@@ -1,15 +1,13 @@
 // Premier, as the place reads it (MESITA-3204: "just show the level, not
 // interactive, interactive is by upgrading the billing"). MESITA-3606 (Pato:
 // "keep it simple. don't overexplain"): one card of three rows, Level (1X · 2X
-// · 5X, the place's lit), Plan (with Billing) and Upgrade, and one line under
-// it. Premier is advertising; it never verifies the place. The level and every
+// · 5X, the place's lit), Plan and Upgrade, and one line under it. The plan
+// boxes sit under it on the same page since MESITA-3620 (Billing folded in). Premier is advertising; it never verifies the place. The level and every
 // date are the server's (business-web-get-premier).
 
-import Link from "next/link";
 import { ArrowFatUpIcon, CrownIcon, MegaphoneIcon } from "@phosphor-icons/react/dist/ssr";
 import type { PlacePremier } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { billingHref } from "@/lib/routes";
 import { ORIGIN_OF_SOURCE, REFILL_ORIGIN } from "@/lib/premier-origin";
 import { planName } from "@/lib/plans";
 import { cn } from "@/lib/utils";
@@ -26,7 +24,7 @@ function day(iso: string): string {
   return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export function PremierPanel({ placeId, data, loadError }: { placeId: string; data: PlacePremier | null; loadError: string | null }) {
+export function PremierPanel({ data, loadError }: { data: PlacePremier | null; loadError: string | null }) {
   if (!data) {
     return (
       <Card>
@@ -39,7 +37,7 @@ export function PremierPanel({ placeId, data, loadError }: { placeId: string; da
   const upgrade = data.manual && data.manual.tier > 0 ? data.manual : null;
   const origin = upgrade ? REFILL_ORIGIN[ORIGIN_OF_SOURCE[upgrade.source ?? "admin"] ?? "mesita"] : null;
   return (
-    <div className="flex flex-col gap-3 pb-8">
+    <div className="flex flex-col gap-3">
       <Card className="p-0 sm:p-0">
         <ul className="divide-border divide-y">
           <li className={ROW} data-premier="level">
@@ -61,7 +59,7 @@ export function PremierPanel({ placeId, data, loadError }: { placeId: string; da
               ))}
             </div>
           </li>
-          <li className={cn(ROW, "grid-cols-[auto_minmax(0,1fr)_auto_auto]")} data-premier="plan">
+          <li className={ROW} data-premier="plan">
             <span className={cn(MARK, GREY)}>
               <CrownIcon size={22} aria-hidden />
             </span>
@@ -70,12 +68,6 @@ export function PremierPanel({ placeId, data, loadError }: { placeId: string; da
               <p className="text-muted-foreground">Free 1X · Pro 2X · Max 5X</p>
             </div>
             <p className="font-semibold whitespace-nowrap">{planName(data.paid?.tier)}</p>
-            <Link
-              href={billingHref(placeId)}
-              className="border-border hover:bg-muted inline-flex h-9 shrink-0 items-center rounded-full border px-4 text-sm font-semibold"
-            >
-              Billing
-            </Link>
           </li>
           <li className={ROW} data-premier="upgrade">
             <span className={cn(MARK, upgrade ? RED : GREY)}>

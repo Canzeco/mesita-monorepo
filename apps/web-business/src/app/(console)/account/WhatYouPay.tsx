@@ -12,7 +12,7 @@ import { useState } from "react";
 import { MapPin } from "lucide-react";
 import { listBilling, startPremier, stopMyPremier, type MySubscription } from "@/lib/business-api";
 import { Card } from "@/components/shell/Page";
-import { ACCOUNT, billingHref, returnUrl } from "@/lib/routes";
+import { ACCOUNT, premierHref, returnUrl } from "@/lib/routes";
 import { PLAN_NAME } from "@/lib/plans";
 
 
@@ -113,10 +113,10 @@ export function WhatYouPay({
               <div className="flex flex-wrap gap-2">
                 {sub.runs_place ? (
                   <Link
-                    href={billingHref(sub.place_id)}
+                    href={premierHref(sub.place_id)}
                     className="border-border hover:bg-muted inline-flex h-9 items-center rounded-full border px-4 text-sm font-semibold"
                   >
-                    Open Billing
+                    Open Premier
                   </Link>
                 ) : null}
                 <button

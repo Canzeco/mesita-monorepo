@@ -1,7 +1,7 @@
 "use client";
 
 // A guest pays for this place's plan, and the place may stop it (MESITA-3103).
-// It lived on Premier until MESITA-3204 made that page read-only.
+// Back on Premier since MESITA-3620 (Billing folded in).
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
