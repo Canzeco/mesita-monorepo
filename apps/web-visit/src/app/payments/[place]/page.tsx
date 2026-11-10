@@ -5,7 +5,7 @@ import { clockTime, moneyLabel } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { listPayments, type PaymentList } from "@/lib/visit-api";
 
-// /payments/<place> — the staff list of the place's Mesita Pay payments
+// /payments/<place> — the staff list of the place's Mesita Payments
 // (MESITA-3462). Staff type the place code once; the server answers the list
 // and a 12-hour staff token, and every read after carries the token only,
 // never the code. Reads every 15 s while the page is visible and stops while
@@ -99,7 +99,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
             {TEST_BAND_TEXT}
           </p>
         ) : null}
-        <h1>Mesita Pay payments</h1>
+        <h1>Mesita Payments</h1>
         <p className="proof-place">{list.place.name ?? "A Mesita place"} · last 12 hours</p>
         {reconnecting ? (
           <p className="proof-status" role="status">
@@ -108,7 +108,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
         ) : null}
         {list.payments.length === 0 ? (
           <p className="payments-empty" data-payments-empty>
-            No Mesita Pay payments in the last 12 hours
+            No Mesita Payments in the last 12 hours
           </p>
         ) : (
           <ul className={reconnecting ? "payments stale" : "payments"} aria-live="polite">
@@ -137,7 +137,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
 
   return (
     <main className="proof" data-payments-state="form">
-      <h1>Mesita Pay payments</h1>
+      <h1>Mesita Payments</h1>
       <p>Type the place code to see this place&apos;s payments of the last 12 hours.</p>
       <form
         onSubmit={(e) => {

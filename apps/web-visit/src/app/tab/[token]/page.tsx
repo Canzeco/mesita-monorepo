@@ -6,7 +6,7 @@ import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal } from "@/lib/visit-api";
 
 // /tab/<token> — Pay at the table, the waiter's side (MESITA-3565). The
-// guest shows a QR on Mesita Pay; the waiter scans it and lands here. The
+// guest shows a QR in the Mesita app; the waiter scans it and lands here. The
 // QR token is the key to read the tab; sending the bill and Received need
 // staff: the place code once per device, which the server answers with a
 // 12-hour staff token kept in this device's localStorage (never the code).
@@ -301,7 +301,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
       <main className="proof" data-tab-state={tab.status}>
         {band}
         <p className="proof-status warn" role="alert">
-          {tab.status === "expired" ? "This tab expired. Ask the guest to open a new one on Mesita Pay." : "The guest cancelled this tab."}
+          {tab.status === "expired" ? "This tab expired. Ask the guest to open a new one in the Mesita app." : "The guest cancelled this tab."}
         </p>
         {place}
       </main>
