@@ -349,7 +349,7 @@ export default function ChargePage({ params }: { params: Promise<{ place: string
         style={{ alignSelf: "stretch" }}
       >
         <label className="field">
-          Place code
+          Waiter code
           <input
             className="secret"
             inputMode="numeric"

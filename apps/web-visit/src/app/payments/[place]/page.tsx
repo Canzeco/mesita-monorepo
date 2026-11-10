@@ -39,7 +39,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
       if ("kind" in r) {
         if (r.kind === "staff_only") {
           stopped = true;
-          setError("Type the place code again.");
+          setError("Type the waiter code again.");
           setScreen({ kind: "form" });
           return;
         }
@@ -138,7 +138,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
   return (
     <main className="proof" data-payments-state="form">
       <h1>Mesita Payments</h1>
-      <p>Type the place code to see this place&apos;s payments of the last 12 hours.</p>
+      <p>Type the waiter code to see this place&apos;s payments of the last 12 hours.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -147,7 +147,7 @@ export default function PaymentsPage({ params }: { params: Promise<{ place: stri
         style={{ alignSelf: "stretch" }}
       >
         <label className="field">
-          Place code
+          Waiter code
           <input
             className="secret"
             inputMode="numeric"

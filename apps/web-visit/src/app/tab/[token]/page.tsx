@@ -151,7 +151,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
     if (r.code === "staff_only" || r.code === "staff_key" || r.code === "place_code_required") {
       if (placeId) keepStaff(placeId, null, null);
       setStaffBump((n) => n + 1);
-      setError(staffToken ? "Type the place code again." : r.error);
+      setError(staffToken ? "Type the waiter code again." : r.error);
       return;
     }
     if (r.code === "locked" && typeof r.detail.retry_after_s === "number") {
@@ -246,7 +246,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
   const codeField =
     staffToken === null ? (
       <label className="field">
-        Place code
+        Waiter code
         <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
       </label>
     ) : null;
