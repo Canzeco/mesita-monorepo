@@ -272,6 +272,7 @@ describe("T5 — exactly one tab lights per surface", () => {
 
   const MATRIX: [string, string][] = [
     ["/home/places", "Home"],
+    ["/home/classic", "Home"],
     ["/home/social", "Home"],
     ["/search/chat", "Search"],
     ["/place/abc", "Home"],
@@ -506,6 +507,7 @@ describe("T5b — Home's header and Search's header", () => {
     expect(CONSUMER_ROUTES.homeSocial).toBe("/home/social");
     const pages = new Set(allPages().map(pageUrl));
     expect(pages).toContain("/home/places");
+    expect(pages).toContain("/home/classic");
     expect(pages).toContain("/home/social");
     expect(pages).not.toContain("/home");
     expect(pages).not.toContain("/discover");
@@ -519,7 +521,7 @@ describe("T5b — Home's header and Search's header", () => {
       "utf8",
     );
     expect(layout).toContain("<CatalogRails />");
-    for (const tab of ["places", "social"]) {
+    for (const tab of ["places", "classic", "social"]) {
       const page = readFileSync(
         join(SHELL, "(discovery)", "home", tab, "page.tsx"),
         "utf8",

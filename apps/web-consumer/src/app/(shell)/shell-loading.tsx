@@ -33,6 +33,7 @@ import PayReceiptLoading from "./pay/receipt/[paymentId]/loading";
 // is a type error, never a blank card.
 const FRAMES: Record<RouteId, () => ReactNode> = {
   home: () => <HomeLoadingFrame />,
+  homeClassic: () => <HomeLoadingFrame classic />,
   homeSocial: () => <HomeLoadingFrame />,
   search: () => <SearchLoading />,
   searchChat: () => <SearchChatLoading />,

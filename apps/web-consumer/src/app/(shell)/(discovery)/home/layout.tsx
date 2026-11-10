@@ -6,10 +6,10 @@ import { CatalogRails } from "@/components/consumer/home/CatalogRails";
 // layout above, so Search (its own bottom tab) never gets it over its map
 // (MESITA-1616).
 //
-// The tabs are addresses, /home/places and /home/social (MESITA-2597), and
+// The tabs are addresses, /home/places (the grid), /home/classic (the old
+// list, MESITA-3658) and /home/social (MESITA-2597), and
 // CatalogRails is mounted HERE rather than in either page: a layout survives
-// sibling navigation, so switching tabs keeps the chosen family, the pool and
-// the Places scroll. CatalogRails reads the tab from the path; the pages
+// sibling navigation, so switching tabs keeps the chosen family and the pool. CatalogRails reads the tab from the path; the pages
 // render nothing.
 //
 // No deck fetch in this layout. CatalogRails loads its own rows.

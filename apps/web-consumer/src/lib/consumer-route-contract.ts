@@ -31,6 +31,9 @@ export const CONSUMER_ROUTES = {
   // its `discovery_config.swipe` slice retired together. The stored key was
   // dropped by the normalizers, never renamed.
   home: "/home/places",
+  // The list Places was until the grid took its address (MESITA-3658, Pato:
+  // "leave the previous one working"): the family column beside big tiles.
+  homeClassic: "/home/classic",
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
@@ -330,6 +333,7 @@ const row = (
 
 export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
+  homeClassic: row("/home/classic", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
   searchChat: row("/search/chat", "search", "sheet", "search"),
