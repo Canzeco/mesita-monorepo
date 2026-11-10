@@ -37,10 +37,10 @@ export type WalletCardModel = {
 const CARD_BASE =
   "relative z-10 flex w-full flex-col justify-between bg-neutral-950 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
 /** Full size on the method sheet; compact on a Wallet rail, 2.5 across (MESITA-3534). */
-// A rail card is 2:1 since MESITA-3637 (shorter rails on Pay), the sheet's
-// full card stays a payment card.
+// Rail and sheet cards are both payment-card shaped (MESITA-3643; 2:1 on
+// the rails for a day, MESITA-3637).
 const cardClass = (compact: boolean) =>
-  cn(CARD_BASE, compact ? "aspect-[2/1] rounded-xl p-2.5" : "aspect-[1.586/1] rounded-2xl p-5");
+  cn(CARD_BASE, "aspect-[1.586/1]", compact ? "rounded-xl p-2.5" : "rounded-2xl p-5");
 
 export function WalletCard({
   card,
