@@ -19,8 +19,6 @@ const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 export const READ_ONLY_FIELDS = ["category", "category_label", "google_types", "google_source_types"] as const;
 const MAX_TAGS = ENRICH_FIELD_LIMITS.tagsPerPlace.max;
 
-const RESERVATION_CHANNELS = new Set(["phone", "whatsapp", "instagram", "web", "none"]);
-
 export type UpdateBody = {
   id?: string;
   /** The Mesita name (MESITA-2828). Blank ⇒ the place follows Google's label. */
@@ -53,8 +51,9 @@ export type UpdateBody = {
   menu_pdf_name?: string | null;
   // Generic products payload. Menu is one subtype under products.menu.
   products?: { menu?: unknown[] | null } | null;
-  /** Profile's Actions toggle, sent with the operator's reservation channel. */
+  /** Business › Reservations' On/Off switch: the switch alone (MESITA-3622). */
   reservations_enabled?: boolean;
+  /** Ignored since MESITA-3622; older business builds still send it. */
   reservation_channel?: string;
   /** Business › Reservations' Reservations phone (MESITA-3601): the number
    *  the Reservationist dials; null = Google's (place_profiles.phone). */
@@ -172,27 +171,20 @@ export function buildPlaceUpdate(
     if (!read.ok) return fail(json(read.body, read.status));
     familyKeys = read.keys;
   }
-  // Profile's Actions toggle (MESITA-2787). The answer is stored as the
-  // operator's reservation channel, the one column a later Enrich cannot
-  // overwrite (place_reservations_follow_channel, MESITA-1737). The console
-  // sends the channel with the flip: off is 'none'; on keeps the channel it
-  // already shows, else 'phone', how the Reservationist books.
+  // Business › Reservations' switch (MESITA-2787; the switch alone since
+  // MESITA-3622). Reservations are received by phone, so the channel no
+  // longer rides the flip and no trigger rewrites the switch from it; an
+  // older build's reservation_channel is ignored.
   if ("reservations_enabled" in body) {
-    const channel = body.reservation_channel;
-    if (
-      typeof body.reservations_enabled !== "boolean" ||
-      typeof channel !== "string" || !RESERVATION_CHANNELS.has(channel) ||
-      (channel === "none") === body.reservations_enabled
-    ) {
-      return fail(json({ ok: false, error: "reservations_enabled needs a matching reservation_channel" }, 400));
+    if (typeof body.reservations_enabled !== "boolean") {
+      return fail(json({ ok: false, error: "reservations_enabled must be a boolean" }, 400));
     }
     update.reservations_enabled = body.reservations_enabled;
-    update.reservation_channel = channel;
   }
   // Business › Reservations' Reservations phone (MESITA-3601, Pato: "You can
   // add another phone number for Reservations, not necessarily the one in
-  // Google"). The Reservationist dials reservation_target when the channel is
-  // phone, else place_profiles.phone (Google's), so null hands it back to
+  // Google"). The Reservationist dials reservation_target, else
+  // place_profiles.phone (Google's), so null hands it back to
   // Google's number. Enrich never writes it. Ten bare digits are Mexican.
   if ("reservation_target" in body) {
     const target = reservationPhone(body.reservation_target);

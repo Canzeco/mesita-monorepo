@@ -73,7 +73,7 @@ Deno.test("one bad field refuses the whole save", async () => {
     "phone_needs_country_code",
   );
   assertEquals(
-    (await refused({ id: "p1", reservations_enabled: true, reservation_channel: "none" })).status,
+    (await refused({ id: "p1", reservations_enabled: "yes" } as unknown as UpdateBody)).status,
     400,
   );
   assertEquals((await refused({ id: "p1", reset_fields: ["hours"] })).status, 400);

@@ -30,6 +30,7 @@ import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
 import { phoneDigits } from "../_shared/phone.ts";
 import {
+  accentTolerantPattern,
   placeNames,
   speakable,
   type SpeakableTicket,
@@ -74,19 +75,20 @@ async function searchReservations(
   } else {
     // 1 · The name typed on the reservation (MESITA-3607) — what a place
     // hears: "la reservación a nombre de Ana López".
-    const t0 = terms[0];
+    // Accent-blind at the database (MESITA-3622): "Lopez" finds "López".
+    const t0 = accentTolerantPattern(terms[0]);
     const query = terms.join(" ");
     const { data: typed } = await admin
       .from("reservation_tickets")
       .select(SELECT)
-      .or(`guest_first_name.ilike.%${t0}%,guest_last_name.ilike.%${t0}%`)
+      .or(`guest_first_name.ilike.${t0},guest_last_name.ilike.${t0}`)
       .order("created_at", { ascending: false })
       .limit(25);
     // 2 · Older reservations carry no typed name: fall back to the profile.
     const { data: guests } = await admin
       .from("consumers")
       .select("id")
-      .or(`full_name.ilike.%${t0}%,first_name.ilike.%${t0}%,last_name.ilike.%${t0}%`)
+      .or(`full_name.ilike.${t0},first_name.ilike.${t0},last_name.ilike.${t0}`)
       .limit(25);
     const ids = ((guests ?? []) as { id: string }[]).map((g) => g.id);
     const { data: byProfile } = ids.length

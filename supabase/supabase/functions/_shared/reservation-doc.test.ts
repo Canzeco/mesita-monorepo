@@ -246,6 +246,8 @@ Deno.test("validateReservationPatch: rejects party_size <= 0 and non-integers", 
   assert(!validateReservationPatch({ party_size: 0 }).ok, "zero fails the DB CHECK");
   assert(!validateReservationPatch({ party_size: -2 }).ok);
   assert(!validateReservationPatch({ party_size: 2.5 }).ok);
+  assert(validateReservationPatch({ party_size: 10 }).ok, "10 is the CHECK's top (MESITA-3622)");
+  assert(!validateReservationPatch({ party_size: 11 }).ok, "11 fails the DB CHECK (MESITA-3622)");
 });
 
 Deno.test("validateReservationPatch: rejects consumer_notify outside {call, app}", () => {

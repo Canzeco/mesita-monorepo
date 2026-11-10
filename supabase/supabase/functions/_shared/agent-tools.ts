@@ -141,6 +141,18 @@ function nameKey(s: string): string {
 }
 
 /**
+ * An ilike pattern that ignores accents (MESITA-3622): every vowel and n
+ * becomes the one-character wildcard `_`, so "Lopez" finds "López" and
+ * "Nunez" finds "Núñez" in the database. Wider than the truth on purpose;
+ * ticketMatchesGuestName narrows the rows in code. PostgREST's .or() syntax
+ * characters and wildcards are stripped first.
+ */
+export function accentTolerantPattern(term: string): string {
+  const key = nameKey(term.replace(/[,()%*_\\]/g, ""));
+  return key ? `%${key.replace(/[aeioun]/g, "_")}%` : "";
+}
+
+/**
  * True when every word of the spoken query appears in the name the
  * reservation is under (typed on Reserve, else the profile name) — "ana
  * lopez" matches "Ana María López", "lopez" alone matches too.
@@ -252,6 +264,15 @@ export async function ticketByCode(
     .eq("reference_code", digits)
     .maybeSingle();
   return asTicket((data ?? null) as Record<string, unknown> | null);
+}
+
+/**
+ * A place's own ticket, or null (MESITA-3622): a4 looks a dictated code up
+ * only within the verified caller's place, so another place's code reads as
+ * not found.
+ */
+export function ownTicket<T extends { place_id: string }>(ticket: T | null, placeId: string): T | null {
+  return ticket && ticket.place_id === placeId ? ticket : null;
 }
 
 /** A verified consumer's newest tickets (is_test included — agent surface). */

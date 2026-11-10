@@ -41,6 +41,11 @@ import {
   resolveRequestedSlot,
 } from "../_shared/reservation-confirm.ts";
 
+import {
+  RESERVATIONS_OFF_CODE,
+  readReservable,
+} from "../_shared/place-reservable.ts";
+
 const MAX_NEGOTIATION_ROUNDS = 2;
 
 serveJson("eleven-a2-confirm-reservation", async (req) => {
@@ -137,6 +142,22 @@ serveJson("eleven-a2-confirm-reservation", async (req) => {
       say:
         "Listo, esa opción ya la tenía apartada el restaurante: su mesa queda confirmada. No hace falta otra llamada.",
     });
+  }
+
+  // ── A new slot rings the place again: it must still take reservations ────
+  // (MESITA-3622) the switch on AND a number to call. Otherwise nothing
+  // moves: the reservation stays as it was.
+  const reservable = await readReservable(admin, ticket.place_id);
+  if (reservable.error) return json({ ok: false, error: reservable.error }, 500);
+  if (!reservable.reservable) {
+    return json({
+      ok: false,
+      code: RESERVATIONS_OFF_CODE,
+      changed: false,
+      reference_code: ticket.reference_code,
+      say:
+        "Por ahora el restaurante no está recibiendo reservaciones por Mesita, así que no puedo pedirle ese cambio. Su reservación queda como estaba.",
+    }, 409);
   }
 
   const rounds = ticket.negotiation_rounds ?? 0;

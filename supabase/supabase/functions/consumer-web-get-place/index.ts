@@ -24,6 +24,7 @@ import {
 import { isUuid } from "../_shared/place-id.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { paymentsLivemode } from "../_shared/stripe.ts";
+import { readReservable } from "../_shared/place-reservable.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -83,7 +84,7 @@ serveJson("consumer-web-get-place", async (req) => {
   // family_keys (MESITA-679): stored Families, else Atlas / Google.
   const row = withFamilyKeys(data as unknown as Record<string, unknown>);
 
-  const [tags, profileStats, requested, money] = await Promise.all([
+  const [tags, profileStats, requested, money, reservable] = await Promise.all([
     // The place's tag slugs (places.tags) as ordered, labelled catalog
     // entries, so the detail renders chips without a second round-trip or a
     // client-side tag dictionary. Unknown slugs are dropped. Clients display
@@ -110,6 +111,10 @@ serveJson("consumer-web-get-place", async (req) => {
       user?.id ?? null,
       paymentsLivemode(),
     ),
+    // Reserve (MESITA-3622): the switch on AND a number to call. The
+    // Reservations phone stays out of the public payload; only the answer
+    // rides it. A failed read leaves the tile to the client's own rule.
+    readReservable(admin, placeId).then((r) => (r.error ? null : r.reservable)),
   ]);
   const request = placeRequestState({
     requestCount: Number(row.request_count) || 0,
@@ -126,6 +131,7 @@ serveJson("consumer-web-get-place", async (req) => {
     // Overview's Mesita Families box (MESITA-2924): the keys, named.
     families: familyChips(row.family_keys),
     money,
+    reservable,
   };
 
   return json({ ok: true, place, tags });

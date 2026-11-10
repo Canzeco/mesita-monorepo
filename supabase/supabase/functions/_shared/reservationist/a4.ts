@@ -8,6 +8,8 @@
 // number Mesita calls is done in Business › Reservations (MESITA-3615).
 // decision: lookups go by the name typed on the reservation; the profile name
 // only for older reservations without one (MESITA-3615).
+// decision: a dictated code is looked up by a4_find_reservation within the
+// verified place, never by the global get_reservation (MESITA-3622).
 
 import { CLOSING } from "./closing.ts";
 import { back, edge, END, type FleetAgent, llm, pos, RESULT_FAIL, RESULT_OK, START, talkNode, toolNode, UNCOND } from "./graph.ts";
@@ -22,11 +24,11 @@ export const A4: FleetAgent = {
   name: "eleven-a4 (es-mx) · business inbound",
   firstMessage: "¡Hola! Le atiende Mesita, línea para restaurantes. ¿En qué le puedo ayudar?",
   prompt: PROMPT,
-  toolNames: ["a4_verify_caller", "a4_find_reservation", "a4_cancel_reservation", "get_reservation"],
+  toolNames: ["a4_verify_caller", "a4_find_reservation", "a4_cancel_reservation"],
   roleLines: [
     `## Tu papel: contestas a los restaurantes`,
     `- Verificas el lugar por el número desde el que llama; no le pides datos.`,
-    `- Les lees sus reservaciones próximas y buscas una por el nombre al que está («la reservación a nombre de Ana López»).`,
+    `- Les lees sus reservaciones próximas y buscas una por el nombre al que está («la reservación a nombre de Ana López») o por el código de 8 dígitos si lo dictan; solo encuentras reservaciones de su lugar.`,
     `- Cancelas una reservación de su lugar si ya no pueden recibirla; Mesita le avisa al comensal. El lugar no tiene que decir ningún código.`,
     `- Para dejar de recibir reservaciones o cambiar el número al que llama Mesita: Business › Reservations, en la app de Mesita para negocios.`,
     `- Nunca das el teléfono de un comensal.`,
@@ -40,8 +42,8 @@ export const A4: FleetAgent = {
         label: "Triage place",
         position: pos(580, -160),
         prompt:
-          "El lugar está verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Ramas: repasar sus reservaciones próximas · buscar una por el nombre al que está · un código de 8 dígitos que dicten · otros cambios.",
-        edgeOrder: ["e_triage_upcoming", "e_triage_find", "e_triage_code", "e_triage_redirect"],
+          "El lugar está verificado. Saluda mencionando el nombre del lugar y pregunta en qué ayudas. Ramas: repasar sus reservaciones próximas · buscar una por el nombre al que está o por el código de 8 dígitos que dicten · otros cambios.",
+        edgeOrder: ["e_triage_upcoming", "e_triage_find", "e_triage_redirect"],
       }),
       upcoming: talkNode({
         label: "Read upcoming",
@@ -51,7 +53,6 @@ export const A4: FleetAgent = {
         edgeOrder: ["e_upcoming_cancel", "e_upcoming_end"],
       }),
       find: toolNode(tool("a4_find_reservation"), pos(920, -160), ["e_find_found"]),
-      code_lookup: toolNode(tool("get_reservation"), pos(920, 40), ["e_code_found"]),
       found: talkNode({
         label: "Present matches",
         position: pos(1240, -160),
@@ -100,8 +101,12 @@ export const A4: FleetAgent = {
         llm("Quieren repasar las reservaciones próximas de su lugar.", "upcoming"),
         back("otra gestión"),
       ),
-      e_triage_find: edge("triage", "find", llm("Buscan una reservación por el nombre al que está.", "find"), RESULT_FAIL),
-      e_triage_code: edge("triage", "code_lookup", llm("Dictan un código de Mesita de 8 dígitos.", "has code"), RESULT_FAIL),
+      e_triage_find: edge(
+        "triage",
+        "find",
+        llm("Buscan una reservación por el nombre al que está o dictan su código de Mesita de 8 dígitos.", "find"),
+        RESULT_FAIL,
+      ),
       e_triage_redirect: edge(
         "triage",
         "redirect",
@@ -113,7 +118,6 @@ export const A4: FleetAgent = {
       e_upcoming_cancel: edge("upcoming", "confirm_cancel", llm("Quieren cancelar una de esas reservaciones.", "cancel")),
       e_upcoming_end: edge("upcoming", "end_node", llm("Resuelto y despedido.", "done")),
       e_find_found: edge("find", "found", RESULT_OK, back("buscar otro nombre")),
-      e_code_found: edge("code_lookup", "found", RESULT_OK),
       e_found_cancel: edge(
         "found",
         "confirm_cancel",

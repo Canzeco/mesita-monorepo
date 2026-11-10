@@ -42,7 +42,7 @@ import { isPlaceProfileReady } from "../_shared/place-state.ts";
 import {
   RESERVATIONS_OFF_CODE,
   RESERVATIONS_OFF_MESSAGE,
-  takesReservations,
+  readReservable,
 } from "../_shared/place-reservable.ts";
 import {
   monthlyReservationCap,
@@ -188,16 +188,13 @@ serveJson("consumer-web-create-reservation", async (req) => {
     }, 409);
   }
 
-  // ── The place must take reservations (MESITA-2156) ──────────────────────
-  // Every client hides Reserve when reservations_enabled is false, but a
-  // stale tab or a direct call would still ring a walk-in place.
-  const { data: profileRow, error: profileErr } = await admin
-    .from("place_profiles")
-    .select("reservations_enabled")
-    .eq("id", body.project_id)
-    .maybeSingle();
-  if (profileErr) return json({ ok: false, error: profileErr.message }, 500);
-  if (!takesReservations(profileRow as { reservations_enabled?: boolean | null } | null)) {
+  // ── The place must take reservations (MESITA-2156, MESITA-3622) ────────
+  // The switch on AND a number to call. Every client shows Reserve Off
+  // otherwise, but a stale tab or a direct call would still make a ticket
+  // nobody can ring.
+  const reservable = await readReservable(admin, body.project_id);
+  if (reservable.error) return json({ ok: false, error: reservable.error }, 500);
+  if (!reservable.reservable) {
     return json({
       ok: false,
       code: RESERVATIONS_OFF_CODE,
