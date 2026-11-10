@@ -15,13 +15,14 @@ import {
   getBilling,
   getPlacePayments,
   getTeam,
+  listVerifications,
   type PlaceBilling,
   type PlacePayments,
   type TeamMember,
 } from "@/lib/business-api";
 import { FREE_PLAN, planName } from "@/lib/plans";
 import { StateRow } from "./StateCard";
-import { moneyPlaceStates, type StripeState } from "./place-states";
+import { moneyPlaceStates, ownedChip, ownedState, type StripeState } from "./place-states";
 
 type Read<T> = T | null | undefined; // undefined = reading, null = failed
 
@@ -37,6 +38,8 @@ const STRIPE_DETAIL: Record<StripeState, string> = {
 
 export function PlaceStatesCard({ place }: { place: AdminPlace }) {
   const [owner, setOwner] = useState<Read<TeamMember | false>>(undefined);
+  // Claim pending (Main §10): a claim request Mesita has not decided yet.
+  const [claims, setClaims] = useState<Read<number>>(undefined);
   const [billing, setBilling] = useState<Read<PlaceBilling>>(undefined);
   const [payments, setPayments] = useState<Read<PlacePayments>>(undefined);
 
@@ -44,6 +47,9 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
     let alive = true;
     getTeam(place.id).then((r) => {
       if (alive) setOwner(r.ok ? (r.data.members.find((m) => m.role === "owner" && m.live) ?? false) : null);
+    });
+    listVerifications(place.id).then((r) => {
+      if (alive) setClaims(r.ok ? r.data.pending.length : null);
     });
     getBilling(place.id).then((r) => {
       if (alive) setBilling(r.ok ? r.data : null);
@@ -58,16 +64,27 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
 
   const chipOf = <T,>(v: Read<T>, chip: string) => (v === undefined ? "…" : v === null ? "?" : chip);
 
-  // Owned (MESITA-3158): a live owner seat — claimed, verified, unexpired.
-  const ownedChip = chipOf(owner, owner ? "Owned" : "Unclaimed");
+  // Owned (Main §10): Owned · Claim pending · Unclaimed. An owner seat
+  // (MESITA-3158) wins over a pending claim, so the claims read only
+  // matters while there is no owner.
+  const ownedRead: Read<true> = owner
+    ? true
+    : owner === null || claims === null
+      ? null
+      : owner === undefined || claims === undefined
+        ? undefined
+        : true;
+  const owned = ownedChip(ownedState(Boolean(owner), (claims ?? 0) > 0));
   const ownedDetail =
-    owner === undefined
+    ownedRead === undefined
       ? "Reading who runs this place…"
-      : owner === null
+      : ownedRead === null
         ? "Couldn't read who runs this place."
         : owner
           ? `Claimed and verified: ${owner.name ?? owner.email ?? "an owner"} owns it.`
-          : "Nobody has claimed and verified this place.";
+          : owned.chip === "Claim pending"
+            ? "Someone asked to claim this place; Mesita hasn't decided yet."
+            : "Nobody has claimed and verified this place.";
 
   // Plan (MESITA-3174): Free · Pro · Max, the subscription the place pays.
   const plan = billing ? (billing.subscription ? planName(billing.subscription.tier) : FREE_PLAN) : FREE_PLAN;
@@ -87,7 +104,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
   return (
     <SectionCard icon={<StorefrontIcon size={20} />} title="Place States">
       <div className="mt-5 flex flex-col">
-        <StateRow name="Owned" on={owner ? true : false} chip={ownedChip} detail={ownedDetail} />
+        <StateRow name="Owned" on={owned.on} chip={chipOf(ownedRead, owned.chip)} detail={ownedDetail} />
         <StateRow
           name="Plan"
           on={plan !== FREE_PLAN}

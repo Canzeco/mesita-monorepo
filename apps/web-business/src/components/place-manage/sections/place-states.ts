@@ -8,7 +8,10 @@
 
 export {
   moneyPlaceStates,
+  ownedChip,
+  ownedState,
   stripeState,
+  type OwnedState,
   type MoneyPlaceStates,
   type PlaceStatesInput,
   type PlaceStateValue,
