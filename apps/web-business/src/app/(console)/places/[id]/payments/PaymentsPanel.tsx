@@ -392,7 +392,7 @@ export function PaymentsPanel({
           })}
           {rateRow({
             key: "cash_cashback_bps",
-            name: "Cash Payments Cashback",
+            name: "Cash Payments Cashback-as-Credits",
             line: "Back as credit here on the bill, once your waiter taps Received. Never on the tip.",
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? "Turn Cash Payments on first." : undefined,
           })}
@@ -431,7 +431,7 @@ export function PaymentsPanel({
           })}
           {rateRow({
             key: "card_cashback_bps",
-            name: "Mesita Payments Cashback",
+            name: "Mesita Payments Cashback-as-Credits",
             line: "Back as credit here on the card part of the bill. Never on the tip or the credit part.",
             blocked: !settings.house_credits ? needsHouseCredits : undefined,
             note: settings.card_cashback_bps !== null && !state.cashback && settings.house_credits ? "Starts once Mesita Pay takes cards." : null,

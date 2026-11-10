@@ -148,7 +148,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Staff confirm a bill paid in cash or on the place's own terminal. Needs the switch and the waiter's code."
         />
         <StateRow
-          name="Cash Payments Cashback"
+          name="Cash Payments Cashback-as-Credits"
           on={m.cashPaymentsCashback.on}
           chip={money(m.cashPaymentsCashback.chip)}
           detail="Back as House Credits on the cash bill the waiter marks Received. Needs House Credits and Cash Payments."
@@ -160,7 +160,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Guests pay the bill by card in the app. Needs Stripe taking cards and no unpaid Mesita invoice."
         />
         <StateRow
-          name="Mesita Payments Cashback"
+          name="Mesita Payments Cashback-as-Credits"
           on={m.mesitaPaymentsCashback.on}
           chip={money(m.mesitaPaymentsCashback.chip)}
           detail="Back as House Credits on the card part of a bill. Needs House Credits and Mesita Payments."
