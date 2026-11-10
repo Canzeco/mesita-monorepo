@@ -31,6 +31,9 @@ export type MesitaRowState = {
 /** The Prepay Off sheet while Mesita pauses voucher sales. */
 export const PREPAY_PAUSED = "Prepay is paused for a moment. Try again soon.";
 
+/** The Wallet Off sheet where the place has House Credits Off (MESITA-3610). */
+export const WALLET_NO_HOUSE_CREDITS = "This place doesn't use House Credits.";
+
 const OFF: MesitaTileState = { works: false, pill: "Off" };
 const LOADING: MesitaTileState = { works: false, pill: MESITA_ROW_LOADING };
 
@@ -68,7 +71,12 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
   const available = Math.max(money.balance?.available_cents ?? 0, 0);
   // Wallet is green once the House Card is in the guest's Wallet, $0MX
   // included; Off means the card is not there (Pato, MESITA-3608).
-  const wallet: MesitaTileState = available > 0 || inWallet ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") } : OFF;
+  // House Credits Off: no card can be added (MESITA-3610); credit a guest
+  // already holds still shows.
+  const houseCredits = money.house_credits !== false;
+  const wallet: MesitaTileState = available > 0 || (inWallet && houseCredits)
+    ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") }
+    : houseCredits ? OFF : { ...OFF, note: WALLET_NO_HOUSE_CREDITS };
   // The place's own rates (MESITA-3589); an older read without them says On.
   const cardBps = money.card_cashback_bps ?? 0;
   const cashBps = money.cash_cashback_bps ?? 0;
