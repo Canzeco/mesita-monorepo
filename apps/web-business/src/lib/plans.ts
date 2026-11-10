@@ -21,7 +21,7 @@ export const PLAN_VISIBILITY: Record<BoostTier, string> = {
   boost_5x: "5X",
 };
 
-// ── The Premier status line (MESITA-3632) ──────────────────────────────────
+// ── The Premier status line (MESITA-3632; under the level in the one table, MESITA-3638) ──────────────────────────────────
 // One sentence under the level: what sets it today, and at most one "then".
 // "renews" vs "ends" and "then Pro" vs "then Free" are statements about a
 // paid plan, so every case is pinned in plans.test.ts. Words come only from
