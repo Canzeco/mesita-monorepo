@@ -42,7 +42,7 @@ type Body = {
   notes?: string;
 };
 
-const MAX_PARTY = 20;
+const MAX_PARTY = 10; // Pato, MESITA-3613: "max party size must be 10"
 
 serveJson("consumer-web-update-reservation", async (req) => {
   if (req.method === "OPTIONS") return corsPreflight();
