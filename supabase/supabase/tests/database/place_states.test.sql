@@ -16,6 +16,10 @@ insert into public.consumers (id) values ('00000000-0000-4000-8000-0000000a3589'
 insert into public.place_profiles (id, google_name) values ('00000000-0000-4000-8000-000000013589', 'Place States Probe');
 insert into public.places (id, slug, state, content_state, currency) values
   ('00000000-0000-4000-8000-000000013589', 'mesita-3589-probe', 'active', 'generating', 'MXN');
+-- A Stripe account that takes cards: the vouchers and the card rate need it
+-- (MESITA-3599, stripe_gate.test.sql), so the guards below are the ones tested.
+insert into public.place_payment_accounts (place_id, stripe_account_id, livemode, charges_enabled)
+values ('00000000-0000-4000-8000-000000013589', 'acct_test_3589', false, true);
 
 -- ━━━ Access ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
