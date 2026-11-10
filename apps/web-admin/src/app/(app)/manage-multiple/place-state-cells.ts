@@ -4,8 +4,8 @@
 //   Profile  Created · Pulsing · Enriching · Enriched · Premier · Disabled
 //   Place    Owned · Plan · Billing · Stripe · Reservations · House Credits
 //            Contract · House Credits · Cash Payments · Cash Payments
-//            Cashback · Mesita Payments · Mesita Payments Cashback · Mesita
-//            Prepayments
+//            Cashback-as-Credits · Mesita Payments · Mesita Payments
+//            Cashback-as-Credits · Mesita Prepayments
 //
 // The Place chips come from @mesita/place-profile's place-states.ts, the
 // calculation Business › Admin's Place States card reads, over the raw facts

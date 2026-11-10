@@ -7,9 +7,9 @@
 //                 Premier · Disabled.
 //   PLACE STATES (12)  What the business decides (Main §10): Owned · Plan ·
 //                 Billing · Stripe · Reservations · House Credits Contract ·
-//                 House Credits · Cash Payments · Cash Payments Cashback ·
-//                 Mesita Payments · Mesita Payments Cashback · Mesita
-//                 Prepayments. Words and calculation are
+//                 House Credits · Cash Payments · Cash Payments
+//                 Cashback-as-Credits · Mesita Payments · Mesita Payments
+//                 Cashback-as-Credits · Mesita Prepayments. Words and calculation are
 //                 @mesita/place-profile's place-states.ts, shared with
 //                 Business › Admin (MESITA-3595).
 //   PROFILE STATS (2)  their own box (MESITA-2735): Viewed · Saved — unique
