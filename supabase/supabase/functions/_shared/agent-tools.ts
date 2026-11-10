@@ -26,35 +26,11 @@ import { esDate, esTime } from "./es-speak.ts";
 import { writeReservation } from "./reservation-doc.ts";
 import { fromPlaceIdRow } from "./place-id.ts";
 import { REMINDER_CLEAR } from "./reservation-reminder.ts";
-import { timingSafeEqual } from "./timing-safe-equal.ts";
 import { guestName, ticketGuestName } from "./reservation-guest-name.ts";
 
 // The guest display name lives in a leaf (the engine needs it without this
 // module); re-exported for the a1..a4 tools.
 export { guestName };
-
-// ── Auth ─────────────────────────────────────────────────────────────────────
-
-/** Returns an error Response to send, or null when the secret checks out. */
-export async function requireAgentSecret(
-  req: Request,
-  admin: SupabaseClient,
-): Promise<Response | null> {
-  const sent = (req.headers.get("x-agent-secret") ?? "").trim();
-  const { data: settings } = await admin
-    .from("app_config")
-    .select("agents_config")
-    .eq("id", 1)
-    .maybeSingle();
-  const expected =
-    ((settings?.agents_config as Record<string, unknown> | null)?.toolSecret as
-      | string
-      | undefined)?.trim() ?? "";
-  if (!expected || !sent || !timingSafeEqual(sent, expected)) {
-    return json({ ok: false, error: "agent tool secret rejected" }, 401);
-  }
-  return null;
-}
 
 /**
  * Stale-run guard (eng-review 2026-08-04): run_id rides every outbound call

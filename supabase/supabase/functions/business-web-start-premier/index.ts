@@ -14,7 +14,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
+import { ensureConsumer } from "../_shared/business-request.ts";
 import { parseBoostStart } from "../_shared/boost.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { startPremier } from "../_shared/premier-flow.ts";

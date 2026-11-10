@@ -15,7 +15,7 @@ const FUNCTIONS_DIR = new URL("../", import.meta.url);
 const CONFIG_TOML = new URL("../../config.toml", import.meta.url);
 const INTERNAL_TS = new URL("./internal.ts", import.meta.url);
 
-const GATE = /\brequireInternalCaller\(/;
+const GATE = /\brequire(?:InternalCaller|InternalRequest)\(/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
 async function codeOf(dir: URL): Promise<string> {

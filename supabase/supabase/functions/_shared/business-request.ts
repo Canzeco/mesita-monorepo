@@ -1,55 +1,11 @@
-// The opening every business-web-* EF shares (MESITA-3103), in this order:
-// CORS preflight, POST, env (500), bearer session (401), service-role client.
-// Who may touch which place is `place-access.ts`, asked per place after this.
-//
-// GOOGLE ACCOUNTS ONLY (Pato, 2026-11-02, MESITA-3105): the Business app
-// signs in with Google; a phone session gets 403 `google_only` here, so a
-// guest's consumer-app cookie can never open the Business app.
-//
-//   const ctx = await requireBusinessRequest(req);
-//   if (ctx instanceof Response) return ctx;
-//   const { env, admin, user } = ctx;
+// The Business app's account step (MESITA-3103): the caller's consumers row,
+// made on first sign-in. The door itself is requireBusinessRequest in
+// request.ts.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, rejectUnlessMethods } from "./http.ts";
-import { adminClient, type AuthedUser, type EFEnv, getAuthedUser, readEFEnv } from "./auth.ts";
-import { checkSuperAdmin } from "./auth-super-admin.ts";
+import type { AuthedUser } from "./auth.ts";
 import { writeConsumer } from "./consumer-doc.ts";
 import { isDeletedConsumer } from "./delete-history-free.ts";
-
-export type BusinessRequest = { env: EFEnv; admin: SupabaseClient; user: AuthedUser };
-
-/** A Google sign-in with an email: the only identity the Business app takes. Pure. */
-export function isGoogleAccount(user: Pick<AuthedUser, "emailLower" | "raw">): boolean {
-  if (!user.emailLower) return false;
-  const meta = (user.raw?.app_metadata ?? {}) as { provider?: unknown; providers?: unknown };
-  const providers = Array.isArray(meta.providers) ? meta.providers : [];
-  return meta.provider === "google" || providers.includes("google");
-}
-
-export async function requireBusinessRequest(req: Request): Promise<BusinessRequest | Response> {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  if (!isGoogleAccount(authRes.user)) {
-    return json({ ok: false, code: "google_only", error: "Mesita Business signs in with a Google account" }, 403);
-  }
-  return { env: envRes.env, admin: adminClient(envRes.env), user: authRes.user };
-}
-
-/** A super-admin-only business door: the context, or 403. */
-export async function requireBusinessSuperAdmin(req: Request): Promise<BusinessRequest | Response> {
-  const ctx = await requireBusinessRequest(req);
-  if (ctx instanceof Response) return ctx;
-  if (!(await checkSuperAdmin(ctx.admin, ctx.user))) {
-    return json({ ok: false, error: "Not a super-admin" }, 403);
-  }
-  return ctx;
-}
 
 /** The caller's consumers row, created on first sign-in (an owner is a guest
  *  account: Premier's payer FK and place_managers point at consumers). A

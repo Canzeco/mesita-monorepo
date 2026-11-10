@@ -17,13 +17,13 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
 import { paymentsLivemode } from "../_shared/boost.ts";
 import { type StripeState } from "../_shared/payments.ts";
 import { type PlaceStatesFacts, readPlaceStatesFacts } from "../_shared/place-states-read.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,
@@ -60,7 +60,7 @@ const ALL_MAX_ROWS = 2000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serveJson("admin-web-search-places", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

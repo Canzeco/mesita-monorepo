@@ -3,8 +3,8 @@
 // requireAdminRequest (super_admins); the EF name is the caller.
 
 import { json, readJson } from "./http.ts";
-import { requireAdminRequest } from "./auth.ts";
 import { parseReportListBody } from "./place-reports.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 const ROW_CAP = 500;
 // `.in()` travels in the GET query string; 500 uuids is ~18 KB, so look up
@@ -32,7 +32,7 @@ function chunks<T>(items: T[]): T[][] {
 }
 
 export async function handleListPlaceReports(req: Request, source: string): Promise<Response> {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

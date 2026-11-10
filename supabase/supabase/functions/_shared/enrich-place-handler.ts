@@ -6,9 +6,9 @@ import {
   json,
   readJson,
   readPlaceIdAlias } from "./http.ts";
-import { requireAdminRequest } from "./auth.ts";
 import { startEnrichment } from "./enrich-start.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 type Body = {
   projectId?: string;
@@ -19,7 +19,7 @@ type Body = {
 };
 
 export async function handleEnrichPlace(req: Request, source: string): Promise<Response> {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can re-enrich places.");
+  const ctx = await requireAdminRequest(req, "Only admins can re-enrich places.");
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

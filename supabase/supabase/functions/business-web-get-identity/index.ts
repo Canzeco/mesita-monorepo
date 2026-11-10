@@ -16,8 +16,9 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { checkSuperAdmin } from "../_shared/auth-super-admin.ts";
-import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
+import { ensureConsumer } from "../_shared/business-request.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 
 type PlaceState = "owner" | "expired" | "pending" | "rejected";

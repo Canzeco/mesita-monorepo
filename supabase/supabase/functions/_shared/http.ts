@@ -57,6 +57,21 @@ export function serveJson(fnName: string, handler: EFHandler): void {
   );
 }
 
+/** The 500 for a caught failure: logs `[fnName] {request_id, ...fields, error}`
+ *  and answers `{ ok:false, error: userError, request_id }`, so the guest's
+ *  screen and the log line share one id. Pass `requestId` when the handler
+ *  minted it earlier (to log it on other lines). */
+export function failWithRequestId(
+  fnName: string,
+  userError: string,
+  err: unknown,
+  fields: Record<string, unknown> = {},
+  requestId: string = crypto.randomUUID(),
+): Response {
+  console.error(`[${fnName}]`, JSON.stringify({ request_id: requestId, ...fields, error: errorMessage(err) }));
+  return json({ ok: false, error: userError, request_id: requestId }, 500);
+}
+
 // Use as the first line of every serveJson handler:
 //   if (req.method === "OPTIONS") return corsPreflight();
 export function corsPreflight(): Response {

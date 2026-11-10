@@ -22,7 +22,7 @@ import {
   readPlaceIdAlias,
   serveJson,
 } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import {
   reviewSourcePatch,
@@ -56,7 +56,7 @@ type PlaceRow = {
 };
 
 serveJson("business-web-reload-place-reviews", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can reload reviews.");
+  const ctx = await requireAdminRequest(req, "Only admins can reload reviews.");
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

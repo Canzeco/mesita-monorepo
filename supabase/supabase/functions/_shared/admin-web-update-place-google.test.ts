@@ -15,7 +15,7 @@ const DOORS = {
 };
 
 Deno.test("the Google update body is super-admin only", () => {
-  assertEquals(HANDLER.includes('requireAdminRequest(req, "POST"'), true);
+  assertEquals(HANDLER.includes("requireAdminRequest(req"), true);
 });
 
 Deno.test("the Google update body delegates to the shared Google update", () => {

@@ -8,7 +8,7 @@
 // (GET /rest/v1/super_admins) answer from here.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { type AdminRequest, requireAdminRequest } from "./auth.ts";
+import { isGoogleAccount, requireAdminRequest, type UserRequest } from "./request.ts";
 
 const ENV = {
   SUPABASE_URL: "https://stub.supabase.co",
@@ -77,7 +77,7 @@ function post(headers: Record<string, string> = { Authorization: "Bearer jwt" },
   return new Request("https://ef.test/admin-web-x", { method, headers });
 }
 
-async function expectReply(res: AdminRequest | Response, status: number, body: string | null) {
+async function expectReply(res: UserRequest | Response, status: number, body: string | null) {
   assert(res instanceof Response, "expected a Response");
   assertEquals(res.status, status);
   assertEquals(res.headers.get("Access-Control-Allow-Origin"), "*");
@@ -86,7 +86,7 @@ async function expectReply(res: AdminRequest | Response, status: number, body: s
 
 Deno.test("OPTIONS is the bare CORS preflight, before anything else", async () => {
   await withStubs({}, {}, async (calls) => {
-    await expectReply(await requireAdminRequest(post({}, "OPTIONS"), "POST"), 200, null);
+    await expectReply(await requireAdminRequest(post({}, "OPTIONS")), 200, null);
     assertEquals(calls, []);
   });
 });
@@ -94,7 +94,7 @@ Deno.test("OPTIONS is the bare CORS preflight, before anything else", async () =
 Deno.test("a wrong method is the canonical 405", async () => {
   await withStubs({}, ENV, async (calls) => {
     await expectReply(
-      await requireAdminRequest(post(undefined, "GET"), "POST"),
+      await requireAdminRequest(post(undefined, "GET")),
       405,
       '{"ok":false,"error":"Method not allowed"}',
     );
@@ -106,7 +106,7 @@ for (const missing of Object.keys(ENV)) {
   Deno.test(`missing ${missing} is the 500 "Server misconfigured"`, async () => {
     await withStubs({}, { ...ENV, [missing]: undefined }, async (calls) => {
       await expectReply(
-        await requireAdminRequest(post(), "POST"),
+        await requireAdminRequest(post()),
         500,
         '{"ok":false,"error":"Server misconfigured"}',
       );
@@ -118,7 +118,7 @@ for (const missing of Object.keys(ENV)) {
 Deno.test("no bearer token is a 401 with no lookup", async () => {
   await withStubs({}, ENV, async (calls) => {
     await expectReply(
-      await requireAdminRequest(post({}), "POST"),
+      await requireAdminRequest(post({})),
       401,
       '{"ok":false,"error":"Missing bearer token"}',
     );
@@ -129,7 +129,7 @@ Deno.test("no bearer token is a 401 with no lookup", async () => {
 Deno.test("a rejected session is the 401 Invalid session", async () => {
   await withStubs({ session: "invalid" }, ENV, async (calls) => {
     await expectReply(
-      await requireAdminRequest(post(), "POST"),
+      await requireAdminRequest(post()),
       401,
       '{"ok":false,"error":"Invalid session"}',
     );
@@ -140,7 +140,7 @@ Deno.test("a rejected session is the 401 Invalid session", async () => {
 Deno.test("a session with no email and no phone is the 401, with no lookup", async () => {
   await withStubs({ session: "anonymous" }, ENV, async (calls) => {
     await expectReply(
-      await requireAdminRequest(post(), "POST"),
+      await requireAdminRequest(post()),
       401,
       '{"ok":false,"error":"No identity on session"}',
     );
@@ -151,7 +151,7 @@ Deno.test("a session with no email and no phone is the 401, with no lookup", asy
 Deno.test("a caller not in super_admins is the 403, default message", async () => {
   await withStubs({ session: "valid", superAdmin: false }, ENV, async (calls) => {
     await expectReply(
-      await requireAdminRequest(post(), "POST"),
+      await requireAdminRequest(post()),
       403,
       '{"ok":false,"error":"Not a super-admin"}',
     );
@@ -162,7 +162,7 @@ Deno.test("a caller not in super_admins is the 403, default message", async () =
 Deno.test("a caller not in super_admins is the 403 with the EF's own message", async () => {
   await withStubs({ session: "valid", superAdmin: false }, ENV, async () => {
     await expectReply(
-      await requireAdminRequest(post(), "POST", "Only admins can create places."),
+      await requireAdminRequest(post(), "Only admins can create places."),
       403,
       '{"ok":false,"error":"Only admins can create places."}',
     );
@@ -171,7 +171,7 @@ Deno.test("a caller not in super_admins is the 403 with the EF's own message", a
 
 Deno.test("a super-admin gets env, the service-role client and the user", async () => {
   await withStubs({ session: "valid", superAdmin: true }, ENV, async () => {
-    const res = await requireAdminRequest(post(), "POST");
+    const res = await requireAdminRequest(post());
     assert(!(res instanceof Response), "expected the admin context");
     assertEquals(res.env, {
       url: ENV.SUPABASE_URL,
@@ -182,4 +182,20 @@ Deno.test("a super-admin gets env, the service-role client and the user", async 
     assertEquals(res.user.emailLower, "ops@example.com");
     assertEquals(typeof res.admin.from, "function");
   });
+});
+
+// ─── business-web-*: Google accounts only (MESITA-3105) ─────────────
+
+// deno-lint-ignore no-explicit-any
+const u = (emailLower: string | null, app_metadata: Record<string, unknown>) => ({ emailLower, raw: { app_metadata } as any });
+
+Deno.test("a Google sign-in with an email is let in", () => {
+  assertEquals(isGoogleAccount(u("ana@gmail.com", { provider: "google", providers: ["google"] })), true);
+  assertEquals(isGoogleAccount(u("ana@canzeco.com", { provider: "phone", providers: ["phone", "google"] })), true);
+});
+
+Deno.test("a phone session, an email-only session or no email is refused", () => {
+  assertEquals(isGoogleAccount(u(null, { provider: "phone", providers: ["phone"] })), false);
+  assertEquals(isGoogleAccount(u("ana@gmail.com", { provider: "email", providers: ["email"] })), false);
+  assertEquals(isGoogleAccount(u(null, { provider: "google", providers: ["google"] })), false);
 });

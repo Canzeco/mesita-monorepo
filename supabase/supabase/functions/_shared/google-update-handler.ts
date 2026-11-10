@@ -6,14 +6,14 @@
 // (MESITA-3157), as enrich-place-handler.ts is for Enrich.
 
 import { json, readJson, readPlaceIdAlias } from "./http.ts";
-import { requireAdminRequest } from "./auth.ts";
 import { runGooglePlaceUpdate } from "./admin-google-place-update.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 type Body = { placeId?: string; projectId?: string };
 
 export async function handleGooglePlaceUpdate(req: Request, source: string): Promise<Response> {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can update Google data.");
+  const ctx = await requireAdminRequest(req, "Only admins can update Google data.");
   if (ctx instanceof Response) return ctx;
   const { env, admin, user } = ctx;
 

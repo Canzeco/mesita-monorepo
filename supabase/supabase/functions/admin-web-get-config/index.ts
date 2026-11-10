@@ -20,7 +20,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { jsonError, jsonOk, readJsonOr, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { readConfigSection } from "../_shared/config-sections.ts";
 import {
   enrichmentTriggersMeta,
@@ -30,7 +30,7 @@ import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { crenupPromptsMeta } from "../_shared/crenup-prompts.ts";
 
 serveJson("admin-web-get-config", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

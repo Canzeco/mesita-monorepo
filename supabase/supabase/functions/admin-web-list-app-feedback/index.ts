@@ -14,7 +14,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 const ROW_CAP = 500;
 // `.in()` travels in the GET query string; look up names in slices.
@@ -24,7 +24,7 @@ type FeedbackRow = { id: string; consumer_id: string; note: string; created_at: 
 type GuestRow = { id: string; first_name: string | null; code: string | null };
 
 serveJson("admin-web-list-app-feedback", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

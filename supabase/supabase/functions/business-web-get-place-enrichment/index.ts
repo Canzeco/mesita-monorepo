@@ -20,12 +20,12 @@ import {
   readPlaceIdAlias,
   serveJson,
 } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 type Body = { projectId?: string; placeId?: string };
 
 serveJson("business-web-get-place-enrichment", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 
