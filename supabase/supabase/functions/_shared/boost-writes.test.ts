@@ -9,14 +9,11 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import {
-  confirmPledge,
-  endConsumerPledges,
   type Period,
   type Pledge,
-  renewPlace,
-  settleCharging,
 } from "./boost.ts";
 import { type StripeCall, StripeError } from "./stripe.ts";
+import { confirmPledge, endConsumerPledges, renewPlace, settleCharging } from "./boost-writes.ts";
 
 type Result = { data?: unknown; error: { message: string } | null };
 

@@ -5,11 +5,12 @@
 // Place IDs and dispatch before the placeId check.
 
 import { json, readJson, readPlaceIdAlias } from "./http.ts";
-import { leavePledge, readPledge } from "./boost.ts";
+import { readPledge } from "./boost.ts";
 import { isUuid } from "./place-id.ts";
 import { parseRefillBody, resolveGooglePlaceIds, runRefill } from "./premier-refill.ts";
 import { requireAdminRequest } from "../_shared/request.ts";
 import { boostStripeKey, stripeClient } from "./stripe.ts";
+import { leavePledge } from "./boost-writes.ts";
 
 export async function handleGrantPlacePremier(req: Request, source: string): Promise<Response> {
   const ctx = await requireAdminRequest(req);

@@ -19,7 +19,6 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { placeAccess } from "../_shared/place-access.ts";
 import {
-  confirmPledge,
   type Pledge,
   PLEDGE_COLUMNS,
   readLine,
@@ -27,6 +26,7 @@ import {
   subscriptionOf,
 } from "../_shared/boost.ts";
 import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { confirmPledge } from "../_shared/boost-writes.ts";
 
 const LIMIT = 50;
 
