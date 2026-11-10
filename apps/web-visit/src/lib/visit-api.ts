@@ -199,9 +199,10 @@ export async function getCharge(token: string): Promise<ChargeRead | "gone" | "f
 /** The waiter's Received on a bill the guest pays outside (MESITA-3545):
  *  `paid`, or the server's words to show ("Cancelled by the guest",
  *  "Expired", "Not paying outside yet"), or `failed` (no answer: tap again). */
-export async function confirmCharge(token: string): Promise<{ paid_at: string } | { refused: string } | "failed"> {
+export async function confirmCharge(token: string): Promise<{ paid_at: string; cashback_cents: number } | { refused: string } | "failed"> {
   const { res, data } = await post("visit-web-confirm-charge", { token });
-  if (data?.ok) return { paid_at: String(data.paid_at) };
+  // cashback_cents: what the guest got back at the place's own rate (MESITA-3589).
+  if (data?.ok) return { paid_at: String(data.paid_at), cashback_cents: Number(data.cashback_cents ?? 0) };
   if (!res || res.status >= 500 || !data) return "failed";
   return { refused: typeof data.error === "string" ? data.error : "Couldn't confirm. Try again." };
 }
