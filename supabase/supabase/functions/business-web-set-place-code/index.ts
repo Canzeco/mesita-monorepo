@@ -1,6 +1,6 @@
 // Supabase Edge Function — business-web-set-place-code
 //
-// MESITA-3226 (on Settings since MESITA-3299): the place code, six digits
+// MESITA-3226 (on Payments since MESITA-3600, Settings before): the waiter code, six digits
 // staff type at visit.mesita.ai. Only the hash is stored, so it is never shown
 // again and a forgotten one is replaced. The owner and Mesita staff only.
 //
