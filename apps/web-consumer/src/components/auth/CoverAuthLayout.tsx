@@ -38,7 +38,7 @@ export function CoverAuthLayout({
   return (
     <div className="relative flex-1 overflow-hidden bg-black text-white">
       <Image
-        src="/auth/cover.jpg"
+        src="/auth/dusk.jpg"
         alt=""
         fill
         priority
