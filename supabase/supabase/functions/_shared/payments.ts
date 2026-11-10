@@ -167,7 +167,7 @@ export async function chargesEnabledByPlace(
 /** THE OFFER BUTTON'S SLIDES (MESITA-3467, Pato: "a carousel of offers ...
  *  whatever offers the place is offering"): cashback on a card payment and
  *  the vouchers the place sells now, in moneyState's words. */
-export type ListRowOffers = { cashback: boolean; sell: MoneyVoucherKey[] };
+export type ListRowOffers = { cashback: boolean; card_cashback_bps: number; sell: MoneyVoucherKey[] };
 
 /** THE HOME TILE'S VOUCHER LINE (MESITA-3312, Pato: "if the place offers
  *  voucher, draw the ... voucher icon at the bottom of the buttons") AND
@@ -186,7 +186,7 @@ export async function withVouchersUpTo<T extends { id: string }>(
   const ids = places.map((p) => p.id);
   if (ids.length === 0) return [];
   // No admin client (a run with no service key): nothing for sale, no line.
-  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { cashback: false, sell: [] } }));
+  if (!admin) return places.map((p) => ({ ...p, vouchers_up_to_pct: null, mesita_pay: false, offers: { cashback: false, card_cashback_bps: 0, sell: [] } }));
   // One list page of ids, so no chunking. The account read is the shared
   // in-mode rule (MESITA-3394); a failed read reads as no Pay, as before.
   const [settingsRes, charging] = await Promise.all([
@@ -203,16 +203,19 @@ export async function withVouchersUpTo<T extends { id: string }>(
   for (const row of settingRows) settings.set(row.place_id, settingsFromRow(row));
   const charges = charging ?? new Set<string>();
   return places.map((p) => {
-    const { sell, mesita_pay, cashback } = listRowMoney(settings.get(p.id), charges.has(p.id));
-    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { cashback, sell } };
+    const { sell, mesita_pay, cashback, card_cashback_bps } = listRowMoney(settings.get(p.id), charges.has(p.id));
+    return { ...p, vouchers_up_to_pct: vouchersUpToPct(sell), mesita_pay, offers: { cashback, card_cashback_bps, sell } };
   });
 }
 
 /** One list row's money, pure: what sells and whether the mark shows. A
  *  place with no settings row reads as `settingsFromRow(null)`. */
-export function listRowMoney(settings: PaymentSettings | undefined, charges: boolean): { sell: MoneyVoucherKey[]; mesita_pay: boolean; cashback: boolean } {
+export function listRowMoney(
+  settings: PaymentSettings | undefined,
+  charges: boolean,
+): { sell: MoneyVoucherKey[]; mesita_pay: boolean; cashback: boolean; card_cashback_bps: number } {
   const state = moneyState(settings ?? settingsFromRow(null), charges ? { charges_enabled: true } : null, null);
-  return { sell: state.sell, mesita_pay: state.mesita_pay, cashback: state.cashback };
+  return { sell: state.sell, mesita_pay: state.mesita_pay, cashback: state.cashback, card_cashback_bps: state.card_cashback_bps };
 }
 
 // ── The account ────────────────────────────────────────────────────────────
