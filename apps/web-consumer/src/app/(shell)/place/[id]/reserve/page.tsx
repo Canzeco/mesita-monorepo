@@ -1,9 +1,5 @@
-import { redirect } from "next/navigation";
+import { loadPlaceOrLeave } from "@/lib/load-place";
 import { ReservePageBody } from "@/components/consumer/ReservePageBody";
-import { createServerSupabase } from "@/lib/supabase/server";
-import { apiFetchPlaceDetail } from "@/lib/api/places";
-import { placeGoneHref, toCanonicalPlaceHrefOrNull } from "@/lib/place-route";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 export const dynamic = "force-dynamic";
 
@@ -16,15 +12,7 @@ export default async function PlaceReservePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = await params;
-  if (!toCanonicalPlaceHrefOrNull(id)) {
-    redirect(CONSUMER_ROUTES.home);
-  }
-  const supabase = await createServerSupabase();
-  const place = await apiFetchPlaceDetail(supabase, id);
-  if (!place) {
-    redirect(placeGoneHref(CONSUMER_ROUTES.home, id));
-  }
+  const place = await loadPlaceOrLeave((await params).id);
   return (
     <ReservePageBody
       place={{

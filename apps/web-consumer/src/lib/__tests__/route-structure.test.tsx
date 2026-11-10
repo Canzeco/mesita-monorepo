@@ -479,8 +479,10 @@ describe("T5b — Home's header and Search's header", () => {
       join(SHELL, "(discovery)", "search", "chat", "page.tsx"),
       "utf8",
     );
-    expect(chat).toContain("HomeSoon");
-    expect(chat).toContain("href={CONSUMER_ROUTES.search}");
+    // One body for the page and the sheet (MESITA-3648); the page wears the
+    // pushed-page frame, whose Back lands on Search (MESITA-3647).
+    expect(chat).toContain("<AskAiSoon");
+    expect(chat).toContain("<Screen");
     expect(chat).not.toMatch(/<AskAiTab/);
     const sheet = readFileSync(
       join(SHELL, "@modal", "(.)search", "chat", "layout.tsx"),
@@ -492,7 +494,7 @@ describe("T5b — Home's header and Search's header", () => {
       "utf8",
     );
     expect(sheetPage).toContain("<RouteSheetHeader");
-    expect(sheetPage).toContain("HomeSoon");
+    expect(sheetPage).toContain("<AskAiSoon");
   });
 
   // Home is two tabs, each an address (Pato, MESITA-2597: "we should have

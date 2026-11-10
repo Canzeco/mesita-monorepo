@@ -20,15 +20,14 @@ import {
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import nextConfig from "../../../next.config";
 
-// Routing is contract, not implementation detail: four tabs, flat /me,
+// Routing is contract, not implementation detail: five tabs, flat /me,
 // top-level /place and /reservation — see Docs › Apps §A. These tests pin
 // the contract, the helpers, the legacy→canonical redirect table, and the
 // middleware auth wall so a rename or a "helpful cleanup" can't silently
 // break bookmarks, shared place links, or the signed-out gate.
 //
-// FIRST STAGE (MESITA-2087). The consumer app is Citywide Catalog · Discovery
-// Engines · Reservations Agent. Every Second Stage address — Visits, Wallet,
-// Credits, Orders, Diamond, Plan, the Share deck, public gift links — is a
+// Every retired address (the Second Stage's Visits, the old Wallet tab's
+// children, Credits, Orders, Diamond, the Saved and Bookings tabs, …) is a
 // redirect SOURCE here and nothing else: no key, no helper, no page.
 
 const SHELL = join(__dirname, "..", "..", "app", "(shell)");
@@ -111,8 +110,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       place: { prefix: "/place/" },
       placeOpen: { prefix: "/place/open/" },
       reservation: { prefix: "/reservation/" },
-      // PAY IS ONE PAGE, the Soon state (MESITA-2087). No children, no
-      // default, no sections: the tab links here and lights here.
+      // The Pay tab; each money object has its address under it (MESITA-3614).
       pay: "/pay",
       payPlace: { prefix: "/pay/" },
       payTab: { prefix: "/pay/tab/" },
@@ -123,9 +121,9 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       walletGift: { prefix: "/wallet/gift/" },
       // The Activity tab: every money line (MESITA-3631).
       activity: "/activity",
-      // The Share tab's page (MESITA-2566).
+      // Share's page, Me's Share tile (MESITA-2566, MESITA-2871).
       share: "/share",
-      // Me's six boxes, each a route. NO diamond / diamondInvite / plan /
+      // The Me hub and its boxes, each a route. NO diamond / diamondInvite /
       // settingsMetrics / visits — those are redirect sources in `legacy`
       // below.
       me: "/me",

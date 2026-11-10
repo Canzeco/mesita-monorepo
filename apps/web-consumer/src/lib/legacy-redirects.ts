@@ -40,8 +40,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: "/place/:id",
     permanent: true,
   },
-  // THE SECOND STAGE (MESITA-2087). Pay is one page, the Soon state, and
-  // every address that used to hang off the centre tab lands on it: the
+  // THE SECOND STAGE (MESITA-2087). Every address that used to hang off the
+  // centre tab lands on the Pay tab: the
   // QR place list (/new-visit), THE TICKET (/visit/:id and its /rewards,
   // /pay and /ticket era spellings), Wallet with Buy · Gift · Redeem ·
   // balance and its /credits, /inbox/credits and /new-visit/wallet

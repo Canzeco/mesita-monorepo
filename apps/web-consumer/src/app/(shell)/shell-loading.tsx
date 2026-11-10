@@ -71,7 +71,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
 
 // THE PLACEHOLDER IS THE LOADING SCREEN, NEVER A SPINNER (Pato, MESITA-2840:
 // "why spinning and then placeholder, don't do that. just use the
-// placeholder directly"). A tap on the bar from Me, Pay or Share lands on
+// placeholder directly"). A tap on the bar lands on
 // the (shell) boundary, and a full page load on the root one, before the
 // target's own loading.tsx can mount; both drew a centred spinner, so Home
 // came in as spinner → tiles. Both now draw the target's own frame, picked

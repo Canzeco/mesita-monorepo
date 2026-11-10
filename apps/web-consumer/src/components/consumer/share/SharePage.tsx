@@ -25,7 +25,7 @@ import { copyToClipboard, shareOrCopy } from "@/lib/share-place";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-// SHARE — the bar's fourth tab, a page of its own (Pato, MESITA-2566: "no
+// SHARE — Me's Share tile, a page of its own (Pato, MESITA-2566: "no
 // share create a dedicate page for share. you know.").
 //
 //   ┌──────────────────────────────┐

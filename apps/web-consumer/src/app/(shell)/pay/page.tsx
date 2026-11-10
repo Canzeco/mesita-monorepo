@@ -8,7 +8,7 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-// /pay — the bar's Pay tab (Home · Search · Pay · Wallet · Me): the places
+// /pay — the bar's Pay tab (Home · Search · Pay · Activity · Me): the places
 // the guest can pay at. Each money object has its own address under it
 // (MESITA-3614). The shapes it had before arrive here and forward in one
 // hop: the printed table QR (?place=), a Stripe card return
