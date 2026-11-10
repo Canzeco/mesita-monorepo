@@ -88,10 +88,11 @@ function noteFor(
       // running / answered / null-with-attempts → actively working the reservation.
       return "Mesita is on the phone with the place — you'll see the answer here.";
     }
+    // A note never restates the pill (MESITA-3649): passed and cancelled
+    // say nothing more.
     case "passed":
-      return "Hope it was great. This table has come and gone.";
     case "cancelled":
-      return "This reservation was cancelled.";
+      return undefined;
     case "failed":
       switch (row.state) {
         case "declined":
@@ -101,7 +102,7 @@ function noteFor(
         case "unresolved":
           return "The call didn't reach a clear answer — Mesita follows up.";
         default:
-          return "This booking didn't go through.";
+          return undefined;
       }
     default:
       return undefined;

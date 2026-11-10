@@ -9,10 +9,6 @@ import {
   PlaceTopBarSkeleton,
 } from "@mesita/place-profile";
 import { Skeleton } from "@/components/shared";
-import {
-  RESERVATION_META_LABELS,
-  type ReservationMetaLabel,
-} from "@/components/consumer/ReservationDetailBody";
 import { ReservationDetailModalShell } from "@/components/consumer/ReservationDetailModalShell";
 import { ReservationPageFrame } from "@/components/consumer/ReservationPageFrame";
 import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
@@ -70,19 +66,9 @@ export function PlaceSlideOverSkeleton() {
 
 // ── Reservation ──────────────────────────────────────────────────────────
 
-/** A metadata row's value bar, as wide as what each row usually says
- *  ("Fri Oct 24 · 8:30 PM", "2 guests", "Confirmed", an 8-digit code). */
-const META_VALUE_WIDTH: Record<ReservationMetaLabel, string> = {
-  When: "w-36",
-  Party: "w-16",
-  State: "w-20",
-  Reference: "w-16",
-};
-
-/** ReservationDetailBody: the photo card (16:9 photo, the name and its
- *  state pill), the four-step stepper, the banner, the When · Party ·
- *  State · Reference card of 44px rows (one per RESERVATION_META_LABELS,
- *  the body's own list), then View place, Reschedule and Cancel. The
+/** ReservationDetailBody (MESITA-3649): the hero card (a 5:2 photo, the
+ *  name and its pill, the time large and "Table for N"), the reference
+ *  line, the four-step stepper, then View place, Reschedule and Cancel. The
  *  route's loading.tsx draws it, and so does reservation-detail-fetch while
  *  the row is fetched, so the two placeholders are one. */
 export function ReservationBodySkeleton() {
@@ -93,16 +79,27 @@ export function ReservationBodySkeleton() {
         aria-hidden
         className="border-border bg-card overflow-hidden rounded-2xl border"
       >
-        <Skeleton className="aspect-[16/9] w-full rounded-none" />
-        <div className="flex items-start justify-between gap-2 px-4 py-3">
-          <div className="font-display flex h-[1lh] min-w-0 items-center text-xl leading-tight">
-            <Skeleton className="h-5 w-40 max-w-full" />
+        <Skeleton className="aspect-[5/2] w-full rounded-none" />
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex h-6 items-center">
+              <Skeleton className="h-4 w-40 max-w-full" />
+            </div>
+            <Skeleton className="type-label h-[calc(1lh_+_6px)] w-20 shrink-0 rounded-full" />
           </div>
-          {/* The state pill: one 11px line, py-0.5 and its 1px border
-              (21.4px), as wide as a "Confirmed" pill. */}
-          <Skeleton className="type-label h-[calc(1lh_+_6px)] w-20 shrink-0 rounded-md" />
+          <div className="font-display mt-3 flex h-[1lh] items-center text-2xl leading-tight">
+            <Skeleton className="h-6 w-52 max-w-full" />
+          </div>
+          <div className="mt-1 flex h-6 items-center">
+            <Skeleton className="h-4 w-24" />
+          </div>
         </div>
       </section>
+
+      {/* The reference line. */}
+      <div aria-hidden className="-mt-1 flex h-5 items-center px-1">
+        <Skeleton className="h-3.5 w-36" />
+      </div>
 
       <div aria-hidden className="flex items-center gap-1.5">
         {RESERVATION_FLOW.map((step) => (
@@ -114,26 +111,6 @@ export function ReservationBodySkeleton() {
           </div>
         ))}
       </div>
-
-      {/* The banner: two 13px lines in its py-2.5 box. */}
-      <Skeleton className="h-14 w-full rounded-2xl" />
-
-      <section
-        aria-hidden
-        className="border-border bg-card divide-border/70 divide-y overflow-hidden rounded-2xl border"
-      >
-        {RESERVATION_META_LABELS.map((label) => (
-          <div key={label} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="h-4 w-4 rounded" />
-            <div className="flex-1">
-              <Skeleton className="h-3 w-14" />
-            </div>
-            <div className="flex h-5 items-center">
-              <Skeleton className={cn("h-3.5", META_VALUE_WIDTH[label])} />
-            </div>
-          </div>
-        ))}
-      </section>
 
       <div aria-hidden className="flex flex-col gap-2">
         {["w-20", "w-24"].map((w) => (
