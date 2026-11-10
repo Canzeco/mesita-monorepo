@@ -22,7 +22,7 @@ import { parseHoursTable, resolveSlot } from "@/lib/reservation-slots";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
+import { placeDateTime, placeInstantIso } from "@mesita/place-profile/lib/place-time";
 
 const DEFAULT_PARTY = 2;
 
@@ -37,10 +37,11 @@ const RESERVATION_LIMIT_MESSAGE =
 // (_shared/reservation-create.ts); the server's message is shown as is.
 const ALREADY_RESERVED_CODE = "already_reserved";
 
-// MX_OFFSET (and everything else about the place's clock) lives in
-// @/lib/place-time — the single source of truth. The picked slot is the
-// place's wall-clock, so we stamp that offset: the agent reads the time back
-// in America/Mexico_City and it matches what the guest chose.
+// The place's clock lives in @mesita/place-profile/lib/place-time — the single
+// source of truth. The picked slot is the place's wall clock in ITS zone
+// (MESITA-3626), so reserved_at carries that zone's offset ("-05:00" in
+// Cancún): the agent reads the time back in the same zone and it matches
+// what the guest chose.
 
 /**
  * Everything the form needs from a place: the place id it books against and a
@@ -55,6 +56,8 @@ export type ReservationFormPlace = {
   id: string;
   name: string;
   hours_table?: Array<{ day: string; range: string }>;
+  /** The place's IANA zone; "" or absent reads as Mexico City. */
+  timezone?: string | null;
 };
 
 // What to do when the guest already holds a live table here.
@@ -113,7 +116,8 @@ export function ReservationForm({
   // Recomputed every render (one month of tiny objects) rather than memoised:
   // the page can sit open across midnight, and a stale "Today" pill would
   // offer slots that are a day gone.
-  const dateOptions = buildDateOptions(hours);
+  const tz = place.timezone || null;
+  const dateOptions = buildDateOptions(hours, tz);
 
   const [dateChoice, setDateChoice] = useState("");
   // Null = "no explicit pick yet", so the default lands on a slot the place is
@@ -150,7 +154,7 @@ export function ReservationForm({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice, hours);
+  const time = resolveSlot(date, timeChoice, hours, tz);
 
   const chosen = dateOptions.find((d) => d.iso === date);
   const whenLabel = chosen
@@ -179,7 +183,7 @@ export function ReservationForm({
   /** Move the existing table: seed the pickers from what's already booked. */
   function chooseReschedule() {
     if (!existing) return;
-    const seed = placeDateTime(existing.reserved_at);
+    const seed = placeDateTime(existing.reserved_at, tz);
     if (seed) {
       setDateChoice(seed.date);
       setTimeChoice(seed.time);
@@ -200,7 +204,7 @@ export function ReservationForm({
     setSubmitting(true);
     setError(null);
     try {
-      const reservedAt = `${date}T${time}:00${MX_OFFSET}`;
+      const reservedAt = placeInstantIso(date, time, tz);
       if (rescheduling) {
         await apiUpdateReservation(supabase, {
           reservationId: existing.id,
@@ -280,6 +284,7 @@ export function ReservationForm({
       {existing && (
         <DuplicateBanner
           existing={existing}
+          tz={tz}
           choice={choice}
           onReschedule={chooseReschedule}
           onAnother={() => setChoice("another")}
@@ -297,6 +302,7 @@ export function ReservationForm({
         onChange={setTimeChoice}
         date={date}
         hours={hours}
+        tz={tz}
       />
       <ClosedSlotNotice
         date={date}
@@ -387,14 +393,16 @@ function DuplicateBanner({
   onReschedule,
   onAnother,
   onReset,
+  tz,
 }: {
   existing: EFReservationRow;
+  tz: string | null;
   choice: DuplicateChoice | null;
   onReschedule: () => void;
   onAnother: () => void;
   onReset: () => void;
 }) {
-  const seed = placeDateTime(existing.reserved_at);
+  const seed = placeDateTime(existing.reserved_at, tz);
   const when = seed ? `${seed.date} · ${seed.time}` : "an upcoming slot";
 
   return (

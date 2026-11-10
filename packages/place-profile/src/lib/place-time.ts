@@ -1,30 +1,75 @@
 // The place's clock — the ONE place the consumer app decides what "now" means
 // for a reservation.
 //
-// Every Mesita place is in Mexico City, which sits at UTC-6 all year (no DST
-// since 2022), so a fixed offset is exact: no Intl timezone database, no
-// per-device drift, and the same answer for a guest sitting in Tokyo as for
-// one sitting in Roma Norte. That matters — "is this slot in the past?" must
-// be judged against the place's wall clock, never the device's.
-//
-// Everything below is derived from MX_OFFSET. Do NOT introduce a second
-// offset constant anywhere; import this one.
+// ONE ZONE PER PLACE (MESITA-3626): every place carries an IANA zone
+// (`place.timezone`, stamped from Google), and every slot is that place's
+// wall clock — America/Cancun is UTC-5 all year, America/Tijuana follows
+// DST, most of Mexico is America/Mexico_City (UTC-6). The offsets come from
+// Intl, so a guest sitting in Tokyo sees and books the same slot as one
+// sitting in Roma Norte: "is this slot in the past?" is judged against the
+// place's clock, never the device's. A place with no usable zone reads as
+// Mexico City.
 
-/** IANA fallback when a place row has no timezone stamp. Not a second Mexico offset. */
-export const FALLBACK_IANA_TZ = "UTC";
+/** The zone of last resort (the market). */
+export const DEFAULT_PLACE_TZ = "America/Mexico_City";
 
-/** Wall-clock offset stamped onto every `reserved_at` the app sends. */
-export const MX_OFFSET = "-06:00";
+const zoneOk = new Map<string, boolean>();
 
-/** Shown to the guest so the slot list is never ambiguous. */
-export const PLACE_TZ_LABEL = "Mexico City time (GMT-6)";
+/** `tz` when Intl knows it, else America/Mexico_City. */
+export function placeTz(tz: string | null | undefined): string {
+  const z = typeof tz === "string" ? tz.trim() : "";
+  if (!z) return DEFAULT_PLACE_TZ;
+  let ok = zoneOk.get(z);
+  if (ok === undefined) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: z });
+      ok = true;
+    } catch {
+      ok = false;
+    }
+    zoneOk.set(z, ok);
+  }
+  return ok ? z : DEFAULT_PLACE_TZ;
+}
 
-/** MX_OFFSET as signed minutes east of UTC — parsed, never re-typed. */
-const OFFSET_MINUTES = (() => {
-  const m = /^([+-])(\d{2}):(\d{2})$/.exec(MX_OFFSET);
-  if (!m) return 0;
-  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
-})();
+/** Minutes `tz` is ahead of UTC at instant `at` (Mexico City −360). */
+export function placeOffsetMinutes(tz: string | null | undefined, at: number): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: placeTz(tz),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(at));
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") % 24, get("minute"), get("second"));
+  const whole = at - (((at % 1000) + 1000) % 1000);
+  return Math.round((asUtc - whole) / 60_000);
+}
+
+/** "-06:00"-style suffix for an offset in minutes. */
+function offsetSuffix(minutes: number): string {
+  const sign = minutes < 0 ? "-" : "+";
+  const a = Math.abs(minutes);
+  return `${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+}
+
+/**
+ * The `reserved_at` the app sends for a slot the guest picked: the place's
+ * `YYYY-MM-DD` + `HH:mm` with THAT zone's offset at that moment, e.g.
+ * "2026-11-20T21:00:00-05:00" in Cancún. Two passes, so a DST zone gets the
+ * offset in force at the slot, not at "now".
+ */
+export function placeInstantIso(dateIso: string, hhmm: string, tz?: string | null): string {
+  const wall = Date.parse(`${dateIso}T${hhmm}:00Z`);
+  if (!Number.isFinite(wall)) return `${dateIso}T${hhmm}:00${offsetSuffix(-360)}`;
+  const guess = wall - placeOffsetMinutes(tz, wall) * 60_000;
+  const offset = placeOffsetMinutes(tz, guess);
+  return `${dateIso}T${hhmm}:00${offsetSuffix(offset)}`;
+}
 
 /** Zero-pad to two digits — the one copy for clock and date strings. */
 export function pad(n: number): string {
@@ -43,8 +88,8 @@ export const WEEK_KEYS = [
 ] as const;
 
 /** Shift an instant into place wall-clock, readable through the UTC getters. */
-function placeClock(at: number): Date {
-  return new Date(at + OFFSET_MINUTES * 60_000);
+function placeClock(at: number, tz?: string | null): Date {
+  return new Date(at + placeOffsetMinutes(tz, at) * 60_000);
 }
 
 /**
@@ -52,11 +97,11 @@ function placeClock(at: number): Date {
  * since its midnight. Built by shifting the epoch and reading UTC parts, so
  * the caller's own timezone can't leak into the answer.
  */
-function placeNow(at: number = Date.now()): {
+function placeNow(at: number = Date.now(), tz?: string | null): {
   iso: string;
   minutes: number;
 } {
-  const t = placeClock(at);
+  const t = placeClock(at, tz);
   return {
     iso: `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`,
     minutes: t.getUTCHours() * 60 + t.getUTCMinutes(),
@@ -64,8 +109,12 @@ function placeNow(at: number = Date.now()): {
 }
 
 /** `YYYY-MM-DD` for the place's today, or `offsetDays` days after it. */
-export function placeDateIso(offsetDays = 0, at: number = Date.now()): string {
-  const t = placeClock(at);
+export function placeDateIso(
+  offsetDays = 0,
+  tz?: string | null,
+  at: number = Date.now(),
+): string {
+  const t = placeClock(at, tz);
   t.setUTCDate(t.getUTCDate() + offsetDays);
   return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`;
 }
@@ -111,10 +160,11 @@ export function toAmPm(label: string): string {
 export function isSlotPast(
   dateIso: string,
   hhmm: string,
+  tz?: string | null,
   at: number = Date.now(),
 ): boolean {
   if (!dateIso) return false;
-  const now = placeNow(at);
+  const now = placeNow(at, tz);
   if (dateIso > now.iso) return false;
   if (dateIso < now.iso) return true;
   return slotMinutes(hhmm) <= now.minutes;
@@ -126,10 +176,11 @@ export function isSlotPast(
  */
 export function placeDateTime(
   iso: string,
+  tz?: string | null,
 ): { date: string; time: string } | null {
   const parsed = new Date(iso);
   if (Number.isNaN(parsed.getTime())) return null;
-  const t = placeClock(parsed.getTime());
+  const t = placeClock(parsed.getTime(), tz);
   return {
     date: `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`,
     time: `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}`,

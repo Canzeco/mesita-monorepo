@@ -30,8 +30,8 @@ const MONTHS = [
 ];
 
 /** "Fri 13 Nov · 21:00", on the place's clock. */
-function whenLine(iso: string): string {
-  const t = placeDateTime(iso);
+function whenLine(iso: string, tz: string | null): string {
+  const t = placeDateTime(iso, tz);
   if (!t) return "";
   const [y, m, d] = t.date.split("-").map(Number);
   const day = new Date(Date.UTC(y, m - 1, d));
@@ -58,7 +58,7 @@ function StatusPill({ row }: { row: EFReservationRow }) {
   );
 }
 
-function ReservationRow({ row }: { row: EFReservationRow }) {
+function ReservationRow({ row, tz }: { row: EFReservationRow; tz: string | null }) {
   const name = [row.guest_first_name, row.guest_last_name]
     .map((s) => (s ?? "").trim())
     .filter(Boolean)
@@ -78,7 +78,7 @@ function ReservationRow({ row }: { row: EFReservationRow }) {
     >
       <div className="min-w-0 flex-1">
         <p className="type-body font-semibold">
-          {whenLine(row.reserved_at)} · {row.party_size}{" "}
+          {whenLine(row.reserved_at, tz)} · {row.party_size}{" "}
           {guestNoun(row.party_size)}
         </p>
         {detail && (
@@ -160,7 +160,7 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
             </p>
             <div className="border-border overflow-hidden rounded-2xl border">
               {mine.map((row) => (
-                <ReservationRow key={row.id} row={row} />
+                <ReservationRow key={row.id} row={row} tz={place.timezone || null} />
               ))}
             </div>
           </>
