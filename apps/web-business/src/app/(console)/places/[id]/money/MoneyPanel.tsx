@@ -37,12 +37,12 @@ export const FEE_NOTE = "Mesita's fee: 5% on vouchers, 5% on card payments.";
 export const CAP_NOTE = "In test mode a place holds at most $20,000MX of guests' credit.";
 
 const KIND: Record<string, string> = {
-  voucher_200: "Standard voucher",
-  voucher_1000: "Standard Medium voucher",
-  voucher_5000: "Standard Large voucher",
-  voucher_welcome: "Welcome voucher",
-  voucher_story: "Story voucher",
-  voucher_vip: "VIP voucher",
+  voucher_200: "Small Voucher",
+  voucher_1000: "Medium Voucher",
+  voucher_5000: "Big Voucher",
+  voucher_welcome: "Welcome Voucher",
+  voucher_story: "Story Voucher",
+  voucher_vip: "VIP Voucher",
 };
 
 const CONFIRMER: Record<string, string> = { stripe: "Stripe", waiter: "Waiter", credit: "Credit" };
