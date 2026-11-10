@@ -118,7 +118,7 @@ const STAGE_LABEL: Record<StripeStage, string> = {
 
 const COUNTRY: Record<string, string> = { MX: "Mexico", US: "United States" };
 
-/** Open Stripe leaves the app, so it is the quiet grey button. */
+/** The quiet grey pill (Cancel in the Agreement dialog). */
 const QUIET_PILL_CLASS = "bg-muted text-foreground hover:bg-muted/70 hover:opacity-100";
 
 function accountCopy(a: PaymentAccount): { line: string; button: string | null; open: boolean } {
@@ -388,16 +388,24 @@ export function PaymentsPanel({
               </p>
             </div>
             <p className={cn("font-semibold whitespace-nowrap", !ready && "text-muted-foreground")}>{STAGE_LABEL[stage]}</p>
-            {copy.button ? (
-              <button type="button" className={cn(PILL_BUTTON_CLASS, ready && QUIET_PILL_CLASS, "shrink-0")} disabled={pending} onClick={() => void stripe()}>
-                {busy === "stripe" ? "Opening…" : copy.button}
-                {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={14} weight="bold" aria-hidden /> : null}
-              </button>
-            ) : (
-              <span />
-            )}
+            <span />
           </li>
         </ul>
+        {/* THE STRIPE BUTTON IS BIG (Pato, MESITA-3639: "Open Stripe button
+            must be big"): full width under the row, Stripe's own purple. */}
+        {copy.button ? (
+          <div className="px-5 pb-5 sm:px-6">
+            <button
+              type="button"
+              className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#635BFF] text-base font-semibold text-white transition hover:bg-[#5249e6] disabled:opacity-60"
+              disabled={pending}
+              onClick={() => void stripe()}
+            >
+              {busy === "stripe" ? "Opening…" : copy.button}
+              {ready && busy !== "stripe" ? <ArrowSquareOutIcon size={20} weight="bold" aria-hidden /> : null}
+            </button>
+          </div>
+        ) : null}
       </Card>
       <Card className={SECTION}>
         <h2 className={HEAD}>House Credits</h2>
