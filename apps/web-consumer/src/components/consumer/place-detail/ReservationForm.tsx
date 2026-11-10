@@ -189,6 +189,10 @@ export function ReservationForm({
     setChoice("reschedule");
   }
 
+  // A new table needs both names (MESITA-3629, Pato: "first and last names
+  // must be mandatory"); Reserve stays off until they are typed.
+  const needsName = !rescheduling && (!firstName.trim() || !lastName.trim());
+
   async function submit() {
     if (!date || !time || submitting || checking || awaitingChoice) return;
     // Rescheduling moves a table that is already booked under a name, so it
@@ -319,6 +323,7 @@ export function ReservationForm({
               placeholder="First name"
               autoComplete="off"
               aria-label="First name"
+              required
               className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
             />
             <input
@@ -328,6 +333,7 @@ export function ReservationForm({
               placeholder="Last name"
               autoComplete="family-name"
               aria-label="Last name"
+              required
               className="border-border bg-card focus:border-foreground/40 w-full rounded-2xl border px-4 py-3 text-sm outline-none"
             />
           </div>
@@ -357,7 +363,7 @@ export function ReservationForm({
       <button
         type="button"
         onClick={submit}
-        disabled={submitting || checking || awaitingChoice || !time}
+        disabled={submitting || checking || awaitingChoice || !time || needsName}
         className="bg-primary text-primary-foreground mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.99] disabled:opacity-60"
       >
         {submitting ? (
