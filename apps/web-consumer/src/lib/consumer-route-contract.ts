@@ -3,8 +3,10 @@
 // middleware's sign-in wall and route handlers read these, never a typed
 // path, so they cannot drift into stringly-typed mismatches (MESITA-3642).
 //
-// The live app is the bar (Home · Search · Pay · Activity · Share · Me), the
-// place screen, reservations, and the money objects under Pay and Wallet.
+// The live app is the bar (Home · Search · Pay · Activity · Me), the place
+// screen, reservations, Share (a Me tile), and the money objects under Pay
+// and Wallet. ROUTE_MAP below says, once, how each screen opens, which tab
+// it lights, where the bar shows and where Back lands (MESITA-3646).
 // Every address that shipped and no longer renders a page lives only in
 // `legacy` below and 308s to the nearest live page.
 
@@ -37,7 +39,7 @@ export const CONSUMER_ROUTES = {
   placeOpen: {
     prefix: "/place/open/",
   },
-  // The singular reservation DETAIL; the list is Me › Saved › Reservations.
+  // The singular reservation DETAIL; the list is Me › Reservations.
   reservation: {
     prefix: "/reservation/",
   },
@@ -77,11 +79,11 @@ export const CONSUMER_ROUTES = {
   // ACTIVITY IS ON THE BAR (MESITA-3631): every money line, newest first.
   // It was Me › Transactions, /me/transactions (MESITA-3465).
   activity: "/activity",
-  // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
+  // SHARE IS A PAGE: Me's Share tile (off the bar since MESITA-2871), the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
   // redirect to /me until this.
   share: "/share",
-  // Me is the hub: identity header + a 3×3 grid of DestTiles and a Settings row, each a real
+  // Me is the hub: identity header + a grid of DestTiles and a Settings row, each a real
   // page under (shell)/me/<box> (MESITA-1789). The `/me/[tab]` catch-all
   // 308s any other one-segment address onto the hub.
   me: "/me",
@@ -155,8 +157,8 @@ export const CONSUMER_ROUTES = {
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every
     // /rewards, /pay/<sub> and /ticket era address. All 308 to `pay`, except
-    // what hung under the old Wallet tab: /wallet is live again
-    // (MESITA-3295), so its children land on it.
+    // what hung under the old Wallet tab, which land on Pay too (the Wallet
+    // lives under Pay since MESITA-3631).
     newVisit: "/new-visit",
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
@@ -436,17 +438,13 @@ export function shellRoots(): string[] {
 }
 
 /**
- * Does this path paint inside a routed modal shell?
+ * Does this path paint inside a routed modal shell? A `panel` or `sheet` row
+ * of ROUTE_MAP (MESITA-3646).
  *
- * SlideOverShell opens with
- * `if (!isModalContractPath(pathname)) return null`, and it is this
- * predicate's ONLY consumer. So a new @modal intercept whose path is missing
- * here renders BLANK — URL changes, page underneath stays, nothing opens, and
- * typecheck/build/tests all stay green. `route-structure.test.tsx` T2 guards
- * that direction.
- *
- * The reverse is NOT an invariant: a path may sit outside this list and still
- * be a real route (it just renders full-page).
+ * SlideOverShell and RouteSheetShell open with
+ * `if (!isModalContractPath(pathname)) return null`, so an @modal intercept
+ * whose row is not a panel or sheet renders BLANK. The route-map tests hold
+ * every intercept to a panel or sheet row, and only those rows to one.
  */
 export function isModalContractPath(pathname: string): boolean {
   const id = routeFor(pathname);

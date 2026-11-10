@@ -15,7 +15,7 @@ import { errMsg } from "@/lib/utils";
 // between sign-up and the actual app, so it has its own checks:
 //
 //   - signed out           → / (with next=/onboard)
-//   - already past the gate → /discover (don't re-collect data)
+//   - already past the gate → Home (don't re-collect data)
 //   - signed in, no name    → render the form
 //
 // The gate is `consumerCanBrowse`: FIRST NAME + BIRTHDAY + SEX (MESITA-1829 —
