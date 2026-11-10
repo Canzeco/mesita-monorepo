@@ -478,6 +478,8 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       test_mode: r.data.test_mode,
       account: r.data.account,
       settings: r.data.settings,
+      // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
+      contract: r.data.contract,
       code_set: r.data.code_set === true,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
     },
