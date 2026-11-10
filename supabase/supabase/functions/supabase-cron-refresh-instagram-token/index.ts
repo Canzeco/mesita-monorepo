@@ -9,28 +9,21 @@
 // the stored token stays.
 //
 // Body: {}   →  { ok, skipped? | expiresAt }
-// Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
+// Auth: verify_jwt = true + requireInternalRequest (the pg_cron vault key).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { pickAccessToken, readInstagramDmConfig, readRefreshAnswer } from "../_shared/instagram-dm.ts";
 
 serveJson("supabase-cron-refresh-instagram-token", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const caller = requireInternalCaller(req, envRes.env);
-  if (!caller.ok) return caller.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const cfg = readInstagramDmConfig();
   if (!cfg) return json({ ok: true, skipped: "dm_off" });
 
-  const admin = adminClient(envRes.env);
   const { data: stored, error: readErr } = await admin
     .from("meta_instagram_token")
     .select("access_token")

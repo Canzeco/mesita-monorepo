@@ -11,7 +11,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessSuperAdmin } from "../_shared/business-request.ts";
+import { requireBusinessSuperAdmin } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { boundedText, VERIFICATION_DAYS } from "../_shared/place-verification.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";

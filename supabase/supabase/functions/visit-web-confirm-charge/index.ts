@@ -18,25 +18,21 @@
 //       guest") | expired ("Expired") | forbidden (another place's bill)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { confirmCharge, isChargeToken, supabaseChargeStore } from "../_shared/charge.ts";
-import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("visit-web-confirm-charge", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isChargeToken(token)) return json({ ok: false, error: "That is not a charge" }, 400);
 
   try {
-    const res = await confirmCharge(supabaseChargeStore(adminClient(envRes.env)), token);
+    const res = await confirmCharge(supabaseChargeStore(admin), token);
     if (!res.ok) {
       console.log("[visit-web-confirm-charge]", JSON.stringify({ outcome: res.code ?? "refused" }));
       return json({ ok: false, code: res.code, error: res.error }, res.status);
@@ -57,8 +53,6 @@ serveJson("visit-web-confirm-charge", async (req) => {
       paid_at: res.paid_at,
     });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[visit-web-confirm-charge]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't confirm. Try again.", request_id }, 500);
+    return failWithRequestId("visit-web-confirm-charge", "Couldn't confirm. Try again.", err);
   }
 });

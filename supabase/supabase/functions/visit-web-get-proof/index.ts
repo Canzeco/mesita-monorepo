@@ -11,25 +11,22 @@
 //   400 (not a token) · 404 gone (no paid payment carries it)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { isProofToken } from "../_shared/proof.ts";
 import { proofView, readProof } from "../_shared/pay.ts";
 
 serveJson("visit-web-get-proof", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isProofToken(token)) return json({ ok: false, error: "That is not a payment proof" }, 400);
 
-  const res = await readProof(adminClient(envRes.env), token);
+  const res = await readProof(admin, token);
   if (!res.ok) return json({ ok: false, error: res.error }, 500);
   if (!res.row) return json({ ok: false, code: "gone", error: "This proof is not valid. Ask the guest to show it again." }, 404);
   return json({ ok: true, ...proofView(res.row, res.placeName, new Date().toISOString()) });

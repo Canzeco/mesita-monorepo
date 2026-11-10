@@ -12,15 +12,11 @@
 // Safe to call on every sign-in (idempotent). Returns the current role +
 // consumer row so the client can refresh its session and route accordingly.
 //
-// Self-contained: own JWT verification, own DB writes via the service role.
+// Self-contained: the consumer door verifies the JWT; own DB writes via the service role.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
+import { json, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { writeConsumer } from "../_shared/consumer-doc.ts";
 import {
   accountDeletedResponse,
@@ -28,23 +24,16 @@ import {
 } from "../_shared/delete-history-free.ts";
 
 serveJson("consumer-web-signin-phone", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const user = authRes.user.raw;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
+  const user = ctx.user.raw;
 
   // Phone is required for consumer sign-in. If the session was opened via
   // some other provider, reject — consumer auth is phone-only.
   if (!user.phone) {
     return json({ ok: false, error: "Consumer sign-in requires a phone session." }, 400);
   }
-
-  const admin = adminClient(envRes.env);
 
   // Decide the role to stamp. If the user is already promoted to staff,
   // keep that; otherwise default to consumer. Never downgrade an admin/business

@@ -10,24 +10,21 @@
 //   400 (not a token) · 404 gone (unknown, unpaid or refunded)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { isStoryToken } from "../_shared/story.ts";
 
 serveJson("visit-web-activate-story", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isStoryToken(token)) return json({ ok: false, error: "That is not a Story voucher" }, 400);
 
-  const { data, error } = await adminClient(envRes.env).rpc("wallet_activate_story", { p_token: token });
+  const { data, error } = await admin.rpc("wallet_activate_story", { p_token: token });
   if (error) return json({ ok: false, error: `wallet_activate_story: ${error.message}` }, 500);
   const res = data as { ok?: boolean; outcome?: string; code?: string; activated_at?: string; purchase_id?: string } | null;
   if (!res?.ok) {

@@ -14,8 +14,9 @@
 // Secrets: OPENAI_KEY. Never leaves Supabase.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { type DiscoveryConfig, loadDiscoveryConfig } from "../_shared/discovery-config.ts";
 import { deepDepsFor, runDeepPipeline } from "../_shared/deep-pipeline.ts";
 import { areaMesitaPlaces } from "../_shared/area-pipeline.ts";
@@ -54,13 +55,9 @@ const LINE_DROPPED =
   "Hmm, my line dropped for a second — give it another try in a moment.";
 
 serveJson("consumer-web-ask-memo", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const bodyRes = await readJson<MemoBody>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -96,7 +93,7 @@ serveJson("consumer-web-ask-memo", async (req) => {
   // model name from it, and reads Discovery's config meanwhile.
   const [cfg, places] = await Promise.all([
     configPromise,
-    chatPlacesFor(env, query, history, anchor, openaiKey, configPromise.then(modelOf)),
+    chatPlacesFor(admin, query, history, anchor, openaiKey, configPromise.then(modelOf)),
   ]);
   const system = resolveMemoSystemPrompt(cfg.instructions);
   const context = chatContextForModel(places, { hasAnchor: anchor !== null });
@@ -137,7 +134,7 @@ const toChatPlace = (why: ChatPlace["why"]) => (row: Record<string, unknown>): C
 /** The pipelines Chat may call this turn, over Memo's one database client:
  *  each reads through its own pipeline module, read-only. */
 function chatPipelines(
-  admin: ReturnType<typeof adminClient>,
+  admin: SupabaseClient,
   discovery: DiscoveryConfig,
   anchor: { lat: number; lng: number } | null,
   openaiKey: string,
@@ -173,7 +170,7 @@ function chatPipelines(
 /** The Chat Agent for this turn. Best effort: any failure leaves Chat
  *  answering from its prompt alone, never a failed turn. */
 async function chatPlacesFor(
-  env: Parameters<typeof adminClient>[0],
+  admin: SupabaseClient,
   query: string,
   history: ReturnType<typeof sanitizeChatHistory>,
   anchor: { lat: number; lng: number } | null,
@@ -181,7 +178,6 @@ async function chatPlacesFor(
   modelPromise: Promise<string>,
 ): Promise<ChatPlace[]> {
   try {
-    const admin = adminClient(env);
     const [discovery, model] = await Promise.all([loadDiscoveryConfig(admin), modelPromise]);
     const result = await runChatAgent(
       query,

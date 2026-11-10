@@ -17,11 +17,11 @@
 //   400 · 401 sign_in · 404 gone · 409 claimed | taken_back | own_gift · 500
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { giftRefusalStatus, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const REFUSAL: Record<string, string> = {
   gone: "That link isn't here.",
@@ -31,22 +31,16 @@ const REFUSAL: Record<string, string> = {
 };
 
 serveJson("consumer-web-claim-credit", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to take this credit" }, 401);
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to take this credit" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isGiftToken(token)) return json({ ok: false, error: "token must be a credit link's key" }, 400);
 
-  const admin = adminClient(envRes.env);
   const livemode = paymentsLivemode();
   const tokenHash = await hashGiftToken(token);
 

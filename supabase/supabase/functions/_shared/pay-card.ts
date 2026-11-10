@@ -18,7 +18,6 @@
 // then the RPC's insufficient and taken.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { moneyState } from "./money-state.ts";
@@ -28,6 +27,8 @@ import { mintProofToken } from "./proof.ts";
 import { accountCurrency } from "./vouchers.ts";
 import { releasePayment, settlePayment } from "./settle-payment.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
+import { errorMessage } from "./errors.ts";
 
 /** A start with a card part: the bill (credit + card), the card part, the
  *  tip by card, and where Checkout returns to. */
@@ -301,7 +302,7 @@ export async function startCardPayment(
     );
   } catch (err) {
     const code = err instanceof StripeError ? err.code || err.type || "stripe_error" : "stripe_unreachable";
-    console.error("[pay-card] checkout_failed", JSON.stringify({ payment_id: paymentId, code, message: err instanceof Error ? err.message : String(err) }));
+    console.error("[pay-card] checkout_failed", JSON.stringify({ payment_id: paymentId, code, message: errorMessage(err) }));
     await admin.rpc("wallet_release_payment", { p_payment_id: paymentId, p_status: "failed", p_error: code });
     return refuse(502, `Stripe refused the checkout: ${code}`, "checkout_failed");
   }
@@ -417,7 +418,7 @@ export async function releaseCardPayment(
     }
   } catch (err) {
     // Stripe refuses to expire a session that is no longer open.
-    console.log("[pay-card] expire_refused", JSON.stringify({ payment_id: row.id, error: err instanceof Error ? err.message : String(err) }));
+    console.log("[pay-card] expire_refused", JSON.stringify({ payment_id: row.id, error: errorMessage(err) }));
   }
   const outcome = await settlePayment(admin, stripe, {
     id: row.id,

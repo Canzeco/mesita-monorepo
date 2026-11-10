@@ -17,12 +17,11 @@
 // Deploy: supabase functions deploy eleven-a4-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAgentRequest } from "../_shared/request.ts";
 import {
   cancelTicket,
   cleanNote,
-  requireAgentSecret,
   sameLine,
   ticketByCode,
   fireCancelNotice,
@@ -30,15 +29,9 @@ import {
 import { notifyReservationOutcome } from "../_shared/reservation-notification.ts";
 
 serveJson("eleven-a4-cancel-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const admin = adminClient(envRes.env);
-  const denied = await requireAgentSecret(req, admin);
-  if (denied) return denied;
+  const ctx = await requireAgentRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const body = await readJsonOr<{
     caller_phone?: unknown;
@@ -88,7 +81,7 @@ serveJson("eleven-a4-cancel-reservation", async (req) => {
     placeName: place?.name ?? null,
     placePhotos: place?.photos ?? null,
   });
-  await fireCancelNotice(envRes.env, "eleven-a4-cancel-reservation", ticket.id);
+  await fireCancelNotice(env, "eleven-a4-cancel-reservation", ticket.id);
 
   return json({
     ok: true,

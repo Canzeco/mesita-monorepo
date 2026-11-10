@@ -24,35 +24,27 @@
 //   500 with request_id
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
-import { errorMessage } from "../_shared/errors.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment } from "../_shared/pay.ts";
 import { releaseCardPayment, type ReleaseOutcome } from "../_shared/pay-card.ts";
 import { releasePayment } from "../_shared/settle-payment.ts";
 import { supabaseChargeStore } from "../_shared/charge.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-release-payment", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to see your payment" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to see your payment" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const paymentId = bodyRes.body.payment_id;
   if (!isUuid(paymentId)) return json({ ok: false, error: "payment_id must be a uuid" }, 400);
 
-  const requestId = crypto.randomUUID();
-  const admin = adminClient(envRes.env);
   try {
-    const res = await readPayment(admin, authRes.user.id, paymentId);
+    const res = await readPayment(admin, user.id, paymentId);
     if (!res.ok) throw new Error(res.error);
     if (!res.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
 
@@ -63,7 +55,7 @@ serveJson("consumer-web-release-payment", async (req) => {
       if (rel.error) throw new Error(`wallet_release_payment: ${rel.error.message}`);
       const released = (rel.data as { outcome?: string } | null)?.outcome === "released";
       // Only a bill this call released frees the charge (never one Received just paid).
-      if (released) await supabaseChargeStore(admin).unbind(res.row.id, authRes.user.id);
+      if (released) await supabaseChargeStore(admin).unbind(res.row.id, user.id);
       outcome = released ? "released" : "unchanged";
       console.log("[consumer-web-release-payment]", JSON.stringify({ payment_id: res.row.id, outcome, unbound: released, path: "outside" }));
     } else if (res.row.status === "open" || res.row.status === "opening") {
@@ -79,13 +71,12 @@ serveJson("consumer-web-release-payment", async (req) => {
       }
     }
 
-    const again = await readPayment(admin, authRes.user.id, paymentId);
+    const again = await readPayment(admin, user.id, paymentId);
     if (!again.ok) throw new Error(again.error);
     if (!again.row) return json({ ok: false, code: "gone", error: "That payment isn't here" }, 404);
     console.log("[consumer-web-release-payment]", JSON.stringify({ payment_id: paymentId, outcome, status: again.row.status }));
     return json({ ok: true, outcome, ...paymentView(again.row, again.placeName), ticket: again.row.ticket });
   } catch (err) {
-    console.error("[consumer-web-release-payment]", JSON.stringify({ request_id: requestId, payment_id: paymentId, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't cancel the payment. Try again.", request_id: requestId }, 500);
+    return failWithRequestId("consumer-web-release-payment", "Couldn't cancel the payment. Try again.", err, { payment_id: paymentId });
   }
 });

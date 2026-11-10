@@ -9,9 +9,10 @@ import type { PlaceFamily } from "./categories.ts";
 import { isOperatorField, type OperatorField } from "./operator-fields.ts";
 import { type PlaceHours, sanitiseHours } from "./place-hours.ts";
 import { isUrl, URL_FIELDS, type UrlField } from "./place-urls.ts";
-import { optString } from "./place-update-utils.ts";
+import { optString } from "./input.ts";
 import { applyMediaUpdates } from "./place-media-update.ts";
 import { readFamilyKeysBody } from "./place-families-body.ts";
+import { phoneDigits } from "./phone.ts";
 
 const MAX_DESCRIPTION_LEN = ENRICH_FIELD_LIMITS.description.max;
 
@@ -239,7 +240,7 @@ export function reservationPhone(raw: unknown): string | null | undefined {
   const t = raw.trim();
   if (!t) return null;
   if (!/^\+?[0-9 ()\-.]+$/.test(t)) return undefined;
-  const digits = t.replace(/\D/g, "");
+  const digits = phoneDigits(t);
   if (!t.startsWith("+")) return digits.length === 10 ? `+52${digits}` : undefined;
   return digits.length >= 10 && digits.length <= 15 && digits[0] !== "0" ? `+${digits}` : undefined;
 }

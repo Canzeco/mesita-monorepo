@@ -21,11 +21,11 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { readStandingBody, type RawGuest, toGuestRow } from "../_shared/guest-standing.ts";
 
 serveJson("admin-web-set-guest-standing", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

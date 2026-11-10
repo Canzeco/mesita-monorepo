@@ -6,10 +6,10 @@
 // by PI, and a PI left unfinished is cancelled before the row is released.
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { type PurchaseCardRow, type PurchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import { ownCard } from "./tab-card.ts";
 import { runVoucherCard } from "./voucher-card.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 type Call = { method: string; path: string; params?: Record<string, unknown>; opts?: Record<string, unknown> };
 

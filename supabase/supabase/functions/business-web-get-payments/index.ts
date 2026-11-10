@@ -22,12 +22,13 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { accountView, HOUSE_CREDITS_TERMS_TEXT, readAccount, readContract, readSettings, refreshAccount } from "../_shared/payments.ts";
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -50,7 +51,7 @@ serveJson("business-web-get-payments", async (req) => {
     } catch (err) {
       // Stripe unreachable, or the account gone from this universe: answer
       // what the row last said rather than nothing.
-      console.error(`[business-web-get-payments] refresh: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(`[business-web-get-payments] refresh: ${errorMessage(err)}`);
     }
   }
   const [settings, contract] = await Promise.all([readSettings(admin, placeId), readContract(admin, placeId)]);

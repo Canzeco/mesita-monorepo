@@ -17,13 +17,12 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { type StripeState } from "../_shared/payments.ts";
 import { type PlaceStatesFacts, readPlaceStatesFacts } from "../_shared/place-states-read.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
 import {
   isPlaceEnriched,
   isPlaceListed,
@@ -42,6 +41,8 @@ import {
   type EnrichmentMap,
   type FunctionState,
 } from "../_shared/schema-catalog.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 type Body = {
   limit?: unknown;
@@ -57,10 +58,9 @@ type Body = {
 // the console asks again from there until the catalog is done.
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serveJson("admin-web-search-places", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 
@@ -113,7 +113,7 @@ serveJson("admin-web-search-places", async (req) => {
     if (countErr) return json({ ok: false, error: `search_failed: ${countErr.message}` }, 500);
     total = count ?? 0;
     const after = bodyRes.body.after;
-    if (after !== undefined && after !== null && (typeof after !== "string" || !UUID_RE.test(after))) {
+    if (after !== undefined && after !== null && !isUuid(after)) {
       return json({ ok: false, error: "after must be a place id" }, 400);
     }
     // Keyset by id, not offset: a place created mid-run can neither shift a

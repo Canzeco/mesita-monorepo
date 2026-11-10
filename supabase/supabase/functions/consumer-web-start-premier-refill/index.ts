@@ -18,9 +18,9 @@
 // Stripe stays in test mode until Pato flips STRIPE_MODE and STRIPE_ALLOW_LIVE.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, ensureCustomer, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
+import { PREMIER_CURRENCY } from "../_shared/boost.ts";
 import {
   checkRefill,
   parseRefillStart,
@@ -30,17 +30,14 @@ import {
   refillCheckoutParams,
   refillNotice,
 } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { ensureCustomer } from "../_shared/boost-writes.ts";
 
 serveJson("consumer-web-start-premier-refill", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -48,7 +45,6 @@ serveJson("consumer-web-start-premier-refill", async (req) => {
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error }, 400);
   const start = parsed.start;
 
-  const admin = adminClient(envRes.env);
   const check = await checkRefill(admin, start.placeId, start.tier);
   if (check.result !== "ok") {
     const code = check.code ?? "not_found";
@@ -77,7 +73,7 @@ serveJson("consumer-web-start-premier-refill", async (req) => {
   const purchaseId = row.id as string;
 
   try {
-    const customer = await ensureCustomer(admin, stripe, userId, authRes.user.email ?? null, livemode);
+    const customer = await ensureCustomer(admin, stripe, userId, user.email ?? null, livemode);
     const session = await stripe(
       "POST",
       "checkout/sessions",

@@ -14,7 +14,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
+import { ensureConsumer } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { isLiveManager, MANAGER_COLUMNS, managerRow, type ManagerRow } from "../_shared/place-access.ts";
 import { maskPhone } from "../_shared/place-verification.ts";

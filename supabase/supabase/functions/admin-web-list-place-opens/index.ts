@@ -12,7 +12,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
   type PlaceOpenRow,
   summarizePlaceOpens,
@@ -22,7 +22,7 @@ const WINDOW_DAYS = 30;
 const ROW_CAP = 10_000;
 
 serveJson("admin-web-list-place-opens", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

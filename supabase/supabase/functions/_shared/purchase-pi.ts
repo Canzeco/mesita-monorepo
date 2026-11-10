@@ -12,7 +12,7 @@
 // → failed), so a row Stripe already paid is never failed.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 /** How long an in-app voucher PaymentIntent may sit unfinished (a 3-D
  *  Secure check the guest left) before it is cancelled and the row

@@ -37,8 +37,9 @@
 // Deploy: supabase functions deploy consumer-web-reverse-geocode
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { getOptionalAuthedUser } from "../_shared/auth.ts";
 import { readGooglePlacesKey } from "../_shared/google-places.ts";
 import { googleFetch } from "../_shared/google-fetch.ts";
 import {
@@ -72,12 +73,9 @@ const CACHE_MAX = 2000;
 const GEOCODE_TIMEOUT_MS = 4000;
 
 serveJson("consumer-web-reverse-geocode", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env } = ctx;
 
   const bodyRes = await readJson<{ lat?: unknown; lng?: unknown; precision?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -88,7 +86,7 @@ serveJson("consumer-web-reverse-geocode", async (req) => {
     return json({ ok: false, code: "bad_precision", error: 'precision must be "pin" or omitted' }, 400);
   }
   if (precision === "pin") {
-    const { user } = await getOptionalAuthedUser(req, envRes.env);
+    const { user } = await getOptionalAuthedUser(req, env);
     if (!user) return json({ ok: false, code: "sign_in_required", error: "Sign in to name a pin." }, 401);
   }
 

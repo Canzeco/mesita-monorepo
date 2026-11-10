@@ -1,5 +1,4 @@
-/** Digits-only phone helper. */
-
-export function phoneDigits(e164: string): string {
-  return e164.replace(/\D/g, "");
+/** The digits of a phone as typed or stored, nothing else. */
+export function phoneDigits(phone: string): string {
+  return phone.replace(/\D/g, "");
 }

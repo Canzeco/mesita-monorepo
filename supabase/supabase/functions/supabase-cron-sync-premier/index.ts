@@ -18,25 +18,20 @@
 // Stripe's (Rules §2), so Mesita polls.
 //
 // Body: { limit?: number }  (default 100, max 500)
-// Auth: verify_jwt = true + requireInternalCaller (the pg_cron vault key).
+// Auth: verify_jwt = true + requireInternalRequest (the pg_cron vault key).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import {
-  boostLivemode,
-  boostStripeKey,
-  confirmPledge,
   type Period,
   PERIOD_COLUMNS,
   type Pledge,
   PLEDGE_COLUMNS,
-  renewPlace,
-  settleCharging,
-  stripeClient,
 } from "../_shared/boost.ts";
 import { PURCHASE_COLUMNS, type RefillPurchase, settleRefillPurchase } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { confirmPledge, renewPlace, settleCharging } from "../_shared/boost-writes.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
@@ -44,18 +39,12 @@ const MAX_LIMIT = 500;
 const CHECKOUT_GRACE_MS = 2 * 60_000;
 
 serveJson("supabase-cron-sync-premier", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const caller = requireInternalCaller(req, envRes.env);
-  if (!caller.ok) return caller.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<{ limit?: number }>(req, {});
   const limit = Math.min(Math.max(Number(body.limit) || DEFAULT_LIMIT, 1), MAX_LIMIT);
-  const admin = adminClient(envRes.env);
   const key = boostStripeKey();
   if (!key) return json({ ok: true, skipped: "no_stripe_key" });
   const stripe = stripeClient(key);

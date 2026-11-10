@@ -15,10 +15,9 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, StripeError, stripeClient } from "../_shared/boost.ts";
 import {
   accountCreateParams,
   ACCOUNT_COLUMNS,
@@ -31,6 +30,8 @@ import {
   readAccount,
   snapshotFromStripe,
 } from "../_shared/payments.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("business-web-start-payment-onboarding", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -102,7 +103,7 @@ serveJson("business-web-start-payment-onboarding", async (req) => {
     return json({ ok: true, url: String(link.url) });
   } catch (err) {
     // Stripe's words go to the log; the owner reads one sentence.
-    console.error(`[business-web-start-payment-onboarding] ${placeId}: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[business-web-start-payment-onboarding] ${placeId}: ${errorMessage(err)}`);
     if (err instanceof StripeError) {
       return json({ ok: false, code: "stripe", error: "Stripe couldn't open the setup right now. Try again in a minute." }, 502);
     }

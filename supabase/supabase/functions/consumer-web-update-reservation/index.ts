@@ -23,8 +23,8 @@
 // Deploy: supabase functions deploy consumer-web-update-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import {
   PASSED_GRACE_MS,
@@ -45,14 +45,9 @@ type Body = {
 const MAX_PARTY = 10; // Pato, MESITA-3613: "max party size must be 10"
 
 serveJson("consumer-web-update-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -88,7 +83,6 @@ serveJson("consumer-web-update-reservation", async (req) => {
     return json({ ok: false, error: "Nothing to change." }, 400);
   }
 
-  const admin = adminClient(envRes.env);
   const { row, error: readErr } = await readOwnedTicket<{
     id: string;
     state: string;
@@ -101,7 +95,7 @@ serveJson("consumer-web-update-reservation", async (req) => {
   }>(
     admin,
     id,
-    authRes.user.id,
+    user.id,
     "id, state, reserved_at, consumer_id, reference_code, reschedules_today, reschedules_day, modification_of",
   );
   if (readErr) return json({ ok: false, error: readErr }, 500);
@@ -179,7 +173,7 @@ serveJson("consumer-web-update-reservation", async (req) => {
   // Ask the place again. The engine acks early and runs the legs in the
   // background, updating this row as it goes.
   const fired = await invokeInternalCaller(
-    envRes.env,
+    env,
     "consumer-web-update-reservation",
     "supabase-edgefunc-place-reservation-call",
     { reservation_id: id },

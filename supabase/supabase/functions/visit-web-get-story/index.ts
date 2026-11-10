@@ -12,24 +12,21 @@
 //   400 (not a token) · 404 gone (no paid Story carries it)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { isStoryToken, readStory, storyView } from "../_shared/story.ts";
 
 serveJson("visit-web-get-story", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const token = bodyRes.body.token;
   if (!isStoryToken(token)) return json({ ok: false, error: "That is not a Story voucher" }, 400);
 
-  const res = await readStory(adminClient(envRes.env), token);
+  const res = await readStory(admin, token);
   if (!res.ok) return json({ ok: false, error: res.error }, 500);
   if (!res.row) return json({ ok: false, code: "gone", error: "This Story voucher is not valid. Ask the guest to show it again." }, 404);
   return json({ ok: true, ...storyView(res.row, res.placeName, res.handle), server_time: new Date().toISOString() });

@@ -4,7 +4,6 @@
 // (wallet_card.test.sql).
 
 import { assertEquals } from "jsr:@std/assert@1";
-import type { StripeCall } from "./boost.ts";
 import {
   type ConnectEvent,
   handleConnectEvent,
@@ -13,6 +12,7 @@ import {
   verifyStripeSignature,
 } from "./connect-events.ts";
 import { type FakeOp, fakeAdmin, type FakeResult } from "./testing/fake-admin.ts";
+import { type StripeCall } from "./stripe.ts";
 
 const SECRET = "whsec_test_3305";
 const ACCT = "acct_place_3305";

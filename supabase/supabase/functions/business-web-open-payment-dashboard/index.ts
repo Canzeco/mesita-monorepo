@@ -10,11 +10,12 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, StripeError, stripeClient } from "../_shared/boost.ts";
 import { readAccount } from "../_shared/payments.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
+import { errorMessage } from "../_shared/errors.ts";
 
 serveJson("business-web-open-payment-dashboard", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -40,7 +41,7 @@ serveJson("business-web-open-payment-dashboard", async (req) => {
     const link = await stripeClient(key)("POST", `accounts/${account.stripe_account_id}/login_links`);
     return json({ ok: true, url: String(link.url) });
   } catch (err) {
-    console.error(`[business-web-open-payment-dashboard] ${placeId}: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`[business-web-open-payment-dashboard] ${placeId}: ${errorMessage(err)}`);
     if (err instanceof StripeError) {
       return json({ ok: false, code: "stripe", error: "Stripe couldn't open the dashboard right now." }, 502);
     }

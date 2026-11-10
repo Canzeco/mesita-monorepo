@@ -25,13 +25,13 @@
 //   one) · 500 with request_id.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "../_shared/money.ts";
 import { moneyState } from "../_shared/money-state.ts";
 import { listRowMoney, type PaymentKey, type PaymentSettings, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { PAID_RECENT_HOURS, type PayPlaceInput, payPlaces, readLocation } from "../_shared/pay-places.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const fail = (where: string, message: string) => {
   const request_id = crypto.randomUUID();
@@ -40,21 +40,15 @@ const fail = (where: string, message: string) => {
 };
 
 serveJson("consumer-web-list-pay-places", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to pay" }, 401);
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const body = await readJsonOr<Record<string, unknown>>(req, {});
   const loc = readLocation(body);
   if (!loc.ok) return json({ ok: false, code: "bad_location", field: loc.field, error: `${loc.field} is not a coordinate` }, 400);
 
-  const admin = adminClient(envRes.env);
   const livemode = paymentsLivemode();
 
   // The guest's credit per place, and every account that charges in this

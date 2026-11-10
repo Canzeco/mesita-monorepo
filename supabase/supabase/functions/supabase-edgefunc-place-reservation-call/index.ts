@@ -52,7 +52,7 @@
 // verdict the guest must hear about — those four, plus a counter-offer —
 // also writes a Me › Notifications row (_shared/reservation-notification.ts).
 //
-// Auth: verify_jwt = true + requireInternalCaller — internal callers only.
+// Auth: verify_jwt = true + requireInternalRequest — internal callers only.
 //
 // Layout: this file validates, gates, resolves numbers and claims the ticket
 // (one launch<Intent> per errand); legs.ts holds the background leg runners.
@@ -61,9 +61,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { runInBackground } from "../_shared/background.ts";
 import {
   ATTEMPTS,
@@ -479,14 +478,9 @@ const LAUNCH: Record<Intent, (ctx: LaunchCtx) => Promise<Response>> = {
 };
 
 serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = requireInternalCaller(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -504,8 +498,6 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   if (!elevenKey?.startsWith("sk_")) {
     return json({ ok: false, error: "ELEVENLABS_KEY not configured" }, 503);
   }
-
-  const admin = adminClient(envRes.env);
 
   // Fetch place separately — reservation_tickets.place_id has no
   // PostgREST FK hint to places, so an embed 500s. places.id == projects.id.

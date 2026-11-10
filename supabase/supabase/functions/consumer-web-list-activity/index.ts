@@ -39,8 +39,9 @@
 // public; otherwise every other member's handle leaves masked ("per***").
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, anonClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
+import { anonClient } from "../_shared/auth.ts";
 import { haversineKm } from "../_shared/geo.ts";
 import { type ActivityRow, type FeedEvent, feedEvents, isMesitaPlaceId, nearYou } from "../_shared/place-activity.ts";
 import { type Card, readCards, viewerSeesHandles } from "../_shared/place-activity-read.ts";
@@ -54,15 +55,10 @@ const MAX_SCANS = 6;
 type Body = { lat?: number; lng?: number; before?: string; place_id?: string };
 
 serveJson("consumer-web-list-activity", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const viewerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const viewerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -75,8 +71,7 @@ serveJson("consumer-web-list-activity", async (req) => {
   if (placeId != null && !isMesitaPlaceId(placeId)) {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
-  const admin = adminClient(envRes.env);
-  const anon = anonClient(envRes.env);
+  const anon = anonClient(env);
   const lat = finiteOrNull(body.lat);
   const lng = finiteOrNull(body.lng);
   const hasPoint = lat != null && lng != null;

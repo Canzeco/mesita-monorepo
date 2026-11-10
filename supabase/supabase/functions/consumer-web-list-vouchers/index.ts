@@ -13,28 +13,25 @@
 //            in_wallet?: boolean (MESITA-3582, signed in only) }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { getOptionalAuthedUser } from "../_shared/auth.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { inWallet } from "../_shared/house-cards.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-list-vouchers", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
-  const admin = adminClient(envRes.env);
-  const [{ user }, placeRes] = await Promise.all([getOptionalAuthedUser(req, envRes.env), readVoucherPlace(admin, placeId)]);
+  const [{ user }, placeRes] = await Promise.all([getOptionalAuthedUser(req, env), readVoucherPlace(admin, placeId)]);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   if (!placeRes.place) return json({ ok: false, error: "Place not found" }, 404);
 

@@ -6,11 +6,11 @@ import {
   json,
   readJson,
   readPlaceIdAlias } from "./http.ts";
-import { requireAdminRequest } from "./auth.ts";
 import { readAdminPlace } from "./admin-place.ts";
 import { writePlace } from "./place-doc.ts";
 import { isPlaceListed } from "./place-state.ts";
 import { recordAdminOperatorEvent } from "./admin-operator-events.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 
 /** Where an unlist lands — outside the visible set, and reversible. */
 const UNLISTED_STATE = "paused";
@@ -20,7 +20,7 @@ const LISTED_STATE = "active";
 type Body = { placeId?: unknown; projectId?: unknown; listed?: unknown };
 
 export async function handleSetPlaceListed(req: Request, source: string): Promise<Response> {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

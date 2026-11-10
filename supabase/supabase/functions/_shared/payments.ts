@@ -15,9 +15,9 @@
 // Test mode until Pato flips PAYMENTS_STRIPE_MODE (paymentsStripeKey); agents never do.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { paymentsLivemode, type StripeCall } from "./boost.ts";
 import { moneyState, type MoneyVoucherKey } from "./money-state.ts";
 import { vouchersUpToPct } from "./money.ts";
+import { paymentsLivemode, type StripeCall } from "./stripe.ts";
 
 // ── Settings ───────────────────────────────────────────────────────────────
 

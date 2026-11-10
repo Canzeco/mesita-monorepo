@@ -21,7 +21,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
   formatVipCode,
   hashVipCode,
@@ -31,7 +31,7 @@ import {
 } from "../_shared/vip-codes.ts";
 
 serveJson("admin-web-save-vip-code", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

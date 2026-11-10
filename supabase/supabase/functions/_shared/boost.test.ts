@@ -6,10 +6,6 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import {
   boostAmountCents,
-  boostLivemode,
-  boostStripeKey,
-  paymentsLivemode,
-  paymentsStripeKey,
   chargeKey,
   chargeOutcome,
   creditCents,
@@ -17,7 +13,6 @@ import {
   inEarlyWindow,
   intervalEnd,
   canResume,
-  isAllowedReturnUrl,
   type Manual,
   parseBoostStart,
   PREMIER_TIERS,
@@ -29,10 +24,10 @@ import {
   renewalChargeParams,
   runEndAtOrAbove,
   staleChargeAction,
-  StripeError,
   viewerOf,
 } from "./boost.ts";
 import { premierFactor } from "./area-score.ts";
+import { boostLivemode, boostStripeKey, isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, StripeError } from "./stripe.ts";
 
 const DAY = 86_400_000;
 

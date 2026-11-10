@@ -43,9 +43,8 @@
 //             settling?: true, pending_purchases?: [purchase ids] }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { chargesEnabledByPlace, listRowMoney, type PaymentKey, type RateKey, SETTINGS_COLUMNS, settingsFromRow } from "../_shared/payments.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { storyUrl } from "../_shared/proof.ts";
@@ -60,25 +59,20 @@ import {
   settleAll,
   type SettleOutcome,
 } from "../_shared/wallet.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 /** How long one read waits on Stripe for every open purchase together. */
 const SETTLE_BUDGET_MS = 3000;
 
 serveJson("consumer-web-get-wallet", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const body = await readJsonOr<Record<string, unknown>>(req, {});
   const sessionId = typeof body.session_id === "string" ? body.session_id : null;
 
-  const admin = adminClient(envRes.env);
   const livemode = paymentsLivemode();
 
   // ── Settle what is still open ──────────────────────────────────────────

@@ -18,8 +18,8 @@
 // Deploy: supabase functions deploy consumer-web-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { cancelAsGuest } from "../_shared/agent-tools.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
@@ -27,14 +27,9 @@ import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 type Body = { reservation_id?: string; reason?: string };
 
 serveJson("consumer-web-cancel-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -46,14 +41,13 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
     ? bodyRes.body.reason.trim().slice(0, 300)
     : "";
 
-  const admin = adminClient(envRes.env);
   const { row, error: readErr } = await readOwnedTicket<{
     id: string;
     state: string;
     reserved_at: string;
     consumer_id: string;
     reference_code: string | null;
-  }>(admin, id, authRes.user.id, "id, state, reserved_at, consumer_id, reference_code");
+  }>(admin, id, user.id, "id, state, reserved_at, consumer_id, reference_code");
   if (readErr) return json({ ok: false, error: readErr }, 500);
   // Same answer for "doesn't exist" and "not yours" — never leak existence.
   if (!row) {
@@ -77,7 +71,7 @@ serveJson("consumer-web-cancel-reservation", async (req) => {
   // courtesy call is a background consequence.
   const res = await cancelAsGuest(
     admin,
-    envRes.env,
+    env,
     "consumer-web-cancel-reservation",
     { id, state: row.state },
     reason,

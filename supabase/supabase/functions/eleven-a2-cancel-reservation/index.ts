@@ -11,26 +11,19 @@
 // Deploy: supabase functions deploy eleven-a2-cancel-reservation
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAgentRequest } from "../_shared/request.ts";
 import {
   cancelAsGuest,
   cleanNote,
-  requireAgentSecret,
   staleRunReply,
   ticketByCode,
 } from "../_shared/agent-tools.ts";
 
 serveJson("eleven-a2-cancel-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const admin = adminClient(envRes.env);
-  const denied = await requireAgentSecret(req, admin);
-  if (denied) return denied;
+  const ctx = await requireAgentRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const body = await readJsonOr<{
     reference_code?: unknown;
@@ -51,7 +44,7 @@ serveJson("eleven-a2-cancel-reservation", async (req) => {
   // must hear (Docs › Reservations §B leg 5). Pending tickets owe nothing.
   const res = await cancelAsGuest(
     admin,
-    envRes.env,
+    env,
     "eleven-a2-cancel-reservation",
     ticket,
     cleanNote(body.reason),

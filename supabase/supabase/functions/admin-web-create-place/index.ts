@@ -30,7 +30,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { createMinimalPlace } from "../_shared/create-place.ts";
 import { normalizeEnrichmentConfig } from "../_shared/enrichment-config.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
@@ -39,7 +39,7 @@ import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 type Body = { placeId?: string; onOpen?: boolean };
 
 serveJson("admin-web-create-place", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can create places.");
+  const ctx = await requireAdminRequest(req, "Only admins can create places.");
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

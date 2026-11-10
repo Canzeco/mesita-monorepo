@@ -6,7 +6,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { aggregate, readMonth, readRunPage, type RunRow, SCRAPERS } from "./usage.ts";
 
 const APIFY = "https://api.apify.com/v2";
@@ -53,7 +53,7 @@ async function listRuns(key: string, sinceMs: number) {
 }
 
 serveJson("admin-web-get-apify-usage", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can read Apify usage.");
+  const ctx = await requireAdminRequest(req, "Only admins can read Apify usage.");
   if (ctx instanceof Response) return ctx;
 
   const key = Deno.env.get("APIFY_KEY")?.trim();

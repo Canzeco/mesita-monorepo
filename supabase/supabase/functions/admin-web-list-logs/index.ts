@@ -5,7 +5,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { renderApiKey } from "../_shared/enrich-start.ts";
 import {
   pickEnrichmentWorkflow,
@@ -74,7 +74,7 @@ async function findWorkflow(key: string): Promise<
 }
 
 serveJson("admin-web-list-logs", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can read logs.");
+  const ctx = await requireAdminRequest(req, "Only admins can read logs.");
   if (ctx instanceof Response) return ctx;
 
   const key = renderApiKey(Deno.env);

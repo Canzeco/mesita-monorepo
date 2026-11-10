@@ -10,11 +10,11 @@
 // runs when the guest opens the Wallet.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { VOUCHER_CATALOG } from "./money.ts";
 import { purchaseStore, settlePurchaseByPaymentIntent } from "./purchase-pi.ts";
 import type { MoneyVoucherKey } from "./money-state.ts";
+import { type StripeCall } from "./stripe.ts";
 
 export { classifySession } from "./checkout-session.ts";
 

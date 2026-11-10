@@ -24,8 +24,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { handleConnectEvent, isConnectEvent, MAX_BODY_BYTES, verifyStripeSignature } from "../_shared/connect-events.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("stripe-connect-receive-event", async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "Method not allowed" }, 405);

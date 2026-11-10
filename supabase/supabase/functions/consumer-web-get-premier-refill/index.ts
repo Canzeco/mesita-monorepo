@@ -23,9 +23,10 @@
 // purchase.status: open · expired · paid · granted · refunded · refund_needed.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getOptionalAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { getOptionalAuthedUser } from "../_shared/auth.ts";
+import { PREMIER_CURRENCY } from "../_shared/boost.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import {
@@ -39,15 +40,13 @@ import {
   type RefillTier,
   settleRefillPurchase,
 } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-get-premier-refill", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const { user } = await getOptionalAuthedUser(req, envRes.env);
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
+  const { user } = await getOptionalAuthedUser(req, env);
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -55,7 +54,6 @@ serveJson("consumer-web-get-premier-refill", async (req) => {
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   const sessionId = typeof bodyRes.body.session_id === "string" ? bodyRes.body.session_id : null;
 
-  const admin = adminClient(envRes.env);
   const livemode = boostLivemode();
 
   // ── The guest's own purchases here, settled first ───────────────────────

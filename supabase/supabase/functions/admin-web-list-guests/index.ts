@@ -9,7 +9,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
   GUEST_LIST_LIMIT,
   GUEST_ROW_SELECT,
@@ -21,7 +21,7 @@ import { loadVipPartners } from "../_shared/vip-partners.ts";
 import { loadVipCodes } from "../_shared/vip-codes.ts";
 
 serveJson("admin-web-list-guests", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

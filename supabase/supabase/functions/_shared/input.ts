@@ -18,6 +18,13 @@ export function nonBlank(v: unknown): string | null {
   return s ? s : null;
 }
 
+/** A string trimmed and capped at maxLen, or null when it is not a string or
+ *  trims to nothing. Unlike clean(), a non-string is null, never String()-ed. */
+export function optString(v: unknown, maxLen: number): string | null {
+  const s = nonBlank(v);
+  return s === null ? null : s.slice(0, maxLen);
+}
+
 /** A finite number as-is, or null (no coercion: "3" is null). */
 export function finiteOrNull(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;

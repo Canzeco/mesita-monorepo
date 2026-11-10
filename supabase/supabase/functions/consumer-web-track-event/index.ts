@@ -17,8 +17,8 @@
 // wall already, so this requires a session like the rest of consumer-web.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 
 // Add a new event here before a client ships it.
 const ALLOWED_EVENTS = new Set([
@@ -35,14 +35,9 @@ const ALLOWED_EVENTS = new Set([
 type Body = { event?: string; payload?: Record<string, unknown> };
 
 serveJson("consumer-web-track-event", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -55,9 +50,8 @@ serveJson("consumer-web-track-event", async (req) => {
       ? bodyRes.body.payload
       : {};
 
-  const admin = adminClient(envRes.env);
   const { error } = await admin.from("consumer_analytics_events").insert({
-    consumer_id: authRes.user.id,
+    consumer_id: user.id,
     event,
     payload,
   });

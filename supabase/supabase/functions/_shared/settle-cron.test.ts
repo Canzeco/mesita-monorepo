@@ -4,9 +4,9 @@
 // config overrides the defaults.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { type BatchRow, runSettleTick, SETTLE_DEFAULTS, settleConfigFrom, settleRow } from "./settle-cron.ts";
 import { fakeAdmin } from "./testing/fake-admin.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 const T0 = Date.parse("2026-11-08T12:00:00Z");
 

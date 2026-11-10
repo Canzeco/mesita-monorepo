@@ -15,20 +15,17 @@
 //   409 place_code_required | locked (+retry_after_s)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, staffTryKey } from "../_shared/charge.ts";
 import { listPayments, readListBody, staffAccess, supabaseStaffStore } from "../_shared/staff.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("visit-web-list-payments", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -36,7 +33,6 @@ serveJson("visit-web-list-payments", async (req) => {
   if (!parsed.ok) return json({ ok: false, error: parsed.error }, parsed.status);
   const input = parsed.input;
 
-  const admin = adminClient(envRes.env);
   const placeRes = await readVoucherPlace(admin, input.placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
@@ -48,8 +44,8 @@ serveJson("visit-web-list-payments", async (req) => {
   const nowMs = Date.now();
   const access = await staffAccess(store, {
     input,
-    serviceKey: envRes.env.serviceKey,
-    staffKey: await staffTryKey(envRes.env.serviceKey, clientAddress(req.headers)),
+    serviceKey: env.serviceKey,
+    staffKey: await staffTryKey(env.serviceKey, clientAddress(req.headers)),
     nowMs,
   });
   if (!access.ok) {

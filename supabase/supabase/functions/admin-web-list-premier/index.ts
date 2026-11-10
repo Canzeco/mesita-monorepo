@@ -15,10 +15,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
-  boostLivemode,
-  boostStripeKey,
   chargingPeriod,
   type Manual,
   MANUAL_COLUMNS,
@@ -31,12 +29,13 @@ import {
   runningManual,
   runningPeriod,
 } from "../_shared/boost.ts";
+import { boostLivemode, boostStripeKey } from "../_shared/stripe.ts";
 
 const PLACE_LIMIT = 1000;
 const DAY_MS = 86_400_000;
 
 serveJson("admin-web-list-premier", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

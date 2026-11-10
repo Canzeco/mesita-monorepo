@@ -1,11 +1,9 @@
-// Unit tests for the local-time / open-now helpers. Pure, no
-// network/DB. isOpenNow reads the wall clock through localClock and delegates
-// to the pure isOpenAt, which is what we pin down here.
+// Unit tests for the local-time helpers and the pure open/closed check
+// isOpenAt. No network, no DB, no wall clock.
 //   deno test supabase/functions/_shared/local-time.test.ts
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { mexicoZone, type WeeklyHours } from "./local-time.ts";
-import { isOpenAt } from "./local-time-open.ts";
+import { isOpenAt, mexicoZone, type WeeklyHours } from "./local-time.ts";
 
 // Fri 6pm–2am (overnight), plus a same-day lunch shift on Saturday.
 const HOURS: WeeklyHours = {

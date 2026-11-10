@@ -4,8 +4,8 @@
 // written. Render folds the patch into the draft and commits once.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { timingSafeEqual } from "../_shared/timing-safe-equal.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireEnrichWriteRequest } from "../_shared/request.ts";
 import { runPlaceSync } from "../_shared/place-sync-run.ts";
 import { nonBlank } from "../_shared/input.ts";
 
@@ -16,17 +16,8 @@ type Body = {
 };
 
 serveJson("enricher-edgefunc-sync-sources", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const writeKey = Deno.env.get("ENRICH_WRITE_KEY")?.trim() ?? "";
-  if (!writeKey) return json({ ok: false, error: "Server misconfigured" }, 500);
-  const header = req.headers.get("Authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice("Bearer ".length).trim() : "";
-  if (!token || !timingSafeEqual(token, writeKey)) {
-    return json({ ok: false, error: "Unauthorized" }, 401);
-  }
+  const ctx = requireEnrichWriteRequest(req);
+  if (ctx instanceof Response) return ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;

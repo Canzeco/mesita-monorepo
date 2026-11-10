@@ -6,7 +6,8 @@
 // catches, so this pins the graphs' wiring — never their copy.
 
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { FLEET_AGENTS, fleetWorkflows } from "./reservationist-fleet.ts";
+import { FLEET_AGENTS } from "./reservationist-fleet.ts";
+import { fleetWorkflows } from "./reservationist-workflows.ts";
 
 const TOOL_NAMES = [
   "a1_report_outcome",

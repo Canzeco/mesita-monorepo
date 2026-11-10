@@ -23,7 +23,7 @@ import {
   readPlaceIdAlias,
   serveJson,
 } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { readAdminPlace } from "../_shared/admin-place.ts";
 import { writePlace } from "../_shared/place-doc.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
@@ -35,7 +35,7 @@ const ARCHIVED_STATE = "archived";
 type Body = { placeId?: unknown; projectId?: unknown };
 
 serveJson("admin-web-delete-place", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

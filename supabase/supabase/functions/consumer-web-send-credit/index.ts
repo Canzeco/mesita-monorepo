@@ -20,24 +20,19 @@
 //   500 with request_id
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { GIFT_MAX_OPEN, giftRefusalStatus, hashGiftToken, mintGiftToken, readSendBody } from "../_shared/gift.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readMoneyConfig, sendingOn } from "../_shared/money-config.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-send-credit", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to send credit" }, 401);
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to send credit" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -45,7 +40,6 @@ serveJson("consumer-web-send-credit", async (req) => {
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error }, parsed.status);
   const input = parsed.input;
 
-  const admin = adminClient(envRes.env);
   const livemode = paymentsLivemode();
   const config = await readMoneyConfig(admin);
   if (!sendingOn(config, livemode)) {

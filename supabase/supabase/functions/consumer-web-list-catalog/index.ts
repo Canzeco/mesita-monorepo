@@ -69,14 +69,8 @@
 // Deploy: supabase functions deploy consumer-web-list-catalog
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import {
-  corsPreflight,
-  json,
-  readJsonOr,
-  rejectUnlessMethods,
-  serveJson,
-} from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
 import { stripInternal } from "../_shared/place-pool-shape.ts";
 import type { PlaceProfileRow } from "../_shared/place-pool-shape.ts";
 import { PLACE_CARD_COLUMNS } from "../_shared/place-columns.ts";
@@ -95,6 +89,7 @@ import {
 import { CATALOG_PAGE_SIZE_MAX } from "../_shared/discovery-config.ts";
 import { readGuestFamilyKeys } from "../_shared/place-taxonomy.ts";
 import { withVouchersUpTo } from "../_shared/payments.ts";
+import { isUuid } from "../_shared/place-id.ts";
 
 type Body = {
   lat?: number;
@@ -122,14 +117,13 @@ type Body = {
   fill?: unknown;
 };
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** A fill's ids, duplicates collapsed, or null when the list is empty, too
  *  long or holds a non-uuid. */
 function readFill(v: unknown[]): string[] | null {
   const ids = [...new Set(v)];
   if (ids.length === 0 || ids.length > CATALOG_PAGE_SIZE_MAX) return null;
-  return ids.every((id) => typeof id === "string" && UUID.test(id)) ? ids as string[] : null;
+  return ids.every((id) => isUuid(id)) ? ids as string[] : null;
 }
 
 function wirePlaces(rows: unknown[]): PoolRow[] {
@@ -144,16 +138,11 @@ function wirePlaces(rows: unknown[]): PoolRow[] {
 }
 
 serveJson("consumer-web-list-catalog", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<Body>(req, {});
-  const admin = adminClient(env);
   const cfg = await loadDiscoveryConfig(admin);
   const nearby = decideNearby(body as Record<string, unknown>);
   const center = nearby.mode === "ok" ? { lat: nearby.lat, lng: nearby.lng } : null;

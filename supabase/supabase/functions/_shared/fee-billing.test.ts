@@ -2,7 +2,6 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import {
   FEE_DAYS_UNTIL_DUE,
   FEE_MIN_CENTS,
@@ -14,6 +13,7 @@ import {
   invoiceSetArgs,
   issueFeeInvoice,
 } from "./fee-billing.ts";
+import { type StripeCall } from "./stripe.ts";
 
 Deno.test("the schedule: MX$500 or weekly, Stripe's MX$10 minimum, seven days to pay", () => {
   assertEquals(FEE_THRESHOLD_CENTS, 50_000);

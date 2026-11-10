@@ -6,9 +6,9 @@
 // of one event write the spend and the cashback once.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type OpenPayment = {
   id: string;

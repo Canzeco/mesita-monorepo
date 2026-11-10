@@ -6,7 +6,6 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import {
   parseRefillStart,
   purchaseLine,
@@ -17,6 +16,7 @@ import {
   type RefillPurchase,
   settleRefillPurchase,
 } from "./premier-purchase.ts";
+import { type StripeCall } from "./stripe.ts";
 
 type Result = { data?: unknown; error: { message: string } | null };
 

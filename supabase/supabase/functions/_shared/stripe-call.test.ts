@@ -3,7 +3,7 @@
 // a charge on the wrong merchant, so the header is pinned both ways.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { stripeClient } from "./boost.ts";
+import { stripeClient } from "./stripe.ts";
 
 function capture() {
   const seen: Array<{ url: string; init: RequestInit }> = [];

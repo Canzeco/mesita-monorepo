@@ -13,11 +13,11 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { accountState } from "../_shared/payments.ts";
 import { PLACE_CAP_CENTS } from "../_shared/vouchers.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 type Row = {
   place_id: string;
@@ -35,7 +35,7 @@ type Row = {
 };
 
 serveJson("admin-web-list-connected-places", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

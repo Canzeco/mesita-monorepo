@@ -17,13 +17,13 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import { buildPlaceOverview } from "../_shared/place-overview.ts";
 import { anonymousReviews } from "../_shared/anonymous-reviews.ts";
-import { boostLivemode } from "../_shared/boost.ts";
 import { stripeStateByPlace } from "../_shared/payments.ts";
+import { boostLivemode } from "../_shared/stripe.ts";
 
 serveJson("business-web-get-place", async (req) => {
   const ctx = await requireBusinessRequest(req);

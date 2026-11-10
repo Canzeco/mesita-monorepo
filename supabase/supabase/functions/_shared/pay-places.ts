@@ -26,8 +26,7 @@ export const NEAR_RADIUS_M = 2000;
 export const PAY_PLACES_LIMIT = 50;
 /** How long a row says "Paid MX$330 · 14:02" and opens that proof. */
 export const PAID_RECENT_HOURS = 12;
-/** The client rounds a location to this many decimals (~110 m). */
-export const LOCATION_DECIMALS = 3;
+// The client rounds a location to 3 decimals (~110 m) before it asks.
 
 export type Coords = { lat: number; lng: number };
 

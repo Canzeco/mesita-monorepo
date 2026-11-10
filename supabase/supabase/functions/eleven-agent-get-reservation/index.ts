@@ -23,12 +23,11 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAgentRequest } from "../_shared/request.ts";
 import { phoneDigits } from "../_shared/phone.ts";
 import {
   placeNames,
-  requireAgentSecret,
   speakable,
   type SpeakableTicket,
 } from "../_shared/agent-tools.ts";
@@ -119,17 +118,10 @@ async function searchReservations(
 }
 
 serveJson("eleven-agent-get-reservation", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const admin = adminClient(envRes.env);
-
-  // Lock 2: the shared tool secret, read live from app_config.
-  const denied = await requireAgentSecret(req, admin);
-  if (denied) return denied;
+  // Lock 2 (lock 1 is the gateway's verify_jwt): the shared tool secret.
+  const ctx = await requireAgentRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<Body>(req, {});
   const codeDigits = typeof body.reference_code === "string"

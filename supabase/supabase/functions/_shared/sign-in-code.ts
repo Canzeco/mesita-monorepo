@@ -4,6 +4,9 @@
 // Call (consumer-web-call-sign-in-code marked the number in sign_in_calls).
 // Pure helpers plus the one Twilio Messages call.
 
+import { timingSafeEqual } from "./timing-safe-equal.ts";
+import { phoneDigits } from "./phone.ts";
+
 /** How long a Call pick waits for Auth's code. */
 export const SIGN_IN_CALL_PICK_SECONDS = 120;
 /** One call per number per this many seconds. */
@@ -21,7 +24,7 @@ export function signInSmsBody(code: string): string {
  *  Both become "+528125680835", or null when it can't be a phone. */
 export function signInPhone(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const digits = raw.replace(/\D/g, "");
+  const digits = phoneDigits(raw);
   return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
 }
 
@@ -65,10 +68,7 @@ export async function verifyHookSignature(
   const expected = bytesToB64(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${id}.${ts}.${body}`)));
   return sigs.split(" ").some((s) => {
     const [version, sig] = s.split(",");
-    if (version !== "v1" || !sig || sig.length !== expected.length) return false;
-    let diff = 0;
-    for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
-    return diff === 0;
+    return version === "v1" && !!sig && timingSafeEqual(sig, expected);
   });
 }
 

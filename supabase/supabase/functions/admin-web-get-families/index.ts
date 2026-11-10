@@ -6,7 +6,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
   fetchGoogleCategories,
   fetchPlaceFamilies,
@@ -15,7 +15,7 @@ import { buildFamiliesMap } from "../_shared/families-map.ts";
 import { fetchPlaceTags } from "../_shared/tags.ts";
 
 serveJson("admin-web-get-families", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

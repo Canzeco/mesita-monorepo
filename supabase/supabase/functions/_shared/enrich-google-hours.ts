@@ -1,6 +1,5 @@
 // Twin of render/src/hours.ts (weeklyHoursFromPeriods, closesAtFromHours), pinned by render-twins.test.ts.
-import type { HourRange } from "./local-time.ts";
-import { DAY_KEYS } from "./local-time-open.ts";
+import { DAY_KEYS, type HourRange } from "./local-time.ts";
 
 export type GooglePeriod = {
   open?: { day?: number; hour?: number; minute?: number };

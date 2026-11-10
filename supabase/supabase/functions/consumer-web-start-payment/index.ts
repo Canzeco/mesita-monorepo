@@ -60,9 +60,8 @@
 //       bill, pay from credit) | insufficient | taken
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
 import { startCardPayment } from "../_shared/pay-card.ts";
@@ -73,21 +72,16 @@ import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, openOutsideOf, readChargeCode, readTip, supabaseChargeStore } from "../_shared/charge.ts";
 import { moneyText } from "../_shared/pay.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to pay" }, 401);
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
-  const admin = adminClient(envRes.env);
   const outside = bodyRes.body.outside === true;
   if (outside && (bodyRes.body.charge_code === undefined || bodyRes.body.charge_code === null)) {
     return json({ ok: false, code: "outside_needs_charge", error: "Paying outside needs the waiter's code" }, 400);
@@ -249,7 +243,7 @@ serveJson("consumer-web-start-payment", async (req) => {
       const account = await readAccount(admin, input.placeId);
       const res = await startCardPayment(admin, stripeClient(key), {
         consumerId: userId,
-        email: authRes.user.email ?? null,
+        email: user.email ?? null,
         input: { ...input, cardCents: card.cardCents, tipCents: card.tipCents, returnUrl: card.returnUrl as string },
         place: { id: place.id, name: place.name, currency },
         account,

@@ -34,7 +34,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { maskEmail, maskPhone } from "../_shared/place-verification.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";

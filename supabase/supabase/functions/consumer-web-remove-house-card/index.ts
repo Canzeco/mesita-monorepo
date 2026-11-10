@@ -10,28 +10,22 @@
 //   400 (not a place id) · 401 sign_in · 409 has_credit · 500
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { balanceAt } from "../_shared/house-cards.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-remove-house-card", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to remove a card" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to remove a card" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
-  const admin = adminClient(envRes.env);
-  const userId = authRes.user.id;
+  const userId = user.id;
   const bal = await balanceAt(admin, userId, placeId, paymentsLivemode());
   if (!bal.ok) return json({ ok: false, error: bal.error }, 500);
   if (bal.cents !== 0) {

@@ -8,7 +8,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import {
   mergeActivityFeed,
   summarizeOperatorVerbs,
@@ -28,7 +28,7 @@ const FEED_CAP = 50;
 type Body = { windowDays?: number };
 
 serveJson("admin-web-get-activity-summary", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin } = ctx;
 

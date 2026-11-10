@@ -38,38 +38,32 @@
 //   502 card_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "../_shared/money.ts";
 import { cardRefusal } from "../_shared/pay-card.ts";
 import { PI_TTL_MS } from "../_shared/settle-payment.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, type CardSplitArgs, readSplitBody, readTabById, rpcRefusal, splitArgs } from "../_shared/tab.ts";
-import { ownCard, paymentsPublishableKey, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
-import { errorMessage } from "../_shared/errors.ts";
+import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
+import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-pay-tab", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to pay" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const parsed = readSplitBody(bodyRes.body);
   if (!parsed.ok) return json({ ok: false, code: parsed.code, error: parsed.error, ...parsed.detail }, parsed.status);
   const split = parsed.input;
-  const userId = authRes.user.id;
+  const userId = user.id;
   const hasCard = split.cardBillCents > 0 || split.cardTipCents > 0;
 
   try {
-    const admin = adminClient(envRes.env);
     const tab = await readTabById(admin, split.tabId);
     if (!tab || tab.consumer_id !== userId) {
       return json({ ok: false, code: "not_found", error: "This tab is gone" }, 404);
@@ -164,8 +158,6 @@ serveJson("consumer-web-pay-tab", async (req) => {
       ...(cardStep ? { card: cardStep } : {}),
     });
   } catch (err) {
-    const request_id = crypto.randomUUID();
-    console.error("[consumer-web-pay-tab]", JSON.stringify({ request_id, error: errorMessage(err) }));
-    return json({ ok: false, error: "Couldn't pay. Try again with the same tap.", request_id }, 500);
+    return failWithRequestId("consumer-web-pay-tab", "Couldn't pay. Try again with the same tap.", err);
   }
 });

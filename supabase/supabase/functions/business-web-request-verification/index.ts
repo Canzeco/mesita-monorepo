@@ -15,10 +15,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { ensureConsumer, requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
+import { ensureConsumer } from "../_shared/business-request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { isLiveManager, managerRow } from "../_shared/place-access.ts";
 import { boundedText } from "../_shared/place-verification.ts";
+import { phoneDigits } from "../_shared/phone.ts";
 
 const REQUESTS_PER_DAY = 3;
 
@@ -80,7 +82,7 @@ serveJson("business-web-request-verification", async (req) => {
     return json({ ok: false, code: "invalid", error: "Name and role are 80 characters at most, the WhatsApp number 40, the note 500" }, 400);
   }
   if (!name || !role || !contact) return json({ ok: true, outcome: "needs_details" });
-  if (contact.replace(/\D/g, "").length < 7) {
+  if (phoneDigits(contact).length < 7) {
     return json({ ok: false, code: "invalid_contact", error: "Write a WhatsApp number we can reach you at" }, 400);
   }
 

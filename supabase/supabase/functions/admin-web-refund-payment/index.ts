@@ -18,9 +18,8 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
   paymentNeedsStripe,
@@ -31,9 +30,10 @@ import {
   refundPayment,
   refundPurchase,
 } from "../_shared/money-admin.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("admin-web-refund-payment", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST");
+  const ctx = await requireAdminRequest(req);
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 

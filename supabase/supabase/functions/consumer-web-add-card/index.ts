@@ -15,21 +15,17 @@
 //   409 too_many (+max) · 503 (Stripe not configured) · 502 checkout_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode, paymentsStripeKey, ensureCustomer, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { cardSetupParams, listCards, MAX_CARDS } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
+import { ensureCustomer } from "../_shared/boost-writes.ts";
 
 serveJson("consumer-web-add-card", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to save a card" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to save a card" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const returnUrl = bodyRes.body.return_url;
@@ -39,12 +35,11 @@ serveJson("consumer-web-add-card", async (req) => {
 
   const key = paymentsStripeKey();
   if (!key) return json({ ok: false, error: "Cards are not available right now" }, 503);
-  const userId = authRes.user.id;
+  const userId = user.id;
   const livemode = paymentsLivemode();
-  const admin = adminClient(envRes.env);
   const stripe = stripeClient(key);
   try {
-    const customer = await ensureCustomer(admin, stripe, userId, authRes.user.email ?? null, livemode);
+    const customer = await ensureCustomer(admin, stripe, userId, user.email ?? null, livemode);
     const cards = await listCards(stripe, customer, new Set());
     if (cards.length >= MAX_CARDS) {
       return json({ ok: false, code: "too_many", max: MAX_CARDS, error: `You can save up to ${MAX_CARDS} cards` }, 409);

@@ -4,8 +4,8 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import { availableAtFor, balancesOf, classifySession, type OpenPurchase, settleAll, settlePurchase } from "./wallet.ts";
+import { type StripeCall } from "./stripe.ts";
 
 const PURCHASE = "00000000-0000-4000-8000-0000000a3097";
 

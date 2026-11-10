@@ -23,31 +23,24 @@
 // place's DB effects (enriched_at, links, media).
 //
 // Naming: actor-origin-verb-noun → supabase · edgefunc · start · agent-enrich.
-// Auth: verify_jwt = true + requireInternalCaller (service-role bearer).
+// Auth: verify_jwt = true + requireInternalRequest (service-role bearer).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { requireInternalCaller } from "../_shared/internal.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireInternalRequest } from "../_shared/request.ts";
 import { startAgentEnrich } from "../_shared/agent-enrich.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 const SOURCE = "supabase-edgefunc-start-agent-enrich";
 
 serveJson("supabase-edgefunc-start-agent-enrich", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const caller = requireInternalCaller(req, envRes.env);
-  if (!caller.ok) return caller.response;
+  const ctx = requireInternalRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, callerName } = ctx;
 
   const bodyRes = await readJson<{ googlePlaceIds?: unknown }>(req);
   if (!bodyRes.ok) return bodyRes.response;
 
-  const admin = adminClient(envRes.env);
   const started = await startAgentEnrich(admin, bodyRes.body.googlePlaceIds);
   await recordAdminOperatorEvent(admin, {
     verb: "enrich",
@@ -56,8 +49,8 @@ serveJson("supabase-edgefunc-start-agent-enrich", async (req) => {
     actorUserId: null,
     source: SOURCE,
     detail: started.ok
-      ? { agent: true, caller: caller.callerName, count: started.started.length, skipped: started.skipped.length }
-      : { agent: true, caller: caller.callerName, error: started.error },
+      ? { agent: true, caller: callerName, count: started.started.length, skipped: started.skipped.length }
+      : { agent: true, caller: callerName, error: started.error },
   });
   if (!started.ok) return json(started, started.status);
   return json(started);

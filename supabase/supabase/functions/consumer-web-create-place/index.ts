@@ -22,15 +22,13 @@
 // Deploy: supabase functions deploy consumer-web-create-place
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { runInBackground } from "../_shared/background.ts";
 import {
-  corsPreflight,
   json,
   readJson,
-  rejectUnlessMethods,
   serveJson,
 } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
+import { runInBackground } from "../_shared/background.ts";
 import {
   createMinimalPlace,
   existingFromDuplicate,
@@ -48,17 +46,10 @@ import { readAppConfig } from "../_shared/write-config.ts";
 type Body = { googlePlaceId?: string };
 
 serveJson("consumer-web-create-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
-
   // Authenticate the consumer.
-  const authRes = await getAuthedUser(req, env);
-  if (!authRes.ok) return authRes.response;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
 
   // Parse input.
   const bodyRes = await readJson<Body>(req);
@@ -68,11 +59,10 @@ serveJson("consumer-web-create-place", async (req) => {
     return json({ ok: false, error: "googlePlaceId is required" }, 400);
   }
 
-  const admin = adminClient(env);
   const log = (rec: Omit<PlaceOpenRecord, "googlePlaceId" | "consumerId" | "caller">) =>
     recordPlaceOpen(admin, {
       googlePlaceId,
-      consumerId: authRes.user.id,
+      consumerId: user.id,
       caller: "consumer-web-create-place",
       ...rec,
     });
@@ -118,7 +108,7 @@ serveJson("consumer-web-create-place", async (req) => {
   // any Google spend (create-quota.ts has the abuse rationale).
   const quota = await consumeConsumerCreateQuota(
     admin,
-    authRes.user.id,
+    user.id,
     googlePlaceId,
     "consumer-web-create-place",
     creationConfig.enrichConsumerCreatesPerDay,

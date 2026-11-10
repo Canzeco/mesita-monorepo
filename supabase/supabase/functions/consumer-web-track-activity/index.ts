@@ -42,8 +42,8 @@
 // place_profiles), in the background after the answer.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { eventPoint, isActivityKind, isMesitaPlaceId } from "../_shared/place-activity.ts";
 import { applyPlaceRequest } from "../_shared/place-requests.ts";
 import { runGooglePlaceUpdate } from "../_shared/admin-google-place-update.ts";
@@ -60,15 +60,10 @@ type Body = {
 };
 
 serveJson("consumer-web-track-activity", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const consumerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const consumerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -83,7 +78,6 @@ serveJson("consumer-web-track-activity", async (req) => {
   const quiet = kind === "saved" && bodyRes.body.quiet === true;
   const point = eventPoint(bodyRes.body.lat, bodyRes.body.lng);
 
-  const admin = adminClient(envRes.env);
   if (on) {
     const { error } = await admin.from("place_activity").upsert(
       {
@@ -125,7 +119,7 @@ serveJson("consumer-web-track-activity", async (req) => {
       enriching = counted.enriching;
       if (counted.updateDue) {
         runInBackground(
-          runGooglePlaceUpdate(admin, placeId, { supabaseUrl: envRes.env.url }).then((r) => {
+          runGooglePlaceUpdate(admin, placeId, { supabaseUrl: env.url }).then((r) => {
             if (!r.ok) {
               console.error(
                 `[consumer-web-track-activity] the view's Update did not run: ${r.error}`,

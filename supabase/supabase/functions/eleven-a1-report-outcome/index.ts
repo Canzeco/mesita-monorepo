@@ -34,9 +34,10 @@
 // Deploy: supabase functions deploy eleven-a1-report-outcome
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, readEFEnv } from "../_shared/auth.ts";
-import { cleanNote, requireAgentSecret, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAgentRequest } from "../_shared/request.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { cleanNote, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import { loadEnrichmentTriggers, subprocessesFor } from "../_shared/enrich-triggers.ts";
@@ -53,15 +54,9 @@ const VERDICTS = [
 ] as const;
 
 serveJson("eleven-a1-report-outcome", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const admin = adminClient(envRes.env);
-  const denied = await requireAgentSecret(req, admin);
-  if (denied) return denied;
+  const ctx = await requireAgentRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<{
     reference_code?: unknown;
@@ -116,7 +111,7 @@ serveJson("eleven-a1-report-outcome", async (req) => {
 // Best-effort — never lets an enrichment-side failure fail the outcome report
 // the vendor agent is waiting on mid-call.
 async function emitOnReservationFailed(
-  admin: ReturnType<typeof adminClient>,
+  admin: SupabaseClient,
   projectId: string,
 ): Promise<void> {
   try {

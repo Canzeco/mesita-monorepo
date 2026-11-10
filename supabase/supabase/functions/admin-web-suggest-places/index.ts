@@ -10,13 +10,8 @@
 // Auth: caller's JWT email must be in public.super_admins.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { readJson, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { runAdminNamePipeline } from "../_shared/name-pipeline.ts";
 
 type Body = {
@@ -26,19 +21,9 @@ type Body = {
 };
 
 serveJson("admin-web-suggest-places", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const env = envRes.env;
-
-  const authRes = await getAuthedUser(req, env);
-  if (!authRes.ok) return authRes.response;
-  const admin = adminClient(env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;

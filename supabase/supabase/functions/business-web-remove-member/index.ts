@@ -9,7 +9,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
-import { requireBusinessRequest } from "../_shared/business-request.ts";
+import { requireBusinessRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 

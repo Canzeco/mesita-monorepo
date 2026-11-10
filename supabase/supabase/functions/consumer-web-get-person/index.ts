@@ -25,8 +25,9 @@
 // viewer shows their own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, anonClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
+import { anonClient } from "../_shared/auth.ts";
 import {
   type ActivityRow,
   feedEvents,
@@ -63,15 +64,10 @@ function firstPagePlaceIds(
 }
 
 serveJson("consumer-web-get-person", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const viewerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin, user } = ctx;
+  const viewerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -86,7 +82,7 @@ serveJson("consumer-web-get-person", async (req) => {
     if (body.fill.length > PAGE_MAX) {
       return json({ ok: false, error: `fill takes at most ${PAGE_MAX} ids` }, 400);
     }
-    const filled = await readCards(anonClient(envRes.env), body.fill as string[]);
+    const filled = await readCards(anonClient(env), body.fill as string[]);
     if (!filled.ok) return json({ ok: false, error: filled.error }, 500);
     return json({ ok: true, places: [...filled.cards.values()] });
   }
@@ -102,8 +98,7 @@ serveJson("consumer-web-get-person", async (req) => {
     return json({ ok: false, error: "at must be the event's time" }, 400);
   }
 
-  const admin = adminClient(envRes.env);
-  const anon = anonClient(envRes.env);
+  const anon = anonClient(env);
   const [histRes, canSee] = await Promise.all([
     admin.rpc("place_activity_history_by", {
       p_place_id: placeId,

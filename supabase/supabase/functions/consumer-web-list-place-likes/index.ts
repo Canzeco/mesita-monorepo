@@ -13,8 +13,8 @@
 // own (MESITA-2594, seesHandles).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { type ActivityRow, isMesitaPlaceId, socialLine, toPerson } from "../_shared/place-activity.ts";
 import { viewerSeesHandles } from "../_shared/place-activity-read.ts";
 
@@ -23,15 +23,10 @@ const LINE_FACES = 5;
 type Body = { place_id?: string };
 
 serveJson("consumer-web-list-place-likes", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const viewerId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const viewerId = user.id;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -40,7 +35,6 @@ serveJson("consumer-web-list-place-likes", async (req) => {
     return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
   }
 
-  const admin = adminClient(envRes.env);
   const [peopleRes, mineRes, canSee] = await Promise.all([
     admin.rpc("place_activity_people", { p_place_id: placeId, p_limit: LINE_FACES }),
     admin

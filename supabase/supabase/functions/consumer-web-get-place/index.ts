@@ -8,13 +8,9 @@
 // naming convention.)
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  anonClient,
-  getOptionalAuthedUser,
-  readEFEnv,
-} from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { openRequest } from "../_shared/request.ts";
+import { anonClient, getOptionalAuthedUser } from "../_shared/auth.ts";
 import { PLACE_PUBLIC_COLUMNS as PLACE_PROFILE_COLUMNS } from "../_shared/place-columns.ts";
 import { withFamilyKeys } from "../_shared/place-family-keys.ts";
 import { familyChips } from "../_shared/catalog-families.ts";
@@ -27,7 +23,7 @@ import {
 } from "../_shared/place-requests.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 // The Reviews tab's "Leave a review on Google" button (MESITA-2916) needs
 // Google's place id: the write-review form takes no `?cid=`. This EF only;
@@ -39,14 +35,11 @@ type Body = { id?: string; slug?: string };
 const text = (v: unknown): string | null => (typeof v === "string" ? v : null);
 
 serveJson("consumer-web-get-place", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
   // Service role is required for the place_requests and threshold reads;
   // place browse still goes through the anon client + profiles RLS.
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
+  const ctx = openRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { env, admin } = ctx;
 
   const bodyRes = await readJson<Body>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -57,8 +50,7 @@ serveJson("consumer-web-get-place", async (req) => {
     return json({ ok: false, error: "id or slug is required" }, 400);
   }
 
-  const supabase = anonClient(envRes.env);
-  const admin = adminClient(envRes.env);
+  const supabase = anonClient(env);
   const column = isUuid(idOrSlug) ? "id" : "slug";
 
   // TWO ROUNDS, NOT SIX (MESITA-3029). The place screen waits on this read
@@ -73,7 +65,7 @@ serveJson("consumer-web-get-place", async (req) => {
       .select(PLACE_PROFILE_COLUMNS + GOOGLE_REVIEW_FORM_COLUMN)
       .eq(column, idOrSlug)
       .maybeSingle(),
-    getOptionalAuthedUser(req, envRes.env),
+    getOptionalAuthedUser(req, env),
     loadRequestThreshold(admin),
   ]);
   const { data, error } = rowRes;

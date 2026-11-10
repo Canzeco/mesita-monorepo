@@ -32,28 +32,24 @@
 //   Welcome buy while the first one's Checkout is open) · 502 checkout_failed
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
-import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey } from "../_shared/money-state.ts";
 import { readAccount } from "../_shared/payments.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
-import { isPaymentMethodId, ownCard, paymentsPublishableKey } from "../_shared/tab-card.ts";
+import { isPaymentMethodId, ownCard } from "../_shared/tab-card.ts";
 import { openVoucherCard, readRequestRow, runVoucherCard } from "../_shared/voucher-card.ts";
 import { purchaseStore } from "../_shared/purchase-pi.ts";
 import { buyRefusal, mexicoToday, openVoucherCheckout, readStoryGuest, readVipGuest, storyRefusal, vipRefusal, voucherOffer } from "../_shared/vouchers.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-buy-voucher", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-  const userId = authRes.user.id;
+  const ctx = await requireConsumerRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
+  const userId = user.id;
 
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
@@ -71,7 +67,6 @@ serveJson("consumer-web-buy-voucher", async (req) => {
     return json({ ok: false, code: "card_not_found", error: "That card is not saved on your account" }, 404);
   }
 
-  const admin = adminClient(envRes.env);
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   const place = placeRes.place;
@@ -164,7 +159,7 @@ serveJson("consumer-web-buy-voucher", async (req) => {
 
   const res = await openVoucherCheckout(admin, stripe, {
     consumerId: userId,
-    email: authRes.user.email ?? null,
+    email: user.email ?? null,
     place,
     account,
     voucher: voucher as MoneyVoucherKey,

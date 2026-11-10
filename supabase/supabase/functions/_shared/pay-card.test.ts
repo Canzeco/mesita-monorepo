@@ -5,7 +5,6 @@
 // with the open session's url.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "./money.ts";
 import { cardCheckoutParams, cardRefusal, lockedFor, releaseCardPayment, startCardPayment } from "./pay-card.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
@@ -14,6 +13,7 @@ import { classifySession } from "./checkout-session.ts";
 import { settlePayment } from "./settle-payment.ts";
 import { fakeAdmin } from "./testing/fake-admin.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3305";
 const GUEST = "00000000-0000-4000-8000-0000000b3305";

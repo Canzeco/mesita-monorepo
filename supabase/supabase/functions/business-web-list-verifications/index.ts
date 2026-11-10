@@ -11,7 +11,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
-import { requireBusinessSuperAdmin } from "../_shared/business-request.ts";
+import { requireBusinessSuperAdmin } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { listPlaceOwners, shapeOwners } from "../_shared/place-access.ts";
 

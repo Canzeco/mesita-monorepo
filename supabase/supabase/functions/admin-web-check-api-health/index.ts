@@ -25,13 +25,8 @@
 // Deploy: supabase functions deploy admin-web-check-api-health
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJsonOr, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import {
-  adminClient,
-  getAuthedUser,
-  readEFEnv,
-  requireSuperAdmin,
-} from "../_shared/auth.ts";
+import { json, readJsonOr, serveJson } from "../_shared/http.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { renderWorkspaceName } from "./render-owners.ts";
 import { inactiveAccountLine, twilioFailureDetail } from "./twilio-failure.ts";
 
@@ -723,18 +718,9 @@ async function runProbe(
 }
 
 serveJson("admin-web-check-api-health", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return authRes.response;
-
-  const admin = adminClient(envRes.env);
-  const saRes = await requireSuperAdmin(admin, authRes.user);
-  if (!saRes.ok) return saRes.response;
+  const ctx = await requireAdminRequest(req);
+  if (ctx instanceof Response) return ctx;
+  const { admin } = ctx;
 
   const body = await readJsonOr<{ providers?: unknown }>(req, {});
   const requested = Array.isArray(body.providers)

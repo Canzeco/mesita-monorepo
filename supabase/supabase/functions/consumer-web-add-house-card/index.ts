@@ -11,27 +11,21 @@
 //   House Credits, the House Card cannot be enabled from the consumer app") · 500
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsPreflight, json, readJson, rejectUnlessMethods, serveJson } from "../_shared/http.ts";
-import { adminClient, getAuthedUser, readEFEnv } from "../_shared/auth.ts";
+import { json, readJson, serveJson } from "../_shared/http.ts";
+import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readSettings } from "../_shared/payments.ts";
 
 serveJson("consumer-web-add-house-card", async (req) => {
-  if (req.method === "OPTIONS") return corsPreflight();
-  const methodReject = rejectUnlessMethods(req, "POST");
-  if (methodReject) return methodReject;
-
-  const envRes = readEFEnv();
-  if (!envRes.ok) return envRes.response;
-  const authRes = await getAuthedUser(req, envRes.env);
-  if (!authRes.ok) return json({ ok: false, code: "sign_in", error: "Sign in to add a card" }, 401);
+  const ctx = await requireConsumerRequest(req, { signIn: "Sign in to add a card" });
+  if (ctx instanceof Response) return ctx;
+  const { admin, user } = ctx;
   const bodyRes = await readJson<Record<string, unknown>>(req);
   if (!bodyRes.ok) return bodyRes.response;
   const placeId = bodyRes.body.place_id;
   if (!isUuid(placeId)) return json({ ok: false, error: "place_id must be a Mesita place id" }, 400);
 
-  const admin = adminClient(envRes.env);
   const placeRes = await readVoucherPlace(admin, placeId);
   if (!placeRes.ok) return json({ ok: false, error: placeRes.error }, 500);
   if (!placeRes.place) return json({ ok: false, error: "Place not found" }, 404);
@@ -42,7 +36,7 @@ serveJson("consumer-web-add-house-card", async (req) => {
 
   const { data, error } = await admin
     .from("wallet_house_cards")
-    .upsert({ consumer_id: authRes.user.id, place_id: placeId }, { onConflict: "consumer_id,place_id", ignoreDuplicates: true })
+    .upsert({ consumer_id: user.id, place_id: placeId }, { onConflict: "consumer_id,place_id", ignoreDuplicates: true })
     .select("place_id");
   if (error) return json({ ok: false, error: `house_cards: ${error.message}` }, 500);
   const already = (data ?? []).length === 0;

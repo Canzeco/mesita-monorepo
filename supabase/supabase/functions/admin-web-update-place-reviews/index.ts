@@ -11,12 +11,12 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, readPlaceIdAlias, serveJson } from "../_shared/http.ts";
-import { requireAdminRequest } from "../_shared/auth.ts";
+import { requireAdminRequest } from "../_shared/request.ts";
 import { runReviewsUpdate } from "../_shared/reviews-update.ts";
 import { recordAdminOperatorEvent } from "../_shared/admin-operator-events.ts";
 
 serveJson("admin-web-update-place-reviews", async (req) => {
-  const ctx = await requireAdminRequest(req, "POST", "Only admins can update reviews.");
+  const ctx = await requireAdminRequest(req, "Only admins can update reviews.");
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
 
