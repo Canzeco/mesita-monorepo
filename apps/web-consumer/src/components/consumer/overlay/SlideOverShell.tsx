@@ -101,6 +101,47 @@ export function SlideOverShell({
   );
 }
 
+// THE SAME PUSH FOR A FULL PAGE (MESITA-3621, Pato: "remember the
+// animation, horizontal slide ... keep that animation standardized"). A page
+// that is not an @modal intercept (the Reserve page) still enters the way
+// every panel does: in from the right edge, 300ms, OVERLAY_EASE, and out the
+// same way on Back. Mount it from the segment's layout.tsx, like the shell
+// above, so it slides once across loading.tsx → page.tsx. Children close it
+// with useSlideOverClose(); `onExited` runs after the exit slide.
+export function PageSlideIn({
+  children,
+  fallbackHref,
+}: {
+  children: React.ReactNode;
+  /** Where Back lands when there is no history to pop (a direct link). */
+  fallbackHref: string;
+}) {
+  const router = useRouter();
+  const { open, requestClose } = useOverlayPresence(
+    () => {
+      if (window.history.length > 1) router.back();
+      else router.replace(fallbackHref);
+    },
+    { resume: false },
+  );
+  return (
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <div
+        className={cn(
+          "bg-background flex flex-1 flex-col overflow-hidden",
+          "transition-transform duration-300 motion-reduce:transition-none",
+          OVERLAY_EASE,
+          open ? "translate-x-0" : "translate-x-full",
+        )}
+      >
+        <SlideOverCloseContext.Provider value={requestClose}>
+          {children}
+        </SlideOverCloseContext.Provider>
+      </div>
+    </div>
+  );
+}
+
 // Standard slide-over header: dismiss chevron, centered title, optional
 // action buttons on the right. Every route modal uses this row so back/close
 // affordances sit in the same place on every detail surface.

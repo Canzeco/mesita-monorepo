@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { HideShellNav } from "@/components/consumer/HideShellNav";
+import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import {
   ReservationForm,
   type ReservationFormPlace,
@@ -96,26 +96,14 @@ function ReservationRow({ row }: { row: EFReservationRow }) {
  * guest's upcoming tables at this place (only when there are any), then the
  * form the Reserve sheet used to hold.
  */
-export function ReservePageBody({
-  place,
-  fallbackHref,
-}: {
-  place: ReservationFormPlace;
-  fallbackHref: string;
-}) {
-  const router = useRouter();
+export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
   const supabase = useBrowserSupabase();
   const [mine, setMine] = useState<EFReservationRow[]>([]);
   const [checking, setChecking] = useState(true);
   const [reads, setReads] = useState(0);
 
-  const onBack = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.replace(fallbackHref);
-  }, [fallbackHref, router]);
+  // Back and Done slide the page out first (PageSlideIn, MESITA-3621).
+  const onBack = useSlideOverClose();
 
   // The guest's live tables HERE. `upcoming` is exactly "active" server-side:
   // consumer-web-list-reservations filters to state pending|confirmed AND
