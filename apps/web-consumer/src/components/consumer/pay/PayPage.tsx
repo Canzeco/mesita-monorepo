@@ -50,11 +50,11 @@ import { cn } from "@/lib/utils";
 // field or the shared paySplit twin the server's own rule is tested
 // against; the server is the last word.
 //
-// The location is asked once, after a priming card ("See Mesita Pay places
+// The location is asked once, after a priming card ("See Mesita Payments places
 // near you"), rounded to 3 decimals and sent only to the list read. The
 // table QR opens `/pay?place=<id>`: the shell's sign-in wall carries it
 // through sign-in, and that place's bill opens, or the list says the place
-// isn't taking Mesita Pay.
+// isn't taking Mesita Payments.
 //
 // The paid state is the address: `/pay?payment=<id>` (set with
 // replaceState), so a reload or a Wallet "Paid" row shows the same proof.
@@ -93,7 +93,7 @@ const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
 const LOCATION_DECIMALS = 3;
 /** "Not now" on the location card holds for this browser session. */
 const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
-const NOT_TAKING = "This place isn't taking Mesita Pay right now";
+const NOT_TAKING = "This place isn't taking Mesita Payments right now";
 /** The guest's open bill at the table (MESITA-3572): its id stays on this
  *  device so the Pay list can lead with it. The server is the truth: a bill
  *  that reads paid, expired or cancelled is forgotten. */
@@ -559,7 +559,7 @@ function PlaceList({
         <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
           <p className="flex items-center gap-2 text-base font-semibold">
             <MapPin className="h-4 w-4 shrink-0" aria-hidden />
-            See Mesita Pay places near you
+            See places near you that take Mesita Payments
           </p>
           <div className="mt-3 flex gap-2">
             <Button className="min-h-11 flex-1 font-semibold" onClick={onUseLocation}>
@@ -581,7 +581,7 @@ function PlaceList({
       ) : places.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title={loc.state === "on" ? "No Mesita Pay place near you" : "Turn on location to see Mesita Pay places near you"}
+          title={loc.state === "on" ? "No place near you takes Mesita Payments" : "Turn on location to see places near you that take Mesita Payments"}
           description=""
         />
       ) : (

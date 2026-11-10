@@ -45,8 +45,8 @@ import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, W
 // YOU HAVE CREDITS FROM OR HAVE LIKE AN HISTORY"): a card per balance row of
 // consumer-web-get-wallet, no catalog read. Both name marks (`boost_tier`,
 // `mesita_pay`) ride the balance's `place`. A $0 balance with history shows
-// only while its place takes Mesita Pay; money held never hides, even at a
-// place that has since turned Mesita Pay off.
+// only while its place takes Mesita Payments; money held never hides, even at a
+// place that has since turned Mesita Payments off.
 
 const PREPAY_PARAM = "prepay";
 /** A place screen's Wallet tile (MESITA-3574): /wallet?place=<id> opens that
@@ -96,7 +96,7 @@ function newestFirst(a: WalletBalance, b: WalletBalance): number {
   return b.last_at.localeCompare(a.last_at);
 }
 
-/** Money held always shows; a $0 balance only where Mesita Pay is on. */
+/** Money held always shows; a $0 balance only where Mesita Payments is on. */
 function shows(b: WalletBalance): boolean {
   return hasMoney(b) || b.place?.mesita_pay === true;
 }

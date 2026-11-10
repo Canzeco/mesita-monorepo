@@ -38,8 +38,8 @@ const GREEN = "bg-green-400 text-neutral-950";
 
 const OFFER_SLIDES: OfferSlide[] = [
   // The pill is filled in from the place's own rate (offerSlides).
-  { key: "cashback", lead: "Mesita Pay", pill: "Cashback", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
-  // "$X Prepay", never "Prepay $X"; "Mesita Pay +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
+  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
+  // "$X Prepay", never "Prepay $X"; "Mesita Payments +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
   { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
   { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
   { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
@@ -57,7 +57,7 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
   // older answer without it shows no number rather than a guessed one.
   const bps = offers.card_cashback_bps ?? 0;
   return OFFER_SLIDES.filter((s) => (s.key === "cashback" ? offers.cashback && bps > 0 : sell.has(s.key))).map((s) =>
-    s.key === "cashback" ? { ...s, pill: `+${bps / 100}% Cashback`, spoken: `Mesita Pay, ${bps / 100}% cashback` } : s,
+    s.key === "cashback" ? { ...s, pill: `+${bps / 100}% Cashback`, spoken: `Mesita Payments, ${bps / 100}% cashback` } : s,
   );
 }
 

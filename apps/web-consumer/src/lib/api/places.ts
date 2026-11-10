@@ -107,7 +107,7 @@ export type Place = {
    *  now, a whole percent from the server; null or absent = no line.
    *  list-catalog and list-places send it. */
   vouchers_up_to_pct?: number | null;
-  /** The green Mesita Pay mark after the name (MESITA-3321): the place's
+  /** The green Mesita Payments mark after the name (MESITA-3321): the place's
    *  account can charge, from the server; absent = no mark. list-catalog and
    *  list-places send it. */
   mesita_pay?: boolean;
