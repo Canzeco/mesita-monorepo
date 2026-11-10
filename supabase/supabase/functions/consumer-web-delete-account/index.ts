@@ -16,7 +16,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
-import { boostStripeKey, endConsumerPledges, stripeClient } from "../_shared/boost.ts";
+import { endConsumerPledges } from "../_shared/boost.ts";
+import { boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-delete-account", async (req) => {
   // Account close is self-only — the JWT identifies which row to

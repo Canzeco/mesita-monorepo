@@ -14,9 +14,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, readCustomer, StripeError, stripeClient } from "../_shared/boost.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { premierCards, removeCheck } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
 
 const PM_ID = /^pm_[A-Za-z0-9]{6,64}$/;
 

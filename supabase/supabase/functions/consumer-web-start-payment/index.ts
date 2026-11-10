@@ -62,7 +62,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readCardPart, readPayBody, startOutsidePayment, startPayment } from "../_shared/pay.ts";
 import { startCardPayment } from "../_shared/pay-card.ts";
@@ -73,6 +72,7 @@ import { errorMessage } from "../_shared/errors.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { type ChargeRow, type ChargeStore, chargeLook, findGuestCharge, openOutsideOf, readChargeCode, readTip, supabaseChargeStore } from "../_shared/charge.ts";
 import { moneyText } from "../_shared/pay.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-start-payment", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });

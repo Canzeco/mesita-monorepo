@@ -29,9 +29,9 @@
 // caller prefix is Stripe's (Rules §2), so Mesita polls (the Premier shape).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { MIN_CHARGE_CENTS, MONEY_CURRENCY } from "./money.ts";
 import { readVoucherPlace } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 /** An invoice is sent once this much is owed, whatever the week says. */
 export const FEE_THRESHOLD_CENTS = 500_00;

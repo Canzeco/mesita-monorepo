@@ -8,7 +8,6 @@
 // a price for the client: the client shows what this answers.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, MONEY_CURRENCY, VOUCHER_CATALOG, voucherBonusCents, voucherFeeCents } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { MONEY_VOUCHER_KEYS, type MoneyVoucherKey, moneyState, STORY_MIN_FOLLOWERS, type VoucherReason } from "./money-state.ts";
@@ -17,6 +16,7 @@ import { readMoneyConfig } from "./money-config.ts";
 import { readInstagramSyncState, readVipStanding } from "./consumer-doc.ts";
 import { readVoucherPlace, type VoucherPlace, WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
 import { PER_VISIT_VOUCHERS, type PerVisitVoucher, perVisitSpent, readVisitCount } from "./visits.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type PlaceBalance = { available_cents: number; pending_cents: number; held_cents: number; spendable_cents: number };
 

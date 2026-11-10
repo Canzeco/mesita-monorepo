@@ -3,7 +3,7 @@
 // dates are when a card is charged.
 
 import { assertEquals } from "jsr:@std/assert@1";
-import type { Manual, Period, Pledge } from "../_shared/boost.ts";
+import { type Manual, type Period, type Pledge } from "../_shared/boost.ts";
 import { billingView, type Card, receiptsByIntent, savedCards } from "./billing.ts";
 
 const DAY = 86_400_000;

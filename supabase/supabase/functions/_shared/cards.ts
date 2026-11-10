@@ -14,7 +14,8 @@
 // remove refuses it (the payer changes it on the Premier screen).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { CHECKOUT_TTL_SEC, type StripeCall, StripeError } from "./boost.ts";
+import { CHECKOUT_TTL_SEC } from "./boost.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type SavedCard = {
   id: string;

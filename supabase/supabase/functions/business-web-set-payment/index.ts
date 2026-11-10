@@ -35,8 +35,8 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { MONEY_VOUCHER_KEYS } from "../_shared/money-state.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { isPaymentKey, isRateKey, isValidCashbackBps, needsStripe, readAccount, readContract, readSettings, stripeStateOf } from "../_shared/payments.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const NEEDS_STRIPE = { ok: false, code: "needs_stripe", error: "Connect the Stripe Account first: Mesita Payments, its cashback and Mesita Prepayments need an account that takes cards." };
 

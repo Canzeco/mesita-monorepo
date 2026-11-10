@@ -16,11 +16,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
 import { getOptionalAuthedUser } from "../_shared/auth.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { voucherOffer } from "../_shared/vouchers.ts";
 import { inWallet } from "../_shared/house-cards.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-list-vouchers", async (req) => {
   const ctx = openRequest(req);

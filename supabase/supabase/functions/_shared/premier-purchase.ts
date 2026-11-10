@@ -12,9 +12,10 @@
 // and supabase-cron-sync-premier sweeps what nobody came back for.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { CHECKOUT_TTL_SEC, isAllowedReturnUrl, PREMIER_CURRENCY, type StripeCall } from "./boost.ts";
+import { CHECKOUT_TTL_SEC, PREMIER_CURRENCY } from "./boost.ts";
 import { readCheckoutSession } from "./checkout-session.ts";
 import { isUuid } from "./place-id.ts";
+import { isAllowedReturnUrl, type StripeCall } from "./stripe.ts";
 
 export type RefillTier = 1 | 2;
 

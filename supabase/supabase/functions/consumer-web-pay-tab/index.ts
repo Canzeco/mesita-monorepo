@@ -42,13 +42,14 @@ import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts
 import { requireConsumerRequest } from "../_shared/request.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT } from "../_shared/money.ts";
 import { cardRefusal } from "../_shared/pay-card.ts";
 import { PI_TTL_MS } from "../_shared/settle-payment.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, type CardSplitArgs, readSplitBody, readTabById, rpcRefusal, splitArgs } from "../_shared/tab.ts";
-import { ownCard, paymentsPublishableKey, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
+import { ownCard, runTabCard, tabCardRates } from "../_shared/tab-card.ts";
+import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-pay-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });

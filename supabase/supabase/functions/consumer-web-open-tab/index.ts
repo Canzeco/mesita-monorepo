@@ -14,11 +14,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { callTabRpc, hashTabToken, mintTabToken, tabUrl } from "../_shared/tab.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-open-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });

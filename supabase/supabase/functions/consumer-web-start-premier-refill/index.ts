@@ -20,7 +20,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { boostLivemode, boostStripeKey, ensureCustomer, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { ensureCustomer, PREMIER_CURRENCY } from "../_shared/boost.ts";
 import {
   checkRefill,
   parseRefillStart,
@@ -30,6 +30,7 @@ import {
   refillCheckoutParams,
   refillNotice,
 } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-start-premier-refill", async (req) => {
   const ctx = await requireConsumerRequest(req);

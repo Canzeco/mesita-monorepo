@@ -26,9 +26,9 @@
 //     MESITA-3293), best-effort: a failure is logged, never fails the tick
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { settlePayment } from "./settle-payment.ts";
 import { availableAtFor, type OpenPurchase, settlePurchase } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type SettleConfig = {
   settle_rows: number;

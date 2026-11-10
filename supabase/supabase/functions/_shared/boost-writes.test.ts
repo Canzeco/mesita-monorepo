@@ -15,9 +15,8 @@ import {
   type Pledge,
   renewPlace,
   settleCharging,
-  type StripeCall,
-  StripeError,
 } from "./boost.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 type Result = { data?: unknown; error: { message: string } | null };
 

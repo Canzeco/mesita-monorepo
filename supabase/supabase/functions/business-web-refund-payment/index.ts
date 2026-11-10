@@ -19,7 +19,6 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import {
   PAYMENT_COLUMNS,
   paymentNeedsStripe,
@@ -30,6 +29,7 @@ import {
   refundPayment,
   refundPurchase,
 } from "../_shared/money-admin.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("business-web-refund-payment", async (req) => {
   const ctx = await requireBusinessRequest(req);

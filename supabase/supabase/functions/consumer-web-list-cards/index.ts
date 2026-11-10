@@ -12,9 +12,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { listCards, premierCards } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-list-cards", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to see your cards" });

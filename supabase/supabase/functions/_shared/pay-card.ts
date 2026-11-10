@@ -18,7 +18,6 @@
 // then the RPC's insufficient and taken.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { bps, MESITA_FEE_BPS_PAYMENT, MIN_CHARGE_CENTS } from "./money.ts";
 import type { MoneyCode } from "./money-codes.ts";
 import { moneyState } from "./money-state.ts";
@@ -28,6 +27,7 @@ import { mintProofToken } from "./proof.ts";
 import { accountCurrency } from "./vouchers.ts";
 import { releasePayment, settlePayment } from "./settle-payment.ts";
 import { WALLET_CHECKOUT_TTL_SEC } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 /** A start with a card part: the bill (credit + card), the card part, the
  *  tip by card, and where Checkout returns to. */

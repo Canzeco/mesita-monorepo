@@ -26,7 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
 import { getOptionalAuthedUser } from "../_shared/auth.ts";
-import { boostLivemode, boostStripeKey, PREMIER_CURRENCY, stripeClient } from "../_shared/boost.ts";
+import { PREMIER_CURRENCY } from "../_shared/boost.ts";
 import { isLiveManager, MANAGER_COLUMNS, type ManagerRow } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import {
@@ -40,6 +40,7 @@ import {
   type RefillTier,
   settleRefillPurchase,
 } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-get-premier-refill", async (req) => {
   const ctx = openRequest(req);

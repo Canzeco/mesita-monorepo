@@ -12,9 +12,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { balanceAt } from "../_shared/house-cards.ts";
 import { isUuid } from "../_shared/place-id.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-remove-house-card", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to remove a card" });

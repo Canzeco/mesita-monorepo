@@ -18,7 +18,6 @@ import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireBusinessRequest } from "../_shared/request.ts";
 import { canManage, ownerOnly, requirePlaceAccess } from "../_shared/place-access.ts";
 import { isUuid } from "../_shared/place-id.ts";
-import { paymentsLivemode, paymentsStripeKey, isAllowedReturnUrl, StripeError, stripeClient } from "../_shared/boost.ts";
 import {
   accountCreateParams,
   ACCOUNT_COLUMNS,
@@ -31,6 +30,7 @@ import {
   readAccount,
   snapshotFromStripe,
 } from "../_shared/payments.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient, StripeError } from "../_shared/stripe.ts";
 
 serveJson("business-web-start-payment-onboarding", async (req) => {
   const ctx = await requireBusinessRequest(req);

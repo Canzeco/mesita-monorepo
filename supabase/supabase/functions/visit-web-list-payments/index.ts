@@ -17,10 +17,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, staffTryKey } from "../_shared/charge.ts";
 import { listPayments, readListBody, staffAccess, supabaseStaffStore } from "../_shared/staff.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("visit-web-list-payments", async (req) => {
   const ctx = openRequest(req);

@@ -25,17 +25,15 @@ import { requireBusinessRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { requirePlaceAccess } from "../_shared/place-access.ts";
 import {
-  boostLivemode,
-  boostStripeKey,
   readBoostPlace,
   readCustomer,
   readLine,
   runningPeriod,
-  stripeClient,
   subscriptionOf,
 } from "../_shared/boost.ts";
 import { loadPremierPrices } from "../_shared/discovery-config.ts";
 import { billingView, type Card, receiptsByIntent, type SavedCard, savedCards } from "./billing.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("business-web-get-billing", async (req) => {
   const ctx = await requireBusinessRequest(req);

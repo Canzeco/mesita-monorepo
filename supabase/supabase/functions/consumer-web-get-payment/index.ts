@@ -33,10 +33,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment, readPlaceMarks } from "../_shared/pay.ts";
 import { settlePayment } from "../_shared/settle-payment.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 /** How long one read waits on Stripe for the session. */
 const SETTLE_BUDGET_MS = 3000;

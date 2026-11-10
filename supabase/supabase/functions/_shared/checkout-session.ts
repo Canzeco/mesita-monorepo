@@ -1,10 +1,10 @@
+import { type StripeCall } from "./stripe.ts";
 // A one-off Checkout `payment` and what Stripe says about it — shared by the
 // Wallet (wallet_purchases, MESITA-3097, on the place's connected account
 // since MESITA-3302) and Premier Refill packs (premier_refill_purchases,
 // MESITA-3168, on Mesita's own account). Each reads its own purchase's
 // session back from Stripe and trusts only that.
 
-import type { StripeCall } from "./boost.ts";
 
 export type SessionVerdict =
   | { kind: "paid"; paymentIntent: string | null }

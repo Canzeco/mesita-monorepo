@@ -7,8 +7,8 @@
 
 import { assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import { maskGuest, paymentNeedsStripe, type PaymentRow, planCloseOut, type PurchaseRow, refundPayment, refundPurchase, splitPaymentRefund } from "./money-admin.ts";
+import { type StripeCall } from "./stripe.ts";
 
 Deno.test("maskGuest: the name when set, else two characters of the email's local part, never the email", () => {
   assertEquals(maskGuest("Ana Ruiz", "ana@example.com"), "Ana Ruiz");

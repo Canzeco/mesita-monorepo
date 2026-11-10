@@ -36,13 +36,14 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { readAccount, readSettings } from "../_shared/payments.ts";
 import { moneyState } from "../_shared/money-state.ts";
-import { paymentsLivemode, paymentsStripeKey, readCustomer, stripeClient } from "../_shared/boost.ts";
+import { readCustomer } from "../_shared/boost.ts";
 import { listCards } from "../_shared/cards.ts";
-import { type CardStep, paymentsPublishableKey, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
+import { type CardStep, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readPlaceBalance } from "../_shared/vouchers.ts";
 import { guestTabView, readTabById, readTabParts } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-get-tab", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to pay" });

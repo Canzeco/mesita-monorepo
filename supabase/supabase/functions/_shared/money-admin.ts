@@ -18,7 +18,7 @@
 // amount, so the receiver's later delivery of the same refund is a no-op.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 // ── Masking ───────────────────────────────────────────────────────────────
 

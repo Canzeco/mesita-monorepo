@@ -26,12 +26,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { paymentView, readPayment } from "../_shared/pay.ts";
 import { releaseCardPayment, type ReleaseOutcome } from "../_shared/pay-card.ts";
 import { releasePayment } from "../_shared/settle-payment.ts";
 import { supabaseChargeStore } from "../_shared/charge.ts";
+import { paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-release-payment", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to see your payment" });

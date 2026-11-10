@@ -17,9 +17,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, ensureCustomer, isAllowedReturnUrl, stripeClient } from "../_shared/boost.ts";
+import { ensureCustomer } from "../_shared/boost.ts";
 import { cardSetupParams, listCards, MAX_CARDS } from "../_shared/cards.ts";
 import { errorMessage } from "../_shared/errors.ts";
+import { isAllowedReturnUrl, paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("consumer-web-add-card", async (req) => {
   const ctx = await requireConsumerRequest(req, { signIn: "Sign in to save a card" });

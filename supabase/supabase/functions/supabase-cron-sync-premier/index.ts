@@ -24,8 +24,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
 import {
-  boostLivemode,
-  boostStripeKey,
   confirmPledge,
   type Period,
   PERIOD_COLUMNS,
@@ -33,9 +31,9 @@ import {
   PLEDGE_COLUMNS,
   renewPlace,
   settleCharging,
-  stripeClient,
 } from "../_shared/boost.ts";
 import { PURCHASE_COLUMNS, type RefillPurchase, settleRefillPurchase } from "../_shared/premier-purchase.ts";
+import { boostLivemode, boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;

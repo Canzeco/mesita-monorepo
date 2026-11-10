@@ -4,10 +4,10 @@
 
 import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { MESITA_FEE_BPS_VOUCHER, MIN_CHARGE_CENTS, VOUCHER_CATALOG, voucherFeeCents } from "./money.ts";
 import type { AccountRow, PaymentSettings } from "./payments.ts";
 import { buyRefusal, CATALOG_LINES, storyRefusal, vipRefusal, offerFrom, openVoucherCheckout, overPlaceCap, PLACE_CAP_CENTS, voucherCheckoutParams } from "./vouchers.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 const PLACE = "00000000-0000-4000-8000-0000000a3303";
 const GUEST = "00000000-0000-4000-8000-0000000b3303";

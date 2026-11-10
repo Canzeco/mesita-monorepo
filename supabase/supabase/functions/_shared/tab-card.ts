@@ -29,23 +29,13 @@
 // replay-safe RPCs.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import { MIN_CHARGE_CENTS } from "./money.ts";
 import { moneyState } from "./money-state.ts";
 import { type AccountRow, type PaymentSettings } from "./payments.ts";
 import { cardRefusal } from "./pay-card.ts";
 import { PI_TTL_MS, releasePayment, settleByPaymentIntent, settlePaidPayment } from "./settle-payment.ts";
 import { refuse, type TabRefusal } from "./tab.ts";
-
-type ReadEnv = (name: string) => string | undefined;
-const envRead: ReadEnv = (name) => Deno.env.get(name);
-
-/** Stripe.js's key for the payments universe, or null when it is not set
- *  (STRIPE_PUBLISHABLE_KEY_TEST / _LIVE). A key of the other mode is null. */
-export function paymentsPublishableKey(livemode: boolean, read: ReadEnv = envRead): string | null {
-  const key = (read(livemode ? "STRIPE_PUBLISHABLE_KEY_LIVE" : "STRIPE_PUBLISHABLE_KEY_TEST") ?? "").trim();
-  return key.startsWith(livemode ? "pk_live_" : "pk_test_") ? key : null;
-}
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export function isPaymentMethodId(v: unknown): v is string {
   return typeof v === "string" && /^pm_[A-Za-z0-9]{8,64}$/.test(v);

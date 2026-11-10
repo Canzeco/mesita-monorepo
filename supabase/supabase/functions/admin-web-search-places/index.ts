@@ -21,7 +21,6 @@ import { requireAdminRequest } from "../_shared/request.ts";
 // The id-scoped side read below is walked in chunks: an ALL run can carry
 // far more ids than a 250-id paste, and an `in` list rides in the URL.
 import { chunked, ID_CHUNK } from "../_shared/postgrest.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { type StripeState } from "../_shared/payments.ts";
 import { type PlaceStatesFacts, readPlaceStatesFacts } from "../_shared/place-states-read.ts";
 import {
@@ -42,6 +41,7 @@ import {
   type EnrichmentMap,
   type FunctionState,
 } from "../_shared/schema-catalog.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 type Body = {
   limit?: unknown;

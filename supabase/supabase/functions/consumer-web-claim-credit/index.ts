@@ -19,9 +19,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { giftRefusalStatus, hashGiftToken, isGiftToken } from "../_shared/gift.ts";
 import { readWalletPlaces } from "../_shared/wallet.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 const REFUSAL: Record<string, string> = {
   gone: "That link isn't here.",

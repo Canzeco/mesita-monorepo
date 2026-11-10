@@ -6,9 +6,9 @@
 
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
-import { paymentsPublishableKey, runTabCard } from "./tab-card.ts";
+import { runTabCard } from "./tab-card.ts";
 import { readSplitBody } from "./tab.ts";
+import { paymentsPublishableKey, type StripeCall, StripeError } from "./stripe.ts";
 
 type Call = { method: string; path: string; params?: Record<string, unknown>; opts?: Record<string, unknown> };
 

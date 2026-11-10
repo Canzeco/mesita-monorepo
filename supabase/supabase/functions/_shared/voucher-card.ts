@@ -32,13 +32,13 @@
 // minutes unfinished → cancel first, then release.
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { type StripeCall, StripeError } from "./boost.ts";
 import type { MoneyVoucherKey } from "./money-state.ts";
 import type { AccountRow } from "./payments.ts";
 import { type PurchaseStore, purchaseStore } from "./purchase-pi.ts";
-import type { CardStep } from "./tab-card.ts";
+import { type CardStep } from "./tab-card.ts";
 import { type BuyRefusal, openPurchaseRow, REFUSAL_FOR, voucherMetadata, voucherName } from "./vouchers.ts";
 import { availableAtFor, type VoucherPlace } from "./wallet.ts";
+import { type StripeCall, StripeError } from "./stripe.ts";
 
 export type CardBuyRefusal = { ok: false; status: number; code: string; error: string; detail?: Record<string, unknown> };
 export type CardBuyOk = { ok: true; purchase_id: string; card: CardStep };

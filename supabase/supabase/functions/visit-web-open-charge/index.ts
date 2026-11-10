@@ -21,10 +21,10 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
-import { paymentsLivemode } from "../_shared/boost.ts";
 import { MONEY_CURRENCY } from "../_shared/money.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { clientAddress, openCharge, readOpenChargeBody, staffTryKey, supabaseChargeStore } from "../_shared/charge.ts";
+import { paymentsLivemode } from "../_shared/stripe.ts";
 
 serveJson("visit-web-open-charge", async (req) => {
   const ctx = openRequest(req);

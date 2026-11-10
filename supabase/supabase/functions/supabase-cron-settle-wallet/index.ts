@@ -15,9 +15,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { readAppConfig } from "../_shared/write-config.ts";
 import { runSettleTick, settleConfigFrom } from "../_shared/settle-cron.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 serveJson("supabase-cron-settle-wallet", async (req) => {
   const ctx = requireInternalRequest(req);

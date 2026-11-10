@@ -13,8 +13,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
-import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/boost.ts";
 import { runFeeBillingTick } from "../_shared/fee-billing.ts";
+import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 const DEFAULT_LIMIT = 200;
 const MAX_LIMIT = 1000;

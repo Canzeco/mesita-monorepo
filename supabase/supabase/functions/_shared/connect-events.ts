@@ -25,11 +25,11 @@
 //   every log line    carries event.id and event.account
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import type { StripeCall } from "./boost.ts";
 import { snapshotFromStripe } from "./payments.ts";
 import { purchaseStore } from "./purchase-pi.ts";
 import { releasePayment, settlePaidPayment } from "./settle-payment.ts";
 import { timingSafeEqual } from "./timing-safe-equal.ts";
+import { type StripeCall } from "./stripe.ts";
 
 export const SIGNATURE_TOLERANCE_SEC = 300;
 /** Stripe's events are a few KB; anything past this is not Stripe. */
