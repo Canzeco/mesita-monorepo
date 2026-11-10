@@ -30,6 +30,8 @@ export type ReservationItem = {
   referenceCode?: string;
   /** Raw ISO instant — the reschedule sheet seeds its pickers from it. */
   reservedAt?: string;
+  /** The place's IANA zone (MESITA-3626): every slot is its wall clock. */
+  placeTimezone?: string | null;
   notes?: string;
   /** Live + still ahead of us → the guest can still call it off / move it. */
   canCancel?: boolean;

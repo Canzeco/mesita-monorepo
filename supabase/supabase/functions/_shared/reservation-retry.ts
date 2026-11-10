@@ -1,8 +1,11 @@
 // WHEN the Reservationist's second try fires — the open-hours-aware retry,
 // straight from the protocol:
 //
-//   try 1  immediately, whatever the hour (many places run a 24/7 AI
-//          receptionist, and a closed line still tells us something)
+//   try 1  when the place is OPEN (MESITA-3626, `firstCallPlan`): now if it
+//          is open or its hours are unknown; a request made at 3 a.m. waits
+//          for opening time. A slot that comes before the place opens (less
+//          than 30 min after it) can't be booked by phone: the ticket ends
+//          and the guest is told.
 //   try 2  +5 minutes if the place is OPEN right now
 //          ~30 minutes AFTER it next opens if it's closed
 //
@@ -12,7 +15,7 @@
 // scheduling math so it's testable without a clock or a DB.
 //
 // Hours come from `places.hours` (the normalised WeeklyHours jsonb) and the
-// local wall clock from the place's longitude, exactly like place recall —
+// local wall clock from the place's zone (_shared/local-time.ts placeZone) —
 // one interpretation of "open", never two.
 
 import { DAY_KEYS, isOpenAt, localClock, toMinutes, type WeeklyHours } from "./local-time.ts";
@@ -32,11 +35,11 @@ const AFTER_OPENING_MINUTES = 30;
  */
 function minutesUntilNextOpening(
   hours: unknown,
-  lng: number | null,
+  zone: string | null,
   now: Date = new Date(),
 ): number | null {
   if (!hours || typeof hours !== "object") return null;
-  const clock = localClock(lng, now);
+  const clock = localClock(zone, now);
   if (!clock) return null;
   const week = hours as WeeklyHours;
   if (!DAY_KEYS.some((k) => Array.isArray(week[k]) && week[k].length > 0)) {
@@ -71,10 +74,10 @@ function minutesUntilNextOpening(
  */
 export function nextAttemptAt(
   hours: unknown,
-  lng: number | null,
+  zone: string | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } {
-  const until = minutesUntilNextOpening(hours, lng, now);
+  const until = minutesUntilNextOpening(hours, zone, now);
   if (until === null) {
     return {
       at: new Date(now.getTime() + OPEN_RETRY_MINUTES * 60_000),
@@ -93,5 +96,49 @@ export function nextAttemptAt(
     reason: `closed — retrying ${AFTER_OPENING_MINUTES} min after it opens (in ${
       Math.round(mins / 6) / 10
     } h)`,
+  };
+}
+
+/** The first call rings at least this long before the slot. */
+export const FIRST_CALL_LEAD_MIN = 30;
+
+export type FirstCallPlan =
+  | { kind: "now"; reason: string }
+  | { kind: "wait"; at: Date; reason: string }
+  | { kind: "too_late"; reason: string };
+
+/**
+ * When the FIRST booking call may ring (MESITA-3626) — the retries' rule
+ * applied to try 1:
+ *
+ *   open now, or hours unknown           → now
+ *   closed, opens ≥ 30 min before slot   → wait for opening time
+ *   closed until too close to the slot   → too_late (the ticket ends,
+ *                                          unresolved, and the guest is told)
+ *
+ * Opening time, not +30 min as the retries do: the guest is waiting on the
+ * first answer, and a place that just opened is answering its phone.
+ */
+export function firstCallPlan(
+  hours: unknown,
+  zone: string | null,
+  reservedAt: Date | null,
+  now: Date = new Date(),
+): FirstCallPlan {
+  const until = minutesUntilNextOpening(hours, zone, now);
+  if (until === null) return { kind: "now", reason: "no hours on file — calling now" };
+  if (until === 0) return { kind: "now", reason: "open now — calling now" };
+  const opensAt = new Date(now.getTime() + until * 60_000);
+  const latest = reservedAt ? reservedAt.getTime() - FIRST_CALL_LEAD_MIN * 60_000 : Infinity;
+  if (opensAt.getTime() > latest) {
+    return {
+      kind: "too_late",
+      reason: `closed until ${Math.round(until / 6) / 10} h from now — too close to the slot to call`,
+    };
+  }
+  return {
+    kind: "wait",
+    at: opensAt,
+    reason: `closed — first call when it opens (in ${Math.round(until / 6) / 10} h)`,
   };
 }

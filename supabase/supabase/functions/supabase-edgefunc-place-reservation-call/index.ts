@@ -90,6 +90,7 @@ import {
 import { rowPlaceId } from "../_shared/place-id.ts";
 import { notifyReservationOutcome } from "../_shared/reservation-notification.ts";
 import { esDate, esTime } from "../_shared/es-speak.ts";
+import { PLACE_ZONE_COLUMNS, placeZone } from "../_shared/local-time.ts";
 import { type GuestNameParts, ticketGuestName } from "../_shared/reservation-guest-name.ts";
 import { endAtDeadEnd } from "../_shared/reservation-dead-end.ts";
 import { dialNumber } from "../_shared/place-reservable.ts";
@@ -110,6 +111,7 @@ type PlaceRow = {
   reservation_target?: string | null;
   hours?: unknown;
   lng?: number | null;
+  timezone?: string | null;
 };
 
 /** The ticket columns the launchers read (the handler's select). */
@@ -137,7 +139,8 @@ type LaunchCtx = {
   cfg: ReservationsCallConfig;
   place: PlaceRow | null;
   placeId: string;
-  placeLng: number | null;
+  /** The place's IANA zone (MESITA-3626, _shared/local-time.ts placeZone). */
+  placeTz: string;
   businessNumber: string;
   via: string;
   consumerNumber: string;
@@ -161,7 +164,7 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
     cfg,
     place,
     placeId,
-    placeLng,
+    placeTz,
     businessNumber,
     consumerNumber,
     bookerAgentId,
@@ -214,7 +217,7 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
   // the one the place is still holding — not the ticket's new ask.
   const noticeLegVars: ReservationLegVars =
     kind === "place_cancel" && modificationOfIso && r.state !== "cancelled"
-      ? { ...legVars, dateEs: esDate(modificationOfIso), timeEs: esTime(modificationOfIso) }
+      ? { ...legVars, dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }
       : legVars;
   runInBackground(
     runCancelNotice({
@@ -229,7 +232,7 @@ async function launchCancelNotice(ctx: LaunchCtx): Promise<Response> {
       agentId: kind === "place_cancel" ? bookerAgentId : confirmerAgentId,
       legVars: noticeLegVars,
       placeHours: place?.hours ?? null,
-      placeLng,
+      placeTz,
       reservedAtIso: r.reserved_at,
       projectId: placeId,
       placeCallCap: cfg.limits.placeCallsPerPlacePerDay,
@@ -248,7 +251,7 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
     r,
     intent,
     elevenKey,
-    placeLng,
+    placeTz,
     consumerNumber,
     confirmerAgentId,
     guestNotify,
@@ -313,7 +316,7 @@ async function launchCallbackRetry(ctx: LaunchCtx): Promise<Response> {
       legVars,
       attemptsDone: typeof r.callback_attempts === "number" ? r.callback_attempts : 0,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
-      placeLng,
+      placeTz,
       reservedAtIso: r.reserved_at,
       guestNotify,
     }),
@@ -330,7 +333,7 @@ async function launchReminder(ctx: LaunchCtx): Promise<Response> {
     intent,
     elevenKey,
     cfg,
-    placeLng,
+    placeTz,
     consumerNumber,
     confirmerAgentId,
     guestNotify,
@@ -376,7 +379,7 @@ async function launchReminder(ctx: LaunchCtx): Promise<Response> {
       legVars,
       outageRetries: typeof r.outage_retries === "number" ? r.outage_retries : 0,
       reservedAtIso: r.reserved_at,
-      placeLng,
+      placeTz,
       guestNotify,
       reminderEnabled: cfg.reminder.enabled,
     }),
@@ -393,7 +396,7 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
     cfg,
     place,
     placeId,
-    placeLng,
+    placeTz,
     businessNumber,
     via,
     consumerNumber,
@@ -454,7 +457,8 @@ async function launchBook(ctx: LaunchCtx): Promise<Response> {
       attemptsDone: typeof r.call_attempts === "number" ? r.call_attempts : 0,
       priorAttempts: Array.isArray(r.attempts) ? (r.attempts as ReservationAttempt[]) : [],
       placeHours: place?.hours ?? null,
-      placeLng,
+      placeTz,
+      reservedAtIso: r.reserved_at,
       businessNumber,
       bookerAgentId,
       legVars,
@@ -606,7 +610,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
 
   const { data: placeRow } = await admin
     .from("place_profiles")
-    .select("name, photos, phone, reservation_target, hours, lng")
+    .select(`name, photos, phone, reservation_target, hours, ${PLACE_ZONE_COLUMNS}`)
     .eq("id", placeId)
     .maybeSingle();
   const place = (placeRow ?? null) as PlaceRow | null;
@@ -669,21 +673,22 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
   const consumerNumber = (r.consumer_phone ?? consumer?.phone ?? "").trim();
 
   const runId = crypto.randomUUID();
+  // Every time this run speaks or schedules is the place's (MESITA-3626).
+  const placeTz = placeZone(place);
   const modificationOfIso = typeof r.modification_of === "string" ? r.modification_of : null;
   const legVars: ReservationLegVars = {
     placeName: place?.name?.trim() || "el lugar",
     guestName: ticketGuestName({ guest_first_name: r.guest_first_name, guest_last_name: r.guest_last_name, consumer }, "el cliente"),
     referenceCode: (r.reference_code ?? "").trim(),
     partySize: r.party_size,
-    dateEs: esDate(r.reserved_at),
-    timeEs: esTime(r.reserved_at),
+    dateEs: esDate(r.reserved_at, placeTz),
+    timeEs: esTime(r.reserved_at, placeTz),
     specialRequests: (r.notes ?? "").trim(),
     runId,
     modificationOf: modificationOfIso
-      ? { dateEs: esDate(modificationOfIso), timeEs: esTime(modificationOfIso) }
+      ? { dateEs: esDate(modificationOfIso, placeTz), timeEs: esTime(modificationOfIso, placeTz) }
       : null,
   };
-  const placeLng = typeof place?.lng === "number" ? place.lng : null;
 
   return LAUNCH[intent]({
     admin,
@@ -694,7 +699,7 @@ serveJson("supabase-edgefunc-place-reservation-call", async (req) => {
     cfg,
     place,
     placeId,
-    placeLng,
+    placeTz,
     businessNumber,
     via,
     consumerNumber,

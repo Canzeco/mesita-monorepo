@@ -15,15 +15,14 @@
 // keep honest, and the list EF filters Upcoming/History on the same rule.
 
 import type { EFReservationRow } from "@/lib/api/reservations";
+import { placeTz } from "@mesita/place-profile/lib/place-time";
 import type {
   ReservationItem,
   ReservationState,
 } from "@/lib/reservation-types";
 
-// Mexico City is UTC-6 year-round (no DST since 2022). reserved_at is stored
-// with an explicit offset; we render it back in the place's wall-clock so the
-// guest sees the slot they picked.
-const TZ = "America/Mexico_City";
+// reserved_at is an instant; we render it back on the PLACE's wall clock (its
+// own zone, MESITA-3626) so the guest sees the slot they picked.
 
 // Mirrors PASSED_GRACE_MS in the reservation EFs — you're still at the table.
 const PASSED_GRACE_MS = 4 * 3600_000;
@@ -60,14 +59,24 @@ function noteFor(
   row: EFReservationRow,
 ): string | undefined {
   switch (phase) {
-    case "created":
+    case "created": {
+      // The first call waits until the place opens (MESITA-3626): a ticket
+      // parked for later says when, on the place's clock.
+      const at = row.attempts_state === "scheduled" && row.next_attempt_at
+        ? new Date(row.next_attempt_at).getTime()
+        : NaN;
+      if (Number.isFinite(at) && at > Date.now() + 60_000) {
+        return `The place is closed now — Mesita calls when it opens, ${formatReservationWhen(row.next_attempt_at!, row.place?.timezone)}.`;
+      }
       return "Mesita is about to call the place to book your table.";
+    }
     case "booking": {
       // Leg 1 park states — don't say "on the phone" while waiting for hours.
       if (row.attempts_state === "scheduled") {
-        // The parked retry instant, in Mexico City wall-clock (MESITA-954).
+        // The parked try (the first call waiting for opening, MESITA-3626, or
+        // a retry), on the place's wall clock (MESITA-954).
         const when = row.next_attempt_at
-          ? formatReservationWhen(row.next_attempt_at)
+          ? formatReservationWhen(row.next_attempt_at, row.place?.timezone)
           : "";
         return when
           ? `Mesita will call the place when it opens — next try ${when}.`
@@ -99,7 +108,8 @@ function noteFor(
   }
 }
 
-function formatReservationWhen(iso: string): string {
+function formatReservationWhen(iso: string, tz: string | null | undefined): string {
+  const TZ = placeTz(tz);
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const weekday = d.toLocaleDateString("en-US", {
@@ -159,8 +169,9 @@ export function toReservationItem(row: EFReservationRow): ReservationItem {
     projectId: row.place?.id ?? "",
     placeName: row.place?.name ?? "Reservation",
     placePhoto: row.place?.photos?.[0] ?? null,
-    when: formatReservationWhen(row.reserved_at),
+    when: formatReservationWhen(row.reserved_at, row.place?.timezone),
     reservedAt: row.reserved_at,
+    placeTimezone: row.place?.timezone ?? null,
     partySize: row.party_size,
     state,
     stateNote: counterOffer

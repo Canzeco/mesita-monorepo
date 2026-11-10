@@ -56,10 +56,13 @@ type DateOption = {
  * baseline window doesn't cover, so a day is "spent" only when none of ITS
  * slots are left. Omit it and the answer is the baseline window's.
  */
-export function buildDateOptions(hours?: WeeklyHours | null): DateOption[] {
+export function buildDateOptions(
+  hours?: WeeklyHours | null,
+  tz?: string | null,
+): DateOption[] {
   const out: DateOption[] = [];
-  for (let i = 0; i < bookingWindowDays(); i += 1) {
-    const iso = placeDateIso(i);
+  for (let i = 0; i < bookingWindowDays(tz); i += 1) {
+    const iso = placeDateIso(i, tz);
     const { weekday, day, month } = placeDateParts(iso);
     out.push({
       iso,
@@ -68,7 +71,7 @@ export function buildDateOptions(hours?: WeeklyHours | null): DateOption[] {
       month: MONTH_NAMES[month],
       // Late at night today has nothing left. The pill stays in the row and
       // goes dead — hiding it would shift every other pill sideways.
-      disabled: isDateSpent(iso, hours),
+      disabled: isDateSpent(iso, hours, tz),
     });
   }
   return out;
@@ -141,11 +144,14 @@ export function ReservationTimePicker({
   onChange,
   date,
   hours,
+  tz,
 }: {
   value: string | null;
   onChange: (slot: string) => void;
   date?: string;
   hours?: WeeklyHours | null;
+  /** The place's IANA zone (MESITA-3626): "past" is judged on its clock. */
+  tz?: string | null;
 }) {
   const slots = buildSlots(date ?? "", hours);
   return (
@@ -154,11 +160,12 @@ export function ReservationTimePicker({
         Hour
       </p>
       <div className="scrollbar-hide -mx-5 mt-2 flex flex-nowrap gap-2 overflow-x-auto px-5 pb-1">
-        {slots.filter((slot) => !(date && isSlotPast(date, slot.time))).map((slot) => (
+        {slots.filter((slot) => !(date && isSlotPast(date, slot.time, tz))).map((slot) => (
           <TimeSlotButton
             key={slot.time}
             slot={slot}
             date={date}
+            tz={tz}
             value={value}
             onChange={onChange}
           />
@@ -171,18 +178,20 @@ export function ReservationTimePicker({
 function TimeSlotButton({
   slot,
   date,
+  tz,
   value,
   onChange,
 }: {
   slot: ReservationSlot | null;
   date?: string;
+  tz?: string | null;
   value: string | null;
   onChange: (slot: string) => void;
 }) {
   if (!slot) {
     return <div className="h-[42px] w-full" aria-hidden />;
   }
-  const past = date ? isSlotPast(date, slot.time) : false;
+  const past = date ? isSlotPast(date, slot.time, tz) : false;
   const active = slot.time === value && !past;
   const closed = slot.state === "closed";
   return (

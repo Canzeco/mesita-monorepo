@@ -27,7 +27,12 @@ export default async function PlaceReservePage({
   }
   return (
     <ReservePageBody
-      place={{ id: place.id, name: place.name, hours_table: place.hours_table }}
+      place={{
+        id: place.id,
+        name: place.name,
+        hours_table: place.hours_table,
+        timezone: place.timezone,
+      }}
     />
   );
 }

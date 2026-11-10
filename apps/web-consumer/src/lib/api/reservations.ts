@@ -147,6 +147,8 @@ export type EFReservationRow = {
     category: string | null;
     photos: string[] | null;
     address: string | null;
+    /** The place's IANA zone (MESITA-3626); older EFs omit it. */
+    timezone?: string | null;
   } | null;
 };
 

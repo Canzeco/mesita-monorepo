@@ -6,7 +6,7 @@
 import { assertEquals } from "jsr:@std/assert@1";
 import { onTheSpotConfirmPatch, resolveRequestedSlot } from "./reservation-confirm.ts";
 
-const LNG = -99.13;
+const ZONE = "America/Mexico_City";
 // 2026-08-10 12:00 CDMX (UTC-6).
 const NOW = new Date(Date.UTC(2026, 7, 10, 18, 0));
 // The guest takes 20:00 that night; the reminder parks 3 h before.
@@ -18,12 +18,13 @@ Deno.test("on-the-spot confirm: the a2 phone door's patch (notify call)", () => 
     "2026-08-10",
     " 20:00 ",
     { trim: false },
+    "America/Mexico_City",
   );
   assertEquals(next?.toISOString(), NEXT.toISOString());
   assertEquals(
     onTheSpotConfirmPatch({
       next: next!,
-      lng: LNG,
+      zone: ZONE,
       notify: "call",
       lastCallState: `guest took the place's own ${date} ${time} offer — confirmed on the spot`,
       now: NOW,
@@ -52,11 +53,12 @@ Deno.test("on-the-spot confirm: the app door's patch (notify app skips the remin
     " 2026-08-10 ",
     "20:00",
     { trim: true },
+    "America/Mexico_City",
   );
   assertEquals(
     onTheSpotConfirmPatch({
       next: next!,
-      lng: LNG,
+      zone: ZONE,
       notify: "app",
       lastCallState:
         `guest took the place's own ${date} ${time} offer in the app — confirmed on the spot`,
@@ -81,9 +83,9 @@ Deno.test("on-the-spot confirm: the app door's patch (notify app skips the remin
 
 Deno.test("requested slot: a missing half defaults from the current reservation", () => {
   // 2026-08-10T01:00Z is 2026-08-09 19:00 in CDMX.
-  const r = resolveRequestedSlot("2026-08-10T01:00:00.000Z", undefined, "21:30", { trim: true });
+  const r = resolveRequestedSlot("2026-08-10T01:00:00.000Z", undefined, "21:30", { trim: true }, "America/Mexico_City");
   assertEquals([r.date, r.time], ["2026-08-09", "21:30"]);
-  const s = resolveRequestedSlot("2026-08-10T01:00:00.000Z", "2026-08-12", "  ", { trim: false });
+  const s = resolveRequestedSlot("2026-08-10T01:00:00.000Z", "2026-08-12", "  ", { trim: false }, "America/Mexico_City");
   assertEquals([s.date, s.time], ["2026-08-12", "19:00"]);
-  assertEquals(resolveRequestedSlot("2026-08-10T01:00:00.000Z", "12/08", "x", { trim: true }).next, null);
+  assertEquals(resolveRequestedSlot("2026-08-10T01:00:00.000Z", "12/08", "x", { trim: true }, "America/Mexico_City").next, null);
 });

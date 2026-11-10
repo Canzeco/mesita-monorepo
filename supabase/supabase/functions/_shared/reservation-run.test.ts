@@ -6,6 +6,7 @@ import {
   OUTAGE_MAX_RETRIES,
   outageRetryAt,
   PLACE_NOTICE_ATTEMPTS,
+  placeCallDay,
 } from "./reservation-run.ts";
 
 Deno.test("placement: auth/quota/rate/5xx/network are OURS, validation is not", () => {
@@ -42,8 +43,21 @@ Deno.test("outage backoff: doubles from 15 min, jitters, caps at 8", () => {
 Deno.test("notice cap: place side stops at 2, guest side rides the ladder", () => {
   const now = new Date(Date.UTC(2026, 7, 10, 20)); // 14:00 CDMX
   const slot = new Date(now.getTime() + 24 * 3600_000);
-  assert(noticeNextAt("place_cancel", 1, null, -99, slot, now) !== null);
-  assertEquals(noticeNextAt("place_cancel", PLACE_NOTICE_ATTEMPTS, null, -99, slot, now), null);
-  assert(noticeNextAt("guest_cancel", 1, null, -99, slot, now) !== null);
-  assertEquals(noticeNextAt("guest_cancel", 3, null, -99, slot, now), null);
+  assert(noticeNextAt("place_cancel", 1, null, "America/Mexico_City", slot, now) !== null);
+  assertEquals(noticeNextAt("place_cancel", PLACE_NOTICE_ATTEMPTS, null, "America/Mexico_City", slot, now), null);
+  assert(noticeNextAt("guest_cancel", 1, null, "America/Mexico_City", slot, now) !== null);
+  assertEquals(noticeNextAt("guest_cancel", 3, null, "America/Mexico_City", slot, now), null);
+});
+
+Deno.test("placeCallDay: the call meter counts the PLACE's day, not UTC's (MESITA-3626)", () => {
+  // 01:30Z on Nov 21 is still Nov 20 in Mexico City (19:30) and Cancún (20:30)…
+  const at = new Date("2026-11-21T01:30:00Z");
+  assertEquals(placeCallDay("America/Mexico_City", at), "2026-11-20");
+  assertEquals(placeCallDay("America/Cancun", at), "2026-11-20");
+  // …and in Tijuana (17:30, UTC-8 in winter).
+  assertEquals(placeCallDay("America/Tijuana", at), "2026-11-20");
+  // 05:30Z: past midnight in Cancún (00:30) but not in Mexico City (23:30).
+  const late = new Date("2026-11-21T05:30:00Z");
+  assertEquals(placeCallDay("America/Cancun", late), "2026-11-21");
+  assertEquals(placeCallDay("America/Mexico_City", late), "2026-11-20");
 });

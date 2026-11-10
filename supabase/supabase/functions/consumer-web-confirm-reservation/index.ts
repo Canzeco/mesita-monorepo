@@ -23,7 +23,7 @@ import { placeLocalDate } from "../_shared/agent-tools.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
 import {
   onTheSpotConfirmPatch,
-  placeLng,
+  placeZoneOf,
   resolveRequestedSlot,
 } from "../_shared/reservation-confirm.ts";
 import { readOwnedTicket } from "../_shared/reservation-owned.ts";
@@ -109,11 +109,14 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
     }, 409);
   }
 
+  // The place's offers are in its own clock (MESITA-3626).
+  const zone = await placeZoneOf(admin, ticket.place_id);
   const { date, time, next } = resolveRequestedSlot(
     ticket.reserved_at,
     body.new_date,
     body.new_time,
     { trim: true },
+    zone,
   );
   if (!next) {
     return json({
@@ -123,14 +126,13 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
   }
 
   const offered = normalizeAlternatives(ticket.alternatives);
-  if (!matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at))) {
+  if (!matchesOffer(offered, date, time, placeLocalDate(ticket.reserved_at, zone))) {
     return json({
       ok: false,
       error: "That time isn't one of the place's offers. Pick an alternative or reschedule.",
     }, 400);
   }
 
-  const lng = await placeLng(admin, ticket.place_id);
   const guestNotify: "call" | "app" = ticket.consumer_notify === "app" ? "app" : "call";
 
   const confirm = await writeReservation(admin, {
@@ -139,7 +141,7 @@ serveJson("consumer-web-confirm-reservation", async (req) => {
     match: { consumer_id: consumerId, state: "pending" },
     patch: onTheSpotConfirmPatch({
       next,
-      lng,
+      zone,
       notify: guestNotify,
       lastCallState:
         `guest took the place's own ${date} ${time} offer in the app — confirmed on the spot`,

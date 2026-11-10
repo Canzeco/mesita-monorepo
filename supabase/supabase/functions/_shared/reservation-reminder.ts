@@ -28,7 +28,7 @@ export type ReminderPark = Pick<ReservationPatch, "reminder_state" | "reminder_a
  * or the slot is too close).
  */
 export function reminderCallAt(
-  lng: number | null,
+  zone: string | null,
   reservedAt: Date | null,
   now: Date = new Date(),
 ): { at: Date; reason: string } | null {
@@ -38,7 +38,7 @@ export function reminderCallAt(
   if (lead.getTime() < now.getTime()) return null;
   if (lead.getTime() > cutoff) return null;
 
-  const { at, deferred } = deferToCallableHour(lead, lng);
+  const { at, deferred } = deferToCallableHour(lead, zone);
   if (at.getTime() > cutoff) return null;
   if (at.getTime() < now.getTime()) return null;
 
@@ -52,7 +52,7 @@ export function reminderCallAt(
 
 /** Patch to park (or skip) the reminder the moment a ticket becomes confirmed. */
 export function reminderParkPatch(
-  lng: number | null,
+  zone: string | null,
   reservedAt: Date | null,
   guestNotify: "call" | "app",
   now: Date = new Date(),
@@ -60,7 +60,7 @@ export function reminderParkPatch(
   if (guestNotify === "app") {
     return { reminder_state: "skipped", reminder_at: null };
   }
-  const next = reminderCallAt(lng, reservedAt, now);
+  const next = reminderCallAt(zone, reservedAt, now);
   if (!next) return { reminder_state: "skipped", reminder_at: null };
   return { reminder_state: "scheduled", reminder_at: next.at.toISOString() };
 }

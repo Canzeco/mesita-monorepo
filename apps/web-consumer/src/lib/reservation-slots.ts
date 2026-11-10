@@ -13,10 +13,9 @@
 //   2. The place's own open windows for that date, sampled every 30 min. This
 //      is what lets a 23:00–02:00 place be booked at 00:30 at all.
 //
-// Times are place-local wall clock, judged against the place clock in
-// @/lib/place-time. Every Mesita place is in Mexico (Monterrey and CDMX are
-// both UTC-6 year round), so place-local hours and the fixed GMT-6 reservation
-// offset describe the same wall clock.
+// Times are place-local wall clock, judged against the place's clock in its
+// own zone (@mesita/place-profile/lib/place-time, MESITA-3626): the place's
+// hours, the slots and the reserved_at the app sends all speak one clock.
 
 import {
   isSlotPast,
@@ -105,8 +104,8 @@ function toHhmm(minutes: number): string {
  * day clamped to the target month's length so Jan 31 lands on Feb 28/29 instead
  * of overflowing into March.
  */
-function horizonDateIso(at: number = Date.now()): string {
-  const [y, m, d] = placeDateIso(0, at).split("-").map(Number);
+function horizonDateIso(tz?: string | null, at: number = Date.now()): string {
+  const [y, m, d] = placeDateIso(0, tz, at).split("-").map(Number);
   const total = m - 1 + BOOKING_HORIZON_MONTHS;
   const year = y + Math.floor(total / 12);
   const month = (total % 12) + 1;
@@ -116,9 +115,9 @@ function horizonDateIso(at: number = Date.now()): string {
 }
 
 /** Day pills to render: today through the horizon, inclusive. */
-export function bookingWindowDays(at: number = Date.now()): number {
-  const start = Date.parse(`${placeDateIso(0, at)}T00:00:00Z`);
-  const end = Date.parse(`${horizonDateIso(at)}T00:00:00Z`);
+export function bookingWindowDays(tz?: string | null, at: number = Date.now()): number {
+  const start = Date.parse(`${placeDateIso(0, tz, at)}T00:00:00Z`);
+  const end = Date.parse(`${horizonDateIso(tz, at)}T00:00:00Z`);
   return Math.round((end - start) / MS_PER_DAY) + 1;
 }
 
@@ -292,16 +291,18 @@ export function buildHourColumns(slots: ReservationSlot[]): HourColumn[] {
 function futureSlots(
   dateIso: string,
   hours: WeeklyHours | null | undefined,
+  tz?: string | null,
 ): ReservationSlot[] {
-  return buildSlots(dateIso, hours).filter((s) => !isSlotPast(dateIso, s.time));
+  return buildSlots(dateIso, hours).filter((s) => !isSlotPast(dateIso, s.time, tz));
 }
 
 /** Is every slot on this date behind the place's clock? */
 export function isDateSpent(
   dateIso: string,
   hours: WeeklyHours | null | undefined,
+  tz?: string | null,
 ): boolean {
-  return futureSlots(dateIso, hours).length === 0;
+  return futureSlots(dateIso, hours, tz).length === 0;
 }
 
 /**
@@ -314,9 +315,10 @@ export function resolveSlot(
   dateIso: string,
   preferred: string | null,
   hours?: WeeklyHours | null,
+  tz?: string | null,
 ): string | null {
   if (!dateIso) return null;
-  const slots = futureSlots(dateIso, hours);
+  const slots = futureSlots(dateIso, hours, tz);
   if (slots.length === 0) return null;
   if (preferred && slots.some((s) => s.time === preferred)) return preferred;
 

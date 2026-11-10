@@ -30,7 +30,7 @@ import {
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
 import { cn, errMsg, guestNoun } from "@/lib/utils";
-import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
+import { placeDateTime, placeInstantIso } from "@mesita/place-profile/lib/place-time";
 
 // Action cluster for reservation detail. The two that MOVE the reservation —
 // reschedule and cancel — are live: each hits its consumer-web-* EF, and a
@@ -40,14 +40,15 @@ import { MX_OFFSET, placeDateTime } from "@mesita/place-profile/lib/place-time";
 
 const DEFAULT_TIME = "20:00";
 
-// The place's wall clock (CDMX) — the pickers speak local date + HH:mm, and
-// @/lib/place-time owns the offset for the whole app.
-function localDate(iso: string | undefined): string {
-  return (iso ? placeDateTime(iso)?.date : "") ?? "";
+// The place's wall clock in its own zone (MESITA-3626) — the pickers speak
+// local date + HH:mm, and @mesita/place-profile/lib/place-time owns the
+// offsets for the whole app.
+function localDate(iso: string | undefined, tz: string | null): string {
+  return (iso ? placeDateTime(iso, tz)?.date : "") ?? "";
 }
 
-function localTime(iso: string | undefined): string {
-  return (iso ? placeDateTime(iso)?.time : DEFAULT_TIME) ?? DEFAULT_TIME;
+function localTime(iso: string | undefined, tz: string | null): string {
+  return (iso ? placeDateTime(iso, tz)?.time : DEFAULT_TIME) ?? DEFAULT_TIME;
 }
 
 export function ReservationActions({
@@ -61,7 +62,8 @@ export function ReservationActions({
   // Not memoised: the sheet can sit mounted across midnight, and both ends of
   // the row would go stale — a dead "Today" pill and a last pill a day past the
   // one-month horizon.
-  const dateOptions = buildDateOptions();
+  const tz = r.placeTimezone || null;
+  const dateOptions = buildDateOptions(null, tz);
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -69,8 +71,8 @@ export function ReservationActions({
   const [error, setError] = useState<string | null>(null);
 
   // Seeded from the current booking so "just move it an hour" is two taps.
-  const [dateChoice, setDateChoice] = useState(() => localDate(r.reservedAt));
-  const [timeChoice, setTimeChoice] = useState(() => localTime(r.reservedAt));
+  const [dateChoice, setDateChoice] = useState(() => localDate(r.reservedAt, tz));
+  const [timeChoice, setTimeChoice] = useState(() => localTime(r.reservedAt, tz));
   const [party, setParty] = useState(r.partySize);
 
   // Derived, never stored: the seeded slot can already be behind the place's
@@ -79,7 +81,7 @@ export function ReservationActions({
   const date =
     dateOptions.find((d) => d.iso === dateChoice && !d.disabled)?.iso ??
     firstOpenDate(dateOptions);
-  const time = resolveSlot(date, timeChoice);
+  const time = resolveSlot(date, timeChoice, null, tz);
 
   const canReschedule = r.canReschedule ?? false;
   const canCancel = r.canCancel ?? false;
@@ -91,7 +93,7 @@ export function ReservationActions({
     try {
       await apiUpdateReservation(supabase, {
         reservationId: r.id,
-        reservedAt: `${date}T${time}:00${MX_OFFSET}`,
+        reservedAt: placeInstantIso(date, time, tz),
         partySize: party,
       });
       setSheetOpen(false);
@@ -206,6 +208,7 @@ export function ReservationActions({
               value={time}
               onChange={setTimeChoice}
               date={date}
+              tz={tz}
             />
             <ReservationPartyPicker value={party} onChange={setParty} />
           </div>
