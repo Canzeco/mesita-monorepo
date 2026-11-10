@@ -13,10 +13,11 @@ import { cn } from "@/lib/utils";
 // CAROUSELS with cards. only that in that page. Top is Money Payment
 // Methods: Add, Card One, Card Two … Bottom is Credits Payment Methods:
 // Add, Card One, Card Two …"). Each rail scrolls sideways with snap; every
-// tile is the same width, so the next card always peeks. SHORTER SINCE
-// MESITA-3637 (Pato: "make the payment methods view shorter to leave space
-// for pay at the top"): a 2:1 tile, not the payment card's 1.586:1, and no
-// cashback bar under it. Add leads each rail. Tapping a method opens
+// tile is payment-card shaped (ISO ID-1, 1.586:1) and the same width, so
+// the next card always peeks. MESITA-3637 made the rails shorter by
+// dropping the cashback bar and squashing tiles to 2:1; the squash was
+// undone by MESITA-3643 (Pato: "payment methods must have card
+// dimensions"), the bar stays gone. Add leads each rail. Tapping a method opens
 // its full-screen modal in a later issue; today a tile goes where it went.
 
 /** One tile's width: TWO AND A HALF across the screen (Pato, MESITA-3534:
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
  *  the right edge that is 100% + 16px, holding 2.5 tiles and two 12px gaps,
  *  so a tile is (100% + 16px - 24px) / 2.5. */
 export const RAIL_TILE = "w-[calc((100%-8px)/2.5)] shrink-0 snap-start";
-const TILE_SHAPE = "aspect-[2/1] rounded-xl";
+const TILE_SHAPE = "aspect-[1.586/1] rounded-xl";
 
 export function WalletRail({ title, children }: { title: string; children: ReactNode }) {
   return (
