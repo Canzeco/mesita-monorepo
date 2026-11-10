@@ -14,6 +14,9 @@
 //   closed        unresolved   the place opens too late to call before the slot
 //                              (the first call waits for opening, MESITA-3626)
 //   no_answer     unreachable  every attempt rang out (the ladder ran dry)
+//   offer_unanswered unresolved the guest never picked one of the place's
+//                              options in time; the place is released too
+//                              (reservation-negotiation.ts, MESITA-3630)
 //
 // One patch for all of them, so "ended" means the same thing everywhere: a
 // terminal state, nothing left scheduled, no guest call owed. The Me ›
@@ -30,7 +33,8 @@ export type DeadEnd =
   | "crash"
   | "expired"
   | "closed"
-  | "no_answer";
+  | "no_answer"
+  | "offer_unanswered";
 
 export function deadEndOutcome(d: DeadEnd): Extract<ReservationOutcome, "unreachable" | "unresolved"> {
   return d === "no_answer" ? "unreachable" : "unresolved";

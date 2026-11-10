@@ -4,9 +4,9 @@
 // knowledge), synced to ElevenLabs; a call sends only these values. No
 // per-call prompt or first message rides along.
 //
-// `venue_name`, `venue_alternatives` and the call_context value
-// "cancelled_by_venue" are wire keys the agents' prompts read; they change
-// only together with _shared/reservationist/ and a sync.
+// `venue_name`, `venue_alternatives` and the call_context values
+// "cancelled_by_venue" and "offer_release" are wire keys the agents' prompts
+// read; they change only together with _shared/reservationist/ and a sync.
 //
 // The guest's phone is deliberately absent: agents never hand it to a place
 // (MESITA-3615 decision — Mesita relays).
@@ -35,6 +35,7 @@ export type LegCallContext =
   | "booking"
   | "modification"
   | "cancellation"
+  | "offer_release"
   | "confirmation"
   | "counter_offer"
   | "reminder"

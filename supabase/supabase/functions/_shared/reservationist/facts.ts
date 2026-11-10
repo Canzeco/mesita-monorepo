@@ -34,7 +34,7 @@ export const FACTS = [
   `## Cómo se reserva`,
   `- Cada lugar tiene un interruptor de Reservaciones (encendido o apagado) y un teléfono de Reservaciones; el dueño los cambia en Business › Reservations.`,
   `- Mesita llama al teléfono de Reservaciones del lugar; si el dueño no puso uno, al número de Google del lugar.`,
-  `- Si el lugar ofrece otras opciones, Mesita se las propone al comensal y vuelve a llamar con su respuesta.`,
+  `- Si el lugar ofrece otras opciones, Mesita se las propone al comensal. Si toma una, queda confirmada sin volver a llamar al lugar; si pide otra hora, Mesita vuelve a llamar al lugar (a lo más dos veces); si no responde a tiempo, Mesita le avisa al lugar que ya puede liberarlas.`,
   `- Fases que ve el comensal: creada, reservando, confirmada, pasada, cancelada, no se pudo.`,
   ``,
   `## Quién habla con quién`,

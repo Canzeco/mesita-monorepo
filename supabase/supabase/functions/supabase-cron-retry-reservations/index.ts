@@ -9,6 +9,13 @@
 // BEFORE live work is woken, so a recovery after a cron outage can never dial
 // a place about a slot that already passed.
 //
+//   0 · offers     a counter-offer nobody picked by its deadline (30 min
+//                  before the latest offered slot, capped by the expiry) →
+//                  the place is RELEASED (a place notice, swept in step 4
+//                  this same run) and the ticket ends 'unresolved' with one
+//                  guest notification (_shared/reservation-negotiation.ts,
+//                  MESITA-3630). Before expiry, so an offer is never buried
+//                  without telling the place.
 //   1 · expiry     pending 4 h past reserved_at → 'unresolved' (no call),
 //                  and the guest is told (Me › Notifications, MESITA-3619).
 //                  `passed` stays DERIVED in the app; confirmed rows are
@@ -46,8 +53,15 @@ import { json, readJsonOr, readLimit, serveJson } from "../_shared/http.ts";
 import { requireInternalRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
-import { validateReservationPatch } from "../_shared/reservation-doc.ts";
+import { type ReservationPatch, validateReservationPatch, writeReservation } from "../_shared/reservation-doc.ts";
 import { deadEndPatch, deadEndOutcome } from "../_shared/reservation-dead-end.ts";
+import {
+  OPEN_OFFER_MATCH,
+  type OfferTicket,
+  releaseUnansweredOffer,
+} from "../_shared/reservation-negotiation.ts";
+import { placeZone } from "../_shared/local-time.ts";
+
 import { fetchConversation, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
 import {
   applyCallResult,
@@ -89,6 +103,43 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   const staleClaim = new Date(Date.now() - STALE_CLAIM_MS).toISOString();
   const failed: Array<{ id: string; intent: string; error: string }> = [];
 
+  const store = supabaseOutcomeStore(admin, env, "supabase-cron-retry-reservations");
+
+  // ── 0 · Offers nobody took: release the place, end the ticket ─────────────
+  // Few rows (open counter-offers only); each deadline needs the place's zone.
+  const { data: offerRows } = await admin
+    .from("reservation_tickets")
+    .select("id, consumer_id, reference_code, reserved_at, place_id, state, attempts_state, reported_verdict, alternatives")
+    .match(OPEN_OFFER_MATCH)
+    .order("reserved_at", { ascending: true })
+    .limit(limit);
+  let offersReleased = 0;
+  for (const row of (offerRows ?? []) as Array<OfferTicket & OutcomeTicket>) {
+    try {
+      const place = row.place_id ? await store.place(row.place_id) : null;
+      const released = await releaseUnansweredOffer(
+        {
+          write: async (patch) => {
+            const res = await writeReservation(admin, {
+              mode: "update",
+              id: row.id,
+              patch: patch as ReservationPatch,
+              match: { ...OPEN_OFFER_MATCH },
+              select: "id",
+            });
+            return res.ok && !!res.row;
+          },
+          notify: (outcome) => store.notify(row, place, outcome),
+        },
+        row,
+        placeZone(place),
+      );
+      if (released) offersReleased++;
+    } catch (e) {
+      failed.push({ id: row.id, intent: "offer_release", error: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   // ── 1 · Expiry: bury stuck pending tickets FIRST ───────────────────────────
   const { data: expRows } = await admin
     .from("reservation_tickets")
@@ -104,7 +155,6 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
   const expired = (expRows ?? []) as Array<
     { id: string; consumer_id: string; reference_code: string | null; place_id: string | null }
   >;
-  const store = supabaseOutcomeStore(admin, env, "supabase-cron-retry-reservations");
   for (const t of expired) {
     // A failed place read only costs the row its name and photo.
     const place = t.place_id ? await store.place(t.place_id).catch(() => null) : null;
@@ -278,6 +328,7 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
 
   return json({
     ok: true,
+    offers_released: offersReleased,
     expired: (expRows ?? []).length,
     moot_notices: (mootRows ?? []).length,
     moot_reminders: (mootReminderRows ?? []).length,

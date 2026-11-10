@@ -3,7 +3,8 @@
 // Call variables: venue_name, guest_name (the name typed on the reservation),
 // party_size, reservation_date, reservation_time, special_requests (the
 // guest's notes), reference_code, run_id, call_context
-// (booking | modification | cancellation), modification_of_date/_time.
+// (booking | modification | cancellation | offer_release),
+// modification_of_date/_time, venue_alternatives (offer_release only).
 // `venue_*` and "cancelled_by_venue" are wire keys the engine sends; they
 // change only together with the engine (supabase-edgefunc-place-reservation-call).
 //
@@ -42,6 +43,7 @@ const BOOK = [
   `- "booking": pide una mesa para {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}, a nombre de {{guest_name}}.`,
   `- "modification": el restaurante ya tiene una mesa a nombre de {{guest_name}} el {{modification_of_date}} a las {{modification_of_time}}. No pidas mesa nueva: pide moverla a {{party_size}} personas el {{reservation_date}} a las {{reservation_time}}. Si no pueden, pide que cancelen la anterior y toma la rama de no hay lugar.`,
   `- "cancellation": no pides mesa. Avisa que {{guest_name}} cancela su reservación del {{reservation_date}} a las {{reservation_time}} (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Ofrece una disculpa breve de parte del comensal, agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
+  `- "offer_release": no pides mesa. Antes el restaurante ofreció opciones para {{guest_name}} ({{venue_alternatives}}) y le pediste que las apartara; el comensal no tomó ninguna. Avisa que ya pueden liberarlas (si piden número, el código de Mesita es {{reference_code}}). A un buzón déjalo grabado igual. Agradece, despídete, cuelga con end_call y toma la rama de aviso de cancelación.`,
   `Si piden un número de confirmación, el código de Mesita es {{reference_code}}. Si piden un teléfono de contacto, di que Mesita es el contacto y que pueden llamar de vuelta a este mismo número; no des el del comensal.`,
   `Si {{special_requests}} no está vacío, menciónalo una sola vez cuando ya haya disponibilidad.`,
   `Si no pueden tal cual, pregunta qué opciones cercanas tienen y apúntalas cortas y textuales; no aceptes ninguna, Mesita se las propone al comensal.`,
@@ -57,7 +59,7 @@ export const A1: FleetAgent = {
   roleLines: [
     `## Tu papel: llamas a los restaurantes`,
     `- Pides la mesa a nombre del nombre y apellido escritos en la reservación, con el día, la hora, las personas y las notas del comensal.`,
-    `- También mueves una reservación ya confirmada a otra hora, o avisas que el comensal cancela.`,
+    `- También mueves una reservación ya confirmada a otra hora, avisas que el comensal cancela, o avisas que ya pueden liberar las opciones que ofrecieron si el comensal no tomó ninguna.`,
     `- Registras el resultado: confirmada, otras opciones, no hay lugar, nadie que reserve, o número equivocado.`,
     `- Nunca das el teléfono del comensal; si el lugar necesita algo, llama a Mesita a este mismo número.`,
   ],
@@ -126,7 +128,7 @@ export const A1: FleetAgent = {
         e_book_cancel_done: edge(
           "book",
           "end_node",
-          llm("El contexto era cancellation: ya diste el aviso, te despediste y colgaste.", "cancel notice done"),
+          llm("El contexto era cancellation u offer_release: ya diste el aviso, te despediste y colgaste.", "cancel notice done"),
         ),
         e_book_confirmed: edge("book", "report_confirmed", llm("El restaurante confirmó la mesa tal como se pidió.", "confirmed"), RESULT_FAIL),
         e_book_counter: edge(
