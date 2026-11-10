@@ -1,18 +1,18 @@
 "use client";
 
-// The three plans as boxes (MESITA-3173, Pato: "you actually buy access to all
-// the software, don't separate premier"; boxes MESITA-3183): Free · Pro · Max.
-// They live on Premier (Billing folded in, MESITA-3620). Visibility is the one perk, so it is
-// each box's anchor (Pato: "make the visibility most notorious"): 1X · 2X · 5X,
-// then the tag it wears, the price, one action. Two sizes only (Pato: "don't use
-// lots of different sizes"): that headline, the rest body. Pro and Max are the boost_2x /
-// boost_5x subscriptions; guests see them marked Ad (package law), the boxes
-// carry no Ad pill (Pato, MESITA-3186: "remove ad icon there"). The small print
-// keeps the claim true: Premier never promises views.
-//
-// Plans are yearly only (MESITA-3285: Pro $99, Max $999 a year), so there is no
-// Monthly/Yearly toggle; a subscription bought monthly before still renews
-// monthly until its payer changes plan or leaves.
+// The three plans as boxes (MESITA-3173; boxes MESITA-3183), cleaned up in
+// MESITA-3632 (Pato: "Make this Design cleaner"): Free · Pro · Max, each the
+// same box: name, "2X visibility" in the headline size, the tag it wears,
+// the price, one action. Two sizes only (the headline, then text-sm). The
+// box of the plan the place pays for (Free when none) has the dark border;
+// the status card above says the level it runs at. No "Plan" heading, no
+// pill: where a box has no action its slot keeps today's word as quiet text.
+// A tapped box shows its own busy label and its own refusal, with one
+// recovery sentence. Pro and Max are the boost_2x / boost_5x subscriptions;
+// guests see them marked Ad (package law), the boxes carry no Ad pill
+// (MESITA-3186). The footnote keeps the claim true: Premier never promises
+// views. Plans are yearly only (MESITA-3285); a subscription bought monthly
+// before still renews monthly until its payer changes plan or leaves.
 //
 // Every amount and date is the server's (business-web-get-premier's quotes);
 // this file never computes money.
@@ -23,6 +23,8 @@ import { useEffect, useRef, useState } from "react";
 import { cancelPremier, getPremier, startPremier, type BoostTier, type PlacePremier } from "@/lib/business-api";
 import { premierHref, returnUrl } from "@/lib/routes";
 import { FREE_PLAN, FREE_VISIBILITY, PLAN_NAME, PLAN_VISIBILITY } from "@/lib/plans";
+import { day } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const PLANS: Array<{ key: BoostTier; rank: number }> = [
   { key: "boost_2x", rank: 1 },
@@ -38,24 +40,11 @@ const REFUSED: Record<string, string> = {
   interval_retired: "Plans are yearly only now. Reload the page and choose again.",
 };
 
-const OUTCOME: Record<string, string> = {
-  confirmed: "Your plan is on. Thank you.",
-  declined: "The card was declined. Nothing was charged.",
-  covered: "Mesita already gives this place that level. Nothing was charged.",
-  pending: "Your payment is being confirmed. This page updates in a moment.",
-  expired: "That checkout expired. Nothing was charged.",
-  lost: "Someone else started a plan first. Nothing was charged.",
-};
 
 function usd(cents: number): string {
   return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: cents % 100 === 0 ? 0 : 2 });
 }
 
-function day(iso: string | null | undefined): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
 
 /** One plan. With no `action`, `word` says where the plan stands. */
 type Offer = {
@@ -70,14 +59,22 @@ type Offer = {
   onIt: boolean;
   picked: boolean;
   word: string;
-  action: { label: string; run: () => void; onBlur?: () => void } | null;
+  action: { label: string; run: () => void; onBlur?: () => void; armed?: boolean } | null;
+  /** The tapped box's own label while its request runs. */
+  busyLabel: string | null;
+  /** This box's refusal, with its recovery sentence. */
+  error: string | null;
 };
 
 function Box({ offer: o, busy, boxRef }: { offer: Offer; busy: boolean; boxRef?: React.Ref<HTMLLIElement> }) {
   return (
     <li
       ref={boxRef}
-      className={`flex flex-col gap-4 rounded-2xl border p-5 ${o.picked ? "bg-muted/60" : "bg-card"} ${o.onIt ? "border-foreground ring-foreground ring-1" : "border-border"}`}
+      className={cn(
+        "flex flex-col gap-4 rounded-2xl border p-5 text-sm",
+        o.picked && o.action ? "bg-muted/60" : "bg-card",
+        o.onIt ? "border-foreground" : "border-border",
+      )}
     >
       <p className="font-semibold">{o.name}</p>
       <div>
@@ -104,13 +101,17 @@ function Box({ offer: o, busy, boxRef }: { offer: Offer; busy: boolean; boxRef?:
           disabled={busy}
           onClick={o.action.run}
           onBlur={o.action.onBlur}
-          className="border-border hover:bg-muted h-11 w-full rounded-full border font-semibold disabled:opacity-50"
+          className={cn(
+            "border-border hover:bg-muted h-11 w-full rounded-full border font-semibold disabled:opacity-50",
+            o.action.armed && "text-destructive",
+          )}
         >
-          {o.action.label}
+          {o.busyLabel ?? o.action.label}
         </button>
       ) : (
-        <p className="text-muted-foreground flex h-11 items-center justify-center font-medium">{o.word}</p>
+        <p className="text-muted-foreground flex h-11 items-center justify-center">{o.word}</p>
       )}
+      {o.error ? <p className="text-destructive">{o.error}</p> : null}
     </li>
   );
 }
@@ -127,47 +128,67 @@ export function PlansCard({
 }) {
   const router = useRouter();
   const [data, setData] = useState<PlacePremier | null>(initial);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // The tapped box ("free" or a tier) while its request runs.
+  const [busy, setBusy] = useState<BoostTier | "free" | null>(null);
+  // A refusal belongs to the box that was tapped; null tier = no box.
+  const [error, setError] = useState<{ tier: BoostTier | "free" | null; text: string } | null>(null);
   const [armed, setArmed] = useState(false);
   const pickedRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => {
     pickedRef.current?.scrollIntoView({ block: "center" });
   }, []);
 
-  if (!data?.quotes) return null;
+  const missing = !!data && !data.quotes;
+  useEffect(() => {
+    if (missing) console.error("[premier] business-web-get-premier: no quotes", { place_id: placeId });
+  }, [missing, placeId]);
+
+  if (!data) return null;
+  if (!data.quotes) {
+    return (
+      <section id="plans" className="flex scroll-mt-6 flex-col gap-3">
+        <p className="text-muted-foreground text-sm">Plans didn&apos;t load. Reload the page.</p>
+      </section>
+    );
+  }
   const quotes = data.quotes;
   const payer = data.viewer === "payer";
-  const notice = data.outcome && OUTCOME[data.outcome] ? OUTCOME[data.outcome] : null;
   const home = premierHref(placeId);
   const onRank = data.paid?.tier ?? 0;
 
   async function reload() {
     const r = await getPremier(placeId);
     if (r.ok) setData(r.data);
-    else setError(r.error);
+    else {
+      console.error("[premier] business-web-get-premier failed", { place_id: placeId, code: r.code ?? null });
+      setError({ tier: null, text: r.error });
+    }
     router.replace(home);
     router.refresh();
   }
 
   async function choose(tier: BoostTier) {
-    setBusy(true);
+    setBusy(tier);
     setError(null);
     const r = await startPremier({ placeId, tier, interval: "year", returnUrl: returnUrl(home) });
-    setBusy(false);
-    if (!r.ok) return setError((r.code && REFUSED[r.code]) || r.error);
+    if (!r.ok) {
+      setBusy(null);
+      return setError({ tier, text: `${(r.code && REFUSED[r.code]) || r.error} Nothing was charged. Tap again.` });
+    }
+    // Stay busy while the browser leaves for Stripe Checkout.
     if (r.data.url) return window.location.assign(r.data.url);
+    setBusy(null);
     await reload();
   }
 
   // Choosing Free is stopping your own renewal; the paid days run out.
   async function toFree() {
-    setBusy(true);
+    setBusy("free");
     setError(null);
     setArmed(false);
     const r = await cancelPremier(placeId, false);
-    setBusy(false);
-    if (!r.ok) return setError(r.error);
+    setBusy(null);
+    if (!r.ok) return setError({ tier: "free", text: `${r.error} Reload to see your current plan before trying again.` });
     await reload();
   }
 
@@ -185,8 +206,10 @@ export function PlansCard({
       word: !data.paid ? "Current" : payer ? `From ${day(data.paid.ends_at)}` : "",
       action:
         payer && data.paid?.renews
-          ? { label: armed ? "Tap again" : "Switch", run: () => (armed ? void toFree() : setArmed(true)), onBlur: () => setArmed(false) }
+          ? { label: armed ? "Tap again" : "Switch", armed, run: () => (armed ? void toFree() : setArmed(true)), onBlur: () => setArmed(false) }
           : null,
+      busyLabel: busy === "free" ? "Switching…" : null,
+      error: error?.tier === "free" ? error.text : null,
     },
   ];
   for (const plan of PLANS) {
@@ -213,20 +236,20 @@ export function PlansCard({
       picked: picked === plan.key,
       word: label,
       action: current || blocked ? null : { label, run: () => void choose(plan.key) },
+      busyLabel: busy === plan.key ? (q.kind === "change" ? "Switching…" : "Opening checkout…") : null,
+      error: error?.tier === plan.key ? error.text : null,
     });
   }
 
   return (
     <section id="plans" className="flex scroll-mt-6 flex-col gap-3">
-      <h2 className="font-semibold">Plan</h2>
-      {notice ? <p className="text-sm">{notice}</p> : null}
       <ul className="grid gap-4 sm:grid-cols-3">
         {offers.map((o) => (
-          <Box key={o.key} offer={o} busy={busy} boxRef={o.picked ? pickedRef : undefined} />
+          <Box key={o.key} offer={o} busy={busy !== null} boxRef={o.picked && o.action ? pickedRef : undefined} />
         ))}
       </ul>
       <p className="text-muted-foreground text-sm">Visibility is ranking priority on Home and the Map. It doesn&apos;t guarantee more views.</p>
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+      {error && error.tier === null ? <p className="text-destructive text-sm">{error.text}</p> : null}
     </section>
   );
 }

@@ -17,3 +17,15 @@ export function formatAbsoluteUtc(iso: string): string {
   if (Number.isNaN(d.getTime())) return iso;
   return d.toISOString().slice(0, 16).replace("T", " ") + " UTC";
 }
+
+/**
+ * A date as "Mar 4, 2027" in one fixed time zone (MESITA-3632), so the
+ * server and the browser print the same day. Premier has no place time
+ * zone, so it uses the default. "" when the date does not parse.
+ */
+export function day(iso: string | null | undefined, tz = "America/Monterrey"): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: tz });
+}
