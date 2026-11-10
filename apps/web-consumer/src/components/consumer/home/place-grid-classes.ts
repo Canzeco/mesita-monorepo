@@ -21,3 +21,22 @@ export const GRID_FACT_LINE = "h-4";
 /** The family chip row over the grid: one scrolling line, 12px sides. */
 export const GRID_CHIPS =
   "scrollbar-hide flex shrink-0 gap-1.5 overflow-x-auto overscroll-x-contain px-3 py-2.5";
+
+// PLACES 3.0 (MESITA-3662): one place per row, two equal squares, the photo
+// left and the facts with Save · Share right. The row card (PlaceRowCard) and
+// its loading silhouette (RowFallback) read these strings.
+
+/** One column of rows; 12px sides, 10px between rows. */
+export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-1";
+
+/** The two squares side by side, 8px apart. */
+export const ROW_PAIR = "grid grid-cols-2 gap-2";
+
+/** The photo square, 14px corners, as the grid's photo. */
+export const ROW_PHOTO =
+  "bg-muted relative aspect-square overflow-hidden rounded-2xl";
+
+/** The info square: a soft fill, 12px inside, the buttons pinned to its
+ *  bottom so every row's buttons line up. */
+export const ROW_INFO =
+  "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-2xl p-3";

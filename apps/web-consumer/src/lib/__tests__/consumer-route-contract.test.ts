@@ -77,6 +77,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.searchChat,
     CONSUMER_ROUTES.home,
     CONSUMER_ROUTES.homeClassic,
+    CONSUMER_ROUTES.homeGrid,
     CONSUMER_ROUTES.homeSocial,
     CONSUMER_ROUTES.pay,
     `${CONSUMER_ROUTES.payPlace.prefix}:id`,
@@ -108,6 +109,7 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       // /discover and /discover/places are in the legacy block now.
       home: "/home/places",
       homeClassic: "/home/classic",
+      homeGrid: "/home/grid",
       homeSocial: "/home/social",
       place: { prefix: "/place/" },
       placeOpen: { prefix: "/place/open/" },

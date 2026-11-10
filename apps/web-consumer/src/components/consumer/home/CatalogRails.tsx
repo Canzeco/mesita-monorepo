@@ -83,9 +83,15 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import { DiscoverFallback, GridFallback, PLACES_LIST } from "./DiscoverFallback";
+import {
+  DiscoverFallback,
+  GridFallback,
+  PLACES_LIST,
+  RowFallback,
+} from "./DiscoverFallback";
 import { PlaceGridCard } from "./PlaceGridCard";
-import { GRID_CHIPS, GRID_LIST } from "./place-grid-classes";
+import { GRID_CHIPS, GRID_LIST, ROW_LIST } from "./place-grid-classes";
+import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -121,24 +127,28 @@ export const TOP_LABEL = "Top";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** Home's three tabs, each its own address (MESITA-2517, MESITA-2597). The
- *  first is THE GRID (Pato, MESITA-3658: "we are going to try a new UI for
- *  home. Three sections: Places (New UI), Places, Social … leave the
- *  previous one working"): a chip row over a two-column photo grid, at
- *  /home/places, where every "go Home" lands. The second is the list Places
- *  was, the family column beside big tiles, at /home/classic. */
+/** Home's four tabs, each its own address (MESITA-2517, MESITA-2597), in
+ *  version order (Pato, MESITA-3662: "create four views: places 1.0, places
+ *  2.0, places 3.0, social"):
+ *    1.0  the family column beside big tiles, /home/classic
+ *    2.0  the chip row over a two-column photo grid (MESITA-3658), /home/grid
+ *    3.0  the chip row over rows of two squares, photo · facts with Save and
+ *         Share (MESITA-3662), /home/places, where every "go Home" lands
+ *         while it is on trial. */
 export const HOME_TABS = [
-  { key: "places", label: "Places (New UI)", href: CONSUMER_ROUTES.home },
-  { key: "classic", label: "Places", href: CONSUMER_ROUTES.homeClassic },
+  { key: "classic", label: "Places 1.0", href: CONSUMER_ROUTES.homeClassic },
+  { key: "grid", label: "Places 2.0", href: CONSUMER_ROUTES.homeGrid },
+  { key: "places", label: "Places 3.0", href: CONSUMER_ROUTES.home },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The tab a Home address shows: Social at /home/social, the old list at
- *  /home/classic, the grid anywhere else under Home. */
+/** The tab a Home address shows: Social, the old list and the grid at their
+ *  own addresses, Places 3.0 anywhere else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
   if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
-  return pathname === CONSUMER_ROUTES.homeClassic ? "classic" : "places";
+  if (pathname === CONSUMER_ROUTES.homeClassic) return "classic";
+  return pathname === CONSUMER_ROUTES.homeGrid ? "grid" : "places";
 }
 
 /** A place's family word for the grid's fact line: the first family the
@@ -381,7 +391,8 @@ export function CatalogRails() {
 
   // The grid and the old list say which they are, so the two can be compared
   // (MESITA-3658); the old list keeps the word it always sent.
-  const cardMode = tab === "places" ? "grid" : "places";
+  const cardMode =
+    tab === "places" ? "rows" : tab === "grid" ? "grid" : "places";
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
     source: place.area?.source ?? (place.googleOnly ? "google" : "mesita"),
@@ -566,7 +577,7 @@ export function CatalogRails() {
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
-      {tab === "places" ? chipRow : null}
+      {tab === "places" || tab === "grid" ? chipRow : null}
       <div className="flex min-h-0 flex-1">
         {tab === "classic" ? categories : null}
         <div
@@ -592,6 +603,36 @@ export function CatalogRails() {
             family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
             saved={cards.isSaved(place)}
             onToggle={() => cards.toggle(place, i + 1)}
+            onOpen={() =>
+              trackEvent(supabase, "home_card_open", {
+                mode: cardMode,
+                place_id: place.id,
+                ...tileFacts(place, i + 1),
+              })
+            }
+            onOpenGoogle={() => openGooglePlace(place)}
+          />
+        ))}
+        {hasMore ? (
+          <li ref={sentinel} aria-hidden className="h-px" data-places-more />
+        ) : null}
+      </ul>
+    </div>
+  );
+
+  // Places 3.0 (MESITA-3662): the same places, order and paging, one row
+  // each, drawn as PlaceRowCard.
+  const rows = (list: readonly Place[], label: string) => (
+    <div className="pb-6">
+      <ul role="list" aria-label={label} className={ROW_LIST}>
+        {list.map((place, i) => (
+          <PlaceRowCard
+            key={place.id}
+            place={withUserDistance(place, coords)}
+            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
+            saved={cards.isSaved(place)}
+            onToggle={() => cards.toggle(place, i + 1)}
+            onShare={() => cards.share(place)}
             onOpen={() =>
               trackEvent(supabase, "home_card_open", {
                 mode: cardMode,
@@ -659,7 +700,14 @@ export function CatalogRails() {
   // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
   // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
   // drew one bare square before, so it grew to three, then to tiles.
-  const waiting = tab === "places" ? <GridFallback /> : <DiscoverFallback />;
+  const waiting =
+    tab === "places" ? (
+      <RowFallback />
+    ) : tab === "grid" ? (
+      <GridFallback />
+    ) : (
+      <DiscoverFallback />
+    );
   if (waitingForFix) return shell(waiting);
 
   if (fetchError) {
@@ -693,5 +741,11 @@ export function CatalogRails() {
   );
 
   if (shown.length === 0) return shell(empty);
-  return shell(tab === "places" ? grid(shown, label) : tiles(shown, label, true));
+  return shell(
+    tab === "places"
+      ? rows(shown, label)
+      : tab === "grid"
+        ? grid(shown, label)
+        : tiles(shown, label, true),
+  );
 }
