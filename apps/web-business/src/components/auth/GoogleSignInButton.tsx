@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
+import { cn } from "@/lib/utils";
 
 function getAuthBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -16,7 +17,14 @@ function getAuthBaseUrl() {
 // stashing extra state in query params would force every operator to
 // register a wildcard variant. The admin shell always re-routes to /
 // after signin; deep-link state isn't preserved (low-stakes for admin).
-export function GoogleSignInButton() {
+export function GoogleSignInButton({
+  label = "Sign in with Google",
+  className,
+}: {
+  label?: string;
+  /** Replaces the default look (the landing's white pill, MESITA-3663). */
+  className?: string;
+} = {}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,14 +62,18 @@ export function GoogleSignInButton() {
         type="button"
         onClick={onClick}
         disabled={pending}
-        className="border-border bg-background hover:bg-muted flex h-11 w-full items-center justify-center gap-2 rounded-full border text-sm font-semibold transition disabled:opacity-60"
+        className={cn(
+          "flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition disabled:opacity-60",
+          className ??
+            "border-border bg-background hover:bg-muted h-11 w-full border",
+        )}
       >
         {pending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <GoogleGlyph />
         )}
-        Sign in with Google
+        {label}
       </button>
       {error && (
         <p className={`${ERROR_BOX_CLASS} leading-relaxed`}>
