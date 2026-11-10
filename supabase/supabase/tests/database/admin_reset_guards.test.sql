@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(14);
+select plan(17);
 
 insert into public.super_admins (email)
   select 'reset-guard-probe@mesita.test'
@@ -54,6 +54,36 @@ select ok(
   'an open tab refuses the reset'
 );
 delete from public.pay_tabs where id = '00000000-0000-4000-8000-0000000b3590';
+
+-- A pending refund attempt is a Stripe refund in flight.
+insert into public.wallet_purchases (id, place_id, amount_cents, currency, stripe_account_id, status)
+  values ('00000000-0000-4000-8000-000000103590', '00000000-0000-4000-8000-000000013590', 10000, 'mxn', 'acct_test3590', 'failed');
+insert into public.wallet_refund_attempts (id, purchase_id, amount_cents, status)
+  values ('00000000-0000-4000-8000-000000113590', '00000000-0000-4000-8000-000000103590', 100, 'pending');
+select ok(
+  public.admin_reset_database()->'open_money' @> '[{"table": "wallet_refund_attempts", "id": "00000000-0000-4000-8000-000000113590", "status": "pending"}]'::jsonb,
+  'a pending refund attempt refuses the reset'
+);
+update public.wallet_refund_attempts set status = 'failed' where id = '00000000-0000-4000-8000-000000113590';
+
+-- A ready pledge with a change-plan Checkout in flight blocks too.
+insert into public.place_backings (id, place_id, tier, billing_interval, amount_cents, status, stripe_checkout_session_id, checkout_kind)
+  values ('00000000-0000-4000-8000-000000123590', '00000000-0000-4000-8000-000000013590', 'boost_2x', 'month', 500, 'ready', 'cs_test3590', 'change');
+select ok(
+  public.admin_reset_database()->'open_money' @> '[{"table": "place_backings", "id": "00000000-0000-4000-8000-000000123590", "status": "ready:change"}]'::jsonb,
+  'a ready pledge with a Checkout in flight refuses the reset'
+);
+update public.place_backings set stripe_checkout_session_id = null, checkout_kind = null
+ where id = '00000000-0000-4000-8000-000000123590';
+
+-- ━━━ a live row in any livemode table refuses ━━━
+
+update public.place_fee_invoices set livemode = true where id = '00000000-0000-4000-8000-0000000f3590';
+select ok(
+  public.admin_reset_database()->'livemode_rows' @> '[{"table": "place_fee_invoices", "id": "00000000-0000-4000-8000-0000000f3590"}]'::jsonb,
+  'a live fee invoice refuses the reset'
+);
+update public.place_fee_invoices set livemode = false where id = '00000000-0000-4000-8000-0000000f3590';
 
 -- ━━━ a live Stripe row refuses ━━━
 
