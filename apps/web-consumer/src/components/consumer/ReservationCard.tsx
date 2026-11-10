@@ -73,7 +73,6 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
       className={cn(
         CARD_FRAME,
         "hover:bg-muted/40 transition active:scale-[0.995]",
-        spent && "opacity-70",
       )}
     >
       <div className="flex items-start gap-3">
@@ -85,7 +84,9 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
               alt={r.placeName}
               fill
               sizes="64px"
-              className="object-cover"
+              // The state is said once, by the pill (MESITA-3649/3651): a
+              // dead booking dims its photo, never strikes its name.
+              className={cn("object-cover", spent && "opacity-60")}
             />
           ) : null}
         </div>
@@ -93,23 +94,16 @@ export function ReservationCard({ r }: { r: ReservationItem }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3
-              className={cn(
-                "font-display truncate text-base leading-tight font-semibold",
-                spent && "line-through",
-              )}
+              className="font-display truncate text-base leading-tight font-semibold"
             >
               {r.placeName}
             </h3>
             <span
               className={cn(
-                "type-meta inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 font-semibold",
+                "type-meta inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 font-semibold",
                 meta.pillClass,
               )}
             >
-              <meta.Icon
-                className={cn("h-3 w-3", meta.iconClass)}
-                strokeWidth={2.25}
-              />
               {meta.label}
             </span>
           </div>
