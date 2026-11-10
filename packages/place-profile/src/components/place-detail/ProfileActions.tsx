@@ -357,7 +357,7 @@ export function MesitaActions({
           "$0MX"). Opens the Wallet at this place's credit. Prepay comes first,
           then Wallet, then Pay: the order the money moves (MESITA-3577). */}
       <MesitaTile Icon={Wallet} label="Wallet" amount={said(row.wallet)} badge={row.wallet.pill} tone={tone(row.wallet)} onClick={tap("wallet", row.wallet, actions?.onOpenWallet)} />
-      {/* PAY GOES TO /pay (MESITA-3501): "5% Back" with card cashback, "2% Back"
+      {/* PAY GOES TO /pay (MESITA-3501): the place's card cashback ("7% Back"), else its cash rate
           when only the waiter's cash cashback is on (MESITA-3545). */}
       <MesitaTile Icon={QrCode} label="Pay" amount={said(row.pay)} badge={row.pay.pill} tone={tone(row.pay)} onClick={tap("pay", row.pay, actions?.onPay)} />
     </div>

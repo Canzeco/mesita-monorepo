@@ -10,12 +10,11 @@ import type { PlaceDetail, PlaceMoney } from "../place-detail";
 import { moneyLabel } from "./money";
 import { isReserveActionEnabled } from "./place-profile-actions";
 
-/** Cashback on a bill paid by card with Mesita Pay. Twin of
- *  supabase/functions/_shared/money.ts CASHBACK_BPS (500 bps). */
-export const CARD_CASHBACK_PCT = 5;
-/** Cashback on a bill paid to the waiter, confirmed by Received. Twin of
- *  _shared/money.ts OUTSIDE_CASHBACK_BPS (200 bps, MESITA-3545). */
-export const OUTSIDE_CASHBACK_PCT = 2;
+/** A rate in bps as the pill says it: 700 → "7%" (MESITA-3589: each place
+ *  sets its own, whole percents 1..20). */
+export function ratePct(bps: number): string {
+  return `${Math.round(bps) / 100}%`;
+}
 
 /** The pill while the first money read is out. */
 export const MESITA_ROW_LOADING = "…";
@@ -57,11 +56,14 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
   const prepay: MesitaTileState = (money.sell ?? []).length > 0 ? { works: true, pill: bonus > 0 ? `${bonus}% Bonus` : "On" } : OFF;
   const available = Math.max(money.balance?.available_cents ?? 0, 0);
   const wallet: MesitaTileState = available > 0 ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") } : OFF;
-  const pay: MesitaTileState = money.cashback
-    ? { works: true, pill: `${CARD_CASHBACK_PCT}% Back` }
-    : money.outside_cashback
-      ? { works: true, pill: `${OUTSIDE_CASHBACK_PCT}% Back` }
-      : money.charges_enabled || available > 0
+  // The place's own rates (MESITA-3589); an older read without them says On.
+  const cardBps = money.card_cashback_bps ?? 0;
+  const cashBps = money.cash_cashback_bps ?? 0;
+  const pay: MesitaTileState = money.cashback && cardBps > 0
+    ? { works: true, pill: `${ratePct(cardBps)} Back` }
+    : money.outside_cashback && cashBps > 0
+      ? { works: true, pill: `${ratePct(cashBps)} Back` }
+      : money.charges_enabled || money.cash === true || available > 0
         ? { works: true, pill: "On" }
         : OFF;
   return { reserve, prepay, wallet, pay };

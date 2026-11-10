@@ -360,7 +360,7 @@ const CREDIT_FACTS = [
   "Buy as many vouchers as you want: their credits add up in one wallet, and you can pay one bill with all of them.",
   "Spend your credits on your bill here whenever you want, in the Mesita app. You don't have to cover the whole bill with them: pay part with credits and the rest with Mesita Pay or directly to the place.",
   "Credits only work at this place. You can send them to a friend.",
-  "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get no 5% back.",
+  "Neither prepaid credits nor tips earn cashback: the part of a bill you pay with credits, and any tip, get none back.",
 ];
 
 /** What each offer's (i) says, one short paragraph per idea (MESITA-3492,
@@ -520,6 +520,10 @@ export function VouchersPane({
   // not for sale.
   const dim = money?.test_mode !== true;
   const cashback = money?.cashback === true;
+  // The place's own rates (MESITA-3589); 0 when Off or on an older read.
+  const cardPct = money?.card_cashback_bps ? `${money.card_cashback_bps / 100}%` : null;
+  const cashPct = money?.cash_cashback_bps ? `${money.cash_cashback_bps / 100}%` : null;
+  const outside = money?.outside_cashback === true && cashPct !== null;
   const cashbackTag = cashback ? "Available here" : "Not at this place yet";
   // Pay shows where the 5% comes back, or in test mode (MESITA-3397): a live
   // Pay at a place without cashback promised 5% that never comes.
@@ -669,10 +673,10 @@ export function VouchersPane({
         <ul className="border-border divide-border divide-y rounded-2xl border" data-cashback>
           <li
             className={cn(ROW, !loading && !cashback && dim && "opacity-50")}
-            aria-label={`Mesita Pay Cashback: pay the bill here with Mesita, 5% comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
+            aria-label={`Mesita Pay Cashback: pay the bill here with Mesita, ${cardPct ?? "cashback"} comes back as credits, any visit. ${loading ? "" : cashbackTag}`}
           >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
-              +5%
+              {cardPct ? `+${cardPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
@@ -683,15 +687,14 @@ export function VouchersPane({
                     loading
                       ? undefined
                       : canPay || cashback
-                        ? { ok: true, text: "On at this place. 5% back on every bill." }
+                        ? { ok: true, text: cardPct ? `On at this place. ${cardPct} back on every bill.` : "Pay by card here; this place gives no cashback." }
                         : { ok: false, text: cashbackTag }
                   }
                   action={canPay && actions?.onPay ? { label: "Pay bill", onClick: actions.onPay } : undefined}
                   text={[
-                    "Pay your bill in the Mesita app and get 5% of it back as credits at this place. Use them whenever you want.",
-                    "Any amount, every visit.",
-                    "Neither prepaid credits nor tips earn cashback: the 5% counts only on the part of the bill you pay with Mesita Pay, without the tip.",
-                    "Example: a $500MX bill plus a $50MX tip, with $200MX from credits and $300MX with Mesita Pay, gives you $15MX back.",
+                    `Pay your bill in the Mesita app and get ${cardPct ?? "the place's cashback"} of it back as credits at this place. Use them whenever you want.`,
+                    "Any amount, every visit. Each place sets its own rate.",
+                    "Neither prepaid credits nor tips earn cashback: it counts only on the part of the bill you pay with Mesita Pay, without the tip.",
                     "You can mix: part of the bill with credits, the rest with Mesita Pay.",
                   ]}
                 />
@@ -702,9 +705,12 @@ export function VouchersPane({
           {/* EXTERNAL PAY EARNS 2% (Pato, MESITA-3547: "external cash is 2%";
               Payments Flow v2, MESITA-3541): cash or the place's terminal,
               confirmed by the waiter's Received through the waiter's code. */}
-          <li className={ROW} aria-label="External Pay Cashback: pay the place directly, by cash or their terminal, with the waiter's code. 2% comes back as credits.">
+          <li
+            className={cn(ROW, !outside && dim && "opacity-50")}
+            aria-label={`External Pay Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
+          >
             <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
-              +2%
+              {outside ? `+${cashPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
               <span className="flex items-center gap-1 text-base font-semibold">
@@ -714,16 +720,15 @@ export function VouchersPane({
                 </span>
                 <InfoButton
                   title="External Pay Cashback"
-                  status={{ ok: true, text: "2% back on bills you pay the waiter." }}
+                  status={outside ? { ok: true, text: `${cashPct} back on bills you pay the waiter.` } : { ok: false, text: "Not at this place yet" }}
                   text={[
-                    "Pay the place directly: cash or their card terminal, and get 2% of the bill back as credits at this place.",
-                    "Ask the waiter for a code. They type the bill and the tip, you choose Pay the waiter in Mesita, and they tap Received when they get your money.",
-                    "The 2% counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
-                    "Paying in the app with Mesita Pay gives 5% instead.",
+                    `Pay the place directly: cash or their card terminal, and get ${cashPct ?? "the place's cash cashback"} of the bill back as credits at this place.`,
+                    "Show your QR to the waiter. They type the bill and the tip, you choose cash, and they tap Received when they get your money.",
+                    "It counts on the bill, never on the tip or on credits you spend. It is ready in 1 hour.",
                   ]}
                 />
               </span>
-              <span className="text-muted-foreground text-sm" aria-hidden>Cash or their terminal, 2% back</span>
+              <span className="text-muted-foreground text-sm" aria-hidden>{outside ? `Cash or their terminal, ${cashPct} back` : "Not at this place yet"}</span>
             </span>
           </li>
         </ul>

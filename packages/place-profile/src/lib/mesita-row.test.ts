@@ -36,6 +36,7 @@ describe("mesitaRowState", () => {
         ...BASE,
         charges_enabled: true,
         outside_cashback: true,
+        cash_cashback_bps: 300,
         sell: ["voucher_200", "voucher_1000"],
         catalog: {
           voucher_200: { price_cents: 20000, bonus_cents: 2000, credit_cents: 22000, available_after_sec: 0 },
@@ -47,7 +48,10 @@ describe("mesitaRowState", () => {
     });
     expect(s.prepay).toEqual({ works: true, pill: "20% Bonus" });
     expect(s.wallet).toEqual({ works: true, pill: "$120MX" });
-    expect(s.pay).toEqual({ works: true, pill: "2% Back" });
-    expect(mesitaRowState({ money: { ...BASE, cashback: true, outside_cashback: true } }).pay.pill).toBe("5% Back");
+    // The place's own rates (MESITA-3589), never a typed-in 5% / 2%.
+    expect(s.pay).toEqual({ works: true, pill: "3% Back" });
+    expect(mesitaRowState({ money: { ...BASE, cashback: true, card_cashback_bps: 700, outside_cashback: true, cash_cashback_bps: 300 } }).pay.pill).toBe("7% Back");
+    // An older read without the rate says On, never a guessed number.
+    expect(mesitaRowState({ money: { ...BASE, charges_enabled: true, cashback: true } }).pay.pill).toBe("On");
   });
 });
