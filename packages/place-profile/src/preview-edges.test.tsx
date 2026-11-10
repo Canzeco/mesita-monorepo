@@ -12,6 +12,8 @@ function detail(over: Record<string, unknown> = {}): PlaceDetail {
     enriched_at: "2026-01-01T00:00:00Z",
     category_label: "Restaurant",
     reservations_enabled: true,
+    // Reserve needs a number to call (MESITA-3622).
+    phone: "+528183782164",
     ...over,
   });
 }
