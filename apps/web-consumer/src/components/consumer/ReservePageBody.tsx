@@ -16,32 +16,16 @@ import {
 } from "@/lib/api/reservations";
 import { reservationPath } from "@/lib/consumer-route-contract";
 import { toReservationItem } from "@/lib/reservations-adapter";
-import { stateMeta } from "@/lib/reservation-state";
+import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { isAwaitingPlace, usePollWhile } from "@/lib/use-poll-while";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
-import { placeDateTime } from "@mesita/place-profile/lib/place-time";
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
-
-/** "Fri 13 Nov · 21:00", on the place's clock. */
-function whenLine(iso: string, tz: string | null): string {
-  const t = placeDateTime(iso, tz);
-  if (!t) return "";
-  const [y, m, d] = t.date.split("-").map(Number);
-  const day = new Date(Date.UTC(y, m - 1, d));
-  return `${WEEKDAYS[day.getUTCDay()]} ${d} ${MONTHS[m - 1]} · ${t.time}`;
-}
 
 /** Confirmed wears the green; Booking… and Created grey; the rest plain. */
 function StatusPill({ row }: { row: EFReservationRow }) {
   const phase = toReservationItem(row).state;
-  const label = phase === "booking" ? "Booking…" : stateMeta(phase).label;
+  const label = statusLabel(row);
   return (
     <span
       className={cn(

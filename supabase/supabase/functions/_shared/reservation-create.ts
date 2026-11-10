@@ -4,8 +4,11 @@
 //
 //   replay     the same request_id from the same guest already made a ticket
 //              → return THAT ticket (a retried request, a lost response).
-//   duplicate  the guest already holds a live ticket (pending or confirmed)
-//              at the same place for the same instant → 409 already_reserved.
+//   duplicate  the guest already holds a live ticket (pending or confirmed,
+//              its slot not yet passed) at the same place, at ANY time
+//              → 409 already_reserved. One live reservation per place per
+//              guest (MESITA-3640, Pato: "each place can have max one
+//              reservation for the same user"); other places are free.
 //   new        neither → insert.
 //
 // The insert itself is born scheduled (`createdTicketSchedule`): the minute
@@ -13,9 +16,11 @@
 // the call engine is lost, so no ticket is ever left 'idle' with nothing to
 // move it.
 
+import { PASSED_GRACE_MS } from "./reservation-doc.ts";
+
 export const ALREADY_RESERVED_CODE = "already_reserved";
 export const ALREADY_RESERVED_MESSAGE =
-  "You already have a reservation here at that time.";
+  "You already have a reservation here. Change or cancel it first.";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,7 +34,10 @@ export type CreateTicket = { id: string } & Record<string, unknown>;
 
 export type CreateGuardStore = {
   byRequest(consumerId: string, requestId: string): Promise<CreateTicket | null>;
-  liveAt(consumerId: string, placeId: string, reservedAtIso: string): Promise<CreateTicket | null>;
+  /** A pending or confirmed ticket of this guest here whose slot is at or
+   *  after `sinceIso` (now minus the 4h passed grace, list-reservations'
+   *  `upcoming`). */
+  liveHere(consumerId: string, placeId: string, sinceIso: string): Promise<CreateTicket | null>;
 };
 
 export type CreateGuard =
@@ -40,12 +48,14 @@ export type CreateGuard =
 export async function guardCreate(
   store: CreateGuardStore,
   g: { consumerId: string; placeId: string; reservedAtIso: string; requestId: string | null },
+  now: Date = new Date(),
 ): Promise<CreateGuard> {
   if (g.requestId) {
     const prior = await store.byRequest(g.consumerId, g.requestId);
     if (prior) return { kind: "replay", ticket: prior };
   }
-  const live = await store.liveAt(g.consumerId, g.placeId, g.reservedAtIso);
+  const since = new Date(now.getTime() - PASSED_GRACE_MS).toISOString();
+  const live = await store.liveHere(g.consumerId, g.placeId, since);
   if (live) return { kind: "duplicate", ticket: live };
   return { kind: "new" };
 }

@@ -24,6 +24,12 @@ export type PlaceActions = {
    *  (MESITA-2692; they opened Report alone, MESITA-2684). */
   onMore?: () => void;
   onReserve?: () => void;
+  /** The guest's live reservation here (MESITA-3640): a guest holds at most
+   *  one per place, drawn as one full-width button under Reserve · Prepay ·
+   *  Wallet · Pay. `when` ("Fri 13 Nov · 21:00") and `status` ("Confirmed",
+   *  "Booking…") are the host's words; green once confirmed, grey before.
+   *  Absent or null: no button. */
+  reservation?: { when: string; status: string; confirmed: boolean; onOpen: () => void } | null;
   /** The fifth tile, Upgrade (MESITA-3200): opens the host's sheet (MESITA-3201). */
   onBoost?: () => void;
   onOpenMenu?: (menu: PlaceMenuItem) => void;

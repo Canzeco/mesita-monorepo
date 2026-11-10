@@ -24,10 +24,13 @@ import { apiGetBoost, type PlaceBoost } from "@/lib/api/boost";
 import type { PlaceDetail } from "@/lib/place-detail";
 import { useSavedPlaces } from "@/lib/saved-places";
 import { sharePlace } from "@/lib/share-place";
-import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
+import { useBrowserSupabase, useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot } from "@/lib/use-user-location";
 import { navigateTo } from "@/lib/navigate";
-import { CONSUMER_ROUTES, payPlacePath, placeReservePath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payPlacePath, placeReservePath, reservationPath, walletPlacePath } from "@/lib/consumer-route-contract";
+import { apiListReservations, type EFReservationRow } from "@/lib/api/reservations";
+import { statusLabel, whenLine } from "@/lib/reservation-when";
+import { toReservationItem } from "@/lib/reservations-adapter";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { toast } from "@/lib/toast";
 
@@ -106,6 +109,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
   const vouchers = usePlaceVouchers(place.id);
+  const live = usePlaceReservation(place.id);
   // The Wallet tile's credit (MESITA-3574): read the place's offer and the
   // guest's balance when the screen opens, not only when Rewards opens.
   // load sets state in its promise callbacks only (Next 16 lint).
@@ -141,6 +145,15 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onMore: () => setMoreOpen(true),
     // The full Reserve page (MESITA-3609), not a sheet.
     onReserve: () => navigateTo(router, placeReservePath(place.id)),
+    // The guest's one live table here (MESITA-3640), under the four tiles.
+    reservation: live
+      ? {
+        when: whenLine(live.reserved_at, place.timezone || null),
+        status: statusLabel(live),
+        confirmed: toReservationItem(live).state === "confirmed",
+        onOpen: () => navigateTo(router, reservationPath(live.id)),
+      }
+      : null,
     onBoost,
     onOpenMenu: (item) => setMenu(item),
     onOpenLink,
@@ -278,6 +291,31 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 // again (the same request_id: never a second charge) for how it ended.
 // "Pay on Stripe's page" is the Checkout as before; "Add a card" saves one
 // on Stripe's page and comes back here.
+/** The guest's live reservation at this place, if any (MESITA-3640: one per
+ *  place). `upcoming` is exactly "live" server-side (pending or confirmed,
+ *  slot within the 4h grace). A failed read draws no button. */
+function usePlaceReservation(placeId: string): EFReservationRow | null {
+  // The memoized client: the lazy getter is a new closure each render and
+  // would refetch forever in this effect (MESITA-3207).
+  const supabase = useBrowserSupabase();
+  const mesita = isMesitaPlaceId(placeId);
+  const [found, setFound] = useState<{ placeId: string; row: EFReservationRow | null } | null>(null);
+  useEffect(() => {
+    if (!mesita) return;
+    let cancelled = false;
+    apiListReservations(supabase, { scope: "upcoming", limit: 100 })
+      .then(({ reservations }) => reservations.find((r) => r.place?.id === placeId) ?? null)
+      .catch(() => null)
+      .then((row) => {
+        if (!cancelled) setFound({ placeId, row });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mesita, placeId, supabase]);
+  return found?.placeId === placeId ? found.row : null;
+}
+
 function usePlaceVouchers(placeId: string): {
   money: PlaceMoney | null;
   /** This place's House Card is in the guest's Wallet (MESITA-3582). */

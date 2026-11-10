@@ -2,6 +2,7 @@
 
 import {
   CalendarCheck,
+  ChevronRight,
   Heart,
   Map as MapIcon,
   Phone,
@@ -327,6 +328,7 @@ export function MesitaActions({
   const tap = (key: OffTile, t: MesitaTileState, live: (() => void) | undefined) =>
     t.works ? live : t.pill === MESITA_ROW_LOADING ? undefined : () => setOffOpen(key);
   return (
+    <div className="flex flex-col gap-2">
     <div className={PROFILE_MESITA_ROW_CLASS} data-profile-actions="mesita">
       {offOpen ? (
         <OffTileSheet
@@ -362,6 +364,37 @@ export function MesitaActions({
           when only the waiter's cash cashback is on (MESITA-3545). */}
       <MesitaTile Icon={QrCode} label="Pay" amount={said(row.pay)} badge={row.pay.pill} tone={tone(row.pay)} onClick={tap("pay", row.pay, actions?.onPay)} />
     </div>
+    {actions?.reservation ? <ReservationButton r={actions.reservation} /> : null}
+    </div>
+  );
+}
+
+/** YOUR TABLE HERE (MESITA-3640, Pato: "if there is an active reservation
+ *  for that place display it below the 4 buttons as one large button"): a
+ *  guest holds at most one live reservation per place. Full width under the
+ *  row, the tiles' height and shape, green once the place confirmed, grey
+ *  while it is booking; opens the reservation. */
+function ReservationButton({ r }: { r: NonNullable<PlaceActions["reservation"]> }) {
+  return (
+    <button
+      type="button"
+      onClick={r.onOpen}
+      data-profile-actions="reservation"
+      aria-label={`Your reservation here, ${r.when}, ${r.status}`}
+      className={cn(
+        "flex h-13 w-full min-w-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold transition hover:opacity-90 active:scale-[0.99]",
+        MONEY_TONE[r.confirmed ? "green" : "off"],
+      )}
+    >
+      <CalendarCheck className={MESITA_TILE_ICON} strokeWidth={2.25} />
+      <span className="truncate">Your reservation · {r.when}</span>
+      <span
+        className={cn(PLACE_PILL_CLASS, "ml-auto shrink-0", r.confirmed ? "bg-foreground text-paper" : "bg-paper text-muted-foreground")}
+      >
+        {r.status}
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+    </button>
   );
 }
 

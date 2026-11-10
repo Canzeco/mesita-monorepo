@@ -237,7 +237,7 @@ export function ReservationForm({
         return;
       }
       if (e instanceof EFError && e.code === ALREADY_RESERVED_CODE) {
-        setError(errMsg(e, "You already have a reservation here at that time."));
+        setError(errMsg(e, "You already have a reservation here. Change or cancel it first."));
         onBooked(); // re-read the list so the table shows above the form
         return;
       }

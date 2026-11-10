@@ -10,11 +10,12 @@
 //
 // Response:
 //   { ok: true, reservation: {…}, call_triggered, replayed? }
-//   409 { code: "already_reserved" } — a live ticket at this place and time
+//   409 { code: "already_reserved", reservation_id } — a live ticket at this
+//       place, at any time (one per place per guest, MESITA-3640)
 //
 // A RESERVATION ALWAYS MOVES (MESITA-3619, _shared/reservation-create.ts):
 // the same request_id returns the ticket it already made; a second live
-// ticket for the same place and instant is refused; and the ticket is born
+// live ticket at the same place is refused (MESITA-3640); and the ticket is born
 // scheduled and due now, so the minute cron moves it if the immediate push
 // below is lost. The engine decides WHEN the first call rings (MESITA-3626):
 // now when the place is open, else at its opening time.
@@ -120,13 +121,13 @@ serveJson("consumer-web-create-reservation", async (req) => {
       if (error) throw new Error(`request lookup failed: ${error.message}`);
       return fromPlaceIdRow(data ?? null) as CreateTicket | null;
     },
-    async liveAt(cid, pid, at) {
+    async liveHere(cid, pid, since) {
       const { data, error } = await admin
         .from("reservation_tickets")
         .select(TICKET_COLUMNS)
         .eq("consumer_id", cid)
         .eq("place_id", pid)
-        .eq("reserved_at", at)
+        .gte("reserved_at", since)
         .in("state", ["pending", "confirmed"])
         .limit(1)
         .maybeSingle();

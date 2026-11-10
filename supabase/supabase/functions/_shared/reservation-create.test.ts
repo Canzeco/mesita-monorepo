@@ -26,10 +26,10 @@ function memoryStore(rows: Row[]): CreateGuardStore {
   return {
     byRequest: (cid, rid) =>
       Promise.resolve(rows.find((r) => r.consumer_id === cid && r.request_id === rid) ?? null),
-    liveAt: (cid, pid, at) =>
+    liveHere: (cid, pid, since) =>
       Promise.resolve(
         rows.find((r) =>
-          r.consumer_id === cid && r.place_id === pid && r.reserved_at === at &&
+          r.consumer_id === cid && r.place_id === pid && r.reserved_at >= since &&
           (r.state === "pending" || r.state === "confirmed")
         ) ?? null,
       ),
@@ -67,6 +67,8 @@ Deno.test("idempotent: another guest's request_id is not this guest's ticket", a
   assertEquals(g, { kind: "new" });
 });
 
+const NOW = new Date("2026-11-19T00:00:00.000Z");
+
 Deno.test("duplicate: a second live ticket at the same place and time is refused", async () => {
   const g = await guardCreate(memoryStore([ticket]), {
     consumerId: "c1",
@@ -85,19 +87,32 @@ Deno.test("duplicate: a second live ticket at the same place and time is refused
   assertEquals(old.kind, "duplicate");
 });
 
-Deno.test("duplicate: an ended ticket, another place or another time is no duplicate", async () => {
+Deno.test("duplicate: one live ticket per place, at any time (MESITA-3640)", async () => {
+  // A live table here on another day still blocks a new one here.
+  const other = { ...ticket, reserved_at: "2026-11-25T03:00:00.000Z", request_id: null };
+  const g = await guardCreate(memoryStore([other]), {
+    consumerId: "c1",
+    placeId: "p1",
+    reservedAtIso: AT,
+    requestId: RID,
+  }, NOW);
+  assertEquals(g, { kind: "duplicate", ticket: other });
+});
+
+Deno.test("duplicate: an ended ticket, another place or a passed slot is no duplicate", async () => {
   for (const row of [
     { ...ticket, state: "unreachable" },
     { ...ticket, state: "cancelled" },
     { ...ticket, place_id: "p2" },
-    { ...ticket, reserved_at: "2026-11-20T03:00:00.000Z" },
+    // Slot more than 4h before now: passed, in History.
+    { ...ticket, reserved_at: "2026-11-18T19:00:00.000Z" },
   ]) {
     const g = await guardCreate(memoryStore([{ ...row, request_id: null }]), {
       consumerId: "c1",
       placeId: "p1",
       reservedAtIso: AT,
       requestId: RID,
-    });
+    }, NOW);
     assertEquals(g, { kind: "new" });
   }
 });
