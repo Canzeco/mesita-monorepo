@@ -313,7 +313,7 @@ export function MesitaActions({
   // that hid them (MESITA-3398) is gone.
   const onOpenRewards = actions?.onOpenRewards;
   const onReserve = actions?.onReserve;
-  const row = mesitaRowState(place, actions?.vouchersLoading === true);
+  const row = mesitaRowState(place, actions?.vouchersLoading === true, actions?.houseCardInWallet === true);
   const open = (section: "payment" | "prepayment") =>
     onOpenRewards ? () => onOpenRewards(section) : undefined;
   const tone = (t: MesitaTileState) => (t.works ? "green" : "off");

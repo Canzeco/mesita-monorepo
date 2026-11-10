@@ -46,7 +46,8 @@ export function bestVoucherBonusPct(money: PlaceMoney): number {
   return best;
 }
 
-export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" | "money">, loading = false): MesitaRowState {
+/** `inWallet`: this place's House Card is in the guest's Wallet (MESITA-3608). */
+export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" | "money">, loading = false, inWallet = false): MesitaRowState {
   const reserve: MesitaTileState = isReserveActionEnabled(place) ? { works: true, pill: "On" } : OFF;
   const money = place.money;
   if (!money) {
@@ -65,7 +66,9 @@ export function mesitaRowState(place: Pick<PlaceDetail, "reservations_enabled" |
       ? { ...OFF, note: PREPAY_PAUSED }
       : OFF;
   const available = Math.max(money.balance?.available_cents ?? 0, 0);
-  const wallet: MesitaTileState = available > 0 ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") } : OFF;
+  // Wallet is green once the House Card is in the guest's Wallet, $0MX
+  // included; Off means the card is not there (Pato, MESITA-3608).
+  const wallet: MesitaTileState = available > 0 || inWallet ? { works: true, pill: moneyLabel(available, money.currency ?? "mxn") } : OFF;
   // The place's own rates (MESITA-3589); an older read without them says On.
   const cardBps = money.card_cashback_bps ?? 0;
   const cashBps = money.cash_cashback_bps ?? 0;
