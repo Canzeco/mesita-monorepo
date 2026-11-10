@@ -334,7 +334,7 @@ export function MesitaActions({
           line={row[offOpen].note}
           onClose={() => setOffOpen(null)}
           inWallet={actions?.houseCardInWallet}
-          onAddHouseCard={actions?.onAddHouseCard}
+          onAddHouseCard={place.money?.house_credits === false ? undefined : actions?.onAddHouseCard}
           onOpenWallet={actions?.onOpenWallet}
         />
       ) : null}
