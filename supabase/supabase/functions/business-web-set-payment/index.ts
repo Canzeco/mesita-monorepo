@@ -106,12 +106,15 @@ serveJson("business-web-set-payment", async (req) => {
     patch[key] = bps;
   }
 
-  const { error } = await admin.from("place_payment_settings").upsert({
-    place_id: placeId,
-    ...patch,
-    updated_at: new Date().toISOString(),
-    updated_by: user.id,
-  });
+  // Update the row, insert only when there is none (MESITA-3603): an upsert's
+  // INSERT half is CHECKed before ON CONFLICT, with the column defaults
+  // (house_credits = false), so "Prepayments needs House Credits" refused
+  // every place that already had House Credits On.
+  const stamp = { ...patch, updated_at: new Date().toISOString(), updated_by: user.id };
+  const updated = await admin.from("place_payment_settings").update(stamp).eq("place_id", placeId).select("place_id");
+  const { error } = updated.error || (updated.data?.length ?? 0) > 0
+    ? updated
+    : await admin.from("place_payment_settings").insert({ place_id: placeId, ...stamp });
   if (error) {
     // The SQL guards answer in their own words; say the owner's step.
     if (error.message.includes("house_credits_unsigned")) {
