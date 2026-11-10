@@ -8,12 +8,12 @@ import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
 //
 // THE BAR HIDES WHILE A PROFILE IS OPEN (Pato, MESITA-3300: "when seeing a
 // profile, you must hide the bottom menu"), the skeleton and the generating
-// view included, as the direct link's page already did. The reservation
-// slide-over keeps the bar.
+// view included: ROUTE_MAP's `bar: false` on the place rows (MESITA-3646).
+// The reservation slide-over keeps the bar.
 export default function ModalSegmentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <SlideOverShell hideShellNav>{children}</SlideOverShell>;
+  return <SlideOverShell>{children}</SlideOverShell>;
 }

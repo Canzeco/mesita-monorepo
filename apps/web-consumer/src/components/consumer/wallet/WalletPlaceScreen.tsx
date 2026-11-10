@@ -29,7 +29,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread, confirming } = useWallet();
   const row = credits?.find((r) => r.placeId === placeId) ?? null;
-  const back = useCallback(() => goBack(router, CONSUMER_ROUTES.pay), [router]);
+  const back = useCallback(() => goBack(router), [router]);
 
   // No House Card here: the Wallet is the nearest true screen. Not while a
   // purchase here is still confirming: a first one brings the card with it

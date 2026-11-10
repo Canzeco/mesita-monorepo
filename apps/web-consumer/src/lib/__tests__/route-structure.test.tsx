@@ -6,7 +6,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
   CONSUMER_ROUTES,
   isModalContractPath,
+  ROUTE_MAP,
+  routeFor,
+  tabFor,
+  parentHref,
+  type RouteId,
 } from "@/lib/consumer-route-contract";
+import { shouldGate } from "@/lib/supabase/middleware";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
 import { ME_HUB_GRID, ME_HUB_SETTINGS } from "@/app/(shell)/me/hub-tiles";
 import nextConfig from "../../../next.config";
@@ -911,5 +917,76 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
     expect(
       redirects.find((r) => matches(r.source, CONSUMER_ROUTES.pay)),
     ).toBeUndefined();
+  });
+});
+
+
+// ─── THE ROUTE MAP (MESITA-3646) ───────────────────────────────────────────
+// ROUTE_MAP is the one statement of every shell screen: its tab, how it
+// opens, whether the bar shows, where Back lands cold. These hold it to the
+// route tree on disk, so a screen added without a row (no loading frame, no
+// lit tab, outside the edge wall) or a row left behind fails here.
+describe("the route map", () => {
+  const ids = Object.keys(ROUTE_MAP) as RouteId[];
+  const toPattern = (url: string) => url.replace(/\[([^\]]+)\]/g, ":$1");
+  const sameShape = (a: string, b: string) =>
+    a.split("/").map((x) => (x.startsWith(":") ? ":" : x)).join("/") ===
+    b.split("/").map((x) => (x.startsWith(":") ? ":" : x)).join("/");
+  const shellPages = allPages()
+    .filter((p) => p.startsWith("(shell)/") && !p.includes("@modal"))
+    .map((p) => toPattern(pageUrl(p)))
+    // The /me/<old box> catch-all only forwards to the hub.
+    .filter((u) => u !== "/me/:tab");
+
+  it("has a row for every shell page, and a page for every row", () => {
+    for (const url of shellPages) {
+      expect(ids.some((id) => sameShape(ROUTE_MAP[id].pattern, url)), url).toBe(true);
+    }
+    for (const id of ids) {
+      expect(shellPages.some((u) => sameShape(ROUTE_MAP[id].pattern, u)), id).toBe(true);
+    }
+  });
+
+  it("names a live row as every parent", () => {
+    for (const id of ids) {
+      const parent = ROUTE_MAP[id].parent;
+      if (parent !== null) expect(ids, id).toContain(parent);
+    }
+  });
+
+  it("gives every panel and sheet an @modal intercept, and nothing else one", () => {
+    const intercepts = allPages()
+      .filter((p) => p.includes("@modal/(.)"))
+      .map((p) => toPattern(pageUrl(p.replace("(.)", ""))));
+    for (const id of ids) {
+      const kind = ROUTE_MAP[id].kind;
+      const has = intercepts.some((u) => sameShape(ROUTE_MAP[id].pattern, u));
+      expect(has, id).toBe(kind === "panel" || kind === "sheet");
+    }
+  });
+
+  it("finds each row from its own address, a fixed segment beating a param", () => {
+    const sample = (pattern: string) => pattern.replace(/:[a-zA-Z]+/g, "x1");
+    for (const id of ids) expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
+    expect(routeFor("/place/open/g1")).toBe("placeOpen");
+    expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
+    expect(routeFor("/pay/tab/t1")).toBe("payTab");
+    expect(routeFor("/wallet/gift/t1")).toBe("walletGift");
+    expect(routeFor("/me/old-box")).toBeNull();
+    expect(tabFor("/me/old-box")).toBe("me");
+  });
+
+  it("walls every row at the edge (the shell's getUser stays the real wall)", () => {
+    for (const id of ids) {
+      expect(shouldGate(ROUTE_MAP[id].pattern.replace(/:[a-zA-Z]+/g, "x1")), id).toBe(true);
+    }
+  });
+
+  it("lands a cold Back on the parent, with the parent's params filled", () => {
+    expect(parentHref("/place/p1/reserve")).toBe("/place/p1");
+    expect(parentHref("/reservation/r1")).toBe("/me/reservations");
+    expect(parentHref("/me/settings/contact")).toBe("/me/settings");
+    expect(parentHref("/pay/receipt/x")).toBe("/pay");
+    expect(parentHref("/wallet/w1")).toBe("/pay");
   });
 });

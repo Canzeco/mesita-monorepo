@@ -4,7 +4,7 @@ import {
   PlaceSlideOverSkeleton,
   ReservationSlideOverSkeleton,
 } from "@/components/consumer/overlay/DetailSkeletons";
-import { CONSUMER_ROUTES as R } from "@/lib/consumer-route-contract";
+import { routeFor } from "@/lib/consumer-route-contract";
 import { GeneratingPlaceScreen } from "@/components/consumer/GeneratingPlace";
 import { RouteSheetShell } from "@/components/consumer/overlay/RouteSheetShell";
 import { SlideOverShell } from "@/components/consumer/overlay/SlideOverShell";
@@ -18,29 +18,29 @@ import AskAiSheetPage from "./(.)search/chat/page";
 // the bare path (the proxy's x-pathname names the target on a
 // navigation's request), so the open lands in one step (MESITA-2848).
 export default async function ModalLoading() {
-  const bare = (await headers()).get("x-pathname") ?? "";
-  if (bare.startsWith(R.placeOpen.prefix)) {
+  const id = routeFor((await headers()).get("x-pathname") ?? "");
+  if (id === "placeOpen") {
     return (
       <SlideOverShell>
         <GeneratingPlaceScreen variant="modal" />
       </SlideOverShell>
     );
   }
-  if (bare.startsWith(R.place.prefix)) {
+  if (id === "place") {
     return (
       <SlideOverShell>
         <PlaceSlideOverSkeleton />
       </SlideOverShell>
     );
   }
-  if (bare.startsWith(R.reservation.prefix)) {
+  if (id === "reservation") {
     return (
       <SlideOverShell>
         <ReservationSlideOverSkeleton />
       </SlideOverShell>
     );
   }
-  if (bare === R.searchChat) {
+  if (id === "searchChat") {
     return (
       <RouteSheetShell ariaLabel="Ask AI">
         <AskAiSheetPage />

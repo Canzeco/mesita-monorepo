@@ -2,13 +2,13 @@
 
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { goBack } from "@/lib/navigate";
 import {
   PlaceDetailBodySkeleton,
   PlaceProfileSkeleton,
   PlaceTopBarSkeleton,
 } from "@mesita/place-profile";
 import { Skeleton } from "@/components/shared";
-import { HideShellNav } from "@/components/consumer/HideShellNav";
 import {
   RESERVATION_META_LABELS,
   type ReservationMetaLabel,
@@ -44,16 +44,10 @@ import { cn } from "@/lib/utils";
  *  tab has no history. */
 export function PlacePageSkeleton() {
   const router = useRouter();
-  const onBack = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.replace(CONSUMER_ROUTES.home);
-  }, [router]);
+  // Back where you came from, or Home on a cold open (lib/navigate.ts).
+  const onBack = useCallback(() => goBack(router, CONSUMER_ROUTES.home), [router]);
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <HideShellNav />
       <PlaceProfileSkeleton onBack={onBack} />
     </div>
   );

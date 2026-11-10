@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
-import { HideShellNav } from "@/components/consumer/HideShellNav";
 import { useRouter } from "next/navigation";
 import {
   ReservationForm,
@@ -14,7 +13,7 @@ import {
   apiListReservations,
   type EFReservationRow,
 } from "@/lib/api/reservations";
-import { placePath, reservationPath } from "@/lib/consumer-route-contract";
+import { reservationPath } from "@/lib/consumer-route-contract";
 import { goBack } from "@/lib/navigate";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
@@ -90,7 +89,7 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
   // Back and Done slide the page away to the place under it (the screen
   // slide, MESITA-3644; it slid in over a blank card before).
   const router = useRouter();
-  const onBack = () => goBack(router, placePath(place.id));
+  const onBack = () => goBack(router);
 
   // The guest's live tables HERE. `upcoming` is exactly "active" server-side:
   // consumer-web-list-reservations filters to state pending|confirmed AND
@@ -125,7 +124,6 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
 
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
-      <HideShellNav />
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-10">
         <div className="mb-4 flex items-center gap-3">
           <button

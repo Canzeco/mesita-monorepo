@@ -7,7 +7,6 @@ import { MeScreen } from "@/components/consumer/me/MeScreen";
 import { MeLead } from "@/components/consumer/me/settings-rows";
 import { EFError } from "@/lib/api/_invoke";
 import { APP_FEEDBACK_NOTE_MAX, apiSendFeedback } from "@/lib/api/feedback";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -48,7 +47,7 @@ export function FeedbackModal() {
       await apiSendFeedback(getSupabase(), note);
       toast.success("Thanks for your feedback");
       // Sent: slide away to Settings, where it was opened (MESITA-3644).
-      goBack(router, CONSUMER_ROUTES.mePages.settings);
+      goBack(router);
     } catch (err) {
       const status = err instanceof EFError ? err.status : null;
       if (status === 429) {

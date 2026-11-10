@@ -16,9 +16,10 @@ import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
 import { cn } from "@/lib/utils";
 import {
-  CONSUMER_RESERVATION_SURFACE_PREFIX,
   CONSUMER_ROUTES,
-  CONSUMER_ROUTE_PREFIX,
+  barShowsOn,
+  tabFor,
+  type ConsumerTab,
 } from "@/lib/consumer-route-contract";
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -62,15 +63,10 @@ type Item = {
   href: string;
   Icon: ComponentType<{ className?: string; strokeWidth?: number }>;
   label: string;
-  /**
-   * Every pathname prefix that lights this tab. A LIST, because a tab that
-   * owns detail routes outside its own namespace must name each one — a
-   * detail route that stops nesting under its tab's prefix lights NOTHING,
-   * which tsc cannot see and only route-structure T5 catches.
-   *
-   * Order is irrelevant; matching is `startsWith` over the whole list.
-   */
-  matchPrefixes: readonly string[];
+  /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
+   *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
+   *  House Card Pay, a reservation and Share Me. */
+  tab: ConsumerTab;
 };
 
 const ITEMS: Item[] = [
@@ -80,13 +76,13 @@ const ITEMS: Item[] = [
     href: CONSUMER_ROUTES.home,
     Icon: MesitaMark,
     label: "Home",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.home, CONSUMER_ROUTE_PREFIX.place],
+    tab: "home",
   },
   {
     href: CONSUMER_ROUTES.search,
     Icon: Search,
     label: "Search",
-    matchPrefixes: [CONSUMER_ROUTES.search],
+    tab: "search",
   },
   {
     href: CONSUMER_ROUTES.pay,
@@ -94,27 +90,19 @@ const ITEMS: Item[] = [
     // Pay again (Pato, MESITA-3291: "rename the page Reward to Pay"; it read
     // Reward from MESITA-3211 until then).
     label: "Pay",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.pay, CONSUMER_ROUTE_PREFIX.wallet],
+    tab: "pay",
   },
   {
     href: CONSUMER_ROUTES.activity,
     Icon: ReceiptText,
     label: "Activity",
-    matchPrefixes: [CONSUMER_ROUTE_PREFIX.activity],
+    tab: "activity",
   },
   {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
-    // Me plus a reservation's detail: /reservation/{id} is reached from a
-    // place AND from Me › Reservations, and that list is where you
-    // land back (MESITA-2561; Saved owned it while Saved was a tab). /share
-    // is Me's Share tile since it left the bar (MESITA-2871, MESITA-2887).
-    matchPrefixes: [
-      CONSUMER_ROUTE_PREFIX.me,
-      CONSUMER_RESERVATION_SURFACE_PREFIX,
-      CONSUMER_ROUTES.share,
-    ],
+    tab: "me",
   },
 ];
 
@@ -142,13 +130,12 @@ export function BottomNav() {
   const pushedByPointer = useRef(false);
   return (
     <nav
-      // Hook for surfaces that own their whole frame and suppress the tab
-      // bar in CSS (HideShellNav: the place profile as a page, as a
-      // slide-over and while generating, MESITA-3300). A data attribute
-      // rather than a route list here: whether the nav belongs on a screen is
-      // that screen's statement, and the pathname alone can't tell the
-      // hard-nav place PAGE from the intercepted place MODAL, which share it.
+      // The screen slide keeps the bar still by this hook (globals.css).
       data-shell-nav=""
+      // The place screen, as a page or a panel, owns the whole frame
+      // (MESITA-3300), and so do Reserve and the generating screen: the
+      // route map says where the bar shows (MESITA-3646).
+      hidden={!barShowsOn(pathname)}
       className={cn(
         "border-border bg-card/95 pointer-events-auto relative shrink-0 border-t px-0.5 pt-2 backdrop-blur",
         Z_BOTTOM_NAV,
@@ -159,7 +146,7 @@ export function BottomNav() {
           const { Icon, label } = item;
           const active = pending
             ? pending === item.href
-            : item.matchPrefixes.some((p) => pathname.startsWith(p));
+            : tabFor(pathname) === item.tab;
           const className = cn(
             "type-meta relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-lg px-0.5 py-1 font-medium transition",
             active

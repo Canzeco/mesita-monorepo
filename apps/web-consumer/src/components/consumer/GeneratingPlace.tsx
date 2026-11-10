@@ -21,9 +21,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { goBack } from "@/lib/navigate";
 import { Sparkles } from "lucide-react";
 import { PlaceTopBar } from "@mesita/place-profile";
-import { HideShellNav } from "@/components/consumer/HideShellNav";
 import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { PRIMARY_BUTTON_CLASS, SHEET_TITLE_CLASS } from "@/lib/ui-classes";
@@ -170,16 +170,10 @@ function GeneratingSlideOver(view: ViewProps) {
 function GeneratingPage(view: ViewProps) {
   // The page hides the bottom bar, so Back must always lead somewhere.
   const router = useRouter();
-  const onBack = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.replace(CONSUMER_ROUTES.home);
-  }, [router]);
+  // Back where you came from, or Home on a cold open (lib/navigate.ts).
+  const onBack = useCallback(() => goBack(router, CONSUMER_ROUTES.home), [router]);
   return (
     <div className="bg-card relative flex flex-1 flex-col overflow-hidden">
-      <HideShellNav />
       <PlaceTopBar name={null} onBack={onBack} backOnly />
       <div className="flex min-h-0 flex-1 items-center justify-center pb-20">
         <GeneratingPlace {...view} />

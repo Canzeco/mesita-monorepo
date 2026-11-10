@@ -223,22 +223,6 @@ export const CONSUMER_ROUTES = {
   },
 } as const;
 
-export const CONSUMER_ROUTE_PREFIX = {
-  // Home's two tabs (MESITA-2597), so the Home tab lights on both.
-  home: "/home/",
-  // NO `search` KEY: one exact top-level segment with no siblings to
-  // disambiguate from, so BottomNav matches CONSUMER_ROUTES.
-  place: "/place",
-  pay: "/pay",
-  wallet: "/wallet",
-  activity: "/activity",
-  me: "/me",
-} as const;
-
-// Matches both the /reservations list and /reservation/[id] details
-// (`/reservations`.startsWith(`/reservation`) is intentional).
-export const CONSUMER_RESERVATION_SURFACE_PREFIX = "/reservation";
-
 /** `pathname` is `root` itself or under it (`/me` matches `/me/plan`,
  *  never `/menu`). A trailing slash on `root` is ignored. */
 export function isAtRoute(pathname: string, root: string): boolean {
@@ -295,6 +279,162 @@ export function reservationPath(id: string): string {
   return `${CONSUMER_ROUTES.reservation.prefix}${id}`;
 }
 
+/** Open a Google-only place by its Google id: the generating screen, which
+ *  becomes the place's own address once it exists. */
+export function placeOpenPath(googlePlaceId: string): string {
+  return `${CONSUMER_ROUTES.placeOpen.prefix}${encodeURIComponent(googlePlaceId)}`;
+}
+
+// ─── THE ROUTE MAP (MESITA-3646) ───────────────────────────────────────────
+//
+// One row per live screen inside the shell, and the ONLY place that says
+// which bar tab a screen lights, whether the bar shows on it, how it opens
+// (a tab, a pushed page, a panel over the page, a sheet, a door that
+// forwards) and which screen is under it when there is no history to go
+// Back to. The bar, the panels' stale-slot guard, the loading frames, the
+// edge auth wall and Back all read it; a screen missing here has no loading
+// frame (a type error) and lights no tab. Addresses that only redirect live
+// in `legacy` and next.config's table, never here.
+
+export type ConsumerTab = "home" | "search" | "pay" | "activity" | "me";
+
+/** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
+ *  opened from; a `panel` that slides over the page under it (an @modal
+ *  intercept with a full-page twin); a `sheet` that rises over it; a `door`
+ *  that only forwards to another screen. */
+export type RouteKind = "tab" | "page" | "panel" | "sheet" | "door";
+
+type RouteRow = {
+  /** Segments; `:name` takes any one segment. */
+  pattern: string;
+  tab: ConsumerTab;
+  kind: RouteKind;
+  /** The screen Back lands on when nothing of ours is under this one: a
+   *  row's id (a string here so the table can name itself; the test pins
+   *  that every parent is a row). */
+  parent: string | null;
+  /** Does the bottom bar show? The place screen owns the whole frame
+   *  (MESITA-3300), and so do Reserve and the generating screen. */
+  bar: boolean;
+};
+
+const row = (
+  pattern: string,
+  tab: ConsumerTab,
+  kind: RouteKind,
+  parent: string | null,
+  bar = true,
+): RouteRow => ({ pattern, tab, kind, parent, bar });
+
+export const ROUTE_MAP = {
+  home: row("/home/places", "home", "tab", null),
+  homeSocial: row("/home/social", "home", "tab", null),
+  search: row("/search", "search", "tab", null),
+  searchChat: row("/search/chat", "search", "sheet", "search"),
+  place: row("/place/:id", "home", "panel", "home", false),
+  placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
+  placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
+  // A reservation is reached from a place and from Me › Reservations; it
+  // lights Me, whose list is where it lands back (MESITA-2561).
+  reservation: row("/reservation/:id", "me", "panel", "meReservations"),
+  pay: row("/pay", "pay", "tab", null),
+  payPlace: row("/pay/:placeId", "pay", "door", "pay"),
+  payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
+  payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
+  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there.
+  wallet: row("/wallet", "pay", "door", "pay"),
+  walletPlace: row("/wallet/:placeId", "pay", "page", "pay"),
+  walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
+  activity: row("/activity", "activity", "tab", null),
+  me: row("/me", "me", "tab", null),
+  // Me's Share tile since Share left the bar (MESITA-2871).
+  share: row("/share", "me", "page", "me"),
+  meProfile: row("/me/profile", "me", "page", "me"),
+  meInstagram: row("/me/instagram", "me", "page", "me"),
+  mePlan: row("/me/plan", "me", "page", "me"),
+  meClass: row("/me/class", "me", "page", "me"),
+  meConnector: row("/me/connector", "me", "page", "me"),
+  meRefunds: row("/me/refunds", "me", "page", "me"),
+  meNotifications: row("/me/notifications", "me", "page", "me"),
+  meFavorites: row("/me/favorites", "me", "page", "me"),
+  meReservations: row("/me/reservations", "me", "page", "me"),
+  meSettings: row("/me/settings", "me", "page", "me"),
+  meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
+  meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),
+} as const satisfies Record<string, RouteRow>;
+
+export type RouteId = keyof typeof ROUTE_MAP;
+
+/** The address of a row with no params (a tab, a Me page). */
+export function routeHref(id: RouteId): string {
+  return ROUTE_MAP[id].pattern;
+}
+
+const COMPILED = (Object.keys(ROUTE_MAP) as RouteId[]).map((id) => {
+  const segs = ROUTE_MAP[id].pattern.split("/").filter(Boolean);
+  return { id, segs, fixed: segs.filter((x) => !x.startsWith(":")).length };
+});
+
+/** The screen a pathname shows, or null (a redirect, an unknown address).
+ *  A fixed segment beats a `:param` (/place/open/x is not /place/:id). */
+export function routeFor(pathname: string): RouteId | null {
+  const parts = pathname.split(/[?#]/)[0]!.split("/").filter(Boolean);
+  let best: { id: RouteId; fixed: number } | null = null;
+  for (const c of COMPILED) {
+    if (c.segs.length !== parts.length) continue;
+    if (!c.segs.every((x, i) => x.startsWith(":") || x === parts[i])) continue;
+    if (!best || c.fixed > best.fixed) best = { id: c.id, fixed: c.fixed };
+  }
+  return best?.id ?? null;
+}
+
+/** The bar tab a pathname lights: its row's, or, for an address with no row
+ *  (a /me/<old box> on its way to the hub), its first segment's tab. */
+export function tabFor(pathname: string): ConsumerTab | null {
+  const id = routeFor(pathname);
+  if (id) return ROUTE_MAP[id].tab;
+  const first = `/${pathname.split("/").filter(Boolean)[0] ?? ""}`;
+  for (const c of COMPILED) {
+    if (`/${c.segs[0] ?? ""}` === first) return ROUTE_MAP[c.id].tab;
+  }
+  return null;
+}
+
+/** Does the bottom bar show on this pathname? */
+export function barShowsOn(pathname: string): boolean {
+  const id = routeFor(pathname);
+  return id ? ROUTE_MAP[id].bar : true;
+}
+
+/** Where Back lands when nothing of ours is under this screen: its parent
+ *  row, the tab it lights, or Home. A param in the parent's pattern takes
+ *  the same-named param of this pathname (Reserve → its place). */
+export function parentHref(pathname: string): string {
+  const id = routeFor(pathname);
+  if (!id) {
+    const tab = tabFor(pathname);
+    return tab ? routeHref(tab === "home" ? "home" : tab) : routeHref("home");
+  }
+  const parent = ROUTE_MAP[id].parent as RouteId | null;
+  if (!parent) return routeHref("home");
+  const own = ROUTE_MAP[id].pattern.split("/").filter(Boolean);
+  const parts = pathname.split(/[?#]/)[0]!.split("/").filter(Boolean);
+  const params = new Map(own.map((x, i) => [x, parts[i]] as const));
+  return (
+    "/" +
+    ROUTE_MAP[parent].pattern
+      .split("/")
+      .filter(Boolean)
+      .map((x) => (x.startsWith(":") ? (params.get(x) ?? x) : x))
+      .join("/")
+  );
+}
+
+/** Every first segment a row lives under: the edge auth wall's list. */
+export function shellRoots(): string[] {
+  return [...new Set(COMPILED.map((c) => `/${c.segs[0]}`))];
+}
+
 /**
  * Does this path paint inside a routed modal shell?
  *
@@ -309,14 +449,14 @@ export function reservationPath(id: string): string {
  * be a real route (it just renders full-page).
  */
 export function isModalContractPath(pathname: string): boolean {
+  const id = routeFor(pathname);
+  if (id) {
+    const kind = ROUTE_MAP[id].kind;
+    return kind === "panel" || kind === "sheet";
+  }
+  // Two retired addresses still 308 through a panel route (T2).
   return (
-    pathname === CONSUMER_ROUTES.searchChat ||
-    // The Reserve page sits under /place/ but is a full page: a push to it
-    // from the place slide-over must drop the panel (the stale-slot guard).
-    (pathname.startsWith(CONSUMER_ROUTES.place.prefix) &&
-      !isPlaceReservePath(pathname)) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
-    pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix)
   );
 }
