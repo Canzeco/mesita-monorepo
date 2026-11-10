@@ -19,7 +19,8 @@ import { formatAbsoluteUtc } from "@/lib/format";
 //                         Disabled (Selected died, MESITA-2925). A place is
 //                         enriching or enriched. There is no step ladder.
 //   Place States        Owned · Plan · Billing · Stripe · Reservations · Cash
-//                         Payments (+ Cashback) · Mesita Payments (+ Cashback)
+//                         Payments (+ Cashback-as-Credits) · Mesita Payments (+
+//                         Cashback-as-Credits)
 //                         · Mesita Prepayments (MESITA-3588, Main §10).
 //   Reviews States      Google Found · Instagram Found · Facebook Found.
 //                         Yes or no. Stars and follower counts are display.

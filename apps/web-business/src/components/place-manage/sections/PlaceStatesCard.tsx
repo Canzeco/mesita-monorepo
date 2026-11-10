@@ -4,7 +4,8 @@
 // Profile States (what comes from Google or Mesita). The list and its words
 // are Main §10 (MESITA-3586): Owned · Plan · Billing · Stripe · Reservations ·
 // House Credits Contract · House Credits · Cash Payments · Cash Payments
-// Cashback · Mesita Payments · Mesita Payments Cashback · Mesita Prepayments.
+// Cashback-as-Credits · Mesita Payments · Mesita Payments Cashback-as-Credits
+// · Mesita Prepayments (Cashback-as-Credits, MESITA-3597).
 // A failed read shows "?", never a false no.
 
 import { useEffect, useState } from "react";

@@ -7,7 +7,7 @@ export const metadata = { title: "Payments" };
 
 // The money guests pay a place (MESITA-3296, Pato: "connect the Stripe account
 // with the Sandbox for the moment"): the place's Stripe account, then the
-// switches: Payments Cashback, one, and Prepaid Vouchers, six. Rates, bonuses
+// switches: a Cashback-as-Credits on each way to pay, and Prepaid Vouchers, six. Rates, bonuses
 // and prices are not here (MESITA-3272 keeps them open with owners), so
 // nothing charges yet. What the place pays Mesita is Billing. Configuration
 // only (MESITA-3596): the owner's money and its log are Operations › Money.
