@@ -1,18 +1,14 @@
 // Place States (Pato, 2026-11-09, MESITA-3588; the list is Main §10,
 // MESITA-3586): what the BUSINESS decides, beside Profile States (what comes
-// from Google or Mesita). Read-only; each state is drawn from data that
-// already exists. Three of Main's states have no data yet and are left off
-// rather than faked (Pato rejects mock data): House Credits Contract, House
-// Credits as its own switch (today the Cashback switch stands in), and
-// cashback as a number the place sets (today fixed 5% / 2%).
+// from Google or Mesita). Read-only. Since MESITA-3589 every state has data:
+// the House Credits Contract, House Credits as its own switch, Cash Payments
+// as its own switch, and cashback as the place's own rate.
 //
 // The money states read moneyState, the same helper Business › Payments and
 // the guest's place screen read, so the three can never disagree.
 
 import { moneyState } from "@mesita/place-profile";
-import { CARD_CASHBACK_PCT, OUTSIDE_CASHBACK_PCT } from "@mesita/place-profile/lib/mesita-row";
-import type { PaymentAccount, PaymentSettings } from "@/lib/business-api";
-
+import type { HouseCreditsContract, PaymentAccount, PaymentSettings } from "@/lib/business-api";
 /** Place Stripe (Main §10): seven values, all from the account Stripe last
  *  reported. Mesita Payments and Prepayments work in Connected, Action needed
  *  and Payouts paused. */
@@ -25,7 +21,18 @@ export type StripeState =
   | "Payouts paused"
   | "Restricted";
 
+const STAGE: Record<NonNullable<PaymentAccount["stage"]>, StripeState> = {
+  none: "None",
+  onboarding: "Onboarding",
+  in_review: "In review",
+  connected: "Connected",
+  action_needed: "Action needed",
+  payouts_paused: "Payouts paused",
+  restricted: "Restricted",
+};
+
 export function stripeState(a: PaymentAccount | null): StripeState {
+  if (a?.stage) return STAGE[a.stage];
   if (!a || a.state === "none") return "None";
   if (a.state === "restricted") return "Restricted";
   if (!a.details_submitted) return "Onboarding";
@@ -38,6 +45,7 @@ export function stripeState(a: PaymentAccount | null): StripeState {
 export type PlaceStatesInput = {
   account: PaymentAccount | null;
   settings: PaymentSettings | null;
+  contract: HouseCreditsContract | null;
   codeSet: boolean;
   /** Mesita's fee invoice unpaid (MESITA-3461): cards are off until paid. */
   feeHold: boolean;
@@ -52,6 +60,8 @@ export type MoneyPlaceStates = {
   billing: PlaceStateValue;
   stripe: PlaceStateValue;
   reservations: PlaceStateValue;
+  houseCreditsContract: PlaceStateValue;
+  houseCredits: PlaceStateValue;
   cashPayments: PlaceStateValue;
   cashPaymentsCashback: PlaceStateValue;
   mesitaPayments: PlaceStateValue;
@@ -76,17 +86,20 @@ export function moneyPlaceStates(i: PlaceStatesInput): MoneyPlaceStates {
     billing: { on: !pastDue, chip: pastDue ? "Past due" : "Paid up" },
     stripe: { on: stripe === "Connected", chip: stripe },
     reservations: i.reservations == null ? { on: false, chip: "?" } : onOff(i.reservations),
-    // Cash Payments: the waiter's code is set, so staff can confirm a bill
-    // paid outside Mesita (MESITA-3545). Turning it on includes the code.
-    cashPayments: onOff(i.codeSet),
-    cashPaymentsCashback: money?.outside_cashback
-      ? { on: true, chip: `${OUTSIDE_CASHBACK_PCT}%` }
+    houseCreditsContract: i.contract
+      ? { on: i.contract.signed, chip: i.contract.signed ? "Signed" : "Not signed" }
+      : { on: false, chip: "?" },
+    houseCredits: onOff(s?.house_credits === true),
+    // Cash Payments: the owner's switch and the waiter's code (MESITA-3589).
+    cashPayments: onOff(money?.cash === true),
+    cashPaymentsCashback: money && money.cash_cashback_bps > 0
+      ? { on: true, chip: `${money.cash_cashback_bps / 100}%` }
       : { on: false, chip: "Off" },
     // Mesita Payments: a guest can pay the bill by card in the app now
     // (the Mesita Pay switch, the account taking cards, no fee hold).
     mesitaPayments: onOff(money?.pay === "card"),
-    mesitaPaymentsCashback: money?.cashback
-      ? { on: true, chip: `${CARD_CASHBACK_PCT}%` }
+    mesitaPaymentsCashback: money && money.card_cashback_bps > 0
+      ? { on: true, chip: `${money.card_cashback_bps / 100}%` }
       : { on: false, chip: "Off" },
     mesitaPrepayments: onOff((money?.sell.length ?? 0) > 0),
   };

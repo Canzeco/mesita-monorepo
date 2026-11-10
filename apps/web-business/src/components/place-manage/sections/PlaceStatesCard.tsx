@@ -3,9 +3,8 @@
 // Place States (MESITA-3588): what the business decides, read-only, beside
 // Profile States (what comes from Google or Mesita). The list and its words
 // are Main §10 (MESITA-3586): Owned · Plan · Billing · Stripe · Reservations ·
-// Cash Payments · Cash Payments Cashback · Mesita Payments · Mesita Payments
-// Cashback · Mesita Prepayments. House Credits Contract and House Credits are
-// in Main but have no data yet, so they are not drawn (see place-states.ts).
+// House Credits Contract · House Credits · Cash Payments · Cash Payments
+// Cashback · Mesita Payments · Mesita Payments Cashback · Mesita Prepayments.
 // A failed read shows "?", never a false no.
 
 import { useEffect, useState } from "react";
@@ -77,6 +76,7 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
   const m = moneyPlaceStates({
     account: p?.account ?? null,
     settings: p?.settings ?? null,
+    contract: p?.contract ?? null,
     codeSet: p?.code_set === true,
     feeHold: p?.fee.hold === true,
     feeOverdue: p?.fee.invoice?.overdue === true,
@@ -113,16 +113,28 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           detail="Takes bookings through Mesita. Staff switch it in Settings."
         />
         <StateRow
+          name="House Credits Contract"
+          on={m.houseCreditsContract.on}
+          chip={money(m.houseCreditsContract.chip)}
+          detail="The owner's agreement with Mesita to run House Credits. Separate from Stripe."
+        />
+        <StateRow
+          name="House Credits"
+          on={m.houseCredits.on}
+          chip={money(m.houseCredits.chip)}
+          detail="New credit can be born here (cashback, vouchers). Off never stops guests spending what they hold."
+        />
+        <StateRow
           name="Cash Payments"
           on={m.cashPayments.on}
           chip={money(m.cashPayments.chip)}
-          detail="The waiter's code is set, so staff can confirm a bill paid in cash or on the place's own terminal."
+          detail="Staff confirm a bill paid in cash or on the place's own terminal. Needs the switch and the waiter's code."
         />
         <StateRow
           name="Cash Payments Cashback"
           on={m.cashPaymentsCashback.on}
           chip={money(m.cashPaymentsCashback.chip)}
-          detail="Back as House Credits on a bill the waiter marks Received. Needs the Cashback switch and the waiter's code."
+          detail="Back as House Credits on the cash bill the waiter marks Received. Needs House Credits and Cash Payments."
         />
         <StateRow
           name="Mesita Payments"
@@ -134,13 +146,13 @@ export function PlaceStatesCard({ place }: { place: AdminPlace }) {
           name="Mesita Payments Cashback"
           on={m.mesitaPaymentsCashback.on}
           chip={money(m.mesitaPaymentsCashback.chip)}
-          detail="Back as House Credits on the card part of a bill. Needs Mesita Payments and the Cashback switch."
+          detail="Back as House Credits on the card part of a bill. Needs House Credits and Mesita Payments."
         />
         <StateRow
           name="Mesita Prepayments"
           on={m.mesitaPrepayments.on}
           chip={money(m.mesitaPrepayments.chip)}
-          detail="Guests can buy prepaid vouchers here now. Needs a voucher switched on and Stripe taking cards."
+          detail="Guests can buy prepaid vouchers here now. Needs House Credits, a voucher switched on, Stripe taking cards and no unpaid invoice."
         />
       </div>
     </SectionCard>
