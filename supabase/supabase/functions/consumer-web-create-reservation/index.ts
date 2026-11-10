@@ -206,7 +206,7 @@ serveJson("consumer-web-create-reservation", async (req) => {
 
   const { data: consumerRow, error: consumerErr } = await admin
     .from("consumers")
-    .select("deleted_at, last_name, plan, reservation_cap_override")
+    .select("deleted_at, plan, reservation_cap_override")
     .eq("id", consumerId)
     .maybeSingle();
   if (consumerErr) return json({ ok: false, error: consumerErr.message }, 500);
@@ -228,20 +228,14 @@ serveJson("consumer-web-create-reservation", async (req) => {
   const cleanName = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 60) : "");
   const firstName = cleanName(body.first_name);
   const lastName = cleanName(body.last_name);
-  const typedName = firstName !== "" || lastName !== "";
-  if (typedName && (!firstName || !lastName)) {
+  // Both names, always (MESITA-3629, Pato: "first and last names must be
+  // mandatory"): the profile's last name no longer stands in for them.
+  if (!firstName || !lastName) {
     return json({
       ok: false,
       code: "name_required",
       error: "Add the first and last name the table is under.",
     }, 400);
-  }
-  if (!typedName && !(consumerRow as { last_name?: string | null } | null)?.last_name) {
-    return json({
-      ok: false,
-      code: "last_name_required",
-      error: "Add your last name — it's the name your table is booked under.",
-    }, 409);
   }
 
   // ── Monthly reservation cap (_shared/reservation-cap.ts) ────────────────
@@ -312,8 +306,8 @@ serveJson("consumer-web-create-reservation", async (req) => {
         notes: (body.notes ?? "").trim() || null,
         consumer_notify: guestNotify,
         state: "pending",
-        guest_first_name: typedName ? firstName : null,
-        guest_last_name: typedName ? lastName : null,
+        guest_first_name: firstName,
+        guest_last_name: lastName,
         request_id: requestId,
         ...createdTicketSchedule(),
       },
