@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { History, QrCode, Search, User } from "lucide-react";
+import { ClipboardList, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -94,9 +94,10 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.activity,
-    // A clock turning back, never a receipt (Pato, MESITA-3645: "that feels
-    // too transactional B2B").
-    Icon: History,
+    // A clipboard with lines (Pato, MESITA-3654: "use one icon kinda this
+    // one"), after a receipt (MESITA-3645: "too transactional B2B") and a
+    // clock (MESITA-3654: "even worse").
+    Icon: ClipboardList,
     label: "Activity",
     tab: "activity",
   },
