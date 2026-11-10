@@ -43,24 +43,25 @@ export function CoverAuthLayout({
         fill
         priority
         sizes="(min-width: 768px) 30rem, 100vw"
-        // A light blur over the whole photo softens its generated details
-        // (MESITA-3657); the scale keeps the blurred edge off the frame.
+        // A 1px blur takes the edge off the photo's generated details
+        // without smearing faces (MESITA-3659: 3px was "too much"); the scale
+        // keeps the blurred edge off the frame.
         className={cn(
-          "scale-110 object-cover object-[center_40%] blur-[3px] transition-transform duration-700 ease-out",
-          open && "scale-[1.15]",
+          "scale-105 object-cover object-[center_40%] blur-[1px] transition-transform duration-700 ease-out",
+          open && "scale-110",
         )}
       />
-      {/* Under the words the blur deepens: a progressive backdrop blur, clear
-          at mid-photo and full at the bottom (MESITA-3657). */}
+      {/* Behind the words only: a soft backdrop blur over the bottom third,
+          fading in from clear (MESITA-3659). */}
       <div
         aria-hidden
-        className="absolute inset-x-0 bottom-0 h-3/5 backdrop-blur-xl [mask-image:linear-gradient(to_bottom,transparent,black_55%)]"
+        className="absolute inset-x-0 bottom-0 h-[35%] backdrop-blur-[6px] [mask-image:linear-gradient(to_bottom,transparent,black_60%)]"
       />
-      {/* Legibility: an even dim, a veil at the top for the logo, and a deep
-          one at the bottom for the copy and the button. */}
+      {/* Legibility: a veil at the top for the logo and a deep one at the
+          bottom for the copy and the button; the middle stays clear. */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-black/20 bg-gradient-to-b from-black/55 via-black/5 via-35% to-black/95"
+        className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent via-35% to-black/90"
       />
 
       <div
