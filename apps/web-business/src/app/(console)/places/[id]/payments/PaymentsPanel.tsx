@@ -5,8 +5,9 @@
 // the owner's money and its log live on Operations › Money, and there is no
 // table QR (the guest shows the QR). One list again (MESITA-3600, Pato on the
 // card grid: "make the list UI again. that looks like shit and its
-// confusing"): the test pill, an unpaid fee banner (MESITA-3461), then
-// section cards of rows, each row a mark, a title and one line, its value and
+// confusing"): the test pill, an unpaid fee banner (MESITA-3461), the
+// numbered to-do strip (Agreement → House Credits → Waiter code → Stripe
+// Account, MESITA-3602), then section cards of rows, each row a mark, a title and one line, its value and
 // its control:
 //   Stripe Account · one row, its state and one button;
 //   House Credits · the Agreement, then House Credits;
@@ -27,6 +28,8 @@ import { CARD_BILL_PAY_LIVE, moneyState, TestBand, type VoucherReason } from "@m
 import type { Icon } from "@phosphor-icons/react";
 import {
   ArrowSquareOutIcon,
+  CaretRightIcon,
+  CheckIcon,
   CoinsIcon,
   DeviceMobileIcon,
   MoneyIcon,
@@ -230,6 +233,17 @@ export function PaymentsPanel({
   const needsCash = step("Turn Cash Payments on first.", "#cash-payments");
   const needsPrepayments = step("Turn Mesita Prepayments on first.", "#mesita-prepayments");
 
+  // The to-do strip (MESITA-3602, Pato: "a sequential horizontal to-do list to
+  // fully enable Payments"): four steps in order, each a link to its row; the
+  // first not done is the next one, highlighted.
+  const steps = [
+    { name: "Agreement", done: contract.signed, href: "#house-credits-agreement" },
+    { name: "House Credits", done: settings.house_credits, href: "#house-credits" },
+    { name: "Waiter code", done: codeSet, href: "#waiter-code" },
+    { name: "Stripe Account", done: takesCards, href: "#stripe-account" },
+  ];
+  const next = steps.findIndex((s) => !s.done);
+
   /** A row's one line under its title: the missing step if blocked, else its note. */
   const under = (blocked: React.ReactNode, note: React.ReactNode) =>
     blocked ? <p className={BLOCKED}>{blocked}</p> : note ? <p className={NOTE}>{note}</p> : null;
@@ -333,6 +347,33 @@ export function PaymentsPanel({
           ) : null}
         </p>
       ) : null}
+      <ol className="flex flex-wrap items-center gap-2 text-sm" aria-label="To fully enable Payments" data-setup-steps>
+        {steps.map((s, n) => (
+          <li key={s.href} className="flex items-center gap-2">
+            {n > 0 ? <CaretRightIcon size={14} weight="bold" className="text-muted-foreground shrink-0" aria-hidden /> : null}
+            <a
+              href={s.href}
+              aria-current={n === next ? "step" : undefined}
+              className={cn(
+                "flex items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-1.5 font-medium whitespace-nowrap transition-colors",
+                n === next ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
+                s.done && "text-muted-foreground",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular-nums",
+                  s.done ? "bg-emerald-500 text-white" : n === next ? "bg-background text-foreground" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {s.done ? <CheckIcon size={13} weight="bold" aria-hidden /> : n + 1}
+              </span>
+              {s.name}
+              <span className="sr-only">{s.done ? ": done" : n === next ? ": next" : ": to do"}</span>
+            </a>
+          </li>
+        ))}
+      </ol>
       <Card className={SECTION}>
         <h2 className={HEAD}>Stripe Account</h2>
         <ul className="divide-border divide-y">
