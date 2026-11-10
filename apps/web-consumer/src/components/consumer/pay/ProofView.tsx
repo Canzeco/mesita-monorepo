@@ -200,7 +200,7 @@ export function ProofView({
         {refundLine ? <p className="text-muted-foreground mt-1 text-sm font-semibold">{refundLine}</p> : null}
         <p className="mt-3 flex items-center justify-center gap-1.5 text-base font-semibold">
           <span className="min-w-0 truncate">{proof.place_name ?? "A Mesita place"}</span>
-          {proof.place_marks ? <PlaceMarks tier={proof.place_marks.tier} mesitaPay={proof.place_marks.mesita_pay} ad={false} /> : null}
+          {proof.place_marks ? <PlaceMarks tier={proof.place_marks.tier} ad={false} /> : null}
         </p>
         {paid ? (
           <p

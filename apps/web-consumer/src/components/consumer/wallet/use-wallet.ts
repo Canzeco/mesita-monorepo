@@ -51,7 +51,6 @@ function creditRow(b: WalletBalance): CreditRow {
       name: b.place?.name ?? "A Mesita place",
       photo: b.place?.photo ?? null,
       tier: b.place?.boost_tier ?? null,
-      mesitaPay: b.place?.mesita_pay === true,
       currency: b.currency,
       available_cents: b.available_cents,
       pending_cents: b.pending_cents,

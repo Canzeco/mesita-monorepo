@@ -47,7 +47,6 @@ export function PlaceProfile({
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
-        mesitaPay={place.money?.mesita_pay === true}
         onBack={onBack}
         onMore={actions?.onMore}
       />

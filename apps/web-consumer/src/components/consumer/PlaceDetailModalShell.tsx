@@ -38,7 +38,6 @@ export function PlaceDetailModalShell({
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
-        mesitaPay={place.money?.mesita_pay === true}
         onBack={close}
         onMore={onMore}
       />
