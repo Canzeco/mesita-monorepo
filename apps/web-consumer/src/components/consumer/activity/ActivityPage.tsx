@@ -5,44 +5,33 @@
 // (MESITA-3465), which now 308s here.
 //
 // A RAIL OF EVENT TYPES OVER ONE FEED (Pato, MESITA-3633: "Show horizontal
-// catalog or something of types of events ... Reservations, x, y, z ... list
-// almost everything"): under the title, a horizontal rail of chips, All
-// first, then every kind of thing a guest does at Mesita that the app can
-// read today. Every chip is always there; an empty one says so. The feed is
-// newest first and is built only from what the server sends:
+// catalog or something of types of events"): under the title, a horizontal
+// rail of chips, All first. FOUR TYPES SINCE MESITA-3641 (Pato: "Payments,
+// Prepayments, Gifts, Reservations — so the cashback is a field in a
+// payment event. and bonus is a field in prepayment event"). Every chip is
+// always there; an empty one says so. The feed is newest first and is built
+// only from what the server sends:
 //
-//   Reservations   consumer-web-list-reservations (when it was made, its
-//                  state, the time and the party)
-//   Payments       a bill paid (spend), opening its receipt
-//   Cashback       cashback in credit (a waiter-confirmed cash bill names
-//                  itself, MESITA-3554)
-//   Credits        credits bought (prepay)
-//   Vouchers       a voucher's credit
-//   Bonus          bonus credit
-//   Stories        a Story voucher waiting for its post (MESITA-3507)
+//   Payments       one row per payment_id: the credit spent (spend) and the
+//                  cashback it earned, together; "Paid in cash" when staff
+//                  confirmed it (MESITA-3554); a refund on it is a field.
+//                  Opens the receipt.
+//   Prepayments    one row per purchase: credits bought (prepay) or a
+//                  voucher, with the bonus credited at the same place and
+//                  moment as a field; a Story voucher waiting for its post
+//                  (MESITA-3507) is one too.
 //   Gifts          credit sent to or taken from a friend, and links not
 //                  taken yet (MESITA-3292)
-//   Refunds        a reversal
+//   Reservations   consumer-web-list-reservations (when it was made, its
+//                  state, the time and the party)
 //
 // The money lines are the Wallet's own entries (consumer-web-get-wallet).
-// This page never adds money up; it only lists and formats what the server
-// sent. Each source fails on its own: a failed one leaves the other's rows.
+// This page never computes a balance; it lists and formats what the server
+// sent (a payment's cashback entries are summed into its one field). Each source fails on its own: a failed one leaves the other's rows.
 
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  Ban,
-  CalendarCheck,
-  Camera,
-  Coins,
-  Gift,
-  type LucideIcon,
-  ReceiptText,
-  Sparkles,
-  Ticket,
-  Undo2,
-  Wallet as WalletIcon,
-} from "lucide-react";
+import { Ban, CalendarCheck, Gift, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
 
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -55,41 +44,16 @@ import { stateMeta } from "@/lib/reservation-state";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
-type TypeKey =
-  | "reservations"
-  | "payments"
-  | "cashback"
-  | "credits"
-  | "vouchers"
-  | "bonus"
-  | "stories"
-  | "gifts"
-  | "refunds";
+type TypeKey = "payments" | "prepayments" | "gifts" | "reservations";
 
-/** The rail, in order, after All. `empty` is the chip's empty line. */
+/** The rail, in order, after All (Pato's order, MESITA-3641). `empty` is
+ *  the chip's empty line. */
 const TYPES: readonly { key: TypeKey; label: string; Icon: LucideIcon; empty: string }[] = [
-  { key: "reservations", label: "Reservations", Icon: CalendarCheck, empty: "Tables you book show up here." },
-  { key: "payments", label: "Payments", Icon: ReceiptText, empty: "Bills you pay with Mesita show up here." },
-  { key: "cashback", label: "Cashback", Icon: Coins, empty: "Cashback from your bills shows up here." },
-  { key: "credits", label: "Credits", Icon: WalletIcon, empty: "Credits you buy at a place show up here." },
-  { key: "vouchers", label: "Vouchers", Icon: Ticket, empty: "Vouchers you use show up here." },
-  { key: "bonus", label: "Bonus", Icon: Sparkles, empty: "Bonus credit shows up here." },
-  { key: "stories", label: "Stories", Icon: Camera, empty: "Story vouchers waiting for your post show up here." },
+  { key: "payments", label: "Payments", Icon: ReceiptText, empty: "Bills you pay with Mesita show up here, with their cashback." },
+  { key: "prepayments", label: "Prepayments", Icon: WalletIcon, empty: "Credits and vouchers you buy at a place show up here, with their bonus." },
   { key: "gifts", label: "Gifts", Icon: Gift, empty: "Credit you send or get from a friend shows up here." },
-  { key: "refunds", label: "Refunds", Icon: Undo2, empty: "Refunded payments show up here." },
+  { key: "reservations", label: "Reservations", Icon: CalendarCheck, empty: "Tables you book show up here." },
 ];
-
-const TYPE_OF: Record<string, TypeKey> = {
-  spend: "payments",
-  cashback: "cashback",
-  prepay: "credits",
-  voucher: "vouchers",
-  bonus: "bonus",
-  reversal: "refunds",
-  gift_out: "gifts",
-  gift_in: "gifts",
-  gift_back: "gifts",
-};
 
 type Filter = "all" | TypeKey;
 
@@ -108,33 +72,99 @@ type Ev = {
   href?: string;
 };
 
-function entryLabel(e: WalletEntry): string {
-  if (e.kind === "cashback" && e.confirmed_by === "waiter") return "Cash · confirmed by staff";
-  return ENTRY_LABEL[e.kind] ?? e.kind;
-}
+const GIFT_KINDS = new Set(["gift_out", "gift_in", "gift_back"]);
+const BOUGHT_KINDS = new Set(["prepay", "voucher"]);
+
+/** "$2.00 cashback": a field on its row, never a row of its own. */
+const field = (cents: number, currency: string, what: string) => `${money(Math.abs(cents), currency)} ${what}`;
 
 function walletEvents(w: Wallet): Ev[] {
   const out: Ev[] = [];
   for (const b of w.balances) {
     const place = b.place?.name ?? "A Mesita place";
+    const cur = b.currency;
+
+    // PAYMENTS: every entry naming a payment, grouped by it.
+    const byPayment = new Map<string, WalletEntry[]>();
+    // PREPAYMENTS: a bonus rides on the purchase credited at the same moment.
+    const bonuses = b.entries.filter((e) => e.kind === "bonus");
+    const usedBonus = new Set<WalletEntry>();
+
     b.entries.forEach((e, i) => {
-      const type = TYPE_OF[e.kind];
-      if (!type) return;
+      if (e.payment_id && (e.kind === "spend" || e.kind === "cashback" || e.kind === "reversal")) {
+        const g = byPayment.get(e.payment_id) ?? [];
+        g.push(e);
+        byPayment.set(e.payment_id, g);
+        return;
+      }
+      if (e.kind === "spend" || e.kind === "cashback") {
+        // An entry from before payments had ids: a payment row of its own.
+        out.push(paymentEvent(`p-${b.place_id}-${e.at}-${i}`, place, cur, [e], null));
+        return;
+      }
+      if (BOUGHT_KINDS.has(e.kind)) {
+        const bonus = bonuses.find((x) => !usedBonus.has(x) && x.at === e.at);
+        if (bonus) usedBonus.add(bonus);
+        const parts = [ENTRY_LABEL[e.kind] ?? e.kind, entryDate(e.at)];
+        if (bonus) parts.push(`+${field(bonus.amount_cents, cur, "bonus")}`);
+        if (e.pending || bonus?.pending) parts.push("pending");
+        out.push({
+          key: `b-${b.place_id}-${e.at}-${i}`,
+          type: "prepayments",
+          at: e.at,
+          title: place,
+          line: parts.join(" · "),
+          amount: { cents: e.amount_cents, currency: cur },
+          href: walletPlacePath(b.place_id),
+        });
+        return;
+      }
+      if (e.kind === "reversal") {
+        // A purchase refunded (no payment id): it belongs to Prepayments.
+        out.push({
+          key: `r-${b.place_id}-${e.at}-${i}`,
+          type: "prepayments",
+          at: e.at,
+          title: place,
+          line: `Refunded · ${entryDate(e.at)}`,
+          amount: { cents: e.amount_cents, currency: cur },
+          href: walletPlacePath(b.place_id),
+        });
+        return;
+      }
+      if (GIFT_KINDS.has(e.kind)) {
+        out.push({
+          key: `g-${b.place_id}-${e.at}-${i}`,
+          type: "gifts",
+          at: e.at,
+          title: place,
+          line: `${ENTRY_LABEL[e.kind] ?? e.kind} · ${entryDate(e.at)}${e.pending ? " · pending" : ""}`,
+          amount: { cents: e.amount_cents, currency: cur },
+          href: walletPlacePath(b.place_id),
+        });
+      }
+    });
+
+    // A bonus with no purchase beside it still shows, as its own prepayment.
+    for (const [i, e] of bonuses.entries()) {
+      if (usedBonus.has(e)) continue;
       out.push({
-        key: `w-${b.place_id}-${e.at}-${e.kind}-${i}`,
-        type,
+        key: `bo-${b.place_id}-${e.at}-${i}`,
+        type: "prepayments",
         at: e.at,
         title: place,
-        line: `${entryLabel(e)} · ${entryDate(e.at)}${e.pending ? " · pending" : ""}`,
-        amount: { cents: e.amount_cents, currency: b.currency },
-        href: e.kind === "spend" && e.payment_id ? payReceiptPath(e.payment_id) : walletPlacePath(b.place_id),
+        line: `Bonus · ${entryDate(e.at)}${e.pending ? " · pending" : ""}`,
+        amount: { cents: e.amount_cents, currency: cur },
+        href: walletPlacePath(b.place_id),
       });
-    });
+    }
+
+    for (const [id, g] of byPayment) out.push(paymentEvent(`p-${id}`, place, cur, g, id));
   }
   for (const s of w.waiting_stories ?? []) {
     out.push({
       key: `s-${s.purchase_id}`,
-      type: "stories",
+      type: "prepayments",
       at: s.paid_at,
       title: s.place?.name ?? "A Mesita place",
       line: `Story voucher · waiting for your post${s.paid_at ? ` · ${entryDate(s.paid_at)}` : ""}`,
@@ -145,7 +175,7 @@ function walletEvents(w: Wallet): Ev[] {
   const names = new Map(w.balances.map((b) => [b.place_id, b.place?.name ?? null]));
   for (const l of w.sent_links ?? []) {
     out.push({
-      key: `g-${l.gift_id}`,
+      key: `gl-${l.gift_id}`,
       type: "gifts",
       at: l.created_at,
       title: names.get(l.place_id) ?? "A Mesita place",
@@ -155,6 +185,30 @@ function walletEvents(w: Wallet): Ev[] {
     });
   }
   return out;
+}
+
+/** One payment: the credit it spent on the right; its cashback and any
+ *  refund as fields on the line. Its time is the earliest of its entries. */
+function paymentEvent(key: string, place: string, cur: string, g: WalletEntry[], paymentId: string | null): Ev {
+  const spend = g.find((e) => e.kind === "spend");
+  const cashback = g.filter((e) => e.kind === "cashback");
+  const refund = g.filter((e) => e.kind === "reversal");
+  const at = g.map((e) => e.at).sort()[0];
+  const cash = cashback.some((e) => e.confirmed_by === "waiter");
+  const sum = (es: WalletEntry[]) => es.reduce((n, e) => n + e.amount_cents, 0);
+  const parts = [cash ? "Paid in cash" : "Paid", entryDate(at)];
+  if (cashback.length) parts.push(`+${field(sum(cashback), cur, "cashback")}`);
+  if (refund.length) parts.push(`${field(sum(refund), cur, "refunded")}`);
+  if (g.some((e) => e.pending)) parts.push("pending");
+  return {
+    key,
+    type: "payments",
+    at,
+    title: place,
+    line: parts.join(" · "),
+    amount: spend ? { cents: spend.amount_cents, currency: cur } : undefined,
+    href: paymentId ? payReceiptPath(paymentId) : undefined,
+  };
 }
 
 function reservationEvents(rows: EFReservationRow[]): Ev[] {
@@ -250,7 +304,7 @@ export function ActivityPage() {
         <EmptyState
           icon={type?.Icon ?? ReceiptText}
           title={type ? `No ${type.label.toLowerCase()} yet` : "No activity yet"}
-          description={type?.empty ?? "Reservations, payments, credit and cashback at Mesita places show up here."}
+          description={type?.empty ?? "Payments, prepayments, gifts and reservations at Mesita places show up here."}
           action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
         />
       ) : (
