@@ -268,7 +268,7 @@ export async function openCharge(
   const { input, nowMs } = args;
   // The gate (d2): no place code, no waiter's charge.
   if (!(await store.placeHasCode(input.placeId))) {
-    return refuse(409, "Set a place code on Business › Settings first", "place_code_required");
+    return refuse(409, "Set the waiter code on Business › Payments first", "place_code_required");
   }
 
   const since = new Date(nowMs - TRY_WINDOW_SEC * 1000).toISOString();

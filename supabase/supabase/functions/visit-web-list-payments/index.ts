@@ -4,7 +4,7 @@
 // visit.mesita.ai/payments/<place>. Staff identity is the place code
 // (_shared/staff.ts): the first read carries it and answers a 12-hour staff
 // token; every read after carries the token only. Changing the place code on
-// Business › Settings revokes every token of the place. Never who paid.
+// Business › Payments revokes every token of the place. Never who paid.
 //
 // Body: { place_id: uuid, place_code: 6 digits } | { place_id, staff_token }
 // Response: { ok: true, payments: [{ id, amount_cents, tip_cents, currency,

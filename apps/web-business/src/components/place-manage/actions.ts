@@ -191,7 +191,7 @@ export async function getPlaceAndRole(
   role: PlaceRole;
   profile: ProfileRead;
   manager: { method: string; expires_at: string; role: "owner" | "editor" } | null;
-  /** Whether the place code is set (MESITA-3299: it lives on Settings). */
+  /** Whether the waiter code is set (MESITA-3600: it lives on Payments). */
   codeSet: boolean;
   /** MESITA-3384: the Stripe account charges in the server's mode; null when
    *  unknown (the read failed, or an older EF), so no nudge is drawn. */

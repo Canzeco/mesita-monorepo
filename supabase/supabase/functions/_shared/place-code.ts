@@ -1,5 +1,5 @@
 // The place code (MESITA-3226; its own table since MESITA-3299): six digits
-// an owner sets on Business › Settings and staff type at visit.mesita.ai.
+// an owner sets on Business › Payments and staff type at visit.mesita.ai.
 // Only a hash is stored, bound to the place.
 
 /** A place code: six digits, or null. Spaces a person typed do not count. */

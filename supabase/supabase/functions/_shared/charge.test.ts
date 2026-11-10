@@ -170,7 +170,7 @@ Deno.test("open-charge: no place code answers place_code_required; with one it o
   const none = memoryChargeStore();
   const r = await openCharge(none.store, { input: input(), currency: "mxn", staffKey: "k", nowMs: T0 });
   assert(!r.ok);
-  assertEquals([r.status, r.code, r.error], [409, "place_code_required", "Set a place code on Business › Settings first"]);
+  assertEquals([r.status, r.code, r.error], [409, "place_code_required", "Set the waiter code on Business › Payments first"]);
   assertEquals(none.charges.length, 0);
 
   const m = await withCode();

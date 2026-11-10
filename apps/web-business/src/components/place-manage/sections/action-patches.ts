@@ -1,6 +1,6 @@
 import type { AdminPlace } from "../actions";
 
-// What each Actions switch writes: its own columns on this place, nothing else.
+// What the Reservations switch writes (Business › Reservations, MESITA-3600): its own columns on this place, nothing else.
 // The door refuses a reservation flip whose channel does not match: off is
 // 'none'; on keeps the channel the place already has, else 'phone', how the
 // Reservationist books.

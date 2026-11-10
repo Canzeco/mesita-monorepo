@@ -4,7 +4,7 @@
 //   visit-web-list-payments   readListBody → staffAccess → listPayments
 //
 // Who is staff: whoever knows the place code (place_codes, six digits the
-// owner sets on Business › Settings; MESITA-3299). There is no staff sign-in
+// owner sets on Business › Payments; MESITA-3299). There is no staff sign-in
 // and no staff table. Typing the code once answers a staff token, and the
 // screen's 15-second reads carry that token, never the code again.
 //
@@ -14,7 +14,7 @@
 //   - it lasts 12 hours;
 //   - it is bound to one place (another place id fails the HMAC);
 //   - the owner revokes every staff token of the place by changing the code
-//     on Business › Settings (the hash changes, the HMAC no longer matches);
+//     on Business › Payments (the hash changes, the HMAC no longer matches);
 //   - rotating the service role key revokes every staff token everywhere.
 // The code hash never leaves the server: the token carries only the HMAC.
 //
@@ -135,7 +135,7 @@ export async function staffAccess(
 ): Promise<{ ok: true; minted: { token: string; expiresAt: string } | null } | StaffRefusal> {
   const { input, nowMs } = args;
   const codeHash = await store.codeHash(input.placeId);
-  if (!codeHash) return refuse(409, "place_code_required", "Set a place code on Business › Settings first");
+  if (!codeHash) return refuse(409, "place_code_required", "Set the waiter code on Business › Payments first");
 
   if (input.staffToken) {
     if (await checkStaffToken(args.serviceKey, input.placeId, input.staffToken, codeHash, nowMs)) return { ok: true, minted: null };
