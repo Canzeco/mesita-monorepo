@@ -4,6 +4,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { efInvoke } from "@/lib/supabase-ef";
 import { enrichmentView, isEnrichedPlace } from "@/lib/place-enriched";
 import { type ReviewFoundFlags, reviewFoundFlags } from "@/lib/review-found";
+import type { PlaceStatesFacts } from "./place-state-cells";
 
 // ════════════════════════════════════════════════════════════════════════
 // Places — a super-admin drives MANY places at once through the admin-* edge
@@ -92,12 +93,13 @@ export type PlaceHit = {
    *  0 · 1 · 2 = Off · 2X · 5X. Null when the payload does not
    *  carry it. */
   boost_tier?: number | null;
-  /** Stripe (MESITA-3394): the place's account can take payments in the
-   *  server's Stripe mode; null when the EF could not read it ("?"). */
-  stripe_connected?: boolean | null;
-  /** Stripe for the Multiple Places filter (MESITA-3395): no account ·
-   *  onboarding · charging, in the server's Stripe mode; null = not read. */
-  stripe_state?: "none" | "onboarding" | "charging" | null;
+  /** Reservations (Main §10): the guest Reserve CTA's switch; null = not
+   *  read. */
+  reservations_enabled?: boolean | null;
+  /** The raw Place States facts (MESITA-3595), per group; null = not read.
+   *  Chips come from placeStateChips (place-state-cells.ts), the same
+   *  calculation as Business › Admin. */
+  place_states?: PlaceStatesFacts | null;
   /** Unique members who viewed / liked (saved) it. Null = not read. */
   viewed?: number | null;
   saved?: number | null;
@@ -152,11 +154,9 @@ function normalizePlaceHit(raw: RawPlaceHit): PlaceHit {
     enriched_at: typeof raw.enriched_at === "string" ? raw.enriched_at : null,
     boost_tier: typeof raw.boost_tier === "number" ? raw.boost_tier : null,
     // A missing field (an EF older than this client) reads "?", never "no".
-    stripe_connected: typeof raw.stripe_connected === "boolean" ? raw.stripe_connected : null,
-    stripe_state:
-      raw.stripe_state === "none" || raw.stripe_state === "onboarding" || raw.stripe_state === "charging"
-        ? raw.stripe_state
-        : null,
+    reservations_enabled:
+      typeof raw.reservations_enabled === "boolean" ? raw.reservations_enabled : null,
+    place_states: raw.place_states && typeof raw.place_states === "object" ? raw.place_states : null,
     viewed: typeof raw.viewed === "number" ? raw.viewed : null,
     saved: typeof raw.saved === "number" ? raw.saved : null,
     google_place_id: raw.google_place_id ?? null,

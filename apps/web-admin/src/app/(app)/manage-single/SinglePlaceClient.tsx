@@ -29,6 +29,15 @@ import { BONE_CLASS, CopyIdButton, ReadField, SectionCard } from "@/components/a
 import { businessPlaceHref } from "@/lib/business-url";
 import type { PlaceLite, SearchErrorResponse, SearchResponse } from "@/lib/places-types";
 import { GENERAL_STATE_FACTS } from "@/lib/state-vocabulary";
+import { PLACE_STATE_ROWS } from "@mesita/place-profile/lib/place-states";
+
+// The skeleton's state columns: the yes/no Profile States, Premier, then the
+// twelve Place States (MESITA-3595), as FindResults draws them.
+const SKELETON_STATES = [
+  ...GENERAL_STATE_FACTS.map((f) => f.key),
+  "premier",
+  ...PLACE_STATE_ROWS.map((r) => r.key),
+];
 import {
   catalogueList,
   mergeFindResults,
@@ -439,7 +448,7 @@ export function SinglePlaceClient({
  *  loading, like the sizes"): the same card (FIND_TABLE_FRAME), bled to the
  *  edges on a phone,
  *  its 11px head band, then rows of the Place cell (the 14px name over the
- *  11px address) and the seven state pills. From 640px the 9rem On column
+ *  11px address) and every state pill. From 640px the 9rem On column
  *  leads each row; under that its pill sits above the name. The table runs
  *  wider than the pane, so the row end (the action) is off screen here as
  *  it is there. It was three grey bars. */
@@ -464,8 +473,8 @@ function CatalogueSkeleton() {
             <div className={`${BONE_CLASS} h-2.5 w-10`} />
           </div>
         </div>
-        {GENERAL_STATE_FACTS.map((f) => (
-          <div key={f.key} className={state}>
+        {SKELETON_STATES.map((k) => (
+          <div key={k} className={state}>
             <div className="flex h-[1lh] items-center">
               <div className={`${BONE_CLASS} h-2.5 w-14`} />
             </div>
@@ -486,8 +495,8 @@ function CatalogueSkeleton() {
               <div className={`${BONE_CLASS} h-2.5 w-52 max-w-full`} />
             </div>
           </div>
-          {GENERAL_STATE_FACTS.map((f) => (
-            <div key={f.key} className={state}>
+          {SKELETON_STATES.map((k) => (
+            <div key={k} className={state}>
               <div className={`${BONE_CLASS} h-5 w-8 rounded-full`} />
             </div>
           ))}

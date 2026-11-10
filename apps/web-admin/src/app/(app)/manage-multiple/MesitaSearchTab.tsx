@@ -7,12 +7,8 @@ import { listAllPlaces, searchPlacesByGoogleIds } from "./actions";
 import { MAX_GOOGLE_PLACE_IDS, parseGooglePlaceIds } from "./google-place-ids";
 import { IdListField } from "./IdListField";
 import { ChoicePill } from "@/components/admin-ui/config";
-import {
-  STRIPE_FILTERS,
-  stripeFilterOf,
-  type Row,
-  type StripeFilter,
-} from "./mesita-search-facts";
+import type { Row } from "./mesita-search-facts";
+import { STATE_FILTER_COLUMNS, stateValueOf } from "./place-state-cells";
 import { MesitaSearchResults } from "./MesitaSearchResults";
 
 /** Which button is mid-flight — both share the table below. */
@@ -30,23 +26,28 @@ export function MesitaSearchTab({
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
-  // The Stripe filter (MESITA-3395): narrows the table, never the run, so
-  // the summary and the shared ID box still speak for the whole run.
-  const [stripe, setStripe] = useState<StripeFilter>("all");
-  const stripeCounts = useMemo(() => {
-    const counts = new Map<StripeFilter, number>([["all", rows?.length ?? 0]]);
+  // The state filter (MESITA-3395 for Stripe; every state of Main §10 since
+  // MESITA-3595): pick a state, then one of the values the run holds. It
+  // narrows the table, never the run, so the summary and the shared ID box
+  // still speak for the whole run.
+  const [stateKey, setStateKey] = useState<string>("stripe");
+  const [stateValue, setStateValue] = useState<string | null>(null);
+  const column =
+    STATE_FILTER_COLUMNS.find((c) => c.key === stateKey) ?? STATE_FILTER_COLUMNS[0];
+  const valueCounts = useMemo(() => {
+    const counts = new Map<string, number>();
     for (const row of rows ?? []) {
-      const k = stripeFilterOf(row);
-      counts.set(k, (counts.get(k) ?? 0) + 1);
+      const v = stateValueOf(row, column);
+      counts.set(v, (counts.get(v) ?? 0) + 1);
     }
-    return counts;
-  }, [rows]);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [rows, column]);
   const shown = useMemo(
     () =>
-      stripe === "all"
+      stateValue === null
         ? rows
-        : (rows ?? []).filter((row) => stripeFilterOf(row) === stripe),
-    [rows, stripe],
+        : (rows ?? []).filter((row) => stateValueOf(row, column) === stateValue),
+    [rows, column, stateValue],
   );
   const busy = running !== null;
   const fail = (message: string) => {
@@ -76,7 +77,7 @@ export function MesitaSearchTab({
         hit: byGid.get(googleId) ?? null,
       }));
       setRows(next);
-      setStripe("all");
+      setStateValue(null);
       const found = next.filter((row) => row.hit !== null).length;
       setSummary(`${found} of ${next.length} on Mesita`);
     } catch (err) {
@@ -102,7 +103,7 @@ export function MesitaSearchTab({
         return;
       }
       const { places, total } = r.data;
-      setStripe("all");
+      setStateValue(null);
       setRows(
         places.map((hit) => ({
           key: hit.id,
@@ -189,34 +190,52 @@ export function MesitaSearchTab({
       {rows && rows.length > 0 ? (
         <div
           role="group"
-          aria-label="Filter by Stripe"
+          aria-label="Filter by state"
           className="mt-6 flex flex-wrap items-center gap-2"
         >
-          <span className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase">
-            Stripe
-          </span>
-          {STRIPE_FILTERS.map((f) => {
-            const n = stripeCounts.get(f.key) ?? 0;
-            // "?" and "Not on Mesita" only appear when a row is one.
-            if ((f.key === "unknown" || f.key === "missing") && n === 0) {
-              return null;
-            }
-            return (
-              <ChoicePill
-                key={f.key}
-                active={stripe === f.key}
-                onClick={() => setStripe(f.key)}
-              >
-                {f.label} {n}
-              </ChoicePill>
-            );
-          })}
+          <label
+            htmlFor="mesita-search-state"
+            className="text-muted-foreground type-label font-semibold tracking-[0.12em] uppercase"
+          >
+            State
+          </label>
+          <select
+            id="mesita-search-state"
+            value={column.key}
+            onChange={(e) => {
+              setStateKey(e.target.value);
+              setStateValue(null);
+            }}
+            className="border-border bg-background h-9 rounded-full border px-3 text-sm"
+          >
+            {(["Profile", "Place"] as const).map((group) => (
+              <optgroup key={group} label={`${group} States`}>
+                {STATE_FILTER_COLUMNS.filter((c) => c.group === group).map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <ChoicePill active={stateValue === null} onClick={() => setStateValue(null)}>
+            All {rows.length}
+          </ChoicePill>
+          {valueCounts.map(([value, n]) => (
+            <ChoicePill
+              key={value}
+              active={stateValue === value}
+              onClick={() => setStateValue(value)}
+            >
+              {value} {n}
+            </ChoicePill>
+          ))}
         </div>
       ) : null}
 
       {shown && rows && rows.length > 0 && shown.length === 0 ? (
         <p className="text-muted-foreground mt-6 text-sm">
-          No places in this Stripe state.
+          No places with {column.label} {stateValue}.
         </p>
       ) : null}
 
