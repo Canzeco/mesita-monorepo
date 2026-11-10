@@ -101,7 +101,11 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
       <PayFormSheet
         place={refillPlace}
         refill={refill}
-        onClose={() => setRefill(null)}
+        onClose={() => {
+          // Closing the refilled form leaves the cancelled payment behind.
+          setRefill(null);
+          leave();
+        }}
         onPaid={(p) => {
           setRefill(null);
           setProof(p);
