@@ -16,6 +16,7 @@ import {
   moneyPlaceStates,
   ownedChip,
   PLACE_STATE_ROWS,
+  type OwnedState,
   planName,
   type PlaceStateKey,
   type PlaceStatesAccount,
@@ -29,7 +30,7 @@ import { factOn, type Row } from "./mesita-search-facts";
 /** What admin-web-search-places ships as `place_states` (see
  *  _shared/place-states-read.ts). */
 export type PlaceStatesFacts = {
-  owned: boolean | null;
+  owned: OwnedState | null;
   plan_rank: number | null;
   payments: {
     account: PlaceStatesAccount;

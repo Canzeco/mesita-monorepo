@@ -208,28 +208,38 @@ export async function searchPlacesByGoogleIds(
   return { ok: true, data: (r.data.places ?? []).map(normalizePlaceHit) };
 }
 
+/** The most batches one All places run asks for (2,000 places each). A
+ *  run that stops here reads "N of total (capped)", never as complete. */
+const ALL_MAX_BATCHES = 50;
+
+type AllBatch = { places: RawPlaceHit[]; total?: number | null; next?: string | null };
+
 /**
  * Every place on Mesita — no paste, no query. Mesita Search's All places
- * button. The EF walks the whole catalog server-side and ships `total`
- * beside the rows, so a run that hits its ceiling can say so instead of
- * reading as a short catalog.
+ * button and Manage Single's empty search. The EF answers the catalog in
+ * batches by id with a `next` cursor; this asks until `next` is null, so
+ * the state filters cover every place (MESITA-3595). `total` rides beside
+ * the rows, so a run that stops short can say so.
  */
 export async function listAllPlaces(): Promise<
   Result<{ places: PlaceHit[]; total: number }>
 > {
-  const r = await efInvoke<{ places: RawPlaceHit[]; total?: number | null }>(
-    "admin-web-search-places",
-    { all: true },
-  );
-  if (!r.ok) return { ok: false, error: r.error };
-  const places = (r.data.places ?? []).map(normalizePlaceHit);
-  return {
-    ok: true,
-    data: {
-      places,
-      total: typeof r.data.total === "number" ? r.data.total : places.length,
-    },
-  };
+  const places: PlaceHit[] = [];
+  let total: number | null = null;
+  let after: string | null = null;
+  for (let batch = 0; batch < ALL_MAX_BATCHES; batch++) {
+    const body: { all: true; after?: string } = after ? { all: true, after } : { all: true };
+    const r = await efInvoke<AllBatch>("admin-web-search-places", body);
+    if (!r.ok) return { ok: false, error: r.error };
+    places.push(...(r.data.places ?? []).map(normalizePlaceHit));
+    if (typeof r.data.total === "number") total = Math.max(total ?? 0, r.data.total);
+    const next: string | null = typeof r.data.next === "string" ? r.data.next : null;
+    // An EF without `next` (older than this client) answers one batch.
+    if (!next || next === after) break;
+    after = next;
+  }
+  places.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return { ok: true, data: { places, total: total ?? places.length } };
 }
 
 // ── State writes ─────────────────────────────────────────────────────────
