@@ -44,7 +44,7 @@ import { StorefrontIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr";
 import { PLACE_TAB_META } from "./place-tab-meta";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { ACCOUNT, PLACES, placeIdFromPathname, placeTabHref, type PlaceTab } from "@/lib/routes";
-import { needsStripeConnect, useShellPlace } from "@/lib/shell-place";
+import { needsStripeConnect, useTrustedShellPlace } from "@/lib/shell-place";
 import { cn } from "@/lib/utils";
 
 // The consumer app's wordmark face (web-consumer ModeTabs).
@@ -214,10 +214,10 @@ export function BusinessShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  // A remembered pick (MESITA-3152) counts only while you still run it, or
-  // for Mesita staff, who open any place.
-  const stored = useShellPlace();
-  const named = stored && (isSuperAdmin || places.some((p) => p.id === stored.id)) ? stored : null;
+  // A remembered pick (MESITA-3152) counts only while you still run it, or,
+  // for Mesita staff, who open any place, once the server confirms it still
+  // opens (MESITA-3590: after a Reset it named a deleted place).
+  const named = useTrustedShellPlace(isSuperAdmin, places.map((p) => p.id));
   // The URL's place, else the last one opened this visit, else the first you run.
   const placeId = placeIdFromPathname(pathname) ?? named?.id ?? places[0]?.id ?? null;
   const mine = places.find((p) => p.id === placeId) ?? null;
