@@ -212,6 +212,16 @@ export function placePath(idOrSlug: string): string {
   return `${CONSUMER_ROUTES.place.prefix}${idOrSlug}`;
 }
 
+/** The full Reserve page under a place (MESITA-3609). */
+export function placeReservePath(idOrSlug: string): string {
+  return `${placePath(idOrSlug)}/reserve`;
+}
+
+/** /place/<id>/reserve: a full page, never the place slide-over. */
+export function isPlaceReservePath(pathname: string): boolean {
+  return /^\/place\/[^/]+\/reserve\/?$/.test(pathname);
+}
+
 export function reservationPath(id: string): string {
   return `${CONSUMER_ROUTES.reservation.prefix}${id}`;
 }
@@ -232,7 +242,10 @@ export function reservationPath(id: string): string {
 export function isModalContractPath(pathname: string): boolean {
   return (
     pathname === CONSUMER_ROUTES.searchChat ||
-    pathname.startsWith(CONSUMER_ROUTES.place.prefix) ||
+    // The Reserve page sits under /place/ but is a full page: a push to it
+    // from the place slide-over must drop the panel (the stale-slot guard).
+    (pathname.startsWith(CONSUMER_ROUTES.place.prefix) &&
+      !isPlaceReservePath(pathname)) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedPlacePrefix) ||
     pathname.startsWith(CONSUMER_ROUTES.reservation.prefix) ||
     pathname.startsWith(CONSUMER_ROUTES.legacy.savedReservationPrefix)

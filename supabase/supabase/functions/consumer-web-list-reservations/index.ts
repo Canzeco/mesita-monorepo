@@ -31,6 +31,36 @@ const TERMINAL_STATES = [
 ] as const;
 
 type Scope = "upcoming" | "past" | "all";
+
+type NamedRow = { guest_first_name: string | null; guest_last_name: string | null };
+
+/** The name each table is under (MESITA-3609): what the guest typed on the
+ *  Reserve form (MESITA-3607), else, on older tickets, the caller's profile
+ *  name. One profile read, and only when some row needs it. A failed read
+ *  leaves the nulls: a name is never worth failing the list. */
+async function withGuestNames<T extends NamedRow>(
+  admin: ReturnType<typeof adminClient>,
+  consumerId: string,
+  rows: T[],
+): Promise<T[]> {
+  const blank = (s: string | null) => !(s ?? "").trim();
+  if (!rows.some((r) => blank(r.guest_first_name) && blank(r.guest_last_name))) return rows;
+  const { data, error } = await admin
+    .from("consumers")
+    .select("first_name, last_name")
+    .eq("id", consumerId)
+    .maybeSingle();
+  if (error) {
+    console.error("[consumer-web-list-reservations] consumer name:", error.message);
+    return rows;
+  }
+  if (!data) return rows;
+  return rows.map((r) =>
+    blank(r.guest_first_name) && blank(r.guest_last_name)
+      ? { ...r, guest_first_name: data.first_name ?? null, guest_last_name: data.last_name ?? null }
+      : r
+  );
+}
 type Body = { limit?: number; scope?: Scope };
 
 serveJson("consumer-web-list-reservations", async (req) => {
@@ -65,7 +95,7 @@ serveJson("consumer-web-list-reservations", async (req) => {
       // attempts_state / call_attempts let the app separate `created` (no dial
       // yet) from `booking` (agent working it) — see the lifecycle in the
       // consumer adapter.
-      "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives",
+      "id, reserved_at, party_size, state, reference_code, notes, confirmed_at, cancelled_at, created_at, place_id, attempts_state, next_attempt_at, call_attempts, consumer_notify, consumer_confirmed_at, alternatives, guest_first_name, guest_last_name",
     )
     .eq("consumer_id", consumerId)
     // Operator test tickets (is_test) reference real consumers — never surface
@@ -90,6 +120,7 @@ serveJson("consumer-web-list-reservations", async (req) => {
 
   const { data, error } = await q;
   if (error) return json({ ok: false, error: error.message }, 500);
-  const reservations = await attachPlaces(admin, data ?? []);
+  const rows = await withGuestNames(admin, consumerId, data ?? []);
+  const reservations = await attachPlaces(admin, rows);
   return json({ ok: true, reservations });
 });
