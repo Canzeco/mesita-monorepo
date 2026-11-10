@@ -1,5 +1,4 @@
-import { cn } from "../lib/format";
-import { PremierBadge, SEAL_PATH } from "./PremierBadge";
+import { PremierBadge } from "./PremierBadge";
 
 // THE TWO MARKS AFTER A PLACE'S NAME (Pato, MESITA-3321: "if the product is
 // premier put a red icon. if the product is mesita pay (meaning it has
@@ -14,44 +13,20 @@ import { PremierBadge, SEAL_PATH } from "./PremierBadge";
 // tile, the bar), in green. Since MESITA-3420 both are the same seal: red
 // for Premier, green with a $ for Mesita Payments, and no words beside them.
 
-/** The green Mesita Payments mark alone: Premier's seal in green with a white $
- *  (Pato, MESITA-3420, B of four: "kinda like the verified icon"; a green
- *  rounded square with the QR until then). Display only. */
-export function MesitaPayMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      role="img"
-      aria-label="Mesita Payments and Prepayments"
-      className={cn("inline-block h-5 w-5 shrink-0", className)}
-      data-mesita-pay
-    >
-      <title>Mesita Payments and Prepayments</title>
-      <path d={SEAL_PATH} fill="#00BA4A" />
-      <g transform="translate(12 12) scale(0.5) translate(-12 -12)" fill="none" stroke="#fff" strokeWidth={3.6} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2v20" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-      </g>
-    </svg>
-  );
-}
-
-/** Premier (red), then Mesita Payments (green), after a name. */
+/** The red Premier seal after a name. The green Mesita Payments mark is gone
+ *  (Pato, MESITA-3628: "we already have red for premier and that is enough"). */
 export function PlaceMarks({
   tier,
-  mesitaPay = false,
   compact = false,
   ad = false,
 }: {
   tier: number | null | undefined;
-  mesitaPay?: boolean;
   compact?: boolean;
   ad?: boolean;
 }) {
   return (
     <>
       <PremierBadge tier={tier} compact={compact} ad={ad} />
-      {mesitaPay ? <MesitaPayMark /> : null}
     </>
   );
 }

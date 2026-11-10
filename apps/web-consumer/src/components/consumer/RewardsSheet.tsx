@@ -39,7 +39,6 @@ export function RewardsSheet({
       <PlaceTopBar
         name={place.name}
         premierTier={place.boost_tier ?? 0}
-        mesitaPay={place.money?.mesita_pay === true}
         onBack={onClose}
         right={<OffersWalletPill place={place} />}
       />

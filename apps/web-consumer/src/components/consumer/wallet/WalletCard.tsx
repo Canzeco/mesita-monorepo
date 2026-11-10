@@ -25,7 +25,6 @@ export type WalletCardModel = {
   photo: string | null;
   /** From the place's catalog row; absent = no mark (the server decides). */
   tier: number | null;
-  mesitaPay: boolean;
   currency: string;
   available_cents: number;
   pending_cents: number;
@@ -133,7 +132,7 @@ function CardFace({ card, open, eager }: { card: WalletCardModel; open: boolean;
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className="min-w-0 truncate text-base font-semibold">{card.name}</span>
-          <PlaceMarks tier={card.tier} mesitaPay={card.mesitaPay} ad={false} />
+          <PlaceMarks tier={card.tier} ad={false} />
         </span>
         <MesitaMark className="h-6 w-6 shrink-0 text-white/60" />
       </div>

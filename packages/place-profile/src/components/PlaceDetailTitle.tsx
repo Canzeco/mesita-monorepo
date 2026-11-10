@@ -21,14 +21,12 @@ import { PlaceMarks } from "./PlaceMarks";
 export function PlaceDetailTitle({
   placeName,
   premierTier = 0,
-  mesitaPay = false,
   className,
 }: {
   placeName: string | null;
   /** `boost_tier`: 1..3 draws the Premier mark, 0 nothing (MESITA-2925). */
   premierTier?: number;
   /** The green Mesita Payments mark after the Premier one (MESITA-3321). */
-  mesitaPay?: boolean;
   className?: string;
 }) {
   return (
@@ -45,7 +43,7 @@ export function PlaceDetailTitle({
           {/* The name truncates and the mark is shrink-0, so a long name
               ends in an ellipsis and the mark stays whole right after it. */}
           <span className="truncate">{placeName}</span>
-          <PlaceMarks tier={premierTier} mesitaPay={mesitaPay} />
+          <PlaceMarks tier={premierTier} />
         </>
       )}
     </div>

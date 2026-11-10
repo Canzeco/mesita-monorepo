@@ -219,7 +219,7 @@ export function CatalogTile({
           >
             <p className="flex min-w-0 items-center gap-1 font-sans text-base leading-5 font-semibold tracking-tight">
               <span className="truncate">{place.name}</span>
-              <PlaceMarks tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} mesitaPay={place.mesita_pay === true} />
+              <PlaceMarks tier={place.boost_tier} ad={(place.boost_tier ?? 0) > 0} />
             </p>
             <KindRow facts={facts} />
             <HoursRow facts={facts} />

@@ -32,7 +32,6 @@ import { PlaceDetailTitle } from "./PlaceDetailTitle";
 export function PlaceTopBar({
   name,
   premierTier = 0,
-  mesitaPay = false,
   onBack,
   onMore,
   backOnly = false,
@@ -46,7 +45,6 @@ export function PlaceTopBar({
   premierTier?: number;
   /** The place's account can charge: the green Mesita Payments mark after the
    *  Premier one (MESITA-3321). */
-  mesitaPay?: boolean;
   onBack?: () => void;
   onMore?: () => void;
   /** Chevron only: no title, no menu (a place still being generated). */
@@ -68,7 +66,7 @@ export function PlaceTopBar({
       </button>
       {backOnly ? null : (
         <>
-          <PlaceDetailTitle placeName={name} premierTier={premierTier} mesitaPay={mesitaPay} />
+          <PlaceDetailTitle placeName={name} premierTier={premierTier} />
           {right ?? (
           <button
               type="button"
