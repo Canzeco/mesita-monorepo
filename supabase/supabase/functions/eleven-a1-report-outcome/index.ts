@@ -36,7 +36,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireAgentRequest } from "../_shared/request.ts";
-import { adminClient } from "../_shared/auth.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { cleanNote, staleRunReply, ticketByCode } from "../_shared/agent-tools.ts";
 import { normalizeAlternatives } from "../_shared/reservation-alternatives.ts";
 import { writeReservation } from "../_shared/reservation-doc.ts";
@@ -111,7 +111,7 @@ serveJson("eleven-a1-report-outcome", async (req) => {
 // Best-effort — never lets an enrichment-side failure fail the outcome report
 // the vendor agent is waiting on mid-call.
 async function emitOnReservationFailed(
-  admin: ReturnType<typeof adminClient>,
+  admin: SupabaseClient,
   projectId: string,
 ): Promise<void> {
   try {

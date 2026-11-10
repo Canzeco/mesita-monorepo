@@ -15,6 +15,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { clampIntRange, json, readJsonOr, serveJson } from "../_shared/http.ts";
 import { requireConsumerRequest } from "../_shared/request.ts";
+import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { PASSED_GRACE_MS } from "../_shared/reservation-doc.ts";
 import { attachPlaces } from "../_shared/reservation-places.ts";
 
@@ -39,7 +40,7 @@ type NamedRow = { guest_first_name: string | null; guest_last_name: string | nul
  *  name. One profile read, and only when some row needs it. A failed read
  *  leaves the nulls: a name is never worth failing the list. */
 async function withGuestNames<T extends NamedRow>(
-  admin: ReturnType<typeof adminClient>,
+  admin: SupabaseClient,
   consumerId: string,
   rows: T[],
 ): Promise<T[]> {
