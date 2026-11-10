@@ -33,7 +33,7 @@ export function StopGuestPlan({ placeId, until }: { placeId: string; until: stri
           disabled={busy}
           onClick={() => (armed ? void stop() : setArmed(true))}
           onBlur={() => setArmed(false)}
-          className="border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60"
+          className={`border-border hover:bg-muted h-9 shrink-0 rounded-full border px-4 text-sm font-semibold disabled:opacity-60 ${armed ? "text-destructive" : ""}`}
         >
           {armed ? "Tap again to stop it" : "Stop it"}
         </button>

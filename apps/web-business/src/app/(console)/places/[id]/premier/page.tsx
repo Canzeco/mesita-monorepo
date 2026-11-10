@@ -2,13 +2,15 @@ import { getPremier } from "@/lib/business-api";
 import { PlansCard } from "@/components/billing/PlansCard";
 import { PremierPanel } from "./PremierPanel";
 import { StopGuestPlan } from "./StopGuestPlan";
+import { day } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Premier" };
 
-// Premier (MESITA-3103), with Billing folded in (MESITA-3620, Pato: "move
+// Premier (MESITA-3103), cleaned up in MESITA-3632 (one status card, three
+// even plan boxes, one footnote), with Billing folded in (MESITA-3620, Pato: "move
 // Billing to Premier. You don't save cards in the app ... its saved in Stripe
-// checkout"): the level card (MESITA-3606), a guest's plan to stop, then the
+// checkout"): the status card (MESITA-3632), a guest's plan to stop, then the
 // plan boxes, whose Stripe Checkout returns here. No saved cards, charges or
 // schedule: Stripe Checkout and its receipts hold those.
 // The read is business-web-get-premier; with `?boost=<session>` it first
@@ -31,7 +33,7 @@ export default async function PremierPage({
       {data?.paid && !data.paid.by_you ? (
         <StopGuestPlan
           placeId={id}
-          until={new Date(data.paid.ends_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          until={day(data.paid.ends_at)}
         />
       ) : null}
       <PlansCard placeId={id} initial={data} picked={picked} />
