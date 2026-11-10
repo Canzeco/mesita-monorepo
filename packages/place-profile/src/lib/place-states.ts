@@ -149,9 +149,25 @@ export function planName(rank: number | null | undefined): string {
   return (rank && PLAN_BY_RANK[rank]) || FREE_PLAN;
 }
 
-/** Owned (MESITA-3158): a live owner seat — claimed, verified, unexpired. */
-export function ownedChip(owned: boolean): PlaceStateValue {
-  return { on: owned, chip: owned ? "Owned" : "Unclaimed" };
+/** Owned (Main §10): three values. `owned` = a live owner seat (MESITA-3158:
+ *  claimed and verified); `pending` = no owner yet, but someone asked to
+ *  claim it and Mesita has not decided (a pending verification request,
+ *  MESITA-3127); `unclaimed` = neither. */
+export type OwnedState = "owned" | "pending" | "unclaimed";
+
+const OWNED_CHIP: Record<OwnedState, string> = {
+  owned: "Owned",
+  pending: "Claim pending",
+  unclaimed: "Unclaimed",
+};
+
+/** An owner wins over a pending request. */
+export function ownedState(hasOwner: boolean, hasPendingClaim: boolean): OwnedState {
+  return hasOwner ? "owned" : hasPendingClaim ? "pending" : "unclaimed";
+}
+
+export function ownedChip(owned: OwnedState): PlaceStateValue {
+  return { on: owned === "owned", chip: OWNED_CHIP[owned] };
 }
 
 /** The Place States rows of Main §10, in the order both apps print them. */
