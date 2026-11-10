@@ -119,7 +119,7 @@ const STANDARD: Product[] = [
 ];
 
 const SPECIAL: Product[] = [
-  { key: "voucher_welcome", name: "Welcome", line: "Pay $100MX, get $130MX.", limit: "One, on your first visit.", bonus: "30% bonus", short: "Welcome Bonus", brief: "First visit only" },
+  { key: "voucher_welcome", name: "Welcome", line: "Pay $100MX, get $130MX.", limit: "One per place.", bonus: "30% bonus", short: "Welcome Bonus", brief: "One per place" },
   { key: "voucher_story", name: "Story", line: "Pay $100MX, get $130MX.", limit: "One per day.", bonus: "30% bonus", short: "Story Bonus", brief: "Post a story · 1/day" },
   { key: "voucher_vip", name: "VIP", line: "Pay $100MX, get $130MX.", when: "VIP guests only.", limit: "One per day.", bonus: "30% bonus", short: "VIP Bonus", brief: "VIP guests · 1/day" },
 ];
@@ -377,7 +377,7 @@ function offerInfo(key: MoneyVoucherKey, pay: string, get: string, bonus: string
       return [
         deal,
         "Your credits are ready instantly.",
-        "For your first visit to this place: one per place. Every other place on Mesita has its own Welcome for you.",
+        "One per place. Every other place on Mesita has its own Welcome for you.",
         ...CREDIT_FACTS,
       ];
     case "voucher_story":
@@ -413,7 +413,7 @@ function offerStatus(
   if (lock === "followers") return { ok: false, text: `Your Instagram needs more than ${STORY_MIN_FOLLOWERS.toLocaleString("en-US")} followers.` };
   if (can) {
     if (key === "voucher_vip") return { ok: true, text: "You're in the VIP Class. You can buy this." };
-    if (key === "voucher_welcome") return { ok: true, text: "Available: your first visit here." };
+    if (key === "voucher_welcome") return { ok: true, text: "Available: one per place." };
     if (key === "voucher_story") return { ok: true, text: "Available. One per visit." };
     return { ok: true, text: "Available. Buy as many as you like." };
   }
