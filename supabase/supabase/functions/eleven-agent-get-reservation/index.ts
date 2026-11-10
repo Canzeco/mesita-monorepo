@@ -9,8 +9,11 @@
 // Looks up a reservation ticket in REAL TIME on the ONE reservation_tickets table
 // (sandbox retired 2026-07-27; is_test rows are included on purpose — the
 // agent must resolve operator test calls too). Two lookup keys, either works:
-//   { reference_code }              — the ticket's 8-digit code (exact)
-//   { first_name?, last_name? }     — the guest's name (fuzzy, at least one)
+//   { reference_code }              — the 8-digit code (exact)
+//   { first_name?, last_name? }     — the name the reservation is under: the
+//                                     name typed on Reserve, else (older
+//                                     reservations) the guest's profile name.
+//                                     Accent-insensitive, every word must match.
 // Newest first, 5 max, es-MX speakable fields.
 //
 // Auth (two locks):
@@ -30,6 +33,7 @@ import {
   placeNames,
   speakable,
   type SpeakableTicket,
+  ticketMatchesGuestName,
 } from "../_shared/agent-tools.ts";
 
 type Body = {
@@ -48,11 +52,6 @@ function cleanTerm(v: unknown): string {
   return typeof v === "string" ? v.trim().replace(/[,()%*]/g, "").slice(0, 60) : "";
 }
 
-function nameMatches(haystack: string, terms: string[]): boolean {
-  const h = haystack.toLowerCase();
-  return terms.every((t) => h.includes(t.toLowerCase()));
-}
-
 async function searchReservations(
   admin: SupabaseClient,
   code: string | null,
@@ -60,7 +59,7 @@ async function searchReservations(
 ): Promise<AgentTicket[]> {
   type Row = SpeakableTicket & { place_id: string };
   const SELECT =
-    "reference_code, reserved_at, party_size, state, notes, is_test, place_id, consumer:consumers(full_name, first_name, last_name)";
+    "reference_code, reserved_at, party_size, state, notes, is_test, place_id, guest_first_name, guest_last_name, consumer:consumers(full_name, first_name, last_name)";
   let rows: Row[] = [];
   if (code) {
     const { data } = await admin
@@ -73,39 +72,42 @@ async function searchReservations(
     // object. Go through unknown rather than widen Row to a lie.
     rows = (data ?? []) as unknown as Row[];
   } else {
-    // Names live on consumers — resolve matching guests first, then their
-    // reservations (reservations.consumer_id has no name columns to filter on).
+    // 1 · The name typed on the reservation (MESITA-3607) — what a place
+    // hears: "la reservación a nombre de Ana López".
     const t0 = terms[0];
-    const { data: guests } = await admin
-      .from("consumers")
-      .select("id, full_name, first_name, last_name")
-      .or(`full_name.ilike.%${t0}%,first_name.ilike.%${t0}%,last_name.ilike.%${t0}%`)
-      .limit(25);
-    type GuestRow = {
-      id: string;
-      full_name: string | null;
-      first_name: string | null;
-      last_name: string | null;
-    };
-    const ids = ((guests ?? []) as GuestRow[])
-      .filter((g) =>
-        nameMatches(
-          g.full_name?.trim() || `${g.first_name ?? ""} ${g.last_name ?? ""}`,
-          terms,
-        )
-      )
-      .map((g) => g.id);
-    if (ids.length === 0) return [];
-    const { data } = await admin
+    const query = terms.join(" ");
+    const { data: typed } = await admin
       .from("reservation_tickets")
       .select(SELECT)
-      .in("consumer_id", ids)
+      .or(`guest_first_name.ilike.%${t0}%,guest_last_name.ilike.%${t0}%`)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(25);
+    // 2 · Older reservations carry no typed name: fall back to the profile.
+    const { data: guests } = await admin
+      .from("consumers")
+      .select("id")
+      .or(`full_name.ilike.%${t0}%,first_name.ilike.%${t0}%,last_name.ilike.%${t0}%`)
+      .limit(25);
+    const ids = ((guests ?? []) as { id: string }[]).map((g) => g.id);
+    const { data: byProfile } = ids.length
+      ? await admin
+        .from("reservation_tickets")
+        .select(SELECT)
+        .in("consumer_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(25)
+      : { data: [] };
     // supabase-js types an embedded to-one relation as an ARRAY, so the direct
     // cast is "insufficiently overlapping" (TS2352); the runtime shape is one
     // object. Go through unknown rather than widen Row to a lie.
-    rows = (data ?? []) as unknown as Row[];
+    const all = [...(typed ?? []), ...(byProfile ?? [])] as unknown as Row[];
+    const seen = new Set<string>();
+    rows = all.filter((r) => {
+      const k = r.reference_code ?? JSON.stringify(r);
+      if (seen.has(k) || !ticketMatchesGuestName(r, query)) return false;
+      seen.add(k);
+      return true;
+    });
   }
   if (rows.length === 0) return [];
 

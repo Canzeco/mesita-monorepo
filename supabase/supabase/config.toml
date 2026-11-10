@@ -639,7 +639,7 @@ verify_jwt = true
 
 # --- ElevenLabs Reservationist ---
 
-# Pushes the fleet spec (_shared/reservationist-fleet.ts) to ElevenLabs.
+# Pushes the four agents (_shared/reservationist/) to ElevenLabs.
 [functions.supabase-edgefunc-sync-reservationist]
 verify_jwt = true
 

@@ -11,8 +11,7 @@ import {
   type VersionedAgentShape,
 } from "../el-client.ts";
 import { json } from "../../_shared/http.ts";
-import { FLEET_AGENTS } from "../../_shared/reservationist-fleet.ts";
-import { fleetWorkflows } from "../../_shared/reservationist-workflows.ts";
+import { FLEET, fleetWorkflows } from "../../_shared/reservationist/index.ts";
 
 export async function workflows(ctx: WorkspaceCtx): Promise<Response> {
   const { key, mode, configuredAgents, toolIdByName } = ctx;
@@ -26,7 +25,7 @@ export async function workflows(ctx: WorkspaceCtx): Promise<Response> {
     }, 500);
   }
   const report: Array<Record<string, unknown>> = [];
-  for (const spec of FLEET_AGENTS) {
+  for (const spec of FLEET) {
     const id = configuredAgents[spec.key]?.id?.trim();
     if (!id) {
       return json({
