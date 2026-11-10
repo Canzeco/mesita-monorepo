@@ -11,6 +11,7 @@ import {
   useOverlayPresence,
 } from "@/components/consumer/overlay/overlay-presence";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
+import { markPanelExit } from "@/lib/navigate";
 
 // THE detail-modal chrome: a full-height panel that pushes in from the right
 // edge, iOS-navigation style, and slides back out on dismiss. Used by every
@@ -54,9 +55,14 @@ export function SlideOverShell({
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const onModalRoute = isModalContractPath(pathname);
-  const { open, requestClose } = useOverlayPresence(() => router.back(), {
-    active: onModalRoute,
-  });
+  const { open, requestClose } = useOverlayPresence(
+    () => {
+      // The panel already slid out: its Back moves no screen (MESITA-3644).
+      markPanelExit();
+      router.back();
+    },
+    { active: onModalRoute },
+  );
 
   // Stale-slot guard: Next.js keeps an unmatched @modal slot's last active
   // state on soft navigation, so a router.push() fired from inside the modal
@@ -88,47 +94,6 @@ export function SlideOverShell({
         aria-label="Details"
         className={cn(
           "bg-paper shadow-sheet-left absolute inset-y-0 right-0 flex w-full flex-col overflow-hidden",
-          "transition-transform duration-300 motion-reduce:transition-none",
-          OVERLAY_EASE,
-          open ? "translate-x-0" : "translate-x-full",
-        )}
-      >
-        <SlideOverCloseContext.Provider value={requestClose}>
-          {children}
-        </SlideOverCloseContext.Provider>
-      </div>
-    </div>
-  );
-}
-
-// THE SAME PUSH FOR A FULL PAGE (MESITA-3621, Pato: "remember the
-// animation, horizontal slide ... keep that animation standardized"). A page
-// that is not an @modal intercept (the Reserve page) still enters the way
-// every panel does: in from the right edge, 300ms, OVERLAY_EASE, and out the
-// same way on Back. Mount it from the segment's layout.tsx, like the shell
-// above, so it slides once across loading.tsx → page.tsx. Children close it
-// with useSlideOverClose(); `onExited` runs after the exit slide.
-export function PageSlideIn({
-  children,
-  fallbackHref,
-}: {
-  children: React.ReactNode;
-  /** Where Back lands when there is no history to pop (a direct link). */
-  fallbackHref: string;
-}) {
-  const router = useRouter();
-  const { open, requestClose } = useOverlayPresence(
-    () => {
-      if (window.history.length > 1) router.back();
-      else router.replace(fallbackHref);
-    },
-    { resume: false },
-  );
-  return (
-    <div className="relative flex flex-1 flex-col overflow-hidden">
-      <div
-        className={cn(
-          "bg-background flex flex-1 flex-col overflow-hidden",
           "transition-transform duration-300 motion-reduce:transition-none",
           OVERLAY_EASE,
           open ? "translate-x-0" : "translate-x-full",

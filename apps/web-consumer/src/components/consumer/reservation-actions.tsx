@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CalendarClock, Loader2, MapPin, XCircle } from "lucide-react";
 
 import {
@@ -124,7 +124,7 @@ export function ReservationActions({
 
   return (
     <section className="flex flex-col gap-2">
-      <Link
+      <PushLink
         href={placeHref(r.projectId)}
         className="border-border bg-card hover:bg-muted flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 transition"
       >
@@ -137,7 +137,7 @@ export function ReservationActions({
         <span className="text-muted-foreground text-xs">
           Details, map, menu
         </span>
-      </Link>
+      </PushLink>
 
       {canReschedule && (
         <button

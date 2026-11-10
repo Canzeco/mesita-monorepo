@@ -376,8 +376,10 @@ describe("the bar is Home · Search · Pay · Activity · Me", () => {
     const bottomNavAt = src.indexOf("<BottomNav />");
     const modalAt = src.indexOf("{modal}");
     expect(bottomNavAt).toBeGreaterThan(modalAt);
+    // The body box is the screen stage since MESITA-3644: the modal host
+    // closes inside it, before the bar.
     expect(src).toMatch(
-      /flex min-h-0 flex-1[\s\S]*\{modal\}[\s\S]*<BottomNav \/>/,
+      /<ScreenStage>[\s\S]*\{modal\}[\s\S]*<\/ScreenStage>[\s\S]*<BottomNav \/>/,
     );
     expect(readFileSync(join(COMPONENTS, "BottomNav.tsx"), "utf8")).toContain(
       "pointer-events-auto",

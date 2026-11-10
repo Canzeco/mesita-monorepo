@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { INSTAGRAM_ICON_GRADIENT_CLASS } from "@/lib/ui-classes";
@@ -180,9 +180,9 @@ export function SettingsLinkRow({
     );
   }
   return (
-    <Link href={href} className={className}>
+    <PushLink href={href} className={className}>
       {inner}
-    </Link>
+    </PushLink>
   );
 }
 

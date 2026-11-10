@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { lastMoveWasTraverse } from "@/lib/navigate";
 
 // Shared enter/exit choreography for every overlay in the app (slide-overs,
 // bottom sheets, centered dialogs). One hook so all overlays animate with the
@@ -54,18 +55,15 @@ export function overlayExitMs(): number {
 // "pops in" with stale open state.
 export function useOverlayPresence(
   onExited: () => void,
-  {
-    active = true,
-    resume = true,
-  }: {
-    active?: boolean;
-    /** false: always play the enter slide, even while another shell is
-     *  still counted open (a full page pushed from inside a slide-over,
-     *  whose panel is on its way out, MESITA-3621). */
-    resume?: boolean;
-  } = {},
+  { active = true }: { active?: boolean } = {},
 ) {
-  const [open, setOpen] = useState(() => resume && active && openShells > 0);
+  const [open, setOpen] = useState(() => active && openShells > 0);
+  // RESTORED BY BACK, NOT OPENED (MESITA-3644). A Back onto a panel's route
+  // (Reserve → the place under it) brings the slot's kept tree back. The
+  // screen slide already uncovers it, so it shows open at once instead of
+  // sliding in a second time. A tap clears the mark (lib/navigate.ts).
+  const [leaving, setLeaving] = useState(false);
+  const restored = active && !leaving && lastMoveWasTraverse();
   useEffect(() => {
     if (!open) return;
     openShells += 1;
@@ -93,6 +91,7 @@ export function useOverlayPresence(
       let second = 0;
       const first = requestAnimationFrame(() => {
         closing.current = false;
+        setLeaving(false);
         second = requestAnimationFrame(() => {
           if (!closing.current) setOpen(true);
         });
@@ -127,6 +126,7 @@ export function useOverlayPresence(
   const requestClose = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
+    setLeaving(true);
     setOpen(false);
     exitTimer.current = window.setTimeout(() => {
       exitTimer.current = null;
@@ -145,5 +145,5 @@ export function useOverlayPresence(
     return () => document.removeEventListener("keydown", onKey);
   }, [active, requestClose]);
 
-  return { open, requestClose };
+  return { open: open || restored, requestClose };
 }

@@ -8,19 +8,102 @@
 // re-ran the shell's two Oregon reads, so a slow tap became the slowest
 // possible navigation.
 
+import { isModalContractPath } from "./consumer-route-contract";
+
+type NavOptions = { transitionTypes?: string[] };
+
 type RouterLike = {
-  push: (href: string) => void;
-  replace: (href: string) => void;
+  push: (href: string, options?: NavOptions) => void;
+  replace: (href: string, options?: NavOptions) => void;
 };
 
-/** Push (or replace) `href`. */
+// ─── Motion ────────────────────────────────────────────────────────────────
+//
+// GOING IN SLIDES, COMING BACK SLIDES AWAY (Pato, 2026-11-10, MESITA-3644:
+// "when navigating across nested pages (not bottom menu) … the new view
+// slides from right to left on top of old screen … like in instagram"). A
+// navigation that carries `nav-push` makes ScreenStage (components/consumer/
+// nav) slide the new screen in from the right over a picture of the old one;
+// `nav-pop` slides the screen away to the right. A navigation with no type
+// (a bar tab, Home's Places/Social, a redirect, a screen replacing itself)
+// swaps with no motion, as before.
+
+/** The transition type a drill-in carries. */
+export const NAV_PUSH = "nav-push";
+/** The transition type a Back carries. */
+export const NAV_POP = "nav-pop";
+
+export type Motion = "push" | "pop" | "none";
+
+/** The motion a tap from `from` (a pathname) to `to` (an href) plays. A
+ *  panel opened over a page (a place, a reservation, Ask AI) slides itself
+ *  in, so the screen under it stays still; every other drill-in slides. */
+export function motionFor(from: string, to: string): Motion {
+  const toPath = to.split(/[?#]/)[0] ?? to;
+  if (isModalContractPath(toPath) && !isModalContractPath(from)) return "none";
+  return "push";
+}
+
+/** Next's `transitionTypes` for a motion. */
+export function transitionTypesFor(motion: Motion): string[] | undefined {
+  if (motion === "push") return [NAV_PUSH];
+  if (motion === "pop") return [NAV_POP];
+  return undefined;
+}
+
+/** Push (or replace) `href`. `motion` says how the screen moves: none by
+ *  default (a tab, a redirect, a screen replacing itself); "drill" for a
+ *  drill-in, which slides unless it opens a panel over a page (motionFor). */
 export function navigateTo(
   router: RouterLike,
   href: string,
-  { replace = false }: { replace?: boolean } = {},
+  {
+    replace = false,
+    motion = "none",
+  }: { replace?: boolean; motion?: Motion | "drill" } = {},
 ): void {
-  if (replace) router.replace(href);
-  else router.push(href);
+  const move: Motion =
+    motion === "drill" ? motionFor(window.location.pathname, href) : motion;
+  if (move !== "none") noteTraverse(false);
+  const types = transitionTypesFor(move);
+  const go = replace ? router.replace : router.push;
+  if (types) go.call(router, href, { transitionTypes: types });
+  else go.call(router, href);
+}
+
+// ─── History moves ─────────────────────────────────────────────────────────
+//
+// Back and Forward (the screen's Back, the phone's Back, a swipe) reach Next
+// as a popstate with no transition type. ScreenStage tags it and records it
+// here, so a panel that a Back restores (the place under Reserve) shows at
+// once instead of sliding in a second time. The next tap clears it.
+
+let traversed = false;
+
+/** Record whether the newest move was a history move (Back or Forward). */
+export function noteTraverse(value: boolean): void {
+  traversed = value;
+}
+
+/** Was the newest move a history move? */
+export function lastMoveWasTraverse(): boolean {
+  return traversed;
+}
+
+// A panel's own close (its chevron, backdrop or Esc) slides the panel out
+// and then goes Back. That Back must not slide the screen as well.
+let panelExit = false;
+
+/** A panel slid itself out; the Back that follows plays no screen motion. */
+export function markPanelExit(): void {
+  panelExit = true;
+}
+
+/** Read and clear the panel-exit mark. */
+export function takePanelExit(): boolean {
+  const was = panelExit;
+  panelExit = false;
+  return was;
 }
 
 // ─── Back ──────────────────────────────────────────────────────────────────
@@ -68,5 +151,11 @@ export function replaceAddress(href: string): void {
  *  when this one was opened from outside the app. */
 export function goBack(router: RouterLike & { back: () => void }, fallback: string): void {
   if (hasInAppBack()) router.back();
-  else router.replace(fallback);
+  else navigateTo(router, fallback, { replace: true, motion: "pop" });
+}
+
+/** The Navigation API index of the current entry, when the browser has it
+ *  (ScreenStage reads it to tell Back from Forward). */
+export function currentEntryIndex(): number | null {
+  return entryIndex();
 }

@@ -508,3 +508,82 @@ summary {
   .offer-in { animation: none; }
   .offer-out { display: none; }
 }
+
+/* ─── THE SCREEN SLIDE (MESITA-3644) ───────────────────────────────────────
+   A drill-in (nav-push) slides the new screen in from the right over a
+   picture of the old one, which drifts a little left; Back (nav-pop) slides
+   the screen away to the right and uncovers the one under it. The timing and
+   curve are every panel's (overlay-presence.ts: 300ms, OVERLAY_EASE). The
+   classes are set by ScreenStage's <ViewTransition>; the bar has its own
+   name so it never moves, and the page's root never crossfades. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+nav[data-shell-nav] {
+  view-transition-name: shell-nav;
+}
+::view-transition-group(shell-nav),
+::view-transition-old(shell-nav),
+::view-transition-new(shell-nav) {
+  animation: none;
+}
+::view-transition-group(shell-nav) {
+  z-index: 2;
+}
+::view-transition-group(.screen-push),
+::view-transition-group(.screen-pop) {
+  overflow: clip;
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+::view-transition-old(.screen-push),
+::view-transition-new(.screen-push),
+::view-transition-old(.screen-pop),
+::view-transition-new(.screen-pop) {
+  mix-blend-mode: normal;
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+  animation-fill-mode: both;
+  height: 100%;
+  object-fit: none;
+  object-position: top left;
+}
+::view-transition-old(.screen-push) {
+  animation-name: screen-under-out;
+}
+::view-transition-new(.screen-push) {
+  animation-name: screen-over-in;
+  box-shadow: var(--shadow-sheet-left);
+}
+::view-transition-old(.screen-pop) {
+  z-index: 1;
+  animation-name: screen-over-out;
+  box-shadow: var(--shadow-sheet-left);
+}
+::view-transition-new(.screen-pop) {
+  animation-name: screen-under-in;
+}
+@keyframes screen-over-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes screen-over-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@keyframes screen-under-out {
+  from { transform: translateX(0); filter: brightness(1); }
+  to { transform: translateX(-25%); filter: brightness(0.92); }
+}
+@keyframes screen-under-in {
+  from { transform: translateX(-25%); filter: brightness(0.92); }
+  to { transform: translateX(0); filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0s !important;
+  }
+}

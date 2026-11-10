@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Skeleton } from "@/components/shared";
 import { ICON_CHIP_CLASS } from "@/components/consumer/me/settings-rows";
 import { cn } from "@/lib/utils";
@@ -111,7 +111,7 @@ export function DestTile({
   href: string;
 }) {
   return (
-    <Link
+    <PushLink
       href={href}
       // A grid cell shows its title only; its name says the summary too.
       aria-label={shape === "cell" ? `${title}, ${summary}` : undefined}
@@ -126,7 +126,7 @@ export function DestTile({
         <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
       </span>
       <TileText shape={shape} title={title} summary={summary} />
-    </Link>
+    </PushLink>
   );
 }
 

@@ -8,6 +8,7 @@ import { MeLead } from "@/components/consumer/me/settings-rows";
 import { EFError } from "@/lib/api/_invoke";
 import { APP_FEEDBACK_NOTE_MAX, apiSendFeedback } from "@/lib/api/feedback";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { goBack } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { PRIMARY_BUTTON_CLASS } from "@/lib/ui-classes";
@@ -46,7 +47,8 @@ export function FeedbackModal() {
     try {
       await apiSendFeedback(getSupabase(), note);
       toast.success("Thanks for your feedback");
-      router.replace(CONSUMER_ROUTES.mePages.settings);
+      // Sent: slide away to Settings, where it was opened (MESITA-3644).
+      goBack(router, CONSUMER_ROUTES.mePages.settings);
     } catch (err) {
       const status = err instanceof EFError ? err.status : null;
       if (status === 429) {

@@ -11,6 +11,7 @@ import {
 } from "@/components/consumer/overlay/overlay-presence";
 import { SEMI_MODAL_PANEL_CLASS } from "@/components/consumer/overlay/LocalOverlay";
 import { isModalContractPath } from "@/lib/consumer-route-contract";
+import { markPanelExit } from "@/lib/navigate";
 import { SHEET_GRABBER_CLASS } from "@/lib/ui-classes";
 
 // THE ROUTED SHEET: a route modal that rises from the bottom instead of
@@ -35,9 +36,13 @@ export function RouteSheetShell({
   const router = useRouter();
   const pathname = usePathname() ?? "/";
   const onModalRoute = isModalContractPath(pathname);
-  const { open, requestClose } = useOverlayPresence(() => router.back(), {
-    active: onModalRoute,
-  });
+  const { open, requestClose } = useOverlayPresence(
+    () => {
+      markPanelExit();
+      router.back();
+    },
+    { active: onModalRoute },
+  );
 
   if (!onModalRoute) return null;
 
