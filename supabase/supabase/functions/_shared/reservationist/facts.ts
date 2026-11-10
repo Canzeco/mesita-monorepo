@@ -7,7 +7,7 @@
 // lines (index.ts › knowledgeFor), pushed by supabase-edgefunc-sync-reservationist
 // mode "knowledge".
 //
-// Source: Notion Docs › Reservations (3aaa9bf37a52817ab962dfc43c41f450) and
+// Source: Notion Docs › Reservations (3bfa9bf37a52817894b9dfdf7e1d3b20) and
 // Docs › Credits. When the product changes, change this text and bump
 // KB_VERSION in index.ts.
 
