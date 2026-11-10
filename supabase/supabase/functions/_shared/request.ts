@@ -12,7 +12,7 @@
 //   requireInternalRequest      supabase-cron-*, -edgefunc  a service-role bearer
 //   requireEnrichWriteRequest   enricher-edgefunc-*         ENRICH_WRITE_KEY
 //
-// Webhooks (meta-*, stripe-*, supabase-auth-*) answer their vendor's own
+// Webhooks (meta-*, stripe-*, supabase-auth-*, eleven-webhook-*) answer their vendor's own
 // protocol (signatures, plain text, hook envelopes) and open by hand.
 //
 // Every door runs openRequest first, in this order: CORS preflight, method

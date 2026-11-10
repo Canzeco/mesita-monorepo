@@ -664,6 +664,13 @@ verify_jwt = true
 [functions.eleven-agent-get-reservation]
 verify_jwt = true
 
+# MESITA-3618: how a reservation call ends. ElevenLabs' post-call webhook
+# (post_call_transcription + call_initiation_failure). verify_jwt = false:
+# ElevenLabs holds no Supabase JWT; its HMAC (ElevenLabs-Signature over the
+# raw body, ELEVENLABS_WEBHOOK_SECRET) is the gate, 503 until Pato sets it.
+[functions.eleven-webhook-post-call]
+verify_jwt = false
+
 # MESITA-3405: Supabase Auth's Send SMS hook. Auth signs the call itself
 # (SEND_SMS_HOOK_SECRET), so no JWT. Cloud points auth.hook.send_sms at it.
 [functions.supabase-auth-send-sms]

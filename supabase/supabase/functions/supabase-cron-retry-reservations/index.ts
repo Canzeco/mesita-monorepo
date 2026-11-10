@@ -14,11 +14,18 @@
 //                  never touched.
 //   2 · moot       owed notices whose slot is 4 h gone → 'skipped' — a
 //                  release call about last night's table helps nobody.
-//   3 · reaper     claims stuck 'running'/'calling'/'ringing' > 10 min are
-//                  ZOMBIES (isolate died mid-run — deploy, wall kill). Every
-//                  crash path misses them by construction, so this sweep is
-//                  the one net under all of them: back to 'scheduled', due
-//                  now, attempts intact; the engine re-claims and resumes.
+//   3 · reaper     claims stuck > 10 min whose call was NEVER PLACED are
+//                  ZOMBIES (isolate died while dialing — deploy, wall kill):
+//                  back to 'scheduled', due now, attempts and reported_verdict
+//                  intact; the engine re-claims and resumes.
+//   3b · owed      claims stuck > 10 min whose call WAS placed (a
+//                  conversation id is on the ticket) are never redialed:
+//                  the conversation is read ONCE per sweep and applied
+//                  through the same door as eleven-webhook-post-call
+//                  (_shared/reservation-call-outcome.ts). Still live after
+//                  30 min → given up (a1: its reported verdict, else
+//                  unresolved). Works with no webhook secret set; the webhook
+//                  only makes it faster (MESITA-3618).
 //   4 · wakes      due bookings (reserved_at-bounded) → intent book · due
 //                  callbacks → callback_retry · owed notices → cancel_notice
 //                  · due reminders (config-gated) → reminder
@@ -39,6 +46,20 @@ import { requireInternalRequest } from "../_shared/request.ts";
 import { invokeInternalCaller } from "../_shared/internal.ts";
 import { loadReservationsConfig } from "../_shared/reservations-config.ts";
 import { validateReservationPatch } from "../_shared/reservation-doc.ts";
+import { fetchConversation, resolveElevenLabsKey } from "../_shared/elevenlabs.ts";
+import {
+  applyCallResult,
+  AWAITING,
+  type CallResult,
+  GIVE_UP,
+  type OutcomeTicket,
+  OUTCOME_TICKET_COLUMNS,
+  owedCallStep,
+  readConversation,
+  REAP_UNPLACED,
+  STALE_CLAIM_MS,
+  supabaseOutcomeStore,
+} from "../_shared/reservation-call-outcome.ts";
 
 /** Throws if the patch fails validateReservationPatch — every bulk sweep
  * below hardcodes its own patch, so a validation failure here means the
@@ -52,7 +73,6 @@ function validated(patch: Record<string, unknown>): Record<string, unknown> {
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
 const EXPIRE_AFTER_MS = 4 * 3600_000; // mirrors the app's passed-grace window
-const STALE_CLAIM_MS = 10 * 60_000; // any leg's longest legal run is < 5 min
 
 serveJson("supabase-cron-retry-reservations", async (req) => {
   const ctx = requireInternalRequest(req);
@@ -107,41 +127,69 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
     .select("id");
 
   // ── 3 · Reaper: zombie claims self-heal here ───────────────────────────────
-  const reap = async (
-    field: "attempts_state" | "callback_state" | "notice_state" | "reminder_state",
-    zombieStates: string[],
-    patch: Record<string, unknown>,
-  ) => {
-    const { data } = await admin
+  const reaped: Record<string, number> = {};
+  for (const rule of REAP_UNPLACED) {
+    const due = rule.leg === "book"
+      ? { next_attempt_at: nowIso }
+      : rule.leg === "callback"
+      ? { callback_next_attempt_at: nowIso }
+      : rule.leg === "notice"
+      ? { notice_next_at: nowIso }
+      : { reminder_at: nowIso };
+    let q = admin
       .from("reservation_tickets")
       .update(validated({
-        ...patch,
-        last_call_state: "run reaped — its worker died mid-flight; resuming",
+        ...rule.patch,
+        ...due,
+        last_call_state: "run reaped — its worker died before the call was placed; resuming",
       }))
-      .in(field, zombieStates)
+      .in(rule.field, rule.states)
+      .not("claimed_at", "is", null)
+      .lt("claimed_at", staleClaim);
+    if (rule.convNull) q = q.is(rule.convNull, null);
+    const { data } = await q.select("id");
+    reaped[rule.leg] = (data ?? []).length;
+  }
+
+  // ── 3b · Owed outcomes: a placed call is read once, never redialed ───────
+  const owed = { due: 0, applied: 0, waiting: 0 };
+  const elevenKey = await resolveElevenLabsKey();
+  const store = supabaseOutcomeStore(admin, env, "supabase-cron-retry-reservations");
+  for (const leg of Object.keys(AWAITING) as Array<keyof typeof AWAITING>) {
+    const a = AWAITING[leg];
+    const { data: rows } = await admin
+      .from("reservation_tickets")
+      .select(OUTCOME_TICKET_COLUMNS)
+      .eq(a.field, a.state)
+      .not(a.conv, "is", null)
       .not("claimed_at", "is", null)
       .lt("claimed_at", staleClaim)
-      .select("id");
-    return (data ?? []).length;
-  };
-  const reaped = {
-    bookings: await reap("attempts_state", ["running"], {
-      attempts_state: "scheduled",
-      next_attempt_at: nowIso,
-    }),
-    callbacks: await reap("callback_state", ["calling", "ringing"], {
-      callback_state: "scheduled",
-      callback_next_attempt_at: nowIso,
-    }),
-    notices: await reap("notice_state", ["running"], {
-      notice_state: "scheduled",
-      notice_next_at: nowIso,
-    }),
-    reminders: await reap("reminder_state", ["calling", "ringing"], {
-      reminder_state: "scheduled",
-      reminder_at: nowIso,
-    }),
-  };
+      .order("claimed_at", { ascending: true })
+      .limit(limit);
+    for (const row of (rows ?? []) as unknown as OutcomeTicket[]) {
+      owed.due++;
+      const conv = String((row as unknown as Record<string, unknown>)[a.conv]);
+      let result: CallResult | null = null;
+      if (elevenKey?.startsWith("sk_")) {
+        const got = await fetchConversation(elevenKey, conv);
+        if (got.ok) result = readConversation(got.body);
+        else console.error(`[reservation-retries] read ${conv} failed: ${got.error}`);
+      }
+      if (!result?.final) {
+        if (owedCallStep(row.claimed_at, Date.now()) === "read") {
+          owed.waiting++;
+          continue;
+        }
+        result = GIVE_UP;
+      }
+      try {
+        const applied = await applyCallResult(store, conv, result);
+        if (applied.applied) owed.applied++;
+      } catch (e) {
+        failed.push({ id: row.id, intent: `outcome:${leg}`, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+  }
 
   // ── 4 · Wakes ──────────────────────────────────────────────────────────────
   // Sequential on purpose: each engine call acks early (its legs run in the
@@ -227,6 +275,7 @@ serveJson("supabase-cron-retry-reservations", async (req) => {
     moot_notices: (mootRows ?? []).length,
     moot_reminders: (mootReminderRows ?? []).length,
     reaped,
+    owed,
     bookings,
     callbacks,
     notices,
