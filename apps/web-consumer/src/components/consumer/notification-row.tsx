@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SizedImage } from "@mesita/place-profile";
 import { CalendarCheck, MapPin, WalletCards } from "lucide-react";
 import { Skeleton, SkeletonLine } from "@/components/shared";
@@ -141,9 +141,9 @@ export function NotificationRow({ n }: { n: ConsumerNotification }) {
   // Available (the Wallet when the row names no place).
   const placeId = payloadString(n.payload, "place_id");
   return credit ? (
-    <Link href={isRouteId(placeId) ? walletPlacePath(placeId) : CONSUMER_ROUTES.pay} className="block">
+    <PushLink href={isRouteId(placeId) ? walletPlacePath(placeId) : CONSUMER_ROUTES.pay} className="block">
       {card}
-    </Link>
+    </PushLink>
   ) : (
     card
   );

@@ -94,6 +94,7 @@
 
 import { Suspense, useEffect, useRef, useState, type SVGProps } from "react";
 import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUp,
@@ -725,7 +726,7 @@ function PersonCard({
           )}
           {/* You see others' Instagram only if you show yours (MESITA-2594). */}
           {person?.handleLocked && !person.isYou && (
-            <Link
+            <PushLink
               href={
                 igConnected
                   ? CONSUMER_ROUTES.mePages.settings
@@ -737,7 +738,7 @@ function PersonCard({
               {igConnected
                 ? "Make your profile public to see their Instagram"
                 : "Connect your Instagram to see theirs"}
-            </Link>
+            </PushLink>
           )}
         </div>
       </div>

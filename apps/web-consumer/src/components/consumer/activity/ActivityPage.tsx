@@ -30,7 +30,7 @@
 // sent (a payment's cashback entries are summed into its one field). Each source fails on its own: a failed one leaves the other's rows.
 
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { Ban, CalendarCheck, Gift, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
 
 import { RowDivider } from "@/components/consumer/me/settings-rows";
@@ -400,9 +400,9 @@ function EventRow({ ev }: { ev: Ev }) {
   );
   const cls = "flex min-h-16 items-center gap-3 px-4 py-2.5";
   return ev.href ? (
-    <Link href={ev.href} className={cn(cls, "hover:bg-muted transition")}>
+    <PushLink href={ev.href} className={cn(cls, "hover:bg-muted transition")}>
       {body}
-    </Link>
+    </PushLink>
   ) : (
     <div className={cls}>{body}</div>
   );

@@ -144,14 +144,14 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     // The three dots open the menu (MESITA-2692).
     onMore: () => setMoreOpen(true),
     // The full Reserve page (MESITA-3609), not a sheet.
-    onReserve: () => navigateTo(router, placeReservePath(place.id)),
+    onReserve: () => navigateTo(router, placeReservePath(place.id), { motion: "drill" }),
     // The guest's one live table here (MESITA-3640), under the four tiles.
     reservation: live
       ? {
         when: whenLine(live.reserved_at, place.timezone || null),
         status: statusLabel(live),
         confirmed: toReservationItem(live).state === "confirmed",
-        onOpen: () => navigateTo(router, reservationPath(live.id)),
+        onOpen: () => navigateTo(router, reservationPath(live.id), { motion: "drill" }),
       }
       : null,
     onBoost,
@@ -177,12 +177,12 @@ export function useMemberPlaceActions(place: PlaceDetail): {
     onPay: () => {
       setRewards(null);
       setAskDismissed(true);
-      navigateTo(router, payPlacePath(place.id));
+      navigateTo(router, payPlacePath(place.id), { motion: "drill" });
     },
     // The pinned row's Wallet tile (MESITA-3574): this place's House Card,
     // /wallet/<placeId> (MESITA-3614); its pill reads the list-vouchers
     // balance below.
-    onOpenWallet: () => navigateTo(router, walletPlacePath(place.id)),
+    onOpenWallet: () => navigateTo(router, walletPlacePath(place.id), { motion: "drill" }),
     // The Wallet tile's Off sheet (MESITA-3583): "Add card to Wallet" pins
     // this place's House Card with $0; the sheet says when it already is.
     ...(isMesitaPlaceId(place.id)
@@ -201,11 +201,11 @@ export function useMemberPlaceActions(place: PlaceDetail): {
       : {}),
     onJoinVip: () => {
       setRewards(null);
-      navigateTo(router, CONSUMER_ROUTES.mePages.class);
+      navigateTo(router, CONSUMER_ROUTES.mePages.class, { motion: "drill" });
     },
     onLinkInstagram: () => {
       setRewards(null);
-      navigateTo(router, CONSUMER_ROUTES.mePages.instagram);
+      navigateTo(router, CONSUMER_ROUTES.mePages.instagram, { motion: "drill" });
     },
   };
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { canRemoveHouseCard, ENTRY_LABEL, entryDate, money, type SentLink } from "@/lib/api/wallet";
 import { payPlacePath, payReceiptPath } from "@/lib/consumer-route-contract";
@@ -101,12 +101,12 @@ export function PlaceCredit({
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-2">
-          <Link href={payPlacePath(row.placeId)} className={PRIMARY}>
+          <PushLink href={payPlacePath(row.placeId)} className={PRIMARY}>
             Pay here
-          </Link>
-          <Link href={`${href}?rewards=prepayment`} className={SECONDARY}>
+          </PushLink>
+          <PushLink href={`${href}?rewards=prepayment`} className={SECONDARY}>
             Buy credits
-          </Link>
+          </PushLink>
           {/* SEND TO A FRIEND (MESITA-3292): same place only, from what can be spent now. */}
           {canSend && spendable > 0 ? (
             <button type="button" className={SECONDARY} onClick={() => setSending(true)} data-send-credit-open>
@@ -151,12 +151,12 @@ export function PlaceCredit({
             return (
               <li key={i}>
                 {e.kind === "spend" && e.payment_id ? (
-                  <Link
+                  <PushLink
                     href={payReceiptPath(e.payment_id)}
                     className="flex items-center justify-between py-3 text-sm underline-offset-4 hover:underline"
                   >
                     {row}
-                  </Link>
+                  </PushLink>
                 ) : (
                   <div className="flex items-center justify-between py-3 text-sm">{row}</div>
                 )}
@@ -169,9 +169,9 @@ export function PlaceCredit({
       )}
 
       {gone ? null : (
-        <Link href={href} className="mt-4 block py-2 text-sm font-semibold underline-offset-4 hover:underline">
+        <PushLink href={href} className="mt-4 block py-2 text-sm font-semibold underline-offset-4 hover:underline">
           Open place
-        </Link>
+        </PushLink>
       )}
 
       {/* REMOVE FROM WALLET (MESITA-3605, Pato: "enable to remove the card if

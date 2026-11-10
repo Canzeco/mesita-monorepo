@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { HideShellNav } from "@/components/consumer/HideShellNav";
-import { useSlideOverClose } from "@/components/consumer/overlay/SlideOverShell";
+import { useRouter } from "next/navigation";
 import {
   ReservationForm,
   type ReservationFormPlace,
@@ -14,7 +14,8 @@ import {
   apiListReservations,
   type EFReservationRow,
 } from "@/lib/api/reservations";
-import { reservationPath } from "@/lib/consumer-route-contract";
+import { placePath, reservationPath } from "@/lib/consumer-route-contract";
+import { goBack } from "@/lib/navigate";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { statusLabel, whenLine } from "@/lib/reservation-when";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
@@ -86,8 +87,10 @@ export function ReservePageBody({ place }: { place: ReservationFormPlace }) {
   const [checking, setChecking] = useState(true);
   const [reads, setReads] = useState(0);
 
-  // Back and Done slide the page out first (PageSlideIn, MESITA-3621).
-  const onBack = useSlideOverClose();
+  // Back and Done slide the page away to the place under it (the screen
+  // slide, MESITA-3644; it slid in over a blank card before).
+  const router = useRouter();
+  const onBack = () => goBack(router, placePath(place.id));
 
   // The guest's live tables HERE. `upcoming` is exactly "active" server-side:
   // consumer-web-list-reservations filters to state pending|confirmed AND

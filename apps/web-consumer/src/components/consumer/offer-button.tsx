@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { useState } from "react";
 import type { Place } from "@/lib/api/places";
 import { cn } from "@/lib/utils";
@@ -131,7 +131,7 @@ export function OfferButton({
   const hold = () => setHeld((h) => h ?? live.index);
   const release = () => setHeld(null);
   return (
-    <Link
+    <PushLink
       href={slide.section === "payment" ? payHref : `${href}?rewards=${slide.section}`}
       aria-label={offersLabel(name, slides)}
       onPointerDown={hold}
@@ -149,7 +149,7 @@ export function OfferButton({
       data-tile-bonus
     >
       <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
-    </Link>
+    </PushLink>
   );
 }
 

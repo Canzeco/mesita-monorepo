@@ -5,6 +5,7 @@ import { cn, errMsg } from "@/lib/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MobileFrame } from "@/components/consumer/MobileFrame";
+import { ScreenStage } from "@/components/consumer/nav/ScreenStage";
 import { BottomNav } from "@/components/consumer/BottomNav";
 import { PendingScreen } from "@/components/consumer/PendingScreen";
 import { ShellEntry } from "@/components/consumer/ShellEntry";
@@ -185,7 +186,9 @@ export default async function ConsumerShellLayout({
               wrapper (MESITA-2747). A route that needs the bar hidden hides
               it itself through HideShellNav (the place profile as a page and
               as a slide-over, MESITA-3300). */}
-          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {/* The stage: a drill-in slides the new screen in over the old
+              one, Back slides it away (MESITA-3644). */}
+          <ScreenStage>
             {children}
             {/* The tapped tab's placeholder, drawn on finger-down over the
                 old screen until the new one commits (MESITA-2846). */}
@@ -205,7 +208,7 @@ export default async function ConsumerShellLayout({
             >
               {modal}
             </div>
-          </div>
+          </ScreenStage>
           <BottomNav />
         </div>
       </ConsumerIdentityProvider>

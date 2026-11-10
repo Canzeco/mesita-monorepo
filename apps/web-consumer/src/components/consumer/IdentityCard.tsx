@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
-import Link from "next/link";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { CreditCard, Crown, UserRound } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { DefaultAvatar, SizedImg } from "@mesita/place-profile";
@@ -204,14 +204,14 @@ function PlanChip({ plan, href }: { plan: GuestPlan; href?: string }) {
   );
   const aria = text;
   return href ? (
-    <Link
+    <PushLink
       href={href}
       aria-label={aria}
       className={className}
       data-identity-plan={plan}
     >
       {body}
-    </Link>
+    </PushLink>
   ) : (
     <span aria-label={aria} className={className} data-identity-plan={plan}>
       {body}
@@ -233,14 +233,14 @@ function NameBox({ name, href }: { name: string; href?: string }) {
     </>
   );
   return href ? (
-    <Link
+    <PushLink
       href={href}
       aria-label={`Profile: ${name}`}
       className={className}
       data-identity-name
     >
       {body}
-    </Link>
+    </PushLink>
   ) : (
     <span className={className} data-identity-name>
       {body}
@@ -252,7 +252,7 @@ function NameBox({ name, href }: { name: string; href?: string }) {
  *  Social. */
 function InstagramBox({ instagram }: { instagram: IdentityInstagram }) {
   return instagram.href ? (
-    <Link
+    <PushLink
       href={instagram.href}
       // The logo says Instagram on screen (MESITA-3067); say it aloud.
       aria-label={
@@ -270,7 +270,7 @@ function InstagramBox({ instagram }: { instagram: IdentityInstagram }) {
     >
       <InstagramBadge connected={instagram.connected} />
       <span className="truncate">{instagram.label}</span>
-    </Link>
+    </PushLink>
   ) : (
     <span
       className={cn(CHIP_CLASS, IDENTITY_BOX_SPAN.instagram)}

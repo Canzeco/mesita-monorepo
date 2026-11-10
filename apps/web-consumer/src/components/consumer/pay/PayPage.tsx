@@ -166,8 +166,8 @@ export function PayPage({ giftToken = null }: { giftToken?: string | null }) {
             places={places}
             loc={loc}
             openTab={openTab}
-            onOpenTab={(id) => navigateTo(router, payTabPath(id))}
-            onPick={(id) => navigateTo(router, payPlacePath(id))}
+            onOpenTab={(id) => navigateTo(router, payTabPath(id), { motion: "push" })}
+            onPick={(id) => navigateTo(router, payPlacePath(id), { motion: "push" })}
             onUseLocation={askLocation}
             onNotNow={notNow}
           />

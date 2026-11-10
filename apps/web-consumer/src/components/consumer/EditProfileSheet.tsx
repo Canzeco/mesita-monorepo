@@ -23,6 +23,8 @@ import {
   uploadConsumerAvatar,
   validateAvatarFile,
 } from "@/lib/avatar-upload";
+import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { goBack as leave } from "@/lib/navigate";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { ERROR_BOX_CLASS, INPUT_CLASS } from "@/lib/ui-classes";
@@ -296,8 +298,10 @@ function EditProfileForm({ profile }: { profile: ConsumerProfile }) {
     sex !== (profile.sex ?? "") ||
     birthday !== (profile.birthday ?? "");
 
+  // Saved: slide away to the screen under (Me, or wherever Profile was
+  // opened from), with Me as the landing for a cold open (MESITA-3644).
   function goBack() {
-    router.back();
+    leave(router, CONSUMER_ROUTES.me);
   }
 
   const code = profile.code ?? null;
