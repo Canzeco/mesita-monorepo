@@ -35,16 +35,25 @@ export function withNext(route: string, raw: string | undefined | null): string 
   return target ? `${route}?next=${encodeURIComponent(target)}` : route;
 }
 
-const PAY_PLACE_NEXT = /^\/pay\?(?:.*&)?place=([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:&|$)/i;
+const UUID = "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})";
+/** The table QR's two shapes: the printed /pay?place=<id>, and the door it
+ *  forwards to, /pay/<id> (MESITA-3614). */
+const PAY_PLACE_NEXT = [
+  new RegExp(`^/pay\\?(?:.*&)?place=${UUID}(?:&|$)`, "i"),
+  new RegExp(`^/pay/${UUID}(?:[/?#]|$)`, "i"),
+];
 
 /**
  * The Pay QR door (MESITA-3526): when the guest's `?next=` is a table QR's
- * `/pay?place=<id>`, the place id, so sign-in can say "Sign in to pay at
- * <name>". Anything else, null.
+ * `/pay?place=<id>` (or its door, `/pay/<id>`), the place id, so sign-in
+ * can say "Sign in to pay at <name>". Anything else, null.
  */
 export function payPlaceFromNext(raw: string | undefined | null): string | null {
   const target = safeNextPath(raw);
   if (!target) return null;
-  const match = PAY_PLACE_NEXT.exec(target);
-  return match ? match[1].toLowerCase() : null;
+  for (const re of PAY_PLACE_NEXT) {
+    const match = re.exec(target);
+    if (match) return match[1].toLowerCase();
+  }
+  return null;
 }

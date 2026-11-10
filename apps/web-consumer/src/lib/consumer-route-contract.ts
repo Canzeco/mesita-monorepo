@@ -38,19 +38,35 @@ export const CONSUMER_ROUTES = {
   reservation: {
     prefix: "/reservation/",
   },
-  // PAY IS ONE PAGE (Pato, MESITA-2087: "Keep pay but delete everything
-  // else"). The tab links here and lights here. Every former Pay, Visit,
-  // Wallet, Credits and Order address 308s to this page. The reward steps
-  // that hung under it (/pay/<place>/<step>, MESITA-3254) left with the
-  // discount product (MESITA-3299); paying a bill arrives with MESITA-3272.
+  // MONEY HAS ADDRESSES (Pato, 2026-11-09, MESITA-3614: "you first go to
+  // one side and then to the other … keep stuff structurally clean"). Each
+  // money object lives under the bar tab that owns it, and a place's address
+  // is a door that opens the object:
+  //
+  //   /pay                       the places you can pay at (the tab)
+  //   /pay/<placeId>             pay at that place: opens your bill there and
+  //                              becomes /pay/tab/<id> (the table QR's door)
+  //   /pay/tab/<tabId>           the bill at the table (MESITA-3564)
+  //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
+  //   /wallet                    the Wallet's two rails (the tab)
+  //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
+  //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
+  //
+  // Each was a query string read and then dropped (/pay?place=, ?tab=,
+  // ?payment=; /wallet?place=, ?gift=), so a place's Wallet tile landed on
+  // the Wallet and then popped a sheet, and that sheet's Pay threw you onto
+  // Pay. Those shapes still arrive (printed table QRs, Stripe returns, sent
+  // links): /pay and /wallet's server pages forward each one in one hop.
   pay: "/pay",
-  // WALLET IS BACK ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search
-  // Pay Wallet Me", settled at the fourth gate on MESITA-3272). One page: the
-  // balances a guest prepaid, one row per place (MESITA-3098), which showed
-  // only on /pay?prepay= until this. A Mesita Prepay checkout returns here.
-  // The old tab's children (/wallet/buy, /wallet/balance/<id>) are in
-  // `legacy` and land here.
+  payPlace: { prefix: "/pay/" },
+  payTab: { prefix: "/pay/tab/" },
+  payReceipt: { prefix: "/pay/receipt/" },
+  // WALLET IS ON THE BAR (Pato, 2026-11-06, MESITA-3295: "Home Search Pay
+  // Wallet Me"). A Mesita Prepay checkout returns to /wallet?prepay=, an
+  // added card to ?card=: one-shot events the page reads and drops.
   wallet: "/wallet",
+  walletPlace: { prefix: "/wallet/" },
+  walletGift: { prefix: "/wallet/gift/" },
   // SHARE IS A PAGE: the bar's fourth tab, the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
   // redirect to /me until this.
@@ -138,7 +154,11 @@ export const CONSUMER_ROUTES = {
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
     walletBalancePrefix: "/wallet/balance/",
-    walletTabPrefix: "/wallet/",
+    // The old Wallet tab's one-segment children. Literal, never `/wallet/:tab`:
+    // /wallet/<placeId> is a live page (MESITA-3614).
+    walletBuy: "/wallet/buy",
+    walletGiftTab: "/wallet/gift",
+    walletRedeem: "/wallet/redeem",
     credits: "/credits",
     inboxCredits: "/inbox/credits",
     order: "/order",
@@ -148,9 +168,10 @@ export const CONSUMER_ROUTES = {
     rewardsTicketPrefix: "/rewards/ticket/",
     payTicketPrefix: "/pay/ticket/",
     payTicketsPrefix: "/pay/tickets/",
-    // Any one-segment child of Pay — the Visit-era section row (/pay/wallet,
-    // /pay/qr). Pay itself is live; only what hung under it is legacy.
-    payTabPrefix: "/pay/",
+    // The Visit-era section row under Pay. Literal, never `/pay/:tab`:
+    // /pay/<placeId> is a live page (MESITA-3614).
+    payWallet: "/pay/wallet",
+    payQr: "/pay/qr",
     ticketPrefix: "/ticket/",
     qr: "/qr",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
@@ -220,6 +241,37 @@ export function placeReservePath(idOrSlug: string): string {
 /** /place/<id>/reserve: a full page, never the place slide-over. */
 export function isPlaceReservePath(pathname: string): boolean {
   return /^\/place\/[^/]+\/reserve\/?$/.test(pathname);
+}
+
+/** A Mesita row id (a place, a bill, a payment): the money routes take
+ *  nothing else in their id segment. */
+export function isRouteId(id: string | null | undefined): id is string {
+  return typeof id === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+}
+
+/** Pay at a place: the door that opens (or reuses) the guest's bill there. */
+export function payPlacePath(placeId: string): string {
+  return `${CONSUMER_ROUTES.payPlace.prefix}${placeId}`;
+}
+
+/** The bill at the table. */
+export function payTabPath(tabId: string): string {
+  return `${CONSUMER_ROUTES.payTab.prefix}${tabId}`;
+}
+
+/** A paid bill's proof. */
+export function payReceiptPath(paymentId: string): string {
+  return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
+}
+
+/** A place's House Card in the Wallet. */
+export function walletPlacePath(placeId: string): string {
+  return `${CONSUMER_ROUTES.walletPlace.prefix}${placeId}`;
+}
+
+/** A friend's credit link (shared outside the app: keep its shape). */
+export function walletGiftPath(token: string): string {
+  return `${CONSUMER_ROUTES.walletGift.prefix}${encodeURIComponent(token)}`;
 }
 
 export function reservationPath(id: string): string {

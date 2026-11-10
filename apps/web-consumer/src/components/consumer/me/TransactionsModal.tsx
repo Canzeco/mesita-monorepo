@@ -19,7 +19,7 @@ import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { WalletSkeleton } from "@/components/consumer/wallet/WalletPage";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { apiGetWallet, ENTRY_LABEL, entryDate, money, type Wallet, type WalletEntry } from "@/lib/api/wallet";
-import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { CONSUMER_ROUTES, payReceiptPath } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 type Line = WalletEntry & { place: string; currency: string };
@@ -101,7 +101,7 @@ export function TransactionsModal() {
                   <li>
                     {l.kind === "spend" && l.payment_id ? (
                       <Link
-                        href={`${CONSUMER_ROUTES.pay}?payment=${encodeURIComponent(l.payment_id)}`}
+                        href={payReceiptPath(l.payment_id)}
                         className="hover:bg-muted flex min-h-14 items-center gap-3 px-4 py-2.5 transition"
                       >
                         {row}

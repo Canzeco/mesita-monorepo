@@ -219,7 +219,7 @@ export function SentLinks({ links, currency, onChanged }: { links: SentLink[]; c
   );
 }
 
-/** A friend's link, opened on /wallet?gift=<token>: what it holds, then Take. */
+/** A friend's link, opened at /wallet/gift/<token>: what it holds, then Take. */
 export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | null; onClose: () => void; onClaimed: () => void }) {
   const getSupabase = useLazyBrowserSupabase();
   const [look, setLook] = useState<GiftLook | null>(null);

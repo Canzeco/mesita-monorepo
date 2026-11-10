@@ -33,20 +33,15 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 //
 //   Home · Search · Pay · Wallet · Me
 //
-//   WALLET IS THE BALANCES PAGE (MESITA-3098): what a guest prepaid, one row
-//   per place, at /wallet. It showed only on /pay?prepay= until MESITA-3295.
+//   PAY AND WALLET OWN THEIR MONEY (MESITA-3614): each tab lights on every
+//   address under it (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>;
+//   /wallet/<placeId>, /wallet/gift/<token>), so a bill or a House Card
+//   keeps its own tab lit.
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
 //   restoring the tab is one ITEMS entry (Share2, CONSUMER_ROUTES.share)
 //   plus BAR_HREFS in (shell)/layout.tsx.
-//
-//   PAY IS SOON AGAIN (Pato, 2026-11-02: "Pay must be as Soon"; MESITA-3113).
-//   It was the Wallet for a day (MESITA-3098); /pay is the Soon page again.
-//   The tab wears NO tag (Pato, MESITA-3124: "soon remove shit"): the page
-//   says Soon, the bar only names the destination. A Mesita Prepay checkout
-//   still returns to /pay?prepay=… and sees the Wallet, since that read
-//   credits it.
 //
 // THE ME TAB WEARS THE GUEST'S PICTURE (Pato, MESITA-3077: "add profile
 // picture to me instead", after first asking for it at Home's and Search's

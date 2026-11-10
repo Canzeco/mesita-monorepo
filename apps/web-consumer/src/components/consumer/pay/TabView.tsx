@@ -25,9 +25,11 @@ import {
   type TabRead,
 } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
+import { payTabPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { LiveClock } from "./LiveClock";
+import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 
 // PAY AT THE TABLE, THE GUEST'S SCREENS (MESITA-3564; the backend is
 // MESITA-3567/3568/3562, Docs › Credits "Pay at the table").
@@ -63,14 +65,9 @@ const SLOW_MS = 10_000;
 const FINAL = new Set(["paid", "expired", "cancelled"]);
 /** Failed reads before "Pay the usual way" shows. */
 const USUAL_WAY_AFTER = 4;
-const NETWORK_FAILURE = "Couldn't reach Mesita. Tap again.";
 const TIP_PERCENTS = [10, 15, 20] as const;
 type TipChoice = "waiter" | (typeof TIP_PERCENTS)[number] | "other" | "none";
 
-const FIELD_CLASS =
-  "border-border bg-background text-foreground placeholder:text-muted-foreground h-12 w-full rounded-xl border px-3 text-base outline-none focus:border-foreground";
-const QUIET_BUTTON_CLASS =
-  "border-border bg-card hover:bg-muted min-h-12 w-full rounded-2xl border px-4 text-base font-semibold transition";
 
 export type TabStart = { kind: "place"; placeId: string } | { kind: "tab"; tabId: string };
 
@@ -124,7 +121,7 @@ export function TabView({
   getSupabase: () => Parameters<typeof apiGetTab>[0];
   /** Whether the waiter's 4-digit code (MESITA-3306) can pay at this place. */
   canUseCode: (placeId: string) => boolean;
-  /** The tab's id, for `/pay?tab=<id>` (a reload shows the same tab). */
+  /** The tab's id, for its address /pay/tab/<id> (a reload shows the same tab). */
   onTabId: (tabId: string) => void;
   onWaiterCode: (placeId: string) => void;
   onDone: () => void;
@@ -177,7 +174,7 @@ export function TabView({
       });
   }
 
-  // Boot: a picked place opens its tab; a reloaded `/pay?tab=` reads it and,
+  // Boot: a picked place opens its tab; a reloaded /pay/tab/<id> reads it and,
   // while it still waits for the bill, opens again for a fresh QR (the QR's
   // secret is never stored on the device).
   useEffect(() => {
@@ -667,7 +664,7 @@ function SplitScreen({
   async function addCard() {
     setAdding(true);
     try {
-      const back = `${window.location.origin}${window.location.pathname}?tab=${encodeURIComponent(tab.tab_id)}`;
+      const back = `${window.location.origin}${payTabPath(tab.tab_id)}`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
     } catch (e) {

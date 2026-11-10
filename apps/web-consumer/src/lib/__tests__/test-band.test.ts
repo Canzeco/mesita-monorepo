@@ -6,13 +6,22 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SRC = join(__dirname, "../..");
-const WALLET = readFileSync(join(SRC, "components", "consumer", "wallet", "WalletPage.tsx"), "utf8");
-const PAY = readFileSync(join(SRC, "components", "consumer", "pay", "PayPage.tsx"), "utf8");
+const read = (...path: string[]) => readFileSync(join(SRC, "components", "consumer", ...path), "utf8");
+const WALLET = read("wallet", "WalletPage.tsx");
+// A place's House Card, /wallet/<placeId> (MESITA-3614).
+const HOUSE_CARD = read("wallet", "WalletPlaceScreen.tsx");
+// Pay is a screen per address since MESITA-3614: the list, the form, the proof.
+const PAY_LIST = read("pay", "PayPage.tsx");
+const PAY_FORM = read("pay", "PayForm.tsx");
+const PAY_PROOF = read("pay", "ProofView.tsx");
+const PAY = [PAY_LIST, PAY_FORM, PAY_PROOF].join("\n");
 
 describe("Wallet in test mode", () => {
-  it("renders the TestBand from the server's test_mode flag", () => {
-    expect(WALLET).toContain('import { TestBand } from "@mesita/place-profile"');
-    expect(WALLET).toMatch(/wallet\?\.test_mode \? <TestBand/);
+  it("renders the TestBand from the server's test_mode flag, on the rails and on a House Card", () => {
+    for (const src of [WALLET, HOUSE_CARD]) {
+      expect(src).toContain('import { TestBand } from "@mesita/place-profile"');
+      expect(src).toMatch(/wallet\?\.test_mode \? <TestBand/);
+    }
   });
 
   it("never computes a balance: every amount shown is a server field", () => {
@@ -25,10 +34,12 @@ describe("Wallet in test mode", () => {
 // the band from the server's flag, and it never adds money up either.
 describe("Pay in test mode", () => {
   it("renders the TestBand on the list, the form and the proof", () => {
-    expect(PAY).toMatch(/import \{[^}]*\bTestBand\b[^}]*\} from "@mesita\/place-profile"/);
-    expect(PAY).toMatch(/testMode \? <TestBand/);
-    expect(PAY).toMatch(/place\.test_mode \? <TestBand/);
-    expect(PAY).toMatch(/proof\.test_mode \? <TestBand/);
+    for (const src of [PAY_LIST, PAY_FORM, PAY_PROOF]) {
+      expect(src).toMatch(/import \{[^}]*\bTestBand\b[^}]*\} from "@mesita\/place-profile"/);
+    }
+    expect(PAY_LIST).toMatch(/testMode \? <TestBand/);
+    expect(PAY_FORM).toMatch(/place\.test_mode \? <TestBand/);
+    expect(PAY_PROOF).toMatch(/proof\.test_mode \? <TestBand/);
   });
 
   it("never computes a balance: spendable is a server field", () => {
