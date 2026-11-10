@@ -6,7 +6,15 @@ import { ChevronLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
-import { ENTRY_LABEL, entryDate, money, type SentLink, type WaitingStory, type WalletBalance } from "@/lib/api/wallet";
+import {
+  canRemoveHouseCard,
+  ENTRY_LABEL,
+  entryDate,
+  money,
+  type SentLink,
+  type WaitingStory,
+  type WalletBalance,
+} from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { placeHref } from "@/lib/place-route";
 import { countdownLabel, nextAvailableMs } from "@/lib/wallet-countdown";
@@ -58,6 +66,7 @@ export function MethodSheet({
   onClose,
   onReread,
   onRemoveCard,
+  onRemoveHouseCard,
 }: {
   method: Method | null;
   onClose: () => void;
@@ -65,6 +74,9 @@ export function MethodSheet({
   onReread?: () => void;
   /** Remove a saved card (MESITA-3523); resolves once the server answered. */
   onRemoveCard?: (card: SavedCard) => Promise<void>;
+  /** Take a pinned $0 House Card off the Wallet (MESITA-3605); resolves once
+   *  the server answered. */
+  onRemoveHouseCard?: (placeId: string) => Promise<void>;
 }) {
   const title = method?.kind === "place"
     ? method.card.name
@@ -87,7 +99,7 @@ export function MethodSheet({
         <h2 className="min-w-0 truncate text-base font-semibold">{title}</h2>
       </div>
       <div className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-5 pb-8">
-        {method?.kind === "place" ? <PlaceBody method={method} onReread={onReread} /> : null}
+        {method?.kind === "place" ? <PlaceBody method={method} onReread={onReread} onRemove={onRemoveHouseCard} /> : null}
         {method?.kind === "card" ? <CardBody card={method.card} onRemove={onRemoveCard} /> : null}
         {method?.kind === "story" ? <StoryBody story={method.story} /> : null}
       </div>
@@ -95,7 +107,15 @@ export function MethodSheet({
   );
 }
 
-function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "place" }>; onReread?: () => void }) {
+function PlaceBody({
+  method,
+  onReread,
+  onRemove,
+}: {
+  method: Extract<Method, { kind: "place" }>;
+  onReread?: () => void;
+  onRemove?: (placeId: string) => Promise<void>;
+}) {
   const { card, balance } = method;
   const href = placeHref(method.placeSlug);
   // A balance whose place the server could not name: gone from Mesita.
@@ -123,6 +143,9 @@ function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "plac
   }, [entries, onReread]);
 
   const [sending, setSending] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const removable = onRemove !== undefined && canRemoveHouseCard(balance);
   const spendable = balance?.spendable_cents ?? 0;
   const changed = onReread ?? (() => {});
   return (
@@ -221,6 +244,43 @@ function PlaceBody({ method, onReread }: { method: Extract<Method, { kind: "plac
           Open place
         </Link>
       )}
+
+      {/* REMOVE FROM WALLET (MESITA-3605, Pato: "enable to remove the card if
+          you have 0 credits"): only a card the guest pinned that holds
+          nothing and has no history; one short confirm, then the server
+          checks the money again (409 has_credit). */}
+      {removable ? (
+        <>
+          <button type="button" className={`${SECONDARY} mt-4`} onClick={() => setConfirming(true)} data-house-card-remove>
+            Remove from Wallet
+          </button>
+          <LocalSheet open={confirming} onClose={() => (removing ? undefined : setConfirming(false))} ariaLabel="Remove this House Card">
+            <div className="flex flex-col px-4 pt-5 pb-8" data-house-card-remove-confirm>
+              <h2 className="text-xl font-semibold">Remove this House Card?</h2>
+              <p className="text-muted-foreground mt-1 text-sm leading-relaxed">You can add it again any time.</p>
+              <div className="mt-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  disabled={removing}
+                  className={`${PRIMARY} disabled:opacity-60`}
+                  onClick={() => {
+                    setRemoving(true);
+                    void onRemove(method.placeId).finally(() => {
+                      setRemoving(false);
+                      setConfirming(false);
+                    });
+                  }}
+                >
+                  {removing ? "Removing…" : "Remove"}
+                </button>
+                <button type="button" disabled={removing} className={SECONDARY} onClick={() => setConfirming(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </LocalSheet>
+        </>
+      ) : null}
     </>
   );
 }

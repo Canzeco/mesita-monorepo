@@ -53,6 +53,8 @@ export type WalletBalance = {
   card_ok?: boolean;
   last_at: string;
   entries: WalletEntry[];
+  /** The guest added this card by hand (MESITA-3582). Absent reads as no. */
+  pinned?: boolean;
 };
 
 /** What happened to the Checkout the guest came back from. */
@@ -110,6 +112,27 @@ export async function apiListVouchers(
 export async function apiAddHouseCard(client: SupabaseClient, placeId: string): Promise<{ already: boolean }> {
   const r = await invokeEF<{ already?: boolean }>(client, "consumer-web-add-house-card", { place_id: placeId });
   return { already: r.already === true };
+}
+
+/** Takes a pinned $0 House Card off the guest's Wallet (MESITA-3605). The
+ *  server refuses with code has_credit when the guest holds anything there. */
+export async function apiRemoveHouseCard(client: SupabaseClient, placeId: string): Promise<void> {
+  await invokeEF<{ ok: boolean }>(client, "consumer-web-remove-house-card", { place_id: placeId });
+}
+
+/** Whether the Wallet offers "Remove from Wallet" (MESITA-3605): a card the
+ *  guest pinned that holds nothing and has no history. A card with history
+ *  shows by its entries, so removing the pin would change nothing. The
+ *  server checks the money again; this only decides the button. */
+export function canRemoveHouseCard(b: WalletBalance | null): boolean {
+  if (!b || b.pinned !== true) return false;
+  return (
+    b.balance_cents === 0 &&
+    b.available_cents === 0 &&
+    b.pending_cents === 0 &&
+    b.spendable_cents === 0 &&
+    b.entries.length === 0
+  );
 }
 
 /** What Stripe.js needs to finish a voucher paid with a saved card

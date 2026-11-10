@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
-import { apiGetWallet, GIFT_PARAM, type Wallet, type WalletBalance } from "@/lib/api/wallet";
+import { apiGetWallet, apiRemoveHouseCard, GIFT_PARAM, type Wallet, type WalletBalance } from "@/lib/api/wallet";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
@@ -188,6 +188,24 @@ export function WalletPage() {
     [getSupabase],
   );
 
+  // Remove from Wallet (MESITA-3605): a pinned $0 House Card leaves; the
+  // sheet closes back onto the Wallet and the balances read again.
+  const removeHouseCard = useCallback(
+    async (placeId: string) => {
+      try {
+        await apiRemoveHouseCard(getSupabase(), placeId);
+        toast.success("Removed from Wallet.");
+        setMethod(null);
+        setNonce((n) => n + 1);
+      } catch (err) {
+        const code = err instanceof EFError ? err.code : null;
+        toast.error(code === "has_credit" ? "This card has credit, so it stays in your Wallet." : "Couldn't remove it. Try again.");
+        if (code === "has_credit") setNonce((n) => n + 1);
+      }
+    },
+    [getSupabase],
+  );
+
   // Balances: on mount, on Try again, and again while a purchase settles.
   useEffect(() => {
     let cancelled = false;
@@ -333,7 +351,7 @@ export function WalletPage() {
         </div>
       ) : null}
 
-      <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} onRemoveCard={removeCard} />
+      <MethodSheet method={liveMethod} onClose={() => setMethod(null)} onReread={reread} onRemoveCard={removeCard} onRemoveHouseCard={removeHouseCard} />
       <GiftClaimSheet
         token={giftToken}
         onClose={() => setGiftToken(null)}
