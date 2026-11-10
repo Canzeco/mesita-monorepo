@@ -10,6 +10,7 @@ import { apiListReservations } from "@/lib/api/reservations";
 import type { ReservationItem } from "@/lib/reservation-types";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { isAwaitingPlace, usePollWhile } from "@/lib/use-poll-while";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 
 type State =
@@ -52,6 +53,9 @@ function useReservationById(id: string): { state: State; reload: () => void } {
       cancelled = true;
     };
   }, [supabase, id, nonce]);
+
+  // While the place hasn't answered, read again every 10 s (MESITA-3619).
+  usePollWhile(state.state === "found" && isAwaitingPlace(state.r.state), reload);
 
   return { state, reload };
 }

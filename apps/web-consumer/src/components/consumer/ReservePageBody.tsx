@@ -18,6 +18,7 @@ import { reservationPath } from "@/lib/consumer-route-contract";
 import { toReservationItem } from "@/lib/reservations-adapter";
 import { stateMeta } from "@/lib/reservation-state";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
+import { isAwaitingPlace, usePollWhile } from "@/lib/use-poll-while";
 import { SHEET_TITLE_CLASS } from "@/lib/ui-classes";
 import { cn, guestNoun } from "@/lib/utils";
 import { placeDateTime } from "@mesita/place-profile/lib/place-time";
@@ -139,6 +140,14 @@ export function ReservePageBody({
     };
   }, [place.id, reads, supabase]);
 
+  // While any table here is still Booking, read again every 10 s; stop once
+  // none is (MESITA-3619).
+  const reread = useCallback(() => setReads((n) => n + 1), []);
+  usePollWhile(
+    mine.some((r) => isAwaitingPlace(toReservationItem(r).state)),
+    reread,
+  );
+
   return (
     <div className="bg-background relative flex flex-1 flex-col overflow-hidden">
       <HideShellNav />
@@ -173,7 +182,7 @@ export function ReservePageBody({
           place={place}
           existing={mine[0] ?? null}
           checking={checking}
-          onBooked={() => setReads((n) => n + 1)}
+          onBooked={reread}
           onDone={onBack}
         />
       </div>
