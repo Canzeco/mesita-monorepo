@@ -33,7 +33,7 @@ const MONTH_NAMES = [
 ];
 
 const MIN_PARTY = 1;
-const MAX_PARTY = 20;
+const MAX_PARTY = 10; // Pato, MESITA-3613: "max party size must be 10"
 
 type DateOption = {
   iso: string;
