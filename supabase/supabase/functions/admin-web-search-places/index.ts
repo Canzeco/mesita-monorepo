@@ -7,7 +7,10 @@
 //
 // Two read modes, checked in this order: `all` (the WHOLE catalog, for
 // Mesita Search's All places button) and `googlePlaceIds` (a paste). Both
-// shape the same row.
+// shape the same row. `all` answers one batch of up to ALL_MAX_ROWS places
+// by id and a `next` cursor; the caller passes it back as `after` until
+// `next` is null, so the console holds every place and its state filters
+// cover the whole catalog (MESITA-3595).
 //
 // Auth: caller's JWT email must be in public.super_admins.
 // verify_jwt = true gates non-bearer callers at the gateway.
@@ -44,14 +47,17 @@ type Body = {
   limit?: unknown;
   googlePlaceIds?: unknown;
   all?: unknown;
+  /** ALL mode: the last id of the previous batch (`next`). */
+  after?: unknown;
 };
 
-// ALL mode. PostgREST caps one response at db.max_rows (1000), so the whole
-// catalog is walked in pages rather than asked for in a single limit. The
-// ceiling is the honest stop: past it the run reports `total` and truncates,
-// instead of shipping a payload the console cannot render.
+// ALL mode. PostgREST caps one response at db.max_rows (1000), so a batch
+// is walked in pages rather than asked for in a single limit. ALL_MAX_ROWS
+// bounds ONE call's payload, never the run: a full batch carries `next`, and
+// the console asks again from there until the catalog is done.
 const ALL_PAGE_SIZE = 500;
 const ALL_MAX_ROWS = 2000;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 serveJson("admin-web-search-places", async (req) => {
   const ctx = await requireAdminRequest(req, "POST");
@@ -94,34 +100,43 @@ serveJson("admin-web-search-places", async (req) => {
   // Only ALL mode reports it: a paste's count is the number of rows already
   // returned, and a second query would say nothing.
   let total: number | null = null;
+  // ALL mode: where the next batch starts; null = the catalog is done.
+  let next: string | null = null;
 
   if (all) {
     // Page by id — unique, so a page boundary can neither drop nor repeat a
-    // place the way a shared `updated_at` or `name` could. The label order
-    // the operator reads is applied once, below, over the assembled set.
+    // place the way a shared `updated_at` or `name` could. The batch is
+    // sorted by name below; the console sorts the assembled run again.
     const { count, error: countErr } = await admin
       .from("profiles")
       .select("id", { count: "exact", head: true });
     if (countErr) return json({ ok: false, error: `search_failed: ${countErr.message}` }, 500);
     total = count ?? 0;
-    let from = 0;
-    while (from < ALL_MAX_ROWS) {
-      const to = Math.min(from + ALL_PAGE_SIZE, ALL_MAX_ROWS) - 1;
-      const { data, error } = await admin
+    const after = bodyRes.body.after;
+    if (after !== undefined && after !== null && (typeof after !== "string" || !UUID_RE.test(after))) {
+      return json({ ok: false, error: "after must be a place id" }, 400);
+    }
+    // Keyset by id, not offset: a place created mid-run can neither shift a
+    // later batch nor be read twice.
+    let cursor = typeof after === "string" ? after : null;
+    while (rows.length < ALL_MAX_ROWS) {
+      let q = admin
         .from("profiles")
         .select(cols)
         .order("id", { ascending: true })
-        .range(from, to);
+        .limit(Math.min(ALL_PAGE_SIZE, ALL_MAX_ROWS - rows.length));
+      if (cursor) q = q.gt("id", cursor);
+      const { data, error } = await q;
       if (error) return json({ ok: false, error: `search_failed: ${error.message}` }, 500);
       const page = (data ?? []) as Record<string, unknown>[];
-      rows.push(...page);
       // Step by what CAME BACK, never by what was asked for. `db.max_rows`
-      // can trim a page below ALL_PAGE_SIZE, and a fixed stride would then
-      // skip exactly the rows the server trimmed — a silent hole in the
-      // middle of a list whose whole promise is that it is complete.
+      // can trim a page below ALL_PAGE_SIZE; the cursor is the last row
+      // read, so a trimmed page leaves no hole.
       if (page.length === 0) break;
-      from += page.length;
+      rows.push(...page);
+      cursor = String(page[page.length - 1].id);
     }
+    next = rows.length >= ALL_MAX_ROWS ? cursor : null;
     rows.sort((a, b) =>
       String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, {
         sensitivity: "base",
@@ -292,6 +307,6 @@ serveJson("admin-web-search-places", async (req) => {
     };
   });
 
-  // `total` is null outside ALL mode — see the declaration above.
-  return json({ ok: true, places, total });
+  // `total` and `next` are null outside ALL mode — see the declarations above.
+  return json({ ok: true, places, total, next });
 });

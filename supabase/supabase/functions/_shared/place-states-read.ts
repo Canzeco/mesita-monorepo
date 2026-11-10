@@ -38,9 +38,14 @@ export type PaymentsFacts = {
   fee_overdue: boolean;
 };
 
+/** Owned (Main §10): an owner seat wins over a pending claim. */
+export type OwnedState = "owned" | "pending" | "unclaimed";
+
 export type PlaceStatesFacts = {
-  /** A live owner seat (MESITA-3158); null = the read failed. */
-  owned: boolean | null;
+  /** `owned` = a live owner seat (MESITA-3158); `pending` = no owner, but a
+   *  claim request Mesita has not decided (place_verification_requests,
+   *  MESITA-3127); `unclaimed` = neither; null = a read it needs failed. */
+  owned: OwnedState | null;
   /** The running subscription's rank, 1 = Pro · 2 = Max, 0 = Free; null =
    *  the read failed. */
   plan_rank: number | null;
@@ -71,7 +76,7 @@ export async function readPlaceStatesFacts(
   const stripe = new Map<string, StripeState>();
   if (ids.length === 0) return { facts, stripe };
 
-  const [accounts, settings, contracts, codes, invoices, managers, backings] = await Promise.all([
+  const [accounts, settings, contracts, codes, invoices, managers, claims, backings] = await Promise.all([
     admin.from("place_payment_accounts").select(ACCOUNT_COLUMNS).in("place_id", ids),
     admin.from("place_payment_settings").select(`place_id, ${SETTINGS_COLUMNS}`).in("place_id", ids),
     admin.from("house_credits_contracts").select("place_id").in("place_id", ids).is("ended_at", null),
@@ -88,6 +93,7 @@ export async function readPlaceStatesFacts(
       .in("place_id", ids)
       .eq("role", "owner")
       .is("revoked_at", null),
+    admin.from("place_verification_requests").select("place_id").in("place_id", ids).eq("status", "pending"),
     admin.from("place_backings").select("place_id, tier").in("place_id", ids).eq("status", "ready"),
   ]);
 
@@ -99,6 +105,7 @@ export async function readPlaceStatesFacts(
     ["place_codes", codes],
     ["place_fee_invoices", invoices],
     ["place_managers", managers],
+    ["place_verification_requests", claims],
     ["place_backings", backings],
   ] as const) {
     if (res.error) fail(name, n, res.error.message);
@@ -124,6 +131,13 @@ export async function readPlaceStatesFacts(
   for (const r of (managers.data ?? []) as { place_id: string; expires_at: string; revoked_at: string | null }[]) {
     if (isLiveManager(r, now)) owners.add(r.place_id);
   }
+  const pendingClaims = new Set(((claims.data ?? []) as { place_id: string }[]).map((r) => r.place_id));
+  const ownedOf = (id: string): OwnedState | null => {
+    if (managers.error) return null;
+    if (owners.has(id)) return "owned";
+    if (claims.error) return null;
+    return pendingClaims.has(id) ? "pending" : "unclaimed";
+  };
   const rankBy = new Map<string, number>();
   for (const r of (backings.data ?? []) as { place_id: string; tier: keyof typeof TIER_RANK }[]) {
     const rank = TIER_RANK[r.tier] ?? 0;
@@ -137,7 +151,7 @@ export async function readPlaceStatesFacts(
     // server's Stripe mode only.
     const hold = account?.livemode === livemode && account?.fee_hold === true;
     facts.set(id, {
-      owned: managers.error ? null : owners.has(id),
+      owned: ownedOf(id),
       plan_rank: backings.error ? null : rankBy.get(id) ?? 0,
       payments: paymentsOk
         ? {
