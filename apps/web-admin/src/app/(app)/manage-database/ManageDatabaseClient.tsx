@@ -41,6 +41,7 @@ type PurgeOutcome = {
 // MESITA-3590: a stalled purge is resumed through this, never by pressing
 // Reset again — that would wipe everything created since the first reset.
 async function drainStorage(
+  confirmPhrase: string,
   onProgress: (purged: number, remaining: number) => void,
   start: { purged: number; remaining: number; done: boolean; error: string | null },
 ): Promise<PurgeOutcome> {
@@ -54,7 +55,7 @@ async function drainStorage(
       return { purged, remaining, stoppedBecause: `stopped after ${passes} passes` };
     }
     onProgress(purged, remaining);
-    const r = await continueStoragePurge(CONFIRM_PHRASE);
+    const r = await continueStoragePurge(confirmPhrase);
     passes += 1;
     if (!r.ok) return { purged, remaining, stoppedBecause: r.error };
     purged += r.purgedStorageObjects;
@@ -94,7 +95,9 @@ function ResetCard() {
       setWarning(
         `Clearing stored files stopped (${outcome.stoppedBecause}) with ` +
           `${outcome.remaining} file(s) left. The database is reset. ` +
-          `Press "Finish clearing files" to remove the rest; it does not touch the database.`,
+          `Type ${CONFIRM_PHRASE} and press "Finish clearing files" to remove the rest. ` +
+          `It does not reset the database again, but it deletes every stored file, ` +
+          `including photos and menus of places added since the reset.`,
       );
     } else {
       setFilesPending(false);
@@ -110,6 +113,8 @@ function ResetCard() {
     setWarning(null);
     setError(null);
     setStripeLeft([]);
+    // Becomes true once the wipe committed, so a later throw says so.
+    let committed = false;
 
     try {
       // The only call that wipes the database. Everything after drains files.
@@ -118,10 +123,20 @@ function ResetCard() {
         setError(r.error);
         return;
       }
+      // The database IS reset from here on. Until the drain finishes, the
+      // card offers only "Finish clearing files", so a purge that throws
+      // (network drop, function timeout) never leads back to a second wipe.
+      committed = true;
+      setFilesPending(true);
+      setWarning(
+        `The database is reset. If clearing stored files stops, type ${CONFIRM_PHRASE} ` +
+          `and press "Finish clearing files"; never reset again.`,
+      );
+      const phrase = confirm;
       setConfirm("");
       setStripeLeft([...r.stripeAccountsLeft, ...r.stripeCustomersLeft]);
 
-      const outcome = await drainStorage(showProgress, {
+      const outcome = await drainStorage(phrase, showProgress, {
         purged: r.purgedStorageObjects,
         remaining: r.remainingStorageObjects,
         done: r.storageDone,
@@ -135,18 +150,25 @@ function ResetCard() {
       reportPurge(outcome);
     } catch (err) {
       setProgress(null);
-      setError(err instanceof Error ? err.message : "Reset failed.");
+      const msg = err instanceof Error ? err.message : "Reset failed.";
+      setError(
+        committed
+          ? `Clearing stored files failed (${msg}). The database is reset.`
+          : msg,
+      );
     } finally {
       setBusy(false);
     }
   }
 
   async function onFinishFiles() {
-    if (busy) return;
+    if (!armed || busy) return;
     setBusy(true);
     setError(null);
+    const phrase = confirm;
+    setConfirm("");
     try {
-      const outcome = await drainStorage(showProgress, {
+      const outcome = await drainStorage(phrase, showProgress, {
         purged: 0,
         remaining: 0,
         done: false,
@@ -206,7 +228,12 @@ function ResetCard() {
       </label>
 
       {filesPending ? (
-        <Button tone="danger" pending={busy} onClick={onFinishFiles}>
+        <Button
+          tone="danger"
+          pending={busy}
+          disabled={!armed}
+          onClick={onFinishFiles}
+        >
           {busy ? "Clearing files…" : "Finish clearing files"}
         </Button>
       ) : (
