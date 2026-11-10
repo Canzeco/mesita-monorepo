@@ -3,10 +3,11 @@
 // places land where the silhouettes stood. A plain module: a server loading
 // frame reads these strings too.
 
-/** Two columns, three from 640px; 12px sides, 10px between columns, 16px
- *  between rows. */
+/** Always two columns (MESITA-3660: a viewport `sm:` drew three inside the
+ *  phone frame on desktop); 12px sides, 10px between columns, 16px between
+ *  rows. */
 export const GRID_LIST =
-  "grid grid-cols-2 content-start gap-x-2.5 gap-y-4 px-3 pt-1 sm:grid-cols-3";
+  "grid grid-cols-2 content-start gap-x-2.5 gap-y-4 px-3 pt-1";
 
 /** The square photo, 12px corners. */
 export const GRID_PHOTO =
