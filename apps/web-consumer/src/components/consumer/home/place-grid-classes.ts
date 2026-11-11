@@ -29,14 +29,17 @@ export const GRID_CHIPS =
 /** One column of rows; 12px sides, 10px between rows. */
 export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-1";
 
-/** The two squares side by side, 8px apart. */
-export const ROW_PAIR = "grid grid-cols-2 gap-2";
+/** The two squares side by side, touching: one card (Pato, MESITA-3664:
+ *  "unify the left image with the right box … making the adjacent borders
+ *  squared"). */
+export const ROW_PAIR = "grid grid-cols-2";
 
-/** The photo square, 14px corners, as the grid's photo. */
+/** The photo square: 16px corners on the outer side only. */
 export const ROW_PHOTO =
-  "bg-muted relative aspect-square overflow-hidden rounded-2xl";
+  "bg-muted relative aspect-square overflow-hidden rounded-l-2xl";
 
-/** The info square: a soft fill, 12px inside, the buttons pinned to its
- *  bottom so every row's buttons line up. */
+/** The info square: a soft fill, 12px inside, 16px corners on the outer
+ *  side only, the buttons pinned to its bottom so every row's buttons line
+ *  up. */
 export const ROW_INFO =
-  "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-2xl p-3";
+  "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
