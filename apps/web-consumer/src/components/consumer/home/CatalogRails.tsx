@@ -21,9 +21,10 @@ import dynamic from "next/dynamic";
 // "we don't need to colors now"). Favorites left the column for the bar's
 // Saved tab (Pato, MESITA-2522: "remove favorites from this lateral menu"); MESITA-2517 tried a
 // horizontal chip row and Pato sent it back. Social: the activity feed
-// (SocialFeed), full width. Every row's mark is a monochrome line icon
-// (lib/family-icons.tsx), never an emoji (Pato, MESITA-2478: "emojis uses
-// color and that takes attention"); the chosen row's stroke is heavier.
+// (SocialFeed), full width. Every row's mark is the family's emoji (Pato,
+// MESITA-3683; MESITA-2478's monochrome line icons until then). Places 2.0,
+// 3.0 and 4.0 were tried beside this list (MESITA-3658…3680) and deleted
+// (MESITA-3684, Pato: "only leave Places 1 and rename it to Places").
 //
 // All (the default: every place) is ranked the Map's way (Pato, MESITA-2516:
 // "only keeping All is cleaner. just like in map"), Proximity ×
@@ -49,7 +50,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, SlidersHorizontal } from "lucide-react";
+import { Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -67,12 +68,7 @@ import {
   readAreaPool,
   writeAreaPool,
 } from "@/lib/area-pool-cache";
-import {
-  FILTERABLE_PLACE_FAMILIES,
-  type FamilyKey,
-} from "@/lib/place-families";
-import { FamilyFilterSheet } from "@/components/consumer/search/FamilyFilterSheet";
-import { DISC_BADGE } from "@/components/consumer/search/header-classes";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -87,17 +83,7 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import {
-  DiscoverFallback,
-  GridFallback,
-  PLACES_LIST,
-  RowFallback,
-  RailFallback,
-} from "./DiscoverFallback";
-import { PlaceGridCard } from "./PlaceGridCard";
-import { GRID_CHIPS, GRID_LIST, ROW_LIST } from "./place-grid-classes";
-import { PlaceRowCard } from "./PlaceRowCard";
-import { PlaceRails } from "./PlaceRails";
+import { DiscoverFallback, PLACES_LIST } from "./DiscoverFallback";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -133,42 +119,19 @@ export const TOP_LABEL = "Top";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
-/** The chip state while the Filters sheet holds two or more families
- *  (MESITA-3666): no one chip is lit, and the pool is already their union. */
-export const FILTERS_CHIP = "filters";
-/** Home's four tabs, each its own address (MESITA-2517, MESITA-2597), in
- *  version order (Pato, MESITA-3662: "create four views: places 1.0, places
- *  2.0, places 3.0, social"):
- *    1.0  the family column beside big tiles, /home/classic
- *    2.0  the chip row over a two-column photo grid (MESITA-3658), /home/grid
- *    3.0  the chip row over rows of two squares, photo · facts with Save and
- *         Share (MESITA-3662), /home/places, where every "go Home" lands
- *         while it is on trial. */
+/** Home's two tabs (Pato, MESITA-2517: "another header (Places. Social)"),
+ *  each its own address (Pato, MESITA-2597: "we should have home/places and
+ *  home/social"). */
 export const HOME_TABS = [
-  { key: "classic", label: "Places 1.0", href: CONSUMER_ROUTES.homeClassic },
-  { key: "grid", label: "Places 2.0", href: CONSUMER_ROUTES.homeGrid },
-  { key: "places", label: "Places 3.0", href: CONSUMER_ROUTES.home },
-  // 4.0, one carousel per family, Top first (MESITA-3670), /home/rails.
-  { key: "rails", label: "Places 4.0", href: CONSUMER_ROUTES.homeRails },
+  { key: "places", label: "Places", href: CONSUMER_ROUTES.home },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
 
-/** The tab a Home address shows: Social, the old list and the grid at their
- *  own addresses, Places 3.0 anywhere else under Home. */
+/** The tab a Home address shows: Social at /home/social, Places anywhere
+ *  else under Home. */
 export function homeTabOf(pathname: string): HomeTab {
-  if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
-  if (pathname === CONSUMER_ROUTES.homeClassic) return "classic";
-  if (pathname === CONSUMER_ROUTES.homeRails) return "rails";
-  return pathname === CONSUMER_ROUTES.homeGrid ? "grid" : "places";
-}
-
-/** A place's family word for the grid's fact line: the first family the
- *  server ranked it under, or null. */
-export function placeFamilyLabel(place: Place): string | null {
-  const key = place.area?.familyKeys?.[0];
-  if (!key) return null;
-  return FILTERABLE_PLACE_FAMILIES.find((f) => f.key === key)?.label ?? null;
+  return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
 }
 
 /** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
@@ -204,7 +167,7 @@ export function chipFamilies(chip: string): string[] {
  *  row's pool is already that family's (MESITA-2438); the filter stays as a
  *  guard when area.familyKeys and family_keys disagree. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
-  return isEveryFamily(chip) || chip === FILTERS_CHIP
+  return isEveryFamily(chip)
     ? pool.places
     : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
 }
@@ -256,7 +219,6 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);
-  const [filtersOpen, setFiltersOpen] = useState(false);
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
@@ -289,13 +251,7 @@ export function CatalogRails() {
           requestId: ef?.body?.requestId ?? null,
         });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({
-          kind: "none",
-          places: [],
-          order: [],
-          asked: 0,
-          rankedFrom: null,
-        });
+        setPool({ kind: "none", places: [], order: [], asked: 0, rankedFrom: null });
       }
     };
     if (!kept) void fetchPool();
@@ -348,8 +304,7 @@ export function CatalogRails() {
   const hasMore = order !== undefined && asked < order.length;
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined")
-      return;
+    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined") return;
     const key = requestKey;
     const start = asked;
     const ids = pool.order.slice(start, start + (pool.pageSize ?? PLACES_PAGE));
@@ -357,57 +312,50 @@ export function CatalogRails() {
     const tag = `${key}@${start}`;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((e) => e.isIntersecting)) return;
-        if (filling.current === tag || invalidAt.current === tag) return;
-        filling.current = tag;
-        void apiFillAreaPool(supabase, rankedFrom, families, ids)
-          .then((filled) => {
-            if (key !== liveKey.current) return;
-            fails.current = 0;
-            emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
-            if (emptyRun.current >= 2) {
-              emptyRun.current = 0;
-              dropAreaPool(key);
-              setRetry((n) => n + 1);
-              return;
-            }
-            setPool((cur) => {
-              if (!cur || key !== liveKey.current || cur.asked !== start)
-                return cur;
-              const merged = mergeFilledPlaces(cur, filled, start + ids.length);
-              writeAreaPool(key, merged);
-              return merged;
-            });
-          })
-          .catch((err) => {
-            // The EF's code and requestId join this to its log line.
-            const ef = err instanceof EFError ? err : null;
-            const invalid = ef?.code === "fill_invalid";
-            (invalid ? console.error : console.warn)("[catalog] fill failed", {
-              start,
-              size: ids.length,
-              code: ef?.code ?? null,
-              requestId: ef?.body?.requestId ?? null,
-              attempt: fails.current + 1,
-            });
-            if (invalid) invalidAt.current = tag;
-            if (invalid || disposed || key !== liveKey.current) return;
-            fails.current += 1;
-            if (fails.current <= 3) {
-              timer = setTimeout(
-                () => setFillRetry((n) => n + 1),
-                1000 * 2 ** (fails.current - 1),
-              );
-            }
-          })
-          .finally(() => {
-            if (filling.current === tag) filling.current = null;
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      if (filling.current === tag || invalidAt.current === tag) return;
+      filling.current = tag;
+      void apiFillAreaPool(supabase, rankedFrom, families, ids)
+        .then((filled) => {
+          if (key !== liveKey.current) return;
+          fails.current = 0;
+          emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
+          if (emptyRun.current >= 2) {
+            emptyRun.current = 0;
+            dropAreaPool(key);
+            setRetry((n) => n + 1);
+            return;
+          }
+          setPool((cur) => {
+            if (!cur || key !== liveKey.current || cur.asked !== start) return cur;
+            const merged = mergeFilledPlaces(cur, filled, start + ids.length);
+            writeAreaPool(key, merged);
+            return merged;
           });
-      },
-      { rootMargin: "600px 0px" },
-    );
+        })
+        .catch((err) => {
+          // The EF's code and requestId join this to its log line.
+          const ef = err instanceof EFError ? err : null;
+          const invalid = ef?.code === "fill_invalid";
+          (invalid ? console.error : console.warn)("[catalog] fill failed", {
+            start,
+            size: ids.length,
+            code: ef?.code ?? null,
+            requestId: ef?.body?.requestId ?? null,
+            attempt: fails.current + 1,
+          });
+          if (invalid) invalidAt.current = tag;
+          if (invalid || disposed || key !== liveKey.current) return;
+          fails.current += 1;
+          if (fails.current <= 3) {
+            timer = setTimeout(() => setFillRetry((n) => n + 1), 1000 * 2 ** (fails.current - 1));
+          }
+        })
+        .finally(() => {
+          if (filling.current === tag) filling.current = null;
+        });
+    }, { rootMargin: "600px 0px" });
     io.observe(el);
     return () => {
       disposed = true;
@@ -417,16 +365,6 @@ export function CatalogRails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [asked, order, requestKey, fillRetry]);
 
-  // The grid and the old list say which they are, so the two can be compared
-  // (MESITA-3658); the old list keeps the word it always sent.
-  const cardMode =
-    tab === "places"
-      ? "rows"
-      : tab === "grid"
-        ? "grid"
-        : tab === "rails"
-          ? "rails"
-          : "places";
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
     source: place.area?.source ?? (place.googleOnly ? "google" : "mesita"),
@@ -439,7 +377,7 @@ export function CatalogRails() {
   // `home_card_save` with the tile's facts.
   const cards = useCardSaveShare((place, rank) =>
     trackEvent(supabase, "home_card_save", {
-      mode: cardMode,
+      mode: "places",
       place_id: place.id,
       ...tileFacts(place, rank),
     }),
@@ -477,7 +415,7 @@ export function CatalogRails() {
                 trackEvent(supabase, "home_mode_view", { mode: t.label });
             }}
             className={cn(
-              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
+              "relative flex-1 py-3 text-center text-sm transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
@@ -536,8 +474,8 @@ export function CatalogRails() {
           className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
         >
           {/* THE FAMILY'S EMOJI (Pato, MESITA-3683: "add emojis instead
-              of those black-white icons to the sidebar menu"), the chips'
-              marks; MESITA-2478's line icons are gone from the column. */}
+              of those black-white icons to the sidebar menu"); MESITA-2478's
+              line icons are gone from the column. */}
           <span
             aria-hidden
             className="w-4 shrink-0 text-center text-sm leading-none"
@@ -549,11 +487,12 @@ export function CatalogRails() {
       </li>
     );
   };
-  // A LIGHTER GREY (Pato, MESITA-3682: "make the lateral menu a bit
-  // lighter"): bg-muted, the location box's grey; it was bg-border.
+  // THE PAGE'S GREY (≈ #e6e6e6): Pato asked for "a bit lighter" than
+  // bg-border (MESITA-3682, which tried bg-muted, #efefef), then "a bit
+  // darker" (MESITA-3684); bg-background sits between the two.
   const categories = (
     <nav
-      className="bg-muted flex w-1/4 shrink-0 flex-col"
+      className="bg-background flex w-1/4 shrink-0 flex-col"
       aria-label="Places"
       data-places-categories
     >
@@ -571,104 +510,14 @@ export function CatalogRails() {
     </nav>
   );
 
-  // THE GRID'S FAMILY CHIPS (MESITA-3658): the same rows as the old list's
-  // column, Top first, as one scrolling line of pills over the grid, so the
-  // places get the whole width. Words only; the chosen pill is ink. The row
-  // and the column share `chip`, so a family carries across the two tabs.
-  // THE FILTERS DISC BEFORE TOP (Pato, MESITA-3666: "add the filters button
-  // before top, like in categories"): Search's disc and sheet, pinned at the
-  // row's left while the pills scroll; pick any number of families and the
-  // server ORs them in one pool. A bubble counts the picks.
-  const picked = families.length;
-  const applyFilters = (keys: FamilyKey[]) => {
-    trackEvent(supabase, "home_mode_view", { mode: "Filters" });
-    setFamilies(keys);
-    setChip(
-      keys.length === 0 ? ALL_CHIP : keys.length === 1 ? keys[0] : FILTERS_CHIP,
-    );
-  };
-  const chipRow = (
-    <div className="bg-card flex shrink-0 items-center gap-1.5 pl-3">
-      <button
-        type="button"
-        onClick={() => setFiltersOpen(true)}
-        aria-label={picked > 0 ? `Filters (${picked} selected)` : "Filters"}
-        aria-haspopup="dialog"
-        className="bg-border/60 text-foreground hover:bg-border relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-1.5 active:scale-[0.97]"
-        data-places-filters
-      >
-        <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
-        {picked > 0 ? (
-          <span
-            aria-hidden
-            className={cn(
-              DISC_BADGE,
-              "bg-destructive text-destructive-foreground",
-            )}
-          >
-            {picked}
-          </span>
-        ) : null}
-      </button>
-      <nav
-        className={cn("bg-card min-w-0 flex-1 pl-0", GRID_CHIPS)}
-        aria-label="Families"
-        data-places-chips
-      >
-        {chips.map((c) => {
-          const on = chip === c.key;
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={(e) => {
-                if (!on)
-                  trackEvent(supabase, "home_mode_view", { mode: c.label });
-                setChip(c.key);
-                setFamilies(chipFamilies(c.key));
-                e.currentTarget.scrollIntoView({
-                  block: "nearest",
-                  inline: "center",
-                });
-              }}
-              aria-pressed={on}
-              className={cn(
-                "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
-                on
-                  ? "bg-foreground text-card font-semibold"
-                  : "bg-border/60 text-foreground hover:bg-border",
-              )}
-            >
-              {/* THE FAMILY'S EMOJI (Pato, MESITA-3668: "emoji on the top
-                  families list, not the categories"): the chip row only;
-                  Places 1.0's column keeps its line icons (MESITA-2478). */}
-              <span aria-hidden className="mr-1">
-                {c.emoji}
-              </span>
-              {c.label}
-            </button>
-          );
-        })}
-      </nav>
-      <FamilyFilterSheet
-        open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
-        applied={families as FamilyKey[]}
-        onApply={applyFilters}
-        note="Pick as many families as you like. Home shows places in any of them."
-      />
-    </div>
-  );
-
-  // Home's header (the location alone, MESITA-2405) → the tabs → on the grid
-  // the chip row over it, on the old list the family column beside the
-  // tiles, on Social the feed full width; the pane scrolls on its own.
+  // Home's header (the location alone, MESITA-2405) → the tabs → on Places
+  // the family column beside the tiles, on Social the feed full width; the
+  // pane scrolls on its own.
   const shell = (inner: ReactNode) => (
     <div className="flex min-h-0 flex-1 flex-col">
       {tabs}
-      {tab === "places" || tab === "grid" ? chipRow : null}
       <div className="flex min-h-0 flex-1">
-        {tab === "classic" ? categories : null}
+        {tab === "places" ? categories : null}
         <div
           className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
@@ -676,66 +525,6 @@ export function CatalogRails() {
           {inner}
         </div>
       </div>
-    </div>
-  );
-
-  // The grid (MESITA-3658): the same places, order and paging as the old
-  // list, drawn as PlaceGridCard. The family word shows on Top only; a
-  // family chip already says it.
-  const grid = (list: readonly Place[], label: string) => (
-    <div className="pb-6">
-      <ul role="list" aria-label={label} className={GRID_LIST}>
-        {list.map((place, i) => (
-          <PlaceGridCard
-            key={place.id}
-            place={withUserDistance(place, coords)}
-            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
-            saved={cards.isSaved(place)}
-            onToggle={() => cards.toggle(place, i + 1)}
-            onOpen={() =>
-              trackEvent(supabase, "home_card_open", {
-                mode: cardMode,
-                place_id: place.id,
-                ...tileFacts(place, i + 1),
-              })
-            }
-            onOpenGoogle={() => openGooglePlace(place)}
-          />
-        ))}
-        {hasMore ? (
-          <li ref={sentinel} aria-hidden className="h-px" data-places-more />
-        ) : null}
-      </ul>
-    </div>
-  );
-
-  // Places 3.0 (MESITA-3662): the same places, order and paging, one row
-  // each, drawn as PlaceRowCard.
-  const rows = (list: readonly Place[], label: string) => (
-    <div className="pb-6">
-      <ul role="list" aria-label={label} className={ROW_LIST}>
-        {list.map((place, i) => (
-          <PlaceRowCard
-            key={place.id}
-            place={withUserDistance(place, coords)}
-            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
-            saved={cards.isSaved(place)}
-            onToggle={() => cards.toggle(place, i + 1)}
-            onShare={() => cards.share(place)}
-            onOpen={() =>
-              trackEvent(supabase, "home_card_open", {
-                mode: cardMode,
-                place_id: place.id,
-                ...tileFacts(place, i + 1),
-              })
-            }
-            onOpenGoogle={() => openGooglePlace(place)}
-          />
-        ))}
-        {hasMore ? (
-          <li ref={sentinel} aria-hidden className="h-px" data-places-more />
-        ) : null}
-      </ul>
     </div>
   );
 
@@ -760,7 +549,7 @@ export function CatalogRails() {
                   onShare={() => cards.share(place)}
                   onOpen={() =>
                     trackEvent(supabase, "home_card_open", {
-                      mode: cardMode,
+                      mode: "places",
                       place_id: place.id,
                       ...tileFacts(place, i + 1),
                     })
@@ -789,42 +578,7 @@ export function CatalogRails() {
   // sizes"): the same three tile silhouettes, 60/40 with the Save · Share
   // row, in the list's own pb-6 and gaps (DiscoverFallback.tsx). Locating
   // drew one bare square before, so it grew to three, then to tiles.
-  const waiting =
-    tab === "places" ? (
-      <RowFallback />
-    ) : tab === "grid" ? (
-      <GridFallback />
-    ) : (
-      <DiscoverFallback />
-    );
-  // PLACES 4.0 (MESITA-3670): every carousel loads its own family's pool,
-  // so this tab reads none of the chip pool's states below.
-  if (tab === "rails") {
-    if (!from) return shell(<RailFallback />);
-    return shell(
-      <PlaceRails
-        rails={chips}
-        allKey={ALL_CHIP}
-        from={from}
-        coords={coords}
-        cards={cards}
-        onOpenCard={(place, rank, rail) =>
-          trackEvent(supabase, "home_card_open", {
-            mode: cardMode,
-            place_id: place.id,
-            rail,
-            ...tileFacts(place, rank),
-          })
-        }
-        onOpenGoogle={openGooglePlace}
-        onSeeAll={(key) => {
-          setChip(key);
-          setFamilies(chipFamilies(key));
-        }}
-      />,
-    );
-  }
-  if (waitingForFix) return shell(waiting);
+  if (waitingForFix) return shell(<DiscoverFallback />);
 
   if (fetchError) {
     return shell(
@@ -837,12 +591,9 @@ export function CatalogRails() {
     );
   }
 
-  if (pool === null) return shell(waiting);
+  if (pool === null) return shell(<DiscoverFallback />);
 
-  const label =
-    chip === FILTERS_CHIP
-      ? "your filters"
-      : (chips.find((c) => c.key === chip)?.label ?? "Places");
+  const label = chips.find((c) => c.key === chip)?.label ?? "Places";
   // The Catalog has no radius (MESITA-2909): an empty pool is an empty
   // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (
@@ -859,12 +610,5 @@ export function CatalogRails() {
     />
   );
 
-  if (shown.length === 0) return shell(empty);
-  return shell(
-    tab === "places"
-      ? rows(shown, label)
-      : tab === "grid"
-        ? grid(shown, label)
-        : tiles(shown, label, true),
-  );
+  return shell(shown.length === 0 ? empty : tiles(shown, label, true));
 }
