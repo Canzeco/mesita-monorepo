@@ -17,7 +17,7 @@ import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
-import { OPEN_TAB_STATUSES, PlacePhoto, readOpenTabId, writeOpenTabId } from "./pay-common";
+import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
 import { PayWalletHeader } from "./PayWalletHeader";
 
@@ -71,28 +71,35 @@ export function PayPage() {
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
-  const [openTab, setOpenTab] = useState<GuestTab | null>(null);
+  const [openTabs, setOpenTabs] = useState<GuestTab[]>([]);
 
-  // The list leads with the guest's open bill, read fresh each time.
+  // MESITA-3709: the list leads with the guest's own payments still in
+  // progress (paying, or paid and not yet verified, inside their window),
+  // newest first, read fresh each time. A finished one is forgotten.
   useEffect(() => {
-    const id = readOpenTabId();
-    if (!id) return;
+    const ids = readGuestTabIds();
+    if (ids.length === 0) return;
     let cancelled = false;
-    void apiGetTab(getSupabase(), id)
-      .then((r) => {
-        if (cancelled) return;
-        if (OPEN_TAB_STATUSES.has(r.tab.status)) {
-          setOpenTab(r.tab);
-        } else {
-          writeOpenTabId(null);
-          setOpenTab(null);
-        }
-      })
-      .catch((e) => {
-        if (cancelled || !(e instanceof EFError) || (e.status !== 404 && e.status !== 403)) return;
-        writeOpenTabId(null);
-        setOpenTab(null);
+    void Promise.all(
+      ids.map((id) =>
+        apiGetTab(getSupabase(), id)
+          .then((r) => r.tab)
+          .catch((e) => {
+            if (e instanceof EFError && (e.status === 404 || e.status === 403)) forgetGuestTab(id);
+            return null;
+          }),
+      ),
+    ).then((tabs) => {
+      if (cancelled) return;
+      const now = Date.now();
+      const live = tabs.filter((t): t is GuestTab => {
+        if (!t) return false;
+        const open = !t.verified_at && Date.parse(t.expires_at) > now && (t.status === "paying" || t.status === "paid");
+        if (!open) forgetGuestTab(t.tab_id);
+        return open;
       });
+      setOpenTabs(live);
+    });
     return () => {
       cancelled = true;
     };
@@ -165,7 +172,7 @@ export function PayPage() {
           <PlaceList
             places={places}
             loc={loc}
-            openTab={openTab}
+            openTabs={openTabs}
             onOpenTab={(id) => navigateTo(router, payTabPath(id), { motion: "push" })}
             onPick={(id) => navigateTo(router, payPlacePath(id), { motion: "push" })}
             onUseLocation={askLocation}
@@ -195,7 +202,7 @@ function fold(v: string): string {
 function PlaceList({
   places,
   loc,
-  openTab,
+  openTabs,
   onOpenTab,
   onPick,
   onUseLocation,
@@ -203,8 +210,8 @@ function PlaceList({
 }: {
   places: PayPlace[];
   loc: Loc;
-  /** The guest's open bill at the table, if any (MESITA-3572). */
-  openTab: GuestTab | null;
+  /** The guest's own payments still in progress (MESITA-3709). */
+  openTabs: GuestTab[];
   onOpenTab: (tabId: string) => void;
   onPick: (placeId: string) => void;
   onUseLocation: () => void;
@@ -218,27 +225,28 @@ function PlaceList({
     <div className="flex flex-col">
       {testMode ? <TestBand className="mb-3" /> : null}
 
-      {openTab ? (
-        <button
-          type="button"
-          onClick={() => onOpenTab(openTab.tab_id)}
-          className="border-foreground bg-card hover:bg-muted/60 mb-4 flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3 text-left transition"
-          data-pay-open-tab
-        >
-          <QrCode className="h-6 w-6 shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-base font-semibold">Your open bill · {openTab.place.name ?? "A Mesita place"}</span>
-            <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
-              {openTab.status === "waiting_bill"
-                ? "Waiting for the bill"
-                : openTab.status === "billed"
-                ? `Ready to pay · ${money(openTab.bill_cents ?? 0, openTab.currency)}`
-                : "Paying"}
+      {openTabs.map((t) => {
+        const cash = t.cash_bill_cents + t.cash_tip_cents;
+        const total = t.credit_cents + cash + t.card_bill_cents + t.card_tip_cents;
+        return (
+          <button
+            key={t.tab_id}
+            type="button"
+            onClick={() => onOpenTab(t.tab_id)}
+            className="border-foreground bg-card hover:bg-muted/60 mb-3 flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3 text-left transition"
+            data-pay-in-progress
+          >
+            <QrCode className="h-6 w-6 shrink-0" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-base font-semibold">In progress · {t.place.name ?? "A Mesita place"}</span>
+              <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
+                {money(total, t.currency)} · {cash > 0 ? "give the cash and show to the waiter" : "show to the waiter"}
+              </span>
             </span>
-          </span>
-          <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-        </button>
-      ) : null}
+            <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+          </button>
+        );
+      })}
 
       {loc.state === "prime" ? (
         <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">

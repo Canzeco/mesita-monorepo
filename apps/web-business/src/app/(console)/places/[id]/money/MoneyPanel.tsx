@@ -220,7 +220,19 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
                   {r.ticket ? ` · ${r.ticket}` : ""}
                   {r.confirmed_by && CONFIRMER[r.confirmed_by] ? ` · Confirmed by ${CONFIRMER[r.confirmed_by]}` : ""}
                   {r.refunded_cents > 0 && r.refunded_cents < r.amount_cents && r.status !== "refunded" ? ` · ${money(r.refunded_cents)} refunded` : ""}
+                  {r.guest_verify
+                    ? r.guest_verify.verified_at
+                      ? ` · Verified ${when(r.guest_verify.verified_at)}${r.guest_verify.phone ? ` · phone ${r.guest_verify.phone}` : ""}`
+                      : r.guest_verify.closed && r.guest_verify.cash
+                      ? " · Cash not collected"
+                      : " · Not verified"
+                    : ""}
                 </p>
+                {r.guest_verify?.check_phone ? (
+                  <p className="w-full text-sm font-semibold text-amber-700" data-check-phone>
+                    Check this phone: its only Verify here was cash. If you don&apos;t know it, press New Staff QR.
+                  </p>
+                ) : null}
                 <p className="text-muted-foreground shrink-0 tabular-nums">{when(r.created_at)}</p>
                 <RefundAction
                   placeId={placeId}

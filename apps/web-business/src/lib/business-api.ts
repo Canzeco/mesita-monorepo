@@ -521,6 +521,9 @@ export type PlaceMoneyRow = {
   part?: "credit" | "outside" | "card" | null;
   cashback_cents?: number;
   outside_cashback_bps?: number;
+  /** MESITA-3709: a guest's own payment and the waiter's Verify: when, the
+   *  phone's short mark, and "check this phone" for a lone cash Verify. */
+  guest_verify?: { verified_at: string | null; phone: string | null; check_phone: boolean; cash: boolean; closed: boolean };
   guest: string;
 };
 export type PlaceMoneyCursor = { created_at: string; id: string } | null;

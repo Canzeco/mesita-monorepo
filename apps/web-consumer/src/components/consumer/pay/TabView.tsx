@@ -29,6 +29,7 @@ import { money } from "@/lib/api/wallet";
 import { payTabPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { GuestTabView } from "./GuestTabView";
 import { LiveClock } from "./LiveClock";
 import { ShareCard, SplitButton } from "./SplitWithFriends";
 import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
@@ -127,11 +128,14 @@ export function TabView({
   onTabId,
   onWaiterCode,
   onDone,
+  onPayAgain,
 }: {
   start: TabStart;
   getSupabase: () => Parameters<typeof apiGetTab>[0];
   /** Whether the waiter's 4-digit code (MESITA-3306) can pay at this place. */
   canUseCode: (placeId: string) => boolean;
+  /** MESITA-3709: a guest tab ends back on the form at its place. */
+  onPayAgain?: (placeId: string) => void;
   /** The tab's id, for its address /pay/tab/<id> (a reload shows the same tab). */
   onTabId: (tabId: string) => void;
   onWaiterCode: (placeId: string) => void;
@@ -389,6 +393,18 @@ export function TabView({
           Try again
         </Button>
       </Shell>
+    );
+  }
+
+  // MESITA-3709: the guest's own payment has its own checklist screen.
+  if (tab && tab.origin === "guest") {
+    return (
+      <GuestTabView
+        tab={tab}
+        getSupabase={getSupabase}
+        onPayAgain={(placeId) => (onPayAgain ? onPayAgain(placeId) : onDone())}
+        onDone={onDone}
+      />
     );
   }
 
