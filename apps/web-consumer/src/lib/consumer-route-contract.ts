@@ -56,8 +56,8 @@ export const CONSUMER_ROUTES = {
   //                              (MESITA-3695): takes the share, becomes
   //                              /pay/tab/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    the Pay tab's Wallet half (MESITA-3698):
-  //                              the two rails under the Pay · Wallet band
+  //   /wallet                    the one Pay page opened at its Wallet
+  //                              (MESITA-3720; its own half in MESITA-3698)
   //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //

@@ -8,13 +8,14 @@ type Search = Promise<Record<string, string | string[] | undefined>>;
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
 
-// /pay — the bar's Pay tab (Home · Search · Pay · Activity · Me), its Pay
-// half (MESITA-3698; /wallet is the other): the places the guest can pay at. Each money object has its own address under it
+// /pay — the bar's Pay tab: one page since MESITA-3720, the payment in
+// progress, the places the guest can pay at, then the Wallet (/wallet opens
+// the same page at its Wallet). Each money object has its own address under it
 // (MESITA-3614). The shapes it had before arrive here and forward in one
 // hop: the printed table QR (?place=), a Stripe card return
 // (?payment=<id>&checkout=…, built by _shared/pay-card.ts) and an old bill
 // reload (?tab=). A saved card's Stripe return from before MESITA-3698
-// (?card=) forwards to /wallet, where the card is now shown.
+// (?card=) forwards to /wallet, where the Wallet reads it.
 export default async function Page({ searchParams }: { searchParams: Search }) {
   const sp = await searchParams;
   const payment = one(sp.payment);

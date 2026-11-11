@@ -21,7 +21,8 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
-import { PayWalletHeader } from "./PayWalletHeader";
+import { PayHeader } from "./PayHeader";
+import { WalletSection } from "../wallet/WalletSection";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -32,10 +33,11 @@ import { PayWalletHeader } from "./PayWalletHeader";
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/tab/<id> and /pay/receipt/<id>.
 //
-// PAY IS ONE HALF OF THE TAB (Pato, 2026-11-11, MESITA-3698: "Divide
-// Payments across two sections: Pay and Wallet"): the Pay · Wallet band
-// (PayWalletHeader) sits under the header; the Wallet's two rails are
-// /wallet's (WalletPage). MESITA-3631 had drawn them under this list.
+// PAY IS ONE PAGE (Pato, 2026-11-11, MESITA-3720: "pay and wallet in the
+// same subpage ... only one"): the header (PayHeader, no band), the payment
+// in progress, "Pay at a place" (the nearest PLACES_SHOWN, then "Show all"),
+// then "Wallet" (WalletSection). /wallet draws this page at its Wallet;
+// MESITA-3698 had split them into two pages behind a Pay · Wallet band.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
 // places near you"), rounded to 3 decimals and sent only to the list read.
@@ -48,6 +50,8 @@ const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
 
 /** Past this many places the search field shows on its own. */
 const SEARCH_FROM = 6;
+/** Places listed before "Show all" (MESITA-3720). */
+const PLACES_SHOWN = 5;
 
 const round = (v: number) => Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
 
@@ -72,12 +76,19 @@ function readNotNow(): boolean {
   }
 }
 
-export function PayPage() {
+export function PayPage({ focus = null, giftToken = null }: { focus?: "wallet" | null; giftToken?: string | null } = {}) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   const [openTabs, setOpenTabs] = useState<GuestTab[]>([]);
+
+  // /wallet (and a friend's credit link) open this page at its Wallet.
+  useEffect(() => {
+    if (focus !== "wallet" && window.location.hash !== "#wallet") return;
+    const t = setTimeout(() => document.getElementById("wallet")?.scrollIntoView({ block: "start" }), 0);
+    return () => clearTimeout(t);
+  }, [focus]);
 
   // MESITA-3709: the list leads with the guest's own payments still in
   // progress (paying, or paid and not yet verified, inside their window),
@@ -171,7 +182,7 @@ export function PayPage() {
 
   return (
     <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <PayWalletHeader tab="pay" />
+      <PayHeader />
 
       <div className="mt-5 flex flex-col">
         {places ? (
@@ -195,6 +206,13 @@ export function PayPage() {
           <ListSkeleton />
         )}
       </div>
+
+      <section id="wallet" aria-labelledby="pay-wallet-heading" className="mt-8 scroll-mt-24">
+        <h2 id="pay-wallet-heading" className="px-1 text-base font-semibold">
+          Wallet
+        </h2>
+        <WalletSection giftToken={giftToken} testBand={false} />
+      </section>
     </KeptScroll>
   );
 }
@@ -230,7 +248,12 @@ function PlaceList({
   const searchShown = searchOpen || places.length > SEARCH_FROM;
   const testMode = places.some((p) => p.test_mode);
   const q = fold(query.trim());
-  const shown = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
+  const [showAll, setShowAll] = useState(false);
+  const matches = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
+  // The nearest PLACES_SHOWN, so the Wallet below is never far (MESITA-3720);
+  // a search always lists every match.
+  const shown = q || showAll ? matches : matches.slice(0, PLACES_SHOWN);
+  const hidden = matches.length - shown.length;
   return (
     <div className="flex flex-col">
       {testMode ? <TestBand className="mb-3" /> : null}
@@ -329,6 +352,18 @@ function PlaceList({
                   </button>
                 </Fragment>
               ))}
+              {hidden > 0 ? (
+                <>
+                  <div className="bg-border h-px" />
+                  <button
+                    type="button"
+                    onClick={() => setShowAll(true)}
+                    className="hover:bg-muted/60 flex min-h-12 w-full items-center justify-center px-4 text-sm font-semibold transition"
+                  >
+                    Show all {matches.length} places
+                  </button>
+                </>
+              ) : null}
             </div>
           )}
         </>
