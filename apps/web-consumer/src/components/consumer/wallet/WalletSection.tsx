@@ -12,7 +12,9 @@ import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { GiftClaimSheet } from "./SendCredit";
+import { GiftClaimSheet, SendCreditSheet } from "./SendCredit";
+import { placeHref } from "@/lib/place-route";
+import type { CreditRow as CreditRowModel } from "./use-wallet";
 import { useWallet } from "./use-wallet";
 import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, WalletList } from "./WalletLists";
 
@@ -34,6 +36,13 @@ import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, Walle
 //
 // /wallet/gift/<token> draws the Wallet with a friend's credit link open
 // over it (MESITA-3292); closing it leaves for /wallet.
+//
+// FUND AND GIFT ON EACH CREDITS CARD (Pato, 2026-11-11, MESITA-3724: "add
+// quick button in credits to Fund and Gift buttons to each Credits Card"):
+// Fund opens the place's credit purchase (the House Card's "Buy credits",
+// `?rewards=prepayment` on the place); Gift opens the House Card's "Send to a
+// friend" sheet here, greyed out while nothing can be sent (spendable $0,
+// or sending off). A place gone from Mesita gets neither.
 
 // SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
 // Add on the Money rail opens Stripe's own page in setup mode; it returns
@@ -57,6 +66,18 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
   const [cards, setCards] = useState<SavedCard[] | null>(null);
   const [cardsNonce, setCardsNonce] = useState(0);
   const [adding, setAdding] = useState(false);
+  // The Credits Card whose Gift sheet is open (MESITA-3724).
+  const [gifting, setGifting] = useState<CreditRowModel | null>(null);
+  const canSend = wallet?.can_send === true;
+  const actionsFor = (row: CreditRowModel) => {
+    // A place gone from Mesita: its House Card says to ask support.
+    if (row.balance.place === null) return null;
+    const spendable = row.balance.spendable_cents;
+    return {
+      fundHref: `${placeHref(row.placeSlug)}?rewards=prepayment`,
+      onGift: canSend && spendable > 0 ? () => setGifting(row) : null,
+    };
+  };
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
   const [gift, setGift] = useState(giftToken);
@@ -135,7 +156,7 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
       <WalletList title="Credits Payment Methods">
         <AddRow label="Add a Credits Card" line="Find a place and add its card" href={CONSUMER_ROUTES.search} />
         {wallet?.waiting_stories?.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
-        {credits?.map((row) => <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} />)}
+        {credits?.map((row) => <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} actions={actionsFor(row)} />)}
         {!credits && !failed ? <RowsSkeleton /> : null}
       </WalletList>
 
@@ -151,6 +172,15 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
       ) : null}
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
+      <SendCreditSheet
+        open={gifting !== null}
+        onClose={() => setGifting(null)}
+        onSent={reread}
+        placeId={gifting?.placeId ?? ""}
+        placeName={gifting?.card.name ?? ""}
+        currency={gifting?.card.currency ?? "MXN"}
+        spendableCents={gifting?.balance.spendable_cents ?? 0}
+      />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}

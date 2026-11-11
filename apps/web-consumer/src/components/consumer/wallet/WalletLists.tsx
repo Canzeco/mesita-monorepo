@@ -2,7 +2,8 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Gift, Plus } from "lucide-react";
+import { PushLink } from "@/components/consumer/nav/PushLink";
 import { SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -142,9 +143,28 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
   );
 }
 
+/** A Credits Card's two quick buttons (Pato, 2026-11-11, MESITA-3724: "add
+ *  quick button in credits to Fund and Gift buttons to each Credits Card"):
+ *  Fund is the House Card's "Buy credits", Gift its "Send to a friend".
+ *  `onGift` null: nothing to send now, so Gift shows greyed out. */
+export type CreditActions = { fundHref: string; onGift: (() => void) | null };
+
+const QUICK =
+  "border-border bg-card hover:bg-muted inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition";
+
 /** A place's House Card: the black chip with the place's photo, the name,
- *  the server's amount. Its tap is the model's (the House Card page). */
-export function CreditRow({ card, eager = false }: { card: WalletCardModel; eager?: boolean }) {
+ *  the server's amount. Its tap is the model's (the House Card page). With
+ *  `actions`, Fund and Gift sit under it, beside the row's link, never
+ *  inside it (a link cannot hold a button). */
+export function CreditRow({
+  card,
+  eager = false,
+  actions = null,
+}: {
+  card: WalletCardModel;
+  eager?: boolean;
+  actions?: CreditActions | null;
+}) {
   const amount = cardAmount(card);
   const face = (
     <>
@@ -165,13 +185,37 @@ export function CreditRow({ card, eager = false }: { card: WalletCardModel; eage
     </>
   );
   const label = walletCardLabel(card);
-  return card.tap.kind === "link" ? (
-    <Link href={card.tap.href} aria-label={label} className={ROW}>
-      {face}
-    </Link>
-  ) : (
-    <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent")}>
-      {face}
+  const row =
+    card.tap.kind === "link" ? (
+      <Link href={card.tap.href} aria-label={label} className={cn(ROW, actions && "pb-2")}>
+        {face}
+      </Link>
+    ) : (
+      <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent", actions && "pb-2")}>
+        {face}
+      </div>
+    );
+  if (!actions) return row;
+  return (
+    <div data-credit-card>
+      {row}
+      <div className="flex gap-2 pr-4 pb-3 pl-[4.75rem]" data-credit-actions>
+        <PushLink href={actions.fundHref} className={QUICK} aria-label={`Fund your ${card.name} card`} data-credit-fund>
+          <Plus className="h-4 w-4" aria-hidden />
+          Fund
+        </PushLink>
+        <button
+          type="button"
+          onClick={actions.onGift ?? undefined}
+          disabled={actions.onGift === null}
+          aria-label={`Gift credit at ${card.name}`}
+          className={cn(QUICK, "disabled:hover:bg-card disabled:opacity-40")}
+          data-credit-gift
+        >
+          <Gift className="h-4 w-4" aria-hidden />
+          Gift
+        </button>
+      </div>
     </div>
   );
 }
