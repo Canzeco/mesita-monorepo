@@ -73,7 +73,6 @@ import {
 } from "@/lib/place-families";
 import { FamilyFilterSheet } from "@/components/consumer/search/FamilyFilterSheet";
 import { DISC_BADGE } from "@/components/consumer/search/header-classes";
-import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
 import {
@@ -522,7 +521,7 @@ export function CatalogRails() {
   // list has no inset and the rows no rounding; the chosen row is plain
   // white across the whole column, still with no bar.
   const chips = placesChips();
-  const categoryRow = (c: { key: string; label: string }) => {
+  const categoryRow = (c: { key: string; label: string; emoji: string }) => {
     const on = chip === c.key;
     return (
       <li key={c.key}>
@@ -536,11 +535,15 @@ export function CatalogRails() {
           aria-pressed={on}
           className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
         >
-          <FamilyIcon
-            name={c.key}
-            className="h-4 w-4 shrink-0"
-            strokeWidth={on ? 2.25 : 1.75}
-          />
+          {/* THE FAMILY'S EMOJI (Pato, MESITA-3683: "add emojis instead
+              of those black-white icons to the sidebar menu"), the chips'
+              marks; MESITA-2478's line icons are gone from the column. */}
+          <span
+            aria-hidden
+            className="w-4 shrink-0 text-center text-sm leading-none"
+          >
+            {c.emoji}
+          </span>
           <span className="min-w-0 break-words">{c.label}</span>
         </button>
       </li>
