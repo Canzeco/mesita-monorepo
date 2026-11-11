@@ -104,11 +104,12 @@ const SocialFeed = dynamic(
 // the left, reduce the left margin"); 12px from MESITA-3441.
 const ROW_BASE =
   "relative flex w-full items-center gap-1.5 py-3.5 pr-1.5 pl-2 text-left text-xs leading-tight transition";
-// THE CHOSEN FAMILY: white, with a 3px blue bar on its left edge (Pato,
-// MESITA-3685: "selected family must have blue at the left, in addition to
-// be painted white"), the place screen's tab blue.
+// THE CHOSEN FAMILY: white, with a 3px RED bar on its left edge (Pato,
+// MESITA-3687: "make left sidebar menu red. it's more visible red"; it was
+// blue-600 for minutes, MESITA-3685: "selected family must have blue at the
+// left, in addition to be painted white").
 const ROW_ON =
-  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-blue-600";
+  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-red-600";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -420,17 +421,16 @@ export function CatalogRails() {
             }}
             className={cn(
               "relative flex-1 py-3 text-center text-sm transition",
-              // BLUE, AS THE PLACE SCREEN'S TABS (Pato, MESITA-3685:
-              // "instead of black, the selected Places or Social must be
-              // blue, same style color as the select thing in place
-              // profile"): blue-600 words over a 3px blue-600 bar.
-              on ? "font-semibold text-blue-600" : "text-muted-foreground",
+              // INK, NOT BLUE (Pato, MESITA-3687: "only paint the left
+              // sidebar menu with blue; the places and social keep them
+              // black"): MESITA-3685's blue tab lasted minutes.
+              on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
             {on ? (
               <span
                 aria-hidden
-                className="absolute inset-x-0 bottom-0 h-[3px] bg-blue-600"
+                className="bg-foreground absolute inset-x-0 bottom-0 h-0.5"
               />
             ) : null}
             <span className="relative inline-block">

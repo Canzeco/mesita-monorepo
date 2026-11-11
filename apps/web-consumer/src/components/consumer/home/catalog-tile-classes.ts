@@ -14,11 +14,12 @@
 export const TILE_FRAME =
   "relative isolate min-w-0 overflow-hidden rounded-2xl shadow-tile";
 
-/** The photo: 4:3, four wide and three tall, as every Home photo (Pato,
- *  MESITA-3672: "each image must be 4:3"); it was three fifths of the width.
+/** The photo: 8:5, wide and short (Pato, MESITA-3687: "8:5 instead of 4:3.
+ *  the fibonacci but horizontal"); 4:3 from MESITA-3672, three fifths of the
+ *  width before.
  *  It carries the radius itself, as the band does: a child layer can escape
  *  the parent's rounded clip (MESITA-2429). */
-export const TILE_PHOTO = "relative aspect-[4/3] overflow-hidden rounded-t-2xl";
+export const TILE_PHOTO = "relative aspect-[8/5] overflow-hidden rounded-t-2xl";
 
 /** The plain white band under the photo (MESITA-2658: no reflection). */
 export const TILE_BAND = "bg-paper overflow-hidden rounded-b-2xl";
