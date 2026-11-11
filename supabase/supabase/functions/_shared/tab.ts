@@ -244,7 +244,7 @@ const REFUSALS: Record<string, [number, string]> = {
   not_paid: [409, "This payment is not paid yet"],
   guest_tab: [409, "This payment can only be cancelled"],
   too_many_open: [409, "Finish or cancel a payment here first."],
-  staff_qr_needed: [403, "Scan your Staff QR"],
+  staff_code_needed: [403, "Type the waiter code"],
 };
 
 /** An RPC's `{ ok: false, code }` as the function answers it. */
