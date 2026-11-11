@@ -38,15 +38,16 @@ export type OfferSlide = {
 // and pink for insta and yellow for vip"): the Offers page's voucher colours.
 const GREEN = "bg-green-400 text-neutral-950";
 
-// SHORT WORDS (Pato, MESITA-3671: "Pay (+5% Cashback), Cash (+2% Cashback),
+// SHORT WORDS (Pato, MESITA-3671, cashback reworded in MESITA-3678: "Mesita
+// Pay (5% Back), Cash Pay (2% Back),
 // $200MX (+10%), $1000MX (+20%), $5000MX (+30%), Welcome (+30%), Story
 // (+30%), VIP (+30%)"), in his order; the long words are Places 1.0's.
 const OFFER_SLIDES: OfferSlide[] = [
   // The pill is filled in from the place's own rate (offerSlides).
-  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", short: "Pay", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
+  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", short: "Mesita Pay", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
   // Cash at the table (MESITA-3671): shown once the catalog answer carries
   // the place's cash rate, `cash_cashback_bps`.
-  { key: "cash", lead: "Cash", pill: "Cashback", short: "Cash", spoken: "Cash cashback", section: "payment", tone: GREEN },
+  { key: "cash", lead: "Cash", pill: "Cashback", short: "Cash Pay", spoken: "Cash cashback", section: "payment", tone: GREEN },
   // "$X Prepay", never "Prepay $X"; "Mesita Payments +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
   { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", short: "$200MX", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
   { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", short: "$1000MX", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
@@ -98,7 +99,12 @@ function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number 
  *  bonus alone ("$200MX [+10%]"). The long ones are the slide's own lead and
  *  pill, "Mesita Payments [+5% Cashback]", Places 1.0's. */
 function shortWords(slide: OfferSlide): { lead: string; pill: string } {
-  return { lead: slide.short, pill: slide.bonus ? `+${slide.bonus}%` : slide.pill };
+  if (slide.bonus) return { lead: slide.short, pill: `+${slide.bonus}%` };
+  // Cashback reads "Mesita Pay [5% Back]", "Cash Pay [2% Back]" (Pato,
+  // MESITA-3678: "better the short form of cashback"): the rate from the
+  // long pill, no plus sign.
+  const rate = slide.pill.match(/[\d.]+%/)?.[0];
+  return { lead: slide.short, pill: rate ? `${rate} Back` : slide.pill };
 }
 
 const OFFER_PILL =
