@@ -537,13 +537,21 @@ export function giftLink(token: string, origin: string = typeof window === "unde
   return `${origin}${walletGiftPath(token)}`;
 }
 
-/** Sends credit at one place as a one-time link. `token` is null on a
- *  replay (the server keeps only its hash). Refusals arrive as EFError with
- *  a code from SEND_REFUSAL. */
+/** Sends credit at one place as a one-time link and a 12-digit code
+ *  (MESITA-3737). `token` and `code` are null on a replay (the server keeps
+ *  only their hashes). Refusals arrive as EFError with a code from
+ *  GIFT_REFUSAL. */
 export async function apiSendCredit(
   client: SupabaseClient,
   args: { place_id: string; amount_cents: number; request_id: string },
-): Promise<{ outcome: "sent" | "already_sent"; gift_id: string; amount_cents: number; currency: string; token: string | null }> {
+): Promise<{
+  outcome: "sent" | "already_sent";
+  gift_id: string;
+  amount_cents: number;
+  currency: string;
+  token: string | null;
+  code: string | null;
+}> {
   return await invokeEF(client, "consumer-web-send-credit", args);
 }
 
@@ -575,6 +583,20 @@ export async function apiClaimGift(
   return await invokeEF(client, "consumer-web-claim-credit", { token });
 }
 
+/** A gift code typed in the Wallet (MESITA-3737): the same one-time claim
+ *  as the link. Five wrong codes an hour, then too_many_tries. */
+export async function apiRedeemGiftCode(
+  client: SupabaseClient,
+  code: string,
+): Promise<{ outcome: "claimed" | "already_claimed"; place_id: string; amount_cents: number; currency: string }> {
+  return await invokeEF(client, "consumer-web-claim-credit", { code });
+}
+
+/** 12 digits shown as 1234 5678 9012. */
+export function formatGiftCode(code: string): string {
+  return code.replace(/(\d{4})(?=\d)/g, "$1 ");
+}
+
 /** What the guest reads when sending or taking credit is refused. */
 export const GIFT_REFUSAL: Record<string, string> = {
   sign_in: "Sign in first.",
@@ -588,4 +610,5 @@ export const GIFT_REFUSAL: Record<string, string> = {
   claimed: "Someone already took this credit.",
   taken_back: "Your friend took this credit back.",
   own_gift: "This is your own link. Send it to a friend.",
+  too_many_tries: "Too many wrong codes. Try again in an hour.",
 };
