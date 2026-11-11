@@ -8,7 +8,8 @@
 // and no staff table. Typing the code once answers a staff token, and the
 // screen's 15-second reads carry that token, never the code again.
 //
-// The staff token is stateless: `s1.<expiry unix s>.<HMAC>` where the HMAC
+// The staff token is stateless: `s1.<expiry unix s>.<HMAC>` (before
+// MESITA-3707) or `s2.<expiry>.<qr|code>.<device id>.<HMAC>`, where the HMAC
 // (SHA-256, under a key derived from the service role key) covers the place
 // id, the expiry and the place's CURRENT code hash. So:
 //   - it lasts 12 hours;
@@ -102,13 +103,70 @@ async function staffMac(serviceKey: string, placeId: string, expSec: number, cod
   return b64url(new Uint8Array(sig));
 }
 
-export async function mintStaffToken(serviceKey: string, placeId: string, keys: StaffKeys, nowMs: number): Promise<{ token: string; expiresAt: string }> {
-  const exp = Math.floor(nowMs / 1000) + STAFF_TOKEN_TTL_SEC;
-  return { token: `s1.${exp}.${await staffMac(serviceKey, placeId, exp, signedOver(keys))}`, expiresAt: new Date(exp * 1000).toISOString() };
+/** How a phone became staff (MESITA-3707): `qr` = it scanned the owner's
+ *  Staff QR; `code` = someone typed the place code on it. Only a `qr` token
+ *  may Verify a guest's payment or confirm cash: a code can be watched being
+ *  typed, a Staff QR is sent to waiters by WhatsApp. */
+export type StaffSource = "qr" | "code";
+
+/** What a valid token says. `s1` tokens (before MESITA-3707) carry no source
+ *  and no device id; they keep working on the old screens until they expire. */
+export type StaffTokenInfo = { version: 1 | 2; src: StaffSource | null; jti: string | null; exp: number };
+
+async function staffMac2(serviceKey: string, placeId: string, expSec: number, src: StaffSource, jti: string, signed: string): Promise<string> {
+  const keyBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`staff-token-key:${serviceKey}`)));
+  const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`staff2:${placeId}:${expSec}:${src}:${jti}:${signed}`));
+  return b64url(new Uint8Array(sig));
 }
 
-/** True only for an unexpired token minted for this place under its current
- *  code hash and Staff QR. No keys (the owner removed the code) is never valid. */
+/** `s2.<exp>.<src>.<jti>.<mac>`: the source and a per-join random device id
+ *  (128 bits) both inside the HMAC, so editing either fails the check and two
+ *  phones that join in the same second are two phones. */
+export async function mintStaffToken(
+  serviceKey: string,
+  placeId: string,
+  keys: StaffKeys,
+  nowMs: number,
+  src: StaffSource = "code",
+): Promise<{ token: string; expiresAt: string }> {
+  const exp = Math.floor(nowMs / 1000) + STAFF_TOKEN_TTL_SEC;
+  const jti = b64url(crypto.getRandomValues(new Uint8Array(16)));
+  const mac = await staffMac2(serviceKey, placeId, exp, src, jti, signedOver(keys));
+  return { token: `s2.${exp}.${src}.${jti}.${mac}`, expiresAt: new Date(exp * 1000).toISOString() };
+}
+
+/** The token's facts when it is an unexpired token minted for this place
+ *  under its current code hash and Staff QR; null otherwise. No keys (the
+ *  owner removed the code) is never valid. */
+export async function readStaffToken(
+  serviceKey: string,
+  placeId: string,
+  token: string,
+  keys: StaffKeys | null,
+  nowMs: number,
+): Promise<StaffTokenInfo | null> {
+  if (!keys) return null;
+  const nowSec = Math.floor(nowMs / 1000);
+  // Expired, or claims to outlive any token this server mints.
+  const live = (exp: number) => exp > nowSec && exp <= nowSec + STAFF_TOKEN_TTL_SEC + 60;
+  const m2 = /^s2\.(\d{10})\.(qr|code)\.([A-Za-z0-9_-]{22})\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (m2) {
+    const exp = Number(m2[1]);
+    const src = m2[2] as StaffSource;
+    if (!live(exp)) return null;
+    const ok = timingSafeEqual(m2[4], await staffMac2(serviceKey, placeId, exp, src, m2[3], signedOver(keys)));
+    return ok ? { version: 2, src, jti: m2[3], exp } : null;
+  }
+  const m1 = /^s1\.(\d{10})\.([A-Za-z0-9_-]{43})$/.exec(token);
+  if (!m1) return null;
+  const exp = Number(m1[1]);
+  if (!live(exp)) return null;
+  const ok = timingSafeEqual(m1[2], await staffMac(serviceKey, placeId, exp, signedOver(keys)));
+  return ok ? { version: 1, src: null, jti: null, exp } : null;
+}
+
+/** True only for a valid token of this place (s1 or s2, any source). */
 export async function checkStaffToken(
   serviceKey: string,
   placeId: string,
@@ -116,14 +174,14 @@ export async function checkStaffToken(
   keys: StaffKeys | null,
   nowMs: number,
 ): Promise<boolean> {
-  if (!keys) return false;
-  const m = /^s1\.(\d{10})\.([A-Za-z0-9_-]{43})$/.exec(token);
-  if (!m) return false;
-  const exp = Number(m[1]);
-  const nowSec = Math.floor(nowMs / 1000);
-  // Expired, or claims to outlive any token this server mints.
-  if (exp <= nowSec || exp > nowSec + STAFF_TOKEN_TTL_SEC + 60) return false;
-  return timingSafeEqual(m[2], await staffMac(serviceKey, placeId, exp, signedOver(keys)));
+  return (await readStaffToken(serviceKey, placeId, token, keys, nowMs)) !== null;
+}
+
+/** The hash a guest tab keeps of the phone that verified it: its device id,
+ *  never the token. */
+export async function staffDeviceHash(jti: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`staff-jti:${jti}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // ── The store: every read and write, so the rules test without a database ──
@@ -190,7 +248,7 @@ export async function staffAccess(
       return refuse(403, "staff_qr_off", STAFF_QR_OFF);
     }
     await store.staffQrUsed(input.placeId, new Date(nowMs).toISOString());
-    return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs) };
+    return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs, "qr") };
   }
 
   const typed = await hashPlaceCode(input.placeId, input.placeCode!);
@@ -198,7 +256,7 @@ export async function staffAccess(
     await store.addTry(input.placeId, "staff", args.staffKey);
     return refuse(403, "staff_only", "That place code is not right");
   }
-  return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs) };
+  return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs, "code") };
 }
 
 // ── The list ────────────────────────────────────────────────────────────────

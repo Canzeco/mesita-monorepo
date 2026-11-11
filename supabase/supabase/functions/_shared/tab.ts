@@ -181,6 +181,33 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
   };
 }
 
+/** The guest's own payment (MESITA-3707): the bill they typed and how they
+ *  pay it. Parts are checked by the SQL (they must sum to the bill). */
+export type GuestPayInput = Omit<SplitInput, "tabId" | "billVersion"> & { placeId: string; billCents: number };
+
+export function readGuestPayBody(b: Record<string, unknown>): { ok: true; input: GuestPayInput } | TabRefusal {
+  if (!isUuid(b.place_id)) return refuse(400, "bad_request", "place_id must be a Mesita place id");
+  const bill = cents(b.bill_cents, { min: 1 });
+  if (bill === null) return refuse(400, "amount_required", "Type the amount you're paying");
+  const parsed = readSplitBody({ ...b, tab_id: b.place_id, bill_version: 1 });
+  if (!parsed.ok) return parsed;
+  const { tabId: _t, billVersion: _v, ...parts } = parsed.input;
+  return { ok: true, input: { ...parts, placeId: b.place_id, billCents: bill } };
+}
+
+/** pay_tab_guest_pay raises `guest_refused:<json>` on any refusal (so the
+ *  whole call rolls back); this reads it back as the refusal it carries. */
+export function guestRefusal(message: string | undefined): Record<string, unknown> | null {
+  const m = /^guest_refused:(\{.*\})$/s.exec(message ?? "");
+  if (!m) return null;
+  try {
+    const r = JSON.parse(m[1]) as Record<string, unknown>;
+    return { ...r, ok: false };
+  } catch {
+    return { ok: false, code: "refused" };
+  }
+}
+
 // ── What the functions answer ───────────────────────────────────────────────
 
 const REFUSALS: Record<string, [number, string]> = {
@@ -211,6 +238,13 @@ const REFUSALS: Record<string, [number, string]> = {
   billed: [409, "The waiter already sent the bill"],
   waiting_bill: [409, "The waiter has not sent the bill yet"],
   amount_required: [400, "Type an amount"],
+  // MESITA-3707: guest pays, waiter verifies.
+  forbidden: [403, "This payment is for another place"],
+  verified: [409, "The waiter already verified this payment"],
+  not_paid: [409, "This payment is not paid yet"],
+  guest_tab: [409, "This payment can only be cancelled"],
+  too_many_open: [409, "Finish or cancel a payment here first."],
+  staff_qr_needed: [403, "Scan your Staff QR"],
 };
 
 /** An RPC's `{ ok: false, code }` as the function answers it. */
@@ -251,6 +285,10 @@ export type TabRow = {
   parent_tab_id?: string | null;
   split_at?: string | null;
   split_ways?: number | null;
+  /** MESITA-3707: who started the tab, and when a staff phone verified it. */
+  origin?: "waiter" | "guest";
+  verified_at?: string | null;
+  verified_key_hash?: string | null;
 };
 
 export type TabPartRow = {
@@ -268,7 +306,7 @@ export type TabPartRow = {
 };
 
 export const TAB_COLUMNS =
-  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, parent_tab_id, split_at, split_ways";
+  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
 const PART_COLUMNS = "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
@@ -458,6 +496,9 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     // own share (the app opens it).
     table: extra.table ?? null,
     my_share_tab_id: extra.myShareTabId ?? null,
+    // MESITA-3707: a guest tab ends with the waiter's Verify.
+    origin: t.origin ?? "waiter",
+    verified_at: t.verified_at ?? null,
   };
 }
 
@@ -484,6 +525,10 @@ export function staffTabView(
     test_mode: !t.livemode,
     // MESITA-3695: a split table's shares, by id (never who holds them).
     table: extra.table ?? null,
+    // MESITA-3707: a guest tab is verified, not billed; which phone did it
+    // is compared by the caller (never the hash itself).
+    origin: t.origin ?? "waiter",
+    verified_at: t.verified_at ?? null,
   };
 }
 
@@ -516,6 +561,9 @@ export async function callTabRpc(admin: Rpc, fn: string, args: Record<string, un
     // their message is the refusal code, share_too_big carries what is left.
     const m = /^(split_locked|share_too_big|table_closed|paid_part)(?::(\d+))?$/.exec(error.message ?? "");
     if (m) return { ok: false, code: m[1], ...(m[2] !== undefined ? { left_cents: Number(m[2]) } : {}) };
+    // MESITA-3707: the guest's tap raises its refusal so nothing survives it.
+    const g = guestRefusal(error.message);
+    if (g) return g;
     throw new Error(`${fn}: ${error.message}`);
   }
   const r = (data ?? null) as Record<string, unknown> | null;
