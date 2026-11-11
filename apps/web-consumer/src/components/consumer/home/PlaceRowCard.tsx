@@ -12,12 +12,13 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
+import { CardActions, cardFacts } from "@/components/consumer/place-card";
+import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import {
-  CARD_BUTTON_BOX,
-  CardActions,
-  cardFacts,
-} from "@/components/consumer/place-card";
-import { offerSlides } from "@/components/consumer/offer-button";
+  CONSUMER_ROUTES,
+  isRouteId,
+  payPlacePath,
+} from "@/lib/consumer-route-contract";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 
 /**
@@ -29,7 +30,7 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  *   │         │ │ $$ · Tacos    │
  *   │         │ │ ★ 4.7 (8.6K)  │
  *   │         │ │ ◷ Open · 3.3 km│
- *   │         │ │[ +5% Cashback ]│   only when the place has an offer
+ *   │         │ │[ +5% Cashback ]│   every offer in turn, only when it has one
  *   └─────────┘ │[♡ Save][Share]│
  *               └──────────────┘
  *
@@ -37,9 +38,10 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  * shared CardActions (a Google-only place gets Generate Profile instead), so
  * a tap on them never navigates. THE PHOTO STAYS CLEAN (Pato, MESITA-3664:
  * "remove the cashback icon from the fucking image. keep the image clean.
- * you have a lot of space at the right. fucking use it"): the place's first
- * offer is a full-width green line in the info square, just above Save ·
- * Share, and a tap on it opens the place like the rest of the facts.
+ * you have a lot of space at the right. fucking use it"): the offers are the
+ * shared rotating OfferButton in the info square, just above Save · Share,
+ * cycling every offer in its own colour (MESITA-3665); a tap goes where the
+ * offer on screen points, the place's bill or its Rewards section.
  */
 export function PlaceRowCard({
   place,
@@ -65,7 +67,7 @@ export function PlaceRowCard({
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
   const facts = cardFacts(place);
-  const offer = google ? undefined : offerSlides(place)[0];
+  const slides = google ? [] : offerSlides(place);
   // The family word on Top, the place's own kind under a family chip.
   const kind = family ?? facts.kind ?? null;
 
@@ -186,33 +188,39 @@ export function PlaceRowCard({
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}
-        {offer
-          ? open(
-              offer.pill,
-              cn(
-                CARD_BUTTON_BOX,
-                "mt-auto flex items-center justify-center px-2 text-xs font-semibold",
-                offer.tone,
-                focus,
-              ),
-              `Open ${place.name}: ${offer.spoken}`,
-            )
-          : null}
-        <CardActions
-          name={place.name}
-          saved={saved}
-          onSave={onToggle}
-          onShare={onShare}
-          onGenerate={
-            google
-              ? () => {
-                  onOpen?.();
-                  onOpenGoogle?.();
-                }
-              : undefined
-          }
-          className={offer ? undefined : "mt-auto"}
-        />
+        {/* ONE BUTTON GRID (Pato, MESITA-3665: "fix the spacing between the
+            boxes buttons, like keep an ordered grid"): the offer line and
+            Save · Share share one block pinned to the square's bottom, 8px
+            apart both ways, the gap Save and Share already keep. */}
+        <div className="mt-auto flex flex-col gap-2">
+          {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
+              buttons offers moving and switching across all the offers with
+              different colors"): the shared OfferButton, each offer in its
+              own colour on the shared beat, short words for this box. */}
+          <OfferButton
+            href={placeHref(place.slug || place.id)}
+            payHref={
+              isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay
+            }
+            name={place.name}
+            slides={slides}
+            compact
+          />
+          <CardActions
+            name={place.name}
+            saved={saved}
+            onSave={onToggle}
+            onShare={onShare}
+            onGenerate={
+              google
+                ? () => {
+                    onOpen?.();
+                    onOpenGoogle?.();
+                  }
+                : undefined
+            }
+          />
+        </div>
       </div>
     </li>
   );
