@@ -222,7 +222,9 @@ export function GuestTabView({
         {!closed ? <LiveClock className={cn("text-center", green ? "text-white" : "")} /> : null}
         {tab.cashback_cents > 0 ? (
           <p className={cn("mt-2 text-center text-base font-semibold", green ? "text-white" : "text-green-700")}>
-            You get {m(tab.cashback_cents)} back here
+            {green
+              ? `${m(tab.cashback_cents)} in credits added · spend them here next time`
+              : `You get ${m(tab.cashback_cents)} in credits to spend here${cash > 0 ? ", once the waiter verifies" : ""}`}
           </p>
         ) : null}
       </div>

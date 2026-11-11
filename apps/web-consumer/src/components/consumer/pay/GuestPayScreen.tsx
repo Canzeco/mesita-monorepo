@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Banknote, CreditCard, Plus, Wallet } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -73,6 +74,7 @@ export function GuestPayScreen({
   const [tipMethod, setTipMethod] = useState<PayWith>("cash");
   const [cards, setCards] = useState<SavedCard[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addingCard, setAddingCard] = useState(false);
   // A refusal belongs to the payment it refused: it shows only until the
   // guest changes something (no setState in an effect for that).
   const [failure, setFailure] = useState<{ msg: string; sig: string } | null>(null);
@@ -138,7 +140,7 @@ export function GuestPayScreen({
     if (split.card_tip_alone) return TAB_REFUSAL.card_tip_alone;
     return null;
   })();
-  const canPay = !!place && billCents > 0 && !problem && !busy;
+  const canPay = !!place && billCents > 0 && !problem && !busy && !addingCard;
 
   // Any change to the payment: a new tap (new request id), saved as a draft
   // so "Add a card" comes back with the amounts kept.
@@ -150,15 +152,16 @@ export function GuestPayScreen({
     writeDraft(placeId, { amount, tip, other, useCredit, method, cardId });
   }, [placeId, amount, tip, other, useCredit, method, cardId, tipMethod]);
 
+  // Opening the card page is not paying: its own state, so Pay never reads "Paying…" (MESITA-3714).
   async function addCard() {
-    setBusy(true);
+    setAddingCard(true);
     try {
       const back = `${window.location.origin}/pay/${placeId}?${CARD_RETURN_PARAM}=1`;
       const { url } = await apiAddCard(getSupabase(), back);
       window.location.assign(url);
     } catch {
       setError(NETWORK_FAILURE);
-      setBusy(false);
+      setAddingCard(false);
     }
   }
 
@@ -290,8 +293,8 @@ export function GuestPayScreen({
 
       <p className="mt-5 text-base font-semibold">Pay with</p>
       {spendable > 0 ? (
-        <label className="border-border bg-card mt-2 flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3">
-          <span className="text-base">Use my {m(spendable)} credit here</span>
+        <label className="border-border bg-card mt-2 flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
+          <MethodLabel icon={<Wallet />}>Use my {m(spendable)} credit here</MethodLabel>
           <input type="checkbox" className="h-5 w-5" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
         </label>
       ) : null}
@@ -300,11 +303,11 @@ export function GuestPayScreen({
         <div className="mt-2 flex flex-col gap-2" role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
           {cardOk
             ? (cards ?? []).map((c) => (
-                <label key={c.id} className="border-border bg-card flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3">
-                  <span className="text-base">
+                <label key={c.id} className="border-border bg-card flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
+                  <MethodLabel icon={<CreditCard />}>
                     {brandLabel(c.brand)} •••• {c.last4}
                     {place.cashback_bps > 0 ? <span className="text-muted-foreground"> · {place.cashback_bps / 100}% back</span> : null}
-                  </span>
+                  </MethodLabel>
                   <input
                     type="radio"
                     name="guest-method"
@@ -319,16 +322,21 @@ export function GuestPayScreen({
               ))
             : null}
           {cardOk && cards !== null && cards.length === 0 ? (
-            <button type="button" className={QUIET_BUTTON_CLASS} disabled={busy} onClick={() => void addCard()}>
-              Add a card
+            <button
+              type="button"
+              className="border-border bg-card flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left disabled:opacity-60"
+              disabled={busy || addingCard}
+              onClick={() => void addCard()}
+            >
+              <MethodLabel icon={<Plus />}>{addingCard ? "Opening…" : "Add a card"}</MethodLabel>
             </button>
           ) : null}
           {cashOk ? (
-            <label className="border-border bg-card flex min-h-12 items-center justify-between gap-3 rounded-xl border px-3">
-              <span className="text-base">
+            <label className="border-border bg-card flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
+              <MethodLabel icon={<Banknote />}>
                 Cash to the waiter
                 {(place.outside_bps ?? 0) > 0 ? <span className="text-muted-foreground"> · {(place.outside_bps ?? 0) / 100}% back</span> : null}
-              </span>
+              </MethodLabel>
               <input type="radio" name="guest-method" className="h-5 w-5" checked={restWith === "cash"} onChange={() => setMethod("cash")} />
             </label>
           ) : null}
@@ -355,7 +363,7 @@ export function GuestPayScreen({
           {cashParts > 0 ? <Row label="Cash to the waiter" value={m(cashParts)} /> : null}
           {split.cashback_cents > 0 ? (
             <p className="mt-1 font-semibold text-green-700" data-guest-cashback>
-              You get {m(split.cashback_cents)} back here
+              You get {m(split.cashback_cents)} in credits to spend here next time
             </p>
           ) : null}
         </dl>
@@ -401,5 +409,17 @@ function Row({ label, value }: { label: string; value: string }) {
       <dt className="text-muted-foreground">{label}</dt>
       <dd>{value}</dd>
     </div>
+  );
+}
+
+/** One way to pay: a grey ink icon chip, then its words (MESITA-3714). */
+function MethodLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <span className="bg-muted text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-lg [&>svg]:h-5 [&>svg]:w-5" aria-hidden>
+        {icon}
+      </span>
+      <span className="text-base">{children}</span>
+    </span>
   );
 }
