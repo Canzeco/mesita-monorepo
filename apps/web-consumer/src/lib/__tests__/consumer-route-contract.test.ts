@@ -570,10 +570,14 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/profile", destination: "/me/profile", permanent: true },
-      { source: "/notifications", destination: "/activity", permanent: true },
+      {
+        source: "/notifications",
+        destination: "/activity?type=notifications",
+        permanent: true,
+      },
       {
         source: "/me/notifications",
-        destination: "/activity",
+        destination: "/activity?type=notifications",
         permanent: true,
       },
       // /inbox is the Activity tab again (MESITA-3688; Me since MESITA-1626).

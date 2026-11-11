@@ -219,12 +219,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/profile", destination: "/me/profile", permanent: true },
   {
     source: "/notifications",
-    destination: "/activity",
+    destination: activityHref("notifications"),
     permanent: true,
   },
   {
     source: "/me/notifications",
-    destination: "/activity",
+    destination: activityHref("notifications"),
     permanent: true,
   },
   // /inbox was Activity's first address (MESITA-1626 sent it to Me); it is

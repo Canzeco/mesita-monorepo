@@ -9,7 +9,7 @@ import { IdentityBarSkeleton } from "../me-skeletons";
 //
 //   the app bar          IdentityBar's band and its skeleton card, the same
 //                        one the page draws while its profile read is out
-//   3 · 3 · 3 · 3        the twelve grid cells, Settings last (MESITA-3465)
+//   3 · 3 · 3 · 3 · 1      the thirteen grid cells, Settings last (MESITA-3716)
 //
 // The cells, their shapes, the scroller and the words are hub-tiles.tsx's,
 // the page's own source, so the page lands without a jump. Only the strings
