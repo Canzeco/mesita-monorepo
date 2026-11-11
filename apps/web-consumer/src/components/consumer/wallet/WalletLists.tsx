@@ -3,16 +3,16 @@
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { SizedImg } from "@mesita/place-profile";
-import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
-import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
-import { type WalletCardModel, walletCardLabel, walletCardLine } from "./WalletCard";
 
+// The lists' parts. Since MESITA-3736 the Credits Cards are CreditsCard
+// (a band, transactions, Fund | Gift); these draw Money Payment Methods and
+// the waiting Story rows.
+//
 // THE WALLET REDESIGN (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"): Credits first, then Ways to pay (WalletSection). Each list's
 // Add is a quiet button on its heading (HeadingButton), never a dashed first
@@ -117,17 +117,6 @@ function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
 
 const Chevron = () => <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />;
 
-/** No Credits Card yet (MESITA-3727): one quiet prompt, no chip. Most
- *  guests see this first, so it explains what a Credits Card is. */
-export function EmptyCreditsRow({ href }: { href: string }) {
-  return (
-    <Link href={href} className={ROW} data-wallet-empty-credits>
-      <RowText title="Find a place and add its card" line="A Credits Card holds credit you buy at one place" />
-      <Chevron />
-    </Link>
-  );
-}
-
 /** Cash: nothing to open (MESITA-3584's green with the black $ coin). */
 export function CashRow() {
   return (
@@ -180,45 +169,6 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
   );
 }
 
-/** A place's House Card: the black chip with the place's photo, the name,
- *  the server's amount. Its tap is the model's (the House Card page), where
- *  Fund and Gift live (MESITA-3731). */
-export function CreditRow({ card, eager = false }: { card: WalletCardModel; eager?: boolean }) {
-  const amount = cardAmount(card);
-  const face = (
-    <>
-      <span className={cn(CHIP, "bg-neutral-950")} aria-hidden>
-        <span className="h-5 w-5 overflow-hidden rounded-full bg-white/10 ring-1 ring-white">
-          {card.photo ? (
-            <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
-          ) : (
-            <span className="type-meta flex h-full w-full items-center justify-center font-semibold text-white">
-              {firstInitial(card.name)}
-            </span>
-          )}
-        </span>
-      </span>
-      <RowText title={card.name} line={walletCardLine(card)} />
-      <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
-        {money(amount.cents, card.currency)}
-      </span>
-      {card.tap.kind === "link" ? <Chevron /> : null}
-    </>
-  );
-  const label = walletCardLabel(card);
-  const row =
-    card.tap.kind === "link" ? (
-      <Link href={card.tap.href} aria-label={label} className={ROW}>
-        {face}
-      </Link>
-    ) : (
-      <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent")}>
-        {face}
-      </div>
-    );
-  return row;
-}
-
 /** Loading rows inside a list: the chip and two lines. */
 export function RowsSkeleton({ count = 2 }: { count?: number }) {
   return (
@@ -233,19 +183,5 @@ export function RowsSkeleton({ count = 2 }: { count?: number }) {
         </div>
       ))}
     </>
-  );
-}
-
-/** A Credits Card loading: its row. Pay's loading frame draws the same. */
-export function CreditRowSkeleton() {
-  return (
-    <div className={ROW} aria-hidden>
-      <Skeleton className={CHIP} />
-      <span className="flex-1">
-        <Skeleton className="h-4 w-36" />
-        <Skeleton className="mt-1.5 h-3 w-24" />
-      </span>
-      <Skeleton className="h-5 w-16" />
-    </div>
   );
 }
