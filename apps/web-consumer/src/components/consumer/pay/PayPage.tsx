@@ -24,7 +24,7 @@ import { PayHeader } from "./PayHeader";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
-// at now, nearest first: "Pay at a place", a search bar always shown (Pato,
+// at now, nearest first: a search bar always shown (Pato,
 // MESITA-3725: "searchbar must always be visible"; MESITA-3719 had hidden it
 // behind a magnifier up to six places), and rows of
 // profile photo, name, address and distance, led by the guest's open bill.
@@ -34,7 +34,7 @@ import { PayHeader } from "./PayHeader";
 //
 // PAY | WALLET (Pato, 2026-11-11, MESITA-3729: "divide into Pay and Wallet.
 // no header"): this page is the Pay half of the switch at the top (PayHeader),
-// then the payment in progress and "Pay at a place" (the nearest
+// then the payment in progress and the places (the nearest
 // PLACES_SHOWN, then "Show all"). Wallet (/wallet) is the other half; a
 // Wallet button on a "Pay" header opened it in MESITA-3726, a bar tab in
 // MESITA-3722. MESITA-3720 had drawn the Wallet under
@@ -272,8 +272,9 @@ function PlaceList({
         />
       ) : (
         <>
-          <h2 className="px-1 text-base font-semibold">Pay at a place</h2>
-          {/* SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
+          {/* No "Pay at a place" heading (Pato, MESITA-3735: "remove the pay
+              at a place subtitle"): the Pay | Wallet switch names the page.
+              SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
               searchbar. this one must not support locations"): the app's one
               search bar (SearchBar), alone: no locate disc, no Ask AI. White
               on Pay's grey page, where the band's grey fill would vanish;
@@ -281,7 +282,7 @@ function PlaceList({
               only, never the catalog: places that take Mesita Payments
               (card_ok), cash with a place code (outside_ok), or where the
               guest holds Credits (pay-places.ts). */}
-          <div data-pay-search className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
+          <div data-pay-search className="bg-card focus-within:border-foreground flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
             <SearchBar
               query={query}
               showClear={query.length > 0}

@@ -12,7 +12,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     return (
       <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="pay" />
-        <Skeleton className="mt-5 h-6 w-40 rounded-md" />
+        <Skeleton className="mt-5 h-10 w-full rounded-full" />
         <Skeleton className="mt-3 h-56 w-full rounded-2xl" />
       </div>
     );
