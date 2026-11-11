@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import {
@@ -24,7 +24,11 @@ import { EmptyState } from "@/components/shared";
 import { Compass } from "lucide-react";
 import { RailSkeleton } from "./DiscoverFallback";
 import { PlaceRailCard } from "./PlaceRailCard";
-import { RAIL_TITLE, RAIL_TRACK } from "./place-grid-classes";
+import { GRID_CHIPS, RAIL_TITLE, RAIL_TRACK } from "./place-grid-classes";
+import { cn } from "@/lib/utils";
+
+/** A carousel's anchor on the page, for the family bar's jumps. */
+const railId = (key: string) => `rail-${key}`;
 
 /** One carousel's family: Top (`all`, no family) or one family key. */
 export type RailSpec = { key: string; label: string; emoji: string };
@@ -66,10 +70,113 @@ export function PlaceRails({
   /** "See all": open Places 3.0 on that family. */
   onSeeAll: (key: string) => void;
 }) {
+  // THE FAMILY BAR (Pato, MESITA-3673: "show the family horizontal
+  // carousel, and as i vertically scroll to the bottom, you need to
+  // horizontally scroll the family and change the selected family, like
+  // those cool section horizontal header menus … in the landing pages"):
+  // the pills pinned at the top of the pane; the carousel under the bar
+  // lights its pill and the row slides to keep it centred; a tap scrolls
+  // to that carousel. A hidden carousel drops its pill.
+  const root = useRef<HTMLDivElement | null>(null);
+  const bar = useRef<HTMLElement | null>(null);
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const [active, setActive] = useState(rails[0]?.key ?? allKey);
+  const shown = rails.filter((r) => !hidden.has(r.key));
+  const hide = useCallback(
+    (key: string) => setHidden((h) => (h.has(key) ? h : new Set(h).add(key))),
+    [],
+  );
+  const scroller = () =>
+    root.current?.closest<HTMLElement>("[data-home-scroller]") ?? null;
+
+  // Scroll-spy: the last carousel whose top has passed under the bar.
+  useEffect(() => {
+    const pane = scroller();
+    if (!pane) return;
+    let frame = 0;
+    const spy = () => {
+      frame = 0;
+      const line =
+        pane.getBoundingClientRect().top + (bar.current?.offsetHeight ?? 0) + 8;
+      let current = shown[0]?.key;
+      for (const r of shown) {
+        const el = document.getElementById(railId(r.key));
+        if (el && el.getBoundingClientRect().top <= line) current = r.key;
+      }
+      if (current) setActive(current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(spy);
+    };
+    pane.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      pane.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown.map((r) => r.key).join(",")]);
+
+  // Keep the lit pill centred in the bar.
+  useEffect(() => {
+    const row = bar.current;
+    const pill = row?.querySelector<HTMLElement>(
+      `[data-rail-pill="${active}"]`,
+    );
+    if (!row || !pill) return;
+    row.scrollTo({
+      left: pill.offsetLeft - (row.clientWidth - pill.offsetWidth) / 2,
+      behavior: "smooth",
+    });
+  }, [active]);
+
+  const jump = (key: string) => {
+    const pane = scroller();
+    const el = document.getElementById(railId(key));
+    if (!pane || !el) return;
+    const top =
+      el.getBoundingClientRect().top -
+      pane.getBoundingClientRect().top +
+      pane.scrollTop -
+      (bar.current?.offsetHeight ?? 0);
+    pane.scrollTo({ top, behavior: "smooth" });
+    setActive(key);
+  };
+
   return (
-    <div className="pb-6" data-places-rails>
+    <div ref={root} className="pb-6" data-places-rails>
+      <nav
+        ref={bar}
+        aria-label="Families"
+        className={cn("bg-card sticky top-0 z-10", GRID_CHIPS)}
+        data-rails-bar
+      >
+        {shown.map((r) => {
+          const on = r.key === active;
+          return (
+            <button
+              key={r.key}
+              type="button"
+              onClick={() => jump(r.key)}
+              aria-current={on ? "true" : undefined}
+              className={cn(
+                "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+                on
+                  ? "bg-foreground text-card font-semibold"
+                  : "bg-border/60 text-foreground hover:bg-border",
+              )}
+              data-rail-pill={r.key}
+            >
+              <span aria-hidden className="mr-1">
+                {r.emoji}
+              </span>
+              {r.label}
+            </button>
+          );
+        })}
+      </nav>
       {rails.map((rail, i) => (
         <Rail
+          onHidden={hide}
           key={rail.key}
           rail={rail}
           top={rail.key === allKey}
@@ -98,7 +205,9 @@ function Rail({
   onOpenCard,
   onOpenGoogle,
   onSeeAll,
+  onHidden,
 }: {
+  onHidden: (key: string) => void;
   rail: RailSpec;
   top: boolean;
   families: string[];
@@ -183,7 +292,12 @@ function Rail({
       )
     : [];
 
-  // A family with nothing near, or one that failed, hides; Top says so.
+  // A family with nothing near, or one that failed, hides (and its pill
+  // with it); Top says so.
+  const gone = !top && ((pool !== null && places.length === 0) || failed);
+  useEffect(() => {
+    if (gone) onHidden(rail.key);
+  }, [gone, onHidden, rail.key]);
   if ((pool && places.length === 0) || failed) {
     if (!top) return null;
     return (
@@ -200,7 +314,12 @@ function Rail({
   }
 
   return (
-    <section ref={box} aria-label={rail.label} data-rail={rail.key}>
+    <section
+      ref={box}
+      id={railId(rail.key)}
+      aria-label={rail.label}
+      data-rail={rail.key}
+    >
       {pool === null ? (
         <RailSkeleton title={title} />
       ) : (
