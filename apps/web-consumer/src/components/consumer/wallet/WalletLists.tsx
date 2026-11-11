@@ -3,16 +3,15 @@
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight, Plus } from "lucide-react";
-import { SizedImg } from "@mesita/place-profile";
-import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
-import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
-import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
-import { type WalletCardModel, walletCardLabel, walletCardLine } from "./WalletCard";
 
+// Since MESITA-3721 the page draws one list, Money Payment Methods, with Add
+// last; a place's credits sit on its row in Pay's list (PayPage), which also
+// reuses StoryRow and AddRow.
+//
 // TWO LISTS, NOT TWO RAILS (Pato, 2026-11-11, MESITA-3701: "try making the
 // payment methods as lists instead of horizontal scrolls"). Money Payment
 // Methods and Credits Payment Methods are each one white card of rows, Add
@@ -139,56 +138,5 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
       <RowText title={name} line="Story voucher · show the QR" />
       <span className="shrink-0 text-base font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
     </button>
-  );
-}
-
-/** A place's House Card: the black chip with the place's photo, the name,
- *  the server's amount. Its tap is the model's (the House Card page). */
-export function CreditRow({ card, eager = false }: { card: WalletCardModel; eager?: boolean }) {
-  const amount = cardAmount(card);
-  const face = (
-    <>
-      <span className={cn(CHIP, "bg-neutral-950")} aria-hidden>
-        <span className="h-5 w-5 overflow-hidden rounded-full bg-white/10 ring-1 ring-white">
-          {card.photo ? (
-            <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
-          ) : (
-            <span className="type-meta flex h-full w-full items-center justify-center font-semibold text-white">
-              {firstInitial(card.name)}
-            </span>
-          )}
-        </span>
-      </span>
-      <RowText title={card.name} line={walletCardLine(card)} />
-      <span className="shrink-0 text-base font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
-      {card.tap.kind === "link" ? <Chevron /> : null}
-    </>
-  );
-  const label = walletCardLabel(card);
-  return card.tap.kind === "link" ? (
-    <Link href={card.tap.href} aria-label={label} className={ROW}>
-      {face}
-    </Link>
-  ) : (
-    <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent")}>
-      {face}
-    </div>
-  );
-}
-
-/** Loading rows inside a list: the chip and two lines. */
-export function RowsSkeleton({ count = 2 }: { count?: number }) {
-  return (
-    <>
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className={ROW} aria-hidden>
-          <Skeleton className={CHIP} />
-          <span className="flex-1">
-            <Skeleton className="h-4 w-36" />
-            <Skeleton className="mt-1.5 h-3 w-24" />
-          </span>
-        </div>
-      ))}
-    </>
   );
 }
