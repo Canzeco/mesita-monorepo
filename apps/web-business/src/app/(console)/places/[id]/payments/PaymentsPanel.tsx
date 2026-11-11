@@ -14,7 +14,11 @@
 //   Cash Payments · (the Waiter code sits last, MESITA-3625; moved from Settings, MESITA-3600), Cash
 //     Payments, then its Cashback-as-Credits (Off or 2%);
 //   Mesita Payments · Mesita Payments, then its Cashback-as-Credits (Off or 5%);
-//   Mesita Prepayments · Mesita Prepayments, then one row per voucher.
+//   Mesita Prepayments · Mesita Prepayments, then one row per voucher;
+//   Credits Payments · one row, Always on (MESITA-3703, Pato: "Add field
+//     call it Credits Payments to maintain symmetry"): guests pay with the
+//     credit they hold here. No switch: a guest's credit is the place's
+//     debt, always honoured; House Credits Off stops new credit only.
 // A switch that can't turn on is disabled and its row says the one missing
 // step, with a link to it. Never "Mesita Pay" (Pato, 2026-11-10).
 // The House Credits Agreement is independent of Stripe (Pato, 2026-11-09):
@@ -37,6 +41,7 @@ import {
   SignatureIcon,
   StripeLogoIcon,
   TicketIcon,
+  WalletIcon,
 } from "@phosphor-icons/react/dist/ssr";
 import { Card } from "@/components/shell/Page";
 import { Switch } from "@/components/ui/config";
@@ -522,6 +527,20 @@ export function PaymentsPanel({
               : null,
           })}
           {[...STANDARD, ...SPECIAL].map(voucherRow)}
+        </ul>
+      </Card>
+      <Card className={SECTION}>
+        <h2 className={HEAD}>Credits Payments</h2>
+        <ul className="divide-border divide-y">
+          <li id="credits-payments" className={MARK_ROW} data-place-state="credits_payments">
+            {mark(WalletIcon, true, "bg-emerald-100 text-emerald-700")}
+            <div className="min-w-0">
+              <p className="font-medium">Credits Payments</p>
+              <p className="text-muted-foreground">Guests pay the bill with the credit they hold here. It is your debt, always honoured.</p>
+            </div>
+            <p className="font-semibold whitespace-nowrap">Always on</p>
+            <span />
+          </li>
         </ul>
       </Card>
       {agreeing ? (
