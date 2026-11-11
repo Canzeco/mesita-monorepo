@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { TEST_BAND_TEXT, TestBand } from "@mesita/place-profile";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { payChecklist } from "@mesita/place-profile/lib/pay-checklist";
 import { Button } from "@/components/ui/button";
@@ -169,9 +168,7 @@ export function GuestTabView({
 
   return (
     <div className="flex flex-col" data-guest-tab={verified ? "verified" : green ? "paid" : closed ? "closed" : "waiting"}>
-      {tab.test_mode && !green ? <TestBand className="mb-3" /> : null}
       <div className={cn("rounded-3xl px-4 py-5", surface)}>
-        {tab.test_mode && green ? <p className="mb-3 w-fit rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">{TEST_BAND_TEXT}</p> : null}
         <p className={cn("text-base font-semibold", green ? "text-white" : "")}>{tab.place.name ?? "A Mesita place"}</p>
         <div className="mt-1 flex items-center gap-2">
           {green ? <CheckCircle2 className="h-7 w-7 shrink-0" aria-hidden /> : null}

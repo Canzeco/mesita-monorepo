@@ -5,7 +5,6 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banknote, ChevronRight, CreditCard, MapPin, QrCode, Wallet } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
-import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -228,7 +227,6 @@ function PlaceList({
   onNotNow: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const testMode = places.some((p) => p.test_mode);
   const q = fold(query.trim());
   const [showAll, setShowAll] = useState(false);
   const matches = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
@@ -238,7 +236,6 @@ function PlaceList({
   const hidden = matches.length - shown.length;
   return (
     <div className="flex flex-col">
-      {testMode ? <TestBand className="mb-3" /> : null}
 
       {openTabs.map((t) => (
         <InProgressCard key={t.tab_id} tab={t} place={places.find((p) => p.place_id === t.place.id) ?? null} onOpen={() => onOpenTab(t.tab_id)} />

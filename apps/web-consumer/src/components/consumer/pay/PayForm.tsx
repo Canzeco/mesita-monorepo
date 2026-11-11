@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ArrowLeft, CreditCard, Wallet as WalletIcon, X } from "lucide-react";
-import { cashbackFor, paySplit, TestBand } from "@mesita/place-profile";
+import { cashbackFor, paySplit } from "@mesita/place-profile";
 import { amountText, readAmount } from "@mesita/place-profile/lib/money";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
@@ -355,7 +355,6 @@ function PayForm({
       </div>
 
       <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-4 pb-4">
-        {place.test_mode ? <TestBand className="mb-3" /> : null}
         <div className="flex items-center gap-3">
           <PlacePhoto place={place} className="h-11 w-11" />
           <span className="min-w-0">

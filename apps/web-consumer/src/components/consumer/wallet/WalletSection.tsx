@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
-import { TestBand } from "@mesita/place-profile";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, apiListCards, apiRemoveCard, CARD_REFUSAL, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
@@ -36,7 +35,7 @@ import {
 // THE WALLET, REDESIGNED (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"; render https://claude.ai/artifact/TyeAaA54EWHfyBdPZpD4wf):
 //
-//   TestBand (test mode) · "Confirming a payment…" (settling)
+//   "Confirming a payment…" (settling; the TEST band left in MESITA-3732)
 //   Credits ................................. [Add] (only once there are cards)
 //     waiting Story rows, then each Credits Card with its Fund | Gift footer
 //   Ways to pay ......................... [Add card]
@@ -95,7 +94,7 @@ function cardRefusal(err: unknown): string {
 /** Photos of the first cards load eagerly; the rest lazily. */
 const EAGER_CARDS = 3;
 
-export function WalletSection({ giftToken = null, testBand = true }: { giftToken?: string | null; testBand?: boolean }) {
+export function WalletSection({ giftToken = null }: { giftToken?: string | null }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet();
@@ -182,7 +181,6 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
 
   return (
     <div className="flex flex-col" data-wallet>
-      {testBand && wallet?.test_mode ? <TestBand className="mt-5" /> : null}
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-5 text-sm" role="status">
           Confirming a payment…
