@@ -1,16 +1,11 @@
 "use client";
 
-import type { ReactElement, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  Banknote,
-  Clock,
-  Navigation,
-  Star,
-  UtensilsCrossed,
-} from "lucide-react";
+import { Banknote, Clock, Navigation, Star } from "lucide-react";
 import { toAmPm } from "@mesita/place-profile/lib/place-time";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
+import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -82,6 +77,10 @@ export function PlaceRowCard({
   // none.
   const kind = facts.kind ?? family ?? null;
   const overview = enrichPlaceOverview(place);
+  const familyKey = place.area?.familyKeys?.[0] ?? place.family_keys?.[0];
+  const familyEmoji = FILTERABLE_PLACE_FAMILIES.find(
+    (f) => f.key === familyKey,
+  )?.emoji;
   // The numeric range ("$200–300MX") when the place has one, else $$.
   const price =
     overview.price_range?.replace(/\s*per person$/i, "") || facts.price;
@@ -92,7 +91,13 @@ export function PlaceRowCard({
       ? null
       : `${facts.open ? "Open" : "Closed"}${untilAt ? ` until ${toAmPm(untilAt)}` : ""}`;
   const icon = "h-3.5 w-3.5 shrink-0";
-  const rows = [
+  type FactRow = {
+    key: string;
+    icon: ReactNode;
+    text: string;
+    className?: string;
+  };
+  const candidates: (FactRow | false | null | undefined | "")[] = [
     price && {
       key: "price",
       icon: <Banknote className={cn(icon, "text-fact-price")} aria-hidden />,
@@ -101,12 +106,14 @@ export function PlaceRowCard({
     },
     kind && {
       key: "kind",
-      icon: (
-        <UtensilsCrossed
-          className={cn(icon, "text-muted-foreground")}
-          aria-hidden
-        />
-      ),
+      // THE FAMILY'S EMOJI, NOT A LINE ICON (Pato, MESITA-3667: "don't add
+      // the fucking icon to the category. just add the emoji to the
+      // family"): 🌮 Taco Restaurant; no family, no mark.
+      icon: familyEmoji ? (
+        <span aria-hidden className="w-3.5 shrink-0 text-center leading-none">
+          {familyEmoji}
+        </span>
+      ) : null,
       text: kind,
     },
     facts.rating && {
@@ -143,16 +150,8 @@ export function PlaceRowCard({
       ),
       text: facts.distance,
     },
-  ].filter(
-    (
-      r,
-    ): r is {
-      key: string;
-      icon: ReactElement;
-      text: string;
-      className?: string;
-    } => Boolean(r),
-  );
+  ];
+  const rows = candidates.filter((r): r is FactRow => Boolean(r));
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
