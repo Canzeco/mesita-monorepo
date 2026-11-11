@@ -20,8 +20,6 @@ export type OfferSlide = {
   /** The words before the ink pill. */
   lead: string;
   pill: string;
-  /** The short word before the pill on a narrow card (MESITA-3671). */
-  short: string;
   /** Read aloud in the button's label. */
   spoken: string;
   section: "payment" | "prepayment" | "special";
@@ -38,23 +36,22 @@ export type OfferSlide = {
 // and pink for insta and yellow for vip"): the Offers page's voucher colours.
 const GREEN = "bg-green-400 text-neutral-950";
 
-// SHORT WORDS (Pato, MESITA-3671, cashback reworded in MESITA-3678: "Mesita
-// Pay (5% Back), Cash Pay (2% Back),
-// $200MX (+10%), $1000MX (+20%), $5000MX (+30%), Welcome (+30%), Story
-// (+30%), VIP (+30%)"), in his order; the long words are Places 1.0's.
+// In Pato's order (MESITA-3671): payment, cash, $200, $1000, $5000, Welcome,
+// Story, VIP. The short words that came with it left with Places 3.0 and 4.0
+// (MESITA-3684).
 const OFFER_SLIDES: OfferSlide[] = [
   // The pill is filled in from the place's own rate (offerSlides).
-  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", short: "Mesita Pay", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
+  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
   // Cash at the table (MESITA-3671): shown once the catalog answer carries
   // the place's cash rate, `cash_cashback_bps`.
-  { key: "cash", lead: "Cash", pill: "Cashback", short: "Cash Pay", spoken: "Cash cashback", section: "payment", tone: GREEN },
+  { key: "cash", lead: "Cash", pill: "Cashback", spoken: "Cash cashback", section: "payment", tone: GREEN },
   // "$X Prepay", never "Prepay $X"; "Mesita Payments +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
-  { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", short: "$200MX", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
-  { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", short: "$1000MX", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
-  { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", short: "$5000MX", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
-  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", short: "Welcome", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
-  { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
-  { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", short: "VIP", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
+  { key: "voucher_200", lead: "$200MX Prepay", pill: "+10% Bonus", spoken: "$200MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
+  { key: "voucher_1000", lead: "$1,000MX Prepay", pill: "+20% Bonus", spoken: "$1,000MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
+  { key: "voucher_5000", lead: "$5,000MX Prepay", pill: "+30% Bonus", spoken: "$5,000MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
+  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
+  { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
+  { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
 ];
 
 /** The place's slides, in the fixed order; none = no button. */
@@ -94,32 +91,15 @@ function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number 
   return { index, previous: beat === firstBeat ? null : (beat - 1 + n) % n };
 }
 
-/** A slide's SHORT words (Pato, MESITA-3671): its short word, then the
- *  black pill: the cashback rate as is ("Pay [+5% Cashback]"), a voucher's
- *  bonus alone ("$200MX [+10%]"). The long ones are the slide's own lead and
- *  pill, "Mesita Payments [+5% Cashback]", Places 1.0's. */
-function shortWords(slide: OfferSlide): { lead: string; pill: string } {
-  if (slide.bonus) return { lead: slide.short, pill: `+${slide.bonus}%` };
-  // Cashback reads "Mesita Pay [5% Back]", "Cash Pay [2% Back]" (Pato,
-  // MESITA-3678: "better the short form of cashback"): the rate from the
-  // long pill, no plus sign.
-  const rate = slide.pill.match(/[\d.]+%/)?.[0];
-  return { lead: slide.short, pill: rate ? `${rate} Back` : slide.pill };
-}
-
 const OFFER_PILL =
   "bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
 
-/** The words on the box: the long ones (Places 1.0, Search) or, with
- *  `short`, the short ones (Places 3.0 and 4.0, MESITA-3671). It was chosen
- *  by the box's width (MESITA-3668) until Places 4.0's wide card picked the
- *  long words. */
-function OfferWords({ slide, short = false, className }: { slide: OfferSlide; short?: boolean; className?: string }) {
-  const words = short ? shortWords(slide) : slide;
+/** The words on the box: the slide's lead, then the ink pill. */
+function OfferWords({ slide, className }: { slide: OfferSlide; className?: string }) {
   return (
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
-      <span className="truncate">{words.lead}</span>
-      <span className={OFFER_PILL}>{words.pill}</span>
+      <span className="truncate">{slide.lead}</span>
+      <span className={OFFER_PILL}>{slide.pill}</span>
     </span>
   );
 }
@@ -127,11 +107,11 @@ function OfferWords({ slide, short = false, className }: { slide: OfferSlide; sh
 /** The moving words inside the still green box, hidden from screen readers
  *  (the box's label lists every offer once). Keyed by slide so each change
  *  replays the slide-up. */
-function OfferTrack({ slides, index, previous, short }: { slides: OfferSlide[]; index: number; previous: number | null; short?: boolean }) {
+function OfferTrack({ slides, index, previous }: { slides: OfferSlide[]; index: number; previous: number | null }) {
   return (
     <span className="relative block h-full w-full overflow-hidden" aria-hidden>
-      {previous !== null ? <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} short={short} className="offer-out" /> : null}
-      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} short={short} className={previous !== null ? "offer-in" : undefined} />
+      {previous !== null ? <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} className="offer-out" /> : null}
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} className={previous !== null ? "offer-in" : undefined} />
     </span>
   );
 }
@@ -149,7 +129,6 @@ export function OfferButton({
   payHref,
   name,
   slides,
-  short = false,
   className,
 }: {
   href: string;
@@ -157,8 +136,6 @@ export function OfferButton({
   payHref: string;
   name: string;
   slides: OfferSlide[];
-  /** The short words: Places 3.0 and 4.0 (MESITA-3671). */
-  short?: boolean;
   className?: string;
 }) {
   const live = useOfferSlide(slides);
@@ -186,7 +163,7 @@ export function OfferButton({
       )}
       data-tile-bonus
     >
-      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} short={short} />
+      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
     </PushLink>
   );
 }

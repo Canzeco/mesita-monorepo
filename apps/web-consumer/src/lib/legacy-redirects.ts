@@ -103,6 +103,11 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/home/chat", destination: "/home/places", permanent: true },
   { source: "/home/ai", destination: "/home/places", permanent: true },
   { source: "/home/favorites", destination: "/home/places", permanent: true },
+  // The trial Places tabs (MESITA-3658…3680), retired when 1.0 became
+  // Places again (MESITA-3684).
+  { source: "/home/classic", destination: "/home/places", permanent: true },
+  { source: "/home/grid", destination: "/home/places", permanent: true },
+  { source: "/home/rails", destination: "/home/places", permanent: true },
   // Search's two addresses under /discover (MESITA-1609 → MESITA-1616),
   // straight to the canonical /search. T7 pins both.
   { source: "/discover/search", destination: "/search", permanent: true },

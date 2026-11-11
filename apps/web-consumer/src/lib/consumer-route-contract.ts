@@ -31,14 +31,6 @@ export const CONSUMER_ROUTES = {
   // its `discovery_config.swipe` slice retired together. The stored key was
   // dropped by the normalizers, never renamed.
   home: "/home/places",
-  // The list Places was until the grid took its address (MESITA-3658, Pato:
-  // "leave the previous one working"): the family column beside big tiles.
-  homeClassic: "/home/classic",
-  // The photo grid, Places 2.0 (MESITA-3658), moved here when Places 3.0
-  // took /home/places (MESITA-3662).
-  homeGrid: "/home/grid",
-  // Places 4.0, one carousel per family (MESITA-3670).
-  homeRails: "/home/rails",
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
@@ -140,6 +132,11 @@ export const CONSUMER_ROUTES = {
     homeRoot: "/home",
     // The AI mode's route before it was named for what it does.
     homeAi: "/home/ai",
+    // The trial Places tabs, 1.0 · 2.0 · 4.0 (MESITA-3658…3680), retired
+    // when 1.0 became Places again at /home/places (MESITA-3684).
+    homeClassic: "/home/classic",
+    homeGrid: "/home/grid",
+    homeRails: "/home/rails",
     // Home's namespace and its default pill, until Home became /home
     // (MESITA-2475).
     discover: "/discover",
@@ -338,9 +335,6 @@ const row = (
 
 export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
-  homeClassic: row("/home/classic", "home", "tab", null),
-  homeGrid: row("/home/grid", "home", "tab", null),
-  homeRails: row("/home/rails", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
   searchChat: row("/search/chat", "search", "sheet", "search"),
