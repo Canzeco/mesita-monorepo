@@ -21,9 +21,9 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
         ) : (
           <>
             <Skeleton className="mt-5 h-5 w-48 rounded-md" />
-            <Skeleton className="mt-2 h-[12.5rem] w-full rounded-xl" />
+            <Skeleton className="mt-2 h-[12.25rem] w-full rounded-2xl" />
             <Skeleton className="mt-5 h-5 w-48 rounded-md" />
-            <Skeleton className="mt-2 h-[12.5rem] w-full rounded-xl" />
+            <Skeleton className="mt-2 h-[8.125rem] w-full rounded-2xl" />
           </>
         )}
       </div>

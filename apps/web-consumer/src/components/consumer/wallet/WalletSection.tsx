@@ -11,16 +11,15 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { WalletCard } from "./WalletCard";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
-import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
+import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, WalletList } from "./WalletLists";
 
 // THE WALLET, PAY'S SECOND HALF (Pato, 2026-11-11, MESITA-3698: "Divide
-// Payments across two sections: Pay and Wallet"): the two rails, Money
+// Payments across two sections: Pay and Wallet"): two lists, Money
 // Payment Methods and Credits Payment Methods, each led by Add
-// (WalletRails), drawn by /wallet (WalletPage) under the Pay · Wallet band.
+// (WalletLists; horizontal rails until MESITA-3701), drawn by /wallet (WalletPage) under the Pay · Wallet band.
 // Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
 // (MESITA-3631) until this. A place's card is a link to its House Card,
 // /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
@@ -120,22 +119,18 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         </p>
       ) : null}
 
-      <WalletRail title="Money Payment Methods">
-        <AddTile label={adding ? "Opening…" : "Add"} line="Save a card" onClick={() => void addCard()} />
-        <CashTile />
-        {cards?.map((c) => <SavedCardTile key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
-      </WalletRail>
+      <WalletList title="Money Payment Methods">
+        <AddRow label={adding ? "Opening…" : "Add a card"} line="Save a card with Stripe" onClick={() => void addCard()} />
+        <CashRow />
+        {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
+      </WalletList>
 
-      <WalletRail title="Credits Payment Methods">
-        <AddTile label="Add" line="Buy credits on a place's Offers" href={CONSUMER_ROUTES.home} />
-        {wallet?.waiting_stories?.map((s) => <StoryTile key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
-        {credits?.map((row) => (
-          <div key={row.card.key} className={RAIL_TILE}>
-            <WalletCard card={row.card} compact eager={shown++ < EAGER_CARDS} />
-          </div>
-        ))}
-        {!credits && !failed ? <RailSkeleton /> : null}
-      </WalletRail>
+      <WalletList title="Credits Payment Methods">
+        <AddRow label="Add credits" line="Buy credits on a place's Offers" href={CONSUMER_ROUTES.home} />
+        {wallet?.waiting_stories?.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
+        {credits?.map((row) => <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} />)}
+        {!credits && !failed ? <RowsSkeleton /> : null}
+      </WalletList>
 
       {failed && !wallet ? (
         <div className="mt-5 flex flex-col">
