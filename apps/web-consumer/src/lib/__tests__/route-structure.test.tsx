@@ -601,15 +601,13 @@ describe("T6 — Me's activity tiles open Activity's chips", () => {
     .map((f) => readFileSync(join(SHELL, "me", f), "utf8"))
     .join("\n");
 
-  it("every Activity chip is a tile, and each opens its chip (MESITA-3688)", () => {
+  it("every Activity chip is a tile, and each opens its chip (MESITA-3697)", () => {
     const hrefs = ME_HUB_GRID.map((c) => c.href);
     for (const href of [
-      "/activity",
       "/activity?type=favorites",
       "/activity?type=reservations",
       "/activity?type=visits",
-      "/activity?type=payments",
-      "/activity?type=prepayments",
+      "/activity?type=vouchers",
       "/activity?type=gifts",
     ]) {
       expect(hrefs, href).toContain(href);
@@ -653,7 +651,7 @@ describe("T8 — Me's grid is twelve live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders fourteen cells in Pato's order", () => {
+  it("renders twelve cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -669,13 +667,12 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Instagram",
       "Class",
       "Plan",
-      // Every Activity chip, in its order (MESITA-3688).
-      "Notifications",
+      // Every Activity chip, in its order (MESITA-3688; five since
+      // MESITA-3697).
       "Favorites",
       "Reservations",
       "Visits",
-      "Payments",
-      "Prepayments",
+      "Vouchers",
       "Gifts",
       // Transactions sat here (MESITA-3465) until it became the bar's
       // Activity tab (MESITA-3631).

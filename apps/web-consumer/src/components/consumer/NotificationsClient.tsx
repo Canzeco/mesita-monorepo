@@ -42,8 +42,9 @@ function SkeletonRows() {
   );
 }
 
-/** The notifications themselves: Activity's Notifications chip, the guest's
- *  events (MESITA-3688: "notifications are events"). Newest first under day
+/** The notifications themselves: the guest's events (MESITA-3688:
+ *  "notifications are events"). OFF THE BAR since MESITA-3697 (Pato's five
+ *  chips have no Notifications); kept, unmounted, for when it returns. Newest first under day
  *  headings (Today, Yesterday, then the date); each row is the row it always
  *  was. `quietEmpty`: a "Next up" ticket stands above, so an empty list is
  *  one muted line, not a second empty state. */

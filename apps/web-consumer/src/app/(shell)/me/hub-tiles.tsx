@@ -82,8 +82,8 @@ export type HubTile = {
   href: string;
 };
 
-/** The grid cells, in reading order; Settings is the last (fourteen with it
- *  since MESITA-3688: Profile · Instagram · Class · Plan, the seven Activity
+/** The grid cells, in reading order; Settings is the last (twelve with it
+ *  since MESITA-3697: Profile · Instagram · Class · Plan, the five Activity
  *  chips, Refunds · MCP · Share). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
