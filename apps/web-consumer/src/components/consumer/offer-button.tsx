@@ -78,24 +78,37 @@ function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number 
   return { index, previous: beat === firstBeat ? null : (beat - 1 + n) % n };
 }
 
-/** A slide's words in a half-width box (MESITA-3665), still the words and
- *  the ink pill (Pato, MESITA-3667: "keep the green & black for the bonus
- *  hit"): "Cashback [+5%]", "$200MX Prepay [+10%]". The full line, "Mesita
- *  Payments [+5% Cashback]", needs about 190px. */
-function compactWords(slide: OfferSlide): { lead: string; pill: string } {
+/** A slide's SHORT words, still the words and the ink pill (Pato,
+ *  MESITA-3667: "keep the green & black for the bonus hit"): "Cashback
+ *  [+5%]", "$200MX Prepay [+10%]". The long ones are the slide's own lead and
+ *  pill, "Mesita Payments [+5% Cashback]". */
+function shortWords(slide: OfferSlide): { lead: string; pill: string } {
   if (slide.bonus) return { lead: slide.lead, pill: `+${slide.bonus}%` };
   // Cashback: "+5% Cashback" splits into the word and the rate.
   const rate = slide.pill.match(/^\+[\d.]+%/)?.[0];
   return rate ? { lead: "Cashback", pill: rate } : { lead: slide.lead, pill: slide.pill };
 }
 
-function OfferWords({ slide, compact = false, className }: { slide: OfferSlide; compact?: boolean; className?: string }) {
-  const words = compact ? compactWords(slide) : slide;
+const OFFER_PILL =
+  "bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums";
+
+/** LONG WORDS WHEN THEY FIT, SHORT WHEN THEY DON'T (Pato, MESITA-3668: "make
+ *  large version and short version of offers, and display depending if
+ *  enough space"). The track is a size container (OfferTrack); from 12rem
+ *  of room the long words show, below it the short ones. CSS only, so it
+ *  follows any width: Places 1.0's full-width button, Places 3.0's
+ *  half-width box, a wide desktop frame. */
+function OfferWords({ slide, className }: { slide: OfferSlide; className?: string }) {
+  const short = shortWords(slide);
   return (
-    <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
-      <span className={compact ? "truncate" : undefined}>{words.lead}</span>
-      <span className="bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
-        {words.pill}
+    <span className={cn("absolute inset-0 flex items-center justify-center", className)}>
+      <span className="hidden items-center gap-1.5 @[12rem]:flex">
+        {slide.lead}
+        <span className={OFFER_PILL}>{slide.pill}</span>
+      </span>
+      <span className="flex min-w-0 items-center gap-1.5 @[12rem]:hidden">
+        <span className="truncate">{short.lead}</span>
+        <span className={OFFER_PILL}>{short.pill}</span>
       </span>
     </span>
   );
@@ -104,11 +117,11 @@ function OfferWords({ slide, compact = false, className }: { slide: OfferSlide; 
 /** The moving words inside the still green box, hidden from screen readers
  *  (the box's label lists every offer once). Keyed by slide so each change
  *  replays the slide-up. */
-function OfferTrack({ slides, index, previous, compact }: { slides: OfferSlide[]; index: number; previous: number | null; compact?: boolean }) {
+function OfferTrack({ slides, index, previous }: { slides: OfferSlide[]; index: number; previous: number | null }) {
   return (
-    <span className="relative block h-full w-full overflow-hidden" aria-hidden>
-      {previous !== null ? <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} compact={compact} className="offer-out" /> : null}
-      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} compact={compact} className={previous !== null ? "offer-in" : undefined} />
+    <span className="@container relative block h-full w-full overflow-hidden" aria-hidden>
+      {previous !== null ? <OfferWords key={`out-${slides[previous].key}-${index}`} slide={slides[previous]} className="offer-out" /> : null}
+      <OfferWords key={`in-${slides[index].key}`} slide={slides[index]} className={previous !== null ? "offer-in" : undefined} />
     </span>
   );
 }
@@ -126,7 +139,6 @@ export function OfferButton({
   payHref,
   name,
   slides,
-  compact = false,
   className,
 }: {
   href: string;
@@ -134,8 +146,6 @@ export function OfferButton({
   payHref: string;
   name: string;
   slides: OfferSlide[];
-  /** Short words for a half-width box (Places 3.0's info square). */
-  compact?: boolean;
   className?: string;
 }) {
   const live = useOfferSlide(slides);
@@ -163,7 +173,7 @@ export function OfferButton({
       )}
       data-tile-bonus
     >
-      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} compact={compact} />
+      <OfferTrack slides={slides} index={index} previous={held === null ? live.previous : null} />
     </PushLink>
   );
 }

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Banknote, Clock, Navigation, Star } from "lucide-react";
 import { toAmPm } from "@mesita/place-profile/lib/place-time";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -77,10 +76,6 @@ export function PlaceRowCard({
   // none.
   const kind = facts.kind ?? family ?? null;
   const overview = enrichPlaceOverview(place);
-  const familyKey = place.area?.familyKeys?.[0] ?? place.family_keys?.[0];
-  const familyEmoji = FILTERABLE_PLACE_FAMILIES.find(
-    (f) => f.key === familyKey,
-  )?.emoji;
   // The numeric range ("$200–300MX") when the place has one, else $$.
   const price =
     overview.price_range?.replace(/\s*per person$/i, "") || facts.price;
@@ -106,14 +101,10 @@ export function PlaceRowCard({
     },
     kind && {
       key: "kind",
-      // THE FAMILY'S EMOJI, NOT A LINE ICON (Pato, MESITA-3667: "don't add
-      // the fucking icon to the category. just add the emoji to the
-      // family"): 🌮 Taco Restaurant; no family, no mark.
-      icon: familyEmoji ? (
-        <span aria-hidden className="w-3.5 shrink-0 text-center leading-none">
-          {familyEmoji}
-        </span>
-      ) : null,
+      // NO MARK ON THE CATEGORY (Pato, MESITA-3668: "don't add the fucking
+      // icon to the category … emoji on the top families list, not the
+      // categories"): an empty 14px slot keeps the word in the facts' column.
+      icon: <span aria-hidden className="w-3.5 shrink-0" />,
       text: kind,
     },
     facts.rating && {
@@ -251,7 +242,8 @@ export function PlaceRowCard({
           {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
               buttons offers moving and switching across all the offers with
               different colors"): the shared OfferButton, each offer in its
-              own colour on the shared beat, short words for this box. */}
+              own colour on the shared beat, long words when they fit, short
+              when they don't (MESITA-3668). */}
           <OfferButton
             href={placeHref(place.slug || place.id)}
             payHref={
@@ -259,7 +251,6 @@ export function PlaceRowCard({
             }
             name={place.name}
             slides={slides}
-            compact
           />
           <CardActions
             name={place.name}
