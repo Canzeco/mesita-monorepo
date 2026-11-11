@@ -3,7 +3,8 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, MapPin, QrCode, Search } from "lucide-react";
+import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -271,18 +272,20 @@ function PlaceList({
       ) : (
         <>
           <h2 className="px-1 text-base font-semibold">Select a place to pay</h2>
-          <label className="border-border bg-card mt-2 flex h-12 items-center gap-2.5 rounded-2xl border px-3.5">
-            <Search className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+          {/* SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
+              searchbar. this one must not support locations"): the app's one
+              search bar (SearchBar), alone: no locate disc, no Ask AI. White
+              on Pay's grey page, where the band's grey fill would vanish;
+              typing darkens its border, as on Search. */}
+          <div className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
+            <SearchBar
+              query={query}
+              showClear={query.length > 0}
+              onQueryChange={setQuery}
+              onClear={() => setQuery("")}
               placeholder="Search a place"
-              aria-label="Search a place"
-              autoComplete="off"
-              className="placeholder:text-muted-foreground min-w-0 flex-1 bg-transparent text-base outline-none"
             />
-          </label>
+          </div>
           {shown.length === 0 ? (
             <p className="text-muted-foreground mt-4 px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
           ) : (
