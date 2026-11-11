@@ -3,7 +3,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, ChevronRight, CreditCard, MapPin, QrCode, Search, Wallet } from "lucide-react";
+import { Banknote, ChevronRight, CreditCard, MapPin, QrCode, Wallet } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
@@ -25,8 +25,9 @@ import { PayHeader } from "./PayHeader";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
-// at now, nearest first: "Pay at a place", a search box (MESITA-3719: behind
-// a magnifier up to six places), and rows of
+// at now, nearest first: "Pay at a place", a search bar always shown (Pato,
+// MESITA-3725: "searchbar must always be visible"; MESITA-3719 had hidden it
+// behind a magnifier up to six places), and rows of
 // profile photo, name, address and distance, led by the guest's open bill.
 // A row is a door: /pay/<placeId> opens that place's bill at the table
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
@@ -48,8 +49,6 @@ const LOCATION_DECIMALS = 3;
 /** "Not now" on the location card holds for this browser session. */
 const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
 
-/** Past this many places the search field shows on its own. */
-const SEARCH_FROM = 6;
 /** Places listed before "Show all" (MESITA-3720). */
 const PLACES_SHOWN = 5;
 
@@ -228,10 +227,6 @@ function PlaceList({
   onNotNow: () => void;
 }) {
   const [query, setQuery] = useState("");
-  // MESITA-3719: the search field shows past SEARCH_FROM places, or once the
-  // magnifier opens it; one place under a search bar is noise.
-  const [searchOpen, setSearchOpen] = useState(false);
-  const searchShown = searchOpen || places.length > SEARCH_FROM;
   const testMode = places.some((p) => p.test_mode);
   const q = fold(query.trim());
   const [showAll, setShowAll] = useState(false);
@@ -279,22 +274,7 @@ function PlaceList({
         />
       ) : (
         <>
-          <div className="flex min-h-11 items-center justify-between gap-3 px-1">
-            <h2 className="text-base font-semibold">Pay at a place</h2>
-            {!searchShown ? (
-              <button
-                type="button"
-                aria-label="Search places"
-                className="bg-card hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition"
-                onClick={() => {
-                  setSearchOpen(true);
-                  requestAnimationFrame(() => document.querySelector<HTMLInputElement>("[data-pay-search] input")?.focus());
-                }}
-              >
-                <Search className="h-[18px] w-[18px]" aria-hidden />
-              </button>
-            ) : null}
-          </div>
+          <h2 className="px-1 text-base font-semibold">Pay at a place</h2>
           {/* SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
               searchbar. this one must not support locations"): the app's one
               search bar (SearchBar), alone: no locate disc, no Ask AI. White
@@ -303,7 +283,6 @@ function PlaceList({
               only, never the catalog: places that take Mesita Payments
               (card_ok), cash with a place code (outside_ok), or where the
               guest holds Credits (pay-places.ts). */}
-          {searchShown ? (
           <div data-pay-search className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
             <SearchBar
               query={query}
@@ -313,7 +292,6 @@ function PlaceList({
               placeholder="Search a place"
             />
           </div>
-          ) : null}
           {shown.length === 0 ? (
             <p className="text-muted-foreground mt-4 px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
           ) : (
