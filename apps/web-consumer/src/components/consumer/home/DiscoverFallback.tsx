@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/shared";
+import { cn } from "@/lib/utils";
 import {
   CARD_ACTIONS_ROW,
   CARD_BUTTON_BOX,
@@ -160,21 +161,35 @@ export function RowFallback() {
 
 /** PlaceRailCard's silhouette (MESITA-3670): the 4:3 photo, the name, two
  *  fact lines and the Save · Share row. */
-function PlaceRailSkeleton() {
+export function PlaceRailSkeleton({ message }: { message?: string }) {
+  // With `message`, the empty carousel's box (Pato, MESITA-3680: "this box
+  // must be as tall as placeholder, to avoid … jumping around after
+  // loading"): the same blocks, invisible, the words centred over them, so
+  // a carousel that loads empty keeps its height to the pixel.
   return (
-    <li className={RAIL_CARD}>
-      <div className={RAIL_PHOTO}>
-        <Skeleton className="h-full w-full rounded-none" />
-      </div>
-      <div className="flex flex-col gap-2 p-3">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-1/2" />
-        <div className={CARD_ACTIONS_ROW}>
-          <Skeleton className={CARD_BUTTON_BOX} />
-          <Skeleton className={CARD_BUTTON_BOX} />
+    <li
+      className={cn(RAIL_CARD, message && "relative")}
+      data-rail-empty={message ? "" : undefined}
+    >
+      <div className={cn("flex flex-col", message && "invisible")} aria-hidden>
+        <div className={RAIL_PHOTO}>
+          <Skeleton className="h-full w-full rounded-none" />
+        </div>
+        <div className="flex flex-col gap-2 p-3">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-1/2" />
+          <div className={CARD_ACTIONS_ROW}>
+            <Skeleton className={CARD_BUTTON_BOX} />
+            <Skeleton className={CARD_BUTTON_BOX} />
+          </div>
         </div>
       </div>
+      {message ? (
+        <span className="text-muted-foreground absolute inset-0 flex items-center justify-center p-6 text-center text-sm">
+          {message}
+        </span>
+      ) : null}
     </li>
   );
 }
