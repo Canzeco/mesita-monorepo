@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import {
@@ -20,11 +20,14 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCreatedPlaces, withCreatedPlaces } from "@/lib/created-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { CardSaveShare } from "@/lib/use-card-save-share";
-import { EmptyState } from "@/components/shared";
-import { Compass } from "lucide-react";
 import { RailSkeleton } from "./DiscoverFallback";
 import { PlaceRailCard } from "./PlaceRailCard";
-import { GRID_CHIPS, RAIL_TITLE, RAIL_TRACK } from "./place-grid-classes";
+import {
+  GRID_CHIPS,
+  RAIL_CARD,
+  RAIL_TITLE,
+  RAIL_TRACK,
+} from "./place-grid-classes";
 import { cn } from "@/lib/utils";
 
 /** A carousel's anchor on the page, for the family bar's jumps. */
@@ -48,7 +51,7 @@ function railFamilies(key: string, allKey: string): string[] {
  * cache as Places 1.0–3.0, and only when it scrolls within 400px of the
  * screen, so a visit never fires every family at once. A carousel shows
  * the first page the pool fills, no sideways paging. A family with nothing
- * near hides; an empty or failed Top says so.
+ * near shows an empty carousel and keeps its pill (MESITA-3677).
  */
 export function PlaceRails({
   rails,
@@ -76,16 +79,11 @@ export function PlaceRails({
   // those cool section horizontal header menus … in the landing pages"):
   // the pills pinned at the top of the pane; the carousel under the bar
   // lights its pill and the row slides to keep it centred; a tap scrolls
-  // to that carousel. A hidden carousel drops its pill.
+  // to that carousel. Every family keeps its pill (MESITA-3677).
   const root = useRef<HTMLDivElement | null>(null);
   const bar = useRef<HTMLElement | null>(null);
-  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const [active, setActive] = useState(rails[0]?.key ?? allKey);
-  const shown = rails.filter((r) => !hidden.has(r.key));
-  const hide = useCallback(
-    (key: string) => setHidden((h) => (h.has(key) ? h : new Set(h).add(key))),
-    [],
-  );
+  const shown = rails;
   const scroller = () =>
     root.current?.closest<HTMLElement>("[data-home-scroller]") ?? null;
 
@@ -184,7 +182,6 @@ export function PlaceRails({
       </nav>
       {rails.map((rail, i) => (
         <Rail
-          onHidden={hide}
           key={rail.key}
           rail={rail}
           top={rail.key === allKey}
@@ -213,9 +210,7 @@ function Rail({
   onOpenCard,
   onOpenGoogle,
   onSeeAll,
-  onHidden,
 }: {
-  onHidden: (key: string) => void;
   rail: RailSpec;
   top: boolean;
   families: string[];
@@ -300,27 +295,6 @@ function Rail({
       )
     : [];
 
-  // A family with nothing near, or one that failed, hides (and its pill
-  // with it); Top says so.
-  const gone = !top && ((pool !== null && places.length === 0) || failed);
-  useEffect(() => {
-    if (gone) onHidden(rail.key);
-  }, [gone, onHidden, rail.key]);
-  if ((pool && places.length === 0) || failed) {
-    if (!top) return null;
-    return (
-      <EmptyState
-        icon={Compass}
-        title={failed ? "Couldn't load the catalog" : "No places yet"}
-        description={
-          failed
-            ? "Tonight's places didn't come back. Try again in a moment."
-            : "Check back soon."
-        }
-      />
-    );
-  }
-
   return (
     <section
       ref={box}
@@ -328,7 +302,7 @@ function Rail({
       aria-label={rail.label}
       data-rail={rail.key}
     >
-      {pool === null ? (
+      {pool === null && !failed ? (
         <RailSkeleton title={title} />
       ) : (
         <>
@@ -347,6 +321,26 @@ function Rail({
             </Link>
           </div>
           <ul role="list" aria-label={rail.label} className={RAIL_TRACK}>
+            {/* AN EMPTY CAROUSEL, NOT A HIDDEN ONE (Pato, MESITA-3677: "show
+                the carousel row even if empty, but don't hide the family"):
+                one card-sized soft box that says so. */}
+            {places.length === 0 ? (
+              <li
+                className={cn(
+                  RAIL_CARD,
+                  "text-muted-foreground items-center justify-center p-6 text-center text-sm",
+                )}
+                data-rail-empty
+              >
+                <span className="flex aspect-[4/3] items-center">
+                  {failed
+                    ? `Couldn't load ${rail.label}`
+                    : top
+                      ? "No places near yet"
+                      : `No ${rail.label} places near yet`}
+                </span>
+              </li>
+            ) : null}
             {places.map((place, i) => (
               <PlaceRailCard
                 key={place.id}
