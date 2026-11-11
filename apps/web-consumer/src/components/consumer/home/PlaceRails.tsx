@@ -89,20 +89,28 @@ export function PlaceRails({
   const scroller = () =>
     root.current?.closest<HTMLElement>("[data-home-scroller]") ?? null;
 
-  // Scroll-spy: the last carousel whose top has passed under the bar.
+  // Scroll-spy: the last carousel whose top has crossed the MIDDLE of the
+  // visible pane under the bar (Pato, MESITA-3674: "it really waits until
+  // the family is at the top … switch before"); it was the bar's own edge.
+  // At the bottom of the pane the last family lights, though its top may
+  // never reach the middle.
   useEffect(() => {
     const pane = scroller();
     if (!pane) return;
     let frame = 0;
     const spy = () => {
       frame = 0;
-      const line =
-        pane.getBoundingClientRect().top + (bar.current?.offsetHeight ?? 0) + 8;
+      const box = pane.getBoundingClientRect();
+      const barH = bar.current?.offsetHeight ?? 0;
+      const line = box.top + barH + (box.height - barH) / 2;
       let current = shown[0]?.key;
       for (const r of shown) {
         const el = document.getElementById(railId(r.key));
         if (el && el.getBoundingClientRect().top <= line) current = r.key;
       }
+      const atBottom =
+        pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 4;
+      if (atBottom && shown.length > 0) current = shown[shown.length - 1].key;
       if (current) setActive(current);
     };
     const onScroll = () => {
