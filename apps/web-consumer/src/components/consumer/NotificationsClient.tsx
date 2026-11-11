@@ -56,6 +56,18 @@ export function NotificationsSkeleton() {
 }
 
 export function NotificationsClient() {
+  return (
+    <div className={FEED_CLASS}>
+      <NotificationsList />
+    </div>
+  );
+}
+
+/** The notifications themselves, with no scroller of their own: Me ›
+ *  Notifications draws them in its feed, Activity's Notifications chip in
+ *  its page (MESITA-3681). One component and one cache, so the two lists
+ *  never disagree. */
+export function NotificationsList({ inset = true }: { inset?: boolean }) {
   // Kept for two minutes and refreshed by every reservation write
   // (MESITA-3014): a return to this list paints its rows, not skeletons.
   const getSupabase = useLazyBrowserSupabase();
@@ -71,7 +83,7 @@ export function NotificationsClient() {
   const visible = rows.filter((n) => NOTIFICATION_KINDS.has(n.kind));
 
   return (
-    <div className={FEED_CLASS}>
+    <div className={inset ? undefined : "-mt-5"}>
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
           moves. it looks NOT clean. be direct"). The page header already
           names this list; a heading that repeats the tile you just tapped is
