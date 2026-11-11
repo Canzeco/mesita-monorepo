@@ -884,10 +884,11 @@ const childDirs = (dir: string) =>
     .sort();
 
 describe("T9 — the money tree, and the Second Stage trees are gone", () => {
-  it("(shell)/pay holds the door, the bill and the receipt, and nothing else", () => {
+  it("(shell)/pay holds the door, the bill, a friend's share door and the receipt, and nothing else", () => {
     const pay = join(SHELL, "pay");
     expect(existsSync(join(pay, "page.tsx"))).toBe(true);
-    expect(childDirs(pay)).toEqual(["[placeId]", "receipt", "tab"]);
+    expect(childDirs(pay)).toEqual(["[placeId]", "join", "receipt", "tab"]);
+    expect(childDirs(join(pay, "join"))).toEqual(["[token]"]);
     expect(childDirs(join(pay, "tab"))).toEqual(["[tabId]"]);
     expect(childDirs(join(pay, "receipt"))).toEqual(["[paymentId]"]);
   });

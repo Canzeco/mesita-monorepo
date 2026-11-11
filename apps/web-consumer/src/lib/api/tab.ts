@@ -54,6 +54,28 @@ export type GuestTab = {
   expires_at: string;
   updated_at: string;
   test_mode: boolean;
+  /** MESITA-3695: on a share, its table; on a split table, the table. */
+  table: TabTable | null;
+  /** On a split table: the guest's own share (the app opens it). */
+  my_share_tab_id: string | null;
+};
+
+/** A table friends are splitting (MESITA-3695). Shares are listed by id,
+ *  never by who holds them. */
+export type TabTable = {
+  tab_id: string;
+  status: TabStatus;
+  bill_cents: number;
+  tip_suggested_cents: number;
+  ways: number | null;
+  paid_cents: number;
+  /** Paying or paid: no longer free to take. */
+  taken_cents: number;
+  /** What a share may still pay. */
+  left_cents: number;
+  shares: Array<{ id: string; status: TabStatus; share_cents: number; tip_cents: number }>;
+  /** This guest split it: only they can show the friends' QR. */
+  mine: boolean;
 };
 
 export type OpenedTab = {
@@ -182,6 +204,42 @@ export async function apiCancelTab(
   await invokeEF(client, "consumer-web-cancel-tab", { tab_id: tabId, mode });
 }
 
+/** Split the bill (MESITA-3695): `ways` and the guest's own share. The
+ *  answer names the guest's share and a fresh join token for the friends'
+ *  QR (each call rotates it; earlier QRs stop working, shares stay). */
+export async function apiSplitTab(
+  client: SupabaseClient,
+  args: { tab_id: string; ways: number; share_cents: number },
+): Promise<{ share_tab_id: string; join_token: string; left_cents: number | null }> {
+  return await invokeEF(client, "consumer-web-split-tab", args);
+}
+
+/** Pay the whole bill again: only while no share is paying or paid. */
+export async function apiUnsplitTab(client: SupabaseClient, tableId: string): Promise<void> {
+  await invokeEF(client, "consumer-web-split-tab", { tab_id: tableId, whole: true });
+}
+
+/** A share's new amount, before paying; refused (share_too_big) past what
+ *  is left. */
+export async function apiSetShare(client: SupabaseClient, shareTabId: string, shareCents: number): Promise<void> {
+  await invokeEF(client, "consumer-web-split-tab", { tab_id: shareTabId, share_cents: shareCents });
+}
+
+/** A friend scanned the table's QR: takes a share (or gets theirs back). */
+export async function apiJoinTab(client: SupabaseClient, joinToken: string): Promise<{ share_tab_id: string; share_cents: number | null }> {
+  return await invokeEF(client, "consumer-web-join-tab", { join_token: joinToken });
+}
+
+/** The friends' QR's address: the app's own join door. */
+export function joinUrl(origin: string, joinToken: string): string {
+  return `${origin}/pay/join/${encodeURIComponent(joinToken)}`;
+}
+
+/** The equal part of a bill split `ways` ways, rounded up to the peso. */
+export function equalShare(billCents: number, ways: number): number {
+  return Math.min(billCents, Math.ceil(billCents / ways / 100) * 100);
+}
+
 export type PayWith = "cash" | "card";
 
 /** How the screen splits a bill: the guest's credit first (up to the bill)
@@ -235,6 +293,12 @@ export function tabSplit(args: {
 
 /** What the guest reads when a tap is refused, by the server's code. */
 export const TAB_REFUSAL: Record<string, string> = {
+  // MESITA-3695: friends split one bill.
+  split_locked: "Friends are splitting this bill. Pay your share.",
+  share_too_big: "That's more than what's left of the bill.",
+  nothing_left: "Nothing is left to pay on this bill.",
+  table_closed: "This bill is closed. Ask the waiter.",
+  paid_part: "A friend already paid part of this bill.",
   stale: "The bill changed. Check it and pay again.",
   insufficient: "Your credit changed. Check it and pay again.",
   outside_limit:

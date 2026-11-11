@@ -27,6 +27,10 @@
 //               payment_intent_id, client_secret?, stripe_account?,
 //               publishable_key? },
 //             card_error?: { code, error, decline_code? } }
+//   MESITA-3695: `tab.table` is the split table a share belongs to (its bill,
+//   what is paid and left, the shares by id); on a split table it is the table
+//   itself and `tab.my_share_tab_id` names the guest's own share.
+//   `table.mine`: this guest split it (only they can show the friends' QR).
 //   400 (a malformed call) · 401 sign_in · 404 not_found (no such tab of
 //   this guest)
 
@@ -41,7 +45,7 @@ import { listCards } from "../_shared/cards.ts";
 import { type CardStep, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readPlaceBalance } from "../_shared/vouchers.ts";
-import { guestTabView, readTabById, readTabParts } from "../_shared/tab.ts";
+import { guestTabView, readShares, readTabById, readTabParts, tableView } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
@@ -108,9 +112,23 @@ serveJson("consumer-web-get-tab", async (req) => {
       }
     }
 
+    // Friends split one bill (MESITA-3695).
+    let table = null;
+    let myShareTabId: string | null = null;
+    if (tabNow.parent_tab_id) {
+      const parent = await readTabById(admin, tabNow.parent_tab_id);
+      if (parent) table = { ...tableView(parent, await readShares(admin, parent.id), nowMs), mine: parent.consumer_id === user.id };
+    } else if (tabNow.split_at) {
+      const shares = await readShares(admin, tabNow.id);
+      table = { ...tableView(tabNow, shares, nowMs), mine: true };
+      myShareTabId = shares.filter((s) => s.consumer_id === user.id && ["billed", "paying", "paid"].includes(s.status)).at(-1)?.id ?? null;
+    }
+
     return json({
       ok: true,
       tab: guestTabView(tabNow, parts, {
+        table,
+        myShareTabId,
         placeName: placeRes.place?.name ?? null,
         spendableCents: Math.max(balance?.spendable_cents ?? 0, 0),
         // A billed tab was billed with the place code, so it is set.

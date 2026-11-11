@@ -13,6 +13,7 @@ import { apiAddCard, brandLabel, CARD_REFUSAL } from "@/lib/api/cards";
 import {
   apiCancelTab,
   apiGetTab,
+  apiJoinTab,
   apiOpenTab,
   apiPayTab,
   runBankCheck,
@@ -29,6 +30,7 @@ import { payTabPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { LiveClock } from "./LiveClock";
+import { ShareCard, SplitButton } from "./SplitWithFriends";
 import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 
 // PAY AT THE TABLE, THE GUEST'S SCREENS (MESITA-3564; the backend is
@@ -58,6 +60,12 @@ import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 // card (5% back on the card bill part, never the tip). The card is charged
 // inside the app; a bank check (3-D Secure) runs in Stripe.js, loaded only
 // then. No saved card: "Add a card" opens Stripe's page and comes back here.
+//
+// Friends (MESITA-3695, SplitWithFriends.tsx): a billed whole bill offers
+// "Split with friends"; splitting opens the guest's own share, an ordinary
+// bill this screen pays as above, under one card with the table (paid, left,
+// the friends' QR). A split table read here switches to the guest's share;
+// /pay/join/<token> (a friend's scan) takes a share and switches to it.
 
 const FAST_MS = 1_500;
 const MID_MS = 5_000;
@@ -69,7 +77,10 @@ const TIP_PERCENTS = [10, 15, 20] as const;
 type TipChoice = "waiter" | (typeof TIP_PERCENTS)[number] | "other" | "none";
 
 
-export type TabStart = { kind: "place"; placeId: string } | { kind: "tab"; tabId: string };
+export type TabStart =
+  | { kind: "place"; placeId: string }
+  | { kind: "tab"; tabId: string }
+  | { kind: "join"; joinToken: string };
 
 /** A clock that moves every 15 s, for "N min left". */
 function useMinuteNow(): number {
@@ -140,9 +151,25 @@ export function TabView({
   const cardsAsked = useRef(false);
   const [cardAction, setCardAction] = useState<TabCardStep | null>(null);
   const [checking, setChecking] = useState(false);
+  // The friends' QR (MESITA-3695): shown only on the device that split.
+  const [joinToken, setJoinToken] = useState<string | null>(null);
+
+  /** Moves the screen to another bill: the guest's share, or back to the
+   *  table when splitting stops. */
+  function switchTo(id: string) {
+    setTab(null);
+    setTabId(id);
+    onTabId(id);
+    lastChange.current = { at: Date.now(), key: "" };
+  }
 
   /** Applies one read of the tab: the tab, the cards, a card part's step. */
   function take(r: TabRead) {
+    // A split table: the guest pays their own share.
+    if (r.tab.my_share_tab_id && r.tab.my_share_tab_id !== r.tab.tab_id) {
+      switchTo(r.tab.my_share_tab_id);
+      return;
+    }
     setTab(r.tab);
     if (r.cards) {
       cardsAsked.current = true;
@@ -181,6 +208,19 @@ export function TabView({
     let cancelled = false;
     if (start.kind === "place") {
       void open(start.placeId);
+    } else if (start.kind === "join") {
+      void apiJoinTab(getSupabase(), start.joinToken)
+        .then((j) => {
+          if (!cancelled) switchTo(j.share_tab_id);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          if (e instanceof EFError && e.code && e.code !== "not_found") {
+            toast(TAB_REFUSAL[e.code] ?? e.message, { tone: "error" });
+          }
+          if (e instanceof EFError && e.status !== null && e.status < 500) setGone(true);
+          else setOpenFailed(true);
+        });
     } else {
       void apiGetTab(getSupabase(), start.tabId, withCards())
         .then((r) => {
@@ -392,9 +432,34 @@ export function TabView({
     );
   }
 
+  const shareCard = tab.table ? (
+    <ShareCard
+      tab={tab}
+      joinToken={joinToken}
+      getSupabase={getSupabase}
+      onJoinToken={setJoinToken}
+      onWhole={(tableId) => {
+        setJoinToken(null);
+        switchTo(tableId);
+      }}
+      onChanged={readNow}
+    />
+  ) : null;
+
   if (tab.status === "billed") {
     return (
       <Shell testMode={tab.test_mode}>
+        {shareCard}
+        {!tab.table ? (
+          <SplitButton
+            tab={tab}
+            getSupabase={getSupabase}
+            onSplit={(shareTabId, token) => {
+              setJoinToken(token);
+              switchTo(shareTabId);
+            }}
+          />
+        ) : null}
         <SplitScreen
           key={tab.bill_version}
           tab={tab}
@@ -415,6 +480,7 @@ export function TabView({
     const cardGoing = tab.parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open"));
     return (
       <Shell testMode={tab.test_mode}>
+        {shareCard}
         {cardGoing || checking ? (
           <CardScreen
             tab={tab}

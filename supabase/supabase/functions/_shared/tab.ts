@@ -17,6 +17,18 @@
 //   visit-web-get-tab        reads               the waiter's poll
 //   visit-web-bill-tab       pay_tab_bill        the waiter's bill
 //   visit-web-cash-tab       pay_tab_cash        the waiter's Received
+//   consumer-web-split-tab   pay_tab_split       split among friends, or
+//                            pay_tab_set_share   change one's own share
+//   consumer-web-join-tab    pay_tab_join        a friend takes a share
+//
+// Friends split one bill (MESITA-3695): the guest's billed tab becomes the
+// TABLE and every payer holds a SHARE, an ordinary tab under it
+// (parent_tab_id) billed with the share; a share pays exactly as a whole tab
+// does. The table is paid when its paid shares cover the bill (a trigger);
+// a share starts paying only if it fits in what is left (a trigger, under the
+// table's row lock). Friends join with the table's join token, never the
+// waiter's token; the waiter's screen lists the shares (never who holds them)
+// and confirms each cash share by its id under the table's token.
 //
 // Keys: the QR token (128 bits, 22 base64url characters) is stored only as
 // a hash and never logged; anyone holding it reads the bill state, never who
@@ -173,6 +185,11 @@ export function readSplitBody(b: Record<string, unknown>): { ok: true; input: Sp
 
 const REFUSALS: Record<string, [number, string]> = {
   not_found: [404, "This tab is gone"],
+  split_locked: [409, "Friends are splitting this bill. Each pays their share."],
+  share_too_big: [409, "That's more than what's left of the bill"],
+  share_invalid: [400, "Choose a share of the bill"],
+  table_closed: [409, "This bill is closed"],
+  nothing_left: [409, "Nothing is left to pay on this bill"],
   expired: [409, "This tab expired. Open a new one."],
   cancelled: [409, "The guest cancelled this tab"],
   not_billed: [409, "The waiter has not sent the bill yet"],
@@ -230,6 +247,10 @@ export type TabRow = {
   updated_at: string;
   /** Read only by the guest's list (consumer-web-list-visits). */
   created_at?: string;
+  /** MESITA-3695: a share's table; a table's split. */
+  parent_tab_id?: string | null;
+  split_at?: string | null;
+  split_ways?: number | null;
 };
 
 export type TabPartRow = {
@@ -247,7 +268,7 @@ export type TabPartRow = {
 };
 
 export const TAB_COLUMNS =
-  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at";
+  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, parent_tab_id, split_at, split_ways";
 const PART_COLUMNS = "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at";
 /** The guest's list reads only what a status needs (MESITA-3688): never
  *  `proof_token`, which PART_COLUMNS carries. */
@@ -283,6 +304,109 @@ export function tabMoney(t: TabRow, parts: TabPartRow[], cashBackBps: number, ca
   };
 }
 
+// ── Friends split one bill (MESITA-3695) ────────────────────────────────────
+
+/** A share's money as both tables read it. `status` is the share's own,
+ *  effective (a share past its time reads expired unless a part is moving). */
+export type ShareView = {
+  id: string;
+  status: string;
+  share_cents: number;
+  tip_cents: number;
+  cash_due_cents: number;
+  cash_received_cents: number | null;
+};
+
+export type TableView = {
+  tab_id: string;
+  status: string;
+  bill_cents: number;
+  tip_suggested_cents: number;
+  ways: number | null;
+  /** Paid shares. */
+  paid_cents: number;
+  /** Shares paying or paid: what can no longer be taken. */
+  taken_cents: number;
+  /** The bill less what is taken: what a share may still pay. */
+  left_cents: number;
+  shares: ShareView[];
+};
+
+const SHARE_LIVE = ["billed", "paying", "paid"];
+
+/** The table and its shares, as the screens show it. Expired and cancelled
+ *  shares are left out: they hold nothing. */
+export function tableView(table: TabRow, shares: TabRow[], nowMs: number): TableView {
+  const live = shares
+    // Only a billed share runs out by the clock here: a paying one has a
+    // part in flight that its own reads and the waiter's Received settle.
+    .map((s) => ({ s, status: s.status === "billed" ? effectiveStatus(s, [], nowMs) : s.status }))
+    .filter(({ status }) => SHARE_LIVE.includes(status));
+  const paid = live.filter((x) => x.status === "paid").reduce((n, x) => n + (x.s.bill_cents ?? 0), 0);
+  const taken = live.filter((x) => x.status !== "billed").reduce((n, x) => n + (x.s.bill_cents ?? 0), 0);
+  const bill = table.bill_cents ?? 0;
+  const status = table.status === "billed" && Date.parse(table.expires_at) <= nowMs && !live.some((x) => x.status === "paying")
+    ? "expired"
+    : table.status;
+  return {
+    tab_id: table.id,
+    status,
+    bill_cents: bill,
+    tip_suggested_cents: table.tip_cents,
+    ways: table.split_ways ?? null,
+    paid_cents: paid,
+    taken_cents: taken,
+    left_cents: Math.max(bill - taken, 0),
+    shares: live.map(({ s, status }) => ({
+      id: s.id,
+      status,
+      share_cents: s.bill_cents ?? 0,
+      tip_cents: status === "billed" ? s.tip_cents : s.cash_tip_cents + s.card_tip_cents,
+      cash_due_cents: s.cash_bill_cents + s.cash_tip_cents,
+      cash_received_cents: s.cash_received_cents,
+    })),
+  };
+}
+
+export async function readShares(admin: SupabaseClient, tableId: string): Promise<TabRow[]> {
+  const { data, error } = await admin.from("pay_tabs").select(TAB_COLUMNS).eq("parent_tab_id", tableId).order("created_at", { ascending: true });
+  if (error) throw new Error(`pay_tab_shares_read: ${error.message}`);
+  return (data ?? []) as TabRow[];
+}
+
+/** A share's id under its table, for the waiter's Received. Its token hash
+ *  never leaves the server. */
+export async function readShareTokenHash(admin: SupabaseClient, tableId: string, shareId: string): Promise<string | null> {
+  const { data, error } = await admin.from("pay_tabs").select("token_hash").eq("id", shareId).eq("parent_tab_id", tableId).maybeSingle();
+  if (error) throw new Error(`pay_tab_share_read: ${error.message}`);
+  return (data as { token_hash: string } | null)?.token_hash ?? null;
+}
+
+export type SplitTabInput =
+  | { kind: "split"; tabId: string; ways: number; shareCents: number }
+  | { kind: "whole"; tabId: string }
+  | { kind: "share"; tabId: string; shareCents: number };
+
+/** consumer-web-split-tab's body: split (ways and the guest's share), stop
+ *  splitting (`whole: true`), or a share's new amount (`share_cents` alone,
+ *  on a share). Which one fits the tab is the SQL's to say. */
+export function readSplitTabBody(b: Record<string, unknown>): { ok: true; input: SplitTabInput } | TabRefusal {
+  if (!isUuid(b.tab_id)) return refuse(400, "bad_request", "tab_id must be a tab id");
+  if (b.whole === true) return { ok: true, input: { kind: "whole", tabId: b.tab_id } };
+  const share = cents(b.share_cents, { min: 1 });
+  if (share === null) return refuse(400, "share_invalid", "Choose a share of the bill");
+  if (b.ways === undefined || b.ways === null) return { ok: true, input: { kind: "share", tabId: b.tab_id, shareCents: share } };
+  const ways = b.ways;
+  if (typeof ways !== "number" || !Number.isInteger(ways) || ways < 2 || ways > 20) {
+    return refuse(400, "share_invalid", "Split between 2 and 20 people");
+  }
+  return { ok: true, input: { kind: "split", tabId: b.tab_id, ways, shareCents: share } };
+}
+
+export function hashJoinToken(token: string): Promise<string> {
+  return sha256Hex(`tab-join:${token}`);
+}
+
 export type TabCardInfo = {
   card_available: boolean;
   card_unavailable_code: string | null;
@@ -301,6 +425,8 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
   cashBackBps: number;
   nowMs: number;
   card?: TabCardInfo;
+  table?: (TableView & { mine: boolean }) | null;
+  myShareTabId?: string | null;
 }) {
   const card = extra.card ?? NO_CARD;
   return {
@@ -328,11 +454,19 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     expires_at: t.expires_at,
     updated_at: t.updated_at,
     test_mode: !t.livemode,
+    // MESITA-3695: a share reads its table; a split table names the guest's
+    // own share (the app opens it).
+    table: extra.table ?? null,
+    my_share_tab_id: extra.myShareTabId ?? null,
   };
 }
 
 /** What the waiter's screen reads: never who the guest is. */
-export function staffTabView(t: TabRow, parts: TabPartRow[], extra: { placeName: string | null; cashBackBps: number; nowMs: number }) {
+export function staffTabView(
+  t: TabRow,
+  parts: TabPartRow[],
+  extra: { placeName: string | null; cashBackBps: number; nowMs: number; table?: TableView | null },
+) {
   return {
     place: { id: t.place_id, name: extra.placeName },
     status: effectiveStatus(t, parts, extra.nowMs),
@@ -348,6 +482,8 @@ export function staffTabView(t: TabRow, parts: TabPartRow[], extra: { placeName:
     expires_at: t.expires_at,
     updated_at: t.updated_at,
     test_mode: !t.livemode,
+    // MESITA-3695: a split table's shares, by id (never who holds them).
+    table: extra.table ?? null,
   };
 }
 
@@ -375,7 +511,13 @@ export type Rpc = Pick<SupabaseClient, "rpc">;
 
 export async function callTabRpc(admin: Rpc, fn: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data, error } = await admin.rpc(fn, args);
-  if (error) throw new Error(`${fn}: ${error.message}`);
+  if (error) {
+    // MESITA-3695: the split guards raise (rolling the whole call back);
+    // their message is the refusal code, share_too_big carries what is left.
+    const m = /^(split_locked|share_too_big|table_closed|paid_part)(?::(\d+))?$/.exec(error.message ?? "");
+    if (m) return { ok: false, code: m[1], ...(m[2] !== undefined ? { left_cents: Number(m[2]) } : {}) };
+    throw new Error(`${fn}: ${error.message}`);
+  }
   const r = (data ?? null) as Record<string, unknown> | null;
   if (!r) throw new Error(`${fn}: no answer`);
   return r;

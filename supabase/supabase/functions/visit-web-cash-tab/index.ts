@@ -10,7 +10,10 @@
 // bill part when the place's Cashback switch was on), Pending one hour.
 // Idempotent: a second tap answers already_paid.
 //
-// Body: { token, staff_token | place_code, cash_received_cents? }
+// Body: { token, staff_token | place_code, cash_received_cents?,
+//         share_tab_id? }
+//   MESITA-3695: on a split bill, `share_tab_id` names the share whose cash
+//   the waiter received (a share of the table this token opens).
 // Response: { ok: true, outcome: paid | already_paid, cash_received_cents,
 //             cash_tip_cents, cashback_cents, staff_token? }
 //   400 (a malformed call) · 403 staff_only · 404 not_found ·
@@ -18,9 +21,10 @@
 //   closed | place_code_required | locked
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { isUuid } from "../_shared/place-id.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
-import { callTabRpc, hashTabToken, readCashBody, readTabByToken, rpcRefusal, tabStaffAccess } from "../_shared/tab.ts";
+import { callTabRpc, hashTabToken, readCashBody, readTabByToken, rpcRefusal, tabStaffAccess, readShareTokenHash } from "../_shared/tab.ts";
 
 serveJson("visit-web-cash-tab", async (req) => {
   const ctx = openRequest(req);
@@ -49,8 +53,16 @@ serveJson("visit-web-cash-tab", async (req) => {
     if (!tab.staff_key_hash) return json({ ok: false, code: "not_billed", error: "The bill was never sent" }, 409);
     // Any staff of the tab's place may confirm (checked above): the RPC's key
     // check is the tab's own key.
+    let tokenHash = await hashTabToken(input.token);
+    const shareId = bodyRes.body.share_tab_id;
+    if (shareId !== undefined && shareId !== null) {
+      if (!isUuid(shareId)) return json({ ok: false, error: "share_tab_id must be a share of this bill" }, 400);
+      const shareHash = await readShareTokenHash(admin, tab.id, shareId);
+      if (!shareHash) return json({ ok: false, code: "not_found", error: "This share is gone" }, 404);
+      tokenHash = shareHash;
+    }
     const r = await callTabRpc(admin, "pay_tab_cash", {
-      p_token_hash: await hashTabToken(input.token),
+      p_token_hash: tokenHash,
       p_staff_key_hash: tab.staff_key_hash,
       p_received_cents: input.receivedCents,
     });

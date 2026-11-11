@@ -19,6 +19,11 @@ import { keepStaff, readStaff } from "@/lib/staff-key";
 // change until the guest pays) → Collect the cash (when the guest chose to
 // pay part in cash: one amount field, one Received) → Paid, a full green
 // screen. Expired and Cancelled say so. Every rule and peso is the server's.
+//
+// Friends split the bill (MESITA-3695): once the guest splits it, the bill
+// is locked and this screen lists each share ("Guest 2 · $500 · Paid"),
+// what is left, and a Received for each share paid in cash (by the share's
+// id, under this tab's token). Paid when the shares cover the bill.
 
 // The poll is a setTimeout chain, never a websocket: every 1.5 s while the
 // tab is moving, 5 s after 20 s with no change, 10 s after 2 min; any change
@@ -177,12 +182,12 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
   const cashCents = cash.trim() === "" ? null : readAmount(cash);
   const cashOk = cash.trim() === "" || cashCents !== null;
 
-  async function receive() {
+  async function receive(shareTabId?: string) {
     if (!tab || busy || !cashOk || !codeOk) return;
     setBusy(true);
     setError(null);
     try {
-      const r = await cashTab({ token, cash_received_cents: cashCents, ...staffKey() });
+      const r = await cashTab({ token, cash_received_cents: shareTabId ? null : cashCents, ...(shareTabId ? { share_tab_id: shareTabId } : {}), ...staffKey() });
       if (r === "failed") return setError("Couldn't reach Mesita. Tap Received again.");
       if ("refused" in r) {
         refused(r);
@@ -259,8 +264,12 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
   const ticketLine = tab.ticket ? <p className="proof-line">Ticket {tab.ticket}</p> : null;
 
   if (tab.status === "paid") {
-    const total = tab.credit_cents + tab.cash_bill_cents + tab.cash_tip_cents + tab.card_bill_cents + tab.card_tip_cents || (tab.bill_cents ?? 0);
-    const tipPaid = tab.cash_tip_cents + tab.card_tip_cents;
+    const split = tab.table;
+    const sharesTip = split ? split.shares.reduce((n, s) => n + (s.status === "paid" ? s.tip_cents : 0), 0) : 0;
+    const total = split
+      ? split.paid_cents + sharesTip
+      : tab.credit_cents + tab.cash_bill_cents + tab.cash_tip_cents + tab.card_bill_cents + tab.card_tip_cents || (tab.bill_cents ?? 0);
+    const tipPaid = split ? sharesTip : tab.cash_tip_cents + tab.card_tip_cents;
     return (
       <main className="tab-paid" data-tab-state="paid">
         {band}
@@ -272,6 +281,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         </p>
         <p className="tab-paid-amount">{moneyLabel(total, tab.currency)}</p>
         {tipPaid > 0 ? <p className="tab-paid-line">Includes {moneyLabel(tipPaid, tab.currency)} tip</p> : null}
+        {split ? <p className="tab-paid-line">Split between {split.shares.filter((s) => s.status === "paid").length}</p> : null}
         {tab.paid_at ? <p className="tab-paid-line">{clockTime(tab.paid_at)}</p> : null}
         {tab.ticket ? <p className="tab-paid-line">Ticket {tab.ticket}</p> : null}
         <p className="tab-paid-line">{tab.place.name ?? "A Mesita place"}</p>
@@ -286,6 +296,12 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         <p className="proof-status warn" role="alert">
           {tab.status === "expired" ? "This tab expired. Ask the guest to open a new one in the Mesita app." : "The guest cancelled this tab."}
         </p>
+        {tab.table && tab.table.paid_cents > 0 ? (
+          <p className="proof-line" data-split-part-paid>
+            Paid on Mesita {moneyLabel(tab.table.paid_cents, tab.currency)} of {moneyLabel(tab.table.bill_cents, tab.currency)} · collect{" "}
+            {moneyLabel(tab.table.bill_cents - tab.table.paid_cents, tab.currency)} directly
+          </p>
+        ) : null}
         {place}
       </main>
     );
@@ -348,6 +364,48 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         <p className="proof-amount">{moneyLabel(tab.bill_cents ?? 0, tab.currency)}</p>
         {ticketLine}
         {alert}
+        {place}
+      </main>
+    );
+  }
+
+  if (tab.status === "billed" && tab.table) {
+    const split = tab.table;
+    return (
+      <main className="proof" data-tab-state="split">
+        {band}
+        {reconnecting}
+        <p className="proof-line" role="status">
+          Friends are splitting the bill
+        </p>
+        <p className="proof-amount">{moneyLabel(split.left_cents, tab.currency)} left</p>
+        <p className="proof-line">
+          of {moneyLabel(split.bill_cents, tab.currency)} · paid {moneyLabel(split.paid_cents, tab.currency)}
+        </p>
+        {ticketLine}
+        <ul className="split-shares">
+          {split.shares.map((s, i) => {
+            const collect = s.status === "paying" && s.cash_due_cents > 0 && s.cash_received_cents === null;
+            return (
+              <li key={s.id} className="split-share" data-share-status={s.status}>
+                <span>
+                  Guest {i + 1} · {moneyLabel(s.share_cents, tab.currency)}
+                  {s.tip_cents > 0 && s.status !== "billed" ? ` + ${moneyLabel(s.tip_cents, tab.currency)} tip` : ""}
+                </span>
+                {collect ? (
+                  <button type="button" disabled={busy || !codeOk} onClick={() => void receive(s.id)}>
+                    {busy ? "Confirming…" : `Received ${moneyLabel(s.cash_due_cents, tab.currency)}`}
+                  </button>
+                ) : (
+                  <span className="split-share-status">{s.status === "paid" ? "Paid" : s.status === "paying" ? "Paying" : "Choosing"}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {split.shares.some((s) => s.status === "paying" && s.cash_due_cents > 0 && s.cash_received_cents === null) ? codeField : null}
+        {alert}
+        <p className="proof-line proof-clock">Open until {clockTime(tab.expires_at)}</p>
         {place}
       </main>
     );

@@ -363,3 +363,36 @@ button.quiet {
     animation: none;
   }
 }
+
+/* MESITA-3695: a split bill's shares on the waiter's screen. */
+.split-shares {
+  align-self: stretch;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e5e5e5;
+}
+
+.split-share {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  border-bottom: 1px solid #e5e5e5;
+  font-size: 16px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-share button {
+  width: auto;
+  margin: 0;
+  padding: 0 16px;
+  min-height: 44px;
+}
+
+.split-share-status {
+  color: #525252;
+  font-weight: 600;
+}

@@ -401,6 +401,14 @@ verify_jwt = true
 [functions.consumer-web-cancel-tab]
 verify_jwt = true
 
+# MESITA-3695: friends split one bill. The guest splits (or changes their
+# share); a friend joins by the table's join QR.
+[functions.consumer-web-split-tab]
+verify_jwt = true
+
+[functions.consumer-web-join-tab]
+verify_jwt = true
+
 # MESITA-3562: the waiter's side of a tab. No sign-in on visit.mesita.ai: the
 # QR token reads the bill state; billing and Received also need staff (the
 # place code once, then MESITA-3462's 12-hour staff token).

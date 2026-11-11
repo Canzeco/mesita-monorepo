@@ -33,7 +33,8 @@ describe("the waiter's tab screen", () => {
 
   it("sends the bill and Received with a staff key and the bill version", () => {
     expect(PAGE).toMatch(/billTab\(\{ token, bill_cents: billCents, tip_cents: tipCents, ticket: [^}]*bill_version: tab\.bill_version, \.\.\.staffKey\(\) \}\)/);
-    expect(PAGE).toMatch(/cashTab\(\{ token, cash_received_cents: cashCents, \.\.\.staffKey\(\) \}\)/);
+    // MESITA-3695: a split bill's share is confirmed by its id, under this tab's token, with a staff key.
+    expect(PAGE).toMatch(/cashTab\(\{ token, cash_received_cents: shareTabId \? null : cashCents, \.\.\.\(shareTabId \? \{ share_tab_id: shareTabId \} : \{\}\), \.\.\.staffKey\(\) \}\)/);
   });
 
   it("shows the test band and never who the guest is", () => {

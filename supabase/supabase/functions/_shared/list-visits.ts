@@ -51,6 +51,8 @@ export async function listVisits(
     .select(LIST_TAB_COLUMNS)
     .eq("consumer_id", consumerId)
     .eq("livemode", livemode)
+    // MESITA-3695: a split table is listed as the guest's own share.
+    .is("split_at", null)
     .order("created_at", { ascending: false })
     .limit(VISITS_LIMIT + 1);
   if (tabError) return { ok: false, error: `tabs: ${tabError.message}` };
