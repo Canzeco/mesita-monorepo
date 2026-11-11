@@ -1,8 +1,16 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import Link from "next/link";
-import { Clock, Star } from "lucide-react";
+import {
+  Banknote,
+  Clock,
+  Navigation,
+  Star,
+  UtensilsCrossed,
+} from "lucide-react";
+import { toAmPm } from "@mesita/place-profile/lib/place-time";
+import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -12,34 +20,38 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
+import { CardActions, cardFacts } from "@/components/consumer/place-card";
+import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import {
-  CARD_BUTTON_BOX,
-  CardActions,
-  cardFacts,
-} from "@/components/consumer/place-card";
-import { offerSlides } from "@/components/consumer/offer-button";
+  CONSUMER_ROUTES,
+  isRouteId,
+  payPlacePath,
+} from "@/lib/consumer-route-contract";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 
 /**
  * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
  * information at the right, two squares, information with buttons"):
  *
- *   ┌─────────┐ ┌──────────────┐
- *   │  photo  │ │ Name          │   name on up to two lines
- *   │         │ │ $$ · Tacos    │
- *   │         │ │ ★ 4.7 (8.6K)  │
- *   │         │ │ ◷ Open · 3.3 km│
- *   │         │ │[ +5% Cashback ]│   only when the place has an offer
- *   └─────────┘ │[♡ Save][Share]│
- *               └──────────────┘
+ *   ┌─────────┐ ┌────────────────┐
+ *   │  photo  │ │ Name ✪          │   name on up to two lines, Premier seal
+ *   │         │ │ ▭ $200–300MX    │   one fact a line (MESITA-3665)
+ *   │         │ │ ⑂ Taco Restaurant│
+ *   │         │ │ ★ 4.7 (8.6K)    │
+ *   │         │ │ ◷ Open until 3 AM│
+ *   │         │ │ ➤ 0.4 km        │
+ *   │         │ │[ +5% Cashback ] │   every offer in turn, only when it has one
+ *   └─────────┘ │[♡ Save][Share]  │
+ *               └────────────────┘
  *
  * The photo square and the text open the place; Save and Share are the
  * shared CardActions (a Google-only place gets Generate Profile instead), so
  * a tap on them never navigates. THE PHOTO STAYS CLEAN (Pato, MESITA-3664:
  * "remove the cashback icon from the fucking image. keep the image clean.
- * you have a lot of space at the right. fucking use it"): the place's first
- * offer is a full-width green line in the info square, just above Save ·
- * Share, and a tap on it opens the place like the rest of the facts.
+ * you have a lot of space at the right. fucking use it"): the offers are the
+ * shared rotating OfferButton in the info square, just above Save · Share,
+ * cycling every offer in its own colour (MESITA-3665); a tap goes where the
+ * offer on screen points, the place's bill or its Rewards section.
  */
 export function PlaceRowCard({
   place,
@@ -65,9 +77,82 @@ export function PlaceRowCard({
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
   const facts = cardFacts(place);
-  const offer = google ? undefined : offerSlides(place)[0];
-  // The family word on Top, the place's own kind under a family chip.
-  const kind = family ?? facts.kind ?? null;
+  const slides = google ? [] : offerSlides(place);
+  // The place's own kind ("Taco Restaurant"), the family word when it has
+  // none.
+  const kind = facts.kind ?? family ?? null;
+  const overview = enrichPlaceOverview(place);
+  // The numeric range ("$200–300MX") when the place has one, else $$.
+  const price =
+    overview.price_range?.replace(/\s*per person$/i, "") || facts.price;
+  // "Open until 3 AM" / "Closed until 1 PM", as on the place screen.
+  const untilAt = facts.open ? overview.closes_at : overview.opens_at;
+  const hours =
+    facts.open === null
+      ? null
+      : `${facts.open ? "Open" : "Closed"}${untilAt ? ` until ${toAmPm(untilAt)}` : ""}`;
+  const icon = "h-3.5 w-3.5 shrink-0";
+  const rows = [
+    price && {
+      key: "price",
+      icon: <Banknote className={cn(icon, "text-fact-price")} aria-hidden />,
+      text: price,
+      className: "text-fact-price font-semibold",
+    },
+    kind && {
+      key: "kind",
+      icon: (
+        <UtensilsCrossed
+          className={cn(icon, "text-muted-foreground")}
+          aria-hidden
+        />
+      ),
+      text: kind,
+    },
+    facts.rating && {
+      key: "stars",
+      icon: (
+        <Star
+          className={cn(icon, "fill-fact-star text-fact-star")}
+          aria-hidden
+        />
+      ),
+      text: facts.reviews ? `${facts.rating} (${facts.reviews})` : facts.rating,
+    },
+    hours && {
+      key: "hours",
+      icon: (
+        <Clock
+          className={cn(
+            icon,
+            facts.open ? "text-fact-open" : "text-fact-closed",
+          )}
+          strokeWidth={2.5}
+          aria-hidden
+        />
+      ),
+      text: hours,
+    },
+    facts.distance && {
+      key: "distance",
+      icon: (
+        <Navigation
+          className={cn(icon, "fill-fact-distance text-fact-distance")}
+          aria-hidden
+        />
+      ),
+      text: facts.distance,
+    },
+  ].filter(
+    (
+      r,
+    ): r is {
+      key: string;
+      icon: ReactElement;
+      text: string;
+      className?: string;
+    } => Boolean(r),
+  );
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
@@ -143,76 +228,55 @@ export function PlaceRowCard({
                 ad={(place.boost_tier ?? 0) > 0}
               />
             </p>
-            {facts.price || kind ? (
-              <p className="text-muted-foreground truncate text-xs leading-5">
-                {facts.price ? (
-                  <span className="text-fact-price font-semibold">
-                    {facts.price}
-                  </span>
-                ) : null}
-                {facts.price && kind ? " · " : null}
-                {kind}
+            {/* THE PLACE SCREEN'S FACTS, ONE A LINE (Pato, MESITA-3665:
+                "maybe you can display more fields … Price, Category, Stars,
+                Hour, Distance"): the same words and icon colours as the
+                facts row on the place screen. A missing fact hides. */}
+            {rows.map((r) => (
+              <p
+                key={r.key}
+                className="text-foreground flex min-w-0 items-center gap-1.5 text-xs leading-5"
+              >
+                {r.icon}
+                <span className={cn("truncate", r.className)}>{r.text}</span>
               </p>
-            ) : null}
-            {facts.rating ? (
-              <p className="text-muted-foreground flex items-center gap-1 text-xs leading-5">
-                <Star
-                  className="fill-fact-star text-fact-star h-3 w-3 shrink-0"
-                  aria-hidden
-                />
-                <span className="text-foreground">{facts.rating}</span>
-                {facts.reviews ? <span>({facts.reviews})</span> : null}
-              </p>
-            ) : null}
-            {facts.open !== null || facts.distance ? (
-              <p className="text-muted-foreground flex min-w-0 items-center gap-1 text-xs leading-5">
-                {facts.open !== null ? (
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1",
-                      facts.open ? "text-fact-open" : "text-fact-closed",
-                    )}
-                  >
-                    <Clock className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-                    {facts.open ? "Open" : "Closed"}
-                  </span>
-                ) : null}
-                {facts.open !== null && facts.distance ? <span>·</span> : null}
-                {facts.distance ? (
-                  <span className="truncate">{facts.distance}</span>
-                ) : null}
-              </p>
-            ) : null}
+            ))}
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}
-        {offer
-          ? open(
-              offer.pill,
-              cn(
-                CARD_BUTTON_BOX,
-                "mt-auto flex items-center justify-center px-2 text-xs font-semibold",
-                offer.tone,
-                focus,
-              ),
-              `Open ${place.name}: ${offer.spoken}`,
-            )
-          : null}
-        <CardActions
-          name={place.name}
-          saved={saved}
-          onSave={onToggle}
-          onShare={onShare}
-          onGenerate={
-            google
-              ? () => {
-                  onOpen?.();
-                  onOpenGoogle?.();
-                }
-              : undefined
-          }
-          className={offer ? undefined : "mt-auto"}
-        />
+        {/* ONE BUTTON GRID (Pato, MESITA-3665: "fix the spacing between the
+            boxes buttons, like keep an ordered grid"): the offer line and
+            Save · Share share one block pinned to the square's bottom, 8px
+            apart both ways, the gap Save and Share already keep. */}
+        <div className="mt-auto flex flex-col gap-2">
+          {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
+              buttons offers moving and switching across all the offers with
+              different colors"): the shared OfferButton, each offer in its
+              own colour on the shared beat, short words for this box. */}
+          <OfferButton
+            href={placeHref(place.slug || place.id)}
+            payHref={
+              isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay
+            }
+            name={place.name}
+            slides={slides}
+            compact
+          />
+          <CardActions
+            name={place.name}
+            saved={saved}
+            onSave={onToggle}
+            onShare={onShare}
+            onGenerate={
+              google
+                ? () => {
+                    onOpen?.();
+                    onOpenGoogle?.();
+                  }
+                : undefined
+            }
+          />
+        </div>
       </div>
     </li>
   );
