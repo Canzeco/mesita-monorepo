@@ -14,7 +14,6 @@ import {
   SHEET_BODY_CLASS,
   SHEET_TITLE_CLASS,
 } from "@/lib/ui-classes";
-import { setMapFamilies, useMapFilters } from "@/lib/use-map-filters";
 import { cn } from "@/lib/utils";
 
 import { CHIP, CHIP_OFF_FLAT, CHIP_ON } from "./header-classes";
@@ -26,25 +25,53 @@ import { CHIP, CHIP_OFF_FLAT, CHIP_ON } from "./header-classes";
 // (Top). The server ORs the families (`familyKeys`, area-score.ts
 // familyGate), so two picks show places of either. The chip row stays the
 // one-tap pick of a single family.
+//
+// SHARED BY SEARCH AND HOME (MESITA-3666, Pato: "add the filters button
+// before top, like in categories"): the caller owns the applied set; Search
+// passes the map's filters, Home its catalog's families.
 
 export function FamilyFilterSheet({
   open,
   onClose,
+  applied,
+  onApply,
+  note,
 }: {
   open: boolean;
   onClose: () => void;
+  /** The families applied now; the draft starts from them. */
+  applied: readonly FamilyKey[];
+  onApply: (families: FamilyKey[]) => void;
+  /** The line under the title: what the picks change. */
+  note: string;
 }) {
   return (
     <LocalSheet open={open} onClose={onClose} ariaLabel="Filters">
       {/* Mounted per opening, so the draft starts from the applied set. */}
-      {open ? <FamilyFilterBody onClose={onClose} /> : null}
+      {open ? (
+        <FamilyFilterBody
+          onClose={onClose}
+          applied={applied}
+          onApply={onApply}
+          note={note}
+        />
+      ) : null}
     </LocalSheet>
   );
 }
 
-function FamilyFilterBody({ onClose }: { onClose: () => void }) {
-  const applied = useMapFilters().familyKeys;
-  const [draft, setDraft] = useState<FamilyKey[]>(applied);
+function FamilyFilterBody({
+  onClose,
+  applied,
+  onApply,
+  note,
+}: {
+  onClose: () => void;
+  applied: readonly FamilyKey[];
+  onApply: (families: FamilyKey[]) => void;
+  note: string;
+}) {
+  const [draft, setDraft] = useState<FamilyKey[]>([...applied]);
   const picked = new Set(draft);
 
   const toggle = (key: FamilyKey) =>
@@ -53,7 +80,7 @@ function FamilyFilterBody({ onClose }: { onClose: () => void }) {
     );
 
   const apply = () => {
-    setMapFamilies(draft);
+    onApply(draft);
     onClose();
   };
 
@@ -72,10 +99,7 @@ function FamilyFilterBody({ onClose }: { onClose: () => void }) {
             Clear
           </button>
         </div>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Pick as many families as you like. The map shows places in any of
-          them.
-        </p>
+        <p className="text-muted-foreground mt-1 text-sm">{note}</p>
         <div
           role="group"
           aria-label="Families"

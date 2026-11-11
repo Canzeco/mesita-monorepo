@@ -49,7 +49,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass } from "lucide-react";
+import { Compass, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -67,7 +67,12 @@ import {
   readAreaPool,
   writeAreaPool,
 } from "@/lib/area-pool-cache";
-import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
+import {
+  FILTERABLE_PLACE_FAMILIES,
+  type FamilyKey,
+} from "@/lib/place-families";
+import { FamilyFilterSheet } from "@/components/consumer/search/FamilyFilterSheet";
+import { DISC_BADGE } from "@/components/consumer/search/header-classes";
 import { FamilyIcon } from "@/lib/family-icons";
 import { useBrowserSupabase } from "@/lib/supabase/browser";
 import { trackEvent } from "@/lib/analytics/track";
@@ -127,6 +132,9 @@ export const TOP_LABEL = "Top";
 export function isEveryFamily(chip: string): boolean {
   return chip === ALL_CHIP;
 }
+/** The chip state while the Filters sheet holds two or more families
+ *  (MESITA-3666): no one chip is lit, and the pool is already their union. */
+export const FILTERS_CHIP = "filters";
 /** Home's four tabs, each its own address (MESITA-2517, MESITA-2597), in
  *  version order (Pato, MESITA-3662: "create four views: places 1.0, places
  *  2.0, places 3.0, social"):
@@ -191,7 +199,7 @@ export function chipFamilies(chip: string): string[] {
  *  row's pool is already that family's (MESITA-2438); the filter stays as a
  *  guard when area.familyKeys and family_keys disagree. */
 export function poolPlaces(pool: AreaPool, chip: string): Place[] {
-  return isEveryFamily(chip)
+  return isEveryFamily(chip) || chip === FILTERS_CHIP
     ? pool.places
     : pool.places.filter((p) => (p.area?.familyKeys ?? []).includes(chip));
 }
@@ -243,6 +251,7 @@ export function CatalogRails() {
   // The family the pool was asked for (MESITA-2438): a family row's own,
   // none for All.
   const [families, setFamilies] = useState<string[]>([]);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
   }`;
@@ -275,7 +284,13 @@ export function CatalogRails() {
           requestId: ef?.body?.requestId ?? null,
         });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({ kind: "none", places: [], order: [], asked: 0, rankedFrom: null });
+        setPool({
+          kind: "none",
+          places: [],
+          order: [],
+          asked: 0,
+          rankedFrom: null,
+        });
       }
     };
     if (!kept) void fetchPool();
@@ -328,7 +343,8 @@ export function CatalogRails() {
   const hasMore = order !== undefined && asked < order.length;
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined") return;
+    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined")
+      return;
     const key = requestKey;
     const start = asked;
     const ids = pool.order.slice(start, start + (pool.pageSize ?? PLACES_PAGE));
@@ -336,50 +352,57 @@ export function CatalogRails() {
     const tag = `${key}@${start}`;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      if (filling.current === tag || invalidAt.current === tag) return;
-      filling.current = tag;
-      void apiFillAreaPool(supabase, rankedFrom, families, ids)
-        .then((filled) => {
-          if (key !== liveKey.current) return;
-          fails.current = 0;
-          emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
-          if (emptyRun.current >= 2) {
-            emptyRun.current = 0;
-            dropAreaPool(key);
-            setRetry((n) => n + 1);
-            return;
-          }
-          setPool((cur) => {
-            if (!cur || key !== liveKey.current || cur.asked !== start) return cur;
-            const merged = mergeFilledPlaces(cur, filled, start + ids.length);
-            writeAreaPool(key, merged);
-            return merged;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        if (filling.current === tag || invalidAt.current === tag) return;
+        filling.current = tag;
+        void apiFillAreaPool(supabase, rankedFrom, families, ids)
+          .then((filled) => {
+            if (key !== liveKey.current) return;
+            fails.current = 0;
+            emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
+            if (emptyRun.current >= 2) {
+              emptyRun.current = 0;
+              dropAreaPool(key);
+              setRetry((n) => n + 1);
+              return;
+            }
+            setPool((cur) => {
+              if (!cur || key !== liveKey.current || cur.asked !== start)
+                return cur;
+              const merged = mergeFilledPlaces(cur, filled, start + ids.length);
+              writeAreaPool(key, merged);
+              return merged;
+            });
+          })
+          .catch((err) => {
+            // The EF's code and requestId join this to its log line.
+            const ef = err instanceof EFError ? err : null;
+            const invalid = ef?.code === "fill_invalid";
+            (invalid ? console.error : console.warn)("[catalog] fill failed", {
+              start,
+              size: ids.length,
+              code: ef?.code ?? null,
+              requestId: ef?.body?.requestId ?? null,
+              attempt: fails.current + 1,
+            });
+            if (invalid) invalidAt.current = tag;
+            if (invalid || disposed || key !== liveKey.current) return;
+            fails.current += 1;
+            if (fails.current <= 3) {
+              timer = setTimeout(
+                () => setFillRetry((n) => n + 1),
+                1000 * 2 ** (fails.current - 1),
+              );
+            }
+          })
+          .finally(() => {
+            if (filling.current === tag) filling.current = null;
           });
-        })
-        .catch((err) => {
-          // The EF's code and requestId join this to its log line.
-          const ef = err instanceof EFError ? err : null;
-          const invalid = ef?.code === "fill_invalid";
-          (invalid ? console.error : console.warn)("[catalog] fill failed", {
-            start,
-            size: ids.length,
-            code: ef?.code ?? null,
-            requestId: ef?.body?.requestId ?? null,
-            attempt: fails.current + 1,
-          });
-          if (invalid) invalidAt.current = tag;
-          if (invalid || disposed || key !== liveKey.current) return;
-          fails.current += 1;
-          if (fails.current <= 3) {
-            timer = setTimeout(() => setFillRetry((n) => n + 1), 1000 * 2 ** (fails.current - 1));
-          }
-        })
-        .finally(() => {
-          if (filling.current === tag) filling.current = null;
-        });
-    }, { rootMargin: "600px 0px" });
+      },
+      { rootMargin: "600px 0px" },
+    );
     io.observe(el);
     return () => {
       disposed = true;
@@ -535,40 +558,83 @@ export function CatalogRails() {
   // column, Top first, as one scrolling line of pills over the grid, so the
   // places get the whole width. Words only; the chosen pill is ink. The row
   // and the column share `chip`, so a family carries across the two tabs.
+  // THE FILTERS DISC BEFORE TOP (Pato, MESITA-3666: "add the filters button
+  // before top, like in categories"): Search's disc and sheet, pinned at the
+  // row's left while the pills scroll; pick any number of families and the
+  // server ORs them in one pool. A bubble counts the picks.
+  const picked = families.length;
+  const applyFilters = (keys: FamilyKey[]) => {
+    trackEvent(supabase, "home_mode_view", { mode: "Filters" });
+    setFamilies(keys);
+    setChip(
+      keys.length === 0 ? ALL_CHIP : keys.length === 1 ? keys[0] : FILTERS_CHIP,
+    );
+  };
   const chipRow = (
-    <nav
-      className={cn("bg-card", GRID_CHIPS)}
-      aria-label="Families"
-      data-places-chips
-    >
-      {chips.map((c) => {
-        const on = chip === c.key;
-        return (
-          <button
-            key={c.key}
-            type="button"
-            onClick={(e) => {
-              if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
-              setChip(c.key);
-              setFamilies(chipFamilies(c.key));
-              e.currentTarget.scrollIntoView({
-                block: "nearest",
-                inline: "center",
-              });
-            }}
-            aria-pressed={on}
+    <div className="bg-card flex shrink-0 items-center gap-1.5 pl-3">
+      <button
+        type="button"
+        onClick={() => setFiltersOpen(true)}
+        aria-label={picked > 0 ? `Filters (${picked} selected)` : "Filters"}
+        aria-haspopup="dialog"
+        className="bg-border/60 text-foreground hover:bg-border relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition after:absolute after:-inset-1.5 active:scale-[0.97]"
+        data-places-filters
+      >
+        <SlidersHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
+        {picked > 0 ? (
+          <span
+            aria-hidden
             className={cn(
-              "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
-              on
-                ? "bg-foreground text-card font-semibold"
-                : "bg-border/60 text-foreground hover:bg-border",
+              DISC_BADGE,
+              "bg-destructive text-destructive-foreground",
             )}
           >
-            {c.label}
-          </button>
-        );
-      })}
-    </nav>
+            {picked}
+          </span>
+        ) : null}
+      </button>
+      <nav
+        className={cn("bg-card min-w-0 flex-1 pl-0", GRID_CHIPS)}
+        aria-label="Families"
+        data-places-chips
+      >
+        {chips.map((c) => {
+          const on = chip === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={(e) => {
+                if (!on)
+                  trackEvent(supabase, "home_mode_view", { mode: c.label });
+                setChip(c.key);
+                setFamilies(chipFamilies(c.key));
+                e.currentTarget.scrollIntoView({
+                  block: "nearest",
+                  inline: "center",
+                });
+              }}
+              aria-pressed={on}
+              className={cn(
+                "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+                on
+                  ? "bg-foreground text-card font-semibold"
+                  : "bg-border/60 text-foreground hover:bg-border",
+              )}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </nav>
+      <FamilyFilterSheet
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        applied={families as FamilyKey[]}
+        onApply={applyFilters}
+        note="Pick as many families as you like. Home shows places in any of them."
+      />
+    </div>
   );
 
   // Home's header (the location alone, MESITA-2405) → the tabs → on the grid
@@ -723,7 +789,10 @@ export function CatalogRails() {
 
   if (pool === null) return shell(waiting);
 
-  const label = chips.find((c) => c.key === chip)?.label ?? "Places";
+  const label =
+    chip === FILTERS_CHIP
+      ? "your filters"
+      : (chips.find((c) => c.key === chip)?.label ?? "Places");
   // The Catalog has no radius (MESITA-2909): an empty pool is an empty
   // catalog (or every place under the floor), wherever the point is.
   const empty = isEveryFamily(chip) ? (

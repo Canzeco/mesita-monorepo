@@ -50,6 +50,7 @@ import { FamilyIcon } from "@/lib/family-icons";
 import {
   clearMapFamilies,
   selectMapFamily,
+  setMapFamilies,
   useMapFilters,
 } from "@/lib/use-map-filters";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
@@ -65,17 +66,13 @@ import {
   HEADER_ICON,
   HEADER_ICON_STROKE,
   HEADER_PILL,
+  DISC_BADGE,
 } from "./header-classes";
 
 // A chip's icon is a line icon, never an emoji (MESITA-2478), at the
 // header's one size and stroke (HEADER_ICON, MESITA-3023; it was 1.75 off,
 // 2.25 on).
 
-/** The count bubble on the Filters disc's top-right corner while families
- *  are picked: ink, not red (Pato, MESITA-3006; MESITA-2884's red disc is
- *  gone), ringed in white so it reads off the disc. */
-const DISC_BADGE =
-  "bg-primary text-primary-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
 
 export function SearchHeader({
   locate,
@@ -220,7 +217,13 @@ export function SearchHeader({
           </div>
         ) : null}
       </div>
-      <FamilyFilterSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <FamilyFilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        applied={filters.familyKeys}
+        onApply={setMapFamilies}
+        note="Pick as many families as you like. The map shows places in any of them."
+      />
     </div>
   );
 }

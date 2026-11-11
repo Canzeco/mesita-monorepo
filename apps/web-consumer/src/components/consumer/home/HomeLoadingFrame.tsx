@@ -44,6 +44,7 @@ export function HomeLoadingFrame({
       ) : (
         <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className={GRID_CHIPS}>
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
             {[0, 1, 2, 3, 4].map((i) => (
               <Skeleton key={i} className="h-8 w-16 shrink-0 rounded-full" />
             ))}
