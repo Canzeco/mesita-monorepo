@@ -1,11 +1,8 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode } from "react";
 import {
-  Bell,
-  CalendarCheck,
   CreditCard,
   Crown,
-  Heart,
   Plug,
   Settings as SettingsIcon,
   Share2,
@@ -15,6 +12,8 @@ import {
 } from "lucide-react";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { activityHref } from "@/lib/activity-types";
+import { ACTIVITY_CHIPS } from "@/components/consumer/activity/activity-chips";
 import { DestGrid, type DestShape } from "./profile-sections";
 
 // ─── Me's ten cells and the page they sit on ─────────────────────────────────
@@ -83,7 +82,9 @@ export type HubTile = {
   href: string;
 };
 
-/** The first twelve grid cells, in reading order; Settings is the last. */
+/** The grid cells, in reading order; Settings is the last (fourteen with it
+ *  since MESITA-3688: Profile · Instagram · Class · Plan, the seven Activity
+ *  chips, Refunds · MCP · Share). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
   // member number is on /me/profile, with its copy button; the tile only
@@ -117,29 +118,16 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: "Free or Pro",
     href: CONSUMER_ROUTES.mePages.plan,
   },
-  {
-    Icon: Bell,
-    title: "Notifications",
-    summary: "Bookings and updates",
-    href: CONSUMER_ROUTES.mePages.notifications,
-  },
-  {
-    Icon: CalendarCheck,
-    title: "Reservations",
-    summary: "Upcoming and past",
-    href: CONSUMER_ROUTES.mePages.reservations,
-  },
-  // Favorites and Reservations are each their own page (MESITA-2565); they
-  // were the two tabs of Saved (MESITA-2561). Connector is Mesita in an AI
-  // assistant; it is not built, so its page says Soon (MESITA-2562). Visits
-  // sat beside Favorites (MESITA-3264) until the discount product left
-  // (MESITA-3299), so Connector is back in that cell.
-  {
-    Icon: Heart,
-    title: "Favorites",
-    summary: "Places you saved",
-    href: CONSUMER_ROUTES.mePages.favorites,
-  },
+  // EVERY ACTIVITY CHIP HAS A TILE (Pato, MESITA-3688: "add more here, like
+  // all the Activity subpages, and instead of nesting them on Me just
+  // redirect to activity"). Each opens its chip at /activity?type=…; Me's own
+  // Notifications, Favorites and Reservations pages are gone (legacy 308s).
+  ...ACTIVITY_CHIPS.map((c) => ({
+    Icon: c.Icon,
+    title: c.label,
+    summary: c.summary,
+    href: activityHref(c.type),
+  })),
   // TRANSACTIONS LEFT FOR THE BAR (MESITA-3631): it is the Activity tab.
   // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
   // already used in the wallet. its redundant"). /me/cards now redirects to the

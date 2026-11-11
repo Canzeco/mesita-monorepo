@@ -108,13 +108,9 @@ export const CONSUMER_ROUTES = {
     settingsContact: "/me/settings/contact",
     // Feedback about the app itself, not a place (MESITA-3029).
     settingsFeedback: "/me/settings/feedback",
-    notifications: "/me/notifications",
-    // Favorites and Reservations, each its own page (Pato, MESITA-2565:
-    // "the page and route containing both reservations and saved its gone").
-    // They were the two tabs of Saved (MESITA-2521) at /me/saved
-    // (MESITA-2561), and before that the bar's /saved.
-    favorites: "/me/favorites",
-    reservations: "/me/reservations",
+    // Me's Notifications, Favorites and Reservations pages left for
+    // Activity's chips (MESITA-3688, Pato: "instead of nesting them on Me
+    // just redirect to activity"); their addresses are in `legacy`.
     // Me › Visits (MESITA-3264) left with the discount product (MESITA-3299);
     // the `/me/[tab]` catch-all 308s its address onto the hub.
   },
@@ -224,6 +220,11 @@ export const CONSUMER_ROUTES = {
     // Me › Saved, Favorites | Reservations (MESITA-2561), until each became
     // its own page (MESITA-2565).
     meSaved: "/me/saved",
+    // Me's own Notifications, Favorites and Reservations pages
+    // (MESITA-2565), until each became an Activity chip (MESITA-3688).
+    meNotifications: "/me/notifications",
+    meFavorites: "/me/favorites",
+    meReservations: "/me/reservations",
     // Place detail briefly had a dual path under /saved (Favorites-era).
     // Canonical is /place/[id]; this redirects there (MESITA-899).
     savedPlacePrefix: "/saved/place/",
@@ -341,9 +342,10 @@ export const ROUTE_MAP = {
   place: row("/place/:id", "home", "panel", "home", false),
   placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
-  // A reservation is reached from a place and from Me › Reservations; it
-  // lights Me, whose list is where it lands back (MESITA-2561).
-  reservation: row("/reservation/:id", "me", "panel", "meReservations"),
+  // A reservation is reached from a place and from Activity › Reservations;
+  // it lights Activity, whose list is where it lands back (MESITA-3688; Me ›
+  // Reservations until then, MESITA-2561).
+  reservation: row("/reservation/:id", "activity", "panel", "activity"),
   pay: row("/pay", "pay", "tab", null),
   payPlace: row("/pay/:placeId", "pay", "door", "pay"),
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
@@ -362,9 +364,6 @@ export const ROUTE_MAP = {
   meClass: row("/me/class", "me", "page", "me"),
   meConnector: row("/me/connector", "me", "page", "me"),
   meRefunds: row("/me/refunds", "me", "page", "me"),
-  meNotifications: row("/me/notifications", "me", "page", "me"),
-  meFavorites: row("/me/favorites", "me", "page", "me"),
-  meReservations: row("/me/reservations", "me", "page", "me"),
   meSettings: row("/me/settings", "me", "page", "me"),
   meSettingsContact: row("/me/settings/contact", "me", "page", "meSettings"),
   meSettingsFeedback: row("/me/settings/feedback", "me", "page", "meSettings"),

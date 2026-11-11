@@ -26,9 +26,6 @@ import { EmptyState } from "@/components/shared";
 // those kinds; filtering on `NOTIFICATION_KINDS` here keeps a row this
 // screen cannot render off the list.
 
-const FEED_CLASS =
-  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-6";
-
 /** The rows' column: 20px under the header, 8px apart. */
 const LIST_CLASS = "mt-5 flex flex-col gap-2";
 
@@ -45,29 +42,16 @@ function SkeletonRows() {
   );
 }
 
-/** The feed while it loads: what /me/notifications/loading.tsx draws under
- *  the page's frame, and what this component draws until the fetch lands. */
-export function NotificationsSkeleton() {
-  return (
-    <div className={FEED_CLASS}>
-      <SkeletonRows />
-    </div>
-  );
-}
-
-export function NotificationsClient() {
-  return (
-    <div className={FEED_CLASS}>
-      <NotificationsList />
-    </div>
-  );
-}
-
-/** The notifications themselves, with no scroller of their own: Me ›
- *  Notifications draws them in its feed, Activity's Notifications chip in
- *  its page (MESITA-3681). One component and one cache, so the two lists
- *  never disagree. */
-export function NotificationsList({ inset = true }: { inset?: boolean }) {
+/** The notifications themselves: Activity's Notifications chip, the guest's
+ *  events (MESITA-3688: "notifications are events"). Newest first under day
+ *  headings (Today, Yesterday, then the date); each row is the row it always
+ *  was. `quietEmpty`: a "Next up" ticket stands above, so an empty list is
+ *  one muted line, not a second empty state. */
+export function NotificationsList({
+  quietEmpty = false,
+}: {
+  quietEmpty?: boolean;
+}) {
   // Kept for two minutes and refreshed by every reservation write
   // (MESITA-3014): a return to this list paints its rows, not skeletons.
   const getSupabase = useLazyBrowserSupabase();
@@ -81,14 +65,12 @@ export function NotificationsList({ inset = true }: { inset?: boolean }) {
   const error = query.error ? "Couldn't load notifications." : null;
 
   const visible = rows.filter((n) => NOTIFICATION_KINDS.has(n.kind));
+  const days = byDay(visible);
 
   return (
-    <div className={inset ? undefined : "-mt-5"}>
+    <div className="-mt-5">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
-          moves. it looks NOT clean. be direct"). The page header already
-          names this list; a heading that repeats the tile you just tapped is
-          furniture. Every branch below opens on `mt-4`, the same step
-          Reservations gets from its `py-4` scroller. */}
+          moves. it looks NOT clean. be direct"). */}
       {error ? (
         <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
           {error}
@@ -98,21 +80,64 @@ export function NotificationsList({ inset = true }: { inset?: boolean }) {
       {loading ? (
         <SkeletonRows />
       ) : visible.length > 0 ? (
-        <div className={LIST_CLASS}>
-          {visible.map((n) => (
-            <NotificationRow key={n.id} n={n} />
+        <>
+          {days.map(([day, list]) => (
+            <section key={day} className="mt-5">
+              <h2 className="text-muted-foreground type-eyebrow">{day}</h2>
+              <div className="mt-2 flex flex-col gap-2">
+                {list.map((n) => (
+                  <NotificationRow key={n.id} n={n} />
+                ))}
+              </div>
+            </section>
           ))}
-        </div>
-      ) : error ? null : (
+          {rows.length >= NOTIFICATIONS_PAGE ? (
+            <p className="text-muted-foreground mt-5 text-center text-xs">
+              Older notifications aren&apos;t shown
+            </p>
+          ) : null}
+        </>
+      ) : error ? null : quietEmpty ? (
+        <p className="text-muted-foreground mt-5 text-sm">Nothing new yet.</p>
+      ) : (
         <EmptyState
           icon={Bell}
-          title="No notifications yet"
-          action={{
-            label: "See your reservations",
-            href: CONSUMER_ROUTES.mePages.reservations,
-          }}
+          title="Nothing new yet"
+          action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
         />
       )}
     </div>
   );
+}
+
+/** How many rows one read brings (fetchConsumerNotifications' default). */
+const NOTIFICATIONS_PAGE = 40;
+
+/** Rows grouped under their day, newest first: "Today", "Yesterday", then
+ *  "Mon Nov 9", in the device's time zone. */
+function byDay(
+  rows: ConsumerNotification[],
+): Array<[string, ConsumerNotification[]]> {
+  const out: Array<[string, ConsumerNotification[]]> = [];
+  const today = new Date();
+  const yesterday = new Date(Date.now() - 86_400_000);
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  for (const n of rows) {
+    const d = new Date(n.created_at);
+    const day = same(d, today)
+      ? "Today"
+      : same(d, yesterday)
+        ? "Yesterday"
+        : d
+            .toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })
+            .replace(",", "");
+    const last = out[out.length - 1];
+    if (last && last[0] === day) last[1].push(n);
+    else out.push([day, [n]]);
+  }
+  return out;
 }

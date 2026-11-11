@@ -19,25 +19,17 @@ import { useCardSaveShare } from "@/lib/use-card-save-share";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useUserLocation } from "@/lib/use-user-location";
 
-// FAVORITES — Me › Favorites, /me/favorites (Pato, MESITA-2565: "saved show
-// reservations directly. same for favorites. the page and route containing
-// both reservations and saved its gone"). The hearted places, newest first,
-// in Search's horizontal card (Pato, MESITA-2698: "in favorites use this
-// style … the horizontal style"; Home's square tiles before), one per row,
-// a tap opens the place; Saved unsaves, with Undo. It was the first tab of
-// Saved (MESITA-2521), at /me/saved (MESITA-2561) and before that the bar's
-// /saved.
+// FAVORITES — Activity's Favorites chip (MESITA-3688; Me › Favorites,
+// /me/favorites, from MESITA-2565 until then). The hearted places, newest
+// first, in Search's horizontal card (MESITA-2698), one per row; a tap opens
+// the place; Saved unsaves, with Undo.
 //
 // Favorites are the guest's hearts — stored as `saved` (lib/saved-places.ts);
 // the word on screen is Favorites and the keys never changed. NOTHING HERE
-// FETCHES: the hearts are local, synced by the shell.
-//
-// THE PANE IS A FLEX COLUMN, NOT A BLOCK: grow, min-h-0, scroll inside — a
-// block parent collapses EmptyState.
+// FETCHES: the hearts are local, synced by the shell, so this list has a
+// skeleton and an empty state but never an error.
 
-const PANE =
-  "scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain";
-const LIST = "flex flex-col gap-2 px-5 pt-5 pb-6";
+const LIST = "flex flex-col gap-2";
 
 /** Three of Search's own loading cards (RailCardSkeleton, the RailCard
  *  frame, photo, rows and Save · Share) on the list's step: what this list
@@ -54,16 +46,8 @@ function FavoritesListSkeleton() {
   );
 }
 
-/** The Favorites pane while the route loads: the pane and the list. */
-export function FavoritesSkeleton() {
-  return (
-    <div className={PANE}>
-      <FavoritesListSkeleton />
-    </div>
-  );
-}
-
-function FavoritesList() {
+/** Activity's Favorites chip (MESITA-3688; Me › Favorites until then). */
+export function FavoritesList() {
   const { savedIds, hydrated } = useSavedPlaces();
   const cards = useCardSaveShare();
   const router = useRouter();
@@ -101,13 +85,5 @@ function FavoritesList() {
         </li>
       ))}
     </ul>
-  );
-}
-
-export function FavoritesPage() {
-  return (
-    <div className={PANE}>
-      <FavoritesList />
-    </div>
   );
 }
