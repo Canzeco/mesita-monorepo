@@ -359,10 +359,12 @@ export const ROUTE_MAP = {
   // Activity does (MESITA-3717).
   reservation: row("/reservation/:id", "me", "panel", "activity"),
   pay: row("/pay", "pay", "tab", null),
-  payPlace: row("/pay/:placeId", "pay", "door", "pay"),
-  payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
-  payJoin: row("/pay/join/:token", "pay", "door", "pay"),
-  payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
+  // The pay screens own the whole frame, as the place screen does: no bar,
+  // the header's back is the way out, so every step fits (MESITA-3739).
+  payPlace: row("/pay/:placeId", "pay", "door", "pay", false),
+  payTab: row("/pay/tab/:tabId", "pay", "page", "pay", false),
+  payJoin: row("/pay/join/:token", "pay", "door", "pay", false),
+  payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay", false),
   // The Pay | Wallet switch's second half (MESITA-3729; a page pushed from
   // Pay's header in MESITA-3726, a bar tab in MESITA-3722). It and its
   // children light Pay.

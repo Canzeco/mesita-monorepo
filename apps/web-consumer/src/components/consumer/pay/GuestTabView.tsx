@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { payChecklist } from "@mesita/place-profile/lib/pay-checklist";
 import { Button } from "@/components/ui/button";
+import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
@@ -45,6 +46,7 @@ export function GuestTabView({
   const [error, setError] = useState<string | null>(null);
   const [misses, setMisses] = useState(0);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [details, setDetails] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   // When the payment last changed (0 = not read yet): sets the poll's pace.
   const sinceChange = useRef(0);
@@ -165,107 +167,132 @@ export function GuestTabView({
     : closed
     ? "bg-card text-foreground border-border border"
     : "bg-amber-50 text-foreground border border-amber-300";
+  const showQr = !verified && !closed && !!qr;
+  // ONE STATUS SLOT (MESITA-3739): the most important message only, so the
+  // screen never grows past the phone.
+  const message: { text: string; tone: "error" | "plain" | "muted" } | null = error
+    ? { text: error, tone: "error" }
+    : closed && cash > 0 && !verified
+    ? { text: `The waiter didn't verify · no cashback on the ${m(cash)} cash`, tone: "plain" }
+    : nudge
+    ? { text: "Ask the waiter to scan before you leave", tone: "plain" }
+    : misses >= 2
+    ? { text: "Reconnecting…", tone: "muted" }
+    : null;
+  const cashback =
+    tab.cashback_cents > 0
+      ? green
+        ? `${m(tab.cashback_cents)} in credits added`
+        : `${m(tab.cashback_cents)} in credits${cash > 0 ? " once verified" : ""}`
+      : null;
+  const mark = (state: string) => (state === "done" ? "✓" : state === "failed" ? "×" : "○");
 
+  // THE PAID SCREEN FITS (MESITA-3739): a status band, then either the QR
+  // (sized to the height left, 140–240px, through a size container) with one
+  // progress line and the full checklist behind Details, or — once there is
+  // no QR to show — the full checklist itself. The action is pinned last.
   return (
-    <div className="flex flex-col" data-guest-tab={verified ? "verified" : green ? "paid" : closed ? "closed" : "waiting"}>
-      <div className={cn("rounded-3xl px-4 py-5", surface)}>
-        <p className={cn("text-base font-semibold", green ? "text-white" : "")}>{tab.place.name ?? "A Mesita place"}</p>
-        <div className="mt-1 flex items-center gap-2">
-          {green ? <CheckCircle2 className="h-7 w-7 shrink-0" aria-hidden /> : null}
-          <p className="font-display text-2xl font-semibold" role="status">
-            {verified ? "Paid · Verified" : green ? "Paid" : closed ? "Closed" : "Show this to the waiter"}
+    <div className="flex min-h-0 flex-1 flex-col" data-guest-tab={verified ? "verified" : green ? "paid" : closed ? "closed" : "waiting"}>
+      <div className={cn("shrink-0 rounded-3xl px-4 py-3", surface)}>
+        <p className={cn("truncate text-sm font-semibold", green ? "text-white/90" : "text-muted-foreground")}>{tab.place.name ?? "A Mesita place"}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-display flex min-w-0 items-center gap-1.5 truncate text-xl font-semibold" role="status">
+            {green ? <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden /> : null}
+            <span className="truncate">{verified ? "Paid · Verified" : green ? "Paid" : closed ? "Closed" : "Show this to the waiter"}</span>
           </p>
+          <p className="font-display shrink-0 text-2xl font-semibold tabular-nums">{m(total)}</p>
         </div>
-        <p className={cn("font-display mt-1 text-4xl font-semibold tabular-nums")}>{m(total)}</p>
-        {tip > 0 ? <p className={cn("text-sm tabular-nums", green ? "text-white/80" : "text-muted-foreground")}>{m(total - tip)} + {m(tip)} tip</p> : null}
+        <p className={cn("h-5 truncate text-sm tabular-nums", green ? "text-white/80" : "text-muted-foreground")}>
+          {tip > 0 ? `${m(total - tip)} + ${m(tip)} tip` : " "}
+        </p>
+      </div>
 
-        <ol className={cn("mt-4 flex flex-col border-t pt-2", green ? "border-white/25" : "border-border")} aria-label="Payment">
-          {steps.map((s) => (
-            <li key={s.key} className="flex min-h-11 items-center gap-3" data-state={s.state}>
-              <span
-                aria-hidden
-                className={cn(
-                  "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-xs font-bold",
-                  s.state === "done"
-                    ? green
-                      ? "border-white bg-white text-green-700"
-                      : "border-green-700 bg-green-700 text-white"
-                    : s.state === "failed"
-                    ? "border-red-700 bg-red-700 text-white"
-                    : "border-amber-600 text-amber-700",
-                )}
-              >
-                {s.state === "done" ? "✓" : s.state === "failed" ? "×" : ""}
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-base">
-                  {s.label}
-                  {s.key === "verified" && tab.verified_at ? ` · ${clockTime(tab.verified_at)}` : ""}
-                </span>
-                {s.note ? <span className={cn("text-sm", green ? "text-white/80" : "text-muted-foreground")}>{s.note}</span> : null}
-              </span>
-              {s.cents !== null ? <span className="text-base tabular-nums">{m(s.cents)}</span> : null}
-            </li>
-          ))}
-        </ol>
-
-        {!verified && !closed && qr ? (
-          <div className="mt-4 flex flex-col items-center">
-            <div className="rounded-2xl bg-white p-3">
-              <QRCodeSVG value={qr} size={208} marginSize={0} title="Your payment's QR for the waiter" />
+      {showQr ? (
+        <>
+          <div className="mt-3 flex min-h-0 flex-1 items-center justify-center [container-type:size]">
+            <div
+              className="size-40 rounded-2xl bg-white p-2 ring-1 ring-black/10"
+              style={{ width: "max(140px, min(100cqh, 100cqw, 240px))", height: "max(140px, min(100cqh, 100cqw, 240px))" }}
+            >
+              <QRCodeSVG value={qr} size={240} marginSize={0} style={{ width: "100%", height: "100%" }} title="Your payment's QR for the waiter" />
             </div>
           </div>
-        ) : null}
-        {!closed ? <LiveClock className={cn("text-center", green ? "text-white" : "")} /> : null}
-        {tab.cashback_cents > 0 ? (
-          <p className={cn("mt-2 text-center text-base font-semibold", green ? "text-white" : "text-green-700")}>
-            {green
-              ? `${m(tab.cashback_cents)} in credits added · spend them here next time`
-              : `You get ${m(tab.cashback_cents)} in credits to spend here${cash > 0 ? ", once the waiter verifies" : ""}`}
+          <p className="mt-2 h-6 shrink-0 truncate text-center text-sm" aria-label="Payment">
+            {steps.map((s) => `${s.label} ${mark(s.state)}`).join(" · ")}
           </p>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground mx-auto flex h-11 shrink-0 items-center text-sm font-semibold underline"
+            onClick={() => setDetails(true)}
+          >
+            Details
+          </button>
+        </>
+      ) : (
+        <ol className="border-border mt-3 flex min-h-0 flex-1 flex-col border-t pt-1" aria-label="Payment">
+          {steps.map((s) => (
+            <ChecklistRow key={s.key} s={s} m={m} at={s.key === "verified" && tab.verified_at ? clockTime(tab.verified_at) : null} />
+          ))}
+        </ol>
+      )}
+
+      <div className="flex h-6 shrink-0 items-center justify-center gap-2 text-sm">
+        {!closed ? <LiveClock className="mt-0 text-base" /> : null}
+        {!closed && cashback ? <span aria-hidden>·</span> : null}
+        {cashback ? <span className="truncate font-semibold text-green-700">{cashback}</span> : null}
+      </div>
+      <p
+        className={cn(
+          "h-6 shrink-0 truncate text-center text-sm",
+          message?.tone === "error" ? "text-destructive" : message?.tone === "muted" ? "text-muted-foreground" : "font-semibold",
+        )}
+        role={message?.tone === "error" ? "alert" : "status"}
+        data-guest-not-verified={closed && cash > 0 && !verified ? "" : undefined}
+      >
+        {message?.text ?? ""}
+      </p>
+
+      <div className="shrink-0 pt-2">
+        {cardAction ? (
+          <Button
+            size="lg"
+            className="min-h-12 w-full text-base font-semibold"
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void runBankCheck(cardAction).finally(() => setBusy(false));
+            }}
+          >
+            Finish the bank check
+          </Button>
+        ) : done || green ? (
+          <button type="button" className={QUIET_BUTTON_CLASS} onClick={onDone}>
+            Done
+          </button>
+        ) : canCancel ? (
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "text-muted-foreground")} onClick={() => setConfirmCancel(true)}>
+            Cancel
+          </button>
         ) : null}
       </div>
 
-      {cardAction ? (
-        <Button
-          size="lg"
-          className="mt-4 min-h-12 w-full text-base font-semibold"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void runBankCheck(cardAction).finally(() => setBusy(false));
-          }}
-        >
-          Finish the bank check
-        </Button>
-      ) : null}
-      {nudge ? (
-        <p className="mt-3 text-base font-semibold" role="status">
-          Ask the waiter to scan before you leave
-        </p>
-      ) : null}
-      {closed && cash > 0 && !verified ? (
-        <p className="mt-3 text-base" role="status" data-guest-not-verified>
-          The waiter didn&apos;t verify · no cashback on the {m(cash)} cash
-        </p>
-      ) : null}
-      {misses >= 2 ? (
-        <p className="text-muted-foreground mt-3 text-sm" role="status">
-          Reconnecting…
-        </p>
-      ) : null}
-      {error ? (
-        <p className="text-destructive mt-3 text-sm" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <LocalSheet open={details} onClose={() => setDetails(false)} ariaLabel="Payment details">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+          <p className="pt-2 pb-2 text-lg font-semibold">Payment</p>
+          <ol className="scrollbar-hide flex min-h-0 flex-col overflow-y-auto" aria-label="Payment">
+            {steps.map((s) => (
+              <ChecklistRow key={s.key} s={s} m={m} at={s.key === "verified" && tab.verified_at ? clockTime(tab.verified_at) : null} />
+            ))}
+          </ol>
+        </div>
+      </LocalSheet>
 
-      {confirmCancel ? (
-        <div className="border-foreground bg-card mt-4 rounded-2xl border-2 p-4" role="dialog" aria-label="Cancel this payment">
+      <LocalDialog open={confirmCancel} onClose={() => setConfirmCancel(false)} ariaLabel="Cancel this payment">
+        <div className="p-5">
           <p className="text-base font-semibold">
             Cancel this payment?{tab.credit_cents > 0 ? ` Your ${m(tab.credit_cents)} credit comes back.` : ""}
           </p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-4 flex gap-2">
             <Button className="min-h-12 flex-1 text-base font-semibold" disabled={busy} onClick={() => void cancel()}>
               {busy ? "Cancelling…" : "Cancel payment"}
             </Button>
@@ -274,16 +301,36 @@ export function GuestTabView({
             </button>
           </div>
         </div>
-      ) : canCancel ? (
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-4")} onClick={() => setConfirmCancel(true)}>
-          Cancel
-        </button>
-      ) : null}
-      {done || green ? (
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-4")} onClick={onDone}>
-          Done
-        </button>
-      ) : null}
+      </LocalDialog>
     </div>
+  );
+}
+
+type Step = ReturnType<typeof payChecklist>[number];
+
+/** One checklist line: a 36px row, its note on the same line after a dot. */
+function ChecklistRow({ s, m, at }: { s: Step; m: (c: number) => string; at: string | null }) {
+  return (
+    <li className="flex h-9 items-center gap-3 text-sm" data-state={s.state}>
+      <span
+        aria-hidden
+        className={cn(
+          "grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 type-meta font-bold",
+          s.state === "done"
+            ? "border-green-700 bg-green-700 text-white"
+            : s.state === "failed"
+            ? "border-red-700 bg-red-700 text-white"
+            : "border-amber-600 text-amber-700",
+        )}
+      >
+        {s.state === "done" ? "✓" : s.state === "failed" ? "×" : ""}
+      </span>
+      <span className="min-w-0 flex-1 truncate">
+        {s.label}
+        {at ? ` · ${at}` : ""}
+        {s.note ? <span className="text-muted-foreground"> · {s.note}</span> : null}
+      </span>
+      {s.cents !== null ? <span className="shrink-0 tabular-nums">{m(s.cents)}</span> : null}
+    </li>
   );
 }

@@ -1,5 +1,6 @@
 import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
+import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
 import { CreditRowSkeleton, RowsSkeleton, WalletList } from "../wallet/WalletLists";
 
@@ -34,11 +35,12 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
       </div>
     );
   }
-  // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647).
+  // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647),
+  // white and in the step's own shape (MESITA-3739), so nothing jumps.
   return (
-    <Screen title="Pay" flush>
-      <div className="px-4 pt-5 pb-8" aria-busy>
-        <Skeleton className="h-[26rem] w-full rounded-2xl" />
+    <Screen title="Pay" flush paper>
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <GuestPayLoading />
       </div>
     </Screen>
   );
