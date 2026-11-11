@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { PlaceMarks, TestBand } from "@mesita/place-profile";
+import { PlaceMarks } from "@mesita/place-profile";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -166,7 +166,6 @@ export function ProofView({
 
   return (
     <div className="flex flex-col items-center text-center">
-      {proof.test_mode ? <TestBand className="mb-3 w-full text-left" /> : null}
       <div className="border-border bg-card flex w-full flex-col items-center rounded-2xl border px-6 py-6">
         {open ? (
           slow ? (

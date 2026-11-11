@@ -73,7 +73,7 @@ export type WaitingStory = {
 };
 
 export type Wallet = {
-  /** Stripe is in test mode: the TestBand shows, no real money moves. */
+  /** Stripe is in test mode: no real money moves (no band shows since MESITA-3732). */
   test_mode?: boolean;
   balances: WalletBalance[];
   /** Absent from a server before MESITA-3507: reads as none. */

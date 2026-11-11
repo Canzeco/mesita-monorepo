@@ -3,7 +3,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { TEST_BAND_TEXT, TestBand } from "@mesita/place-profile";
 import { clockTime, readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
@@ -535,10 +534,11 @@ export function TabView({
 }
 
 // Back lives in the screen's own header (Screen, MESITA-3647).
-function Shell({ testMode = false, children }: { testMode?: boolean; children: React.ReactNode }) {
+// The TEST band left every Pay screen (Pato, MESITA-3732: "remove the fucking
+// test banner"); callers still pass testMode.
+function Shell({ children }: { testMode?: boolean; children: React.ReactNode }) {
   return (
     <div className="flex flex-col" data-pay-tab>
-      {testMode ? <TestBand className="mb-3" /> : null}
       {children}
     </div>
   );
@@ -1060,7 +1060,6 @@ function PaidScreen({ tab, onDone }: { tab: GuestTab; onDone: () => void }) {
       role="status"
       data-pay-tab-paid
     >
-      {tab.test_mode ? <p className="mb-4 rounded-full bg-white/15 px-3 py-1 text-sm font-semibold">{TEST_BAND_TEXT}</p> : null}
       <CheckCircle2 className="h-24 w-24" aria-hidden strokeWidth={1.75} />
       <p className="mt-4 text-base font-semibold">{tab.paid_at ? `Paid · ${clockTime(tab.paid_at)}` : "Paid"}</p>
       <p className="font-display mt-2 text-4xl font-semibold tabular-nums">{m(total)}</p>

@@ -4,7 +4,6 @@ import { Screen } from "@/components/consumer/nav/Screen";
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
-import { TestBand } from "@mesita/place-profile";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { EFError } from "@/lib/api/_invoke";
 import { apiRemoveHouseCard } from "@/lib/api/wallet";
@@ -63,7 +62,6 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   return (
     <Screen title={row?.card.name ?? "Wallet"} onBack={back} flush>
       <div className="flex flex-1 flex-col px-4 pt-5 pb-8">
-        {wallet?.test_mode ? <TestBand className="mb-3" /> : null}
         {confirming ? (
           <p className="text-muted-foreground mb-3 text-sm" role="status">
             Confirming a payment…

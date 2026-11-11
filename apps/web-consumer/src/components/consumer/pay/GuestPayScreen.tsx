@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, CreditCard, Plus, Wallet } from "lucide-react";
-import { TestBand } from "@mesita/place-profile";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
@@ -279,7 +278,6 @@ export function GuestPayScreen({
       }}
       data-guest-pay={step}
     >
-      {place.test_mode ? <TestBand className="mb-3" /> : null}
       <div className="flex gap-1.5" aria-hidden>
         {STEPS.map((s, i) => (
           <span key={s} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-foreground" : "bg-border")} />
