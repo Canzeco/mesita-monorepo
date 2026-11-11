@@ -7,7 +7,7 @@ import { WalletSection } from "./WalletSection";
 // THE WALLET, /wallet: THE SWITCH'S SECOND HALF (Pato, 2026-11-11,
 // MESITA-3729: "divide into Pay and Wallet. no header"): the Pay | Wallet
 // switch at the top (PayHeader), then what you pay with (WalletSection): the
-// TestBand, Credits, then Ways to pay (MESITA-3727). It lights Pay and has no
+// TestBand, Credits Payment Methods, then Money Payment Methods (MESITA-3731). It lights Pay and has no
 // Back. It draws /wallet/gift/<token> too, with the friend's credit sheet over
 // it. It was a page pushed from a Wallet button on Pay's header (MESITA-3726)
 // and a bar tab for MESITA-3722.

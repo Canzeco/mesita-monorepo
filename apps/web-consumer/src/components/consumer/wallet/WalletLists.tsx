@@ -2,8 +2,7 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, Gift, Plus } from "lucide-react";
-import { PushLink } from "@/components/consumer/nav/PushLink";
+import { ChevronRight } from "lucide-react";
 import { SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -17,11 +16,11 @@ import { type WalletCardModel, walletCardLabel, walletCardLine } from "./WalletC
 // THE WALLET REDESIGN (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"): Credits first, then Ways to pay (WalletSection). Each list's
 // Add is a quiet button on its heading (HeadingButton), never a dashed first
-// row. A Credits Card's Fund | Gift is its own footer, two equal halves under
-// a full-width hairline; Credits divides cards full width, Ways to pay keeps
-// inset dividers. A shown amount of 0 is muted. A guest with no Credits Card
+// row. A Credits Card is just its row (Pato, MESITA-3731: "keep just the card
+// without the buttons to fund nor gift. those must go inside"): Fund and Gift
+// are on its House Card page. A shown amount of 0 is muted. A guest with no Credits Card
 // sees one quiet prompt (EmptyCreditsRow). CreditRowSkeleton is the loading
-// shape for a card with its footer, shared with Pay's loading frame.
+// shape for a card, shared with Pay's loading frame.
 //
 // TWO LISTS, NOT TWO RAILS (Pato, 2026-11-11, MESITA-3701: "try making the
 // payment methods as lists instead of horizontal scrolls"). Money Payment
@@ -38,7 +37,6 @@ const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-
 const ROW =
   "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
-const DIVIDER_FULL = "bg-border h-px";
 
 /** A heading (with an optional button on its right) over one white card of
  *  rows, a hairline between rows. `fallback` replaces the card when there
@@ -46,13 +44,11 @@ const DIVIDER_FULL = "bg-border h-px";
 export function WalletList({
   title,
   action,
-  fullDividers = false,
   fallback,
   children,
 }: {
   title: string;
   action?: ReactNode;
-  fullDividers?: boolean;
   fallback?: ReactNode;
   children?: ReactNode;
 }) {
@@ -69,7 +65,7 @@ export function WalletList({
         <ul role="list" className="border-border bg-card overflow-hidden rounded-2xl border">
           {rows.map((row, i) => (
             <Fragment key={i}>
-              {i > 0 ? <li aria-hidden className={fullDividers ? DIVIDER_FULL : DIVIDER} /> : null}
+              {i > 0 ? <li aria-hidden className={DIVIDER} /> : null}
               <li>{row}</li>
             </Fragment>
           ))}
@@ -184,32 +180,10 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
   );
 }
 
-/** A Credits Card's Fund and Gift (Pato, 2026-11-11, MESITA-3724: "add
- *  quick button in credits to Fund and Gift buttons to each Credits Card"):
- *  Fund is the House Card's "Buy credits", Gift its "Send to a friend".
- *  Gift is decided once, by giftAction (lib/wallet-card.ts): `open`, or
- *  `blocked` with the reason it shows when tapped, or null (hidden). */
-export type CreditActions = {
-  fundHref: string;
-  gift: { kind: "open"; onOpen: () => void } | { kind: "blocked"; message: string; onTap: () => void } | null;
-};
-
-const FOOT_BUTTON =
-  "hover:bg-muted/60 flex h-11 flex-1 items-center justify-center gap-1.5 text-sm font-semibold transition";
-
 /** A place's House Card: the black chip with the place's photo, the name,
- *  the server's amount. Its tap is the model's (the House Card page). With
- *  `actions`, Fund and Gift sit under it, beside the row's link, never
- *  inside it (a link cannot hold a button). */
-export function CreditRow({
-  card,
-  eager = false,
-  actions = null,
-}: {
-  card: WalletCardModel;
-  eager?: boolean;
-  actions?: CreditActions | null;
-}) {
+ *  the server's amount. Its tap is the model's (the House Card page), where
+ *  Fund and Gift live (MESITA-3731). */
+export function CreditRow({ card, eager = false }: { card: WalletCardModel; eager?: boolean }) {
   const amount = cardAmount(card);
   const face = (
     <>
@@ -242,33 +216,7 @@ export function CreditRow({
         {face}
       </div>
     );
-  if (!actions) return row;
-  return (
-    <div data-credit-card>
-      {row}
-      {/* The footer is the card's own, beside the row's link (a link cannot hold a button). */}
-      <div className="border-border flex border-t" data-credit-actions>
-        <PushLink href={actions.fundHref} className={FOOT_BUTTON} aria-label={`Fund your ${card.name} card`} data-credit-fund>
-          <Plus className="h-4 w-4" aria-hidden />
-          Fund
-        </PushLink>
-        {actions.gift ? (
-          <button
-            type="button"
-            onClick={actions.gift.kind === "open" ? actions.gift.onOpen : actions.gift.onTap}
-            aria-label={
-              actions.gift.kind === "open" ? `Gift credit at ${card.name}` : `Gift credit at ${card.name}: ${actions.gift.message}`
-            }
-            className={cn(FOOT_BUTTON, "border-border border-l")}
-            data-credit-gift={actions.gift.kind}
-          >
-            <Gift className="h-4 w-4" aria-hidden />
-            Gift
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
+  return row;
 }
 
 /** Loading rows inside a list: the chip and two lines. */
@@ -288,22 +236,16 @@ export function RowsSkeleton({ count = 2 }: { count?: number }) {
   );
 }
 
-/** A Credits Card loading: the row and its 44px Fund | Gift footer. Pay's
- *  loading frame draws the same shape. */
+/** A Credits Card loading: its row. Pay's loading frame draws the same. */
 export function CreditRowSkeleton() {
   return (
-    <div aria-hidden>
-      <div className={ROW}>
-        <Skeleton className={CHIP} />
-        <span className="flex-1">
-          <Skeleton className="h-4 w-36" />
-          <Skeleton className="mt-1.5 h-3 w-24" />
-        </span>
-        <Skeleton className="h-5 w-16" />
-      </div>
-      <div className="border-border flex h-11 items-center justify-center border-t">
-        <Skeleton className="h-3 w-24" />
-      </div>
+    <div className={ROW} aria-hidden>
+      <Skeleton className={CHIP} />
+      <span className="flex-1">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="mt-1.5 h-3 w-24" />
+      </span>
+      <Skeleton className="h-5 w-16" />
     </div>
   );
 }
