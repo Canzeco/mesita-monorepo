@@ -303,8 +303,9 @@
   .scrollbar-hide {
     scrollbar-width: none;
   }
-  /* A really thin bar (MESITA-3220), dark grey, not black (Pato, MESITA-3686:
-     "too dark and it's annoying, keep it gray dark"). The pseudo-elements draw
+  /* A really thin bar (MESITA-3220), a mid grey (Pato, MESITA-3689: "a bit
+     lighter, not that dark"; MESITA-3686 had made it the muted-foreground
+     grey, black before). The pseudo-elements draw
      it in Chrome and Safari. Standard scrollbar-width would override their 3px
      in Chrome, so it is set only where they do not exist. */
   .scrollbar-thin-dark::-webkit-scrollbar {
@@ -315,13 +316,13 @@
     background: transparent;
   }
   .scrollbar-thin-dark::-webkit-scrollbar-thumb {
-    background: var(--muted-foreground);
+    background: oklch(0.72 0 0);
     border-radius: 9999px;
   }
   @supports not selector(::-webkit-scrollbar) {
     .scrollbar-thin-dark {
       scrollbar-width: thin;
-      scrollbar-color: var(--muted-foreground) transparent;
+      scrollbar-color: oklch(0.72 0 0) transparent;
     }
   }
 }
