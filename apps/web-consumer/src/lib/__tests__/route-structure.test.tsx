@@ -850,17 +850,18 @@ describe("T7 — every former url still resolves after the move", () => {
 
   // Wallet shipped under every spelling below — standalone /credits, an
   // Activity section (/inbox/credits), a Pay section (/new-visit/wallet) and
-  // its own tab (/wallet). Every spelling lands on Pay in ONE hop — first
+  // its own tab (/wallet). Every spelling lands on /wallet, Pay's Wallet
+  // half (MESITA-3698), in ONE hop — first
   // match, as Next fires it — and that is why this asserts the destination
   // rather than just the entry.
   it.each([
-    ["/credits", "/pay"],
-    ["/inbox/credits", "/pay"],
-    ["/new-visit/wallet", "/pay"],
-    ["/new-visit/wallet/buy", "/pay"],
-    ["/new-visit/wallet/gift", "/pay"],
-    ["/new-visit/wallet/redeem", "/pay"],
-    ["/new-visit/wallet/balance/bal_1", "/pay"],
+    ["/credits", "/wallet"],
+    ["/inbox/credits", "/wallet"],
+    ["/new-visit/wallet", "/wallet"],
+    ["/new-visit/wallet/buy", "/wallet"],
+    ["/new-visit/wallet/gift", "/wallet"],
+    ["/new-visit/wallet/redeem", "/wallet"],
+    ["/new-visit/wallet/balance/bal_1", "/wallet"],
   ])("keeps %s redirecting straight to %s", async (address, destination) => {
     const redirects = await nextConfig.redirects!();
     const hit = redirects.find((r) => matches(r.source, address));

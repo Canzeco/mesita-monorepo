@@ -53,8 +53,8 @@ export const CONSUMER_ROUTES = {
   //                              becomes /pay/tab/<id> (the table QR's door)
   //   /pay/tab/<tabId>           the bill at the table (MESITA-3564)
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    a door to /pay since MESITA-3631: the
-  //                              Wallet's two rails live under Pay
+  //   /wallet                    the Pay tab's Wallet half (MESITA-3698):
+  //                              the two rails under the Pay · Wallet band
   //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //
@@ -67,12 +67,13 @@ export const CONSUMER_ROUTES = {
   payPlace: { prefix: "/pay/" },
   payTab: { prefix: "/pay/tab/" },
   payReceipt: { prefix: "/pay/receipt/" },
-  // WALLET MERGED INTO PAY (Pato, 2026-11-09, MESITA-3631: "Merge wallet
-  // and pay into the same page. Pay on top"). It was the bar's fourth tab
-  // from MESITA-3295. /wallet stays a server page that forwards to /pay
-  // (keeping the one-shot ?card= an older Stripe return carries); its
-  // children are live. A Mesita Prepay checkout returns to the place's House
-  // Card with ?prepay= (MESITA-3617), an added card to /pay?card=.
+  // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
+  // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
+  // its own address, /pay and /wallet, under one band. Wallet was the bar's
+  // fourth tab from MESITA-3295 and sat under Pay's list from MESITA-3631
+  // (/wallet a door to /pay) until this. A Mesita Prepay checkout returns to
+  // the place's House Card with ?prepay= (MESITA-3617), an added card to
+  // /wallet?card=.
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
@@ -158,8 +159,8 @@ export const CONSUMER_ROUTES = {
     // place list, THE TICKET, Wallet with Buy · Gift · Redeem · balance,
     // standalone Credits, the Order tab, the public gift landing, and every
     // /rewards, /pay/<sub> and /ticket era address. All 308 to `pay`, except
-    // what hung under the old Wallet tab, which land on Pay too (the Wallet
-    // lives under Pay since MESITA-3631).
+    // what hung under the old Wallet tab, which land on /wallet, Pay's Wallet
+    // half (MESITA-3698).
     newVisit: "/new-visit",
     newVisitWallet: "/new-visit/wallet",
     visitPrefix: "/visit/",
@@ -350,8 +351,8 @@ export const ROUTE_MAP = {
   payPlace: row("/pay/:placeId", "pay", "door", "pay"),
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
-  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there.
-  wallet: row("/wallet", "pay", "door", "pay"),
+  // Pay's second half (MESITA-3698): it lights Pay, like /pay itself.
+  wallet: row("/wallet", "pay", "tab", null),
   walletPlace: row("/wallet/:placeId", "pay", "page", "pay"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
   activity: row("/activity", "activity", "tab", null),

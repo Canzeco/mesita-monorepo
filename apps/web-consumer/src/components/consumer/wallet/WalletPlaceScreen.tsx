@@ -36,7 +36,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
   // purchase here is still confirming: a first one brings the card with it
   // (MESITA-3617).
   useEffect(() => {
-    if (credits && !row && !confirming) navigateTo(router, CONSUMER_ROUTES.pay, { replace: true });
+    if (credits && !row && !confirming) navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
   }, [credits, row, confirming, router]);
 
   // Remove from Wallet (MESITA-3605): a pinned $0 House Card leaves, and so

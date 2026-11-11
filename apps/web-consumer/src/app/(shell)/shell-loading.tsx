@@ -15,6 +15,7 @@ import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import ActivityLoading from "./activity/loading";
 import PayLoading from "./pay/loading";
+import WalletLoading from "./wallet/loading";
 import ShareLoading from "./share/loading";
 import RefundsLoading from "./me/refunds/loading";
 import FeedbackLoading from "./me/settings/feedback/loading";
@@ -45,8 +46,8 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   payPlace: () => <PayPlaceLoading />,
   payTab: () => <PayTabLoading />,
   payReceipt: () => <PayReceiptLoading />,
-  // The Wallet lives under Pay (MESITA-3631): /wallet forwards there.
-  wallet: () => <PayLoading />,
+  // Pay's Wallet half (MESITA-3698).
+  wallet: () => <WalletLoading />,
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
   activity: () => <ActivityLoading />,

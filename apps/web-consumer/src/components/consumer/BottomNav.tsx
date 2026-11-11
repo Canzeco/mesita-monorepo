@@ -38,7 +38,8 @@ import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 //   PAY OWNS THE MONEY (MESITA-3614, MESITA-3631): it lights on every
 //   address under /pay (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>)
 //   and under /wallet (/wallet/<placeId>, /wallet/gift/<token>), so a bill
-//   or a House Card keeps Pay lit. Activity is every money line, the list
+//   or a House Card keeps Pay lit. Its page has two halves, Pay (/pay) and
+//   Wallet (/wallet), under one band (MESITA-3698). Activity is every money line, the list
 //   that was Me › Transactions.
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove

@@ -1,6 +1,6 @@
 import { PayFrameLoading } from "@/components/consumer/pay/PayFrameLoading";
 
-// A credit link lands on Pay: Pay's frame (MESITA-3631).
+// A credit link lands on the Wallet: the Wallet's frame (MESITA-3698).
 export default function Loading() {
-  return <PayFrameLoading />;
+  return <PayFrameLoading body="wallet" />;
 }

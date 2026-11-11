@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(__dirname, "../..");
 const read = (...path: string[]) => readFileSync(join(SRC, "components", "consumer", ...path), "utf8");
-// The Wallet's rails, drawn under Pay since MESITA-3631.
+// The Wallet's rails, /wallet's (MESITA-3698).
 const WALLET = read("wallet", "WalletSection.tsx");
 // A place's House Card, /wallet/<placeId> (MESITA-3614).
 const HOUSE_CARD = read("wallet", "WalletPlaceScreen.tsx");
@@ -23,10 +23,8 @@ describe("Wallet in test mode", () => {
       expect(src).toContain('import { TestBand } from "@mesita/place-profile"');
     }
     expect(HOUSE_CARD).toMatch(/wallet\?\.test_mode \? <TestBand/);
-    // Under Pay the rails skip their band only when Pay's list already
-    // shows one (never two, never none).
-    expect(WALLET).toMatch(/wallet\?\.test_mode && !testBandShown \? <TestBand/);
-    expect(PAY_LIST).toMatch(/testBandShown=\{!!places\?\.some\(\(p\) => p\.test_mode\)\}/);
+    // The Wallet is its own page (MESITA-3698): its rails wear their own band.
+    expect(WALLET).toMatch(/wallet\?\.test_mode \? <TestBand/);
   });
 
   it("never computes a balance: every amount shown is a server field", () => {
