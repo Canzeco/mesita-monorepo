@@ -3,7 +3,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronRight, MapPin, QrCode } from "lucide-react";
+import { Banknote, ChevronRight, CreditCard, MapPin, QrCode, Search, Wallet } from "lucide-react";
 import { SearchBar } from "@/components/consumer/search/SearchBar";
 import { TestBand } from "@mesita/place-profile";
 import { RowDivider } from "@/components/consumer/me/settings-rows";
@@ -12,7 +12,9 @@ import { Skeleton } from "@/components/shared/Skeleton";
 import { Button } from "@/components/ui/button";
 import { EFError } from "@/lib/api/_invoke";
 import { apiGetTab, type GuestTab } from "@/lib/api/tab";
+import { clockTime } from "@mesita/place-profile/lib/money";
 import { money, type PayPlace } from "@/lib/api/wallet";
+import { cn } from "@/lib/utils";
 import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -23,7 +25,8 @@ import { PayWalletHeader } from "./PayWalletHeader";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
-// at now, nearest first: "Select a place to pay", a search box, and rows of
+// at now, nearest first: "Pay at a place", a search box (MESITA-3719: behind
+// a magnifier up to six places), and rows of
 // profile photo, name, address and distance, led by the guest's open bill.
 // A row is a door: /pay/<placeId> opens that place's bill at the table
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
@@ -42,6 +45,9 @@ import { PayWalletHeader } from "./PayWalletHeader";
 const LOCATION_DECIMALS = 3;
 /** "Not now" on the location card holds for this browser session. */
 const LOCATION_NOT_NOW_KEY = "mesita.pay.location-not-now";
+
+/** Past this many places the search field shows on its own. */
+const SEARCH_FROM = 6;
 
 const round = (v: number) => Math.round(v * 10 ** LOCATION_DECIMALS) / 10 ** LOCATION_DECIMALS;
 
@@ -218,6 +224,10 @@ function PlaceList({
   onNotNow: () => void;
 }) {
   const [query, setQuery] = useState("");
+  // MESITA-3719: the search field shows past SEARCH_FROM places, or once the
+  // magnifier opens it; one place under a search bar is noise.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchShown = searchOpen || places.length > SEARCH_FROM;
   const testMode = places.some((p) => p.test_mode);
   const q = fold(query.trim());
   const shown = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
@@ -225,28 +235,9 @@ function PlaceList({
     <div className="flex flex-col">
       {testMode ? <TestBand className="mb-3" /> : null}
 
-      {openTabs.map((t) => {
-        const cash = t.cash_bill_cents + t.cash_tip_cents;
-        const total = t.credit_cents + cash + t.card_bill_cents + t.card_tip_cents;
-        return (
-          <button
-            key={t.tab_id}
-            type="button"
-            onClick={() => onOpenTab(t.tab_id)}
-            className="border-foreground bg-card hover:bg-muted/60 mb-3 flex min-h-[4.75rem] w-full items-center gap-3.5 rounded-2xl border-2 px-4 py-3 text-left transition"
-            data-pay-in-progress
-          >
-            <QrCode className="h-6 w-6 shrink-0" aria-hidden />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-base font-semibold">In progress · {t.place.name ?? "A Mesita place"}</span>
-              <span className="text-muted-foreground mt-0.5 block truncate text-sm tabular-nums">
-                {money(total, t.currency)} · {cash > 0 ? "give the cash and show to the waiter" : "show to the waiter"}
-              </span>
-            </span>
-            <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-          </button>
-        );
-      })}
+      {openTabs.map((t) => (
+        <InProgressCard key={t.tab_id} tab={t} place={places.find((p) => p.place_id === t.place.id) ?? null} onOpen={() => onOpenTab(t.tab_id)} />
+      ))}
 
       {loc.state === "prime" ? (
         <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4">
@@ -279,7 +270,22 @@ function PlaceList({
         />
       ) : (
         <>
-          <h2 className="px-1 text-base font-semibold">Select a place to pay</h2>
+          <div className="flex min-h-11 items-center justify-between gap-3 px-1">
+            <h2 className="text-base font-semibold">Pay at a place</h2>
+            {!searchShown ? (
+              <button
+                type="button"
+                aria-label="Search places"
+                className="bg-card hover:bg-muted flex h-11 w-11 items-center justify-center rounded-full transition"
+                onClick={() => {
+                  setSearchOpen(true);
+                  requestAnimationFrame(() => document.querySelector<HTMLInputElement>("[data-pay-search] input")?.focus());
+                }}
+              >
+                <Search className="h-[18px] w-[18px]" aria-hidden />
+              </button>
+            ) : null}
+          </div>
           {/* SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
               searchbar. this one must not support locations"): the app's one
               search bar (SearchBar), alone: no locate disc, no Ask AI. White
@@ -288,7 +294,8 @@ function PlaceList({
               only, never the catalog: places that take Mesita Payments
               (card_ok), cash with a place code (outside_ok), or where the
               guest holds Credits (pay-places.ts). */}
-          <div className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
+          {searchShown ? (
+          <div data-pay-search className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
             <SearchBar
               query={query}
               showClear={query.length > 0}
@@ -297,6 +304,7 @@ function PlaceList({
               placeholder="Search a place"
             />
           </div>
+          ) : null}
           {shown.length === 0 ? (
             <p className="text-muted-foreground mt-4 px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
           ) : (
@@ -314,11 +322,10 @@ function PlaceList({
                       <span className="block truncate text-base font-semibold">{p.name ?? "A Mesita place"}</span>
                       {p.address ? <span className="text-muted-foreground mt-0.5 block truncate text-sm">{p.address}</span> : null}
                     </span>
-                    {p.distance_m !== null ? (
-                      <span className="text-muted-foreground shrink-0 self-start pt-0.5 text-sm tabular-nums">{distanceText(p.distance_m)}</span>
-                    ) : (
-                      <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
-                    )}
+                    <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
+                      {p.distance_m !== null ? distanceText(p.distance_m) : null}
+                      <ChevronRight className="h-4 w-4" aria-hidden />
+                    </span>
                   </button>
                 </Fragment>
               ))}
@@ -354,5 +361,68 @@ function ListSkeleton() {
     <div aria-busy>
       <RowsSkeleton />
     </div>
+  );
+}
+
+/** A payment still in progress leads the tab (MESITA-3719): the place, its
+ *  state in words, the amount, how it is paid, one button, and the time the
+ *  waiter must verify by. Waiting is amber, as on the QR screen it opens. */
+function InProgressCard({ tab, place, onOpen }: { tab: GuestTab; place: PayPlace | null; onOpen: () => void }) {
+  const m = (c: number) => money(c, tab.currency);
+  const cash = tab.cash_bill_cents + tab.cash_tip_cents;
+  const card = tab.card_bill_cents + tab.card_tip_cents;
+  const total = tab.credit_cents + cash + card;
+  const cardGoing = tab.status === "paying";
+  const name = tab.place.name ?? "A Mesita place";
+  const status = cardGoing ? "Card going through" : "Waiting for the waiter";
+  const ways: Array<{ key: string; icon: React.ReactNode; label: string }> = [];
+  if (tab.credit_cents > 0) ways.push({ key: "credit", icon: <Wallet />, label: `Credit · ${m(tab.credit_cents)}` });
+  if (card > 0) ways.push({ key: "card", icon: <CreditCard />, label: `Card · ${m(card)}` });
+  if (cash > 0) ways.push({ key: "cash", icon: <Banknote />, label: `Cash to the waiter · ${m(cash)}` });
+  return (
+    <section
+      aria-label={`Payment in progress at ${name}, ${m(total)}, ${status.toLowerCase()}`}
+      className={cn(
+        "mb-4 flex flex-col gap-3 rounded-2xl border-2 p-4",
+        cardGoing ? "border-border bg-card" : "border-amber-400 bg-amber-50",
+      )}
+      data-pay-in-progress
+    >
+      <div className="flex items-center gap-3">
+        {place ? <PlacePhoto place={place} className="h-12 w-12" /> : <span className="bg-muted h-12 w-12 shrink-0 rounded-full" aria-hidden />}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-base font-semibold">{name}</span>
+          <span
+            className={cn(
+              "bg-card mt-1 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold",
+              cardGoing ? "border-border text-muted-foreground" : "border-amber-400 text-amber-800",
+            )}
+          >
+            <span className={cn("h-1.5 w-1.5 rounded-full", cardGoing ? "bg-muted-foreground" : "bg-amber-600")} aria-hidden />
+            {status}
+          </span>
+        </span>
+        <span className="shrink-0 text-2xl font-semibold tabular-nums">{m(total)}</span>
+      </div>
+      {ways.map((w) => (
+        <span key={w.key} className="flex items-center gap-2.5 text-sm">
+          <span className="bg-card flex h-8 w-8 shrink-0 items-center justify-center rounded-lg [&>svg]:h-[18px] [&>svg]:w-[18px]" aria-hidden>
+            {w.icon}
+          </span>
+          {w.label}
+        </span>
+      ))}
+      <Button type="button" size="lg" className="min-h-12 w-full gap-2 text-base font-semibold" onClick={onOpen}>
+        {cardGoing ? (
+          "Open"
+        ) : (
+          <>
+            <QrCode className="h-5 w-5" aria-hidden />
+            Show QR to the waiter
+          </>
+        )}
+      </Button>
+      {!cardGoing ? <p className="text-muted-foreground text-center text-xs">Verify by {clockTime(tab.expires_at)}</p> : null}
+    </section>
   );
 }
