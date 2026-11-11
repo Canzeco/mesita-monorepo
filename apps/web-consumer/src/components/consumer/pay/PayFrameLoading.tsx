@@ -8,12 +8,11 @@ import { CreditRowSkeleton, RowsSkeleton, WalletList } from "../wallet/WalletLis
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "proof" }) {
   if (body === "list") {
-    // /pay: the header and the places (two tabs since MESITA-3722).
+    // /pay: the band (switch and search bar, MESITA-3738) and the places.
     return (
       <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader tab="pay" />
-        <Skeleton className="mt-5 h-10 w-full rounded-full" />
-        <Skeleton className="mt-3 h-56 w-full rounded-2xl" />
+        <PayHeader tab="pay" bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
+        <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
       </div>
     );
   }

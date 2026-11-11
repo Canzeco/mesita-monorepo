@@ -81,6 +81,8 @@ export function PayPage() {
   const [loc, setLoc] = useState<Loc>({ state: "unknown" });
   const { places, failed, refresh } = usePayPlaces(loc.state === "on" ? loc.at : null);
   const [openTabs, setOpenTabs] = useState<GuestTab[]>([]);
+  // The band's search bar filters the list below (MESITA-3738).
+  const [query, setQuery] = useState("");
 
   // MESITA-3709: the list leads with the guest's own payments still in
   // progress (paying, or paid and not yet verified, inside their window),
@@ -174,12 +176,24 @@ export function PayPage() {
 
   return (
     <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <PayHeader tab="pay" />
+      <PayHeader
+        tab="pay"
+        bar={
+          <SearchBar
+            query={query}
+            showClear={query.length > 0}
+            onQueryChange={setQuery}
+            onClear={() => setQuery("")}
+            placeholder="Search a place"
+          />
+        }
+      />
 
       <div className="mt-5 flex flex-col">
         {places ? (
           <PlaceList
             places={places}
+            query={query}
             loc={loc}
             openTabs={openTabs}
             onOpenTab={(id) => navigateTo(router, payTabPath(id), { motion: "push" })}
@@ -210,6 +224,7 @@ function fold(v: string): string {
 
 function PlaceList({
   places,
+  query,
   loc,
   openTabs,
   onOpenTab,
@@ -218,6 +233,8 @@ function PlaceList({
   onNotNow,
 }: {
   places: PayPlace[];
+  /** The search bar's text, from the band (PayHeader, MESITA-3738). */
+  query: string;
   loc: Loc;
   /** The guest's own payments still in progress (MESITA-3709). */
   openTabs: GuestTab[];
@@ -226,7 +243,6 @@ function PlaceList({
   onUseLocation: () => void;
   onNotNow: () => void;
 }) {
-  const [query, setQuery] = useState("");
   const q = fold(query.trim());
   const [showAll, setShowAll] = useState(false);
   const matches = q ? places.filter((p) => fold(p.name ?? "").includes(q)) : places;
@@ -272,29 +288,10 @@ function PlaceList({
         />
       ) : (
         <>
-          {/* No "Pay at a place" heading (Pato, MESITA-3735: "remove the pay
-              at a place subtitle"): the Pay | Wallet switch names the page.
-              SEARCH'S BAR, NO LOCATION (Pato, MESITA-3702: "Update UI of the
-              searchbar. this one must not support locations"): the app's one
-              search bar (SearchBar), alone: no locate disc, no Ask AI. White
-              on Pay's grey page, where the band's grey fill would vanish;
-              typing darkens its border, as on Search. It filters this list
-              only, never the catalog: places that take Mesita Payments
-              (card_ok), cash with a place code (outside_ok), or where the
-              guest holds Credits (pay-places.ts). */}
-          <div data-pay-search className="bg-card focus-within:border-foreground flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
-            <SearchBar
-              query={query}
-              showClear={query.length > 0}
-              onQueryChange={setQuery}
-              onClear={() => setQuery("")}
-              placeholder="Search a place"
-            />
-          </div>
           {shown.length === 0 ? (
-            <p className="text-muted-foreground mt-4 px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
+            <p className="text-muted-foreground px-1 text-sm">No place matches &ldquo;{query.trim()}&rdquo;</p>
           ) : (
-            <div className="border-border bg-card mt-3 overflow-hidden rounded-2xl border" data-pay-places>
+            <div className="border-border bg-card overflow-hidden rounded-2xl border" data-pay-places>
               {shown.map((p, i) => (
                 <Fragment key={p.place_id}>
                   {i > 0 && <div className="bg-border ml-[4.5rem] h-px" />}
