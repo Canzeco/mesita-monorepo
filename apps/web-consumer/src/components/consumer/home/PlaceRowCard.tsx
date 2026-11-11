@@ -1,10 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { Banknote, Clock, Navigation, Star } from "lucide-react";
-import { toAmPm } from "@mesita/place-profile/lib/place-time";
-import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
+import { Clock, Navigation, Star } from "lucide-react";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -29,12 +27,11 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  *
  *   ┌─────────┐ ┌────────────────┐
  *   │  photo  │ │ Name ✪          │   name on up to two lines, Premier seal
- *   │         │ │ ▭ $200–300MX    │   one fact a line (MESITA-3665)
- *   │         │ │ ⑂ Taco Restaurant│
- *   │         │ │ ★ 4.7 (8.6K)    │
- *   │         │ │ ◷ Open until 3 AM│
- *   │         │ │ ➤ 0.4 km        │
- *   │         │ │[ +5% Cashback ] │   every offer in turn, only when it has one
+ *   │         │ │ $$ · Taco        │   one run of facts, 2–3 lines
+ *   │         │ │ Restaurant · ★4.7│   (MESITA-3669)
+ *   │         │ │ (8.6K) · ◷ Open ·│
+ *   │         │ │ ➤ 0.4 km         │
+ *   │         │ │[ Cashback +5% ] │   every offer in turn, only when it has one
  *   └─────────┘ │[♡ Save][Share]  │
  *               └────────────────┘
  *
@@ -47,6 +44,17 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  * cycling every offer in its own colour (MESITA-3665); a tap goes where the
  * offer on screen points, the place's bill or its Rewards section.
  */
+/** $ to $$$$ from a price range's low end ("$200–300MX" → $$), on the
+ *  place screen's level ranges (place-price.ts LEVEL_RANGES). */
+export function priceSymbolsFromRange(
+  range: string | null | undefined,
+): string | null {
+  const low = Number(range?.match(/[\d.,]+/)?.[0]?.replace(/,/g, ""));
+  if (!Number.isFinite(low) || low <= 0) return null;
+  const level = low < 200 ? 1 : low < 300 ? 2 : low < 500 ? 3 : 4;
+  return "$".repeat(level);
+}
+
 export function PlaceRowCard({
   place,
   family,
@@ -75,74 +83,66 @@ export function PlaceRowCard({
   // The place's own kind ("Taco Restaurant"), the family word when it has
   // none.
   const kind = facts.kind ?? family ?? null;
-  const overview = enrichPlaceOverview(place);
-  // The numeric range ("$200–300MX") when the place has one, else $$.
-  const price =
-    overview.price_range?.replace(/\s*per person$/i, "") || facts.price;
-  // "Open until 3 AM" / "Closed until 1 PM", as on the place screen.
-  const untilAt = facts.open ? overview.closes_at : overview.opens_at;
-  const hours =
-    facts.open === null
-      ? null
-      : `${facts.open ? "Open" : "Closed"}${untilAt ? ` until ${toAmPm(untilAt)}` : ""}`;
-  const icon = "h-3.5 w-3.5 shrink-0";
-  type FactRow = {
-    key: string;
-    icon: ReactNode;
-    text: string;
-    className?: string;
-  };
-  const candidates: (FactRow | false | null | undefined | "")[] = [
+  // $ to $$$$, never the amount (Pato, MESITA-3669: "$$$$ from 1 to 4,
+  // depending on price range, not the full price"): price_level, else the
+  // range's low end on the place screen's own level ranges (place-price.ts:
+  // 100 / 200 / 300 / 500).
+  const price = facts.price ?? priceSymbolsFromRange(place.price_range);
+  const icon = "inline h-3 w-3 shrink-0 align-[-2px]";
+  // ONE RUN OF FACTS (MESITA-3669, "todo seguido"): $$ · kind · ★ rating
+  // (reviews) · Open or Closed, no hour · distance, wrapping over 2–3
+  // lines; a missing fact drops with its dot.
+  type Cell = { key: string; node: ReactNode };
+  const candidates: (Cell | false | null | undefined | "")[] = [
     price && {
       key: "price",
-      icon: <Banknote className={cn(icon, "text-fact-price")} aria-hidden />,
-      text: price,
-      className: "text-fact-price font-semibold",
+      node: <span className="text-fact-price font-semibold">{price}</span>,
     },
-    kind && {
-      key: "kind",
-      // NO MARK ON THE CATEGORY (Pato, MESITA-3668: "don't add the fucking
-      // icon to the category … emoji on the top families list, not the
-      // categories"): an empty 14px slot keeps the word in the facts' column.
-      icon: <span aria-hidden className="w-3.5 shrink-0" />,
-      text: kind,
-    },
+    kind && { key: "kind", node: <span>{kind}</span> },
     facts.rating && {
       key: "stars",
-      icon: (
-        <Star
-          className={cn(icon, "fill-fact-star text-fact-star")}
-          aria-hidden
-        />
+      node: (
+        <span className="whitespace-nowrap">
+          <Star
+            className={cn(icon, "fill-fact-star text-fact-star mr-0.5")}
+            aria-hidden
+          />
+          {facts.rating}
+          {facts.reviews ? ` (${facts.reviews})` : ""}
+        </span>
       ),
-      text: facts.reviews ? `${facts.rating} (${facts.reviews})` : facts.rating,
     },
-    hours && {
-      key: "hours",
-      icon: (
-        <Clock
-          className={cn(
-            icon,
-            facts.open ? "text-fact-open" : "text-fact-closed",
-          )}
-          strokeWidth={2.5}
-          aria-hidden
-        />
+    facts.open !== null && {
+      key: "open",
+      node: (
+        <span className="whitespace-nowrap">
+          <Clock
+            className={cn(
+              icon,
+              "mr-0.5",
+              facts.open ? "text-fact-open" : "text-fact-closed",
+            )}
+            strokeWidth={2.5}
+            aria-hidden
+          />
+          {facts.open ? "Open" : "Closed"}
+        </span>
       ),
-      text: hours,
     },
     facts.distance && {
       key: "distance",
-      icon: (
-        <Navigation
-          className={cn(icon, "fill-fact-distance text-fact-distance")}
-          aria-hidden
-        />
+      node: (
+        <span className="whitespace-nowrap">
+          <Navigation
+            className={cn(icon, "fill-fact-distance text-fact-distance mr-0.5")}
+            aria-hidden
+          />
+          {facts.distance}
+        </span>
       ),
-      text: facts.distance,
     },
   ];
-  const rows = candidates.filter((r): r is FactRow => Boolean(r));
+  const cells = candidates.filter((c): c is Cell => Boolean(c));
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
@@ -218,19 +218,18 @@ export function PlaceRowCard({
                 ad={(place.boost_tier ?? 0) > 0}
               />
             </p>
-            {/* THE PLACE SCREEN'S FACTS, ONE A LINE (Pato, MESITA-3665:
-                "maybe you can display more fields … Price, Category, Stars,
-                Hour, Distance"): the same words and icon colours as the
-                facts row on the place screen. A missing fact hides. */}
-            {rows.map((r) => (
-              <p
-                key={r.key}
-                className="text-foreground flex min-w-0 items-center gap-1.5 text-xs leading-5"
-              >
-                {r.icon}
-                <span className={cn("truncate", r.className)}>{r.text}</span>
+            {cells.length > 0 ? (
+              <p className="text-foreground text-xs leading-5" data-row-facts>
+                {cells.map((c, n) => (
+                  <Fragment key={c.key}>
+                    {n > 0 ? (
+                      <span className="text-muted-foreground"> · </span>
+                    ) : null}
+                    {c.node}
+                  </Fragment>
+                ))}
               </p>
-            ))}
+            ) : null}
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}
