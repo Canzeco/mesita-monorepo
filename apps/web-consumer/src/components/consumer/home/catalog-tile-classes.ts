@@ -14,11 +14,11 @@
 export const TILE_FRAME =
   "relative isolate min-w-0 overflow-hidden rounded-2xl shadow-tile";
 
-/** The photo: three fifths of the tile's width tall, so a tile with no coupon is
- *  a 60/40 square at 330px and never clips its text on a narrower phone. It
- *  carries the radius itself, as the band does: a child layer can escape the
- *  parent's rounded clip (MESITA-2429). */
-export const TILE_PHOTO = "relative aspect-[5/3] overflow-hidden rounded-t-2xl";
+/** The photo: 4:3, four wide and three tall, as every Home photo (Pato,
+ *  MESITA-3672: "each image must be 4:3"); it was three fifths of the width.
+ *  It carries the radius itself, as the band does: a child layer can escape
+ *  the parent's rounded clip (MESITA-2429). */
+export const TILE_PHOTO = "relative aspect-[4/3] overflow-hidden rounded-t-2xl";
 
 /** The plain white band under the photo (MESITA-2658: no reflection). */
 export const TILE_BAND = "bg-paper overflow-hidden rounded-b-2xl";
