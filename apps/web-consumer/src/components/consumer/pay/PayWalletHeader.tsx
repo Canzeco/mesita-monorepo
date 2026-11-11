@@ -4,7 +4,7 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 
 // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across two
 // sections: Pay and Wallet"). The bar's Pay tab opens on two halves, each its
-// own address: /pay (pay at a place: the open bill, Select a place to pay)
+// own address: /pay (pay at a place: the payment in progress, Pay at a place)
 // and /wallet (what you pay with: Money and Credits Payment Methods). The
 // band under the header is Home's Places · Social band (CatalogRails): two
 // equal halves on a white strip, the chosen one bold over a full-width black
