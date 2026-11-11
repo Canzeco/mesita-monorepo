@@ -158,7 +158,7 @@ export interface StaffStore {
 
 // ── Staff access ────────────────────────────────────────────────────────────
 
-export const STAFF_QR_OFF = "This Staff QR is turned off. Ask your manager for the new one.";
+export const STAFF_QR_OFF = "This Staff QR is turned off. Ask the owner for the new one.";
 
 /** Who may read: a valid staff token, or the right place code or Staff QR
  *  (which mint one). Refusals: 409 place_code_required (no code set), 409

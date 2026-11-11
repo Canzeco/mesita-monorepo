@@ -229,7 +229,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
         <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
         {/* MESITA-3696: the Staff QR signs the phone in for the shift. */}
         <span className="field-hint" data-staff-qr-hint>
-          Or scan the Staff QR your manager printed, then scan the guest’s QR again.
+          Or scan the Staff QR the owner printed, then scan the guest’s QR again.
         </span>
       </label>
     ) : null;
