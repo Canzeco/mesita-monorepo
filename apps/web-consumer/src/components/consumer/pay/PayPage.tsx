@@ -276,7 +276,10 @@ function PlaceList({
               searchbar. this one must not support locations"): the app's one
               search bar (SearchBar), alone: no locate disc, no Ask AI. White
               on Pay's grey page, where the band's grey fill would vanish;
-              typing darkens its border, as on Search. */}
+              typing darkens its border, as on Search. It filters this list
+              only, never the catalog: places that take Mesita Payments
+              (card_ok), cash with a place code (outside_ok), or where the
+              guest holds Credits (pay-places.ts). */}
           <div className="bg-card focus-within:border-foreground mt-2 flex h-10 items-center rounded-full border border-transparent pr-1 pl-4 transition-colors">
             <SearchBar
               query={query}
