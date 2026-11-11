@@ -104,12 +104,12 @@ const SocialFeed = dynamic(
 // the left, reduce the left margin"); 12px from MESITA-3441.
 const ROW_BASE =
   "relative flex w-full items-center gap-1.5 py-3.5 pr-1.5 pl-2 text-left text-xs leading-tight transition";
-// THE CHOSEN FAMILY: white, with a 3px RED bar on its left edge (Pato,
+// THE CHOSEN FAMILY: white, with a 5px RED bar on its left edge (Pato,
 // MESITA-3687: "make left sidebar menu red. it's more visible red"; it was
 // blue-600 for minutes, MESITA-3685: "selected family must have blue at the
-// left, in addition to be painted white").
+// left, in addition to be painted white"). 3px until MESITA-3689 ("a bit wider").
 const ROW_ON =
-  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-red-600";
+  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[5px] before:bg-red-600";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list, ranked like the Search
