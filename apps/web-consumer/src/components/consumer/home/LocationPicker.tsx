@@ -161,6 +161,8 @@ export function LocationPicker() {
   // Google bills Autocomplete per session: one token until a pick or close.
   const [token, setToken] = useState(newSessionToken);
   const { label, off } = headerLocation(active, coords !== null, locating, settled);
+  // Current location is chosen and the device answered with a fix.
+  const hereOn = active === null && coords !== null;
   // Asked only while the sheet is open, once per ~110 m (MESITA-2466): the
   // neighbourhood for the Current location row.
   const here = useHere(coords, picking);
@@ -316,7 +318,14 @@ export function LocationPicker() {
         {off ? (
           <MapPinOff className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
         ) : (
-          <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          // Blue while Current location is on with a fix (MESITA-3728, Pato:
+          // "if current location activated, paint the location pin blue"):
+          // the map's own guest-location blue. A saved location keeps ink.
+          <MapPin
+            className={cn("h-4 w-4 shrink-0", hereOn && "text-fact-distance")}
+            strokeWidth={2.25}
+            aria-hidden
+          />
         )}
         <span className="min-w-0 truncate">{label}</span>
         <ChevronDown
