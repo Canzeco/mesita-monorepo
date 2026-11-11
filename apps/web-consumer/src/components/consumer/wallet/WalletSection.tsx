@@ -12,10 +12,7 @@ import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { GiftClaimSheet, SendCreditSheet } from "./SendCredit";
-import { placeHref } from "@/lib/place-route";
-import { cardAmount, giftAction } from "@/lib/wallet-card";
-import type { CreditRow as CreditRowModel } from "./use-wallet";
+import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import {
   CashRow,
@@ -29,6 +26,13 @@ import {
   WalletList,
 } from "./WalletLists";
 
+// PLAIN CARDS, PATO'S HEADINGS (Pato, 2026-11-11, MESITA-3731: "keep just the
+// card without the buttons to fund nor gift. those must go inside";
+// "Credits Payment Methods / Money Payment Methods"): a Credits Card is just
+// its row, Fund and Gift are on its House Card page (PlaceCredit), and the
+// lists read Credits Payment Methods, then Money Payment Methods. The notes
+// below describe MESITA-3727's layout, under the names it used.
+//
 // THE WALLET, REDESIGNED (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"; render https://claude.ai/artifact/TyeAaA54EWHfyBdPZpD4wf):
 //
@@ -45,11 +49,8 @@ import {
 // heading), empty (one quiet prompt row, no heading Add) and rows. A failed
 // refresh that still holds a Wallet keeps every row.
 //
-// GIFT is decided once, by giftAction (lib/wallet-card.ts): open the Send to a
-// friend sheet, or say why not ("Fund this card first…", or "Credit becomes
-// giftable…" while credit is pending or held), or hide it when sending is
-// off. Its reason reflects the last Wallet read. Fund opens the place's
-// credit purchase, as the House Card's "Buy credits" does.
+// GIFT and FUND moved inside the card (MESITA-3731): the House Card page
+// (PlaceCredit) shows them; Gift is still decided by giftAction.
 //
 // SAVED CARDS: a first-load failure shows Cash alone and one toast per
 // mount; a later failure (after a remove) keeps the cards already shown.
@@ -104,27 +105,6 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
   const [adding, setAdding] = useState(false);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
-  // The Credits Card whose Gift sheet is open (MESITA-3724).
-  const [gifting, setGifting] = useState<CreditRowModel | null>(null);
-  const canSend = wallet?.can_send === true;
-  const actionsFor = (row: CreditRowModel) => {
-    // A place gone from Mesita: its House Card says to ask support.
-    if (row.balance.place === null) return null;
-    const action = giftAction({
-      canSend,
-      spendableCents: row.balance.spendable_cents,
-      shownCents: cardAmount(row.card).cents,
-    });
-    return {
-      fundHref: `${placeHref(row.placeSlug)}?rewards=prepayment`,
-      gift:
-        action === null
-          ? null
-          : action === "open"
-            ? { kind: "open" as const, onOpen: () => setGifting(row) }
-            : { kind: "blocked" as const, message: action.blocked, onTap: () => toast(action.blocked) },
-    };
-  };
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
   const [gift, setGift] = useState(giftToken);
@@ -210,8 +190,7 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
       ) : null}
 
       <WalletList
-        title="Credits"
-        fullDividers
+        title="Credits Payment Methods"
         action={
           creditsState === "rows" ? (
             <HeadingButton label="Add" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
@@ -235,13 +214,13 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
           : null}
         {creditsState === "rows"
           ? credits?.map((row) => (
-              <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} actions={actionsFor(row)} />
+              <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} />
             ))
           : null}
       </WalletList>
 
       <WalletList
-        title="Ways to pay"
+        title="Money Payment Methods"
         action={
           <HeadingButton
             label={adding ? "Opening…" : "Add card"}
@@ -258,15 +237,6 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
       </WalletList>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
-      <SendCreditSheet
-        open={gifting !== null}
-        onClose={() => setGifting(null)}
-        onSent={reread}
-        placeId={gifting?.placeId ?? ""}
-        placeName={gifting?.card.name ?? ""}
-        currency={gifting?.card.currency ?? "MXN"}
-        spendableCents={gifting?.balance.spendable_cents ?? 0}
-      />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}

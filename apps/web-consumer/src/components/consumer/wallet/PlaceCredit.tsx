@@ -10,11 +10,14 @@ import { countdownLabel, nextAvailableMs } from "@/lib/wallet-countdown";
 import { SendCreditSheet, SentLinks } from "./SendCredit";
 import { WalletCard } from "./WalletCard";
 import { PRIMARY, SECONDARY } from "./wallet-buttons";
+import { cardAmount, giftAction } from "@/lib/wallet-card";
+import { toast } from "@/lib/toast";
 import type { CreditRow } from "./use-wallet";
 
 // A PLACE'S HOUSE CARD (Pato, MESITA-3533: "when you click one method, then
-// you open a full screen"): its card, Available and Pending, Pay here, Buy
-// credits, Send to a friend, and its history. The body of /wallet/<placeId>
+// you open a full screen"): its card, Available and Pending, Pay here, Fund,
+// Gift (MESITA-3731; "Buy credits" and "Send to a friend" until then), and
+// its history. The body of /wallet/<placeId>
 // (MESITA-3614; a sheet over the Wallet until then). Every amount is the
 // server's (consumer-web-get-wallet); this screen formats, never adds.
 //
@@ -76,6 +79,7 @@ export function PlaceCredit({
   const [removing, setRemoving] = useState(false);
   const removable = onRemove !== undefined && canRemoveHouseCard(balance);
   const spendable = balance?.spendable_cents ?? 0;
+  const gift = giftAction({ canSend, spendableCents: spendable, shownCents: cardAmount(card).cents });
   const changed = onReread ?? (() => {});
   return (
     <>
@@ -104,13 +108,24 @@ export function PlaceCredit({
           <PushLink href={payPlacePath(row.placeId)} className={PRIMARY}>
             Pay here
           </PushLink>
-          <PushLink href={`${href}?rewards=prepayment`} className={SECONDARY}>
-            Buy credits
+          {/* FUND AND GIFT LIVE HERE (Pato, MESITA-3731: "keep just the card
+              without the buttons to fund nor gift. those must go inside"):
+              Fund was "Buy credits", Gift was "Send to a friend" (MESITA-3292:
+              same place only, from what can be spent now). Gift opens the sheet,
+              says why it cannot (pending/held credit, or none), or is hidden
+              when sending is off: giftAction, the Wallet's one rule. */}
+          <PushLink href={`${href}?rewards=prepayment`} className={SECONDARY} data-house-card-fund>
+            Fund
           </PushLink>
-          {/* SEND TO A FRIEND (MESITA-3292): same place only, from what can be spent now. */}
-          {canSend && spendable > 0 ? (
-            <button type="button" className={SECONDARY} onClick={() => setSending(true)} data-send-credit-open>
-              Send to a friend
+          {gift ? (
+            <button
+              type="button"
+              className={SECONDARY}
+              onClick={() => (gift === "open" ? setSending(true) : toast(gift.blocked))}
+              aria-label={gift === "open" ? "Gift" : `Gift: ${gift.blocked}`}
+              data-send-credit-open
+            >
+              Gift
             </button>
           ) : null}
         </div>

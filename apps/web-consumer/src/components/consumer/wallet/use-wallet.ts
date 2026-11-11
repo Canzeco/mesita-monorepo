@@ -55,7 +55,7 @@ function creditRow(b: WalletBalance): CreditRow {
       available_cents: b.available_cents,
       pending_cents: b.pending_cents,
       hasBalance: true,
-      // Every card opens its House Card page: history, Pay here, Buy credits.
+      // Every card opens its House Card page: history, Pay here, Fund, Gift.
       tap: { kind: "link", href: walletPlacePath(b.place_id) },
     },
   };

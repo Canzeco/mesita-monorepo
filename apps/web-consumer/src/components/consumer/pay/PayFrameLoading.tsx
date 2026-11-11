@@ -21,14 +21,14 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     // /wallet, the switch's Wallet half (MESITA-3729): the switch, then the two
     // lists in the redesign's order (MESITA-3727), built from the page's own
     // row skeletons so nothing jumps when it loads: Credits (one card with
-    // its Fund | Gift footer), then Ways to pay (a saved card, then Cash).
+    // its row, MESITA-3731), then Money Payment Methods (a saved card, then Cash).
     return (
       <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="wallet" />
-        <WalletList title="Credits" fullDividers>
+        <WalletList title="Credits Payment Methods">
           <CreditRowSkeleton />
         </WalletList>
-        <WalletList title="Ways to pay">
+        <WalletList title="Money Payment Methods">
           <RowsSkeleton count={2} />
         </WalletList>
       </div>
