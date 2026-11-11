@@ -172,15 +172,16 @@ export function placeFamilyLabel(place: Place): string | null {
  *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Places are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
-export function placesChips(): { key: string; label: string }[] {
+export function placesChips(): { key: string; label: string; emoji: string }[] {
   return [
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
-    { key: ALL_CHIP, label: TOP_LABEL },
+    { key: ALL_CHIP, label: TOP_LABEL, emoji: "⭐" },
     ...FILTERABLE_PLACE_FAMILIES.map((f) => ({
       key: f.key as string,
       label: f.label,
+      emoji: f.emoji,
     })),
   ];
 }
@@ -622,6 +623,12 @@ export function CatalogRails() {
                   : "bg-border/60 text-foreground hover:bg-border",
               )}
             >
+              {/* THE FAMILY'S EMOJI (Pato, MESITA-3667: "add emojis to the
+                  categories on top"): the chip row only; Places 1.0's column
+                  keeps its line icons (MESITA-2478). */}
+              <span aria-hidden className="mr-1">
+                {c.emoji}
+              </span>
               {c.label}
             </button>
           );
