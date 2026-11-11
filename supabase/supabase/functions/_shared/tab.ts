@@ -228,6 +228,8 @@ export type TabRow = {
   paid_at: string | null;
   expires_at: string;
   updated_at: string;
+  /** Read only by the guest's list (consumer-web-list-visits). */
+  created_at?: string;
 };
 
 export type TabPartRow = {
@@ -247,6 +249,9 @@ export type TabPartRow = {
 export const TAB_COLUMNS =
   "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at";
 const PART_COLUMNS = "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at";
+/** The guest's list reads only what a status needs (MESITA-3688): never
+ *  `proof_token`, which PART_COLUMNS carries. */
+export const LIST_PART_COLUMNS = "id, tab_id, status, paid_at";
 
 /** A tab past its time reads expired before any sweep writes it, unless a
  *  part is still in flight. */

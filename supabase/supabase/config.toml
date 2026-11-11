@@ -392,6 +392,9 @@ verify_jwt = true
 [functions.consumer-web-get-tab]
 verify_jwt = true
 
+[functions.consumer-web-list-visits]
+verify_jwt = true
+
 [functions.consumer-web-pay-tab]
 verify_jwt = true
 
