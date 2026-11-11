@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User, Wallet } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -26,12 +26,14 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { useUnseenNotifications } from "./use-unseen-notifications";
 
-// FIVE tabs, in this order (Pato, 2026-11-11, MESITA-3722: "return wallet
-// as a different page. Pay and Wallet. Home Search Pay Wallet Me"):
+// FOUR tabs, in this order (Pato, 2026-11-11, MESITA-3726: "Queda decidido:
+// cuatro pestañas, Home, Search, Pay y Me. Wallet va dentro de Pay.
+// Reservaciones y Activity van dentro de Me."):
 //
-//   Home · Search · Pay · Wallet · Me
+//   Home · Search · Pay · Me
 //
-// Before that it was four (MESITA-3717, Pato: "Make activity
+// Wallet held a fifth tab for an hour (MESITA-3722). Before that it was four
+// too (MESITA-3717, Pato: "Make activity
 // hidden. Move it to profile. not in bottom menu."; then, on splitting Pay
 // and Wallet into two tabs, "better do keep pay and wallet in the same
 // page"). Activity held the fourth tab from MESITA-3631 (2026-11-09), Wallet
@@ -46,11 +48,10 @@ import { useUnseenNotifications } from "./use-unseen-notifications";
 //   put red bubble"): Activity is behind Me now, so the bar says something
 //   is waiting there. Opening Activity › Notifications clears it.
 //
-//   PAY AND WALLET SPLIT THE MONEY (MESITA-3722): Pay lights on every
-//   address under /pay (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>),
-//   so a bill keeps Pay lit; Wallet on /wallet and under it
-//   (/wallet/<placeId>, /wallet/gift/<token>), so a House Card keeps Wallet
-//   lit. From MESITA-3631 to here Pay lit on both.
+//   PAY OWNS THE MONEY (MESITA-3726): it lights on every address under /pay
+//   (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>) and on the Wallet,
+//   a page pushed from Pay's header (/wallet, /wallet/<placeId>,
+//   /wallet/gift/<token>), so a bill or a House Card keeps Pay lit.
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
@@ -76,7 +77,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  House Card Wallet; Activity, a reservation and Share light Me. */
+   *  House Card Pay; Activity, a reservation and Share light Me. */
   tab: ConsumerTab;
 };
 
@@ -102,14 +103,6 @@ const ITEMS: Item[] = [
     // Reward from MESITA-3211 until then).
     label: "Pay",
     tab: "pay",
-  },
-  {
-    // Its own tab again (MESITA-3722); it was one from MESITA-3295 to
-    // MESITA-3631.
-    href: CONSUMER_ROUTES.wallet,
-    Icon: Wallet,
-    label: "Wallet",
-    tab: "wallet",
   },
   {
     href: CONSUMER_ROUTES.me,
