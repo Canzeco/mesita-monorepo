@@ -363,7 +363,7 @@ export function GuestPayScreen({
           {cashParts > 0 ? <Row label="Cash to the waiter" value={m(cashParts)} /> : null}
           {split.cashback_cents > 0 ? (
             <p className="mt-1 font-semibold text-green-700" data-guest-cashback>
-              You get {m(split.cashback_cents)} back here
+              You get {m(split.cashback_cents)} in credits to spend here next time
             </p>
           ) : null}
         </dl>
