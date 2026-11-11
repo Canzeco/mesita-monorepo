@@ -51,6 +51,50 @@ export function writeOpenTabId(id: string | null) {
   }
 }
 
+/** MESITA-3709: the guest's own payments (guest tabs) on this device, newest
+ *  first, so the Pay list shows them In progress and their QR survives a
+ *  reload. The QR's link (visit.mesita.ai/tab/<token>) is only a key to the
+ *  waiter's Verify page; it is kept until the waiter verifies or the
+ *  three-hour window ends. The server is the truth. */
+const GUEST_TABS_KEY = "mesita.pay.guest-tabs";
+const guestQrKey = (tabId: string) => `mesita.pay.guest-token.${tabId}`;
+
+export function readGuestTabIds(): string[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(GUEST_TABS_KEY) ?? "[]") as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 10) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function rememberGuestTab(tabId: string, qrUrl: string | null) {
+  try {
+    const ids = [tabId, ...readGuestTabIds().filter((x) => x !== tabId)].slice(0, 10);
+    window.localStorage.setItem(GUEST_TABS_KEY, JSON.stringify(ids));
+    if (qrUrl) window.localStorage.setItem(guestQrKey(tabId), qrUrl);
+  } catch {
+    // Private mode: the list forgets it and the QR is minted again on reload.
+  }
+}
+
+export function forgetGuestTab(tabId: string) {
+  try {
+    window.localStorage.setItem(GUEST_TABS_KEY, JSON.stringify(readGuestTabIds().filter((x) => x !== tabId)));
+    window.localStorage.removeItem(guestQrKey(tabId));
+  } catch {
+    // Nothing to forget.
+  }
+}
+
+export function readGuestQr(tabId: string): string | null {
+  try {
+    return window.localStorage.getItem(guestQrKey(tabId));
+  } catch {
+    return null;
+  }
+}
+
 /** The place's round profile picture, or its first letter. */
 export function PlacePhoto({ place, className }: { place: PayPlace; className: string }) {
   return (

@@ -111,6 +111,48 @@ serveJson("business-web-get-place-money", async (req) => {
     outside_cashback_bps: Number(r.outside_cashback_bps ?? 0),
     guest: maskGuest(guest_name, guest_email),
   }));
+  // MESITA-3709: a guest's own payment ends with the waiter's Verify. Each
+  // row of a guest tab says when it was verified and by which phone (the last
+  // four characters of the device hash, never the hash), or that it was not.
+  // "Check this phone": a cash Verify from a phone that verified nothing else
+  // here in 30 days (a leaked Staff QR looks like that).
+  const tabIds = [...new Set(rows.map((r) => r.tab_id).filter((x): x is string => !!x))];
+  const verify = new Map<string, { verified_at: string | null; phone: string | null; check_phone: boolean; cash: boolean; closed: boolean }>();
+  if (tabIds.length) {
+    const { data: tabs, error: tabErr } = await admin
+      .from("pay_tabs")
+      .select("id, origin, status, verified_at, verified_key_hash, cash_bill_cents, cash_tip_cents")
+      .in("id", tabIds)
+      .eq("origin", "guest");
+    if (tabErr) return json({ ok: false, error: `pay_tabs: ${tabErr.message}` }, 500);
+    type GuestTabRow = { id: string; status: string; verified_at: string | null; verified_key_hash: string | null; cash_bill_cents: number; cash_tip_cents: number };
+    const guestTabs = (tabs ?? []) as GuestTabRow[];
+    const keys = [...new Set(guestTabs.map((t) => t.verified_key_hash).filter((x): x is string => !!x))];
+    const verifies = new Map<string, number>();
+    if (keys.length) {
+      const { data: seen, error: seenErr } = await admin
+        .from("pay_tabs")
+        .select("verified_key_hash")
+        .eq("place_id", b.place_id)
+        .in("verified_key_hash", keys)
+        .gte("verified_at", new Date(Date.now() - 30 * 86_400_000).toISOString())
+        .limit(1000);
+      if (seenErr) return json({ ok: false, error: `pay_tabs: ${seenErr.message}` }, 500);
+      for (const r of (seen ?? []) as Array<{ verified_key_hash: string }>) verifies.set(r.verified_key_hash, (verifies.get(r.verified_key_hash) ?? 0) + 1);
+    }
+    for (const t of guestTabs) {
+      const cash = t.cash_bill_cents + t.cash_tip_cents > 0;
+      verify.set(t.id, {
+        verified_at: t.verified_at,
+        phone: t.verified_key_hash ? t.verified_key_hash.slice(-4) : null,
+        check_phone: !!t.verified_key_hash && cash && (verifies.get(t.verified_key_hash) ?? 0) <= 1,
+        cash,
+        closed: t.status === "expired" || t.status === "cancelled" || (t.status === "paid" && !t.verified_at && cash),
+      });
+    }
+  }
+  const rowsOut = rows.map((r) => (r.tab_id && verify.has(r.tab_id) ? { ...r, guest_verify: verify.get(r.tab_id) } : r));
+
   const share = (s.received_share ?? {}) as { received?: unknown; total?: unknown };
   return json({
     ok: true,
@@ -123,7 +165,7 @@ serveJson("business-web-get-place-money", async (req) => {
     received_share: { received: Number(share.received ?? 0), total: Number(share.total ?? 0) },
     outside_cashback_today_cents: Number(s.outside_cashback_today_cents ?? 0),
     outside_cashback_ceiling_cents: OUTSIDE_CASHBACK_DAILY_CEILING_CENTS,
-    rows,
+    rows: rowsOut,
     next: s.next ?? null,
   });
 });

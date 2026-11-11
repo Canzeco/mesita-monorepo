@@ -58,6 +58,10 @@ export type GuestTab = {
   table: TabTable | null;
   /** On a split table: the guest's own share (the app opens it). */
   my_share_tab_id: string | null;
+  /** MESITA-3709: `guest` = the guest typed the bill and paid alone; it ends
+   *  with the waiter's Verify. Older reads have none (a waiter tab). */
+  origin?: "waiter" | "guest";
+  verified_at?: string | null;
 };
 
 /** A table friends are splitting (MESITA-3695). Shares are listed by id,
@@ -126,16 +130,48 @@ export type TabRead = {
   card_action?: TabCardStep;
   /** A card part that just failed; the tab is billed again. */
   card_error?: { code: string; error: string; decline_code?: string };
+  /** MESITA-3709: a new QR for a guest tab, only when asked (`remint`). */
+  token?: string;
+  qr_url?: string;
 };
 
 export async function apiGetTab(
   client: SupabaseClient,
   tabId: string,
-  opts: { withCards?: boolean } = {},
+  opts: { withCards?: boolean; remint?: boolean } = {},
 ): Promise<TabRead> {
   return await invokeEF<TabRead>(client, "consumer-web-get-tab", {
     tab_id: tabId,
     ...(opts.withCards ? { with_cards: true } : {}),
+    ...(opts.remint ? { remint: true } : {}),
+  });
+}
+
+/** MESITA-3709: the guest's own payment, in one tap. The guest typed the
+ *  bill (before tip) and chose how to pay it; the answer is the guest tab,
+ *  its QR (the waiter scans it to Verify) and, with a card part, Stripe's
+ *  step. One `request_id` per tap: a retry after a lost answer sends the
+ *  same and gets the same tab. Refusals arrive as EFError codes. */
+export type PaidGuest = {
+  outcome: "opened" | "replayed";
+  tab_id: string;
+  status: "paying" | "paid";
+  token: string;
+  qr_url: string;
+  expires_at: string | null;
+  test_mode: boolean;
+  card?: TabCardStep;
+};
+
+export async function apiPayGuest(
+  client: SupabaseClient,
+  args: { place_id: string; bill_cents: number; request_id: string; card_pm_id?: string | null } & TabSplit,
+): Promise<PaidGuest> {
+  const { card_pm_id, ...rest } = args;
+  const hasCard = rest.card_bill_cents > 0 || rest.card_tip_cents > 0;
+  return await invokeEF<PaidGuest>(client, "consumer-web-pay-guest", {
+    ...rest,
+    ...(hasCard && card_pm_id ? { card_pm_id } : {}),
   });
 }
 
@@ -328,6 +364,13 @@ export const TAB_REFUSAL: Record<string, string> = {
   card_pending: "Your card is still going through.",
   locked: "Too many card tries. Wait a few minutes or pay another way.",
   closed: "That payment was cancelled. Tap again to start over.",
+  // MESITA-3709: guest pays, waiter verifies.
+  too_many_open: "Finish or cancel a payment here first.",
+  amount_required: "Type the amount you're paying.",
+  cash_off: "This place doesn't take cash through Mesita. Pay with credit or card.",
+  above_cap: "That's more than Mesita takes in one payment.",
+  verified: "The waiter already verified this payment.",
+  guest_tab: "This payment can only be cancelled.",
   parts: "The amounts don't add up to the bill. Check it and pay again.",
 };
 

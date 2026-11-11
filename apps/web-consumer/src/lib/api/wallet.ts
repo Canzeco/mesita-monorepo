@@ -470,6 +470,10 @@ export type PayPlace = {
   /** Stripe's minimum on card + tip (the start refuses below it). */
   card_min_cents: number;
   paid_recent: { payment_id: string; total_cents: number; paid_at: string } | null;
+  /** Cash Payments is on here (the owner's switch and a waiter code). */
+  outside_ok?: boolean;
+  /** What the cash bill part earns back once the waiter verifies it. */
+  outside_bps?: number;
 };
 
 /** The places, credit first then nearest. `at` is rounded by the caller and
