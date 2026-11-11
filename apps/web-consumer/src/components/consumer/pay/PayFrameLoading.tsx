@@ -17,15 +17,16 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     );
   }
   if (body === "wallet") {
-    // /wallet, its own tab (MESITA-3722): the header and the two lists.
+    // /wallet, a page pushed from Pay (MESITA-3726): its frame and two lists.
     return (
-      <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader title="Wallet" />
-        <Skeleton className="mt-5 h-6 w-48 rounded-md" />
-        <Skeleton className="mt-2 h-[12.25rem] w-full rounded-2xl" />
-        <Skeleton className="mt-5 h-6 w-48 rounded-md" />
-        <Skeleton className="mt-2 h-[8.25rem] w-full rounded-2xl" />
-      </div>
+      <Screen title="Wallet" flush>
+        <div className="flex flex-col px-4 pb-8" aria-busy>
+          <Skeleton className="mt-5 h-6 w-48 rounded-md" />
+          <Skeleton className="mt-2 h-[12.25rem] w-full rounded-2xl" />
+          <Skeleton className="mt-5 h-6 w-48 rounded-md" />
+          <Skeleton className="mt-2 h-[8.25rem] w-full rounded-2xl" />
+        </div>
+      </Screen>
     );
   }
   // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647).

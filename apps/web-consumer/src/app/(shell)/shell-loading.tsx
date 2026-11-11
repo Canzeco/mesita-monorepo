@@ -47,7 +47,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   payTab: () => <PayTabLoading />,
   payJoin: () => <PayTabLoading />,
   payReceipt: () => <PayReceiptLoading />,
-  // The Wallet tab (MESITA-3722).
+  // The Wallet, pushed from Pay (MESITA-3726).
   wallet: () => <WalletLoading />,
   walletPlace: () => <WalletPlaceLoading />,
   walletGift: () => <WalletGiftLoading />,
