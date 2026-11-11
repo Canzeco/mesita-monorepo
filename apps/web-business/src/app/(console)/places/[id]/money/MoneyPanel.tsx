@@ -230,7 +230,7 @@ export function MoneyPanel({ placeId, initial }: { placeId: string; initial: Pla
                 </p>
                 {r.guest_verify?.check_phone ? (
                   <p className="w-full text-sm font-semibold text-amber-700" data-check-phone>
-                    Check this phone: its only Verify here was cash. If you don&apos;t know it, press New Staff QR.
+                    Check this phone: its only Verify here was cash. If you don&apos;t know it, change the waiter code.
                   </p>
                 ) : null}
                 <p className="text-muted-foreground shrink-0 tabular-nums">{when(r.created_at)}</p>

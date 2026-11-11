@@ -19,12 +19,16 @@
 //   - rotating the service role key revokes every staff token everywhere.
 // The code hash never leaves the server: the token carries only the HMAC.
 //
-// The Staff QR (MESITA-3696): the owner prints a QR on Business › Payments,
-// visit.mesita.ai/staff/<place>#<secret>, and a waiter who scans it gets the
-// same 12-hour token with no code typed (visit-web-join-staff). The secret
-// sits on place_codes beside the code hash, and the token's HMAC covers both:
-// a new QR or a new code ends every token of the place. A wrong or replaced
-// secret is a `staff` try like a wrong code.
+// NO STAFF QR (Pato, 2026-11-11, MESITA-3734: "remove staff qr there is no
+// staff qr"): the waiter code is the one way a phone becomes staff, and a
+// code token may Verify and confirm cash. A place that had made a QR keeps
+// signing its tokens over the old secret (keys.staffQr is still read), so no
+// phone signed in today is logged out; nothing mints from the secret now.
+//
+// The Staff QR (MESITA-3696, retired by MESITA-3734) was a printed QR that
+// signed a phone in with no code typed. Its secret still sits on place_codes
+// beside the code hash and the token's HMAC still covers both, so a new code
+// ends every token of the place.
 //
 // The locks are the waiter's charge's (charge.ts): a wrong place code is a
 // `staff` try on place_charge_tries keyed by the address HMAC, five per
@@ -57,26 +61,13 @@ export const STAFF_ONLY = "Only the place's staff can see its payments. Type the
 /** Either the place code or the Staff QR's secret (the first read) or the
  *  staff token (every read after). A body with none is a read without staff
  *  access. */
-export type ListInput = { placeId: string; placeCode: string | null; staffToken: string | null; staffQr?: string | null };
-
-/** The Staff QR's secret: 32 random bytes, base64url, 43 characters. */
-export const STAFF_QR_RE = /^[A-Za-z0-9_-]{43}$/;
-
-export function readStaffQr(v: unknown): string | null {
-  return typeof v === "string" && STAFF_QR_RE.test(v) ? v : null;
-}
-
-/** A new Staff QR secret. */
-export function makeStaffQr(): string {
-  return b64url(crypto.getRandomValues(new Uint8Array(32)));
-}
+export type ListInput = { placeId: string; placeCode: string | null; staffToken: string | null };
 
 export function readListBody(b: Record<string, unknown>): { ok: true; input: ListInput } | StaffRefusal {
   if (!isUuid(b.place_id)) return refuse(400, "bad_request", "place_id must be a Mesita place id");
   const staffToken = typeof b.staff_token === "string" && b.staff_token.length <= 128 ? b.staff_token : null;
   const placeCode = staffToken ? null : readPlaceCode(b.place_code);
-  const staffQr = staffToken || placeCode ? null : readStaffQr(b.staff_qr);
-  return { ok: true, input: { placeId: b.place_id, placeCode, staffToken, staffQr } };
+  return { ok: true, input: { placeId: b.place_id, placeCode, staffToken } };
 }
 
 // ── The token ───────────────────────────────────────────────────────────────
@@ -204,8 +195,6 @@ export type StaffPaymentRow = {
 export interface StaffStore {
   /** The place's current code hash and Staff QR, or null when no code is set. */
   keys(placeId: string): Promise<StaffKeys | null>;
-  /** Stamps the Staff QR's last use (Business › Payments shows it). */
-  staffQrUsed(placeId: string, atIso: string): Promise<void>;
   tries(placeId: string, kind: TryKind, key: string | null, sinceIso: string, limit: number): Promise<string[]>;
   addTry(placeId: string, kind: TryKind, key: string): Promise<void>;
   /** The place's payments paid since `sinceIso` in this mode, newest first.
@@ -215,8 +204,6 @@ export interface StaffStore {
 }
 
 // ── Staff access ────────────────────────────────────────────────────────────
-
-export const STAFF_QR_OFF = "This Staff QR is turned off. Ask the owner for the new one.";
 
 /** Who may read: a valid staff token, or the right place code or Staff QR
  *  (which mint one). Refusals: 409 place_code_required (no code set), 409
@@ -234,22 +221,13 @@ export async function staffAccess(
     if (await checkStaffToken(args.serviceKey, input.placeId, input.staffToken, keys, nowMs)) return { ok: true, minted: null };
     return refuse(403, "staff_only", STAFF_ONLY);
   }
-  if (!input.placeCode && !input.staffQr) return refuse(403, "staff_only", STAFF_ONLY);
+  if (!input.placeCode) return refuse(403, "staff_only", STAFF_ONLY);
 
   const since = new Date(nowMs - TRY_WINDOW_SEC * 1000).toISOString();
   const mine = await store.tries(input.placeId, "staff", args.staffKey, since, PAIR_TRY_LIMIT);
   const placeWide = await store.tries(input.placeId, "staff", null, since, PLACE_STAFF_TRY_LIMIT);
   const wait = Math.max(lockedFor(mine, PAIR_TRY_LIMIT, nowMs), lockedFor(placeWide, PLACE_STAFF_TRY_LIMIT, nowMs));
   if (wait > 0) return refuse(409, "locked", "Too many wrong place codes. Wait a few minutes.", { retry_after_s: wait });
-
-  if (input.staffQr) {
-    if (!keys.staffQr || !timingSafeEqual(input.staffQr, keys.staffQr)) {
-      await store.addTry(input.placeId, "staff", args.staffKey);
-      return refuse(403, "staff_qr_off", STAFF_QR_OFF);
-    }
-    await store.staffQrUsed(input.placeId, new Date(nowMs).toISOString());
-    return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs, "qr") };
-  }
 
   const typed = await hashPlaceCode(input.placeId, input.placeCode!);
   if (!timingSafeEqual(typed, keys.codeHash)) {
@@ -313,10 +291,6 @@ export function supabaseStaffStore(admin: SupabaseClient): StaffStore {
       if (error) throw new Error(`place_code_read: ${error.message}`);
       const row = data as { code_hash: string; staff_qr: string | null } | null;
       return row ? { codeHash: row.code_hash, staffQr: row.staff_qr ?? null } : null;
-    },
-    async staffQrUsed(placeId, atIso) {
-      const { error } = await admin.from("place_codes").update({ staff_qr_used_at: atIso }).eq("place_id", placeId);
-      if (error) throw new Error(`staff_qr_used: ${error.message}`);
     },
     async tries(placeId, kind, key, sinceIso, limit) {
       let q = admin

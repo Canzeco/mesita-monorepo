@@ -366,8 +366,8 @@ export async function cashTab(
   return tabRefusal(data, "Couldn't confirm. Try again.");
 }
 
-/** MESITA-3708: the waiter's Verify on a guest's payment. Only a phone signed
- *  in by the Staff QR may verify (staff_qr_needed otherwise). Empty
+/** MESITA-3708: the waiter's Verify on a guest's payment. Any phone signed in
+ *  with the waiter code may verify (staff_code_needed otherwise). Empty
  *  cash_received means exactly what is owed; `short` answers missing_cents. */
 export type Verified = {
   outcome: "verified" | "already_verified";
@@ -390,19 +390,4 @@ export async function verifyTab(
   }
   if (!res || res.status >= 500 || !data) return "failed";
   return tabRefusal(data, "Couldn't verify. Try again.");
-}
-
-// ── The Staff QR (MESITA-3696) ──────────────────────────────────────────────
-
-export type JoinedStaff = { staff_token: string; staff_token_expires_at: string; place: { name: string | null }; test_mode: boolean };
-
-/** The waiter scanned the place's Staff QR: its secret answers the 12-hour
- *  staff token. A refusal carries the server's words; `failed` is no answer. */
-export async function joinStaff(placeId: string, staffQr: string): Promise<JoinedStaff | { refused: string } | "failed"> {
-  if (!staffQr) return { refused: "This Staff QR is not complete. Scan it again." };
-  const { res, data } = await post("visit-web-join-staff", { place_id: placeId, staff_qr: staffQr });
-  if (data?.ok && typeof data.staff_token === "string") return data as unknown as JoinedStaff;
-  if (!res || res.status >= 500 || !data) return "failed";
-  const wait = typeof data.retry_after_s === "number" ? ` Try again in ${Math.ceil(data.retry_after_s / 60)} min.` : "";
-  return { refused: `${typeof data.error === "string" ? data.error : "This Staff QR didn't work."}${wait}` };
 }

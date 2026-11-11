@@ -16,9 +16,6 @@
 //                          payouts_paused|restricted (Main §10's Place Stripe)
 //             code_set,    whether the place code is set: the waiter's charge
 //                          (MESITA-3306) needs it, so Payments says so
-//             staff_qr,    the Staff QR (MESITA-3696): { secret, made_at,
-//                          used_at, place_name } to the owner and Mesita staff, null when
-//                          none is made or to an editor (it is a staff key)
 //             fee: { hold, invoice } }  Mesita's fee invoice (MESITA-3461):
 //                          hold = cards are off until it is paid; invoice =
 //                          the one to pay (amount, due, Stripe's page)
@@ -32,7 +29,6 @@ import { accountView, HOUSE_CREDITS_TERMS_TEXT, readAccount, readContract, readS
 import { FEE_INVOICE_COLUMNS, type FeeInvoiceRow, feeView } from "../_shared/fee-billing.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { errorMessage } from "../_shared/errors.ts";
-import { readVoucherPlace } from "../_shared/wallet.ts";
 
 serveJson("business-web-get-payments", async (req) => {
   const ctx = await requireBusinessRequest(req);
@@ -59,7 +55,7 @@ serveJson("business-web-get-payments", async (req) => {
     }
   }
   const [settings, contract] = await Promise.all([readSettings(admin, placeId), readContract(admin, placeId)]);
-  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id, staff_qr, staff_qr_made_at, staff_qr_used_at").eq("place_id", placeId).maybeSingle();
+  const { data: code, error: codeErr } = await admin.from("place_codes").select("place_id").eq("place_id", placeId).maybeSingle();
   if (codeErr) return json({ ok: false, error: `place_codes: ${codeErr.message}` }, 500);
   const { data: invoices, error: feeErr } = await admin
     .from("place_fee_invoices")
@@ -70,17 +66,7 @@ serveJson("business-web-get-payments", async (req) => {
     .order("created_at", { ascending: true })
     .limit(10);
   if (feeErr) return json({ ok: false, error: `place_fee_invoices: ${feeErr.message}` }, 500);
-  // The Staff QR (MESITA-3696) is a staff key: the owner and Mesita staff only.
-  let staffQr: { secret: string; made_at: string | null; used_at: string | null; place_name: string | null } | null = null;
-  if (code?.staff_qr && canManage(access.role)) {
-    const placeRes = await readVoucherPlace(admin, placeId);
-    staffQr = {
-      secret: code.staff_qr,
-      made_at: code.staff_qr_made_at,
-      used_at: code.staff_qr_used_at,
-      place_name: placeRes.ok ? placeRes.place?.name ?? null : null,
-    };
-  }
+  // No Staff QR any more (MESITA-3734): the waiter code is the one staff key.
   const hold = account?.livemode === paymentsLivemode() && account?.fee_hold === true;
   return json({
     ok: true,
@@ -90,7 +76,6 @@ serveJson("business-web-get-payments", async (req) => {
     settings,
     contract: { ...contract, text: HOUSE_CREDITS_TERMS_TEXT },
     code_set: !!code,
-    staff_qr: staffQr,
     fee: feeView(hold, (invoices ?? []) as FeeInvoiceRow[], Date.now()),
   });
 });

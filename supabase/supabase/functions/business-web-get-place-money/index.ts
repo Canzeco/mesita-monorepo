@@ -115,7 +115,7 @@ serveJson("business-web-get-place-money", async (req) => {
   // row of a guest tab says when it was verified and by which phone (the last
   // four characters of the device hash, never the hash), or that it was not.
   // "Check this phone": a cash Verify from a phone that verified nothing else
-  // here in 30 days (a leaked Staff QR looks like that).
+  // here in 30 days (a leaked waiter code looks like that; MESITA-3734).
   const tabIds = [...new Set(rows.map((r) => r.tab_id).filter((x): x is string => !!x))];
   const verify = new Map<string, { verified_at: string | null; phone: string | null; check_phone: boolean; cash: boolean; closed: boolean }>();
   if (tabIds.length) {
