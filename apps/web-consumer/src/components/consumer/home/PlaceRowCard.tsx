@@ -12,7 +12,11 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
-import { CardActions, cardFacts } from "@/components/consumer/place-card";
+import {
+  CARD_BUTTON_BOX,
+  CardActions,
+  cardFacts,
+} from "@/components/consumer/place-card";
 import { offerSlides } from "@/components/consumer/offer-button";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
 
@@ -20,18 +24,22 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
  * information at the right, two squares, information with buttons"):
  *
- *   ┌─────────┐ ┌─────────┐
- *   │  photo  │ │ Name     │   name on up to two lines
- *   │         │ │ $$ · Tacos│
- *   │[+5% …]  │ │ ★ 4.7 (8.6K)
- *   └─────────┘ │ ◷ Open · 3.3 km
- *               │[♡ Save][Share]│
- *               └─────────┘
+ *   ┌─────────┐ ┌──────────────┐
+ *   │  photo  │ │ Name          │   name on up to two lines
+ *   │         │ │ $$ · Tacos    │
+ *   │         │ │ ★ 4.7 (8.6K)  │
+ *   │         │ │ ◷ Open · 3.3 km│
+ *   │         │ │[ +5% Cashback ]│   only when the place has an offer
+ *   └─────────┘ │[♡ Save][Share]│
+ *               └──────────────┘
  *
  * The photo square and the text open the place; Save and Share are the
  * shared CardActions (a Google-only place gets Generate Profile instead), so
- * a tap on them never navigates. The offer is a pill on the photo, as on the
- * grid; the wide offer button stays on the place screen.
+ * a tap on them never navigates. THE PHOTO STAYS CLEAN (Pato, MESITA-3664:
+ * "remove the cashback icon from the fucking image. keep the image clean.
+ * you have a lot of space at the right. fucking use it"): the place's first
+ * offer is a full-width green line in the info square, just above Save ·
+ * Share, and a tap on it opens the place like the rest of the facts.
  */
 export function PlaceRowCard({
   place,
@@ -85,8 +93,7 @@ export function PlaceRowCard({
       </Link>
     );
 
-  const focus =
-    "focus-visible:ring-primary outline-none focus-visible:ring-2";
+  const focus = "focus-visible:ring-primary outline-none focus-visible:ring-2";
 
   return (
     <li className={ROW_PAIR} data-row-card>
@@ -121,17 +128,6 @@ export function PlaceRowCard({
               </span>
             </div>
           )}
-          {offer ? (
-            <span
-              className={cn(
-                "absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-xs leading-4 font-semibold",
-                offer.tone,
-              )}
-              data-row-offer
-            >
-              {offer.pill}
-            </span>
-          ) : null}
         </>,
         cn(ROW_PHOTO, "block", focus),
         `Open ${place.name}`,
@@ -190,6 +186,18 @@ export function PlaceRowCard({
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}
+        {offer
+          ? open(
+              offer.pill,
+              cn(
+                CARD_BUTTON_BOX,
+                "mt-auto flex items-center justify-center px-2 text-xs font-semibold",
+                offer.tone,
+                focus,
+              ),
+              `Open ${place.name}: ${offer.spoken}`,
+            )
+          : null}
         <CardActions
           name={place.name}
           saved={saved}
@@ -203,7 +211,7 @@ export function PlaceRowCard({
                 }
               : undefined
           }
-          className="mt-auto"
+          className={offer ? undefined : "mt-auto"}
         />
       </div>
     </li>
