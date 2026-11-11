@@ -13,11 +13,11 @@ import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
 import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS, rememberGuestTab } from "./pay-common";
 
-// THE GUEST PAYS ALONE (MESITA-3709). One screen at /pay/<placeId>, top to
-// bottom: the amount the guest is paying (before tip), the tip, how to pay
-// it (credit here first, then a saved card or cash for the rest; the tip
-// follows that method), the split, the cashback, one button "Pay MX$total".
-// Above MX$3,000 the button asks first. After Pay the guest lands on their
+// THE GUEST PAYS ALONE (MESITA-3709), one step per screen at /pay/<placeId>
+// (MESITA-3715): Bill (before tip) → Tip → How do you pay (credit here
+// first, then a saved card or cash for the rest; the tip follows that
+// method) → Review (the split, the cashback, "Pay MX$total"). The header's
+// back arrow steps back. Above MX$3,000 Pay asks first. After Pay the guest lands on their
 // payment's checklist (/pay/tab/<id>) and shows its QR to the waiter, who
 // verifies it. Every rule and peso is the server's; this screen proposes.
 
@@ -27,7 +27,10 @@ type Tip = "none" | (typeof TIP_PERCENTS)[number] | "other";
 const CONFIRM_ABOVE_CENTS = 300_000;
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-draft.${placeId}`;
 
-type Draft = { amount: string; tip: Tip; other: string; useCredit: boolean; method: PayWith | null; cardId: string | null };
+const STEPS = ["bill", "tip", "method", "review"] as const;
+type Step = (typeof STEPS)[number];
+
+type Draft = { step?: Step; amount: string; tip: Tip; other: string; useCredit: boolean; method: PayWith | null; cardId: string | null };
 
 function readDraft(placeId: string): Partial<Draft> | null {
   try {
@@ -54,6 +57,7 @@ export function GuestPayScreen({
   getSupabase,
   onPaid,
   onBack,
+  registerBack,
 }: {
   placeId: string;
   places: PayPlace[] | null;
@@ -62,9 +66,12 @@ export function GuestPayScreen({
   /** The guest tab exists: open its checklist. */
   onPaid: (tabId: string) => void;
   onBack: () => void;
+  /** The header's back arrow asks this first: true when it stepped back. */
+  registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const place = places?.find((p) => p.place_id === placeId) ?? null;
   const draft = useMemo(() => (typeof window === "undefined" ? null : readDraft(placeId)), [placeId]);
+  const [step, setStep] = useState<Step>(draft?.step && STEPS.includes(draft.step) ? draft.step : "bill");
   const [amount, setAmount] = useState(draft?.amount ?? "");
   const [tip, setTip] = useState<Tip>(draft?.tip ?? "none");
   const [other, setOther] = useState(draft?.other ?? "");
@@ -149,8 +156,21 @@ export function GuestPayScreen({
   const setError = (msg: string | null) => setFailure(msg ? { msg, sig } : null);
   useEffect(() => {
     requestId.current = null;
-    writeDraft(placeId, { amount, tip, other, useCredit, method, cardId });
-  }, [placeId, amount, tip, other, useCredit, method, cardId, tipMethod]);
+    writeDraft(placeId, { step, amount, tip, other, useCredit, method, cardId });
+  }, [placeId, step, amount, tip, other, useCredit, method, cardId, tipMethod]);
+
+  // The header's back arrow: one step back, and off the screen from Bill.
+  useEffect(() => {
+    if (!registerBack) return;
+    registerBack(() => {
+      const i = STEPS.indexOf(step);
+      if (i <= 0) return false;
+      setConfirming(false);
+      setStep(STEPS[i - 1]);
+      return true;
+    });
+    return () => registerBack(null);
+  }, [registerBack, step]);
 
   // Opening the card page is not paying: its own state, so Pay never reads "Paying…" (MESITA-3714).
   async function addCard() {
@@ -237,176 +257,250 @@ export function GuestPayScreen({
       "min-h-11 flex-1 rounded-xl border px-3 text-base font-semibold transition",
       on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
     );
+  const row = (on: boolean) =>
+    cn("bg-card flex min-h-16 items-center justify-between gap-3 rounded-2xl border px-4 transition", on ? "border-foreground ring-foreground ring-1" : "border-border");
+
+  const tipProblem = tip === "other" && other.trim() !== "" && readAmount(other) === null ? "Type the tip in pesos." : null;
+  const nextOk =
+    step === "bill" ? billCents > 0 : step === "tip" ? !tipProblem && (tip !== "other" || other.trim() !== "") : step === "method" ? !problem && (!!restWith || creditCovers) : true;
+  const next = () => {
+    const i = STEPS.indexOf(step);
+    if (nextOk && i < STEPS.length - 1) setStep(STEPS[i + 1]);
+  };
+  const stepIndex = STEPS.indexOf(step);
 
   return (
     <form
-      className="flex flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       onSubmit={(e) => {
         e.preventDefault();
-        void pay();
+        if (step === "review") void pay();
+        else next();
       }}
-      data-guest-pay="form"
+      data-guest-pay={step}
     >
       {place.test_mode ? <TestBand className="mb-3" /> : null}
-      <p className="text-base font-semibold">{place.name ?? "A Mesita place"}</p>
-
-      <label className="mt-4 block text-base font-semibold" htmlFor="guest-amount">
-        Amount you&apos;re paying, before tip
-      </label>
-      <input
-        id="guest-amount"
-        className={cn(FIELD_CLASS, "mt-2 text-lg tabular-nums")}
-        inputMode="decimal"
-        autoComplete="off"
-        placeholder="0"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
-
-      <p className="mt-5 text-base font-semibold" id="guest-tip">
-        Tip
-      </p>
-      <div className="mt-2 flex gap-2" role="group" aria-labelledby="guest-tip">
-        <button type="button" className={chip(tip === "none")} aria-pressed={tip === "none"} onClick={() => setTip("none")}>
-          No tip
-        </button>
-        {TIP_PERCENTS.map((p) => (
-          <button key={p} type="button" className={chip(tip === p)} aria-pressed={tip === p} onClick={() => setTip(p)}>
-            {p}%
-          </button>
+      <div className="flex gap-1.5" aria-hidden>
+        {STEPS.map((s, i) => (
+          <span key={s} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-foreground" : "bg-border")} />
         ))}
-        <button type="button" className={chip(tip === "other")} aria-pressed={tip === "other"} onClick={() => setTip("other")}>
-          Other
-        </button>
       </div>
-      {tip === "other" ? (
-        <input
-          aria-label="Tip in pesos"
-          className={cn(FIELD_CLASS, "mt-2 tabular-nums")}
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="Tip"
-          value={other}
-          onChange={(e) => setOther(e.target.value)}
-        />
+      <p className="text-muted-foreground mt-3 text-sm">
+        {place.name ?? "A Mesita place"} · Step {stepIndex + 1} of {STEPS.length}
+      </p>
+
+      {step === "bill" ? (
+        <>
+          <label className="mt-1 block text-2xl font-semibold" htmlFor="guest-amount">
+            How much is the bill?
+          </label>
+          <p className="text-muted-foreground mt-1 text-base">Before tip, as on the ticket.</p>
+          <input
+            id="guest-amount"
+            className={cn(FIELD_CLASS, "mt-5 h-16 text-3xl font-semibold tabular-nums")}
+            inputMode="decimal"
+            autoComplete="off"
+            autoFocus
+            placeholder="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </>
       ) : null}
 
-      <p className="mt-5 text-base font-semibold">Pay with</p>
-      {spendable > 0 ? (
-        <label className="border-border bg-card mt-2 flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
-          <MethodLabel icon={<Wallet />}>Use my {m(spendable)} credit here</MethodLabel>
-          <input type="checkbox" className="h-5 w-5" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
-        </label>
+      {step === "tip" ? (
+        <>
+          <p className="mt-1 text-2xl font-semibold" id="guest-tip">
+            Add a tip?
+          </p>
+          <p className="text-muted-foreground mt-1 text-base">On a {m(billCents)} bill.</p>
+          <div className="mt-5 grid grid-cols-2 gap-2" role="group" aria-labelledby="guest-tip">
+            {TIP_PERCENTS.map((p) => (
+              <button key={p} type="button" className={cn(chip(tip === p), "flex min-h-20 flex-col items-center justify-center")} aria-pressed={tip === p} onClick={() => setTip(p)}>
+                <span className="text-xl">{p}%</span>
+                <span className={cn("text-sm font-normal tabular-nums", tip === p ? "opacity-80" : "text-muted-foreground")}>{m(Math.round((billCents * p) / 100))}</span>
+              </button>
+            ))}
+            <button type="button" className={cn(chip(tip === "other"), "min-h-20 text-xl")} aria-pressed={tip === "other"} onClick={() => setTip("other")}>
+              Other
+            </button>
+            <button type="button" className={cn(chip(tip === "none"), "col-span-2 min-h-14")} aria-pressed={tip === "none"} onClick={() => setTip("none")}>
+              No tip
+            </button>
+          </div>
+          {tip === "other" ? (
+            <input
+              aria-label="Tip in pesos"
+              className={cn(FIELD_CLASS, "mt-3 text-lg tabular-nums")}
+              inputMode="decimal"
+              autoComplete="off"
+              autoFocus
+              placeholder="Tip in pesos"
+              value={other}
+              onChange={(e) => setOther(e.target.value)}
+            />
+          ) : null}
+          {tipProblem ? (
+            <p className="text-destructive mt-3 text-sm" role="status">
+              {tipProblem}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
-      {!creditCovers ? (
-        <div className="mt-2 flex flex-col gap-2" role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
-          {cardOk
-            ? (cards ?? []).map((c) => (
-                <label key={c.id} className="border-border bg-card flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
-                  <MethodLabel icon={<CreditCard />}>
-                    {brandLabel(c.brand)} •••• {c.last4}
-                    {place.cashback_bps > 0 ? <span className="text-muted-foreground"> · {place.cashback_bps / 100}% back</span> : null}
-                  </MethodLabel>
-                  <input
-                    type="radio"
-                    name="guest-method"
-                    className="h-5 w-5"
-                    checked={restWith === "card" && chosenCard === c.id}
-                    onChange={() => {
-                      setMethod("card");
-                      setCardId(c.id);
-                    }}
-                  />
-                </label>
-              ))
-            : null}
-          {cardOk && cards !== null && cards.length === 0 ? (
-            <button
-              type="button"
-              className="border-border bg-card flex min-h-14 items-center gap-3 rounded-xl border px-3 text-left disabled:opacity-60"
-              disabled={busy || addingCard}
-              onClick={() => void addCard()}
-            >
-              <MethodLabel icon={<Plus />}>{addingCard ? "Opening…" : "Add a card"}</MethodLabel>
-            </button>
+      {step === "method" ? (
+        <>
+          <p className="mt-1 text-2xl font-semibold">How do you pay?</p>
+          <p className="text-muted-foreground mt-1 text-base tabular-nums">
+            {m(billCents)}
+            {tipCents > 0 ? ` + ${m(tipCents)} tip` : ""}
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            {spendable > 0 ? (
+              <label className={row(creditOn)}>
+                <MethodLabel icon={<Wallet />}>Use my {m(spendable)} credit here</MethodLabel>
+                <input type="checkbox" className="h-5 w-5" checked={useCredit} onChange={(e) => setUseCredit(e.target.checked)} />
+              </label>
+            ) : null}
+            {!creditCovers ? (
+              <div className="flex flex-col gap-2" role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
+                {creditOn ? <p className="text-muted-foreground mt-2 text-sm">The rest</p> : null}
+                {cardOk
+                  ? (cards ?? []).map((c) => {
+                      const on = restWith === "card" && chosenCard === c.id;
+                      return (
+                        <label key={c.id} className={row(on)}>
+                          <MethodLabel icon={<CreditCard />}>
+                            {brandLabel(c.brand)} •••• {c.last4}
+                            {place.cashback_bps > 0 ? <span className="text-muted-foreground"> · {place.cashback_bps / 100}% back</span> : null}
+                          </MethodLabel>
+                          <input
+                            type="radio"
+                            name="guest-method"
+                            className="h-5 w-5"
+                            checked={on}
+                            onChange={() => {
+                              setMethod("card");
+                              setCardId(c.id);
+                            }}
+                          />
+                        </label>
+                      );
+                    })
+                  : null}
+                {cashOk ? (
+                  <label className={row(restWith === "cash")}>
+                    <MethodLabel icon={<Banknote />}>
+                      Cash to the waiter
+                      {(place.outside_bps ?? 0) > 0 ? <span className="text-muted-foreground"> · {(place.outside_bps ?? 0) / 100}% back</span> : null}
+                    </MethodLabel>
+                    <input type="radio" name="guest-method" className="h-5 w-5" checked={restWith === "cash"} onChange={() => setMethod("cash")} />
+                  </label>
+                ) : null}
+                {cardOk && cards !== null && cards.length === 0 ? (
+                  <button type="button" className={cn(row(false), "justify-start text-left disabled:opacity-60")} disabled={busy || addingCard} onClick={() => void addCard()}>
+                    <MethodLabel icon={<Plus />}>{addingCard ? "Opening…" : "Add a card"}</MethodLabel>
+                  </button>
+                ) : null}
+              </div>
+            ) : tipCents > 0 ? (
+              <>
+                <p className="text-muted-foreground mt-2 text-sm">The tip</p>
+                <div className="flex gap-2" role="radiogroup" aria-label="The tip">
+                  {cashOk ? (
+                    <button type="button" className={chip(tipMethod === "cash")} aria-pressed={tipMethod === "cash"} onClick={() => setTipMethod("cash")}>
+                      Tip in cash
+                    </button>
+                  ) : null}
+                  {cardOk && chosenCard ? (
+                    <button type="button" className={chip(tipMethod === "card")} aria-pressed={tipMethod === "card"} onClick={() => setTipMethod("card")}>
+                      Tip by card
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+          </div>
+          {problem ? (
+            <p className="text-destructive mt-3 text-sm" role="status">
+              {problem}
+            </p>
           ) : null}
-          {cashOk ? (
-            <label className="border-border bg-card flex min-h-14 items-center justify-between gap-3 rounded-xl border px-3">
-              <MethodLabel icon={<Banknote />}>
-                Cash to the waiter
-                {(place.outside_bps ?? 0) > 0 ? <span className="text-muted-foreground"> · {(place.outside_bps ?? 0) / 100}% back</span> : null}
-              </MethodLabel>
-              <input type="radio" name="guest-method" className="h-5 w-5" checked={restWith === "cash"} onChange={() => setMethod("cash")} />
-            </label>
-          ) : null}
-        </div>
-      ) : tipCents > 0 ? (
-        <div className="mt-2 flex gap-2" role="radiogroup" aria-label="The tip">
-          {cashOk ? (
-            <button type="button" className={chip(tipMethod === "cash")} aria-pressed={tipMethod === "cash"} onClick={() => setTipMethod("cash")}>
-              Tip in cash
-            </button>
-          ) : null}
-          {cardOk && chosenCard ? (
-            <button type="button" className={chip(tipMethod === "card")} aria-pressed={tipMethod === "card"} onClick={() => setTipMethod("card")}>
-              Tip by card
-            </button>
-          ) : null}
-        </div>
+        </>
       ) : null}
 
-      {billCents > 0 ? (
-        <dl className="border-border mt-5 flex flex-col gap-1 border-t pt-3 text-base tabular-nums" data-guest-split>
-          {split.credit_cents > 0 ? <Row label="Credit" value={m(split.credit_cents)} /> : null}
-          {cardParts > 0 ? <Row label="Card" value={m(cardParts)} /> : null}
-          {cashParts > 0 ? <Row label="Cash to the waiter" value={m(cashParts)} /> : null}
+      {step === "review" ? (
+        <>
+          <p className="mt-1 text-2xl font-semibold">Review and pay</p>
+          <dl className="border-border bg-card mt-5 flex flex-col gap-2 rounded-2xl border p-4 text-base tabular-nums" data-guest-split>
+            <Row label="Bill" value={m(billCents)} />
+            <Row label="Tip" value={tipCents > 0 ? m(tipCents) : "No tip"} />
+            <div className="border-border my-1 border-t" />
+            {split.credit_cents > 0 ? <Row label="Credit" value={m(split.credit_cents)} icon={<Wallet />} /> : null}
+            {cardParts > 0 ? <Row label="Card" value={m(cardParts)} icon={<CreditCard />} /> : null}
+            {cashParts > 0 ? <Row label="Cash to the waiter" value={m(cashParts)} icon={<Banknote />} /> : null}
+            <div className="border-border my-1 border-t" />
+            <div className="flex justify-between gap-3 text-lg font-semibold">
+              <dt>Total</dt>
+              <dd>{m(split.total_cents)}</dd>
+            </div>
+          </dl>
           {split.cashback_cents > 0 ? (
-            <p className="mt-1 font-semibold text-green-700" data-guest-cashback>
+            <p className="mt-3 font-semibold text-green-700" data-guest-cashback>
               You get {m(split.cashback_cents)} in credits to spend here next time
             </p>
           ) : null}
-        </dl>
+          {cashParts > 0 ? <p className="text-muted-foreground mt-2 text-sm">Next you show a QR to the waiter, who verifies it.</p> : null}
+          {problem ? (
+            <p className="text-destructive mt-3 text-sm" role="status">
+              {problem}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
-      {problem ? (
-        <p className="text-destructive mt-3 text-sm" role="status">
-          {problem}
-        </p>
-      ) : null}
       {error ? (
         <p className="text-destructive mt-3 text-sm" role="alert">
           {error}
         </p>
       ) : null}
 
-      {confirming ? (
-        <div className="border-foreground bg-card mt-5 rounded-2xl border-2 p-4" role="dialog" aria-label="Confirm the amount" data-guest-confirm>
-          <p className="text-base font-semibold">
-            Pay {m(split.total_cents)} at {place.name ?? "this place"}?
-          </p>
-          <div className="mt-3 flex gap-2">
-            <Button type="submit" className="min-h-12 flex-1 text-base font-semibold" disabled={busy}>
-              Pay {m(split.total_cents)}
-            </Button>
-            <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirming(false)}>
-              Edit
-            </button>
+      <div className="mt-auto pt-6">
+        {step !== "review" ? (
+          <Button type="submit" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!nextOk || busy || addingCard}>
+            Next
+          </Button>
+        ) : confirming ? (
+          <div className="border-foreground bg-card rounded-2xl border-2 p-4" role="dialog" aria-label="Confirm the amount" data-guest-confirm>
+            <p className="text-base font-semibold">
+              Pay {m(split.total_cents)} at {place.name ?? "this place"}?
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button type="submit" className="min-h-12 flex-1 text-base font-semibold" disabled={busy}>
+                Pay {m(split.total_cents)}
+              </Button>
+              <button type="button" className={cn(QUIET_BUTTON_CLASS, "flex-1")} onClick={() => setConfirming(false)}>
+                Edit
+              </button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <Button type="submit" size="lg" className="mt-6 min-h-12 w-full text-base font-semibold" disabled={!canPay}>
-          {busy ? "Paying…" : billCents > 0 ? `Pay ${m(split.total_cents)}` : "Pay"}
-        </Button>
-      )}
+        ) : (
+          <Button type="submit" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!canPay}>
+            {busy ? "Paying…" : `Pay ${m(split.total_cents)}`}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-muted-foreground">{label}</dt>
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground flex items-center gap-2 [&>svg]:h-4 [&>svg]:w-4">
+        {icon}
+        {label}
+      </dt>
       <dd>{value}</dd>
     </div>
   );

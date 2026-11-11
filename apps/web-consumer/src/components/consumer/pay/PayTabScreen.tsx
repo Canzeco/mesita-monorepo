@@ -1,7 +1,7 @@
 "use client";
 
 import { Screen } from "@/components/consumer/nav/Screen";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { payPlacePath, payReceiptPath, payTabPath } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo, replaceAddress } from "@/lib/navigate";
@@ -34,9 +34,17 @@ export function PayTabScreen({ start }: { start: TabStart }) {
   const [formPlaceId, setFormPlaceId] = useState<string | null>(null);
   const formPlace = formPlaceId && places ? places.find((p) => p.place_id === formPlaceId) ?? null : null;
   const leave = () => goBack(router);
+  // MESITA-3715: on the guest's steps the back arrow steps back first.
+  const stepBack = useRef<(() => boolean) | null>(null);
+  const registerBack = useCallback((back: (() => boolean) | null) => {
+    stepBack.current = back;
+  }, []);
+  const back = () => {
+    if (!stepBack.current?.()) leave();
+  };
 
   return (
-    <Screen title="Pay" onBack={leave} flush>
+    <Screen title="Pay" onBack={back} flush>
       <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-8">
         {start.kind === "place" ? (
           // MESITA-3709: the guest pays alone; the waiter verifies after.
@@ -47,6 +55,7 @@ export function PayTabScreen({ start }: { start: TabStart }) {
             getSupabase={getSupabase}
             onPaid={(id) => navigateTo(router, payTabPath(id), { replace: true })}
             onBack={leave}
+            registerBack={registerBack}
           />
         ) : (
         <TabView
