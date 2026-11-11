@@ -9,7 +9,7 @@ begin;
 
 create extension if not exists pgtap with schema public;
 
-select plan(22);
+select plan(31);
 
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-0000000a3292'),
@@ -37,17 +37,20 @@ end $$;
 -- ━━━ Access ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 select ok(
-  not has_function_privilege('authenticated', 'public.wallet_send_credit(uuid, uuid, integer, text, boolean, uuid, text, integer)', 'EXECUTE')
+  not has_function_privilege('authenticated', 'public.wallet_send_credit(uuid, uuid, integer, text, boolean, uuid, text, integer, text)', 'EXECUTE')
     and not has_function_privilege('anon', 'public.wallet_claim_gift(text, uuid, boolean)', 'EXECUTE')
     and not has_function_privilege('authenticated', 'public.wallet_claim_gift(text, uuid, boolean)', 'EXECUTE')
-    and not has_function_privilege('authenticated', 'public.wallet_take_back_gift(uuid, uuid)', 'EXECUTE'),
+    and not has_function_privilege('authenticated', 'public.wallet_take_back_gift(uuid, uuid)', 'EXECUTE')
+    and not has_function_privilege('authenticated', 'public.wallet_claim_gift_code(text, uuid, boolean, integer)', 'EXECUTE')
+    and not has_function_privilege('anon', 'public.wallet_claim_gift_code(text, uuid, boolean, integer)', 'EXECUTE'),
   'client roles cannot run the gift functions'
 );
 
 select ok(
   not has_table_privilege('authenticated', 'public.wallet_gifts', 'SELECT')
-    and not has_table_privilege('anon', 'public.wallet_gifts', 'SELECT'),
-  'client roles cannot read wallet_gifts'
+    and not has_table_privilege('anon', 'public.wallet_gifts', 'SELECT')
+    and not has_table_privilege('authenticated', 'public.wallet_gift_code_tries', 'SELECT'),
+  'client roles cannot read wallet_gifts or the code tries'
 );
 
 -- ━━━ Sending ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -181,6 +184,70 @@ select is(
   wallet_claim_gift(repeat('d', 64), '00000000-0000-4000-8000-0000000c3292', false) ->> 'code',
   'taken_back',
   'a taken-back link gives nothing'
+);
+
+-- ━━━ Taking it by code (MESITA-3737) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+create temp table coded as
+  select wallet_send_credit('00000000-0000-4000-8000-0000000a3292', '00000000-0000-4000-8000-000000013292', 3000, 'mxn', false,
+                            '00000000-0000-4000-8000-00000000a003', repeat('e', 64), 10, repeat('1', 64)) as r;
+
+select is((select r ->> 'outcome' from coded), 'sent', 'A sends MX$30 with a code');
+
+select throws_ok(
+  $$select wallet_send_credit('00000000-0000-4000-8000-0000000a3292', '00000000-0000-4000-8000-000000013292', 1000, 'mxn', false,
+                              '00000000-0000-4000-8000-00000000a004', repeat('9', 64), 10, repeat('1', 64))$$,
+  '23505',
+  null,
+  'a code is never issued twice'
+);
+
+select is(
+  wallet_claim_gift_code(repeat('1', 64), '00000000-0000-4000-8000-0000000c3292', true) ->> 'code',
+  'gone',
+  'a test code is gone in the live universe'
+);
+
+select is(
+  wallet_claim_gift_code(repeat('1', 64), '00000000-0000-4000-8000-0000000c3292', false) ->> 'outcome',
+  'claimed',
+  'friend C takes it by typing the code'
+);
+
+select is(
+  wallet_claim_gift(repeat('e', 64), '00000000-0000-4000-8000-0000000b3292', false) ->> 'code',
+  'claimed',
+  'and the link gives nothing after it'
+);
+
+select is(
+  wallet_claim_gift_code(repeat('1', 64), '00000000-0000-4000-8000-0000000b3292', false) ->> 'code',
+  'claimed',
+  'nor does the code again'
+);
+
+do $$ begin
+  for i in 1..4 loop
+    perform wallet_claim_gift_code(repeat('0', 64), '00000000-0000-4000-8000-0000000b3292', false);
+  end loop;
+end $$;
+
+select is(
+  (select count(*)::int from public.wallet_gift_code_tries where consumer_id = '00000000-0000-4000-8000-0000000b3292'),
+  4,
+  'each wrong code counts one try; a right but taken code does not'
+);
+
+select is(
+  wallet_claim_gift_code(repeat('0', 64), '00000000-0000-4000-8000-0000000b3292', false) ->> 'code',
+  'gone',
+  'the fifth wrong code still answers gone'
+);
+
+select is(
+  wallet_claim_gift_code(repeat('1', 64), '00000000-0000-4000-8000-0000000b3292', false) ->> 'code',
+  'too_many_tries',
+  'after five wrong codes in an hour even a real code is refused'
 );
 
 select * from finish();

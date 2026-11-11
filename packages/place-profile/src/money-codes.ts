@@ -79,6 +79,8 @@ export const MONEY_CODES = [
   "own_gift",
   "claimed",
   "taken_back",
+  // A guest typed too many wrong gift codes this hour (MESITA-3737)
+  "too_many_tries",
   // Story and VIP, one each new visit (MESITA-3463): bought for every visit
   "needs_visit",
   // VIP (MESITA-3550): the guest is not of the VIP class
