@@ -10,21 +10,24 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
+import { placeHref } from "@/lib/place-route";
+import { cardAmount, giftAction } from "@/lib/wallet-card";
+import { CreditsCard, type CreditsCardGift, CreditsCardSkeleton, EmptyCreditsCard } from "./CreditsCard";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { GiftClaimSheet } from "./SendCredit";
-import { useWallet } from "./use-wallet";
-import {
-  CashRow,
-  CreditRow,
-  CreditRowSkeleton,
-  EmptyCreditsRow,
-  HeadingButton,
-  RowsSkeleton,
-  SavedCardRow,
-  StoryRow,
-  WalletList,
-} from "./WalletLists";
+import { GiftClaimSheet, SendCreditSheet } from "./SendCredit";
+import { type CreditRow as CreditRowModel, useWallet } from "./use-wallet";
+import { CashRow, HeadingButton, RowsSkeleton, SavedCardRow, StoryRow, WalletList } from "./WalletLists";
 
+// MONEY FIRST, CREDITS CARDS WITH THEIR TRANSACTIONS (Pato, 2026-11-11,
+// MESITA-3736, /plan-design-review, every choice his: "money payment methods
+// on top, and card payment methods on bottom. each card must have the
+// transactions and a button to add funds (prepay) and a button to gift
+// funds"): Money Payment Methods first, then Credits Payment Methods: waiting
+// Story rows, then one CreditsCard per place (a black band, its 3 newest
+// entries, Fund | Gift). No card: EmptyCreditsCard. It undoes MESITA-3727's
+// Credits-first order and MESITA-3731's "Fund and Gift go inside"; the notes
+// below are the history.
+//
 // PLAIN CARDS, PATO'S HEADINGS (Pato, 2026-11-11, MESITA-3731: "keep just the
 // card without the buttons to fund nor gift. those must go inside";
 // "Credits Payment Methods / Money Payment Methods"): a Credits Card is just
@@ -104,6 +107,19 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
   const [adding, setAdding] = useState(false);
   // The saved-card failure toast fires at most once per mount.
   const cardsToasted = useRef(false);
+  // The Credits Card whose Gift sheet is open (MESITA-3736).
+  const [gifting, setGifting] = useState<CreditRowModel | null>(null);
+  const canSend = wallet?.can_send === true;
+  const giftFor = (row: CreditRowModel): CreditsCardGift => {
+    const action = giftAction({
+      canSend,
+      spendableCents: row.balance.spendable_cents,
+      shownCents: cardAmount(row.card).cents,
+    });
+    if (action === null) return null;
+    if (action === "open") return { kind: "open", onOpen: () => setGifting(row) };
+    return { kind: "blocked", message: action.blocked, onTap: () => toast(action.blocked) };
+  };
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
   const [gift, setGift] = useState(giftToken);
@@ -188,36 +204,6 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
       ) : null}
 
       <WalletList
-        title="Credits Payment Methods"
-        action={
-          creditsState === "rows" ? (
-            <HeadingButton label="Add" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
-          ) : null
-        }
-        fallback={
-          creditsState === "failed" ? (
-            <EmptyState
-              icon={WalletIcon}
-              title="Couldn't load Wallet"
-              description="Check your connection and try again."
-              action={{ label: "Try again", onClick: reread }}
-            />
-          ) : null
-        }
-      >
-        {creditsState === "loading" ? <CreditRowSkeleton /> : null}
-        {creditsState === "empty" ? <EmptyCreditsRow href={CONSUMER_ROUTES.search} /> : null}
-        {creditsState === "rows"
-          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)
-          : null}
-        {creditsState === "rows"
-          ? credits?.map((row) => (
-              <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} />
-            ))
-          : null}
-      </WalletList>
-
-      <WalletList
         title="Money Payment Methods"
         action={
           <HeadingButton
@@ -234,6 +220,59 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         <CashRow />
       </WalletList>
 
+      <section className="mt-5" aria-label="Credits Payment Methods" data-wallet-credits>
+        <div className="mb-2 flex min-h-6 items-center justify-between gap-3">
+          <h2 className="font-display text-base font-semibold tracking-tight">Credits Payment Methods</h2>
+          {creditsState === "rows" ? (
+            <HeadingButton label="Add" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
+          ) : null}
+        </div>
+        {creditsState === "failed" ? (
+          <EmptyState
+            icon={WalletIcon}
+            title="Couldn't load Wallet"
+            description="Check your connection and try again."
+            action={{ label: "Try again", onClick: reread }}
+          />
+        ) : null}
+        {creditsState === "loading" ? <CreditsCardSkeleton /> : null}
+        {creditsState === "empty" ? <EmptyCreditsCard href={CONSUMER_ROUTES.search} /> : null}
+        {creditsState === "rows" ? (
+          <div className="flex flex-col gap-3">
+            {stories.length > 0 ? (
+              <ul role="list" className="overflow-hidden rounded-2xl border border-pink-200 bg-pink-50" data-wallet-stories>
+                {stories.map((s) => (
+                  <li key={s.purchase_id}>
+                    <StoryRow story={s} onOpen={() => setMethod({ kind: "story", story: s })} />
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {credits?.map((row) => (
+              <CreditsCard
+                key={row.card.key}
+                card={row.card}
+                entries={row.balance.entries}
+                houseHref={row.card.tap.kind === "link" ? row.card.tap.href : placeHref(row.placeSlug)}
+                fundHref={`${placeHref(row.placeSlug)}?rewards=prepayment`}
+                gift={giftFor(row)}
+                gone={row.balance.place === null}
+                eager={shown++ < EAGER_CARDS}
+              />
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <SendCreditSheet
+        open={gifting !== null}
+        onClose={() => setGifting(null)}
+        onSent={reread}
+        placeId={gifting?.placeId ?? ""}
+        placeName={gifting?.card.name ?? ""}
+        currency={gifting?.card.currency ?? "MXN"}
+        spendableCents={gifting?.balance.spendable_cents ?? 0}
+      />
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
