@@ -6,16 +6,25 @@ import { PayHeader } from "./PayHeader";
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
  *  you are loading"). Every Pay address draws it (MESITA-3614). */
 export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | "proof" }) {
-  if (body === "list" || body === "wallet") {
-    // /pay and /wallet, one page since MESITA-3720: the header, the places,
-    // then the Wallet's two lists.
+  if (body === "list") {
+    // /pay: the header and the places (two tabs since MESITA-3722).
     return (
       <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader />
         <Skeleton className="mt-5 h-6 w-40 rounded-md" />
         <Skeleton className="mt-3 h-56 w-full rounded-2xl" />
-        <Skeleton className="mt-6 h-6 w-28 rounded-md" />
+      </div>
+    );
+  }
+  if (body === "wallet") {
+    // /wallet, its own tab (MESITA-3722): the header and the two lists.
+    return (
+      <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+        <PayHeader title="Wallet" />
+        <Skeleton className="mt-5 h-6 w-48 rounded-md" />
         <Skeleton className="mt-2 h-[12.25rem] w-full rounded-2xl" />
+        <Skeleton className="mt-5 h-6 w-48 rounded-md" />
+        <Skeleton className="mt-2 h-[8.25rem] w-full rounded-2xl" />
       </div>
     );
   }

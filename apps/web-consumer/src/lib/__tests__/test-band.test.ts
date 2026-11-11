@@ -7,8 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const SRC = join(__dirname, "../..");
 const read = (...path: string[]) => readFileSync(join(SRC, "components", "consumer", ...path), "utf8");
-// Money Payment Methods, the box under Pay's places (MESITA-3721). It shows
-// no balance and wears no band of its own: the one Pay page's band covers it.
+// The Wallet's rails, /wallet's (MESITA-3698).
 const WALLET = read("wallet", "WalletSection.tsx");
 // A place's House Card, /wallet/<placeId> (MESITA-3614).
 const HOUSE_CARD = read("wallet", "WalletPlaceScreen.tsx");
@@ -19,12 +18,13 @@ const PAY_PROOF = read("pay", "ProofView.tsx");
 const PAY = [PAY_LIST, PAY_FORM, PAY_PROOF].join("\n");
 
 describe("Wallet in test mode", () => {
-  it("renders the TestBand from the server's test_mode flag, on a House Card and on the Pay page that shows the credits", () => {
-    expect(HOUSE_CARD).toContain('import { TestBand } from "@mesita/place-profile"');
+  it("renders the TestBand from the server's test_mode flag, on the rails and on a House Card", () => {
+    for (const src of [WALLET, HOUSE_CARD]) {
+      expect(src).toContain('import { TestBand } from "@mesita/place-profile"');
+    }
     expect(HOUSE_CARD).toMatch(/wallet\?\.test_mode \? <TestBand/);
-    // Credits show on Pay's place rows (MESITA-3721): the page's one band
-    // reads the Wallet's flag as well as the places'.
-    expect(PAY_LIST).toMatch(/const testMode = wallet\?\.test_mode === true \|\|/);
+    // The Wallet is its own page (MESITA-3698): its rails wear their own band.
+    expect(WALLET).toMatch(/wallet\?\.test_mode \? <TestBand/);
   });
 
   it("never computes a balance: every amount shown is a server field", () => {
