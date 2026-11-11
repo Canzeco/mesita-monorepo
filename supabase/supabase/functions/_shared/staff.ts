@@ -18,6 +18,13 @@
 //   - rotating the service role key revokes every staff token everywhere.
 // The code hash never leaves the server: the token carries only the HMAC.
 //
+// The Staff QR (MESITA-3696): the owner prints a QR on Business › Payments,
+// visit.mesita.ai/staff/<place>#<secret>, and a waiter who scans it gets the
+// same 12-hour token with no code typed (visit-web-join-staff). The secret
+// sits on place_codes beside the code hash, and the token's HMAC covers both:
+// a new QR or a new code ends every token of the place. A wrong or replaced
+// secret is a `staff` try like a wrong code.
+//
 // The locks are the waiter's charge's (charge.ts): a wrong place code is a
 // `staff` try on place_charge_tries keyed by the address HMAC, five per
 // (place, address) and 50 per place in ten minutes. A bad token is not a try:
@@ -46,15 +53,29 @@ export const STAFF_ONLY = "Only the place's staff can see its payments. Type the
 
 // ── Reading what arrives ─────────────────────────────────────────────────────
 
-/** Either the place code (the first read) or the staff token (every read
- *  after). A body with neither is a read without staff access. */
-export type ListInput = { placeId: string; placeCode: string | null; staffToken: string | null };
+/** Either the place code or the Staff QR's secret (the first read) or the
+ *  staff token (every read after). A body with none is a read without staff
+ *  access. */
+export type ListInput = { placeId: string; placeCode: string | null; staffToken: string | null; staffQr?: string | null };
+
+/** The Staff QR's secret: 32 random bytes, base64url, 43 characters. */
+export const STAFF_QR_RE = /^[A-Za-z0-9_-]{43}$/;
+
+export function readStaffQr(v: unknown): string | null {
+  return typeof v === "string" && STAFF_QR_RE.test(v) ? v : null;
+}
+
+/** A new Staff QR secret. */
+export function makeStaffQr(): string {
+  return b64url(crypto.getRandomValues(new Uint8Array(32)));
+}
 
 export function readListBody(b: Record<string, unknown>): { ok: true; input: ListInput } | StaffRefusal {
   if (!isUuid(b.place_id)) return refuse(400, "bad_request", "place_id must be a Mesita place id");
   const staffToken = typeof b.staff_token === "string" && b.staff_token.length <= 128 ? b.staff_token : null;
   const placeCode = staffToken ? null : readPlaceCode(b.place_code);
-  return { ok: true, input: { placeId: b.place_id, placeCode, staffToken } };
+  const staffQr = staffToken || placeCode ? null : readStaffQr(b.staff_qr);
+  return { ok: true, input: { placeId: b.place_id, placeCode, staffToken, staffQr } };
 }
 
 // ── The token ───────────────────────────────────────────────────────────────
@@ -65,6 +86,15 @@ function b64url(bytes: Uint8Array): string {
   return btoa(bin).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
+/** What a place's tokens are signed over: the code hash, and the Staff QR's
+ *  secret once there is one. A place with no QR signs exactly what it signed
+ *  before MESITA-3696, so its live tokens survive the deploy. */
+export type StaffKeys = { codeHash: string; staffQr: string | null };
+
+function signedOver(keys: StaffKeys): string {
+  return keys.staffQr ? `${keys.codeHash}:${keys.staffQr}` : keys.codeHash;
+}
+
 async function staffMac(serviceKey: string, placeId: string, expSec: number, codeHash: string): Promise<string> {
   const keyBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`staff-token-key:${serviceKey}`)));
   const key = await crypto.subtle.importKey("raw", keyBytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -72,28 +102,28 @@ async function staffMac(serviceKey: string, placeId: string, expSec: number, cod
   return b64url(new Uint8Array(sig));
 }
 
-export async function mintStaffToken(serviceKey: string, placeId: string, codeHash: string, nowMs: number): Promise<{ token: string; expiresAt: string }> {
+export async function mintStaffToken(serviceKey: string, placeId: string, keys: StaffKeys, nowMs: number): Promise<{ token: string; expiresAt: string }> {
   const exp = Math.floor(nowMs / 1000) + STAFF_TOKEN_TTL_SEC;
-  return { token: `s1.${exp}.${await staffMac(serviceKey, placeId, exp, codeHash)}`, expiresAt: new Date(exp * 1000).toISOString() };
+  return { token: `s1.${exp}.${await staffMac(serviceKey, placeId, exp, signedOver(keys))}`, expiresAt: new Date(exp * 1000).toISOString() };
 }
 
 /** True only for an unexpired token minted for this place under its current
- *  code hash. A null hash (the owner removed the code) is never valid. */
+ *  code hash and Staff QR. No keys (the owner removed the code) is never valid. */
 export async function checkStaffToken(
   serviceKey: string,
   placeId: string,
   token: string,
-  codeHash: string | null,
+  keys: StaffKeys | null,
   nowMs: number,
 ): Promise<boolean> {
-  if (!codeHash) return false;
+  if (!keys) return false;
   const m = /^s1\.(\d{10})\.([A-Za-z0-9_-]{43})$/.exec(token);
   if (!m) return false;
   const exp = Number(m[1]);
   const nowSec = Math.floor(nowMs / 1000);
   // Expired, or claims to outlive any token this server mints.
   if (exp <= nowSec || exp > nowSec + STAFF_TOKEN_TTL_SEC + 60) return false;
-  return timingSafeEqual(m[2], await staffMac(serviceKey, placeId, exp, codeHash));
+  return timingSafeEqual(m[2], await staffMac(serviceKey, placeId, exp, signedOver(keys)));
 }
 
 // ── The store: every read and write, so the rules test without a database ──
@@ -114,8 +144,10 @@ export type StaffPaymentRow = {
 };
 
 export interface StaffStore {
-  /** The place's current code hash, or null when no code is set. */
-  codeHash(placeId: string): Promise<string | null>;
+  /** The place's current code hash and Staff QR, or null when no code is set. */
+  keys(placeId: string): Promise<StaffKeys | null>;
+  /** Stamps the Staff QR's last use (Business › Payments shows it). */
+  staffQrUsed(placeId: string, atIso: string): Promise<void>;
   tries(placeId: string, kind: TryKind, key: string | null, sinceIso: string, limit: number): Promise<string[]>;
   addTry(placeId: string, kind: TryKind, key: string): Promise<void>;
   /** The place's payments paid since `sinceIso` in this mode, newest first.
@@ -126,22 +158,25 @@ export interface StaffStore {
 
 // ── Staff access ────────────────────────────────────────────────────────────
 
-/** Who may read: a valid staff token, or the right place code (which mints
- *  one). Refusals: 409 place_code_required (no code set), 409 locked, 403
- *  staff_only (no key, a wrong code, a bad, stale or revoked token). */
+export const STAFF_QR_OFF = "This Staff QR is turned off. Ask your manager for the new one.";
+
+/** Who may read: a valid staff token, or the right place code or Staff QR
+ *  (which mint one). Refusals: 409 place_code_required (no code set), 409
+ *  locked, 403 staff_only (no key, a wrong code, a bad, stale or revoked
+ *  token), 403 staff_qr_off (a replaced or unknown Staff QR). */
 export async function staffAccess(
   store: StaffStore,
   args: { input: ListInput; serviceKey: string; staffKey: string; nowMs: number },
 ): Promise<{ ok: true; minted: { token: string; expiresAt: string } | null } | StaffRefusal> {
   const { input, nowMs } = args;
-  const codeHash = await store.codeHash(input.placeId);
-  if (!codeHash) return refuse(409, "place_code_required", "Set the waiter code on Business › Payments first");
+  const keys = await store.keys(input.placeId);
+  if (!keys) return refuse(409, "place_code_required", "Set the waiter code on Business › Payments first");
 
   if (input.staffToken) {
-    if (await checkStaffToken(args.serviceKey, input.placeId, input.staffToken, codeHash, nowMs)) return { ok: true, minted: null };
+    if (await checkStaffToken(args.serviceKey, input.placeId, input.staffToken, keys, nowMs)) return { ok: true, minted: null };
     return refuse(403, "staff_only", STAFF_ONLY);
   }
-  if (!input.placeCode) return refuse(403, "staff_only", STAFF_ONLY);
+  if (!input.placeCode && !input.staffQr) return refuse(403, "staff_only", STAFF_ONLY);
 
   const since = new Date(nowMs - TRY_WINDOW_SEC * 1000).toISOString();
   const mine = await store.tries(input.placeId, "staff", args.staffKey, since, PAIR_TRY_LIMIT);
@@ -149,12 +184,21 @@ export async function staffAccess(
   const wait = Math.max(lockedFor(mine, PAIR_TRY_LIMIT, nowMs), lockedFor(placeWide, PLACE_STAFF_TRY_LIMIT, nowMs));
   if (wait > 0) return refuse(409, "locked", "Too many wrong place codes. Wait a few minutes.", { retry_after_s: wait });
 
-  const typed = await hashPlaceCode(input.placeId, input.placeCode);
-  if (!timingSafeEqual(typed, codeHash)) {
+  if (input.staffQr) {
+    if (!keys.staffQr || !timingSafeEqual(input.staffQr, keys.staffQr)) {
+      await store.addTry(input.placeId, "staff", args.staffKey);
+      return refuse(403, "staff_qr_off", STAFF_QR_OFF);
+    }
+    await store.staffQrUsed(input.placeId, new Date(nowMs).toISOString());
+    return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs) };
+  }
+
+  const typed = await hashPlaceCode(input.placeId, input.placeCode!);
+  if (!timingSafeEqual(typed, keys.codeHash)) {
     await store.addTry(input.placeId, "staff", args.staffKey);
     return refuse(403, "staff_only", "That place code is not right");
   }
-  return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, codeHash, nowMs) };
+  return { ok: true, minted: await mintStaffToken(args.serviceKey, input.placeId, keys, nowMs) };
 }
 
 // ── The list ────────────────────────────────────────────────────────────────
@@ -206,10 +250,15 @@ export async function listPayments(
 
 export function supabaseStaffStore(admin: SupabaseClient): StaffStore {
   return {
-    async codeHash(placeId) {
-      const { data, error } = await admin.from("place_codes").select("code_hash").eq("place_id", placeId).maybeSingle();
+    async keys(placeId) {
+      const { data, error } = await admin.from("place_codes").select("code_hash, staff_qr").eq("place_id", placeId).maybeSingle();
       if (error) throw new Error(`place_code_read: ${error.message}`);
-      return (data as { code_hash: string } | null)?.code_hash ?? null;
+      const row = data as { code_hash: string; staff_qr: string | null } | null;
+      return row ? { codeHash: row.code_hash, staffQr: row.staff_qr ?? null } : null;
+    },
+    async staffQrUsed(placeId, atIso) {
+      const { error } = await admin.from("place_codes").update({ staff_qr_used_at: atIso }).eq("place_id", placeId);
+      if (error) throw new Error(`staff_qr_used: ${error.message}`);
     },
     async tries(placeId, kind, key, sinceIso, limit) {
       let q = admin

@@ -58,6 +58,7 @@ import {
   startPaymentOnboarding,
 } from "@/lib/business-api";
 import { WaiterCodeRow } from "./WaiterCode";
+import { StaffQrRow } from "./StaffQr";
 
 /** One row: mark · title and line · value · control; the line wraps, the rest hold. */
 const MARK_ROW = "grid min-h-16 scroll-mt-24 grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-4 px-5 py-3 text-sm sm:px-6";
@@ -456,6 +457,7 @@ export function PaymentsPanel({
             blocked: !settings.house_credits ? needsHouseCredits : !settings.cash_payments ? needsCash : undefined,
           })}
           <WaiterCodeRow placeId={placeId} isSet={codeSet} canEdit={canEdit} onSet={() => setCodeSet(true)} onError={setError} />
+          <StaffQrRow placeId={placeId} visitOrigin={VISIT_ORIGIN} codeSet={codeSet} canEdit={canEdit} initial={initial.staff_qr} onError={setError} />
         </ul>
         {codeSet ? (
           <p className={cn(NOTE, "px-5 pb-4 sm:px-6")} data-waiter-charge>

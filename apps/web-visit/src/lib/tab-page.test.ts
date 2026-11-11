@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 
 const PAGE = readFileSync(join(__dirname, "..", "app", "tab", "[token]", "page.tsx"), "utf8");
 const API = readFileSync(join(__dirname, "visit-api.ts"), "utf8");
+const STAFF_KEY = readFileSync(join(__dirname, "staff-key.ts"), "utf8");
+const STAFF_PAGE = readFileSync(join(__dirname, "..", "app", "staff", "[place]", "page.tsx"), "utf8");
 
 describe("the waiter's tab screen", () => {
   it("polls by the QR token only and stops when the tab is done", () => {
@@ -17,10 +19,16 @@ describe("the waiter's tab screen", () => {
     expect(PAGE).toMatch(/if \(stopped\) return;/);
   });
 
-  it("keeps the staff token, never the place code", () => {
-    expect(PAGE).toMatch(/localStorage\.setItem\(staffKeyFor\(placeId\), JSON\.stringify\(\{ token, expires_at/);
-    expect(PAGE).not.toMatch(/setItem\([^)]*placeCode/);
-    expect(PAGE).not.toMatch(/sessionStorage/);
+  it("keeps the staff token, never the place code or the Staff QR's secret", () => {
+    // MESITA-3696: the store moved to lib/staff-key.ts, shared with /staff.
+    expect(PAGE).toContain('import { keepStaff, readStaff } from "@/lib/staff-key"');
+    expect(STAFF_KEY).toMatch(/localStorage\.setItem\(staffKeyFor\(placeId\), JSON\.stringify\(\{ token, expires_at/);
+    expect(STAFF_PAGE).toMatch(/keepStaff\(place, r\.staff_token, r\.staff_token_expires_at\)/);
+    expect(STAFF_PAGE).toContain('window.history.replaceState(null, "", window.location.pathname)');
+    for (const src of [PAGE, STAFF_PAGE]) {
+      expect(src).not.toMatch(/setItem\([^)]*(placeCode|secret)/);
+      expect(src).not.toMatch(/sessionStorage/);
+    }
   });
 
   it("sends the bill and Received with a staff key and the bill version", () => {

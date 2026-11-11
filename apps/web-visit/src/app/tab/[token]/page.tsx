@@ -4,6 +4,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal } from "@/lib/visit-api";
+import { keepStaff, readStaff } from "@/lib/staff-key";
 
 // /tab/<token> — Pay at the table, the waiter's side (MESITA-3565). The
 // guest shows a QR in the Mesita app; the waiter scans it and lands here. The
@@ -13,7 +14,8 @@ import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal 
 //
 // The screens follow the tab's status, read by a poll that carries the QR
 // token only: Bill (bill, tip the waiter suggests after asking, optional
-// ticket, "Send to guest") → Waiting for the guest (the bill may still
+// ticket, "Send to guest"; a phone signed in by the Staff QR, MESITA-3696,
+// skips the code) → Waiting for the guest (the bill may still
 // change until the guest pays) → Collect the cash (when the guest chose to
 // pay part in cash: one amount field, one Received) → Paid, a full green
 // screen. Expired and Cancelled say so. Every rule and peso is the server's.
@@ -31,29 +33,6 @@ function nextDelay(sinceChangeMs: number): number {
 }
 
 const DONE = ["paid", "expired", "cancelled"];
-
-// The staff token, per place, on this device. The place code is never kept.
-type Kept = { token: string; expires_at: string | null };
-const staffKeyFor = (placeId: string) => `mesita.staff.${placeId}`;
-function readStaff(placeId: string): string | null {
-  try {
-    const raw = localStorage.getItem(staffKeyFor(placeId));
-    const k = raw ? (JSON.parse(raw) as Kept) : null;
-    if (!k || typeof k.token !== "string") return null;
-    if (k.expires_at && Date.parse(k.expires_at) <= Date.now()) return null;
-    return k.token;
-  } catch {
-    return null;
-  }
-}
-function keepStaff(placeId: string, token: string | null, expiresAt: string | null) {
-  try {
-    if (token) localStorage.setItem(staffKeyFor(placeId), JSON.stringify({ token, expires_at: expiresAt } satisfies Kept));
-    else localStorage.removeItem(staffKeyFor(placeId));
-  } catch {
-    // Private mode: the place code is asked again next time; nothing breaks.
-  }
-}
 
 /** A tip box: empty or 0 is no tip. */
 function readTip(text: string): number | null {
@@ -248,6 +227,10 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
       <label className="field">
         Waiter code
         <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
+        {/* MESITA-3696: the Staff QR signs the phone in for the shift. */}
+        <span className="field-hint" data-staff-qr-hint>
+          Or scan the Staff QR your manager printed, then scan the guest’s QR again.
+        </span>
       </label>
     ) : null;
 
