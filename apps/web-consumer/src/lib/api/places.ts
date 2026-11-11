@@ -114,7 +114,13 @@ export type Place = {
   /** The offer button's slides (MESITA-3467): cashback on a card payment
    *  and the vouchers the place sells now; absent = no button.
    *  list-catalog and list-places send it. */
-  offers?: { cashback: boolean; card_cashback_bps?: number; sell: string[] } | null;
+  offers?: {
+    cashback: boolean;
+    card_cashback_bps?: number;
+    /** Cash at the table's cashback (MESITA-3671); not sent by the catalog yet. */
+    cash_cashback_bps?: number;
+    sell: string[];
+  } | null;
 
   // ── Raw EF columns (optional) ─────────────────────────────────────
   //

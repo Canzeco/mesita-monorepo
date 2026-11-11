@@ -155,8 +155,8 @@ export function PlaceRowCard({
           {/* EVERY OFFER, MOVING (Pato, MESITA-3665: "make the green
               buttons offers moving and switching across all the offers with
               different colors"): the shared OfferButton, each offer in its
-              own colour on the shared beat, long words when they fit, short
-              when they don't (MESITA-3668). */}
+              own colour on the shared beat, in the short words (MESITA-3671:
+              "Pay (+5% Cashback)", "$200MX (+10%)"). */}
           <OfferButton
             href={placeHref(place.slug || place.id)}
             payHref={
@@ -164,6 +164,7 @@ export function PlaceRowCard({
             }
             name={place.name}
             slides={slides}
+            short
           />
           <CardActions
             name={place.name}

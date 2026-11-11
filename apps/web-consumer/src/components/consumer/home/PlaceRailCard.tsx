@@ -144,6 +144,7 @@ export function PlaceRailCard({
             }
             name={place.name}
             slides={slides}
+            short
           />
           <CardActions
             name={place.name}
