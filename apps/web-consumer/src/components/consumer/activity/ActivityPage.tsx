@@ -10,9 +10,10 @@
 // then Notifications (MESITA-3716, Pato: "add notifications subpage to
 // this"). The list is lib/activity-types.ts; the chosen one is in the address
 // (`?type=`), so Me's tiles, Back and a shared link land on it; a bare
-// /activity is Favorites:
+// /activity is Reservations. FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723:
+// "remove favorites from activity"): the hearts are Home's Saved row
+// (MESITA-3718), and the old Favorites addresses land on Home:
 //
-//   Favorites      the hearted places (FavoritesList; local, never fails)
 //   Reservations   tickets: Upcoming, then Past
 //   Visits         tickets: the guest's tabs (consumer-web-list-visits) AND
 //                  the payments. A payment that paid a tab is written on
@@ -44,7 +45,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
-import { FavoritesList } from "@/components/consumer/saved/FavoritesPage";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { cn } from "@/lib/utils";
@@ -86,7 +86,7 @@ import {
   TicketSkeleton,
 } from "./TicketCard";
 
-type TicketType = Exclude<ActivityType, "favorites" | "notifications">;
+type TicketType = Exclude<ActivityType, "notifications">;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
@@ -617,9 +617,7 @@ export function ActivityPage() {
         />
       }
     >
-      {type === "favorites" ? (
-        <FavoritesList />
-      ) : type === "notifications" ? (
+      {type === "notifications" ? (
         <>
           {nextUp ? (
             <div className="mb-6">

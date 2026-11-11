@@ -601,8 +601,9 @@ describe("T6 — Me's activity tiles open Activity's chips", () => {
 
   it("every Activity chip is a tile, and each opens its chip (MESITA-3697)", () => {
     const hrefs = ME_HUB_GRID.map((c) => c.href);
+    // Favorites left Activity and Me in MESITA-3723.
+    expect(hrefs).not.toContain("/activity?type=favorites");
     for (const href of [
-      "/activity?type=favorites",
       "/activity?type=reservations",
       "/activity?type=visits",
       "/activity?type=vouchers",
@@ -667,8 +668,7 @@ describe("T8 — Me's grid is thirteen live cells", () => {
       "Class",
       "Plan",
       // Every Activity chip, in its order (MESITA-3688; five since
-      // MESITA-3697).
-      "Favorites",
+      // MESITA-3697; Favorites left in MESITA-3723).
       "Reservations",
       "Visits",
       "Vouchers",
@@ -828,11 +828,11 @@ describe("T8 — Me's grid is thirteen live cells", () => {
 // going green while those links 404.
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
-    // Every old Favorites and Reservations address lands on its Activity
-    // chip in one hop (MESITA-3688; Me's pages from MESITA-2565 until then).
-    ["/saved", "/activity?type=favorites"],
-    ["/me/saved", "/activity?type=favorites"],
-    ["/me/favorites", "/activity?type=favorites"],
+    // Every old Reservations address lands on its Activity chip in one hop
+    // (MESITA-3688); Favorites' land on Home, where Saved lives (MESITA-3723).
+    ["/saved", "/home/places"],
+    ["/me/saved", "/home/places"],
+    ["/me/favorites", "/home/places"],
     ["/me/reservations", "/activity?type=reservations"],
     ["/me/notifications", "/activity?type=notifications"],
     ["/saved/reservations", "/activity?type=reservations"],

@@ -9,8 +9,9 @@
 // A PLAIN MODULE ON PURPOSE: next.config loads legacy-redirects.ts, which
 // imports this, so nothing here may import React or a client component.
 
+// FAVORITES LEFT (Pato, 2026-11-11, MESITA-3723: "remove favorites from
+// activity"): the hearts live on Home's Saved row (MESITA-3718).
 export const ACTIVITY_TYPES = [
-  "favorites",
   "reservations",
   "visits",
   "vouchers",
@@ -21,7 +22,7 @@ export const ACTIVITY_TYPES = [
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 /** The chip a bare `/activity` (or an unknown `?type=`) shows. */
-export const DEFAULT_ACTIVITY_TYPE: ActivityType = "favorites";
+export const DEFAULT_ACTIVITY_TYPE: ActivityType = "reservations";
 
 /** The old chips' slugs and where each lives now (MESITA-3697), so a
  *  bookmark or a link from before lands on its new chip. Notifications is a
@@ -37,7 +38,8 @@ export function activityHref(type: ActivityType): string {
   return `/activity?type=${type}`;
 }
 
-/** The chip a `?type=` names, a retired slug's new chip, else Favorites. */
+/** The chip a `?type=` names, a retired slug's new chip, else Reservations
+ *  (a held `?type=favorites` too, since MESITA-3723). */
 export function activityTypeOf(value: string | null | undefined): ActivityType {
   const v = value ?? "";
   if ((ACTIVITY_TYPES as readonly string[]).includes(v)) {

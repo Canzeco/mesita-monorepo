@@ -524,21 +524,10 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         destination: "/activity?type=reservations",
         permanent: true,
       },
-      {
-        source: "/saved",
-        destination: "/activity?type=favorites",
-        permanent: true,
-      },
-      {
-        source: "/me/saved",
-        destination: "/activity?type=favorites",
-        permanent: true,
-      },
-      {
-        source: "/me/favorites",
-        destination: "/activity?type=favorites",
-        permanent: true,
-      },
+      // Favorites left Activity (MESITA-3723): Home's Saved row has them.
+      { source: "/saved", destination: "/home/places", permanent: true },
+      { source: "/me/saved", destination: "/home/places", permanent: true },
+      { source: "/me/favorites", destination: "/home/places", permanent: true },
       {
         source: "/me/reservations",
         destination: "/activity?type=reservations",

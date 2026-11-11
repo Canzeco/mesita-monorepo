@@ -179,17 +179,11 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     destination: activityHref("reservations"),
     permanent: true,
   })),
-  { source: "/saved", destination: activityHref("favorites"), permanent: true },
-  {
-    source: "/me/saved",
-    destination: activityHref("favorites"),
-    permanent: true,
-  },
-  {
-    source: "/me/favorites",
-    destination: activityHref("favorites"),
-    permanent: true,
-  },
+  // Favorites left Activity (MESITA-3723): the hearts are Home's Saved row
+  // (MESITA-3718), so the old Favorites addresses land on Home.
+  { source: "/saved", destination: "/home/places", permanent: true },
+  { source: "/me/saved", destination: "/home/places", permanent: true },
+  { source: "/me/favorites", destination: "/home/places", permanent: true },
   {
     source: "/me/reservations",
     destination: activityHref("reservations"),
