@@ -1,21 +1,24 @@
 "use client";
 
-// /activity — THE BAR'S ACTIVITY TAB (MESITA-3631), EVENTS AND TICKETS
-// (MESITA-3688, Pato: "notifications are events; reservations, visits,
-// payments, prepayments, gifts are tickets"; then "include favorites").
+// /activity — THE BAR'S ACTIVITY TAB (MESITA-3631), TICKETS (MESITA-3688).
 //
-// Seven chips, in Pato's order (lib/activity-types.ts), the chosen one in the
-// address (`?type=`), so Me's tiles, Back and a shared link land on it:
+// Five chips since MESITA-3697 (Pato: "Favorites, Reservations, Visits(has
+// payments inside), Vouchers(Prepayments), Gifts"), in his order
+// (lib/activity-types.ts), the chosen one in the address (`?type=`), so Me's
+// tiles, Back and a shared link land on it; a bare /activity is Favorites:
 //
-//   Notifications  events: NotificationsList under day headings, with the
-//                  next reservation in 24 h above it as a "Next up" ticket
 //   Favorites      the hearted places (FavoritesList; local, never fails)
 //   Reservations   tickets: Upcoming, then Past
-//   Visits         tickets: the guest's tabs (consumer-web-list-visits)
-//   Payments       tickets: payments OUTSIDE a visit; a payment that paid a
-//                  tab is that Visit's ticket (one meal, one ticket)
-//   Prepayments    tickets: credits bought, Story vouchers waiting, refunds
+//   Visits         tickets: the guest's tabs (consumer-web-list-visits) AND
+//                  the payments. A payment that paid a tab is written on
+//                  that Visit's card (one meal, one ticket); any other
+//                  payment is its own ticket here
+//   Vouchers       tickets: credits bought, Story vouchers waiting, refunds
+//                  (the Prepayments chip, renamed)
 //   Gifts          tickets: credit sent, received, taken back, links not taken
+//
+// Notifications, Payments and Prepayments left the bar (MESITA-3697); their
+// old `?type=` lands on Favorites, Visits and Vouchers (RETIRED_ACTIVITY_TYPES).
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
 // once its sources answered. This page never computes a balance: it lists
@@ -31,7 +34,6 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
-import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { FavoritesList } from "@/components/consumer/saved/FavoritesPage";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -74,7 +76,7 @@ import {
   TicketSkeleton,
 } from "./TicketCard";
 
-type TicketType = Exclude<ActivityType, "notifications" | "favorites">;
+type TicketType = Exclude<ActivityType, "favorites">;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
@@ -83,12 +85,13 @@ type Row = Ticket & {
   at: string | null;
   upcoming: boolean;
   paymentId?: string | null;
+  /** A payment's facts in a few words, for the Visit card it paid. */
+  payNote?: string | null;
 };
 
 /** Each reservations read brings at most this many (the EF's cap). */
 const RESERVATIONS_PAGE = 100;
 const TTL = 2 * 60 * 1000;
-const DAY_MS = 86_400_000;
 
 /** "Nov 10": the date on a money ticket's line. */
 function onDay(iso: string): string {
@@ -147,7 +150,9 @@ const VISIT_PILL: Record<string, [string, PillTone]> = {
   cancelled: ["Cancelled", "grey"],
 };
 
-function visitRows(visits: GuestVisit[]): Row[] {
+/** `notes`: each payment's few words by its id, written on the Visit it
+ *  paid (MESITA-3697: the payment lives on its Visit's card). */
+function visitRows(visits: GuestVisit[], notes: Map<string, string>): Row[] {
   return visits.map((v) => {
     const [label, tone] = VISIT_PILL[v.status] ?? [
       v.status,
@@ -172,6 +177,7 @@ function visitRows(visits: GuestVisit[]): Row[] {
       line: join(
         v.waiter_name,
         v.ticket && `#${v.ticket}`,
+        ...v.part_payment_ids.map((id) => notes.get(id)),
         onDay(v.created_at),
       ),
       dim: v.status === "expired" || v.status === "cancelled",
@@ -180,7 +186,7 @@ function visitRows(visits: GuestVisit[]): Row[] {
   });
 }
 
-// ─── The wallet: payments, prepayments, gifts ───────────────────────────────
+// ─── The wallet: payments, vouchers, gifts ───────────────────────────────
 
 const GIFT_PILL: Record<string, [string, PillTone]> = {
   gift_out: ["Sent", "ink"],
@@ -232,7 +238,7 @@ function walletRows(w: Wallet): Row[] {
         const pending = e.pending || !!bonus?.pending;
         out.push({
           key: `b-${b.place_id}-${e.at}-${i}`,
-          type: "prepayments",
+          type: "vouchers",
           at: e.at,
           upcoming: false,
           place,
@@ -254,7 +260,7 @@ function walletRows(w: Wallet): Row[] {
         // A purchase refunded (no payment id).
         out.push({
           key: `rv-${b.place_id}-${e.at}-${i}`,
-          type: "prepayments",
+          type: "vouchers",
           at: e.at,
           upcoming: false,
           place,
@@ -288,7 +294,7 @@ function walletRows(w: Wallet): Row[] {
       if (usedBonus.has(e)) continue;
       out.push({
         key: `bo-${b.place_id}-${e.at}-${i}`,
-        type: "prepayments",
+        type: "vouchers",
         at: e.at,
         upcoming: false,
         place,
@@ -312,7 +318,7 @@ function walletRows(w: Wallet): Row[] {
   for (const s of w.waiting_stories ?? []) {
     out.push({
       key: `s-${s.purchase_id}`,
-      type: "prepayments",
+      type: "vouchers",
       at: s.paid_at,
       upcoming: false,
       place: s.place?.name ?? "A Mesita place",
@@ -372,8 +378,14 @@ function paymentRow(
       : "Paid in cash";
   return {
     key,
-    type: "payments",
+    type: "visits",
     paymentId,
+    payNote:
+      join(
+        spend.length > 0 && `${money(Math.abs(sum(spend)), cur)} in credits`,
+        back ? `+${money(back, cur)} cashback` : null,
+        refund.length > 0 && `${money(Math.abs(sum(refund)), cur)} refunded`,
+      ) || null,
     at,
     upcoming: false,
     place,
@@ -408,10 +420,6 @@ const EMPTY: Record<
   ActivityType,
   { title: string; action: { label: string; href: string } }
 > = {
-  notifications: {
-    title: "Nothing new yet",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.home },
-  },
   favorites: {
     title: "No favorites yet",
     action: { label: "Find a place", href: CONSUMER_ROUTES.home },
@@ -424,12 +432,8 @@ const EMPTY: Record<
     title: "No visits yet",
     action: { label: "Pay", href: CONSUMER_ROUTES.pay },
   },
-  payments: {
-    title: "No payments yet",
-    action: { label: "Pay", href: CONSUMER_ROUTES.pay },
-  },
-  prepayments: {
-    title: "No prepayments yet",
+  vouchers: {
+    title: "No vouchers yet",
     action: { label: "Wallet", href: CONSUMER_ROUTES.wallet },
   },
   gifts: {
@@ -441,8 +445,7 @@ const EMPTY: Record<
 const SOURCE_NAME: Record<TicketType, string> = {
   reservations: "reservations",
   visits: "visits",
-  payments: "payments",
-  prepayments: "prepayments",
+  vouchers: "vouchers",
   gifts: "gifts",
 };
 
@@ -453,14 +456,10 @@ export function ActivityPage() {
   const type = activityTypeOf(raw);
   const getSupabase = useLazyBrowserSupabase();
 
-  // An unknown chip tidies its own address.
+  // A retired or unknown chip tidies its own address onto the one it shows.
   useEffect(() => {
-    if (
-      raw !== null &&
-      activityTypeOf(raw) === "notifications" &&
-      raw !== "notifications"
-    ) {
-      router.replace(activityHref("notifications"));
+    if (raw !== null && raw !== activityTypeOf(raw)) {
+      router.replace(activityHref(activityTypeOf(raw)));
     }
   }, [raw, router]);
 
@@ -508,7 +507,7 @@ export function ActivityPage() {
     }
   }, [visits.error, wallet.error, reservations.error]);
 
-  // The clock the page judges "upcoming" and "within a day" by: read once.
+  // The clock the page judges "upcoming" by: read once.
   const [nowMs] = useState(() => Date.now());
 
   const byType = useMemo(() => {
@@ -516,20 +515,27 @@ export function ActivityPage() {
       (visits.data?.visits ?? []).flatMap((v) => v.part_payment_ids),
     );
     const money = wallet.data ? walletRows(wallet.data) : null;
+    const payments = money ? money.filter((r) => r.type === "visits") : [];
+    const notes = new Map(
+      payments.flatMap((r) =>
+        r.paymentId && r.payNote ? [[r.paymentId, r.payNote] as const] : [],
+      ),
+    );
     return {
       reservations: reservations.data
         ? reservationRows(reservations.data.rows, nowMs)
         : null,
-      visits: visits.data ? visitRows(visits.data.visits) : null,
-      // One meal, one ticket: a payment that paid a tab is its Visit.
-      payments: money
-        ? money.filter(
-            (r) =>
-              r.type === "payments" &&
-              !(r.paymentId && visitIds.has(r.paymentId)),
-          )
+      // One meal, one ticket: a payment that paid a tab is written on its
+      // Visit; every other payment is a ticket of its own beside them.
+      visits: visits.data
+        ? [
+            ...visitRows(visits.data.visits, notes),
+            ...payments.filter(
+              (r) => !(r.paymentId && visitIds.has(r.paymentId)),
+            ),
+          ]
         : null,
-      prepayments: money ? money.filter((r) => r.type === "prepayments") : null,
+      vouchers: money ? money.filter((r) => r.type === "vouchers") : null,
       gifts: money ? money.filter((r) => r.type === "gifts") : null,
     } satisfies Record<TicketType, Row[] | null>;
   }, [reservations.data, visits.data, wallet.data, nowMs]);
@@ -540,29 +546,26 @@ export function ActivityPage() {
     visits: !visits.loading,
     wallet: !wallet.loading,
   };
-  // Payments waits for Visits too, so rows never vanish after they draw.
+  // Visits waits for the wallet too, so its payments never pop in late.
   const ready: Record<TicketType, boolean> = {
     reservations: settled.reservations,
-    visits: settled.visits,
-    payments: settled.wallet && settled.visits,
-    prepayments: settled.wallet,
+    visits: settled.visits && settled.wallet,
+    vouchers: settled.wallet,
     gifts: settled.wallet,
   };
   const failed: Record<TicketType, boolean> = {
     reservations: !!reservations.error,
     visits: !!visits.error,
-    payments: !!wallet.error,
-    prepayments: !!wallet.error,
+    vouchers: !!wallet.error,
     gifts: !!wallet.error,
   };
   const retry: Record<TicketType, () => void> = {
     reservations: reservations.reload,
-    visits: visits.reload,
-    payments: () => {
-      wallet.reload();
+    visits: () => {
       visits.reload();
+      if (wallet.error) wallet.reload();
     },
-    prepayments: wallet.reload,
+    vouchers: wallet.reload,
     gifts: wallet.reload,
   };
 
@@ -570,26 +573,13 @@ export function ActivityPage() {
   for (const t of Object.keys(byType) as TicketType[]) {
     const rows = byType[t];
     if (!ready[t] || failed[t] || !rows) continue;
-    if (t === "payments" && visits.error) continue; // duplicates possible: no number
+    if (t === "visits" && wallet.error) continue; // payments missing: no number
     const capped =
       (t === "visits" && visits.data?.truncated) ||
       (t === "reservations" && reservations.data?.full);
     if (rows.length)
       counts[t] = capped ? `${rows.length}+` : String(rows.length);
   }
-
-  // The reservation that comes next, within a day: "Next up".
-  const nextUp = (() => {
-    const rows = byType.reservations;
-    if (!rows) return null;
-    const soon = ordered(rows).upcoming.find(
-      (r) =>
-        r.pill.label === stateMeta("confirmed").label &&
-        r.at &&
-        Date.parse(r.at) - nowMs < DAY_MS,
-    );
-    return soon ?? null;
-  })();
 
   const pick = (t: ActivityType) =>
     router.replace(activityHref(t), { scroll: false });
@@ -598,16 +588,7 @@ export function ActivityPage() {
     <ActivityFrame
       rail={<TypeRail type={type} onPick={pick} counts={counts} />}
     >
-      {type === "notifications" ? (
-        <>
-          {nextUp ? (
-            <div className="mb-6">
-              <TicketCard t={{ ...nextUp, label: "Next up" }} />
-            </div>
-          ) : null}
-          <NotificationsList quietEmpty={!!nextUp} />
-        </>
-      ) : type === "favorites" ? (
+      {type === "favorites" ? (
         <FavoritesList />
       ) : (
         <Tickets
@@ -617,8 +598,8 @@ export function ActivityPage() {
           failed={failed[type]}
           retry={retry[type]}
           note={
-            type === "payments" && !!visits.error
-              ? "Some payments may also appear under Visits."
+            type === "visits" && !!wallet.error
+              ? "Couldn't load your payments. Visits shows your tables only."
               : null
           }
         />

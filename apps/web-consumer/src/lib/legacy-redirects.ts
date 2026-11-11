@@ -219,12 +219,12 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/profile", destination: "/me/profile", permanent: true },
   {
     source: "/notifications",
-    destination: activityHref("notifications"),
+    destination: "/activity",
     permanent: true,
   },
   {
     source: "/me/notifications",
-    destination: activityHref("notifications"),
+    destination: "/activity",
     permanent: true,
   },
   // /inbox was Activity's first address (MESITA-1626 sent it to Me); it is
@@ -232,7 +232,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // /inbox/orders sit ABOVE this and point at Pay: Next takes the first match.
   {
     source: "/inbox/:path*",
-    destination: activityHref("notifications"),
+    destination: "/activity",
     permanent: true,
   },
 ];
