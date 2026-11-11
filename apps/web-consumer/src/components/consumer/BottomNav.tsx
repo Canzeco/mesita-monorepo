@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { Activity, QrCode, Search, User } from "lucide-react";
+import { Inbox, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -94,11 +94,11 @@ const ITEMS: Item[] = [
   },
   {
     href: CONSUMER_ROUTES.activity,
-    // The pulse line, the activity-feed mark (Pato, MESITA-3676: "change
-    // the icon of activity"), after a receipt (MESITA-3645: "too
-    // transactional B2B"), a clock (MESITA-3654: "even worse") and a
-    // clipboard with lines (MESITA-3654).
-    Icon: Activity,
+    // An inbox, where everything that happened lands (Pato, MESITA-3679,
+    // picked from six sketched beside Search and Pay), after a receipt
+    // (MESITA-3645: "too transactional B2B"), a clock and a clipboard
+    // (MESITA-3654) and the pulse line (MESITA-3676: "looks like shit").
+    Icon: Inbox,
     label: "Activity",
     tab: "activity",
   },
