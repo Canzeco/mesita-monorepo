@@ -6,7 +6,10 @@
 //
 // A RAIL OF EVENT TYPES OVER ONE FEED (Pato, MESITA-3633: "Show horizontal
 // catalog or something of types of events"): under the title, a horizontal
-// rail of chips, All first. FOUR TYPES SINCE MESITA-3641 (Pato: "Payments,
+// rail of chips. NOTIFICATIONS FIRST, NO ALL SINCE MESITA-3681 (Pato:
+// "Notifications, Reservations, Payments, Prepayments, Gifts. Remove all"):
+// Notifications is Me › Notifications' list; the other four are the feed's
+// rows. FOUR TYPES SINCE MESITA-3641 (Pato: "Payments,
 // Prepayments, Gifts, Reservations — so the cashback is a field in a
 // payment event. and bonus is a field in prepayment event"). Every chip is
 // always there; an empty one says so. The feed is newest first and is built
@@ -32,7 +35,8 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Ban, CalendarCheck, Gift, Inbox as ActivityIcon, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
+import { Ban, Bell, CalendarCheck, Gift, Inbox as ActivityIcon, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
+import { NotificationsList } from "@/components/consumer/NotificationsClient";
 
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -47,16 +51,19 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 
 type TypeKey = "payments" | "prepayments" | "gifts" | "reservations";
 
-/** The rail, in order, after All (Pato's order, MESITA-3641). `empty` is
- *  the chip's empty line. */
+/** The rail after Notifications, in Pato's order (MESITA-3681:
+ *  "Notifications, Reservations, Payments, Prepayments, Gifts. Remove
+ *  all"). `empty` is the chip's empty line. */
 const TYPES: readonly { key: TypeKey; label: string; Icon: LucideIcon; empty: string }[] = [
+  { key: "reservations", label: "Reservations", Icon: CalendarCheck, empty: "Tables you book show up here." },
   { key: "payments", label: "Payments", Icon: ReceiptText, empty: "Bills you pay with Mesita show up here, with their cashback." },
   { key: "prepayments", label: "Prepayments", Icon: WalletIcon, empty: "Credits and vouchers you buy at a place show up here, with their bonus." },
   { key: "gifts", label: "Gifts", Icon: Gift, empty: "Credit you send or get from a friend shows up here." },
-  { key: "reservations", label: "Reservations", Icon: CalendarCheck, empty: "Tables you book show up here." },
 ];
 
-type Filter = "all" | TypeKey;
+/** Notifications first and by default (MESITA-3681): the same list as Me ›
+ *  Notifications. "All" is gone. */
+type Filter = "notifications" | TypeKey;
 
 /** One row of the feed, whatever its source. */
 type Ev = {
@@ -237,7 +244,7 @@ export function ActivityPage() {
   const [bookings, setBookings] = useState<Ev[] | null>(null);
   const [failed, setFailed] = useState({ wallet: false, bookings: false });
   const [nonce, setNonce] = useState(0);
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>("notifications");
 
   useEffect(() => {
     let live = true;
@@ -273,14 +280,11 @@ export function ActivityPage() {
     );
   }, [wallet, bookings]);
 
-  const bothFailed = failed.wallet && failed.bookings;
-  const loading = !all && !bothFailed;
   // Still reading the source this chip draws from.
-  const waiting =
-    filter === "all" ? loading : filter === "reservations" ? !bookings && !failed.bookings : !wallet && !failed.wallet;
-  const shown = all ? (filter === "all" ? all : all.filter((e) => e.type === filter)) : null;
-  const type = filter === "all" ? null : TYPES.find((t) => t.key === filter)!;
-  const sourceFailed = filter === "all" ? bothFailed : filter === "reservations" ? failed.bookings : failed.wallet;
+  const waiting = filter === "reservations" ? !bookings && !failed.bookings : !wallet && !failed.wallet;
+  const shown = all ? all.filter((e) => e.type === filter) : null;
+  const type = TYPES.find((t) => t.key === filter) ?? null;
+  const sourceFailed = filter === "reservations" ? failed.bookings : failed.wallet;
 
   return (
     <ActivityFrame
@@ -292,7 +296,9 @@ export function ActivityPage() {
         />
       }
     >
-      {waiting ? (
+      {filter === "notifications" ? (
+        <NotificationsList inset={false} />
+      ) : waiting ? (
         <RowsSkeleton />
       ) : sourceFailed && !shown?.length ? (
         <EmptyState
@@ -330,7 +336,7 @@ function countByType(evs: Ev[]): Record<TypeKey, number> {
   return c;
 }
 
-/** The horizontal catalog of event types: All, then every type. */
+/** The horizontal catalog: Notifications, then every type (MESITA-3681). */
 function TypeRail({
   filter,
   onPick,
@@ -341,7 +347,7 @@ function TypeRail({
   counts: Record<TypeKey, number> | null;
 }) {
   const chips: { key: Filter; label: string; Icon: LucideIcon | null; n: number | null }[] = [
-    { key: "all", label: "All", Icon: null, n: null },
+    { key: "notifications", label: "Notifications", Icon: Bell, n: null },
     ...TYPES.map((t) => ({ key: t.key as Filter, label: t.label, Icon: t.Icon, n: counts ? counts[t.key] : null })),
   ];
   return (
@@ -427,7 +433,7 @@ export function ActivityFrame({ rail, children }: { rail?: ReactNode; children: 
 function RailSkeleton() {
   return (
     <div className="mt-3 flex gap-2 overflow-hidden" aria-hidden>
-      {["w-12", "w-32", "w-28", "w-24", "w-24"].map((w, i) => (
+      {["w-36", "w-36", "w-32", "w-36", "w-24"].map((w, i) => (
         <Skeleton key={i} className={cn("h-9 shrink-0 rounded-full", w)} />
       ))}
     </div>
