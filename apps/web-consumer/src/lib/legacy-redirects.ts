@@ -51,23 +51,23 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   // balance and its /credits, /inbox/credits and /new-visit/wallet
   // spellings, the Order tab, and the public gift landing. Each is ONE
   // hop. Deepest sources first so the intent survives a `:param` rewrite.
-  { source: "/new-visit/wallet/:path*", destination: "/pay", permanent: true },
+  { source: "/new-visit/wallet/:path*", destination: "/wallet", permanent: true },
   { source: "/new-visit", destination: "/pay", permanent: true },
-  // The old Wallet tab's children land on Pay, where the Wallet lives since
-  // MESITA-3631 (on the live /wallet from MESITA-3295 until then).
-  { source: "/wallet/balance/:id", destination: "/pay", permanent: true },
-  { source: "/wallet/buy", destination: "/pay", permanent: true },
-  { source: "/wallet/gift", destination: "/pay", permanent: true },
-  { source: "/wallet/redeem", destination: "/pay", permanent: true },
-  { source: "/credits", destination: "/pay", permanent: true },
-  { source: "/inbox/credits", destination: "/pay", permanent: true },
+  // The old Wallet tab's children and its other spellings land on the
+  // Wallet, Pay's second half (MESITA-3698; on /pay from MESITA-3631).
+  { source: "/wallet/balance/:id", destination: "/wallet", permanent: true },
+  { source: "/wallet/buy", destination: "/wallet", permanent: true },
+  { source: "/wallet/gift", destination: "/wallet", permanent: true },
+  { source: "/wallet/redeem", destination: "/wallet", permanent: true },
+  { source: "/credits", destination: "/wallet", permanent: true },
+  { source: "/inbox/credits", destination: "/wallet", permanent: true },
   { source: "/inbox/orders", destination: "/pay", permanent: true },
   { source: "/order", destination: "/pay", permanent: true },
   { source: "/rewards/ticket/:id", destination: "/pay", permanent: true },
   { source: "/rewards", destination: "/pay", permanent: true },
   { source: "/pay/ticket/:id", destination: "/pay", permanent: true },
   { source: "/pay/tickets/:id", destination: "/pay", permanent: true },
-  { source: "/pay/wallet", destination: "/pay", permanent: true },
+  { source: "/pay/wallet", destination: "/wallet", permanent: true },
   { source: "/pay/qr", destination: "/pay", permanent: true },
   { source: "/qr", destination: "/pay", permanent: true },
   { source: "/ticket/:id", destination: "/pay", permanent: true },

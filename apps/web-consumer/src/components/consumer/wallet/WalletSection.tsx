@@ -17,18 +17,17 @@ import { GiftClaimSheet } from "./SendCredit";
 import { useWallet } from "./use-wallet";
 import { AddTile, CashTile, RAIL_TILE, RailSkeleton, SavedCardTile, StoryTile, WalletRail } from "./WalletRails";
 
-// THE WALLET, UNDER PAY (Pato, 2026-11-09, MESITA-3631: "Merge wallet and
-// pay into the same page. Pay on top"): the two rails, Money Payment Methods
-// and Credits Payment Methods, each led by Add (WalletRails), drawn by /pay
-// under the places list. Wallet was its own tab, /wallet, from MESITA-3295
-// to MESITA-3631; that address now forwards to /pay. A place's card is a
-// link to its House Card, /wallet/<placeId> (MESITA-3614); a saved card or a
-// waiting Story opens its sheet here. The money is useWallet's
-// (consumer-web-get-wallet). Its Transactions button left with the merge:
-// Activity is on the bar.
+// THE WALLET, PAY'S SECOND HALF (Pato, 2026-11-11, MESITA-3698: "Divide
+// Payments across two sections: Pay and Wallet"): the two rails, Money
+// Payment Methods and Credits Payment Methods, each led by Add
+// (WalletRails), drawn by /wallet (WalletPage) under the Pay · Wallet band.
+// Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
+// (MESITA-3631) until this. A place's card is a link to its House Card,
+// /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
+// sheet here. The money is useWallet's (consumer-web-get-wallet).
 //
-// /wallet/gift/<token> draws /pay with a friend's credit link open over it
-// (MESITA-3292); closing it leaves for /pay.
+// /wallet/gift/<token> draws the Wallet with a friend's credit link open
+// over it (MESITA-3292); closing it leaves for /wallet.
 
 // SAVED CARDS (MESITA-3523, Pato's 2026-11-08 sketch: a Cards box with Add):
 // Add on the Money rail opens Stripe's own page in setup mode; it returns
@@ -44,14 +43,7 @@ function cardRefusal(err: unknown): string {
 /** Photos of the first cards load eagerly; the rest lazily. */
 const EAGER_CARDS = 3;
 
-export function WalletSection({
-  giftToken = null,
-  testBandShown = false,
-}: {
-  giftToken?: string | null;
-  /** Pay already shows the TestBand above: never two. */
-  testBandShown?: boolean;
-}) {
+export function WalletSection({ giftToken = null }: { giftToken?: string | null }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet();
@@ -64,7 +56,7 @@ export function WalletSection({
   const [gift, setGift] = useState(giftToken);
   const closeGift = useCallback(() => {
     setGift(null);
-    navigateTo(router, CONSUMER_ROUTES.pay, { replace: true });
+    navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
   }, [router]);
 
   // Saved cards: on mount, on Stripe's return, after a remove.
@@ -95,7 +87,7 @@ export function WalletSection({
     if (adding) return;
     setAdding(true);
     try {
-      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.pay}`);
+      const { url } = await apiAddCard(getSupabase(), `${window.location.origin}${CONSUMER_ROUTES.wallet}`);
       window.location.assign(url);
     } catch (err) {
       toast.error(cardRefusal(err));
@@ -121,7 +113,7 @@ export function WalletSection({
 
   return (
     <div className="flex flex-col" data-wallet>
-      {wallet?.test_mode && !testBandShown ? <TestBand className="mt-5" /> : null}
+      {wallet?.test_mode ? <TestBand className="mt-5" /> : null}
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-5 text-sm" role="status">
           Confirming a payment…
