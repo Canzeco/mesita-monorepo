@@ -14,7 +14,7 @@ import { placeHref } from "@/lib/place-route";
 import { cardAmount, giftAction } from "@/lib/wallet-card";
 import { CreditsCard, type CreditsCardGift, CreditsCardSkeleton, EmptyCreditsCard } from "./CreditsCard";
 import { type Method, MethodSheet } from "./MethodSheet";
-import { GiftClaimSheet, SendCreditSheet } from "./SendCredit";
+import { GiftClaimSheet, RedeemCodeSheet, SendCreditSheet } from "./SendCredit";
 import { type CreditRow as CreditRowModel, useWallet } from "./use-wallet";
 import { CashRow, HeadingButton, RowsSkeleton, SavedCardRow, StoryRow, WalletList } from "./WalletLists";
 
@@ -123,6 +123,8 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
   // Wallet has read; closing it leaves its address for the Wallet's.
   const [gift, setGift] = useState(giftToken);
+  // A friend's 12-digit gift code typed in (MESITA-3737).
+  const [redeeming, setRedeeming] = useState(false);
   const closeGift = useCallback(() => {
     setGift(null);
     navigateTo(router, CONSUMER_ROUTES.wallet, { replace: true });
@@ -262,6 +264,14 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
             ))}
           </div>
         ) : null}
+        <button
+          type="button"
+          onClick={() => setRedeeming(true)}
+          className="text-muted-foreground hover:text-foreground mt-2 py-2 text-sm font-semibold transition"
+          data-redeem-code-open
+        >
+          Have a gift code?
+        </button>
       </section>
 
       <SendCreditSheet
@@ -274,6 +284,14 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         spendableCents={gifting?.balance.spendable_cents ?? 0}
       />
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
+      <RedeemCodeSheet
+        open={redeeming}
+        onClose={() => setRedeeming(false)}
+        onClaimed={() => {
+          setRedeeming(false);
+          reread();
+        }}
+      />
       <GiftClaimSheet
         token={wallet || failed ? gift : null}
         onClose={closeGift}

@@ -19,6 +19,37 @@ export const GIFT_MAX_OPEN = 10;
 export const mintGiftToken = mintProofToken;
 export const isGiftToken = isProofToken;
 
+// The code (MESITA-3737): the same gift as the link, for reading aloud or
+// writing on a card. Twelve random digits (10^12 codes: an 8-digit code is
+// too easy to guess), shown 4-4-4, stored hashed, never reused.
+export const GIFT_CODE_DIGITS = 12;
+/** Wrong codes a guest may type in an hour. */
+export const GIFT_CODE_MAX_MISSES = 5;
+
+/** Twelve uniform digits from the platform CSPRNG (rejection sampling:
+ *  bytes 250..255 are dropped so every digit is equally likely). */
+export function mintGiftCode(): string {
+  let out = "";
+  while (out.length < GIFT_CODE_DIGITS) {
+    for (const b of crypto.getRandomValues(new Uint8Array(16))) {
+      if (b < 250 && out.length < GIFT_CODE_DIGITS) out += String(b % 10);
+    }
+  }
+  return out;
+}
+
+/** What a guest typed, as 12 digits: spaces and dashes are ignored. */
+export function readGiftCode(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const digits = v.replace(/[\s-]/g, "");
+  return /^\d{12}$/.test(digits) ? digits : null;
+}
+
+export async function hashGiftCode(code: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`gift-code:${code}`));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export async function hashGiftToken(token: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`gift-token:${token}`));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -51,6 +82,8 @@ export function giftRefusalStatus(code: string | undefined): number {
   switch (code) {
     case "gone":
       return 404;
+    case "too_many_tries":
+      return 429;
     case "insufficient":
     case "taken":
     case "too_many_open":

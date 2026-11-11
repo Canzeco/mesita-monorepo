@@ -9,9 +9,11 @@ import { EFError } from "@/lib/api/_invoke";
 import {
   apiClaimGift,
   apiLookGift,
+  apiRedeemGiftCode,
   apiSendCredit,
   apiTakeBackCredit,
   entryDate,
+  formatGiftCode,
   GIFT_REFUSAL,
   giftLink,
   type GiftLook,
@@ -66,7 +68,7 @@ export function SendCreditSheet({
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [link, setLink] = useState<{ url: string; cents: number } | null>(null);
+  const [link, setLink] = useState<{ url: string; code: string | null; cents: number } | null>(null);
   // One request id per amount: a retry after a lost answer replays, never sends twice.
   const attempt = useRef<{ id: string; cents: number } | null>(null);
 
@@ -91,7 +93,7 @@ export function SendCreditSheet({
       const r = await apiSendCredit(getSupabase(), { place_id: placeId, amount_cents: cents, request_id: attempt.current.id });
       attempt.current = null;
       onSent();
-      if (r.token) setLink({ url: giftLink(r.token), cents: r.amount_cents });
+      if (r.token) setLink({ url: giftLink(r.token), code: r.code, cents: r.amount_cents });
       else {
         // A replay: the link went out on the first answer, which was lost.
         toast("Sent. If you lost the link, take it back and send again.");
@@ -116,6 +118,12 @@ export function SendCreditSheet({
               once. Until your friend takes it, you can take it back from this card.
             </p>
             <p className="border-border bg-muted mt-4 rounded-xl border px-3 py-3 font-mono text-xs break-all">{link.url}</p>
+            {link.code ? (
+              <p className="text-muted-foreground mt-3 text-sm">
+                Or your friend types this code in their Wallet:{" "}
+                <span className="text-foreground font-mono font-semibold tabular-nums">{formatGiftCode(link.code)}</span>
+              </p>
+            ) : null}
             <div className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
@@ -165,7 +173,7 @@ export function SendCreditSheet({
               {busy ? "Sending…" : "Send"}
             </button>
             <p className="text-muted-foreground mt-3 text-center text-xs">
-              It leaves your balance now. You get a link to share.
+              It leaves your balance now. You get a link and a code to share.
             </p>
           </>
         )}
@@ -289,6 +297,71 @@ export function GiftClaimSheet({ token, onClose, onClaimed }: { token: string | 
             Open {name}
           </Link>
         ) : null}
+      </div>
+    </LocalSheet>
+  );
+}
+
+/** A friend's gift code typed in the Wallet (MESITA-3737): 12 digits, the
+ *  same one-time credit as the link. */
+export function RedeemCodeSheet({ open, onClose, onClaimed }: { open: boolean; onClose: () => void; onClaimed: () => void }) {
+  const getSupabase = useLazyBrowserSupabase();
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const digits = code.replace(/\D/g, "").slice(0, 12);
+
+  function close() {
+    setCode("");
+    setError(null);
+    onClose();
+  }
+
+  async function redeem() {
+    if (digits.length !== 12) {
+      setError("Type the 12 digits of the code.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await apiRedeemGiftCode(getSupabase(), digits);
+      toast.success(`${money(r.amount_cents, r.currency)} of credit is yours.`);
+      setCode("");
+      onClaimed();
+    } catch (err) {
+      if (err instanceof EFError && err.code === "gone") setError("That code isn't right. Check the 12 digits.");
+      else setError(refusal(err, "Couldn't take the credit. Try again."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <LocalSheet open={open} onClose={close} ariaLabel="Redeem a gift code">
+      <div className="flex flex-col px-4 pt-5 pb-8" data-redeem-code>
+        <h2 className="text-xl font-semibold">Redeem a gift code</h2>
+        <p className="text-muted-foreground mt-1 text-sm">Type the 12 digits a friend gave you.</p>
+        <input
+          inputMode="numeric"
+          autoComplete="off"
+          placeholder="0000 0000 0000"
+          value={formatGiftCode(digits)}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setError(null);
+          }}
+          className="border-foreground placeholder:text-muted-foreground/50 mx-auto mt-6 w-64 border-b-2 bg-transparent pb-2 text-center font-mono text-2xl font-semibold tabular-nums outline-none"
+          aria-label="Gift code"
+        />
+        {error ? (
+          <p className="text-destructive mt-3 text-center text-sm" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="button" className={`${PRIMARY} mt-6`} disabled={busy} onClick={() => void redeem()}>
+          {busy ? "Redeeming…" : "Redeem"}
+        </button>
       </div>
     </LocalSheet>
   );
