@@ -27,11 +27,10 @@ describe("One ranking, no prefer (MESITA-2516)", () => {
   it("All is every family; a family row is that family", () => {
     expect(isEveryFamily(ALL_CHIP)).toBe(true);
     expect(isEveryFamily("coffee")).toBe(false);
-    // Every row asks for its own families; Social is a tab, and Favorites
-    // left the column (MESITA-2522).
+    // Every row asks for its own families; Social is a tab. Saved came back
+    // above Top (MESITA-3718) and reads no pool.
     const rails = src("components/consumer/home/CatalogRails.tsx");
     expect(rails).toContain("setFamilies(chipFamilies(c.key));");
-    expect(rails).not.toContain("SAVED_CHIP");
     for (const gone of [
       "NEAR_CHIP",
       "POPULAR_CHIP",
