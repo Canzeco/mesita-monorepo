@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QrCode, Wallet } from "lucide-react";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { cn } from "@/lib/utils";
 
@@ -9,10 +10,16 @@ import { cn } from "@/lib/utils";
 // width: the same band as Home's Places · Social (one mark everywhere). It
 // replaced the "Pay" title with a Wallet button (MESITA-3726). MESITA-3698
 // had this band under a "Pay" title; MESITA-3720 drew both on one page.
+//
+// ICONS AND A BLUE SELECTOR (Pato, MESITA-3730: "add icon to pay and to
+// wallet on top and make selector blue and more visible"): Pay wears the
+// bar's QR, Wallet a wallet; the chosen half is the app's selector blue
+// (blue-600, as the catalog column and the place screen), label, icon and a
+// 3px bar. Home's band stays ink (MESITA-3687).
 
 export const PAY_WALLET_TABS = [
-  { key: "pay", label: "Pay", href: CONSUMER_ROUTES.pay },
-  { key: "wallet", label: "Wallet", href: CONSUMER_ROUTES.wallet },
+  { key: "pay", label: "Pay", href: CONSUMER_ROUTES.pay, Icon: QrCode },
+  { key: "wallet", label: "Wallet", href: CONSUMER_ROUTES.wallet, Icon: Wallet },
 ] as const;
 export type PayWalletTab = (typeof PAY_WALLET_TABS)[number]["key"];
 
@@ -31,11 +38,12 @@ export function PayHeader({ tab }: { tab: PayWalletTab }) {
             scroll={false}
             aria-current={on ? "page" : undefined}
             className={cn(
-              "relative flex min-h-11 flex-1 items-center justify-center py-3 text-center text-base transition",
-              on ? "text-foreground font-semibold" : "text-muted-foreground",
+              "relative flex min-h-11 flex-1 items-center justify-center gap-2 py-3 text-center text-base transition",
+              on ? "font-semibold text-blue-600" : "text-muted-foreground",
             )}
           >
-            {on ? <span aria-hidden className="bg-foreground absolute inset-x-0 bottom-0 h-0.5" /> : null}
+            {on ? <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-blue-600" /> : null}
+            <t.Icon className="h-5 w-5" strokeWidth={on ? 2.25 : 1.75} aria-hidden />
             {t.label}
           </Link>
         );
