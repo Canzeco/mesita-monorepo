@@ -37,6 +37,8 @@ export const CONSUMER_ROUTES = {
   // The photo grid, Places 2.0 (MESITA-3658), moved here when Places 3.0
   // took /home/places (MESITA-3662).
   homeGrid: "/home/grid",
+  // Places 4.0, one carousel per family (MESITA-3670).
+  homeRails: "/home/rails",
   homeSocial: "/home/social",
   place: {
     prefix: "/place/",
@@ -338,6 +340,7 @@ export const ROUTE_MAP = {
   home: row("/home/places", "home", "tab", null),
   homeClassic: row("/home/classic", "home", "tab", null),
   homeGrid: row("/home/grid", "home", "tab", null),
+  homeRails: row("/home/rails", "home", "tab", null),
   homeSocial: row("/home/social", "home", "tab", null),
   search: row("/search", "search", "tab", null),
   searchChat: row("/search/chat", "search", "sheet", "search"),
