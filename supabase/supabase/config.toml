@@ -389,6 +389,10 @@ verify_jwt = false
 [functions.consumer-web-open-tab]
 verify_jwt = true
 
+# MESITA-3707: guest pays, waiter verifies. The guest's own tap (signed in).
+[functions.consumer-web-pay-guest]
+verify_jwt = true
+
 [functions.consumer-web-get-tab]
 verify_jwt = true
 
@@ -419,6 +423,10 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.visit-web-cash-tab]
+verify_jwt = false
+
+# MESITA-3707: the waiter's Verify; no sign-in, a Staff QR staff token.
+[functions.visit-web-verify-tab]
 verify_jwt = false
 
 # MESITA-3462: the staff list of a place's Mesita Payments. No sign-in on

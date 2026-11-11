@@ -5,7 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { hashPlaceCode } from "./place-code.ts";
 import type { TryKind } from "./charge.ts";
-import { checkStaffToken, listPayments, makeStaffQr, readListBody, staffAccess, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC } from "./staff.ts";
+import { checkStaffToken, listPayments, makeStaffQr, mintStaffToken, readListBody, readStaffToken, staffAccess, staffDeviceHash, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC } from "./staff.ts";
 
 const PLACE = "00000000-0000-4000-8000-000000003462";
 const OTHER = "00000000-0000-4000-8000-000000004462";
@@ -235,4 +235,49 @@ Deno.test("a malformed Staff QR is no key at all", async () => {
   assert(!r.ok);
   assertEquals(r.code, "staff_only");
   assertEquals(s.tries.length, 0);
+});
+
+// ── Where a token came from and which phone holds it (MESITA-3707) ─────────
+// Auth: only a phone that scanned the Staff QR may Verify a guest's payment
+// or confirm cash. The source and the device id are signed: editing either
+// fails; two phones that join in the same second are two phones.
+
+Deno.test("the Staff QR mints a qr token with its own device id; the place code mints a code token", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const qr = makeStaffQr();
+  s.qrs.set(PLACE, qr);
+  const keys = await s.store.keys(PLACE);
+  const byQr = await access(s.store, { place_id: PLACE, staff_qr: qr });
+  const byQr2 = await access(s.store, { place_id: PLACE, staff_qr: qr });
+  const byCode = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  assert(byQr.ok && byQr.minted && byQr2.ok && byQr2.minted && byCode.ok && byCode.minted);
+  const a = await readStaffToken(KEY, PLACE, byQr.minted.token, keys, T0);
+  const b = await readStaffToken(KEY, PLACE, byQr2.minted.token, keys, T0);
+  const c = await readStaffToken(KEY, PLACE, byCode.minted.token, keys, T0);
+  assertEquals([a?.src, b?.src, c?.src], ["qr", "qr", "code"]);
+  assert(a?.jti && b?.jti && a.jti !== b.jti, "two joins in the same second are two phones");
+  assert(await staffDeviceHash(a.jti) !== await staffDeviceHash(b.jti));
+});
+
+Deno.test("editing a token's source or device id fails the check", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const keys = await s.store.keys(PLACE);
+  const { token } = await mintStaffToken(KEY, PLACE, keys!, T0, "code");
+  assert(await readStaffToken(KEY, PLACE, token, keys, T0));
+  const asQr = token.replace(".code.", ".qr.");
+  assertEquals(await readStaffToken(KEY, PLACE, asQr, keys, T0), null);
+  const parts = token.split(".");
+  parts[3] = (parts[3][0] === "A" ? "B" : "A") + parts[3].slice(1);
+  assertEquals(await readStaffToken(KEY, PLACE, parts.join("."), keys, T0), null);
+  assertEquals(await readStaffToken(KEY, OTHER, token, keys, T0), null);
+});
+
+Deno.test("an s2 token lasts 12 hours and dies with a new code", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const keys = await s.store.keys(PLACE);
+  const { token } = await mintStaffToken(KEY, PLACE, keys!, T0, "qr");
+  assert(await checkStaffToken(KEY, PLACE, token, keys, T0 + (STAFF_TOKEN_TTL_SEC - 60) * 1000));
+  assertEquals(await checkStaffToken(KEY, PLACE, token, keys, T0 + (STAFF_TOKEN_TTL_SEC + 1) * 1000), false);
+  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "654321"));
+  assertEquals(await checkStaffToken(KEY, PLACE, token, await s.store.keys(PLACE), T0), false);
 });

@@ -229,6 +229,12 @@ export async function runSettleTick(deps: TickDeps, cfg: SettleConfig): Promise<
   if (sweep.error) console.error("[settle-cron] place_charges_sweep", sweep.error.message);
   else swept = Number(sweep.data ?? 0);
 
+  // MESITA-3707: guest tabs past their three-hour Verify window close (cash
+  // nobody verified expires; credit declared with it is spent).
+  const closed = await deps.admin.rpc("pay_tabs_close_guest");
+  if (closed.error) console.error("[settle-cron] pay_tabs_close_guest", closed.error.message);
+  else if (Number(closed.data ?? 0) > 0) console.log("[settle-cron] guest_tabs_closed", JSON.stringify({ count: Number(closed.data) }));
+
   // Pending credit that turned Available since the last ticks: one
   // notification per guest, place and ready time, never twice (the
   // function's unique key). Only this key's universe.

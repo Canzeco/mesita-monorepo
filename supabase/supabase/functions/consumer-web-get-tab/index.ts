@@ -15,7 +15,11 @@
 // a PI that went through settles here (the receiver and the cron are the
 // other two callers), and one that failed bills the tab again.
 //
-// Body: { tab_id: uuid, with_cards?: boolean }
+// Body: { tab_id: uuid, with_cards?: boolean, remint?: boolean }
+// MESITA-3707: a guest tab's QR lives on the guest's phone; `remint: true`
+// (sent only when the phone lost it) answers `token` and `qr_url` for the
+// guest's own guest tab before its window ends, and the older QR stops
+// working. A plain read never re-mints.
 // Response: { ok: true, tab: { tab_id, place, status, currency, bill_cents,
 //             tip_suggested_cents, bill_version, ticket, waiter_name,
 //             spendable_cents, rates, credit_cents, cash_bill_cents,
@@ -45,7 +49,7 @@ import { listCards } from "../_shared/cards.ts";
 import { type CardStep, pollTabCard, readCardRow, tabCardRates } from "../_shared/tab-card.ts";
 import { readVoucherPlace } from "../_shared/wallet.ts";
 import { readPlaceBalance } from "../_shared/vouchers.ts";
-import { guestTabView, readShares, readTabById, readTabParts, tableView } from "../_shared/tab.ts";
+import { callTabRpc, guestTabView, hashTabToken, mintTabToken, readShares, readTabById, readTabParts, tableView, tabUrl } from "../_shared/tab.ts";
 import { errorMessage } from "../_shared/errors.ts";
 import { paymentsLivemode, paymentsPublishableKey, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
@@ -86,6 +90,18 @@ serveJson("consumer-web-get-tab", async (req) => {
           parts = await readTabParts(admin, tab.id);
         }
       }
+    }
+
+    let reminted: { token: string; qr_url: string } | null = null;
+    if (bodyRes.body.remint === true && tabNow.origin === "guest") {
+      const token = mintTabToken();
+      const r = await callTabRpc(admin, "pay_tab_guest_remint", {
+        p_tab_id: tabNow.id,
+        p_consumer_id: user.id,
+        p_token_hash: await hashTabToken(token),
+      });
+      if (r.ok === true) reminted = { token, qr_url: tabUrl(token) };
+      console.log("[consumer-web-get-tab]", JSON.stringify({ outcome: r.ok === true ? "reminted" : r.code, tab_id: tabNow.id }));
     }
 
     const [settings, placeRes, balance, account] = await Promise.all([
@@ -138,6 +154,7 @@ serveJson("consumer-web-get-tab", async (req) => {
         card: rates,
       }),
       ...(cards ? { cards } : {}),
+      ...(reminted ?? {}),
       ...(cardAction ? { card_action: cardAction } : {}),
       ...(cardError ? { card_error: cardError } : {}),
     });

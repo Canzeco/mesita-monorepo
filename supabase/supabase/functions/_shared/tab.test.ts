@@ -2,7 +2,7 @@
 // in TypeScript (the ledger's are pgTAP's, pay_tabs.test.sql).
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { callTabRpc, effectiveStatus, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, readSplitTabBody, rpcRefusal, tableView, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
+import { callTabRpc, effectiveStatus, guestRefusal, readGuestPayBody, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, readSplitTabBody, rpcRefusal, tableView, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
 
 const TOKEN = "AbCdEfGhIjKlMnOpQrStUv";
 const TAB = "00000000-0000-4000-8000-000000003562";
@@ -134,4 +134,32 @@ Deno.test("a split guard's raise is a refusal the screens can read, with what is
     threw = true;
   }
   assertEquals(threw, true);
+});
+
+// ── Guest pays, waiter verifies (MESITA-3707) ──────────────────────────────
+// Money: a refused guest tap rolls back in SQL and must reach the guest as its
+// refusal (never a 500 or a half-made payment); the typed bill is whole
+// centavos and the tip is never paid by credit.
+
+Deno.test("a guest's refused tap reads back as its refusal", async () => {
+  const msg = 'guest_refused:{"ok": false, "code": "insufficient", "spendable_cents": 7000}';
+  assertEquals(guestRefusal(msg), { ok: false, code: "insufficient", spendable_cents: 7000 });
+  assertEquals(guestRefusal("something else"), null);
+  const rpc = { rpc: () => Promise.resolve({ data: null, error: { message: msg } }) } as unknown as Parameters<typeof callTabRpc>[0];
+  assertEquals((await callTabRpc(rpc, "pay_tab_guest_pay", {})).code, "insufficient");
+});
+
+Deno.test("the guest's tap: a typed bill in whole centavos, never a credit tip", () => {
+  const base = { place_id: "00000000-0000-4000-8000-000000003707", request_id: "00000000-0000-4000-8000-0000000e3707" };
+  const ok = readGuestPayBody({ ...base, bill_cents: 45000, credit_cents: 20000, cash_bill_cents: 25000, cash_tip_cents: 4500 });
+  assertEquals(ok.ok && ok.input.billCents, 45000);
+  assertEquals(ok.ok && ok.input.cashTipCents, 4500);
+  const noBill = readGuestPayBody({ ...base, credit_cents: 100 });
+  assertEquals(noBill.ok ? null : noBill.code, "amount_required");
+  const half = readGuestPayBody({ ...base, bill_cents: 100.5, credit_cents: 100 });
+  assertEquals(half.ok ? null : half.code, "amount_required");
+  const creditTip = readGuestPayBody({ ...base, bill_cents: 100, credit_cents: 100, credit_tip_cents: 10 });
+  assertEquals(creditTip.ok ? null : creditTip.code, "tip_by_credit");
+  const noCard = readGuestPayBody({ ...base, bill_cents: 100, card_bill_cents: 100 });
+  assertEquals(noCard.ok ? null : noCard.code, "card_required");
 });
