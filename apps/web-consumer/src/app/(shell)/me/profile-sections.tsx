@@ -102,6 +102,7 @@ export function DestTile({
   title,
   summary,
   href,
+  dot = false,
 }: {
   shape: DestShape;
   Icon: LucideIcon;
@@ -109,12 +110,19 @@ export function DestTile({
   /** THREE WORDS OR FEWER — see the note above. */
   summary: string;
   href: string;
+  /** A red dot at the tile's corner: something new waits behind it (the
+   *  Notifications tile, MESITA-3717). */
+  dot?: boolean;
 }) {
   return (
     <PushLink
       href={href}
       // A grid cell shows its title only; its name says the summary too.
-      aria-label={shape === "cell" ? `${title}, ${summary}` : undefined}
+      aria-label={
+        shape === "cell"
+          ? `${title}, ${summary}${dot ? ", new" : ""}`
+          : undefined
+      }
       className={cn(
         TILE_FRAME[shape],
         "hover:bg-muted/40 text-left transition active:scale-[0.98]",
@@ -126,6 +134,13 @@ export function DestTile({
         <Icon className="h-[19px] w-[19px]" strokeWidth={2.1} />
       </span>
       <TileText shape={shape} title={title} summary={summary} />
+      {dot ? (
+        <span
+          aria-hidden
+          className="bg-destructive h-2.5 w-2.5 shrink-0 rounded-full"
+          data-unseen-dot
+        />
+      ) : null}
     </PushLink>
   );
 }

@@ -20,6 +20,7 @@
 // toggles) are deliberately NOT cleared: those belong to the browser/device, not
 // to the account, so they should persist across sign-ins.
 
+import { clearNotificationsSeenLocal } from "./notifications-seen";
 import { clearSavedLocationsLocal } from "./saved-locations";
 import { clearSavedPlacesLocal } from "./saved-places";
 import { clearScreenCache } from "./screen-cache";
@@ -58,6 +59,7 @@ export function reconcileConsumerLocalOwner(consumerId: string | null): void {
   clearScreenCache();
   clearSavedPlacesLocal();
   clearSavedLocationsLocal();
+  clearNotificationsSeenLocal();
 
   try {
     if (consumerId) window.localStorage.setItem(OWNER_KEY, consumerId);

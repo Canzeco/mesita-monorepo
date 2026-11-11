@@ -128,7 +128,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
     summary: c.summary,
     href: activityHref(c.type),
   })),
-  // TRANSACTIONS LEFT FOR THE BAR (MESITA-3631): it is the Activity tab.
+  // TRANSACTIONS BECAME ACTIVITY (MESITA-3631), a page under Me (MESITA-3717).
   // CARDS LEFT (Pato, MESITA-3561: "remove cards from there. cards is
   // already used in the wallet. its redundant"). /me/cards now redirects to the
   // hub through the /me/[tab] catch-all.

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Bell } from "lucide-react";
 import { NOTIFICATIONS_KEY } from "@/lib/api/reservations";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
@@ -9,6 +10,7 @@ import {
   type ConsumerNotification,
 } from "@/lib/api/notifications";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
+import { markNotificationsSeen } from "@/lib/notifications-seen";
 import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +19,7 @@ import {
   NOTIFICATION_KINDS,
 } from "@/components/consumer/notification-row";
 import { EmptyState } from "@/components/shared";
+import { newestNotificationAt } from "./use-unseen-notifications";
 
 // Notifications is YOUR activity and nothing else (Pato, 2026-08-17): an
 // inbox of things that happened to YOU, with no switcher.
@@ -67,6 +70,12 @@ export function NotificationsList({
 
   const visible = rows.filter((n) => NOTIFICATION_KINDS.has(n.kind));
   const days = byDay(visible);
+
+  // The rows are on screen: the red dot on Me goes out (MESITA-3717).
+  const newest = newestNotificationAt(query.data);
+  useEffect(() => {
+    markNotificationsSeen(newest);
+  }, [newest]);
 
   return (
     <div className="-mt-5">
