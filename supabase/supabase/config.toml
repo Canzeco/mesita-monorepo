@@ -419,6 +419,11 @@ verify_jwt = false
 [functions.visit-web-list-payments]
 verify_jwt = false
 
+# MESITA-3696: a waiter scans the place's Staff QR once per shift; its secret
+# answers the same 12-hour staff token the place code does.
+[functions.visit-web-join-staff]
+verify_jwt = false
+
 # MESITA-3305 (W2b): Stripe's Connect webhook. verify_jwt = false: Stripe
 # holds no Supabase JWT; the signature on the raw body with
 # STRIPE_CONNECT_WEBHOOK_SECRET is the gate (503 not_configured until Pato
@@ -783,6 +788,11 @@ verify_jwt = true
 # product of MESITA-3202 left: its Rewards, Visits, visit code and staff close
 # functions are gone).
 [functions.business-web-set-place-code]
+verify_jwt = true
+
+# MESITA-3696: the Staff QR on Business › Payments. New Staff QR replaces the
+# secret and ends every staff token of the place.
+[functions.business-web-make-staff-qr]
 verify_jwt = true
 
 # Business › Payments (MESITA-3296): the Stripe account and the money switches.

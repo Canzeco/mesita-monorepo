@@ -5,7 +5,7 @@
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { hashPlaceCode } from "./place-code.ts";
 import type { TryKind } from "./charge.ts";
-import { checkStaffToken, listPayments, readListBody, staffAccess, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC } from "./staff.ts";
+import { checkStaffToken, listPayments, makeStaffQr, readListBody, staffAccess, type StaffPaymentRow, type StaffStore, STAFF_TOKEN_TTL_SEC } from "./staff.ts";
 
 const PLACE = "00000000-0000-4000-8000-000000003462";
 const OTHER = "00000000-0000-4000-8000-000000004462";
@@ -16,11 +16,17 @@ const T0 = Date.parse("2026-11-09T20:00:00Z");
 async function memoryStore(codes: Record<string, string>) {
   const hashes = new Map<string, string>();
   for (const [p, c] of Object.entries(codes)) hashes.set(p, await hashPlaceCode(p, c));
+  const qrs = new Map<string, string>();
+  const qrUsed = new Map<string, string>();
   const tries: Array<{ place_id: string; kind: TryKind; key: string; at: string }> = [];
   const rows: Array<StaffPaymentRow & { place_id: string; livemode: boolean }> = [];
   const clock = { ms: T0 };
   const store: StaffStore = {
-    codeHash: (p) => Promise.resolve(hashes.get(p) ?? null),
+    keys: (p) => Promise.resolve(hashes.has(p) ? { codeHash: hashes.get(p)!, staffQr: qrs.get(p) ?? null } : null),
+    staffQrUsed(p, at) {
+      qrUsed.set(p, at);
+      return Promise.resolve();
+    },
     tries: (p, kind, key, since, limit) =>
       Promise.resolve(
         tries
@@ -42,7 +48,7 @@ async function memoryStore(codes: Record<string, string>) {
           .slice(0, limit),
       ),
   };
-  return { store, hashes, tries, rows, clock };
+  return { store, hashes, qrs, qrUsed, tries, rows, clock };
 }
 
 function access(store: StaffStore, body: Record<string, unknown>, nowMs = T0) {
@@ -106,9 +112,9 @@ Deno.test("a token signed under another service key never reads", async () => {
   const { store } = await memoryStore({ [PLACE]: "123456" });
   const first = await access(store, { place_id: PLACE, place_code: "123456" });
   assert(first.ok && first.minted);
-  const hash = await hashPlaceCode(PLACE, "123456");
-  assertEquals(await checkStaffToken("another-key", PLACE, first.minted.token, hash, T0), false);
-  assertEquals(await checkStaffToken(KEY, PLACE, first.minted.token, hash, T0), true);
+  const keys = { codeHash: await hashPlaceCode(PLACE, "123456"), staffQr: null };
+  assertEquals(await checkStaffToken("another-key", PLACE, first.minted.token, keys, T0), false);
+  assertEquals(await checkStaffToken(KEY, PLACE, first.minted.token, keys, T0), true);
 });
 
 Deno.test("wrong codes are staff tries: the sixth from one address answers locked, a token never writes one", async () => {
@@ -149,4 +155,84 @@ Deno.test("the list: this place, this mode, the last 12 hours, newest first, nev
   assertEquals(Object.keys(list[0]).sort(), ["amount_cents", "currency", "expired", "id", "outside", "paid_at", "refunded", "seen", "ticket", "tip_cents"]);
   // Never who paid (MESITA-3545 adds only the outside flags).
   assertEquals(list.map((p) => [p.outside, p.expired]), [[false, false], [false, false]]);
+});
+
+// ── The Staff QR (MESITA-3696) ──────────────────────────────────────────────
+
+Deno.test("the Staff QR mints a 12-hour token at its place, stamps its use, and works on the next read", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const qr = makeStaffQr();
+  s.qrs.set(PLACE, qr);
+  const first = await access(s.store, { place_id: PLACE, staff_qr: qr });
+  assert(first.ok && first.minted);
+  assertEquals(s.qrUsed.get(PLACE), new Date(T0).toISOString());
+  const again = await access(s.store, { place_id: PLACE, staff_token: first.minted.token }, T0 + 11 * 3600_000);
+  assert(again.ok);
+});
+
+Deno.test("a Staff QR for place A gives nothing at place B", async () => {
+  const s = await memoryStore({ [PLACE]: "123456", [OTHER]: "123456" });
+  const qr = makeStaffQr();
+  s.qrs.set(PLACE, qr);
+  s.qrs.set(OTHER, makeStaffQr());
+  const r = await access(s.store, { place_id: OTHER, staff_qr: qr });
+  assert(!r.ok);
+  assertEquals([r.status, r.code], [403, "staff_qr_off"]);
+  assertEquals(s.qrUsed.has(OTHER), false);
+});
+
+Deno.test("New Staff QR ends the old QR and every token; so does a new code", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const old = makeStaffQr();
+  s.qrs.set(PLACE, old);
+  const byQr = await access(s.store, { place_id: PLACE, staff_qr: old });
+  const byCode = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  assert(byQr.ok && byQr.minted && byCode.ok && byCode.minted);
+
+  s.qrs.set(PLACE, makeStaffQr());
+  for (const t of [byQr.minted.token, byCode.minted.token]) {
+    const r = await access(s.store, { place_id: PLACE, staff_token: t });
+    assert(!r.ok);
+    assertEquals(r.code, "staff_only");
+  }
+  const oldQr = await access(s.store, { place_id: PLACE, staff_qr: old });
+  assert(!oldQr.ok);
+  assertEquals(oldQr.code, "staff_qr_off");
+
+  const fresh = await access(s.store, { place_id: PLACE, staff_qr: s.qrs.get(PLACE) });
+  assert(fresh.ok && fresh.minted);
+  s.hashes.set(PLACE, await hashPlaceCode(PLACE, "999999"));
+  const afterCode = await access(s.store, { place_id: PLACE, staff_token: fresh.minted.token });
+  assert(!afterCode.ok);
+});
+
+Deno.test("adding a Staff QR leaves no-QR places' tokens as they were signed", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const first = await access(s.store, { place_id: PLACE, place_code: "123456" });
+  assert(first.ok && first.minted);
+  const keys = { codeHash: await hashPlaceCode(PLACE, "123456"), staffQr: null };
+  assertEquals(await checkStaffToken(KEY, PLACE, first.minted.token, keys, T0), true);
+});
+
+Deno.test("a bad Staff QR is a staff try and locks like wrong codes; no QR set refuses too", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const none = await access(s.store, { place_id: PLACE, staff_qr: makeStaffQr() });
+  assert(!none.ok);
+  assertEquals(none.code, "staff_qr_off");
+  s.qrs.set(PLACE, makeStaffQr());
+  for (let i = 0; i < 4; i++) {
+    const r = await access(s.store, { place_id: PLACE, staff_qr: makeStaffQr() });
+    assert(!r.ok);
+  }
+  const sixth = await access(s.store, { place_id: PLACE, staff_qr: s.qrs.get(PLACE) });
+  assert(!sixth.ok);
+  assertEquals([sixth.status, sixth.code], [409, "locked"]);
+});
+
+Deno.test("a malformed Staff QR is no key at all", async () => {
+  const s = await memoryStore({ [PLACE]: "123456" });
+  const r = await access(s.store, { place_id: PLACE, staff_qr: "short" });
+  assert(!r.ok);
+  assertEquals(r.code, "staff_only");
+  assertEquals(s.tries.length, 0);
 });

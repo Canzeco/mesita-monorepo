@@ -460,10 +460,14 @@ export type PlacePayments = {
   contract?: HouseCreditsContract;
   /** Whether the place code is set: the waiter's charge needs it (MESITA-3306). */
   code_set: boolean;
+  /** The Staff QR (MESITA-3696): null when none is made, or to an editor. */
+  staff_qr: StaffQr | null;
   /** Mesita's fee invoice (MESITA-3461): hold = card payments are off until
    *  it is paid; invoice = the one to pay, on Stripe's page. */
   fee: PlaceFee;
 };
+export type StaffQr = { secret: string; made_at: string; used_at: string | null; place_name: string | null };
+
 export type PlaceFee = {
   hold: boolean;
   invoice: null | { amount_cents: number; currency: string; due_at: string | null; url: string | null; overdue: boolean };
@@ -483,6 +487,7 @@ export async function getPlacePayments(placeId: string): Promise<Result<PlacePay
       // MESITA-3599: dropped here, every reload read the signed agreement as "Not signed".
       contract: r.data.contract,
       code_set: r.data.code_set === true,
+      staff_qr: r.data.staff_qr ?? null,
       fee: { hold: r.data.fee?.hold === true, invoice: r.data.fee?.invoice ?? null },
     },
   };
@@ -617,6 +622,14 @@ export async function setPlaceCode(placeId: string, code: string): Promise<Resul
   const r = await efInvoke<{ code_set: boolean }>("business-web-set-place-code", { place_id: placeId, code });
   if (!r.ok) return fail(r);
   return { ok: true, data: true };
+}
+
+/** New Staff QR (MESITA-3696): the old one and every phone it signed in stop
+ *  working. Needs the waiter code first. */
+export async function makeStaffQr(placeId: string): Promise<Result<StaffQr>> {
+  const r = await efInvoke<{ staff_qr: StaffQr }>("business-web-make-staff-qr", { place_id: placeId });
+  if (!r.ok) return fail(r);
+  return { ok: true, data: r.data.staff_qr };
 }
 
 // ── Views (MESITA-3206) ──────────────────────────

@@ -76,6 +76,14 @@ form {
   -webkit-text-security: disc;
 }
 
+/* MESITA-3696: the line under the waiter code that points at the Staff QR. */
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #737373;
+}
+
 button {
   display: block;
   width: 100%;
@@ -130,6 +138,15 @@ button.quiet {
   font-size: 16px;
   font-weight: 600;
   color: #171717;
+}
+
+/* MESITA-3696: the Staff QR's "You're set". */
+.proof-status.ok {
+  align-self: stretch;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .proof-status.warn {
