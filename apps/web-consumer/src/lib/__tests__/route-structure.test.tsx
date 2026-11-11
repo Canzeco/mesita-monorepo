@@ -14,6 +14,7 @@ import {
 } from "@/lib/consumer-route-contract";
 import { shouldGate } from "@/lib/supabase/middleware";
 import { LEGACY_REDIRECTS } from "@/lib/legacy-redirects";
+import { ACTIVITY_TYPES } from "@/lib/activity-types";
 import { ME_HUB_GRID, ME_HUB_SETTINGS } from "@/app/(shell)/me/hub-tiles";
 import nextConfig from "../../../next.config";
 
@@ -287,12 +288,9 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/wallet/gift/g1", "Pay"],
     // Activity, the money lines (MESITA-3631).
     ["/activity", "Activity"],
-    // Me and the detail route it owns: a reservation is reached from a place
-    // AND from Me › Reservations (MESITA-2565; the Saved tab owned it from
-    // MESITA-2518 until Share took its slot, MESITA-2561).
-    ["/me/favorites", "Me"],
-    ["/me/reservations", "Me"],
-    ["/reservation/r1", "Me"],
+    // A reservation is reached from a place AND from Activity › Reservations
+    // (MESITA-3688; Me › Reservations from MESITA-2565 until then).
+    ["/reservation/r1", "Activity"],
     // Share is Me's tile since it left the bar (MESITA-2887).
     ["/share", "Me"],
     ["/me", "Me"],
@@ -596,19 +594,35 @@ describe("T5b — Home's header and Search's header", () => {
 //
 // The same class of bug still exists one layer over — a box wired to the wrong
 // page, or a page dropped in a refactor — so the pin moves rather than dies.
-describe("T6 — Activity's sections are pages on Me", () => {
+describe("T6 — Me's activity tiles open Activity's chips", () => {
   // The page and its cells: the cells are hub-tiles.tsx's rows since
   // MESITA-2701, which ProfileClient and /me's loading.tsx both map.
   const ME = ["ProfileClient.tsx", "hub-tiles.tsx"]
     .map((f) => readFileSync(join(SHELL, "me", f), "utf8"))
     .join("\n");
 
-  it("routes each box to its page: notifications, reservations and favorites on Me", () => {
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.notifications");
-    // Each its own page again (MESITA-2565); they were Saved's two tabs
-    // (MESITA-2521, MESITA-2561).
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.reservations");
-    expect(ME).toContain("CONSUMER_ROUTES.mePages.favorites");
+  it("every Activity chip is a tile, and each opens its chip (MESITA-3688)", () => {
+    const hrefs = ME_HUB_GRID.map((c) => c.href);
+    for (const href of [
+      "/activity",
+      "/activity?type=favorites",
+      "/activity?type=reservations",
+      "/activity?type=visits",
+      "/activity?type=payments",
+      "/activity?type=prepayments",
+      "/activity?type=gifts",
+    ]) {
+      expect(hrefs, href).toContain(href);
+    }
+    for (const href of hrefs.filter((h) => h.startsWith("/activity?type="))) {
+      expect(ACTIVITY_TYPES as readonly string[], href).toContain(
+        href.slice("/activity?type=".length),
+      );
+    }
+    // Me's own pages for these are gone (MESITA-3688).
+    for (const gone of ["notifications", "favorites", "reservations"]) {
+      expect(existsSync(join(SHELL, "me", gone)), gone).toBe(false);
+    }
     expect(ME).not.toContain("SAVED_TAB_HREF");
     expect(ME).not.toMatch(/<(AlertsModal|VisitsModal|BookingsModal)\b/);
   });
@@ -639,7 +653,7 @@ describe("T8 — Me's grid is twelve live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders twelve cells in Pato's order", () => {
+  it("renders fourteen cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -655,9 +669,14 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Instagram",
       "Class",
       "Plan",
+      // Every Activity chip, in its order (MESITA-3688).
       "Notifications",
-      "Reservations",
       "Favorites",
+      "Reservations",
+      "Visits",
+      "Payments",
+      "Prepayments",
+      "Gifts",
       // Transactions sat here (MESITA-3465) until it became the bar's
       // Activity tab (MESITA-3631).
       // Refunds: credit a closed place can't honour (MESITA-3517).
@@ -811,19 +830,22 @@ describe("T8 — Me's grid is twelve live cells", () => {
 // going green while those links 404.
 describe("T7 — every former url still resolves after the move", () => {
   it.each([
-    // Both landed on the Reservations SECTION until MESITA-1626 dissolved the
-    // container; the list is Me › Reservations now (MESITA-2565), and /saved
-    // and /me/saved forward to Me › Favorites.
-    ["/saved", "/me/favorites"],
-    ["/me/saved", "/me/favorites"],
-    ["/saved/reservations", "/me/reservations"],
+    // Every old Favorites and Reservations address lands on its Activity
+    // chip in one hop (MESITA-3688; Me's pages from MESITA-2565 until then).
+    ["/saved", "/activity?type=favorites"],
+    ["/me/saved", "/activity?type=favorites"],
+    ["/me/favorites", "/activity?type=favorites"],
+    ["/me/reservations", "/activity?type=reservations"],
+    ["/me/notifications", "/activity"],
+    ["/saved/reservations", "/activity?type=reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],
   ])(
     "keeps the Saved-era redirect %s → %s (MESITA-1585)",
     async (source, destination) => {
       const redirects = await nextConfig.redirects!();
-      const entry = redirects.find((r) => r.source === source);
+      // The plain rule, not a `has` one ahead of it.
+      const entry = redirects.find((r) => r.source === source && !r.has);
       expect(entry, `${source} redirect was removed`).toBeDefined();
       expect(entry!.destination).toBe(destination);
     },
@@ -859,7 +881,9 @@ describe("T7 — every former url still resolves after the move", () => {
 // tab another child or brings a tree back has to edit these lines to do it,
 // which is the review moment.
 const childDirs = (dir: string) =>
-  readdirSync(dir).filter((e) => statSync(join(dir, e)).isDirectory()).sort();
+  readdirSync(dir)
+    .filter((e) => statSync(join(dir, e)).isDirectory())
+    .sort();
 
 describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   it("(shell)/pay holds the door, the bill and the receipt, and nothing else", () => {
@@ -922,7 +946,6 @@ describe("T9 — the money tree, and the Second Stage trees are gone", () => {
   });
 });
 
-
 // ─── THE ROUTE MAP (MESITA-3646) ───────────────────────────────────────────
 // ROUTE_MAP is the one statement of every shell screen: its tab, how it
 // opens, whether the bar shows, where Back lands cold. These hold it to the
@@ -932,8 +955,14 @@ describe("the route map", () => {
   const ids = Object.keys(ROUTE_MAP) as RouteId[];
   const toPattern = (url: string) => url.replace(/\[([^\]]+)\]/g, ":$1");
   const sameShape = (a: string, b: string) =>
-    a.split("/").map((x) => (x.startsWith(":") ? ":" : x)).join("/") ===
-    b.split("/").map((x) => (x.startsWith(":") ? ":" : x)).join("/");
+    a
+      .split("/")
+      .map((x) => (x.startsWith(":") ? ":" : x))
+      .join("/") ===
+    b
+      .split("/")
+      .map((x) => (x.startsWith(":") ? ":" : x))
+      .join("/");
   const shellPages = allPages()
     .filter((p) => p.startsWith("(shell)/") && !p.includes("@modal"))
     .map((p) => toPattern(pageUrl(p)))
@@ -942,10 +971,16 @@ describe("the route map", () => {
 
   it("has a row for every shell page, and a page for every row", () => {
     for (const url of shellPages) {
-      expect(ids.some((id) => sameShape(ROUTE_MAP[id].pattern, url)), url).toBe(true);
+      expect(
+        ids.some((id) => sameShape(ROUTE_MAP[id].pattern, url)),
+        url,
+      ).toBe(true);
     }
     for (const id of ids) {
-      expect(shellPages.some((u) => sameShape(ROUTE_MAP[id].pattern, u)), id).toBe(true);
+      expect(
+        shellPages.some((u) => sameShape(ROUTE_MAP[id].pattern, u)),
+        id,
+      ).toBe(true);
     }
   });
 
@@ -969,7 +1004,8 @@ describe("the route map", () => {
 
   it("finds each row from its own address, a fixed segment beating a param", () => {
     const sample = (pattern: string) => pattern.replace(/:[a-zA-Z]+/g, "x1");
-    for (const id of ids) expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
+    for (const id of ids)
+      expect(routeFor(sample(ROUTE_MAP[id].pattern)), id).toBe(id);
     expect(routeFor("/place/open/g1")).toBe("placeOpen");
     expect(routeFor("/place/p1/reserve")).toBe("placeReserve");
     expect(routeFor("/pay/tab/t1")).toBe("payTab");
@@ -980,13 +1016,16 @@ describe("the route map", () => {
 
   it("walls every row at the edge (the shell's getUser stays the real wall)", () => {
     for (const id of ids) {
-      expect(shouldGate(ROUTE_MAP[id].pattern.replace(/:[a-zA-Z]+/g, "x1")), id).toBe(true);
+      expect(
+        shouldGate(ROUTE_MAP[id].pattern.replace(/:[a-zA-Z]+/g, "x1")),
+        id,
+      ).toBe(true);
     }
   });
 
   it("lands a cold Back on the parent, with the parent's params filled", () => {
     expect(parentHref("/place/p1/reserve")).toBe("/place/p1");
-    expect(parentHref("/reservation/r1")).toBe("/me/reservations");
+    expect(parentHref("/reservation/r1")).toBe("/activity");
     expect(parentHref("/me/settings/contact")).toBe("/me/settings");
     expect(parentHref("/pay/receipt/x")).toBe("/pay");
     expect(parentHref("/wallet/w1")).toBe("/pay");

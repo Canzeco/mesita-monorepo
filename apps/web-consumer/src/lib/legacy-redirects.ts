@@ -18,11 +18,15 @@
 // BARE ONLY. The /web and /mob surface prefixes are retired (MESITA-3013):
 // SURFACE_PREFIX_REDIRECTS below sends each to its bare path in one 308, and
 // a prefixed retired address then takes a second hop through this table.
-/** The slice of Next's redirect shape this table uses. */
+import { activityHref } from "./activity-types";
+
+/** The slice of Next's redirect shape this table uses. `has` matches a held
+ *  query (MESITA-3688: `?tab=reservations` on the Favorites addresses). */
 export type Redirect = {
   source: string;
   destination: string;
   permanent: boolean;
+  has?: Array<{ type: "query"; key: string; value: string }>;
 };
 
 export const LEGACY_REDIRECTS: Redirect[] = [
@@ -162,30 +166,48 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   },
   // THE PLACES TEST TAB DIED (MESITA-2405).
   { source: "/places", destination: "/home/places", permanent: true },
-  // Favorites and Reservations are each a Me page (MESITA-2565). /saved was
-  // the bar's tab (MESITA-2521) and /me/saved Me's Saved page (MESITA-2561),
-  // Favorites | Reservations; both land on Favorites, and Next carries the
-  // query across, so a held `?tab=reservations` reaches /me/favorites, which
-  // forwards it to /me/reservations. Every former address of the
-  // reservations LIST — the top-level route (a server page until
-  // MESITA-2475), the Bookings tab (MESITA-2518), Saved's — lands on
-  // /me/reservations in one hop. /saved/place keeps its dual-path forward
-  // (MESITA-1585) below.
-  { source: "/saved", destination: "/me/favorites", permanent: true },
-  { source: "/me/saved", destination: "/me/favorites", permanent: true },
+  // EVERY OLD ADDRESS OF FAVORITES, RESERVATIONS AND NOTIFICATIONS LANDS ON
+  // ITS ACTIVITY CHIP IN ONE HOP (MESITA-3688). Me's own pages (MESITA-2565),
+  // /saved (the bar's tab, MESITA-2521), /me/saved (Me's Saved,
+  // MESITA-2561), the reservations list's top-level, Bookings and Saved
+  // addresses. Next carries a held query across, so a held
+  // `?tab=reservations` on the Favorites addresses is matched first and
+  // lands on Reservations, as it did through /me/favorites before.
+  ...["/saved", "/me/saved", "/me/favorites"].map((source) => ({
+    source,
+    has: [{ type: "query" as const, key: "tab", value: "reservations" }],
+    destination: activityHref("reservations"),
+    permanent: true,
+  })),
+  { source: "/saved", destination: activityHref("favorites"), permanent: true },
+  {
+    source: "/me/saved",
+    destination: activityHref("favorites"),
+    permanent: true,
+  },
+  {
+    source: "/me/favorites",
+    destination: activityHref("favorites"),
+    permanent: true,
+  },
+  {
+    source: "/me/reservations",
+    destination: activityHref("reservations"),
+    permanent: true,
+  },
   {
     source: "/reservations",
-    destination: "/me/reservations",
+    destination: activityHref("reservations"),
     permanent: true,
   },
   {
     source: "/bookings",
-    destination: "/me/reservations",
+    destination: activityHref("reservations"),
     permanent: true,
   },
   {
     source: "/saved/reservations",
-    destination: "/me/reservations",
+    destination: activityHref("reservations"),
     permanent: true,
   },
   {
@@ -197,18 +219,31 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/profile", destination: "/me/profile", permanent: true },
   {
     source: "/notifications",
-    destination: "/me/notifications",
+    destination: activityHref("notifications"),
     permanent: true,
   },
-  // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626). /inbox 308s onto the
-  // hub in ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and
-  // point at Pay: Next takes the first match.
-  { source: "/inbox/:path*", destination: "/me", permanent: true },
+  {
+    source: "/me/notifications",
+    destination: activityHref("notifications"),
+    permanent: true,
+  },
+  // /inbox was Activity's first address (MESITA-1626 sent it to Me); it is
+  // the bar's Activity tab again (MESITA-3688). /inbox/credits and
+  // /inbox/orders sit ABOVE this and point at Pay: Next takes the first match.
+  {
+    source: "/inbox/:path*",
+    destination: activityHref("notifications"),
+    permanent: true,
+  },
 ];
 
 /** The retired surface prefixes (MESITA-3013): /web/x and /mob/x → /x.
  *  Served AFTER the legacy table so a bare legacy source still wins first. */
 export const SURFACE_PREFIX_REDIRECTS: Redirect[] = [
   { source: "/:surface(web|mob)", destination: "/", permanent: true },
-  { source: "/:surface(web|mob)/:path*", destination: "/:path*", permanent: true },
+  {
+    source: "/:surface(web|mob)/:path*",
+    destination: "/:path*",
+    permanent: true,
+  },
 ];

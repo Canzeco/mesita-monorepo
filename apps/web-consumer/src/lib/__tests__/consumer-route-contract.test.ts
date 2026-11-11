@@ -137,11 +137,6 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         settings: "/me/settings",
         settingsContact: "/me/settings/contact",
         settingsFeedback: "/me/settings/feedback",
-        notifications: "/me/notifications",
-        // Favorites and Reservations, each its own page (MESITA-2565); they
-        // were Saved's two tabs (MESITA-2521, MESITA-2561).
-        favorites: "/me/favorites",
-        reservations: "/me/reservations",
       },
       legacy: {
         profile: "/profile",
@@ -206,6 +201,10 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
         savedReservations: "/saved/reservations",
         saved: "/saved",
         meSaved: "/me/saved",
+        // Me's own pages until each became an Activity chip (MESITA-3688).
+        meNotifications: "/me/notifications",
+        meFavorites: "/me/favorites",
+        meReservations: "/me/reservations",
         savedReservationPrefix: "/saved/reservation/",
         savedPlacePrefix: "/saved/place/",
       },
@@ -501,25 +500,60 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/places", destination: "/home/places", permanent: true },
-      // Favorites and Reservations are each a Me page (MESITA-2565): /saved
-      // and /me/saved land on Favorites; every former reservations list →
-      // Me › Reservations in one hop. The /saved/place dual path
-      // (MESITA-1585) still forwards.
-      { source: "/saved", destination: "/me/favorites", permanent: true },
-      { source: "/me/saved", destination: "/me/favorites", permanent: true },
+      // Every old Favorites, Reservations and Notifications address lands on
+      // its Activity chip in one hop (MESITA-3688). A held ?tab=reservations
+      // on the Favorites addresses lands on Reservations, matched first.
+      {
+        source: "/saved",
+        has: [{ type: "query", key: "tab", value: "reservations" }],
+        destination: "/activity?type=reservations",
+        permanent: true,
+      },
+      {
+        source: "/me/saved",
+        has: [{ type: "query", key: "tab", value: "reservations" }],
+        destination: "/activity?type=reservations",
+        permanent: true,
+      },
+      {
+        source: "/me/favorites",
+        has: [{ type: "query", key: "tab", value: "reservations" }],
+        destination: "/activity?type=reservations",
+        permanent: true,
+      },
+      {
+        source: "/saved",
+        destination: "/activity?type=favorites",
+        permanent: true,
+      },
+      {
+        source: "/me/saved",
+        destination: "/activity?type=favorites",
+        permanent: true,
+      },
+      {
+        source: "/me/favorites",
+        destination: "/activity?type=favorites",
+        permanent: true,
+      },
+      {
+        source: "/me/reservations",
+        destination: "/activity?type=reservations",
+        permanent: true,
+      },
       {
         source: "/reservations",
-        destination: "/me/reservations",
+        destination: "/activity?type=reservations",
         permanent: true,
       },
       {
         source: "/bookings",
-        destination: "/me/reservations",
+        destination: "/activity?type=reservations",
         permanent: true,
       },
       {
         source: "/saved/reservations",
-        destination: "/me/reservations",
+        destination: "/activity?type=reservations",
         permanent: true,
       },
       {
@@ -533,15 +567,15 @@ describe("next.config redirects (static legacy → canonical, 308)", () => {
         permanent: true,
       },
       { source: "/profile", destination: "/me/profile", permanent: true },
+      { source: "/notifications", destination: "/activity", permanent: true },
       {
-        source: "/notifications",
-        destination: "/me/notifications",
+        source: "/me/notifications",
+        destination: "/activity",
         permanent: true,
       },
-      // ACTIVITY IS GONE AS A CONTAINER (MESITA-1626): /inbox lands on Me in
-      // ONE hop. /inbox/credits and /inbox/orders sit ABOVE this and point at
-      // Pay — Next takes the first match.
-      { source: "/inbox/:path*", destination: "/me", permanent: true },
+      // /inbox is the Activity tab again (MESITA-3688; Me since MESITA-1626).
+      // /inbox/credits and /inbox/orders sit ABOVE this and point at Pay.
+      { source: "/inbox/:path*", destination: "/activity", permanent: true },
     ]);
   });
 
@@ -652,15 +686,13 @@ describe("?next= threading (safeNextPath / withNext)", () => {
     expect(wall).toBe("/?next=%2Fplace%2Fabc%3Fref%3Dig");
     // …root page hands it to post-signin…
     const afterAuth = consumerAuthDestination(
-      new URL(wall, "https://mesita.ai").searchParams.get("next") ??
-        undefined,
+      new URL(wall, "https://mesita.ai").searchParams.get("next") ?? undefined,
     );
     expect(afterAuth).toBe("/auth/post-signin?next=%2Fplace%2Fabc%3Fref%3Dig");
     // …which parks it on /onboard for an unfinished profile…
-    const target = new URL(
-      afterAuth,
-      "https://mesita.ai",
-    ).searchParams.get("next");
+    const target = new URL(afterAuth, "https://mesita.ai").searchParams.get(
+      "next",
+    );
     expect(withNext(CONSUMER_ROUTES.onboard, target)).toBe(
       "/onboard?next=%2Fplace%2Fabc%3Fref%3Dig",
     );

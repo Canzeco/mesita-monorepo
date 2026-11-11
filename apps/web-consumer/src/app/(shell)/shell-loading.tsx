@@ -8,12 +8,9 @@ import SearchLoading from "./(discovery)/search/loading";
 import MeLoading from "./me/(hub)/loading";
 import ClassLoading from "./me/class/loading";
 import ConnectorLoading from "./me/connector/loading";
-import FavoritesLoading from "./me/favorites/loading";
 import InstagramLoading from "./me/instagram/loading";
-import NotificationsLoading from "./me/notifications/loading";
 import PlanLoading from "./me/plan/loading";
 import ProfileLoading from "./me/profile/loading";
-import ReservationsLoading from "./me/reservations/loading";
 import SettingsLoading from "./me/settings/(page)/loading";
 import ContactLoading from "./me/settings/contact/loading";
 import ActivityLoading from "./activity/loading";
@@ -61,9 +58,6 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   meClass: () => <ClassLoading />,
   meConnector: () => <ConnectorLoading />,
   meRefunds: () => <RefundsLoading />,
-  meNotifications: () => <NotificationsLoading />,
-  meFavorites: () => <FavoritesLoading />,
-  meReservations: () => <ReservationsLoading />,
   meSettings: () => <SettingsLoading />,
   meSettingsContact: () => <ContactLoading />,
   meSettingsFeedback: () => <FeedbackLoading />,
