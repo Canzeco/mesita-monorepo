@@ -209,11 +209,11 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         title="Money Payment Methods"
         action={
           <HeadingButton
-            label={adding ? "Opening…" : "Add card"}
+            // "Add", as Credits' (Pato, MESITA-3740: "add and add, keep the symmetry").
+            label={adding ? "Opening…" : "Add"}
             ariaLabel="Add a payment card"
             onClick={() => void addCard()}
             disabled={adding}
-            className="min-w-[5.5rem]"
           />
         }
       >
