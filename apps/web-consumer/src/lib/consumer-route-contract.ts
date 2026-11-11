@@ -56,8 +56,8 @@ export const CONSUMER_ROUTES = {
   //                              (MESITA-3695): takes the share, becomes
   //                              /pay/tab/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    the Wallet, pushed from Pay's header
-  //                              (MESITA-3726; a bar tab in MESITA-3722)
+  //   /wallet                    the Wallet, the Pay | Wallet switch's
+  //                              second half (MESITA-3729)
   //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //
@@ -363,9 +363,10 @@ export const ROUTE_MAP = {
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
   payJoin: row("/pay/join/:token", "pay", "door", "pay"),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
-  // The Wallet, a page pushed from Pay's header (MESITA-3726; its own bar
-  // tab in MESITA-3722). It and its children light Pay.
-  wallet: row("/wallet", "pay", "page", "pay"),
+  // The Pay | Wallet switch's second half (MESITA-3729; a page pushed from
+  // Pay's header in MESITA-3726, a bar tab in MESITA-3722). It and its
+  // children light Pay.
+  wallet: row("/wallet", "pay", "tab", null),
   walletPlace: row("/wallet/:placeId", "pay", "page", "wallet"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "wallet"),
   // A page under Me, off the bar (MESITA-3717).

@@ -11,28 +11,27 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     // /pay: the header and the places (two tabs since MESITA-3722).
     return (
       <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
-        <PayHeader />
+        <PayHeader tab="pay" />
         <Skeleton className="mt-5 h-6 w-40 rounded-md" />
         <Skeleton className="mt-3 h-56 w-full rounded-2xl" />
       </div>
     );
   }
   if (body === "wallet") {
-    // /wallet, a page pushed from Pay (MESITA-3726): its frame, then the two
+    // /wallet, the switch's Wallet half (MESITA-3729): the switch, then the two
     // lists in the redesign's order (MESITA-3727), built from the page's own
     // row skeletons so nothing jumps when it loads: Credits (one card with
     // its Fund | Gift footer), then Ways to pay (a saved card, then Cash).
     return (
-      <Screen title="Wallet" flush>
-        <div className="flex flex-col px-4 pb-8" aria-busy>
-          <WalletList title="Credits" fullDividers>
-            <CreditRowSkeleton />
-          </WalletList>
-          <WalletList title="Ways to pay">
-            <RowsSkeleton count={2} />
-          </WalletList>
-        </div>
-      </Screen>
+      <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+        <PayHeader tab="wallet" />
+        <WalletList title="Credits" fullDividers>
+          <CreditRowSkeleton />
+        </WalletList>
+        <WalletList title="Ways to pay">
+          <RowsSkeleton count={2} />
+        </WalletList>
+      </div>
     );
   }
   // A bill or a receipt: the pushed page's own frame (Screen, MESITA-3647).

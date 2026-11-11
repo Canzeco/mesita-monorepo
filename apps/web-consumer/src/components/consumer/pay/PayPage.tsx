@@ -15,14 +15,13 @@ import { apiGetTab, type GuestTab } from "@/lib/api/tab";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { cn } from "@/lib/utils";
-import { CONSUMER_ROUTES, payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
+import { payPlacePath, payTabPath } from "@/lib/consumer-route-contract";
 import { navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { locationSnapshot, requestUserLocation } from "@/lib/use-user-location";
 import { forgetGuestTab, PlacePhoto, readGuestTabIds } from "./pay-common";
 import { usePayPlaces } from "./use-pay-places";
 import { PayHeader } from "./PayHeader";
-import { PushLink } from "@/components/consumer/nav/PushLink";
 
 // THE PAY TAB, /pay (MESITA-3304 credit, MESITA-3305 the card part,
 // MESITA-3457 the list, MESITA-3536 its look): the places the guest can pay
@@ -34,10 +33,12 @@ import { PushLink } from "@/components/consumer/nav/PushLink";
 // (PayTabScreen, MESITA-3564). The bill and the receipt have their own
 // addresses (MESITA-3614): /pay/tab/<id> and /pay/receipt/<id>.
 //
-// WALLET IS INSIDE PAY (Pato, 2026-11-11, MESITA-3726: "Wallet va dentro
-// de Pay"): this page is the header (its Wallet button opens /wallet, a
-// pushed page), the payment in progress and "Pay at a place" (the nearest
-// PLACES_SHOWN, then "Show all"). Wallet was a bar tab in MESITA-3722. MESITA-3720 had drawn the Wallet under
+// PAY | WALLET (Pato, 2026-11-11, MESITA-3729: "divide into Pay and Wallet.
+// no header"): this page is the Pay half of the switch at the top (PayHeader),
+// then the payment in progress and "Pay at a place" (the nearest
+// PLACES_SHOWN, then "Show all"). Wallet (/wallet) is the other half; a
+// Wallet button on a "Pay" header opened it in MESITA-3726, a bar tab in
+// MESITA-3722. MESITA-3720 had drawn the Wallet under
 // these places on one page, and MESITA-3721 put the credits on the rows.
 //
 // The location is asked once, after a priming card ("See Mesita Payments
@@ -174,20 +175,7 @@ export function PayPage() {
 
   return (
     <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <PayHeader
-        action={
-          // The Wallet, one tap from Pay (MESITA-3726): a quiet grey button,
-          // the page it opens has Back.
-          <PushLink
-            href={CONSUMER_ROUTES.wallet}
-            className="bg-muted hover:bg-muted/70 text-foreground inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition"
-            data-pay-wallet-link
-          >
-            <Wallet className="h-[18px] w-[18px]" aria-hidden />
-            Wallet
-          </PushLink>
-        }
-      />
+      <PayHeader tab="pay" />
 
       <div className="mt-5 flex flex-col">
         {places ? (
