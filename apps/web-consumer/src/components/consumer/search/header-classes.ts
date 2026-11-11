@@ -69,3 +69,10 @@ export const CHIP_OFF = `${FLOAT} border-transparent hover:bg-muted`;
 /** An unpicked chip inside a sheet (already on white): a grey fill. */
 export const CHIP_OFF_FLAT =
   "border-transparent bg-muted text-foreground hover:bg-border";
+
+/** The count bubble on the Filters disc's top-right corner while families
+ *  are picked (MESITA-3006), ringed in white so it reads off the disc; the
+ *  caller gives its colour (red since MESITA-3216). Search's and Home's
+ *  Filters discs share it (MESITA-3666). */
+export const DISC_BADGE =
+  "bg-primary text-primary-foreground ring-card absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center type-meta rounded-full px-1 leading-none font-semibold ring-2";
