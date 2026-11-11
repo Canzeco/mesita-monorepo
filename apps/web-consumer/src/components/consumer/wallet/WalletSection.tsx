@@ -19,7 +19,8 @@ import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, Walle
 // THE WALLET, PAY'S SECOND HALF (Pato, 2026-11-11, MESITA-3698: "Divide
 // Payments across two sections: Pay and Wallet"): two lists, Money
 // Payment Methods and Credits Payment Methods, each led by Add
-// (WalletLists; horizontal rails until MESITA-3701), drawn by /wallet (WalletPage) under the Pay · Wallet band.
+// (WalletLists; horizontal rails until MESITA-3701), drawn under Pay's places
+// on the one Pay page since MESITA-3720 (PayPage; /pay and /wallet both).
 // Wallet was its own bar tab from MESITA-3295, then sat under Pay's list
 // (MESITA-3631) until this. A place's card is a link to its House Card,
 // /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
@@ -47,7 +48,7 @@ function cardRefusal(err: unknown): string {
 /** Photos of the first cards load eagerly; the rest lazily. */
 const EAGER_CARDS = 3;
 
-export function WalletSection({ giftToken = null }: { giftToken?: string | null }) {
+export function WalletSection({ giftToken = null, testBand = true }: { giftToken?: string | null; testBand?: boolean }) {
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   const { wallet, failed, credits, reread } = useWallet();
@@ -117,7 +118,7 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
 
   return (
     <div className="flex flex-col" data-wallet>
-      {wallet?.test_mode ? <TestBand className="mt-5" /> : null}
+      {testBand && wallet?.test_mode ? <TestBand className="mt-5" /> : null}
       {wallet?.settling ? (
         <p className="text-muted-foreground mt-5 text-sm" role="status">
           Confirming a payment…
