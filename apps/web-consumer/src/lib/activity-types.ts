@@ -1,7 +1,8 @@
 // THE ACTIVITY CHIPS (MESITA-3697, Pato: "Favorites, Reservations,
-// Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order.
-// Seven until then (MESITA-3688): Notifications, Payments and Prepayments
-// left; Payments lives inside Visits, Prepayments is Vouchers. The one list of
+// Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order,
+// then Notifications (MESITA-3716, Pato: "add notifications subpage to
+// this"). Seven under MESITA-3688: Payments lives inside Visits, Prepayments
+// is Vouchers; Notifications left with them and came back last. The one list of
 // their slugs: Activity's rail, Me's tiles and the legacy redirects read it,
 // so a misspelled `?type=` fails the type check.
 //
@@ -14,6 +15,7 @@ export const ACTIVITY_TYPES = [
   "visits",
   "vouchers",
   "gifts",
+  "notifications",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -22,9 +24,9 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export const DEFAULT_ACTIVITY_TYPE: ActivityType = "favorites";
 
 /** The old chips' slugs and where each lives now (MESITA-3697), so a
- *  bookmark or a link from before lands on its new chip. */
+ *  bookmark or a link from before lands on its new chip. Notifications is a
+ *  chip again (MESITA-3716). */
 export const RETIRED_ACTIVITY_TYPES: Readonly<Record<string, ActivityType>> = {
-  notifications: "favorites",
   payments: "visits",
   prepayments: "vouchers",
 };

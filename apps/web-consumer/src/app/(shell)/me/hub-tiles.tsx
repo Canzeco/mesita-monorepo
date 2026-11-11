@@ -82,8 +82,8 @@ export type HubTile = {
   href: string;
 };
 
-/** The grid cells, in reading order; Settings is the last (twelve with it
- *  since MESITA-3697: Profile · Instagram · Class · Plan, the five Activity
+/** The grid cells, in reading order; Settings is the last (thirteen with
+ *  it since MESITA-3716: Profile · Instagram · Class · Plan, the six Activity
  *  chips, Refunds · MCP · Share). */
 export const ME_HUB_GRID: readonly HubTile[] = [
   // PROFILE LEADS (Pato, 2026-09-08), INSTAGRAM BESIDE IT (MESITA-2080). The
@@ -158,7 +158,7 @@ export const ME_HUB_GRID: readonly HubTile[] = [
   },
 ];
 
-/** The twelfth cell: Settings closes the grid (MESITA-2562); a full-width row
+/** The last cell: Settings closes the grid (MESITA-2562); a full-width row
  *  under it until MESITA-3465. */
 export const ME_HUB_SETTINGS: HubTile = {
   Icon: SettingsIcon,

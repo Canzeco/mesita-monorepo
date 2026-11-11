@@ -609,6 +609,7 @@ describe("T6 — Me's activity tiles open Activity's chips", () => {
       "/activity?type=visits",
       "/activity?type=vouchers",
       "/activity?type=gifts",
+      "/activity?type=notifications",
     ]) {
       expect(hrefs, href).toContain(href);
     }
@@ -636,13 +637,13 @@ describe("T6 — Me's activity tiles open Activity's chips", () => {
 
 // ── T8 — the destination grid holds only things that work ──────────────────
 //
-// Me is a 3-up grid of twelve cells (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
+// Me is a 3-up grid of thirteen cells (MESITA-3716; twelve before) (MESITA-1628, MESITA-3450, MESITA-3465). In a grid a dead cell reads as broken
 // rather than upcoming, so the grid holds live doors only.
 //
 // The regression this catches is a tile for a surface that does not exist
 // — `DestTile` has no `soon` prop and its `href` is required, so such a tile
 // would ship as a live Link pointing at nothing.
-describe("T8 — Me's grid is twelve live cells", () => {
+describe("T8 — Me's grid is thirteen live cells", () => {
   const ME = readFileSync(join(SHELL, "me", "ProfileClient.tsx"), "utf8");
   // THE CELLS ARE DATA (MESITA-2701): hub-tiles.tsx's ME_HUB_GRID and
   // ME_HUB_SETTINGS, the one source ProfileClient and /me's loading.tsx both
@@ -651,7 +652,7 @@ describe("T8 — Me's grid is twelve live cells", () => {
   const cells = () => [...ME_HUB_GRID, ME_HUB_SETTINGS];
   const gridTitles = () => cells().map((cell) => cell.title);
 
-  it("renders twelve cells in Pato's order", () => {
+  it("renders thirteen cells in Pato's order", () => {
     // The page draws the rows, as DestTiles, and nothing else below the bar.
     expect(ME).toContain("<MeHubFrame");
     expect(ME).toContain("<DestTile");
@@ -674,6 +675,8 @@ describe("T8 — Me's grid is twelve live cells", () => {
       "Visits",
       "Vouchers",
       "Gifts",
+      // Back as the sixth chip (MESITA-3716).
+      "Notifications",
       // Transactions sat here (MESITA-3465) until it became the bar's
       // Activity tab (MESITA-3631).
       // Refunds: credit a closed place can't honour (MESITA-3517).
@@ -833,7 +836,7 @@ describe("T7 — every former url still resolves after the move", () => {
     ["/me/saved", "/activity?type=favorites"],
     ["/me/favorites", "/activity?type=favorites"],
     ["/me/reservations", "/activity?type=reservations"],
-    ["/me/notifications", "/activity"],
+    ["/me/notifications", "/activity?type=notifications"],
     ["/saved/reservations", "/activity?type=reservations"],
     ["/saved/reservation/:id", "/reservation/:id"],
     ["/saved/place/:id", "/place/:id"],

@@ -2,10 +2,12 @@
 
 // /activity — THE BAR'S ACTIVITY TAB (MESITA-3631), TICKETS (MESITA-3688).
 //
-// Five chips since MESITA-3697 (Pato: "Favorites, Reservations, Visits(has
-// payments inside), Vouchers(Prepayments), Gifts"), in his order
-// (lib/activity-types.ts), the chosen one in the address (`?type=`), so Me's
-// tiles, Back and a shared link land on it; a bare /activity is Favorites:
+// Six chips: five since MESITA-3697 (Pato: "Favorites, Reservations,
+// Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order,
+// then Notifications (MESITA-3716, Pato: "add notifications subpage to
+// this"). The list is lib/activity-types.ts; the chosen one is in the address
+// (`?type=`), so Me's tiles, Back and a shared link land on it; a bare
+// /activity is Favorites:
 //
 //   Favorites      the hearted places (FavoritesList; local, never fails)
 //   Reservations   tickets: Upcoming, then Past
@@ -16,9 +18,12 @@
 //   Vouchers       tickets: credits bought, Story vouchers waiting, refunds
 //                  (the Prepayments chip, renamed)
 //   Gifts          tickets: credit sent, received, taken back, links not taken
+//   Notifications  events: NotificationsList under day headings, with the
+//                  next confirmed reservation in 24 h above it as a "Next
+//                  up" ticket
 //
-// Notifications, Payments and Prepayments left the bar (MESITA-3697); their
-// old `?type=` lands on Favorites, Visits and Vouchers (RETIRED_ACTIVITY_TYPES).
+// Payments and Prepayments left the bar (MESITA-3697); their old `?type=`
+// lands on Visits and Vouchers (RETIRED_ACTIVITY_TYPES).
 //
 // Every source loads on mount and fails on its own; a chip's count shows only
 // once its sources answered. This page never computes a balance: it lists
@@ -34,6 +39,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
+import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { FavoritesList } from "@/components/consumer/saved/FavoritesPage";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -76,7 +82,7 @@ import {
   TicketSkeleton,
 } from "./TicketCard";
 
-type TicketType = Exclude<ActivityType, "favorites">;
+type TicketType = Exclude<ActivityType, "favorites" | "notifications">;
 
 /** One ticket and where it sorts: Upcoming soonest first, then Past newest
  *  first. */
@@ -92,6 +98,7 @@ type Row = Ticket & {
 /** Each reservations read brings at most this many (the EF's cap). */
 const RESERVATIONS_PAGE = 100;
 const TTL = 2 * 60 * 1000;
+const DAY_MS = 86_400_000;
 
 /** "Nov 10": the date on a money ticket's line. */
 function onDay(iso: string): string {
@@ -417,13 +424,9 @@ function ordered(rows: Row[]): { upcoming: Row[]; past: Row[] } {
 // ─── The page ───────────────────────────────────────────────────────────────
 
 const EMPTY: Record<
-  ActivityType,
+  TicketType,
   { title: string; action: { label: string; href: string } }
 > = {
-  favorites: {
-    title: "No favorites yet",
-    action: { label: "Find a place", href: CONSUMER_ROUTES.home },
-  },
   reservations: {
     title: "No reservations yet",
     action: { label: "Find a place", href: CONSUMER_ROUTES.home },
@@ -507,7 +510,7 @@ export function ActivityPage() {
     }
   }, [visits.error, wallet.error, reservations.error]);
 
-  // The clock the page judges "upcoming" by: read once.
+  // The clock the page judges "upcoming" and "within a day" by: read once.
   const [nowMs] = useState(() => Date.now());
 
   const byType = useMemo(() => {
@@ -581,6 +584,18 @@ export function ActivityPage() {
       counts[t] = capped ? `${rows.length}+` : String(rows.length);
   }
 
+  // The confirmed reservation that comes next, within a day: "Next up" above
+  // the notifications.
+  const nextUp =
+    (byType.reservations
+      ? ordered(byType.reservations).upcoming.find(
+          (r) =>
+            r.pill.label === stateMeta("confirmed").label &&
+            r.at &&
+            Date.parse(r.at) - nowMs < DAY_MS,
+        )
+      : null) ?? null;
+
   const pick = (t: ActivityType) =>
     router.replace(activityHref(t), { scroll: false });
 
@@ -590,6 +605,15 @@ export function ActivityPage() {
     >
       {type === "favorites" ? (
         <FavoritesList />
+      ) : type === "notifications" ? (
+        <>
+          {nextUp ? (
+            <div className="mb-6">
+              <TicketCard t={{ ...nextUp, label: "Next up" }} />
+            </div>
+          ) : null}
+          <NotificationsList quietEmpty={!!nextUp} />
+        </>
       ) : (
         <Tickets
           type={type}
@@ -780,7 +804,7 @@ export function ActivityFrame({
 function RailSkeleton() {
   return (
     <div className="mt-3 flex gap-2 overflow-hidden" aria-hidden>
-      {["w-36", "w-28", "w-36", "w-24", "w-32"].map((w, i) => (
+      {["w-36", "w-28", "w-36", "w-24", "w-32", "w-36"].map((w, i) => (
         <Skeleton key={i} className={cn("h-11 shrink-0 rounded-full", w)} />
       ))}
     </div>
