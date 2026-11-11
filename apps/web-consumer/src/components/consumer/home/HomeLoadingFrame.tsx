@@ -41,7 +41,7 @@ export function HomeLoadingFrame({
         </div>
       ) : view === "classic" ? (
         <div className="flex min-h-0 flex-1">
-          <div className="bg-border w-1/4 shrink-0" />
+          <div className="bg-muted w-1/4 shrink-0" />
           <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
             <DiscoverFallback />
           </div>
