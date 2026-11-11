@@ -18,8 +18,9 @@ import dynamic from "next/dynamic";
 // Places: the left family column beside the tiles (Pato, MESITA-2519: "keep
 // the later view of the failies. its fastwer to browse") — Top first,
 // then every family, scrolling on its own, no colour stripes (MESITA-2521:
-// "we don't need to colors now"). Favorites left the column for the bar's
-// Saved tab (Pato, MESITA-2522: "remove favorites from this lateral menu"); MESITA-2517 tried a
+// "we don't need to colors now"). Saved, the guest's hearts, sits above Top
+// (Pato, MESITA-3718: "Add Saved above Top … remember it is a heart"); it
+// left the column in MESITA-2522 for the bar's Saved tab. MESITA-2517 tried a
 // horizontal chip row and Pato sent it back. Social: the activity feed
 // (SocialFeed), full width. Every row's mark is the family's emoji (Pato,
 // MESITA-3683; MESITA-2478's monochrome line icons until then). Places 2.0,
@@ -50,7 +51,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass } from "lucide-react";
+import { Compass, Heart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -79,6 +80,7 @@ import { withUserDistance } from "@/lib/place-distance";
 import { useCreatedPlaces, withCreatedPlaces } from "@/lib/created-places";
 import { useOpenGooglePlace } from "@/lib/use-open-google-place";
 import { useCardSaveShare } from "@/lib/use-card-save-share";
+import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
@@ -109,7 +111,11 @@ const ROW_BASE =
 // red-600 in MESITA-3687, blue-600 first in MESITA-3685). 3px until
 // MESITA-3689 ("a bit wider").
 const ROW_ON =
-  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[5px] before:bg-blue-600";
+  "bg-card text-foreground font-semibold before:absolute before:inset-y-0 before:left-0 before:w-[5px]";
+const BAR_BLUE = "before:bg-blue-600";
+// SAVED'S BAR IS RED, the heart's colour (Pato, MESITA-3718: "for saved
+// instead of blue selector use red. its the only exception").
+const BAR_RED = "before:bg-red-600";
 const ROW_OFF = "text-foreground hover:bg-card/60";
 
 /** The column's default row: every place, one list, ranked like the Search
@@ -119,6 +125,11 @@ const ROW_OFF = "text-foreground hover:bg-card/60";
 export const ALL_CHIP = "all";
 /** What the guest reads for `all` (MESITA-2534). */
 export const TOP_LABEL = "Top";
+
+/** The guest's hearted places (MESITA-3718): read from the local saved
+ *  store, never the pool. */
+export const SAVED_CHIP = "saved";
+export const SAVED_LABEL = "Saved";
 
 /** All is every family; any other row is one family. */
 export function isEveryFamily(chip: string): boolean {
@@ -139,13 +150,15 @@ export function homeTabOf(pathname: string): HomeTab {
   return pathname === CONSUMER_ROUTES.homeSocial ? "social" : "places";
 }
 
-/** The Places tab's left column, top to bottom (MESITA-2519): Top first in one scrolling list (MESITA-2534),
- *  then every guest family. The guest's hearted places are not a row: they
- *  live in the bar's Saved tab (MESITA-2522). Google Places and Mesita Places are not guest choices
+/** The Places tab's left column, top to bottom (MESITA-2519): Saved, the
+ *  guest's hearts (MESITA-3718), then Top in one scrolling list (MESITA-2534),
+ *  then every guest family. Google Places and Mesita Places are not guest choices
  *  (MESITA-2381): they are the sources All mixes. A family with nothing here
  *  says so rather than hiding. */
 export function placesChips(): { key: string; label: string; emoji: string }[] {
   return [
+    // A HEART, AND THE WORD IS SAVED, never Favorites (Pato, MESITA-3718).
+    { key: SAVED_CHIP, label: SAVED_LABEL, emoji: "❤️" },
     // The word is Top, the key stays `all` (Pato, MESITA-2534: "all is the
     // wrong word … one might thing that is the sum aof all the other
     // subests, but not"): it is the best-ranked pool, not every place.
@@ -275,6 +288,7 @@ export function CatalogRails() {
   // pool on the create (MESITA-2307), which missed a Home that was not on
   // screen and paid a Google call for one card.
   const createdPlaces = useCreatedPlaces();
+  const { savedIds, hydrated: savedHydrated } = useSavedPlaces();
 
   // RANK ONCE, FILL BY ID (MESITA-3057, Pato: "don't bring the data of all
   // 1000 places in one run … have all the ids … then populate with data and
@@ -476,10 +490,16 @@ export function CatalogRails() {
           onClick={() => {
             if (!on) trackEvent(supabase, "home_mode_view", { mode: c.label });
             setChip(c.key);
-            setFamilies(chipFamilies(c.key));
+            // Saved reads no pool: the last pool row's family stays asked.
+            if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
           }}
           aria-pressed={on}
-          className={cn(ROW_BASE, on ? ROW_ON : ROW_OFF)}
+          className={cn(
+            ROW_BASE,
+            on
+              ? cn(ROW_ON, c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE)
+              : ROW_OFF,
+          )}
         >
           {/* THE FAMILY'S EMOJI (Pato, MESITA-3683: "add emojis instead
               of those black-white icons to the sidebar menu"); MESITA-2478's
@@ -580,6 +600,24 @@ export function CatalogRails() {
 
   // Social reads its own feed, never the catalog (MESITA-2474, MESITA-2517).
   if (tab === "social") return shell(<SocialFeed />);
+
+  // SAVED (MESITA-3718): the hearts, newest first, as Home's own tiles; local,
+  // so no error and no paging. Unsaving here drops the tile (with Undo).
+  if (chip === SAVED_CHIP) {
+    if (!savedHydrated) return shell(<DiscoverFallback />);
+    const saved = savedPlaceList(savedIds, readSavedPlacePreviews<Place>());
+    return shell(
+      saved.length === 0 ? (
+        <EmptyState
+          icon={Heart}
+          title="Nothing saved yet"
+          description="Tap the heart on a place and it lands here."
+        />
+      ) : (
+        tiles(saved, SAVED_LABEL, false)
+      ),
+    );
+  }
 
   // BOTH WAITS DRAW THE TILE COLUMN ITSELF (Pato, MESITA-2701: "the
   // placeholders must be similar to the page you are loading, like the
