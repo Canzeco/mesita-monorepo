@@ -546,9 +546,11 @@ export function CatalogRails() {
       </li>
     );
   };
+  // A LIGHTER GREY (Pato, MESITA-3682: "make the lateral menu a bit
+  // lighter"): bg-muted, the location box's grey; it was bg-border.
   const categories = (
     <nav
-      className="bg-border flex w-1/4 shrink-0 flex-col"
+      className="bg-muted flex w-1/4 shrink-0 flex-col"
       aria-label="Places"
       data-places-categories
     >
