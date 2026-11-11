@@ -164,9 +164,12 @@ export function ProofView({
         : "Partly refunded"
       : null;
 
+  // FITS ONE SCREEN (MESITA-3739): the card takes the height left and the
+  // QR takes what the card has left (140–240px, a size container), so the
+  // proof never scrolls; the buttons stay pinned under it.
   return (
-    <div className="flex flex-col items-center text-center">
-      <div className="border-border bg-card flex w-full flex-col items-center rounded-2xl border px-6 py-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center text-center">
+      <div className="border-border bg-card flex min-h-0 w-full flex-1 flex-col items-center rounded-2xl border px-5 py-4">
         {open ? (
           slow ? (
             <>
@@ -183,7 +186,7 @@ export function ProofView({
         ) : !refunded && !seen ? (
           <p className="text-muted-foreground text-sm font-semibold">Show this to the staff</p>
         ) : null}
-        <p className="font-display mt-3 text-4xl font-semibold tabular-nums" data-proof-total>
+        <p className="font-display mt-2 text-4xl font-semibold tabular-nums" data-proof-total>
           {m(proof.amount_cents + tip)}
         </p>
         {tip > 0 ? (
@@ -212,37 +215,42 @@ export function ProofView({
             {reconnecting && !seen ? <span> · Reconnecting</span> : null}
           </p>
         ) : null}
-        {paid && !refunded ? <LiveClock /> : null}
+        {paid && !refunded ? <LiveClock className="mt-1 text-xl" /> : null}
         {proof.ticket ? <p className="text-muted-foreground mt-1 text-sm">Ticket {proof.ticket}</p> : null}
         {!refunded && proof.proof ? (
-          <div className={cn("mt-4 rounded-xl bg-white p-3 transition", seen && "opacity-40")}>
-            <QRCodeSVG value={proof.proof.url} size={208} marginSize={0} aria-label="Payment proof" />
+          <div className="mt-3 flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+            <div
+              className={cn("size-40 rounded-xl bg-white p-2 transition", seen && "opacity-40")}
+              style={{ width: "max(140px, min(100cqh, 100cqw, 240px))", height: "max(140px, min(100cqh, 100cqw, 240px))" }}
+            >
+              <QRCodeSVG value={proof.proof.url} size={240} marginSize={0} style={{ width: "100%", height: "100%" }} aria-label="Payment proof" />
+            </div>
           </div>
         ) : null}
       </div>
       {open ? (
         <>
           {proof.url ? (
-            <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
+            <Button size="lg" className="mt-3 w-full shrink-0 text-base font-semibold" onClick={() => window.location.assign(proof.url as string)}>
               Resume card payment
             </Button>
           ) : null}
           {slow ? (
             <button
               type="button"
-              className={cn(QUIET_BUTTON_CLASS, proof.url ? "mt-3" : "mt-6")}
+              className={cn(QUIET_BUTTON_CLASS, "mt-3 shrink-0")}
               disabled={refreshing}
               onClick={refresh}
             >
               {refreshing ? "Refreshing…" : "Refresh"}
             </button>
           ) : null}
-          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={leave}>
+          <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3 shrink-0")} onClick={leave}>
             Done
           </button>
         </>
       ) : (
-        <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={onDone}>
+        <Button size="lg" className="mt-3 w-full shrink-0 text-base font-semibold" onClick={onDone}>
           Done
         </Button>
       )}

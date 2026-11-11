@@ -83,8 +83,8 @@ export function PayReceiptScreen({ paymentId }: { paymentId: string }) {
   }, [paymentId]);
 
   return (
-    <Screen title="Pay" onBack={leave} flush>
-      <div className="flex min-h-0 flex-1 flex-col px-4 pt-5 pb-8">
+    <Screen title="Pay" onBack={leave} flush paper>
+      <div className="flex min-h-0 flex-1 flex-col px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         {proof ? (
           <ProofView proof={proof} onChange={setProof} onDone={leave} />
         ) : failed || refill ? (
