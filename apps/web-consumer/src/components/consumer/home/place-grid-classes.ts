@@ -9,9 +9,10 @@
 export const GRID_LIST =
   "grid grid-cols-2 content-start gap-x-2.5 gap-y-4 px-3 pt-1";
 
-/** The photo: 4:3, 12px corners (MESITA-3672; it was square). */
+/** The square photo, 12px corners (4:3 is Places 1.0 and 4.0 only,
+ *  MESITA-3675). */
 export const GRID_PHOTO =
-  "bg-muted relative aspect-[4/3] overflow-hidden rounded-xl";
+  "bg-muted relative aspect-square overflow-hidden rounded-xl";
 
 /** The two lines under the photo: the name's 20px line, the facts' 16px. */
 export const GRID_TEXT = "flex flex-col pt-1.5";
@@ -29,21 +30,23 @@ export const GRID_CHIPS =
 /** One column of rows; 12px sides, 10px between rows. */
 export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-1";
 
-/** The photo and the info side by side, one card (Pato, MESITA-3664:
- *  "unify the left image with the right box"): the card owns the soft fill
- *  and the 16px outer corners, so the half under a 4:3 photo is card, not a
- *  hole (MESITA-3672). */
-export const ROW_PAIR =
-  "bg-muted/60 grid grid-cols-2 items-start overflow-hidden rounded-2xl";
+/** The two squares side by side, touching: one card (Pato, MESITA-3664:
+ *  "unify the left image with the right box … making the adjacent borders
+ *  squared"). */
+export const ROW_PAIR = "grid grid-cols-2";
 
-/** The photo: 4:3, four wide and three tall, at the top of the left half
- *  (Pato, MESITA-3672: "each image must be 4:3"); it was stretched to the
- *  info box's height. */
-export const ROW_PHOTO = "bg-muted relative aspect-[4/3] overflow-hidden";
+/** The photo (never 4:3 here, MESITA-3675): 16px corners on the outer side
+ *  only, stretched to the info box's height (a square, or taller when the
+ *  facts need it, MESITA-3665). */
+export const ROW_PHOTO =
+  "bg-muted relative min-h-full overflow-hidden rounded-l-2xl";
 
-/** The info: 12px inside, as tall as the card, the buttons pinned to its
- *  bottom so every row's buttons line up. */
-export const ROW_INFO = "flex min-w-0 flex-col gap-1 self-stretch p-3";
+/** The info box: a soft fill, 12px inside, 16px corners on the outer side
+ *  only, the buttons pinned to its bottom so every row's buttons line up.
+ *  At least square; it grows with its facts (an aspect-ratio box's minimum
+ *  height is its content), and the photo grows with it. */
+export const ROW_INFO =
+  "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
 
 // PLACES 4.0 (MESITA-3670): a vertical list of carousels, one per family,
 // each card about two thirds of the width so about 1.5 show and the next
