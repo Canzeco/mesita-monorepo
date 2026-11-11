@@ -529,6 +529,8 @@ export function staffTabView(
     // is compared by the caller (never the hash itself).
     origin: t.origin ?? "waiter",
     verified_at: t.verified_at ?? null,
+    // MESITA-3708: Verify waits for a card still going through.
+    card_pending: parts.some((p) => p.part === "card" && (p.status === "opening" || p.status === "open")),
   };
 }
 

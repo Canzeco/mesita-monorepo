@@ -1,5 +1,7 @@
 // Supabase Edge Function — visit-web-cash-tab
 //
+// MESITA-3708: only a Staff-QR phone (an s2…qr staff token) confirms cash.
+//
 // MESITA-3562 (Pay at the table, _shared/tab.ts): the waiter's Received.
 // The guest chose to pay part of the tab in cash; the waiter types what they
 // received (or nothing: exactly what is owed). Staff only: a staff token or
@@ -24,6 +26,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { isUuid } from "../_shared/place-id.ts";
 import { failWithRequestId, json, readJson, serveJson } from "../_shared/http.ts";
 import { openRequest } from "../_shared/request.ts";
+import { readStaffToken, supabaseStaffStore } from "../_shared/staff.ts";
 import { callTabRpc, hashTabToken, readCashBody, readTabByToken, rpcRefusal, tabStaffAccess, readShareTokenHash } from "../_shared/tab.ts";
 
 serveJson("visit-web-cash-tab", async (req) => {
@@ -49,6 +52,14 @@ serveJson("visit-web-cash-tab", async (req) => {
     if (!staff.ok) {
       console.log("[visit-web-cash-tab]", JSON.stringify({ outcome: staff.code, place_id: tab.place_id }));
       return json({ ok: false, code: staff.code, error: staff.error, ...staff.detail }, staff.status);
+    }
+    // MESITA-3708: cash is confirmed only from a phone signed in by the Staff
+    // QR. A place code can be watched being typed at the table, so a token it
+    // minted (or an older s1 token) never confirms cash.
+    const info = await readStaffToken(env.serviceKey, tab.place_id, staff.staffToken, await supabaseStaffStore(admin).keys(tab.place_id), Date.now());
+    if (!info || info.src !== "qr") {
+      console.log("[visit-web-cash-tab]", JSON.stringify({ outcome: "staff_qr_needed", place_id: tab.place_id }));
+      return json({ ok: false, code: "staff_qr_needed", error: "Scan your Staff QR to confirm cash" }, 403);
     }
     if (!tab.staff_key_hash) return json({ ok: false, code: "not_billed", error: "The bill was never sent" }, 409);
     // Any staff of the tab's place may confirm (checked above): the RPC's key

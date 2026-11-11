@@ -281,7 +281,12 @@ export type TabRead = {
   updated_at: string;
   test_mode: boolean;
   /** MESITA-3695: friends split this bill; each share by id, never who. */
-  table: TableRead | null;
+  table: TableRead | null;  /** MESITA-3707: `guest` = the guest typed the bill and paid; the waiter
+   *  verifies. Older reads have no origin (a waiter tab). */
+  origin?: "waiter" | "guest";
+  verified_at?: string | null;
+  /** A card part is still going through: Verify waits for it. */
+  card_pending?: boolean;
 };
 
 export type TableRead = {
@@ -359,6 +364,32 @@ export async function cashTab(
   }
   if (!res || res.status >= 500 || !data) return "failed";
   return tabRefusal(data, "Couldn't confirm. Try again.");
+}
+
+/** MESITA-3708: the waiter's Verify on a guest's payment. Only a phone signed
+ *  in by the Staff QR may verify (staff_qr_needed otherwise). Empty
+ *  cash_received means exactly what is owed; `short` answers missing_cents. */
+export type Verified = {
+  outcome: "verified" | "already_verified";
+  verified_at: string | null;
+  same_phone: boolean | null;
+  cashback_cents: number;
+};
+
+export async function verifyTab(
+  args: { token: string; place_id: string; staff_token: string; cash_received_cents: number | null },
+): Promise<Verified | TabRefusal | "failed"> {
+  const { res, data } = await post("visit-web-verify-tab", args);
+  if (data?.ok) {
+    return {
+      outcome: data.outcome === "already_verified" ? "already_verified" : "verified",
+      verified_at: typeof data.verified_at === "string" ? data.verified_at : null,
+      same_phone: typeof data.same_phone === "boolean" ? data.same_phone : null,
+      cashback_cents: typeof data.cashback_cents === "number" ? data.cashback_cents : 0,
+    };
+  }
+  if (!res || res.status >= 500 || !data) return "failed";
+  return tabRefusal(data, "Couldn't verify. Try again.");
 }
 
 // ── The Staff QR (MESITA-3696) ──────────────────────────────────────────────
