@@ -32,7 +32,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Ban, CalendarCheck, ClipboardList, Gift, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
+import { Activity as ActivityIcon, Ban, CalendarCheck, Gift, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
 
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -296,14 +296,14 @@ export function ActivityPage() {
         <RowsSkeleton />
       ) : sourceFailed && !shown?.length ? (
         <EmptyState
-          icon={ClipboardList}
+          icon={ActivityIcon}
           title="Couldn't load activity"
           description="Check your connection and try again."
           action={{ label: "Try again", onClick: () => setNonce((n) => n + 1) }}
         />
       ) : !shown?.length ? (
         <EmptyState
-          icon={type?.Icon ?? ClipboardList}
+          icon={type?.Icon ?? ActivityIcon}
           title={type ? `No ${type.label.toLowerCase()} yet` : "No activity yet"}
           description={type?.empty ?? "Payments, prepayments, gifts and reservations at Mesita places show up here."}
           action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
