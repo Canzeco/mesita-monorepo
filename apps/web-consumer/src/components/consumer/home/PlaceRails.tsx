@@ -20,14 +20,9 @@ import type { Coords } from "@/lib/use-user-location";
 import { useCreatedPlaces, withCreatedPlaces } from "@/lib/created-places";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import type { CardSaveShare } from "@/lib/use-card-save-share";
-import { RailSkeleton } from "./DiscoverFallback";
+import { PlaceRailSkeleton, RailSkeleton } from "./DiscoverFallback";
 import { PlaceRailCard } from "./PlaceRailCard";
-import {
-  GRID_CHIPS,
-  RAIL_CARD,
-  RAIL_TITLE,
-  RAIL_TRACK,
-} from "./place-grid-classes";
+import { GRID_CHIPS, RAIL_TITLE, RAIL_TRACK } from "./place-grid-classes";
 import { cn } from "@/lib/utils";
 
 /** A carousel's anchor on the page, for the family bar's jumps. */
@@ -323,23 +318,17 @@ function Rail({
           <ul role="list" aria-label={rail.label} className={RAIL_TRACK}>
             {/* AN EMPTY CAROUSEL, NOT A HIDDEN ONE (Pato, MESITA-3677: "show
                 the carousel row even if empty, but don't hide the family"):
-                one card-sized soft box that says so. */}
+                one box that says so, the loading card's size (MESITA-3680). */}
             {places.length === 0 ? (
-              <li
-                className={cn(
-                  RAIL_CARD,
-                  "text-muted-foreground items-center justify-center p-6 text-center text-sm",
-                )}
-                data-rail-empty
-              >
-                <span className="flex aspect-[4/3] items-center">
-                  {failed
+              <PlaceRailSkeleton
+                message={
+                  failed
                     ? `Couldn't load ${rail.label}`
                     : top
                       ? "No places near yet"
-                      : `No ${rail.label} places near yet`}
-                </span>
-              </li>
+                      : `No ${rail.label} places near yet`
+                }
+              />
             ) : null}
             {places.map((place, i) => (
               <PlaceRailCard
