@@ -65,6 +65,15 @@ export const RAIL_CARD_TEXT = "flex min-w-0 flex-1 flex-col gap-0.5 px-3 pt-3";
 const RAIL_CARD_ACTIONS =
   "absolute right-3 bottom-3 left-[calc(8.375rem+10px)]";
 
+/** A THIRD-WIDTH PHOTO (Pato, 2026-11-11, MESITA-3699, on Activity ›
+ *  Favorites: "to keep nice UI, image must be 1/3"): on a full-width row
+ *  the square thumb read small. The photo is a third of the card, full
+ *  height, cropped to fill; Save · Share start a third in plus 12px. The
+ *  Search rail keeps the square. */
+const PHOTO_SQUARE = "aspect-square h-full w-auto";
+const PHOTO_THIRD = "h-full w-1/3";
+const RAIL_CARD_ACTIONS_THIRD = "absolute right-3 bottom-3 left-[calc(100%/3+12px)]";
+
 /** One 20px text row of the card in loading: a bar at the line's type size
  *  (16px name, 14px facts), centred on the row's line box. */
 function RailRowSkeleton({ bar }: { bar: string }) {
@@ -80,7 +89,7 @@ function RailRowSkeleton({ bar }: { bar: string }) {
  *  frame, the square thumb at the inner height, the three 20px rows (name ·
  *  $$ category · ★ rating Open) and Save · Share where CardActions
  *  sits, so nothing moves when the cards land. */
-export function RailCardSkeleton() {
+export function RailCardSkeleton({ photoThird = false }: { photoThird?: boolean }) {
   return (
     <div
       aria-hidden
@@ -88,7 +97,7 @@ export function RailCardSkeleton() {
     >
       <div className="absolute inset-0 flex flex-col">
         <div className={RAIL_CARD_ROW}>
-          <Skeleton className="aspect-square h-full w-auto shrink-0 rounded-none" />
+          <Skeleton className={cn(photoThird ? PHOTO_THIRD : PHOTO_SQUARE, "shrink-0 rounded-none")} />
           <div className={RAIL_CARD_TEXT}>
             <RailRowSkeleton bar="h-4 w-3/4" />
             <RailRowSkeleton bar="h-3.5 w-1/2" />
@@ -96,7 +105,7 @@ export function RailCardSkeleton() {
           </div>
         </div>
       </div>
-      <div className={cn(CARD_ACTIONS_ROW, RAIL_CARD_ACTIONS)}>
+      <div className={cn(CARD_ACTIONS_ROW, photoThird ? RAIL_CARD_ACTIONS_THIRD : RAIL_CARD_ACTIONS)}>
         <Skeleton className={CARD_BUTTON_BOX} />
         <Skeleton className={CARD_BUTTON_BOX} />
       </div>
@@ -122,6 +131,7 @@ export function RailCard({
   onShare,
   withDistance = false,
   photoOverlay,
+  photoThird = false,
 }: {
   place: Place;
   selected: boolean;
@@ -132,6 +142,8 @@ export function RailCard({
   withDistance?: boolean;
   /** Drawn over the photo, e.g. Search's score readout (MESITA-2877). */
   photoOverlay?: ReactNode;
+  /** The photo is a third of the card's width (Favorites, MESITA-3699). */
+  photoThird?: boolean;
 }) {
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
@@ -168,14 +180,14 @@ export function RailCard({
           {/* Square thumb, card stays a wide rectangle. Bleeds to the card edge
             — clip only, no inner radius or stroke. Height is the locked card
             height; width matches so the box is always 1:1. */}
-          <div className="bg-muted relative aspect-square h-full w-auto shrink-0 overflow-hidden">
+          <div className={cn("bg-muted relative shrink-0 overflow-hidden", photoThird ? PHOTO_THIRD : PHOTO_SQUARE)}>
             {photo ? (
               <SizedImage
                 src={photo}
                 size="card"
                 alt={place.name}
                 fill
-                sizes="140px"
+                sizes={photoThird ? "(max-width: 768px) 34vw, 320px" : "140px"}
                 className="border-0 object-cover outline-none"
               />
             ) : (
@@ -217,7 +229,7 @@ export function RailCard({
         onShare={onShare}
         // A Google-only card generates its profile instead (MESITA-2843).
         onGenerate={isGoogleOnlyPlace(place) ? onOpen : undefined}
-        className={RAIL_CARD_ACTIONS}
+        className={photoThird ? RAIL_CARD_ACTIONS_THIRD : RAIL_CARD_ACTIONS}
       />
     </div>
   );

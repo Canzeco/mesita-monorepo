@@ -40,7 +40,7 @@ function FavoritesListSkeleton() {
   return (
     <div className={LIST} aria-hidden>
       {[0, 1, 2].map((i) => (
-        <RailCardSkeleton key={i} />
+        <RailCardSkeleton key={i} photoThird />
       ))}
     </div>
   );
@@ -81,6 +81,7 @@ export function FavoritesList() {
             onSave={() => cards.toggle(place)}
             onShare={() => cards.share(place)}
             withDistance
+            photoThird
           />
         </li>
       ))}
