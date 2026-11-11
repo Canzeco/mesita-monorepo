@@ -52,6 +52,9 @@ export const CONSUMER_ROUTES = {
   //   /pay/<placeId>             pay at that place: opens your bill there and
   //                              becomes /pay/tab/<id> (the table QR's door)
   //   /pay/tab/<tabId>           the bill at the table (MESITA-3564)
+  //   /pay/join/<token>          a friend's share of a split bill
+  //                              (MESITA-3695): takes the share, becomes
+  //                              /pay/tab/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
   //   /wallet                    the Pay tab's Wallet half (MESITA-3698):
   //                              the two rails under the Pay · Wallet band
@@ -66,6 +69,7 @@ export const CONSUMER_ROUTES = {
   pay: "/pay",
   payPlace: { prefix: "/pay/" },
   payTab: { prefix: "/pay/tab/" },
+  payJoin: { prefix: "/pay/join/" },
   payReceipt: { prefix: "/pay/receipt/" },
   // PAY · WALLET (Pato, 2026-11-11, MESITA-3698: "Divide Payments across
   // two sections: Pay and Wallet"): the bar's Pay tab has two halves, each
@@ -269,6 +273,11 @@ export function payTabPath(tabId: string): string {
   return `${CONSUMER_ROUTES.payTab.prefix}${tabId}`;
 }
 
+/** A friend's door to their share of a split bill (MESITA-3695). */
+export function payJoinPath(token: string): string {
+  return `${CONSUMER_ROUTES.payJoin.prefix}${encodeURIComponent(token)}`;
+}
+
 /** A paid bill's proof. */
 export function payReceiptPath(paymentId: string): string {
   return `${CONSUMER_ROUTES.payReceipt.prefix}${paymentId}`;
@@ -350,6 +359,7 @@ export const ROUTE_MAP = {
   pay: row("/pay", "pay", "tab", null),
   payPlace: row("/pay/:placeId", "pay", "door", "pay"),
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
+  payJoin: row("/pay/join/:token", "pay", "door", "pay"),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
   // Pay's second half (MESITA-3698): it lights Pay, like /pay itself.
   wallet: row("/wallet", "pay", "tab", null),

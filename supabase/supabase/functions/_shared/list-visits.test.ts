@@ -50,6 +50,7 @@ function stub(rows: { tabs: unknown[]; parts?: unknown[] | Error }) {
       const q: Record<string, unknown> = {
         select(s: string) { call.select = s; return q; },
         eq(c: string, v: unknown) { call.filters.push(["eq", c, v]); return q; },
+        is(c: string, v: unknown) { call.filters.push(["is", c, v]); return q; },
         in(c: string, v: unknown) { call.filters.push(["in", c, v]); return q; },
         order() { return q; },
         limit(n: number) { call.limit = n; return q; },
@@ -66,6 +67,8 @@ Deno.test("a guest lists only their own tabs, in the wallet's money mode", async
   await listVisits(client, ME, true, Date.now());
   const tabs = calls.find((c) => c.table === "pay_tabs")!;
   assertEquals(tabs.filters.filter((f) => f[0] === "eq"), [["eq", "consumer_id", ME], ["eq", "livemode", true]]);
+  // MESITA-3695: a split table is listed as the guest's own share, never twice.
+  assertEquals(tabs.filters.filter((f) => f[0] === "is"), [["is", "split_at", null]]);
 });
 
 Deno.test("nothing secret leaves: no hashes, proof tokens or consumer id", async () => {

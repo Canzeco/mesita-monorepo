@@ -80,6 +80,7 @@ function liveAddresses(): Set<string> {
     CONSUMER_ROUTES.pay,
     `${CONSUMER_ROUTES.payPlace.prefix}:id`,
     `${CONSUMER_ROUTES.payTab.prefix}:id`,
+    `${CONSUMER_ROUTES.payJoin.prefix}:token`,
     `${CONSUMER_ROUTES.payReceipt.prefix}:id`,
     CONSUMER_ROUTES.wallet,
     `${CONSUMER_ROUTES.walletPlace.prefix}:id`,
@@ -114,6 +115,8 @@ describe("CONSUMER_ROUTES (canonical surface map)", () => {
       pay: "/pay",
       payPlace: { prefix: "/pay/" },
       payTab: { prefix: "/pay/tab/" },
+      // A friend's share of a split bill (MESITA-3695).
+      payJoin: { prefix: "/pay/join/" },
       payReceipt: { prefix: "/pay/receipt/" },
       // Pay's second half (MESITA-3698).
       wallet: "/wallet",

@@ -2,7 +2,7 @@
 // in TypeScript (the ledger's are pgTAP's, pay_tabs.test.sql).
 
 import { assertEquals } from "jsr:@std/assert@1";
-import { effectiveStatus, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, rpcRefusal, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
+import { callTabRpc, effectiveStatus, hashTabStaffKey, hashTabToken, readBillBody, readCashBody, readSplitBody, readSplitTabBody, rpcRefusal, tableView, type TabPartRow, type TabRow, tabMoney } from "./tab.ts";
 
 const TOKEN = "AbCdEfGhIjKlMnOpQrStUv";
 const TAB = "00000000-0000-4000-8000-000000003562";
@@ -80,4 +80,58 @@ Deno.test("a stale tab reads expired, unless a part is in flight or paid", () =>
   assertEquals(effectiveStatus(tab(), [part()], late), "paying");
   assertEquals(effectiveStatus(tab(), [part({ status: "paid", paid_at: "2026-11-09T10:10:00Z" })], late), "paid");
   assertEquals(effectiveStatus(tab({ status: "billed" }), [], Date.parse("2026-11-09T10:10:00Z")), "billed");
+});
+
+// ── Friends split one bill (MESITA-3695) ────────────────────────────────────
+
+Deno.test("the table: paid, taken and left from its live shares; expired and cancelled shares hold nothing", () => {
+  const now = Date.parse("2026-11-09T10:10:00Z");
+  const table = tab({ status: "billed", bill_cents: 100000, tip_cents: 10000, split_ways: 3, split_at: "2026-11-09T10:00:00Z" });
+  const share = (id: string, over: Partial<TabRow>) =>
+    tab({ id, parent_tab_id: TAB, credit_cents: 0, cash_bill_cents: 0, cash_tip_cents: 0, ...over });
+  const v = tableView(table, [
+    share("s1", { status: "paid", bill_cents: 40000, cash_bill_cents: 40000, cash_tip_cents: 4000, cash_received_cents: 44000 }),
+    share("s2", { status: "paying", bill_cents: 30000, card_bill_cents: 30000, expires_at: "2026-11-09T10:05:00Z" }),
+    share("s3", { status: "billed", bill_cents: 30000, tip_cents: 3000 }),
+    share("s4", { status: "billed", bill_cents: 30000, expires_at: "2026-11-09T10:05:00Z" }),
+    share("s5", { status: "cancelled", bill_cents: 30000 }),
+  ], now);
+  assertEquals([v.paid_cents, v.taken_cents, v.left_cents, v.ways], [40000, 70000, 30000, 3]);
+  assertEquals(v.shares.map((s) => [s.id, s.status]), [["s1", "paid"], ["s2", "paying"], ["s3", "billed"]]);
+  assertEquals(v.shares[0].cash_due_cents, 44000);
+  assertEquals(v.shares[2].tip_cents, 3000);
+  assertEquals(v.status, "billed");
+});
+
+Deno.test("a split table past its time with nothing moving reads expired; a share in flight keeps it open", () => {
+  const late = Date.parse("2026-11-09T11:00:00Z");
+  const table = tab({ status: "billed", bill_cents: 100000, split_at: "2026-11-09T10:00:00Z" });
+  const paid = tab({ id: "s1", parent_tab_id: TAB, status: "paid", bill_cents: 50000 });
+  assertEquals(tableView(table, [paid], late).status, "expired");
+  assertEquals(tableView(table, [paid], late).paid_cents, 50000);
+  const paying = tab({ id: "s2", parent_tab_id: TAB, status: "paying", bill_cents: 50000 });
+  assertEquals(tableView(table, [paid, paying], late).status, "billed");
+});
+
+Deno.test("the split body: ways 2 to 20 with a share, whole, or a share alone", () => {
+  assertEquals(readSplitTabBody({ tab_id: TAB, ways: 2, share_cents: 50000 }), { ok: true, input: { kind: "split", tabId: TAB, ways: 2, shareCents: 50000 } });
+  assertEquals(readSplitTabBody({ tab_id: TAB, whole: true }), { ok: true, input: { kind: "whole", tabId: TAB } });
+  assertEquals(readSplitTabBody({ tab_id: TAB, share_cents: 100 }), { ok: true, input: { kind: "share", tabId: TAB, shareCents: 100 } });
+  for (const bad of [{ tab_id: TAB, ways: 1, share_cents: 100 }, { tab_id: TAB, ways: 21, share_cents: 100 }, { tab_id: TAB, ways: 2 }, { tab_id: TAB, share_cents: 0 }, { tab_id: "x", whole: true }]) {
+    assertEquals(readSplitTabBody(bad).ok, false);
+  }
+});
+
+Deno.test("a split guard's raise is a refusal the screens can read, with what is left", async () => {
+  const fake = (message: string) => ({ rpc: () => Promise.resolve({ data: null, error: { message } }) }) as unknown as Parameters<typeof callTabRpc>[0];
+  assertEquals(await callTabRpc(fake("share_too_big:50000"), "pay_tab_open_parts", {}), { ok: false, code: "share_too_big", left_cents: 50000 });
+  assertEquals(await callTabRpc(fake("split_locked"), "pay_tab_open_parts", {}), { ok: false, code: "split_locked" });
+  assertEquals(rpcRefusal({ ok: false, code: "share_too_big", left_cents: 50000 }).status, 409);
+  let threw = false;
+  try {
+    await callTabRpc(fake("deadlock detected"), "pay_tab_open_parts", {});
+  } catch {
+    threw = true;
+  }
+  assertEquals(threw, true);
 });

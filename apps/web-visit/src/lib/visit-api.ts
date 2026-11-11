@@ -280,6 +280,23 @@ export type TabRead = {
   expires_at: string;
   updated_at: string;
   test_mode: boolean;
+  /** MESITA-3695: friends split this bill; each share by id, never who. */
+  table: TableRead | null;
+};
+
+export type TableRead = {
+  status: string;
+  bill_cents: number;
+  paid_cents: number;
+  left_cents: number;
+  shares: Array<{
+    id: string;
+    status: string;
+    share_cents: number;
+    tip_cents: number;
+    cash_due_cents: number;
+    cash_received_cents: number | null;
+  }>;
 };
 
 /** The poll: the tab, `gone` (no such tab: the screen stops), or `failed`
@@ -330,7 +347,7 @@ export async function billTab(
 /** The waiter's Received on the cash part. Empty cash_received means
  *  exactly what is owed. `short` answers missing_cents and writes nothing. */
 export async function cashTab(
-  args: { token: string; cash_received_cents: number | null } & StaffKey,
+  args: { token: string; cash_received_cents: number | null; share_tab_id?: string } & StaffKey,
 ): Promise<{ outcome: string; staff_token: string | null; staff_expires_at: string | null } | TabRefusal | "failed"> {
   const { res, data } = await post("visit-web-cash-tab", args);
   if (data?.ok) {
