@@ -40,8 +40,9 @@ const GREEN = "bg-green-400 text-neutral-950";
 // Story, VIP. The short words that came with it left with Places 3.0 and 4.0
 // (MESITA-3684).
 const OFFER_SLIDES: OfferSlide[] = [
-  // The pill is filled in from the place's own rate (offerSlides).
-  { key: "cashback", lead: "Mesita Payments", pill: "Cashback", spoken: "Mesita Payments cashback", section: "payment", tone: GREEN },
+  // The pill is filled in from the place's own rate (offerSlides). "Mesita
+  // Pay" on the button (Pato, MESITA-3691: "Better Mesita Pay").
+  { key: "cashback", lead: "Mesita Pay", pill: "Cashback", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
   // Cash at the table (MESITA-3671): shown once the catalog answer carries
   // the place's cash rate, `cash_cashback_bps`.
   { key: "cash", lead: "Cash", pill: "Cashback", spoken: "Cash cashback", section: "payment", tone: GREEN },
@@ -67,7 +68,7 @@ export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
     s.key === "cashback" ? offers.cashback && bps > 0 : s.key === "cash" ? cashBps > 0 : sell.has(s.key),
   ).map((s) =>
     s.key === "cashback"
-      ? { ...s, pill: `+${bps / 100}% Cashback`, spoken: `Mesita Payments, ${bps / 100}% cashback` }
+      ? { ...s, pill: `+${bps / 100}% Cashback`, spoken: `Mesita Pay, ${bps / 100}% cashback` }
       : s.key === "cash"
         ? { ...s, pill: `+${cashBps / 100}% Cashback`, spoken: `Cash, ${cashBps / 100}% cashback` }
         : s,
