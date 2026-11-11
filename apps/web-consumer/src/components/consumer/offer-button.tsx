@@ -78,26 +78,24 @@ function useOfferSlide(slides: OfferSlide[]): { index: number; previous: number 
   return { index, previous: beat === firstBeat ? null : (beat - 1 + n) % n };
 }
 
-/** A slide's words in a half-width box (MESITA-3665): the cashback pill
- *  alone ("+5% Cashback"), a voucher's lead with its bonus ("$200MX Prepay
- *  +10%"). The full line, "Mesita Payments +5% Cashback", needs about 190px. */
-function compactWords(slide: OfferSlide): string {
-  return slide.bonus ? `${slide.lead} +${slide.bonus}%` : slide.pill;
+/** A slide's words in a half-width box (MESITA-3665), still the words and
+ *  the ink pill (Pato, MESITA-3667: "keep the green & black for the bonus
+ *  hit"): "Cashback [+5%]", "$200MX Prepay [+10%]". The full line, "Mesita
+ *  Payments [+5% Cashback]", needs about 190px. */
+function compactWords(slide: OfferSlide): { lead: string; pill: string } {
+  if (slide.bonus) return { lead: slide.lead, pill: `+${slide.bonus}%` };
+  // Cashback: "+5% Cashback" splits into the word and the rate.
+  const rate = slide.pill.match(/^\+[\d.]+%/)?.[0];
+  return rate ? { lead: "Cashback", pill: rate } : { lead: slide.lead, pill: slide.pill };
 }
 
 function OfferWords({ slide, compact = false, className }: { slide: OfferSlide; compact?: boolean; className?: string }) {
-  if (compact) {
-    return (
-      <span className={cn("absolute inset-0 flex items-center justify-center truncate", className)}>
-        {compactWords(slide)}
-      </span>
-    );
-  }
+  const words = compact ? compactWords(slide) : slide;
   return (
     <span className={cn("absolute inset-0 flex items-center justify-center gap-1.5", className)}>
-      {slide.lead}
-      <span className="bg-foreground text-paper rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
-        {slide.pill}
+      <span className={compact ? "truncate" : undefined}>{words.lead}</span>
+      <span className="bg-foreground text-paper shrink-0 rounded-md px-1.5 py-0.5 text-xs leading-none font-bold tabular-nums">
+        {words.pill}
       </span>
     </span>
   );
