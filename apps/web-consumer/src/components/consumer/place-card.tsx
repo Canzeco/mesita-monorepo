@@ -217,6 +217,12 @@ export const CARD_BUTTON_BOX = "h-8 rounded-lg";
 // The place screen's action tile, on one line (MESITA-2650): the border grey
 // at 60% (MESITA-2647), CARD_BUTTON_BOX, 12px semibold ink; an invisible 6px
 // extension above and below keeps the 44px touch floor.
+/** A button that catches only its drawn box (Pato, MESITA-3706: "all the
+ *  white section must be clickable … between the buttons and the text above
+ *  its fucked"): no invisible 6px hit extension, and it takes taps although
+ *  its row lets them through to the tile's link. Home's tile only. */
+export const EXACT_HIT = "pointer-events-auto after:hidden";
+
 const CARD_BUTTON = `${CARD_BUTTON_BOX} bg-border/60 text-foreground hover:bg-border/80 relative flex after:absolute after:inset-x-0 after:-inset-y-1.5 min-w-0 items-center justify-center gap-1.5 px-2 font-sans text-xs font-semibold transition active:scale-[0.99]`;
 
 /**
@@ -239,6 +245,7 @@ export function CardActions({
   onShare,
   onGenerate,
   className,
+  buttonClassName,
 }: {
   name: string;
   saved: boolean;
@@ -246,6 +253,8 @@ export function CardActions({
   onShare: () => void;
   onGenerate?: () => void;
   className?: string;
+  /** Added to each button: Home's tile passes EXACT_HIT (MESITA-3706). */
+  buttonClassName?: string;
 }) {
   if (onGenerate) {
     return (
@@ -254,7 +263,7 @@ export function CardActions({
           type="button"
           onClick={onGenerate}
           aria-label={`Generate ${name}'s profile`}
-          className={cn(CARD_BUTTON, "col-span-2")}
+          className={cn(CARD_BUTTON, "col-span-2", buttonClassName)}
           data-tile-generate
         >
           <Sparkles
@@ -275,7 +284,7 @@ export function CardActions({
         aria-label={
           saved ? `Remove ${name} from favorites` : `Add ${name} to favorites`
         }
-        className={CARD_BUTTON}
+        className={cn(CARD_BUTTON, buttonClassName)}
         data-tile-save
       >
         <Heart
@@ -292,7 +301,7 @@ export function CardActions({
         type="button"
         onClick={onShare}
         aria-label={`Share ${name}`}
-        className={CARD_BUTTON}
+        className={cn(CARD_BUTTON, buttonClassName)}
         data-tile-share
       >
         <Share2 className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

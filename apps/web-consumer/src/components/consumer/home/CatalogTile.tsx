@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   CardActions,
+  EXACT_HIT,
   HoursRow,
   KindRow,
   cardFacts,
@@ -231,10 +232,12 @@ export function CatalogTile({
           card's own open. TILE_ACTIONS: 12px from the tile's sides AND its
           foot (MESITA-2668); it was 8px at the foot. */}
       {/* The foot lets taps through, so the voucher line opens the place like
-          the rest of the card (MESITA-3246); only the buttons catch their own. */}
+          the rest of the card (MESITA-3246); only the buttons catch their own,
+          and only their drawn box (EXACT_HIT, MESITA-3706): the gaps around
+          and between them open the place like the rest of the white band. */}
       <div className={cn(TILE_ACTIONS, TILE_FOOT, "pointer-events-none")}>
         <CardActions
-          className="pointer-events-auto"
+          buttonClassName={EXACT_HIT}
           name={place.name}
           saved={saved}
           onSave={onToggle}
@@ -248,7 +251,7 @@ export function CatalogTile({
               : undefined
           }
         />
-        {vouchers ? <OfferButton href={href} payHref={isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay} name={place.name} slides={slides} className="pointer-events-auto" /> : null}
+        {vouchers ? <OfferButton href={href} payHref={isRouteId(place.id) ? payPlacePath(place.id) : CONSUMER_ROUTES.pay} name={place.name} slides={slides} className={EXACT_HIT} /> : null}
       </div>
     </li>
   );
