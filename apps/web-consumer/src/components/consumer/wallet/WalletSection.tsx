@@ -25,6 +25,11 @@ import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, Walle
 // /wallet/<placeId> (MESITA-3614); a saved card or a waiting Story opens its
 // sheet here. The money is useWallet's (consumer-web-get-wallet).
 //
+// ADD A CREDITS CARD (Pato, MESITA-3705: "add Credits Card. not add credits
+// directly — to add credits you click the card"): Credits' Add goes to
+// Search; a place's "Add card to Wallet" (MESITA-3583) puts its card here,
+// and the card's House Card is where credits are bought.
+//
 // /wallet/gift/<token> draws the Wallet with a friend's credit link open
 // over it (MESITA-3292); closing it leaves for /wallet.
 
@@ -126,7 +131,7 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
       </WalletList>
 
       <WalletList title="Credits Payment Methods">
-        <AddRow label="Add credits" line="Buy credits on a place's Offers" href={CONSUMER_ROUTES.home} />
+        <AddRow label="Add a Credits Card" line="Find a place and add its card" href={CONSUMER_ROUTES.search} />
         {wallet?.waiting_stories?.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
         {credits?.map((row) => <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} />)}
         {!credits && !failed ? <RowsSkeleton /> : null}
