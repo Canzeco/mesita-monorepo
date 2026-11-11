@@ -36,29 +36,23 @@ export type WalletCardModel = {
 
 const CARD_BASE =
   "relative z-10 flex w-full flex-col justify-between bg-neutral-950 text-left text-white focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:outline-none";
-/** Full size on the method sheet; compact on a Wallet rail, 2.5 across (MESITA-3534). */
-// Rail and sheet cards are both payment-card shaped (MESITA-3643; 2:1 on
-// the rails for a day, MESITA-3637).
-const cardClass = (compact: boolean) =>
-  cn(CARD_BASE, "aspect-[1.586/1]", compact ? "rounded-xl p-2.5" : "rounded-2xl p-5");
+/** Payment-card shaped (MESITA-3643). The Wallet's lists draw a row per
+ *  card instead (WalletLists, MESITA-3701); this is the full card. */
+const CARD_CLASS = cn(CARD_BASE, "aspect-[1.586/1] rounded-2xl p-5");
 
 export function WalletCard({
   card,
   open = false,
   onToggle,
   eager = false,
-  compact = false,
 }: {
   card: WalletCardModel;
   open?: boolean;
   onToggle?: () => void;
   eager?: boolean;
-  /** A rail card, 2.5 across the screen (MESITA-3534): smaller face. */
-  compact?: boolean;
 }) {
-  const label = ariaLabel(card);
-  const face = compact ? <CompactFace card={card} eager={eager} /> : <CardFace card={card} open={open} eager={eager} />;
-  const CARD_CLASS = cardClass(compact);
+  const label = walletCardLabel(card);
+  const face = <CardFace card={card} open={open} eager={eager} />;
   if (card.tap.kind === "expand") {
     return (
       <button type="button" onClick={onToggle} aria-expanded={open} aria-label={label} className={CARD_CLASS}>
@@ -85,31 +79,6 @@ export function WalletCard({
     <div role="group" aria-label={label} className={CARD_CLASS}>
       {face}
     </div>
-  );
-}
-
-/** The rail's small card: photo and name on top, the amount at the foot. */
-function CompactFace({ card, eager }: { card: WalletCardModel; eager: boolean }) {
-  const amount = cardAmount(card);
-  return (
-    <>
-      <div className="flex items-center gap-1.5">
-        <span className="h-5 w-5 shrink-0 overflow-hidden rounded-full bg-white/10 ring-1 ring-white" aria-hidden>
-          {card.photo ? (
-            <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center type-meta font-semibold">
-              {firstInitial(card.name)}
-            </span>
-          )}
-        </span>
-        <span className="min-w-0 truncate text-xs font-semibold">{card.name}</span>
-      </div>
-      <div className="flex min-w-0 items-baseline gap-1.5" aria-hidden>
-        <span className="text-base leading-tight font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
-        <span className="truncate type-label text-white/60">{amount.pending ? "Pending" : card.available_cents > 0 ? "Credits" : "No credits yet"}</span>
-      </div>
-    </>
   );
 }
 
@@ -147,7 +116,7 @@ function CardFace({ card, open, eager }: { card: WalletCardModel; open: boolean;
               <span className="rounded-full bg-white/15 px-2 py-0.5 text-xs font-semibold">Pending</span>
             ) : null}
           </div>
-          <p className="mt-0.5 text-sm text-white/60">{smallLine(card)}</p>
+          <p className="mt-0.5 text-sm text-white/60">{walletCardLine(card)}</p>
         </div>
         {card.tap.kind === "expand" ? (
           <ChevronDown className={cn("h-5 w-5 shrink-0 text-white/60 transition", open && "rotate-180")} aria-hidden />
@@ -159,7 +128,8 @@ function CardFace({ card, open, eager }: { card: WalletCardModel; open: boolean;
   );
 }
 
-function smallLine(card: WalletCardModel): string {
+/** The amount's quiet line, on the card and on its Wallet row. */
+export function walletCardLine(card: WalletCardModel): string {
   if (card.available_cents > 0 && card.pending_cents > 0) {
     return `${money(card.pending_cents, card.currency)} pending · available within the hour`;
   }
@@ -168,7 +138,7 @@ function smallLine(card: WalletCardModel): string {
   return "No credits yet";
 }
 
-function ariaLabel(card: WalletCardModel): string {
+export function walletCardLabel(card: WalletCardModel): string {
   if (!card.hasBalance) return `${card.name}: no credits, open place`;
   const pending = card.pending_cents > 0 ? `, ${money(card.pending_cents, card.currency)} pending` : "";
   return `${card.name}: ${money(card.available_cents, card.currency)} in credits${pending}`;
