@@ -1,6 +1,9 @@
 "use client";
 
-// /activity — THE BAR'S ACTIVITY TAB (MESITA-3631), TICKETS (MESITA-3688).
+// /activity — A PAGE UNDER ME (MESITA-3717, Pato: "Make activity hidden. Move
+// it to profile. not in bottom menu."): Me's tiles open its chips, it wears
+// the pushed-page frame with Back and lights Me. It was the bar's fourth tab
+// from MESITA-3631; tickets since MESITA-3688.
 //
 // Six chips: five since MESITA-3697 (Pato: "Favorites, Reservations,
 // Visits(has payments inside), Vouchers(Prepayments), Gifts"), in his order,
@@ -38,7 +41,8 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
+import { Screen } from "@/components/consumer/nav/Screen";
+import { useUnseenNotifications } from "@/components/consumer/use-unseen-notifications";
 import { NotificationsList } from "@/components/consumer/NotificationsClient";
 import { FavoritesList } from "@/components/consumer/saved/FavoritesPage";
 import { Skeleton } from "@/components/shared/Skeleton";
@@ -510,6 +514,8 @@ export function ActivityPage() {
     }
   }, [visits.error, wallet.error, reservations.error]);
 
+  const unseen = useUnseenNotifications();
+
   // The clock the page judges "upcoming" and "within a day" by: read once.
   const [nowMs] = useState(() => Date.now());
 
@@ -601,7 +607,15 @@ export function ActivityPage() {
 
   return (
     <ActivityFrame
-      rail={<TypeRail type={type} onPick={pick} counts={counts} />}
+      rail={
+        <TypeRail
+          type={type}
+          onPick={pick}
+          counts={counts}
+          // Still unseen only until the Notifications list draws its rows.
+          dot={unseen ? "notifications" : null}
+        />
+      }
     >
       {type === "favorites" ? (
         <FavoritesList />
@@ -715,10 +729,13 @@ function TypeRail({
   type,
   onPick,
   counts,
+  dot,
 }: {
   type: ActivityType;
   onPick: (t: ActivityType) => void;
   counts: Partial<Record<ActivityType, string>>;
+  /** The chip that wears the red dot (MESITA-3717), if any. */
+  dot: ActivityType | null;
 }) {
   const chosen = useRef<HTMLButtonElement | null>(null);
   useLayoutEffect(() => {
@@ -766,6 +783,14 @@ function TypeRail({
                   {n}
                 </span>
               ) : null}
+              {dot === key ? (
+                <span
+                  className="bg-destructive h-2 w-2 rounded-full"
+                  data-unseen-dot
+                >
+                  <span className="sr-only">New</span>
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -778,9 +803,9 @@ function TypeRail({
   );
 }
 
-/** The tab's frame: the white header bar Pay wears (MESITA-3534), the title
- *  and the chips held at the top, then the page. The loading frame draws the
- *  same shape (MESITA-2701). */
+/** The page's frame: the pushed-page header with Back (Screen, MESITA-3717),
+ *  the chips held under it on a white strip, then the page. The loading
+ *  frame draws the same shape (MESITA-2701). */
 export function ActivityFrame({
   rail,
   children,
@@ -789,15 +814,12 @@ export function ActivityFrame({
   children: ReactNode;
 }) {
   return (
-    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
-      <header className="border-border bg-card sticky top-0 z-10 -mx-4 border-b px-4 pt-5 pb-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight">
-          Activity
-        </h1>
+    <Screen title="Activity" flush>
+      <div className="border-border bg-card sticky top-0 z-10 border-b px-4 pb-3">
         {rail ?? <RailSkeleton />}
-      </header>
-      <div className="mt-5">{children}</div>
-    </KeptScroll>
+      </div>
+      <div className="px-4 pt-5 pb-8">{children}</div>
+    </Screen>
   );
 }
 

@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { Inbox, QrCode, Search, User } from "lucide-react";
+import { QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -24,23 +24,30 @@ import {
 import { trackEvent } from "@/lib/analytics/track";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
+import { useUnseenNotifications } from "./use-unseen-notifications";
 
-// FIVE tabs, in this order (Pato, 2026-11-09, MESITA-3631: "Merge wallet and
-// pay into the same page ... Home Search Pay Activity Me"). Wallet held the
-// fourth tab from MESITA-3295 (2026-11-06) until its rails moved under Pay. It was four from
+// FOUR tabs, in this order (Pato, 2026-11-11, MESITA-3717: "Make activity
+// hidden. Move it to profile. not in bottom menu."; then, on splitting Pay
+// and Wallet into two tabs, "better do keep pay and wallet in the same
+// page"). Activity held the fourth tab from MESITA-3631 (2026-11-09), Wallet
+// from MESITA-3295 until its rails moved under Pay. It was four from
 // MESITA-2076 ("BOTTOM BAR MUST ONLY BE. Home. Search. Pay(Soon). Me.";
 // MESITA-2518 added Bookings, MESITA-2521 renamed it Saved; MESITA-2561
 // moved Saved under Me and made the fourth a Share tab, MESITA-2566 gave it
 // its own page):
 //
-//   Home · Search · Pay · Activity · Me
+//   Home · Search · Pay · Me
+//
+//   ME WEARS A RED DOT while a notification is newer than the last one this
+//   device showed (MESITA-3717, Pato: "if there is an event not viewed yet,
+//   put red bubble"): Activity is behind Me now, so the bar says something
+//   is waiting there. Opening Activity › Notifications clears it.
 //
 //   PAY OWNS THE MONEY (MESITA-3614, MESITA-3631): it lights on every
 //   address under /pay (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>)
 //   and under /wallet (/wallet/<placeId>, /wallet/gift/<token>), so a bill
 //   or a House Card keeps Pay lit. Its page has two halves, Pay (/pay) and
-//   Wallet (/wallet), under one band (MESITA-3698). Activity is every money line, the list
-//   that was Me › Transactions.
+//   Wallet (/wallet), under one band (MESITA-3698).
 //
 //   SHARE IS OFF THE BAR FOR NOW (Pato, MESITA-2871: "for the moment remove
 //   the share from here"). Its page, /share, stays live and unlinked;
@@ -66,7 +73,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  House Card Pay, a reservation and Share Me. */
+   *  House Card Pay; Activity, a reservation and Share light Me. */
   tab: ConsumerTab;
 };
 
@@ -94,16 +101,6 @@ const ITEMS: Item[] = [
     tab: "pay",
   },
   {
-    href: CONSUMER_ROUTES.activity,
-    // An inbox, where everything that happened lands (Pato, MESITA-3679,
-    // picked from six sketched beside Search and Pay), after a receipt
-    // (MESITA-3645: "too transactional B2B"), a clock and a clipboard
-    // (MESITA-3654) and the pulse line (MESITA-3676: "looks like shit").
-    Icon: Inbox,
-    label: "Activity",
-    tab: "activity",
-  },
-  {
     href: CONSUMER_ROUTES.me,
     Icon: User,
     label: "Me",
@@ -114,6 +111,7 @@ const ITEMS: Item[] = [
 export function BottomNav() {
   const pathname = usePathname() ?? "/";
   const avatarUrl = useConsumerProfile().data?.avatar_url ?? null;
+  const unseen = useUnseenNotifications();
   const router = useRouter();
   const getSupabase = useLazyBrowserSupabase();
   // EACH TAB IS A PLAIN LINK WITH NEXT'S OWN PREFETCH (MESITA-3013). The app
@@ -186,6 +184,14 @@ export function BottomNav() {
                     strokeWidth={active ? 2.25 : 1.75}
                   />
                 )}
+                {item.tab === "me" && unseen ? (
+                  <span
+                    className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
+                    data-unseen-dot
+                  >
+                    <span className="sr-only">New notifications</span>
+                  </span>
+                ) : null}
               </span>
               <span className="w-full truncate text-center">{label}</span>
             </>

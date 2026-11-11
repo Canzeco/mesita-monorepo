@@ -81,8 +81,10 @@ export const CONSUMER_ROUTES = {
   wallet: "/wallet",
   walletPlace: { prefix: "/wallet/" },
   walletGift: { prefix: "/wallet/gift/" },
-  // ACTIVITY IS ON THE BAR (MESITA-3631): every money line, newest first.
-  // It was Me › Transactions, /me/transactions (MESITA-3465).
+  // ACTIVITY IS A PAGE UNDER ME (MESITA-3717, Pato: "Make activity hidden.
+  // Move it to profile. not in bottom menu."): Me's tiles open its chips. It
+  // held the bar's fourth tab from MESITA-3631; before that it was Me ›
+  // Transactions, /me/transactions (MESITA-3465).
   activity: "/activity",
   // SHARE IS A PAGE: Me's Share tile (off the bar since MESITA-2871), the app's link and the ways to
   // send it (MESITA-2566). It was the Second Stage referral deck, a legacy
@@ -189,7 +191,7 @@ export const CONSUMER_ROUTES = {
     payQr: "/pay/qr",
     ticketPrefix: "/ticket/",
     qr: "/qr",
-    // Me › Transactions became the bar's Activity tab (MESITA-3631).
+    // Me › Transactions became Activity (MESITA-3631; under Me, MESITA-3717).
     meTransactions: "/me/transactions",
     // Me's Second Stage boxes (MESITA-2087): the class ladder's pages, the
     // Diamond pair, Plan's Pro checkout, Visits, Metrics, Passport.
@@ -314,7 +316,7 @@ export function placeOpenPath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-export type ConsumerTab = "home" | "search" | "pay" | "activity" | "me";
+export type ConsumerTab = "home" | "search" | "pay" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -352,10 +354,10 @@ export const ROUTE_MAP = {
   place: row("/place/:id", "home", "panel", "home", false),
   placeOpen: row("/place/open/:gid", "home", "panel", "home", false),
   placeReserve: row("/place/:id/reserve", "home", "page", "place", false),
-  // A reservation is reached from a place and from Activity › Reservations;
-  // it lights Activity, whose list is where it lands back (MESITA-3688; Me ›
-  // Reservations until then, MESITA-2561).
-  reservation: row("/reservation/:id", "activity", "panel", "activity"),
+  // A reservation is reached from a place and from Activity › Reservations,
+  // whose list is where it lands back (MESITA-3688); it lights Me, as
+  // Activity does (MESITA-3717).
+  reservation: row("/reservation/:id", "me", "panel", "activity"),
   pay: row("/pay", "pay", "tab", null),
   payPlace: row("/pay/:placeId", "pay", "door", "pay"),
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
@@ -365,7 +367,8 @@ export const ROUTE_MAP = {
   wallet: row("/wallet", "pay", "tab", null),
   walletPlace: row("/wallet/:placeId", "pay", "page", "pay"),
   walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
-  activity: row("/activity", "activity", "tab", null),
+  // A page under Me, off the bar (MESITA-3717).
+  activity: row("/activity", "me", "page", "me"),
   me: row("/me", "me", "tab", null),
   // Me's Share tile since Share left the bar (MESITA-2871).
   share: row("/share", "me", "page", "me"),

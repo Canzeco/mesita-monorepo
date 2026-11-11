@@ -94,7 +94,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/me/passport", destination: "/me/profile", permanent: true },
   // Support (MESITA-2169). Terms and privacy live on Settings.
   { source: "/me/help", destination: "/me/settings", permanent: true },
-  // Me › Transactions is the bar's Activity tab (MESITA-3631).
+  // Me › Transactions is Activity (MESITA-3631; under Me, MESITA-3717).
   { source: "/me/transactions", destination: "/activity", permanent: true },
   { source: "/invite", destination: "/me", permanent: true },
   // The retired Home hub's leaves (2026-09-01). /home ITSELF went to Places
@@ -228,7 +228,7 @@ export const LEGACY_REDIRECTS: Redirect[] = [
     permanent: true,
   },
   // /inbox was Activity's first address (MESITA-1626 sent it to Me); it is
-  // the bar's Activity tab again (MESITA-3688). /inbox/credits and
+  // Activity again (MESITA-3688; under Me, MESITA-3717). /inbox/credits and
   // /inbox/orders sit ABOVE this and point at Pay: Next takes the first match.
   {
     source: "/inbox/:path*",
