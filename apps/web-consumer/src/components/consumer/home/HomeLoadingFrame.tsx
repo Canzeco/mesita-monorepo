@@ -3,6 +3,7 @@ import {
   DiscoverFallback,
   GridFallback,
   RowFallback,
+  RailFallback,
 } from "@/components/consumer/home/DiscoverFallback";
 import { GRID_CHIPS } from "@/components/consumer/home/place-grid-classes";
 import { Skeleton } from "@/components/shared";
@@ -17,7 +18,7 @@ import { Skeleton } from "@/components/shared";
 export function HomeLoadingFrame({
   view = "rows",
 }: {
-  view?: "rows" | "grid" | "classic";
+  view?: "rows" | "grid" | "classic" | "rails";
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col" aria-busy>
@@ -28,13 +29,17 @@ export function HomeLoadingFrame({
         <Skeleton className="ml-auto h-8 w-36 rounded-full" />
       </BrandHeader>
       <div className="border-border bg-card flex shrink-0 border-b">
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex flex-1 justify-center py-3">
             <Skeleton className="h-5 w-14" />
           </div>
         ))}
       </div>
-      {view === "classic" ? (
+      {view === "rails" ? (
+        <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">
+          <RailFallback />
+        </div>
+      ) : view === "classic" ? (
         <div className="flex min-h-0 flex-1">
           <div className="bg-border w-1/4 shrink-0" />
           <div className="bg-card flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -45,3 +45,24 @@ export const ROW_PHOTO =
  *  height is its content), and the photo grows with it. */
 export const ROW_INFO =
   "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
+
+// PLACES 4.0 (MESITA-3670): a vertical list of carousels, one per family,
+// each card about two thirds of the width so about 1.5 show and the next
+// one peeks. The card (PlaceRailCard) and its silhouette (RailFallback)
+// read these strings.
+
+/** One carousel: a sideways scroller that snaps card by card, 12px sides,
+ *  10px between cards. */
+export const RAIL_TRACK =
+  "scrollbar-hide flex snap-x snap-mandatory gap-2.5 overflow-x-auto overscroll-x-contain scroll-px-3 px-3 pb-1";
+
+/** A card: two thirds of the width, a soft fill, 16px corners. */
+export const RAIL_CARD =
+  "bg-muted/60 flex w-[66%] max-w-80 shrink-0 snap-start flex-col overflow-hidden rounded-2xl";
+
+/** The card's photo: 4:3 across the top. */
+export const RAIL_PHOTO = "bg-muted relative aspect-[4/3] overflow-hidden";
+
+/** A carousel's title row: 16px semibold, 12px sides. */
+export const RAIL_TITLE =
+  "flex items-center justify-between gap-3 px-3 pt-4 pb-2";

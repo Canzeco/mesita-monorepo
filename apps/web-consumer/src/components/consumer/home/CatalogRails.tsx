@@ -93,10 +93,12 @@ import {
   GridFallback,
   PLACES_LIST,
   RowFallback,
+  RailFallback,
 } from "./DiscoverFallback";
 import { PlaceGridCard } from "./PlaceGridCard";
 import { GRID_CHIPS, GRID_LIST, ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
+import { PlaceRails } from "./PlaceRails";
 import { useActiveLocation } from "@/lib/active-location";
 import { useSocialHasNew } from "@/lib/use-social-has-new";
 import { cn, errMsg } from "@/lib/utils";
@@ -147,6 +149,8 @@ export const HOME_TABS = [
   { key: "classic", label: "Places 1.0", href: CONSUMER_ROUTES.homeClassic },
   { key: "grid", label: "Places 2.0", href: CONSUMER_ROUTES.homeGrid },
   { key: "places", label: "Places 3.0", href: CONSUMER_ROUTES.home },
+  // 4.0, one carousel per family, Top first (MESITA-3670), /home/rails.
+  { key: "rails", label: "Places 4.0", href: CONSUMER_ROUTES.homeRails },
   { key: "social", label: "Social", href: CONSUMER_ROUTES.homeSocial },
 ] as const;
 export type HomeTab = (typeof HOME_TABS)[number]["key"];
@@ -156,6 +160,7 @@ export type HomeTab = (typeof HOME_TABS)[number]["key"];
 export function homeTabOf(pathname: string): HomeTab {
   if (pathname === CONSUMER_ROUTES.homeSocial) return "social";
   if (pathname === CONSUMER_ROUTES.homeClassic) return "classic";
+  if (pathname === CONSUMER_ROUTES.homeRails) return "rails";
   return pathname === CONSUMER_ROUTES.homeGrid ? "grid" : "places";
 }
 
@@ -416,7 +421,13 @@ export function CatalogRails() {
   // The grid and the old list say which they are, so the two can be compared
   // (MESITA-3658); the old list keeps the word it always sent.
   const cardMode =
-    tab === "places" ? "rows" : tab === "grid" ? "grid" : "places";
+    tab === "places"
+      ? "rows"
+      : tab === "grid"
+        ? "grid"
+        : tab === "rails"
+          ? "rails"
+          : "places";
   /** What the events say about a tile: its source, rank and final score. */
   const tileFacts = (place: Place, rank: number) => ({
     source: place.area?.source ?? (place.googleOnly ? "google" : "mesita"),
@@ -467,7 +478,7 @@ export function CatalogRails() {
                 trackEvent(supabase, "home_mode_view", { mode: t.label });
             }}
             className={cn(
-              "relative flex-1 py-3 text-center text-sm transition",
+              "relative flex-1 px-1 py-3 text-center text-sm whitespace-nowrap transition",
               on ? "text-foreground font-semibold" : "text-muted-foreground",
             )}
           >
@@ -781,6 +792,33 @@ export function CatalogRails() {
     ) : (
       <DiscoverFallback />
     );
+  // PLACES 4.0 (MESITA-3670): every carousel loads its own family's pool,
+  // so this tab reads none of the chip pool's states below.
+  if (tab === "rails") {
+    if (!from) return shell(<RailFallback />);
+    return shell(
+      <PlaceRails
+        rails={chips}
+        allKey={ALL_CHIP}
+        from={from}
+        coords={coords}
+        cards={cards}
+        onOpenCard={(place, rank, rail) =>
+          trackEvent(supabase, "home_card_open", {
+            mode: cardMode,
+            place_id: place.id,
+            rail,
+            ...tileFacts(place, rank),
+          })
+        }
+        onOpenGoogle={openGooglePlace}
+        onSeeAll={(key) => {
+          setChip(key);
+          setFamilies(chipFamilies(key));
+        }}
+      />,
+    );
+  }
   if (waitingForFix) return shell(waiting);
 
   if (fetchError) {

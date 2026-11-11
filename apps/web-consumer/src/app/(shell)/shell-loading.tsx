@@ -35,6 +35,7 @@ const FRAMES: Record<RouteId, () => ReactNode> = {
   home: () => <HomeLoadingFrame />,
   homeClassic: () => <HomeLoadingFrame view="classic" />,
   homeGrid: () => <HomeLoadingFrame view="grid" />,
+  homeRails: () => <HomeLoadingFrame view="rails" />,
   homeSocial: () => <HomeLoadingFrame view="grid" />,
   search: () => <SearchLoading />,
   searchChat: () => <SearchChatLoading />,

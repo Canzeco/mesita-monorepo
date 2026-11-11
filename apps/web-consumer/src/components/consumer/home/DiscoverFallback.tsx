@@ -20,6 +20,10 @@ import {
   ROW_LIST,
   ROW_PAIR,
   ROW_PHOTO,
+  RAIL_CARD,
+  RAIL_PHOTO,
+  RAIL_TITLE,
+  RAIL_TRACK,
 } from "./place-grid-classes";
 
 // HOME › PLACES WHILE ITS POOL LOADS (Pato, MESITA-2701: "the placeholders
@@ -150,6 +154,56 @@ export function RowFallback() {
           <PlaceRowSkeleton key={i} />
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** PlaceRailCard's silhouette (MESITA-3670): the 4:3 photo, the name, two
+ *  fact lines and the Save · Share row. */
+function PlaceRailSkeleton() {
+  return (
+    <li className={RAIL_CARD}>
+      <div className={RAIL_PHOTO}>
+        <Skeleton className="h-full w-full rounded-none" />
+      </div>
+      <div className="flex flex-col gap-2 p-3">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="h-3 w-1/2" />
+        <div className={CARD_ACTIONS_ROW}>
+          <Skeleton className={CARD_BUTTON_BOX} />
+          <Skeleton className={CARD_BUTTON_BOX} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** One carousel while it loads: its title (when known) and two cards. */
+export function RailSkeleton({ title }: { title?: string }) {
+  return (
+    <section aria-busy>
+      <div className={RAIL_TITLE}>
+        {title ? (
+          <h2 className="text-base font-semibold">{title}</h2>
+        ) : (
+          <Skeleton className="h-5 w-28" />
+        )}
+      </div>
+      <ul aria-hidden className={RAIL_TRACK}>
+        <PlaceRailSkeleton />
+        <PlaceRailSkeleton />
+      </ul>
+    </section>
+  );
+}
+
+/** Places 4.0 while the location settles: two carousels. */
+export function RailFallback() {
+  return (
+    <div className="pb-6" aria-busy>
+      <RailSkeleton />
+      <RailSkeleton />
     </div>
   );
 }

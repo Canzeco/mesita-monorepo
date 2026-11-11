@@ -1,8 +1,7 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { Clock, Navigation, Star } from "lucide-react";
 import { PlaceMarks, SizedImage } from "@mesita/place-profile";
 import type { Place } from "@/lib/api/places";
 import { placeHref } from "@/lib/place-route";
@@ -12,7 +11,7 @@ import {
   placePlaceholder,
 } from "@/lib/place-placeholder";
 import { cn } from "@/lib/utils";
-import { CardActions, cardFacts } from "@/components/consumer/place-card";
+import { CardActions } from "@/components/consumer/place-card";
 import { OfferButton, offerSlides } from "@/components/consumer/offer-button";
 import {
   CONSUMER_ROUTES,
@@ -20,6 +19,7 @@ import {
   payPlacePath,
 } from "@/lib/consumer-route-contract";
 import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
+import { PlaceFactsRun } from "./place-facts";
 
 /**
  * One place in Places 3.0 (Pato, MESITA-3662: "image at the left and
@@ -44,17 +44,6 @@ import { ROW_INFO, ROW_PAIR, ROW_PHOTO } from "./place-grid-classes";
  * cycling every offer in its own colour (MESITA-3665); a tap goes where the
  * offer on screen points, the place's bill or its Rewards section.
  */
-/** $ to $$$$ from a price range's low end ("$200–300MX" → $$), on the
- *  place screen's level ranges (place-price.ts LEVEL_RANGES). */
-export function priceSymbolsFromRange(
-  range: string | null | undefined,
-): string | null {
-  const low = Number(range?.match(/[\d.,]+/)?.[0]?.replace(/,/g, ""));
-  if (!Number.isFinite(low) || low <= 0) return null;
-  const level = low < 200 ? 1 : low < 300 ? 2 : low < 500 ? 3 : 4;
-  return "$".repeat(level);
-}
-
 export function PlaceRowCard({
   place,
   family,
@@ -78,71 +67,7 @@ export function PlaceRowCard({
   const photo = cardPhoto(place);
   const placeholder = placePlaceholder(place);
   const google = isGoogleOnlyPlace(place);
-  const facts = cardFacts(place);
   const slides = google ? [] : offerSlides(place);
-  // The place's own kind ("Taco Restaurant"), the family word when it has
-  // none.
-  const kind = facts.kind ?? family ?? null;
-  // $ to $$$$, never the amount (Pato, MESITA-3669: "$$$$ from 1 to 4,
-  // depending on price range, not the full price"): price_level, else the
-  // range's low end on the place screen's own level ranges (place-price.ts:
-  // 100 / 200 / 300 / 500).
-  const price = facts.price ?? priceSymbolsFromRange(place.price_range);
-  const icon = "inline h-3 w-3 shrink-0 align-[-2px]";
-  // ONE RUN OF FACTS (MESITA-3669, "todo seguido"): $$ · kind · ★ rating
-  // (reviews) · Open or Closed, no hour · distance, wrapping over 2–3
-  // lines; a missing fact drops with its dot.
-  type Cell = { key: string; node: ReactNode };
-  const candidates: (Cell | false | null | undefined | "")[] = [
-    price && {
-      key: "price",
-      node: <span className="text-fact-price font-semibold">{price}</span>,
-    },
-    kind && { key: "kind", node: <span>{kind}</span> },
-    facts.rating && {
-      key: "stars",
-      node: (
-        <span className="whitespace-nowrap">
-          <Star
-            className={cn(icon, "fill-fact-star text-fact-star mr-0.5")}
-            aria-hidden
-          />
-          {facts.rating}
-          {facts.reviews ? ` (${facts.reviews})` : ""}
-        </span>
-      ),
-    },
-    facts.open !== null && {
-      key: "open",
-      node: (
-        <span className="whitespace-nowrap">
-          <Clock
-            className={cn(
-              icon,
-              "mr-0.5",
-              facts.open ? "text-fact-open" : "text-fact-closed",
-            )}
-            strokeWidth={2.5}
-            aria-hidden
-          />
-          {facts.open ? "Open" : "Closed"}
-        </span>
-      ),
-    },
-    facts.distance && {
-      key: "distance",
-      node: (
-        <span className="whitespace-nowrap">
-          <Navigation
-            className={cn(icon, "fill-fact-distance text-fact-distance mr-0.5")}
-            aria-hidden
-          />
-          {facts.distance}
-        </span>
-      ),
-    },
-  ];
-  const cells = candidates.filter((c): c is Cell => Boolean(c));
 
   const open = (children: ReactNode, className: string, label?: string) =>
     google ? (
@@ -218,18 +143,7 @@ export function PlaceRowCard({
                 ad={(place.boost_tier ?? 0) > 0}
               />
             </p>
-            {cells.length > 0 ? (
-              <p className="text-foreground text-xs leading-5" data-row-facts>
-                {cells.map((c, n) => (
-                  <Fragment key={c.key}>
-                    {n > 0 ? (
-                      <span className="text-muted-foreground"> · </span>
-                    ) : null}
-                    {c.node}
-                  </Fragment>
-                ))}
-              </p>
-            ) : null}
+            <PlaceFactsRun place={place} family={family} />
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}
