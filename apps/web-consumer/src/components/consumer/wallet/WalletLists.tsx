@@ -3,15 +3,25 @@
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { PlaceMarks, SizedImg } from "@mesita/place-profile";
+import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { brandLabel, expiryLabel, type SavedCard } from "@/lib/api/cards";
 import { money, type WaitingStory } from "@/lib/api/wallet";
+import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
+import { type WalletCardModel, walletCardLabel } from "./WalletCard";
 
-// The lists' parts. Since MESITA-3736 the Credits Cards are CreditsCard
-// (a band, transactions, Fund | Gift); these draw Money Payment Methods and
-// the waiting Story rows.
+// The lists' parts: every row of both lists.
+//
+// ONE ROW FOR EVERY METHOD (Pato, 2026-11-11, MESITA-3741: "make the same
+// list of cards as with the money payment methods. keep the symmetry"): a
+// Credits Card is a row like a saved card (CreditsRow: the place's photo in
+// the card-shaped chip, the name, one quiet line, the amount, a chevron to
+// its House Card), in one white card of rows; MESITA-3736's black band with
+// transactions and Fund | Gift is gone from the Wallet. Buy and Gift live on
+// the House Card page (PlaceCredit). No card yet: EmptyCreditsRow.
 //
 // THE WALLET REDESIGN (Pato, 2026-11-11, MESITA-3727, /autoplan approved
 // with "rec"): Credits first, then Ways to pay (WalletSection). Each list's
@@ -146,6 +156,66 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
       <RowText title={`${brand} •••• ${card.last4}`} line={`Expires ${expiryLabel(card)}`} />
       <Chevron />
     </button>
+  );
+}
+
+/** The quiet line under a Credits Card's name. */
+function creditsLine(card: WalletCardModel, gone: boolean): string {
+  if (gone) return "Ask Mesita support to use it";
+  if (card.available_cents > 0 && card.pending_cents > 0) return `${money(card.pending_cents, card.currency)} pending`;
+  if (card.pending_cents > 0) return "Pending · available within the hour";
+  if (card.available_cents > 0) return "Available";
+  return "No credits yet";
+}
+
+/** A place's Credits Card (MESITA-3741): a row like a saved card's. The
+ *  amount is the server's, chosen by cardAmount; 0 is muted. */
+export function CreditsRow({
+  card,
+  href,
+  gone = false,
+  eager = false,
+}: {
+  card: WalletCardModel;
+  /** Its House Card page. */
+  href: string;
+  /** The place left Mesita; the money stays. */
+  gone?: boolean;
+  eager?: boolean;
+}) {
+  const amount = cardAmount(card);
+  return (
+    <Link href={href} aria-label={walletCardLabel(card)} className={ROW} data-wallet-method="credits">
+      <span className={cn(CHIP, "bg-neutral-950 text-sm font-semibold text-white")} aria-hidden>
+        {card.photo ? (
+          <SizedImg src={card.photo} size="thumb" alt="" loading={eager ? "eager" : "lazy"} className="h-full w-full object-cover" />
+        ) : (
+          firstInitial(card.name)
+        )}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-base font-semibold">{card.name}</span>
+          <PlaceMarks tier={card.tier} ad={false} />
+        </span>
+        <span className="text-muted-foreground mt-0.5 block truncate text-sm">{creditsLine(card, gone)}</span>
+      </span>
+      <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
+        {money(amount.cents, card.currency)}
+      </span>
+      <Chevron />
+    </Link>
+  );
+}
+
+/** No Credits Card yet: one row, the way to get one (Search). */
+export function EmptyCreditsRow({ href }: { href: string }) {
+  return (
+    <Link href={href} className={ROW} data-wallet-empty-credits>
+      <span className={cn(CHIP, "border-muted-foreground/40 border-2 border-dashed")} aria-hidden />
+      <RowText title="Find a place" line="Credits Cards hold money you prepay at one place" />
+      <Chevron />
+    </Link>
   );
 }
 

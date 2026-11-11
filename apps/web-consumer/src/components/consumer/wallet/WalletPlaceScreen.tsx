@@ -11,9 +11,8 @@ import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { goBack, navigateTo } from "@/lib/navigate";
 import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
-import { PlaceCredit } from "./PlaceCredit";
+import { HouseCardSkeleton, PlaceCredit } from "./PlaceCredit";
 import { useWallet } from "./use-wallet";
-import { WalletCardSkeleton } from "./WalletCard";
 
 // /wallet/<placeId> — a place's House Card, full screen (MESITA-3533's
 // sheet as a page, MESITA-3614). Reached from its card on the Wallet's
@@ -72,6 +71,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             row={row}
             canSend={wallet?.can_send === true}
             sentLinks={sentLinks}
+            stories={(wallet?.waiting_stories ?? []).filter((s) => s.place_id === row.placeId)}
             onReread={reread}
             onRemove={removeHouseCard}
           />
@@ -83,7 +83,7 @@ export function WalletPlaceScreen({ placeId }: { placeId: string }) {
             action={{ label: "Try again", onClick: reread }}
           />
         ) : (
-          <WalletCardSkeleton count={1} />
+          <HouseCardSkeleton />
         )}
       </div>
     </Screen>
