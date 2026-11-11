@@ -1,4 +1,4 @@
-// The six Activity chips' words and icons (MESITA-3697; Notifications back
+// The five Activity chips' words and icons (Favorites left in MESITA-3723) (MESITA-3697; Notifications back
 // with MESITA-3716), in the order of
 // ACTIVITY_TYPES. Activity's rail and Me's tiles both read this, so a chip
 // and its tile never disagree. A plain module: Me's hub (a server module)
@@ -8,7 +8,6 @@ import {
   Bell,
   CalendarCheck,
   Gift,
-  Heart,
   type LucideIcon,
   Ticket,
   UtensilsCrossed,
@@ -24,7 +23,6 @@ export type ActivityChip = {
 };
 
 const CHIPS: Record<ActivityType, Omit<ActivityChip, "type">> = {
-  favorites: { label: "Favorites", Icon: Heart, summary: "Places you saved" },
   reservations: {
     label: "Reservations",
     Icon: CalendarCheck,
