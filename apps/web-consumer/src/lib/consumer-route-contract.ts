@@ -56,8 +56,8 @@ export const CONSUMER_ROUTES = {
   //                              (MESITA-3695): takes the share, becomes
   //                              /pay/tab/<shareId>
   //   /pay/receipt/<paymentId>   a paid bill's proof (MESITA-3459)
-  //   /wallet                    the one Pay page opened at its Wallet
-  //                              (MESITA-3720; its own half in MESITA-3698)
+  //   /wallet                    the Wallet tab (MESITA-3722; under Pay's
+  //                              places in MESITA-3720, a half in MESITA-3698)
   //   /wallet/<placeId>          a place's House Card, full screen (MESITA-3533)
   //   /wallet/gift/<token>       a friend's credit link (MESITA-3292)
   //
@@ -316,7 +316,7 @@ export function placeOpenPath(googlePlaceId: string): string {
 // frame (a type error) and lights no tab. Addresses that only redirect live
 // in `legacy` and next.config's table, never here.
 
-export type ConsumerTab = "home" | "search" | "pay" | "me";
+export type ConsumerTab = "home" | "search" | "pay" | "wallet" | "me";
 
 /** How a screen arrives: a bar `tab`; a `page` pushed over the screen it was
  *  opened from; a `panel` that slides over the page under it (an @modal
@@ -363,10 +363,10 @@ export const ROUTE_MAP = {
   payTab: row("/pay/tab/:tabId", "pay", "page", "pay"),
   payJoin: row("/pay/join/:token", "pay", "door", "pay"),
   payReceipt: row("/pay/receipt/:paymentId", "pay", "page", "pay"),
-  // Pay's second half (MESITA-3698): it lights Pay, like /pay itself.
-  wallet: row("/wallet", "pay", "tab", null),
-  walletPlace: row("/wallet/:placeId", "pay", "page", "pay"),
-  walletGift: row("/wallet/gift/:token", "pay", "page", "pay"),
+  // The Wallet tab (MESITA-3722); it lit Pay from MESITA-3631 to here.
+  wallet: row("/wallet", "wallet", "tab", null),
+  walletPlace: row("/wallet/:placeId", "wallet", "page", "wallet"),
+  walletGift: row("/wallet/gift/:token", "wallet", "page", "wallet"),
   // A page under Me, off the bar (MESITA-3717).
   activity: row("/activity", "me", "page", "me"),
   me: row("/me", "me", "tab", null),

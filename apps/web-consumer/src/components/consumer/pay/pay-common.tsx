@@ -96,7 +96,7 @@ export function readGuestQr(tabId: string): string | null {
 }
 
 /** The place's round profile picture, or its first letter. */
-export function PlacePhoto({ place, className }: { place: Pick<PayPlace, "photo" | "name">; className: string }) {
+export function PlacePhoto({ place, className }: { place: PayPlace; className: string }) {
   return (
     <span className={cn("bg-muted shrink-0 overflow-hidden rounded-full ring-1 ring-black/5", className)} aria-hidden>
       {place.photo ? (
