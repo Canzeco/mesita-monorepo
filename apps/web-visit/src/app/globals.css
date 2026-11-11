@@ -76,7 +76,7 @@ form {
   -webkit-text-security: disc;
 }
 
-/* MESITA-3696: the line under the waiter code that points at the Staff QR. */
+/* A quiet line under a field. */
 .field-hint {
   display: block;
   margin-top: 6px;
@@ -140,14 +140,6 @@ button.quiet {
   color: #171717;
 }
 
-/* MESITA-3696: the Staff QR's "You're set". */
-.proof-status.ok {
-  align-self: stretch;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #dcfce7;
-  color: #166534;
-}
 
 .proof-status.warn {
   align-self: stretch;
@@ -483,16 +475,4 @@ button.quiet {
 
 .tab-paid.tab-paid-alert .tab-paid-tick {
   color: #b91c1c;
-}
-
-/* Every staff screen until the phone holds a Staff QR token. */
-.staff-qr-banner {
-  align-self: stretch;
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #fef3c7;
-  color: #92400e;
-  font-size: 14px;
-  font-weight: 600;
 }

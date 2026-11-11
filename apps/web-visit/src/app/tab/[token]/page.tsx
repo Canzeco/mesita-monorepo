@@ -4,7 +4,7 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal } from "@/lib/visit-api";
-import { isStaffQrToken, keepStaff, readStaff } from "@/lib/staff-key";
+import { keepStaff, readStaff } from "@/lib/staff-key";
 import { GuestVerify } from "./GuestVerify";
 
 // /tab/<token> — Pay at the table, the waiter's side (MESITA-3565). The
@@ -15,8 +15,7 @@ import { GuestVerify } from "./GuestVerify";
 //
 // The screens follow the tab's status, read by a poll that carries the QR
 // token only: Bill (bill, tip the waiter suggests after asking, optional
-// ticket, "Send to guest"; a phone signed in by the Staff QR, MESITA-3696,
-// skips the code) → Waiting for the guest (the bill may still
+// ticket, "Send to guest"; a phone already signed in skips the code) → Waiting for the guest (the bill may still
 // change until the guest pays) → Collect the cash (when the guest chose to
 // pay part in cash: one amount field, one Received) → Paid, a full green
 // screen. Expired and Cancelled say so. Every rule and peso is the server's.
@@ -133,11 +132,7 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
 
   /** A refusal in plain words; a stale staff token sends the waiter back to the code. */
   function refused(r: TabRefusal) {
-    if (r.code === "staff_qr_needed") {
-      setError("Scan your Staff QR to confirm cash, then scan the guest's QR again.");
-      return;
-    }
-    if (r.code === "staff_only" || r.code === "staff_key" || r.code === "place_code_required") {
+    if (r.code === "staff_only" || r.code === "staff_code_needed" || r.code === "staff_key" || r.code === "place_code_required") {
       if (placeId) keepStaff(placeId, null, null);
       setStaffBump((n) => n + 1);
       setError(staffToken ? "Type the waiter code again." : r.error);
@@ -237,10 +232,6 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
       <label className="field">
         Waiter code
         <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
-        {/* MESITA-3696: the Staff QR signs the phone in for the shift. */}
-        <span className="field-hint" data-staff-qr-hint>
-          Or scan the Staff QR the owner printed, then scan the guest’s QR again.
-        </span>
       </label>
     ) : null;
 
@@ -323,11 +314,6 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
       return (
         <main className="proof" data-tab-state="collect">
           {band}
-          {isStaffQrToken(staffToken) ? null : (
-            <p className="staff-qr-banner" role="status">
-              Scan your Staff QR
-            </p>
-          )}
           {reconnecting}
           <p className="proof-line" role="status">
             The guest pays part in cash

@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { payChecklist, verifyLabel } from "@mesita/place-profile/lib/pay-checklist";
-import { type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
-import { isStaffQrToken, keepStaff, readStaff, rememberNext } from "@/lib/staff-key";
+import { listPayments, type TabRead, type TabRefusal, verifyTab } from "@/lib/visit-api";
+import { keepStaff, readStaff } from "@/lib/staff-key";
 
 // The waiter's side of a guest's payment (MESITA-3708). The guest typed the
 // amount, chose how to pay and paid; the waiter scanned their QR and lands
 // here. Top to bottom: the amount before tip (to match the ticket), the tip,
 // the same checklist the guest sees, one action line, the live clock, and one
-// button that names the action. Only a phone signed in by the owner's Staff
-// QR may verify; any other phone sees "Scan your Staff QR" and nothing else.
+// button that names the action. A phone signed in with the waiter code may
+// verify (MESITA-3734: there is no Staff QR); any other phone types the
+// waiter code here first, once per 12-hour shift.
 
 /** A live clock: a screenshot of this page is visibly stale. */
 function useNow(): Date {
@@ -48,7 +49,9 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
 
   const placeId = tab.place.id;
   const staffToken = readStaff(placeId);
-  const canVerify = isStaffQrToken(staffToken);
+  const canVerify = staffToken !== null;
+  const [placeCode, setPlaceCode] = useState("");
+  const code = placeCode.replace(/\s/g, "");
   const money = (c: number) => moneyLabel(c, tab.currency);
   const owed = tab.cash_bill_cents + tab.cash_tip_cents;
   const tip = tab.cash_tip_cents + tab.card_tip_cents;
@@ -74,10 +77,10 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
   const cashOk = cashCents !== null && cashCents <= owed;
 
   function refused(r: TabRefusal) {
-    if (r.code === "staff_qr_needed") {
+    if (r.code === "staff_code_needed") {
       keepStaff(placeId, null, null);
       bump((n) => n + 1);
-      setError("Scan your Staff QR");
+      setError("Type the waiter code again.");
       return;
     }
     if (r.code === "short" && typeof r.detail.missing_cents === "number" && cashCents !== null) {
@@ -121,11 +124,27 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [askWho]);
 
-  // No Staff QR on this phone: remember this payment, so scanning the Staff
-  // QR brings the waiter straight back here (the /staff page reads it).
-  useEffect(() => {
-    if (!canVerify && !closed && !tab.verified_at) rememberNext(`/tab/${token}`);
-  }, [canVerify, closed, tab.verified_at, token]);
+  // No staff token on this phone: the waiter code signs it in for the shift.
+  // The code is never kept, only the 12-hour token the server answers.
+  async function signIn() {
+    if (busy || !/^\d{6}$/.test(code)) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await listPayments({ place_id: placeId, place_code: code });
+      if (r === "failed") return setError("Couldn't reach Mesita. Tap Continue again.");
+      if ("kind" in r) {
+        const wait = r.retryAfterS ? ` Try again in ${Math.ceil(r.retryAfterS / 60)} min.` : "";
+        return setError(r.kind === "staff_only" ? "That waiter code is not right." : `${r.error}${wait}`);
+      }
+      if (!r.staff_token) return setError("Couldn't sign this phone in. Try again.");
+      keepStaff(placeId, r.staff_token, null);
+      setPlaceCode("");
+      bump((n) => n + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Verified: green; by this phone earlier: the warning tone; by another
   // phone: red, which outranks green.
@@ -172,12 +191,27 @@ export function GuestVerify({ token, tab, band, reconnecting, onChanged }: {
 
   if (!canVerify) {
     return (
-      <main className="proof" data-tab-state="staff-qr-needed">
+      <main className="proof" data-tab-state="staff-code-needed">
         {band}
-        <p className="proof-status warn" role="alert">
-          Scan your Staff QR
-        </p>
-        <p className="proof-line">Then scan the guest&apos;s screen again.</p>
+        {error ? (
+          <p className="proof-status warn" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void signIn();
+          }}
+        >
+          <label className="field">
+            Waiter code
+            <input className="secret" inputMode="numeric" autoComplete="off" maxLength={7} value={placeCode} onChange={(e) => setPlaceCode(e.target.value)} />
+          </label>
+          <button type="submit" disabled={busy || !/^\d{6}$/.test(code)} style={{ minHeight: 56 }}>
+            {busy ? "Checking…" : "Continue"}
+          </button>
+        </form>
         <p className="proof-place">{tab.place.name ?? "A Mesita place"}</p>
       </main>
     );
