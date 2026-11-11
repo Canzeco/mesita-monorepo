@@ -396,3 +396,103 @@ button.quiet {
   color: #525252;
   font-weight: 600;
 }
+
+/* ── Guest pays, waiter verifies (MESITA-3708) ─────────────────────────── */
+
+/* The amount before tip, to match the ticket: headline size, not a poster. */
+.verify-amount {
+  margin: 16px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  color: #171717;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The checklist both phones show (lib/pay-checklist). */
+.checklist {
+  align-self: stretch;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e5e5e5;
+  text-align: left;
+}
+
+.checklist li {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.checklist-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 2px solid #d4d4d4;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.checklist li[data-state="done"] .checklist-mark {
+  border-color: #15803d;
+  background: #15803d;
+}
+
+.checklist li[data-state="waiting"] .checklist-mark {
+  border-color: #b45309;
+  color: #b45309;
+}
+
+.checklist li[data-state="failed"] .checklist-mark {
+  border-color: #b91c1c;
+  background: #b91c1c;
+}
+
+.checklist-label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  font-size: 16px;
+  color: #171717;
+}
+
+.checklist-note {
+  font-size: 14px;
+  color: #525252;
+}
+
+.checklist-cents {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  color: #171717;
+}
+
+/* Already verified by this phone: the warning tone. */
+.tab-paid.tab-paid-notice {
+  background: #b45309;
+}
+
+/* Verified by another phone: red outranks green. */
+.tab-paid.tab-paid-alert {
+  background: #b91c1c;
+}
+
+.tab-paid.tab-paid-alert .tab-paid-tick {
+  color: #b91c1c;
+}
+
+/* Every staff screen until the phone holds a Staff QR token. */
+.staff-qr-banner {
+  align-self: stretch;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 600;
+}

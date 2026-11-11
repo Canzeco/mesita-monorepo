@@ -4,7 +4,8 @@ import { use, useCallback, useEffect, useRef, useState } from "react";
 import { clockTime, moneyLabel, readAmount } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { billTab, cashTab, getTab, type StaffKey, type TabRead, type TabRefusal } from "@/lib/visit-api";
-import { keepStaff, readStaff } from "@/lib/staff-key";
+import { isStaffQrToken, keepStaff, readStaff } from "@/lib/staff-key";
+import { GuestVerify } from "./GuestVerify";
 
 // /tab/<token> — Pay at the table, the waiter's side (MESITA-3565). The
 // guest shows a QR in the Mesita app; the waiter scans it and lands here. The
@@ -132,6 +133,10 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
 
   /** A refusal in plain words; a stale staff token sends the waiter back to the code. */
   function refused(r: TabRefusal) {
+    if (r.code === "staff_qr_needed") {
+      setError("Scan your Staff QR to confirm cash, then scan the guest's QR again.");
+      return;
+    }
     if (r.code === "staff_only" || r.code === "staff_key" || r.code === "place_code_required") {
       if (placeId) keepStaff(placeId, null, null);
       setStaffBump((n) => n + 1);
@@ -260,6 +265,11 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
     );
   }
 
+  // MESITA-3708: a guest's own payment ends with the waiter's Verify.
+  if (tab.origin === "guest") {
+    return <GuestVerify token={token} tab={tab} band={band} reconnecting={reconnecting} onChanged={refresh} />;
+  }
+
   const place = <p className="proof-place">{tab.place.name ?? "A Mesita place"}</p>;
   const ticketLine = tab.ticket ? <p className="proof-line">Ticket {tab.ticket}</p> : null;
 
@@ -313,6 +323,11 @@ export default function TabPage({ params }: { params: Promise<{ token: string }>
       return (
         <main className="proof" data-tab-state="collect">
           {band}
+          {isStaffQrToken(staffToken) ? null : (
+            <p className="staff-qr-banner" role="status">
+              Scan your Staff QR
+            </p>
+          )}
           {reconnecting}
           <p className="proof-line" role="status">
             The guest pays part in cash

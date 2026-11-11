@@ -21,7 +21,7 @@ describe("the waiter's tab screen", () => {
 
   it("keeps the staff token, never the place code or the Staff QR's secret", () => {
     // MESITA-3696: the store moved to lib/staff-key.ts, shared with /staff.
-    expect(PAGE).toContain('import { keepStaff, readStaff } from "@/lib/staff-key"');
+    expect(PAGE).toMatch(/import \{[^}]*\bkeepStaff\b[^}]*\breadStaff\b[^}]*\} from "@\/lib\/staff-key"/);
     expect(STAFF_KEY).toMatch(/localStorage\.setItem\(staffKeyFor\(placeId\), JSON\.stringify\(\{ token, expires_at/);
     expect(STAFF_PAGE).toMatch(/keepStaff\(place, r\.staff_token, r\.staff_token_expires_at\)/);
     expect(STAFF_PAGE).toContain('window.history.replaceState(null, "", window.location.pathname)');

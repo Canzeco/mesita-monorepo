@@ -4,7 +4,7 @@ import { use, useEffect, useRef, useState } from "react";
 import { clockTime } from "@mesita/place-profile/lib/money";
 import { TEST_BAND_TEXT } from "@mesita/place-profile/lib/test-band";
 import { joinStaff, type JoinedStaff } from "@/lib/visit-api";
-import { keepStaff } from "@/lib/staff-key";
+import { keepStaff, takeNext } from "@/lib/staff-key";
 
 // /staff/<place>#<secret> — the Staff QR (MESITA-3696). The owner prints it
 // on Business › Payments; a waiter scans it once per shift with the phone's
@@ -31,6 +31,9 @@ export default function StaffPage({ params }: { params: Promise<{ place: string 
       if (r === "failed") return setScreen({ kind: "failed" });
       if ("refused" in r) return setScreen({ kind: "refused", error: r.refused });
       keepStaff(place, r.staff_token, r.staff_token_expires_at);
+      // MESITA-3708: back to the guest's payment the waiter was verifying.
+      const next = takeNext();
+      if (next) return window.location.replace(next);
       setScreen({ kind: "set", joined: r });
     });
   }, [place]);
@@ -58,7 +61,7 @@ export default function StaffPage({ params }: { params: Promise<{ place: string 
         </p>
         <p className="proof-place">{joined.place.name ?? "This place"}</p>
         <p className="proof-line">Until {clockTime(joined.staff_token_expires_at)} on this phone.</p>
-        <p className="proof-foot">Scan a guest&apos;s Mesita QR to send them the bill. No code needed.</p>
+        <p className="proof-foot">Scan a guest&apos;s Mesita QR to verify their payment. No code needed.</p>
       </main>
     );
   }
