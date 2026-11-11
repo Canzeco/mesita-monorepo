@@ -14,6 +14,15 @@ import { cardAmount } from "@/lib/wallet-card";
 import { cn } from "@/lib/utils";
 import { type WalletCardModel, walletCardLabel, walletCardLine } from "./WalletCard";
 
+// THE WALLET REDESIGN (Pato, 2026-11-11, MESITA-3727, /autoplan approved
+// with "rec"): Credits first, then Ways to pay (WalletSection). Each list's
+// Add is a quiet button on its heading (HeadingButton), never a dashed first
+// row. A Credits Card's Fund | Gift is its own footer, two equal halves under
+// a full-width hairline; Credits divides cards full width, Ways to pay keeps
+// inset dividers. A shown amount of 0 is muted. A guest with no Credits Card
+// sees one quiet prompt (EmptyCreditsRow). CreditRowSkeleton is the loading
+// shape for a card with its footer, shared with Pay's loading frame.
+//
 // TWO LISTS, NOT TWO RAILS (Pato, 2026-11-11, MESITA-3701: "try making the
 // payment methods as lists instead of horizontal scrolls"). Money Payment
 // Methods and Credits Payment Methods are each one white card of rows, Add
@@ -29,22 +38,75 @@ const CHIP = "flex h-8 w-[3.2rem] shrink-0 items-center justify-center overflow-
 const ROW =
   "hover:bg-muted/60 flex min-h-16 w-full items-center gap-3.5 px-4 py-3 text-left transition";
 const DIVIDER = "bg-border ml-[4.75rem] h-px";
+const DIVIDER_FULL = "bg-border h-px";
 
-/** A heading over one white card of rows, a hairline between rows. */
-export function WalletList({ title, children }: { title: string; children: ReactNode }) {
+/** A heading (with an optional button on its right) over one white card of
+ *  rows, a hairline between rows. `fallback` replaces the card when there
+ *  are no rows (the Wallet's error state sits right under its heading). */
+export function WalletList({
+  title,
+  action,
+  fullDividers = false,
+  fallback,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  fullDividers?: boolean;
+  fallback?: ReactNode;
+  children?: ReactNode;
+}) {
   const rows = Children.toArray(children).filter(Boolean);
   return (
     <section className="mt-5" aria-label={title}>
-      <h2 className="font-display mb-2 text-base font-semibold tracking-tight">{title}</h2>
-      <ul role="list" className="border-border bg-card overflow-hidden rounded-2xl border">
-        {rows.map((row, i) => (
-          <Fragment key={i}>
-            {i > 0 ? <li aria-hidden className={DIVIDER} /> : null}
-            <li>{row}</li>
-          </Fragment>
-        ))}
-      </ul>
+      <div className="mb-2 flex min-h-6 items-center justify-between gap-3">
+        <h2 className="font-display text-base font-semibold tracking-tight">{title}</h2>
+        {action}
+      </div>
+      {rows.length === 0 && fallback ? (
+        fallback
+      ) : (
+        <ul role="list" className="border-border bg-card overflow-hidden rounded-2xl border">
+          {rows.map((row, i) => (
+            <Fragment key={i}>
+              {i > 0 ? <li aria-hidden className={fullDividers ? DIVIDER_FULL : DIVIDER} /> : null}
+              <li>{row}</li>
+            </Fragment>
+          ))}
+        </ul>
+      )}
     </section>
+  );
+}
+
+const HEADING_BUTTON =
+  "hover:bg-muted -my-3 -mr-2 inline-flex h-11 items-center justify-center rounded-full px-3 text-sm font-semibold transition disabled:opacity-60";
+
+/** A list heading's quiet button: a 44px target pulled in by negative margin
+ *  so the heading keeps its height. A link with `href`, else a button. */
+export function HeadingButton({
+  label,
+  ariaLabel,
+  href,
+  onClick,
+  disabled = false,
+  className,
+}: {
+  label: string;
+  ariaLabel: string;
+  href?: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return href ? (
+    <Link href={href} aria-label={ariaLabel} className={cn(HEADING_BUTTON, className)} data-wallet-add>
+      {label}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={cn(HEADING_BUTTON, className)} data-wallet-add>
+      {label}
+    </button>
   );
 }
 
@@ -59,35 +121,14 @@ function RowText({ title, line }: { title: ReactNode; line?: ReactNode }) {
 
 const Chevron = () => <ChevronRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />;
 
-/** Add, the list's first row: a dashed chip with a plus. */
-export function AddRow({
-  label,
-  line,
-  href,
-  onClick,
-}: {
-  label: string;
-  line: string;
-  href?: string;
-  onClick?: () => void;
-}) {
-  const face = (
-    <>
-      <span className={cn(CHIP, "border-border border-2 border-dashed")} aria-hidden>
-        <Plus className="h-4 w-4" strokeWidth={2.25} />
-      </span>
-      <RowText title={label} line={line} />
+/** No Credits Card yet (MESITA-3727): one quiet prompt, no chip. Most
+ *  guests see this first, so it explains what a Credits Card is. */
+export function EmptyCreditsRow({ href }: { href: string }) {
+  return (
+    <Link href={href} className={ROW} data-wallet-empty-credits>
+      <RowText title="Find a place and add its card" line="A Credits Card holds credit you buy at one place" />
       <Chevron />
-    </>
-  );
-  return href ? (
-    <Link href={href} className={ROW} data-wallet-add>
-      {face}
     </Link>
-  ) : (
-    <button type="button" onClick={onClick} className={ROW} data-wallet-add>
-      {face}
-    </button>
   );
 }
 
@@ -138,19 +179,23 @@ export function StoryRow({ story, onOpen }: { story: WaitingStory; onOpen: () =>
         <Instagram className="h-4 w-4" />
       </span>
       <RowText title={name} line="Story voucher · show the QR" />
-      <span className="shrink-0 text-base font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
+      <span className="shrink-0 text-lg font-semibold tabular-nums">{money(story.credit_cents, story.currency)}</span>
     </button>
   );
 }
 
-/** A Credits Card's two quick buttons (Pato, 2026-11-11, MESITA-3724: "add
+/** A Credits Card's Fund and Gift (Pato, 2026-11-11, MESITA-3724: "add
  *  quick button in credits to Fund and Gift buttons to each Credits Card"):
  *  Fund is the House Card's "Buy credits", Gift its "Send to a friend".
- *  `onGift` null: nothing to send now, so Gift shows greyed out. */
-export type CreditActions = { fundHref: string; onGift: (() => void) | null };
+ *  Gift is decided once, by giftAction (lib/wallet-card.ts): `open`, or
+ *  `blocked` with the reason it shows when tapped, or null (hidden). */
+export type CreditActions = {
+  fundHref: string;
+  gift: { kind: "open"; onOpen: () => void } | { kind: "blocked"; message: string; onTap: () => void } | null;
+};
 
-const QUICK =
-  "border-border bg-card hover:bg-muted inline-flex h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition";
+const FOOT_BUTTON =
+  "hover:bg-muted/60 flex h-11 flex-1 items-center justify-center gap-1.5 text-sm font-semibold transition";
 
 /** A place's House Card: the black chip with the place's photo, the name,
  *  the server's amount. Its tap is the model's (the House Card page). With
@@ -180,18 +225,20 @@ export function CreditRow({
         </span>
       </span>
       <RowText title={card.name} line={walletCardLine(card)} />
-      <span className="shrink-0 text-base font-semibold tabular-nums">{money(amount.cents, card.currency)}</span>
+      <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
+        {money(amount.cents, card.currency)}
+      </span>
       {card.tap.kind === "link" ? <Chevron /> : null}
     </>
   );
   const label = walletCardLabel(card);
   const row =
     card.tap.kind === "link" ? (
-      <Link href={card.tap.href} aria-label={label} className={cn(ROW, actions && "pb-2")}>
+      <Link href={card.tap.href} aria-label={label} className={ROW}>
         {face}
       </Link>
     ) : (
-      <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent", actions && "pb-2")}>
+      <div role="group" aria-label={label} className={cn(ROW, "hover:bg-transparent")}>
         {face}
       </div>
     );
@@ -199,22 +246,26 @@ export function CreditRow({
   return (
     <div data-credit-card>
       {row}
-      <div className="flex gap-2 pr-4 pb-3 pl-[4.75rem]" data-credit-actions>
-        <PushLink href={actions.fundHref} className={QUICK} aria-label={`Fund your ${card.name} card`} data-credit-fund>
+      {/* The footer is the card's own, beside the row's link (a link cannot hold a button). */}
+      <div className="border-border flex border-t" data-credit-actions>
+        <PushLink href={actions.fundHref} className={FOOT_BUTTON} aria-label={`Fund your ${card.name} card`} data-credit-fund>
           <Plus className="h-4 w-4" aria-hidden />
           Fund
         </PushLink>
-        <button
-          type="button"
-          onClick={actions.onGift ?? undefined}
-          disabled={actions.onGift === null}
-          aria-label={`Gift credit at ${card.name}`}
-          className={cn(QUICK, "disabled:hover:bg-card disabled:opacity-40")}
-          data-credit-gift
-        >
-          <Gift className="h-4 w-4" aria-hidden />
-          Gift
-        </button>
+        {actions.gift ? (
+          <button
+            type="button"
+            onClick={actions.gift.kind === "open" ? actions.gift.onOpen : actions.gift.onTap}
+            aria-label={
+              actions.gift.kind === "open" ? `Gift credit at ${card.name}` : `Gift credit at ${card.name}: ${actions.gift.message}`
+            }
+            className={cn(FOOT_BUTTON, "border-border border-l")}
+            data-credit-gift={actions.gift.kind}
+          >
+            <Gift className="h-4 w-4" aria-hidden />
+            Gift
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -234,5 +285,25 @@ export function RowsSkeleton({ count = 2 }: { count?: number }) {
         </div>
       ))}
     </>
+  );
+}
+
+/** A Credits Card loading: the row and its 44px Fund | Gift footer. Pay's
+ *  loading frame draws the same shape. */
+export function CreditRowSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className={ROW}>
+        <Skeleton className={CHIP} />
+        <span className="flex-1">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="mt-1.5 h-3 w-24" />
+        </span>
+        <Skeleton className="h-5 w-16" />
+      </div>
+      <div className="border-border flex h-11 items-center justify-center border-t">
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
   );
 }

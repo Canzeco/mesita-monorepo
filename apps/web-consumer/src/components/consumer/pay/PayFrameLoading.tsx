@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { PayHeader } from "./PayHeader";
+import { CreditRowSkeleton, RowsSkeleton, WalletList } from "../wallet/WalletLists";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -17,14 +18,19 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     );
   }
   if (body === "wallet") {
-    // /wallet, a page pushed from Pay (MESITA-3726): its frame and two lists.
+    // /wallet, a page pushed from Pay (MESITA-3726): its frame, then the two
+    // lists in the redesign's order (MESITA-3727), built from the page's own
+    // row skeletons so nothing jumps when it loads: Credits (one card with
+    // its Fund | Gift footer), then Ways to pay (a saved card, then Cash).
     return (
       <Screen title="Wallet" flush>
         <div className="flex flex-col px-4 pb-8" aria-busy>
-          <Skeleton className="mt-5 h-6 w-48 rounded-md" />
-          <Skeleton className="mt-2 h-[12.25rem] w-full rounded-2xl" />
-          <Skeleton className="mt-5 h-6 w-48 rounded-md" />
-          <Skeleton className="mt-2 h-[8.25rem] w-full rounded-2xl" />
+          <WalletList title="Credits" fullDividers>
+            <CreditRowSkeleton />
+          </WalletList>
+          <WalletList title="Ways to pay">
+            <RowsSkeleton count={2} />
+          </WalletList>
         </div>
       </Screen>
     );

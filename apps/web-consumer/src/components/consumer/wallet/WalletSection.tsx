@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Wallet as WalletIcon } from "lucide-react";
 import { TestBand } from "@mesita/place-profile";
@@ -14,10 +14,46 @@ import { toast } from "@/lib/toast";
 import { type Method, MethodSheet } from "./MethodSheet";
 import { GiftClaimSheet, SendCreditSheet } from "./SendCredit";
 import { placeHref } from "@/lib/place-route";
+import { cardAmount, giftAction } from "@/lib/wallet-card";
 import type { CreditRow as CreditRowModel } from "./use-wallet";
 import { useWallet } from "./use-wallet";
-import { AddRow, CashRow, CreditRow, RowsSkeleton, SavedCardRow, StoryRow, WalletList } from "./WalletLists";
+import {
+  CashRow,
+  CreditRow,
+  CreditRowSkeleton,
+  EmptyCreditsRow,
+  HeadingButton,
+  RowsSkeleton,
+  SavedCardRow,
+  StoryRow,
+  WalletList,
+} from "./WalletLists";
 
+// THE WALLET, REDESIGNED (Pato, 2026-11-11, MESITA-3727, /autoplan approved
+// with "rec"; render https://claude.ai/artifact/TyeAaA54EWHfyBdPZpD4wf):
+//
+//   TestBand (test mode) · "Confirming a payment…" (settling)
+//   Credits ................................. [Add] (only once there are cards)
+//     waiting Story rows, then each Credits Card with its Fund | Gift footer
+//   Ways to pay ......................... [Add card]
+//     saved cards, then Cash last
+//
+// Credits come first: what you hold, then how else you pay. "Ways to pay"
+// replaces "Money Payment Methods" so "card" only means a Credits Card.
+// The Credits list has four states (creditsState): loading (a card
+// skeleton), failed (no Wallet held: "Couldn't load Wallet" under the
+// heading), empty (one quiet prompt row, no heading Add) and rows. A failed
+// refresh that still holds a Wallet keeps every row.
+//
+// GIFT is decided once, by giftAction (lib/wallet-card.ts): open the Send to a
+// friend sheet, or say why not ("Fund this card first…", or "Credit becomes
+// giftable…" while credit is pending or held), or hide it when sending is
+// off. Its reason reflects the last Wallet read. Fund opens the place's
+// credit purchase, as the House Card's "Buy credits" does.
+//
+// SAVED CARDS: a first-load failure shows Cash alone and one toast per
+// mount; a later failure (after a remove) keeps the cards already shown.
+//
 // THE WALLET, PAY'S SECOND HALF (Pato, 2026-11-11, MESITA-3698: "Divide
 // Payments across two sections: Pay and Wallet"): two lists, Money
 // Payment Methods and Credits Payment Methods, each led by Add
@@ -66,16 +102,27 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
   const [cards, setCards] = useState<SavedCard[] | null>(null);
   const [cardsNonce, setCardsNonce] = useState(0);
   const [adding, setAdding] = useState(false);
+  // The saved-card failure toast fires at most once per mount.
+  const cardsToasted = useRef(false);
   // The Credits Card whose Gift sheet is open (MESITA-3724).
   const [gifting, setGifting] = useState<CreditRowModel | null>(null);
   const canSend = wallet?.can_send === true;
   const actionsFor = (row: CreditRowModel) => {
     // A place gone from Mesita: its House Card says to ask support.
     if (row.balance.place === null) return null;
-    const spendable = row.balance.spendable_cents;
+    const action = giftAction({
+      canSend,
+      spendableCents: row.balance.spendable_cents,
+      shownCents: cardAmount(row.card).cents,
+    });
     return {
       fundHref: `${placeHref(row.placeSlug)}?rewards=prepayment`,
-      onGift: canSend && spendable > 0 ? () => setGifting(row) : null,
+      gift:
+        action === null
+          ? null
+          : action === "open"
+            ? { kind: "open" as const, onOpen: () => setGifting(row) }
+            : { kind: "blocked" as const, message: action.blocked, onTap: () => toast(action.blocked) },
     };
   };
   // A friend's credit link (MESITA-3292) opens over the Wallet once the
@@ -101,8 +148,13 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
         if (!cancelled) setCards(r.cards);
       })
       .catch(() => {
-        // The rail keeps Add and Cash; a failed list shows no cards.
-        if (!cancelled) setCards([]);
+        if (cancelled) return;
+        // A first-load failure shows Cash alone; a later one keeps the cards shown.
+        setCards((prev) => prev ?? []);
+        if (!cardsToasted.current) {
+          cardsToasted.current = true;
+          toast.error("Couldn't load your saved cards");
+        }
       });
     return () => {
       cancelled = true;
@@ -137,6 +189,16 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
   );
 
   let shown = 0;
+  const stories = wallet?.waiting_stories ?? [];
+  // One state drives the Credits heading button, box, empty row and error.
+  const creditsState: "loading" | "failed" | "empty" | "rows" =
+    failed && !wallet
+      ? "failed"
+      : !wallet || credits === null
+        ? "loading"
+        : credits.length === 0 && stories.length === 0
+          ? "empty"
+          : "rows";
 
   return (
     <div className="flex flex-col" data-wallet>
@@ -147,29 +209,53 @@ export function WalletSection({ giftToken = null, testBand = true }: { giftToken
         </p>
       ) : null}
 
-      <WalletList title="Money Payment Methods">
-        <AddRow label={adding ? "Opening…" : "Add a card"} line="Save a card with Stripe" onClick={() => void addCard()} />
-        <CashRow />
-        {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
+      <WalletList
+        title="Credits"
+        fullDividers
+        action={
+          creditsState === "rows" ? (
+            <HeadingButton label="Add" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
+          ) : null
+        }
+        fallback={
+          creditsState === "failed" ? (
+            <EmptyState
+              icon={WalletIcon}
+              title="Couldn't load Wallet"
+              description="Check your connection and try again."
+              action={{ label: "Try again", onClick: reread }}
+            />
+          ) : null
+        }
+      >
+        {creditsState === "loading" ? <CreditRowSkeleton /> : null}
+        {creditsState === "empty" ? <EmptyCreditsRow href={CONSUMER_ROUTES.search} /> : null}
+        {creditsState === "rows"
+          ? stories.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)
+          : null}
+        {creditsState === "rows"
+          ? credits?.map((row) => (
+              <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} actions={actionsFor(row)} />
+            ))
+          : null}
       </WalletList>
 
-      <WalletList title="Credits Payment Methods">
-        <AddRow label="Add a Credits Card" line="Find a place and add its card" href={CONSUMER_ROUTES.search} />
-        {wallet?.waiting_stories?.map((s) => <StoryRow key={s.purchase_id} story={s} onOpen={() => setMethod({ kind: "story", story: s })} />)}
-        {credits?.map((row) => <CreditRow key={row.card.key} card={row.card} eager={shown++ < EAGER_CARDS} actions={actionsFor(row)} />)}
-        {!credits && !failed ? <RowsSkeleton /> : null}
-      </WalletList>
-
-      {failed && !wallet ? (
-        <div className="mt-5 flex flex-col">
-          <EmptyState
-            icon={WalletIcon}
-            title="Couldn't load Wallet"
-            description="Check your connection and try again."
-            action={{ label: "Try again", onClick: reread }}
+      <WalletList
+        title="Ways to pay"
+        action={
+          <HeadingButton
+            label={adding ? "Opening…" : "Add card"}
+            ariaLabel="Add a payment card"
+            onClick={() => void addCard()}
+            disabled={adding}
+            className="min-w-[5.5rem]"
           />
-        </div>
-      ) : null}
+        }
+      >
+        {cards === null ? <RowsSkeleton count={1} /> : null}
+        {cards?.map((c) => <SavedCardRow key={c.id} card={c} onOpen={() => setMethod({ kind: "card", card: c })} />)}
+        <CashRow />
+      </WalletList>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <SendCreditSheet
