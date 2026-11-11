@@ -32,7 +32,7 @@
 import { KeptScroll } from "@/components/consumer/nav/KeptScroll";
 import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
-import { Activity as ActivityIcon, Ban, CalendarCheck, Gift, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
+import { Ban, CalendarCheck, Gift, Inbox as ActivityIcon, type LucideIcon, ReceiptText, Wallet as WalletIcon } from "lucide-react";
 
 import { RowDivider } from "@/components/consumer/me/settings-rows";
 import { Skeleton } from "@/components/shared/Skeleton";
