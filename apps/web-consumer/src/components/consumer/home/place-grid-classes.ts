@@ -34,12 +34,14 @@ export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-1";
  *  squared"). */
 export const ROW_PAIR = "grid grid-cols-2";
 
-/** The photo square: 16px corners on the outer side only. */
+/** The photo: 16px corners on the outer side only, stretched to the info
+ *  box's height (a square, or taller when the facts need it, MESITA-3665). */
 export const ROW_PHOTO =
-  "bg-muted relative aspect-square overflow-hidden rounded-l-2xl";
+  "bg-muted relative min-h-full overflow-hidden rounded-l-2xl";
 
-/** The info square: a soft fill, 12px inside, 16px corners on the outer
- *  side only, the buttons pinned to its bottom so every row's buttons line
- *  up. */
+/** The info box: a soft fill, 12px inside, 16px corners on the outer side
+ *  only, the buttons pinned to its bottom so every row's buttons line up.
+ *  At least square; it grows with its facts (an aspect-ratio box's minimum
+ *  height is its content), and the photo grows with it. */
 export const ROW_INFO =
   "bg-muted/60 flex aspect-square min-w-0 flex-col gap-1 rounded-r-2xl p-3";
