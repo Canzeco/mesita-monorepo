@@ -76,15 +76,15 @@ describe("Vouchers tab", () => {
     const pill = (money: PlaceMoney) =>
       renderToStaticMarkup(<OffersWalletPill place={{ money, name: "Probe", photos: [] } as unknown as PlaceDetail} />);
     const html = pill(OFFER);
-    expect(html).toContain("Your credits here: $220MX, $100MX pending");
-    expect(pill({ ...OFFER, balance: null })).toContain("$0MX");
+    expect(html).toContain("Your credits here: $220.00MX, $100.00MX pending");
+    expect(pill({ ...OFFER, balance: null })).toContain("$0.00MX");
   });
 
   it("formats cents and never adds", () => {
-    expect(pesos(22000, "mxn")).toBe("$220MX");
-    expect(pesos(120000, "mxn")).toBe("$1,200MX");
+    expect(pesos(22000, "mxn")).toBe("$220.00MX");
+    expect(pesos(120000, "mxn")).toBe("$1,200.00MX");
     expect(pesos(1050, "mxn")).toBe("$10.50MX");
-    expect(render(OFFER)).toContain("Pay $1,000MX, Get $1,200MX");
+    expect(render(OFFER)).toContain("Pay $1,000.00MX, Get $1,200.00MX");
     expect(render(OFFER)).toContain("+30%");
   });
 });

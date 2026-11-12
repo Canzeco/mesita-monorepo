@@ -23,7 +23,7 @@ const OUTCOME: Record<string, string> = {
 };
 
 function usd(cents: number): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: cents % 100 === 0 ? 0 : 2 });
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function day(iso: string | null | undefined): string {

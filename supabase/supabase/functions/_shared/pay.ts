@@ -90,18 +90,19 @@ export function readCardPart(
   return { ok: true, cardCents, tipCents, returnUrl };
 }
 
-/** "$170MX" or "$170.50MX" (MX after the amount, MESITA-3491): the one sentence the server writes with money in it. */
+/** "$170.00MX" or "$170.50MX": always two decimals (MESITA-3767), MX after
+ *  the amount (MESITA-3491): the one sentence the server writes with money in it. */
 export function moneyText(cents: number, currency: string): string {
-  const whole = cents % 100 === 0;
+  const c = Math.round(cents);
   try {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currency.toUpperCase(),
-      minimumFractionDigits: whole ? 0 : 2,
-      maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(c / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
   } catch {
-    return `${(cents / 100).toFixed(whole ? 0 : 2)} ${currency.toUpperCase()}`;
+    return `${(c / 100).toFixed(2)} ${currency.toUpperCase()}`;
   }
 }
 

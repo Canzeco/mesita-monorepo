@@ -140,15 +140,10 @@ const USD = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
 });
-const WHOLE_USD = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 0,
-});
 
-/** "$45.00". */
+/** "$45.00": always two decimals (MESITA-3767). */
 export function money(cents: number): string {
-  return (cents % 100 === 0 ? WHOLE_USD : USD).format(cents / 100);
+  return USD.format(Math.round(cents) / 100);
 }
 
 /** "Nov 14". */

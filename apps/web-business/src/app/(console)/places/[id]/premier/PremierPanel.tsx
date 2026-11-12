@@ -59,7 +59,7 @@ const REFUSED: Record<string, string> = {
 };
 
 function usd(cents: number): string {
-  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: cents % 100 === 0 ? 0 : 2 });
+  return (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // One grid for every row, so the columns line up. Stacked first (name and

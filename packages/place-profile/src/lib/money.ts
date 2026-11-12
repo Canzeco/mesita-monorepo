@@ -21,20 +21,23 @@ export function amountText(cents: number): string {
   return (cents / 100).toFixed(cents % 100 === 0 ? 0 : 2);
 }
 
-/** "$500MX" or "$170.50MX": whole amounts drop the cents; pesos carry MX
- *  after the amount (MESITA-3491, Pato: "mx at the other side ... everywhere"). */
+/** "$500.00MX" or "$170.50MX": every amount reads with its cents, always
+ *  two decimals (MESITA-3767, Pato: "20.00 always ... specially for
+ *  dollars"); pesos carry MX after the amount (MESITA-3491). Amounts are
+ *  whole cents everywhere: a non-integer here is a bug upstream, so it is
+ *  rounded to the cent rather than shown with stray digits. */
 export function moneyLabel(cents: number, currency: string): string {
   const code = currency.toUpperCase();
-  const whole = cents % 100 === 0;
+  const c = Math.round(cents);
   try {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: code,
-      minimumFractionDigits: whole ? 0 : 2,
-      maximumFractionDigits: whole ? 0 : 2,
-    }).format(cents / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(c / 100).replace(/^(-?)MX\$(.*)$/, "$1$$$2MX");
   } catch {
-    return `${(cents / 100).toFixed(whole ? 0 : 2)} ${code}`;
+    return `${(c / 100).toFixed(2)} ${code}`;
   }
 }
 

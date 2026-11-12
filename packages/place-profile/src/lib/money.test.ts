@@ -1,6 +1,6 @@
 // MESITA-3304: a typed amount is money; a misread peso pays the wrong sum.
 import { describe, expect, it } from "vitest";
-import { amountText, clockTime, readAmount } from "./money";
+import { amountText, clockTime, moneyLabel, readAmount } from "./money";
 
 describe("readAmount", () => {
   it("reads pesos and centavos on the digits", () => {
@@ -18,6 +18,24 @@ describe("readAmount", () => {
   });
   it("round-trips through the field's text", () => {
     for (const c of [1, 99, 100, 17050, 123405]) expect(readAmount(amountText(c))).toBe(c);
+  });
+});
+
+// MESITA-3767, Pato: "20.00 always ... specially for dollars".
+describe("moneyLabel", () => {
+  it("shows whole amounts with .00", () => {
+    expect(moneyLabel(2000, "mxn")).toBe("$20.00MX");
+    expect(moneyLabel(0, "MXN")).toBe("$0.00MX");
+    expect(moneyLabel(2900, "usd")).toBe("$29.00");
+    expect(moneyLabel(120000, "mxn")).toBe("$1,200.00MX");
+  });
+  it("shows cents as they are", () => {
+    expect(moneyLabel(17050, "mxn")).toBe("$170.50MX");
+    expect(moneyLabel(5, "usd")).toBe("$0.05");
+  });
+  it("rounds a non-integer cent input to the cent", () => {
+    expect(moneyLabel(17049.6, "mxn")).toBe("$170.50MX");
+    expect(moneyLabel(199.4, "usd")).toBe("$1.99");
   });
 });
 

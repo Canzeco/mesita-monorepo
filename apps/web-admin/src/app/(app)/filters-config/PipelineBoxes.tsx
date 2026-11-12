@@ -584,7 +584,7 @@ const PREMIER_PLANS: { tier: PremierTier; label: string }[] = [
   { tier: "boost_5x", label: "Max · Premier 5X ($ a year)" },
 ];
 const usd = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function PremierPricesBox(seed: ConfigSeed<DiscoveryConfig>) {
   const editor = useDiscoveryEditor(seed);

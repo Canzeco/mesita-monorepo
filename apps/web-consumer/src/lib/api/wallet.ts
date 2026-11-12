@@ -210,7 +210,7 @@ export function buyRefusalAction(code: string | null, body: Record<string, unkno
   return { kind: "say", line, reload: code !== "place_cap" };
 }
 
-/** "$500MX" / "$25" — whole amounts drop the cents. One formatter with the
+/** "$500.00MX" / "$25.00" — always two decimals (MESITA-3767). One formatter with the
  *  staff's proof page (web-visit), so both screens print the same peso. */
 export const money = moneyLabel;
 
