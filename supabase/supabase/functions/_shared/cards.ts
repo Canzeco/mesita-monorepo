@@ -14,8 +14,9 @@
 // remove refuses it (the payer changes it on the Premier screen).
 
 import type { SupabaseClient } from "jsr:@supabase/supabase-js@2";
-import { CHECKOUT_TTL_SEC } from "./boost.ts";
-import { type StripeCall, StripeError } from "./stripe.ts";
+import { CHECKOUT_TTL_SEC, readCustomer } from "./boost.ts";
+import { errorMessage } from "./errors.ts";
+import { paymentsStripeKey, type StripeCall, StripeError, stripeClient } from "./stripe.ts";
 
 export type SavedCard = {
   id: string;
@@ -83,6 +84,23 @@ export async function premierCards(admin: SupabaseClient, consumerId: string): P
       .map((r) => r.stripe_payment_method_id)
       .filter((v): v is string => !!v),
   );
+}
+
+/** The guest's saved cards for the Wallet's one read (MESITA-3814,
+ *  consumer-web-get-wallet `with_cards`): [] with no customer yet, null when
+ *  Stripe is off or failed (the Wallet says the cards couldn't load and
+ *  still shows the money). Never throws. */
+export async function readSavedCards(admin: SupabaseClient, consumerId: string, livemode: boolean): Promise<SavedCard[] | null> {
+  try {
+    const customer = await readCustomer(admin, consumerId, livemode);
+    if (!customer) return [];
+    const key = paymentsStripeKey();
+    if (!key) return null;
+    return await listCards(stripeClient(key), customer, await premierCards(admin, consumerId));
+  } catch (err) {
+    console.error("[readSavedCards]", JSON.stringify({ error: errorMessage(err) }));
+    return null;
+  }
 }
 
 /** The Checkout that saves one card on the guest's platform customer. The

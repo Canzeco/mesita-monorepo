@@ -10,6 +10,7 @@ import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-
 import { moneyLabel } from "@mesita/place-profile/lib/money";
 import { walletGiftPath } from "@/lib/consumer-route-contract";
 import { invokeEF } from "./_invoke";
+import type { SavedCard } from "./cards";
 
 export type WalletEntry = {
   kind: string;
@@ -94,11 +95,20 @@ export type Wallet = {
   /** The read ran out of time confirming a purchase with Stripe; it is
    *  confirmed on the next read or by the server on its own. */
   settling?: boolean;
+  /** The guest's saved cards, only when asked `withCards` (MESITA-3814: the
+   *  /wallet page paints once from one read). Null: Stripe failed, the money
+   *  is still here. Absent when not asked. */
+  cards?: SavedCard[] | null;
 };
 
-export async function apiGetWallet(client: SupabaseClient, sessionId?: string): Promise<Wallet> {
+export async function apiGetWallet(
+  client: SupabaseClient,
+  sessionId?: string,
+  opts: { withCards?: boolean } = {},
+): Promise<Wallet> {
   return await invokeEF<Wallet>(client, "consumer-web-get-wallet", {
     ...(sessionId ? { session_id: sessionId } : {}),
+    ...(opts.withCards ? { with_cards: true } : {}),
   });
 }
 

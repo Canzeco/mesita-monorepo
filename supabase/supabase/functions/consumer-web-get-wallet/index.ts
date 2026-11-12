@@ -11,7 +11,14 @@
 // `session_id` (Checkout's return) it also says what happened to that one
 // purchase (`outcome`).
 //
-// Body: { session_id?: string }
+// ONE READ FOR THE WALLET (MESITA-3814, Pato: "first load the functions
+// and then display all the wallets"): with `with_cards: true` the answer
+// also carries the guest's saved cards (`cards`, read from Stripe in
+// parallel with everything below; null when Stripe failed, so the money
+// still answers). The /wallet page paints once, from this one answer. The
+// House Card, Activity and Gift reads leave it off and never wait on Stripe.
+//
+// Body: { session_id?: string, with_cards?: boolean }
 // Response: { ok: true, test_mode,
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
@@ -40,7 +47,8 @@
 //             can_send (MESITA-3292): sending credit is open in this
 //               universe (always in test; live once money_config.sending_live),
 //             outcome?: "credited" | "already_paid" | "pending" | "expired" | "mismatch" | "none",
-//             settling?: true, pending_purchases?: [purchase ids] }
+//             settling?: true, pending_purchases?: [purchase ids],
+//             cards?: [{ id, brand, last4, exp_month, exp_year, in_use }] | null }
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { json, readJsonOr, serveJson } from "../_shared/http.ts";
@@ -59,6 +67,7 @@ import {
   settleAll,
   type SettleOutcome,
 } from "../_shared/wallet.ts";
+import { readSavedCards } from "../_shared/cards.ts";
 import { paymentsLivemode, paymentsStripeKey, stripeClient } from "../_shared/stripe.ts";
 
 /** How long one read waits on Stripe for every open purchase together. */
@@ -74,6 +83,8 @@ serveJson("consumer-web-get-wallet", async (req) => {
   const sessionId = typeof body.session_id === "string" ? body.session_id : null;
 
   const livemode = paymentsLivemode();
+  // Started first, awaited last: Stripe's card list runs beside the reads.
+  const cardsRead = body.with_cards === true ? readSavedCards(admin, userId, livemode) : null;
 
   // ── Settle what is still open ──────────────────────────────────────────
   const { data: open, error: openErr } = await admin
@@ -223,9 +234,12 @@ serveJson("consumer-web-get-wallet", async (req) => {
     place.mesita_pay = listRowMoney(settingsFromRow(settingsById.get(id) ?? null), charging?.has(id) ?? false).mesita_pay;
   }
 
+  const cards = cardsRead ? await cardsRead : undefined;
+
   return json({
     ok: true,
     test_mode: !livemode,
+    ...(cards === undefined ? {} : { cards }),
     balances: balances.map(({ place_id, ...b }) => ({
       place: places.get(place_id) ?? null,
       place_id,

@@ -2,8 +2,7 @@ import { Skeleton } from "@/components/shared";
 import { Screen } from "@/components/consumer/nav/Screen";
 import { GuestPayLoading } from "./GuestPayScreen";
 import { PayHeader } from "./PayHeader";
-import { CreditsCardSkeleton } from "../wallet/CreditsCard";
-import { RowsSkeleton, WalletList } from "../wallet/WalletLists";
+import { WalletBodySkeleton } from "../wallet/WalletLists";
 
 /** A Pay screen's frame while it loads: the title in place, the body in
  *  bones (Pato, MESITA-2701: "the placeholders must be similar to the page
@@ -20,21 +19,12 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
   }
   if (body === "wallet") {
     // /wallet, the switch's Wallet half (MESITA-3729): the switch, then the
-    // page's order (MESITA-3736), built from its own skeletons so nothing
-    // jumps: Money Payment Methods (a saved card, then Cash), then one
-    // Credits Card (band, transactions, Fund | Gift).
+    // page's own skeleton (MESITA-3814: the rows' shape, the same one the
+    // page shows while its one read runs), so nothing jumps.
     return (
       <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="wallet" />
-        <WalletList title="Money Payment Methods">
-          <RowsSkeleton count={2} />
-        </WalletList>
-        <section className="mt-5">
-          <div className="mb-2 flex min-h-6 items-center">
-            <h2 className="font-display text-base font-semibold tracking-tight">Credits Payment Methods</h2>
-          </div>
-          <CreditsCardSkeleton />
-        </section>
+        <WalletBodySkeleton />
       </div>
     );
   }

@@ -7,6 +7,9 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { toast } from "@/lib/toast";
 import type { WalletCardModel } from "./WalletCard";
 
+// ONE READ, ONE PAINT (MESITA-3814): /wallet asks `withCards`, so its saved
+// cards ride this same read and the page draws once.
+//
 // THE WALLET'S MONEY, read once for both Wallet screens (MESITA-3614): the
 // rails at /wallet and a place's House Card at /wallet/<placeId>. Money
 // comes from consumer-web-get-wallet only; nothing here adds anything up
@@ -78,7 +81,7 @@ function sayOutcome(w: Wallet) {
   }
 }
 
-export function useWallet(): {
+export function useWallet({ withCards = false }: { withCards?: boolean } = {}): {
   wallet: Wallet | null;
   failed: boolean;
   /** Shown balances as cards: money first, newest first; then $0 ones. */
@@ -103,7 +106,7 @@ export function useWallet(): {
       const q = params.toString();
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
     }
-    void apiGetWallet(getSupabase(), session)
+    void apiGetWallet(getSupabase(), session, { withCards })
       .then((w) => {
         if (cancelled) return;
         setWallet(w);
