@@ -27,6 +27,10 @@ import { cn } from "@/lib/utils";
 // No dashed decorative box: the design map's rule is "cards only when interactive", and
 // a zero state isn't. Tinted icon circle + display title + muted copy + one CTA
 // is the whole vocabulary.
+// AIR ON BOTH SIDES (MESITA-3801): `py-10`, never only a bottom pad. With no
+// top padding, anywhere it isn't centred in a full-height box it sat flush on
+// whatever was above it (Activity's chip strip, Pato: "fix this horrific
+// details across all the app").
 export function EmptyState({
   icon: Icon,
   title,
@@ -44,7 +48,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-10 text-center",
+        "flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center",
         className,
       )}
     >
