@@ -17,7 +17,9 @@
 //              way the next check refuses.
 //   amountShown  the typed amount in the app's money format (MESITA-3759):
 //              the formatter's own prefix and suffix for the currency, the
-//              whole part grouped, the decimals exactly as typed.
+//              whole part grouped, the decimals exactly as typed, and the
+//              cents not typed yet as a muted ghost, so an amount always
+//              reads with two decimals ("$20.00MX", MESITA-3766).
 //   payButton  the Pay step's button and the one line under it, for every
 //              shape a split can take. The button's amount is what the tap
 //              charges or spends in the app: credit + card bill + card tip.
@@ -128,18 +130,23 @@ export function tipWays(a: Omit<PayProblemArgs, "tipWith">): PayWith[] {
 
 /** The typed amount as the screen draws it. `prefix` and `suffix` are what
  *  the money formatter puts around an amount in this currency (pesos read
- *  "$" before and "MX" after); `body` is the whole part with thousands
- *  separators and the decimal part exactly as typed ("12." stays "12.").
- *  Nothing typed: the prefix alone, no "0" and no suffix. */
-export function amountShown(text: string, currency: string): { prefix: string; body: string; suffix: string } {
+ *  "$" before and "MX" after); `body` is what the guest typed, the whole
+ *  part with thousands separators and the decimal part exactly as typed
+ *  ("12." stays "12."); `ghost` is the rest of the two decimals, drawn muted,
+ *  so the amount always reads with cents: "20" shows "20" + ".00", "20.5"
+ *  shows "20.5" + "0" (MESITA-3766). Nothing typed: body "" and ghost
+ *  "0.00", all muted. */
+export function amountShown(text: string, currency: string): { prefix: string; body: string; ghost: string; suffix: string } {
   const zero = money(0, currency);
   const at = zero.indexOf("0");
   const prefix = at < 0 ? "" : zero.slice(0, at);
-  if (text === "") return { prefix, body: "", suffix: "" };
+  const suffix = at < 0 ? "" : zero.slice(at).replace(/^[0.,]+/, "");
+  if (text === "") return { prefix, body: "", ghost: "0.00", suffix };
   const dot = text.indexOf(".");
   const whole = dot < 0 ? text : text.slice(0, dot);
   const rest = dot < 0 ? "" : text.slice(dot);
-  return { prefix, body: whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + rest, suffix: at < 0 ? "" : zero.slice(at + 1) };
+  const ghost = dot < 0 ? ".00" : "00".slice(rest.length - 1);
+  return { prefix, body: whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + rest, ghost, suffix };
 }
 
 export type PayButtonSplit = {
