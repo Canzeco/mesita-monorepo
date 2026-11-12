@@ -499,9 +499,18 @@ export function CatalogRails() {
   // make the menu like not clickable, like the emojis must be visible, but
   // when you click them, instead of instantly changing category, you open
   // the sidebar menu"): MESITA-3781 faded the others to 40%, which read as
-  // disabled. A tap opens the names drawer with that family's row in the
-  // middle of the list; only a pick there changes the family.
+  // disabled. A TAP PICKS AND OPENS (Pato, MESITA-3792: "CLICK A, THE ITEM
+  // GETS SELECTED, THE MENU GETS LARGER"): the family changes at once and the
+  // names drawer opens with that row, now chosen, in the middle of the list.
+  // MESITA-3785's open-only tap lasted one round.
   const openMenuAt = (key: string) => {
+    if (chip !== key) {
+      const c = chips.find((x) => x.key === key);
+      if (c) trackEvent(supabase, "home_mode_view", { mode: c.label });
+      setChip(key);
+      // Saved reads no pool: the last pool family stays asked.
+      if (key !== SAVED_CHIP) setFamilies(chipFamilies(key));
+    }
     setMenuOpen(true);
     // The drawer mounts a frame later (LocalSheet's presence): try a few.
     let tries = 0;
@@ -522,7 +531,8 @@ export function CatalogRails() {
     requestAnimationFrame(centre);
   };
   const emojiRail = (
-    <div className="bg-background flex w-12 shrink-0 flex-col">
+    // A BIT DARKER (Pato, MESITA-3792): bg-border, one step past Home's grey.
+    <div className="bg-border flex w-12 shrink-0 flex-col">
       <nav
         aria-label="Families"
         className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
@@ -535,7 +545,7 @@ export function CatalogRails() {
               key={c.key}
               type="button"
               onClick={() => openMenuAt(c.key)}
-              aria-label={`${c.label}: open families`}
+              aria-label={`${c.label}: pick and open families`}
               aria-haspopup="dialog"
               aria-current={on ? "true" : undefined}
               data-on={on ? "" : undefined}
