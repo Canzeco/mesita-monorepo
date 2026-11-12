@@ -1,11 +1,12 @@
 "use client";
 
 // WHAT EACH ACTIVITY CHIP HOLDS, IN WORDS (MESITA-3782, Pato: "in refunds do
-// leave the explanations. that is important"): every chip but Notifications
+// leave the explanations. that is important"): every chip (Notifications too since MESITA-3801)
 // opens with one card that says what lands there and how it works, in the
 // shape Refunds' "Your credit is protected" card has had since MESITA-3517.
 
 import {
+  Bell,
   CalendarCheck,
   Gift,
   LifeBuoy,
@@ -16,7 +17,12 @@ import {
 import { IconChip, SettingsGroup } from "@/components/consumer/me/settings-rows";
 import type { ActivityType } from "@/lib/activity-types";
 
-const INTRO: Record<Exclude<ActivityType, "notifications">, { Icon: LucideIcon; title: string; text: string }> = {
+const INTRO: Record<ActivityType, { Icon: LucideIcon; title: string; text: string }> = {
+  notifications: {
+    Icon: Bell,
+    title: "What Mesita told you",
+    text: "Answers to your bookings and credit that turned available, newest first under the day they happened.",
+  },
   reservations: {
     Icon: CalendarCheck,
     title: "Tables Mesita booked for you",
@@ -44,7 +50,7 @@ const INTRO: Record<Exclude<ActivityType, "notifications">, { Icon: LucideIcon; 
   },
 };
 
-export function ChipIntro({ type }: { type: Exclude<ActivityType, "notifications"> }) {
+export function ChipIntro({ type }: { type: ActivityType }) {
   const { Icon, title, text } = INTRO[type];
   return (
     <SettingsGroup>

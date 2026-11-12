@@ -639,16 +639,15 @@ export function ActivityPage() {
       }
     >
       {type === "notifications" ? (
-        <>
+        <div className="flex flex-col gap-4">
+          <ChipIntro type="notifications" />
           {nextUp ? (
-            <div className="mb-6">
-              <ActivityRows>
-                <ActivityRow t={{ ...nextUp, label: "Next up" }} />
-              </ActivityRows>
-            </div>
+            <ActivityRows>
+              <ActivityRow t={{ ...nextUp, label: "Next up" }} />
+            </ActivityRows>
           ) : null}
           <NotificationsList quietEmpty={!!nextUp} />
-        </>
+        </div>
       ) : type === "refunds" ? (
         <div className="flex flex-col gap-4">
           <ChipIntro type="refunds" />

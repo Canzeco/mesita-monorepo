@@ -36,7 +36,7 @@ import { newestNotificationAt } from "./use-unseen-notifications";
 // (MESITA-3778; MESITA-2701: "the placeholders must be similar to the page").
 function SkeletonRows() {
   return (
-    <div className="mt-5" aria-hidden>
+    <div aria-hidden>
       <ActivityRowsSkeleton />
     </div>
   );
@@ -75,11 +75,13 @@ export function NotificationsList({
   }, [newest]);
 
   return (
-    <div className="-mt-5">
+    // A column, 20px between day groups; no negative margin (MESITA-3801: it
+    // pulled the first child into the chip strip above).
+    <div className="flex flex-col gap-5">
       {/* NO IN-BODY TITLE (Pato, 2026-09-05: "don't say here your recent
           moves. it looks NOT clean. be direct"). */}
       {error ? (
-        <p className={cn(ERROR_BOX_CLASS, "mt-4 rounded-xl text-sm")}>
+        <p className={cn(ERROR_BOX_CLASS, "rounded-xl text-sm")}>
           {error}
         </p>
       ) : null}
@@ -89,7 +91,7 @@ export function NotificationsList({
       ) : visible.length > 0 ? (
         <>
           {days.map(([day, list]) => (
-            <section key={day} className="mt-5">
+            <section key={day}>
               <h2 className="text-muted-foreground type-eyebrow">{day}</h2>
               <div className="mt-2">
                 <ActivityRows>
@@ -101,17 +103,18 @@ export function NotificationsList({
             </section>
           ))}
           {rows.length >= NOTIFICATIONS_PAGE ? (
-            <p className="text-muted-foreground mt-5 text-center text-xs">
+            <p className="text-muted-foreground text-center text-xs">
               Older notifications aren&apos;t shown
             </p>
           ) : null}
         </>
       ) : error ? null : quietEmpty ? (
-        <p className="text-muted-foreground mt-5 text-sm">Nothing new yet.</p>
+        <p className="text-muted-foreground text-sm">Nothing new yet.</p>
       ) : (
         <EmptyState
           icon={Bell}
           title="Nothing new yet"
+          description="When a place answers your booking or your credit turns available, it shows up here."
           action={{ label: "Find a place", href: CONSUMER_ROUTES.home }}
         />
       )}
