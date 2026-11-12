@@ -3,12 +3,9 @@
 // places land where the silhouettes stood. A plain module: a server loading
 // frame reads these strings too.
 
-/** The family chip row over the rows: one scrolling line, 12px sides. */
-export const GRID_CHIPS =
-  "scrollbar-hide flex shrink-0 gap-1.5 overflow-x-auto overscroll-x-contain px-3 py-2.5";
-
-/** One column of rows; 12px sides, 10px between rows. */
-export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-1";
+/** One column of rows beside the emoji rail (MESITA-3781); 12px sides and
+ *  top, 10px between rows. The chip row that sat above it is gone. */
+export const ROW_LIST = "grid grid-cols-1 content-start gap-2.5 px-3 pt-3";
 
 /** The two squares side by side, touching: one card (Pato, MESITA-3664:
  *  "unify the left image with the right box … making the adjacent borders
