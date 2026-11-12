@@ -15,9 +15,12 @@ import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
 import {
   NotificationRow,
-  NotificationRowSkeleton,
   NOTIFICATION_KINDS,
 } from "@/components/consumer/notification-row";
+import {
+  ActivityRows,
+  ActivityRowsSkeleton,
+} from "@/components/consumer/activity/ActivityRow";
 import { EmptyState } from "@/components/shared";
 import { newestNotificationAt } from "./use-unseen-notifications";
 
@@ -29,18 +32,12 @@ import { newestNotificationAt } from "./use-unseen-notifications";
 // those kinds; filtering on `NOTIFICATION_KINDS` here keeps a row this
 // screen cannot render off the list.
 
-/** The rows' column: 20px under the header, 8px apart. */
-const LIST_CLASS = "mt-5 flex flex-col gap-2";
-
-// Four NotificationRow silhouettes (notification-row.tsx, beside the row
-// they stand in for) on the list's own step (Pato, MESITA-2701: "the
-// placeholders must be similar to the page you are loading, like the sizes").
+// The list's bones: one card of rows, as Activity's other chips draw
+// (MESITA-3778; MESITA-2701: "the placeholders must be similar to the page").
 function SkeletonRows() {
   return (
-    <div className={LIST_CLASS} aria-hidden>
-      {[0, 1, 2, 3].map((i) => (
-        <NotificationRowSkeleton key={i} />
-      ))}
+    <div className="mt-5" aria-hidden>
+      <ActivityRowsSkeleton />
     </div>
   );
 }
@@ -94,10 +91,12 @@ export function NotificationsList({
           {days.map(([day, list]) => (
             <section key={day} className="mt-5">
               <h2 className="text-muted-foreground type-eyebrow">{day}</h2>
-              <div className="mt-2 flex flex-col gap-2">
-                {list.map((n) => (
-                  <NotificationRow key={n.id} n={n} />
-                ))}
+              <div className="mt-2">
+                <ActivityRows>
+                  {list.map((n) => (
+                    <NotificationRow key={n.id} n={n} />
+                  ))}
+                </ActivityRows>
               </div>
             </section>
           ))}

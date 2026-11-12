@@ -6,11 +6,13 @@ import { Outfit } from "next/font/google";
 import { X } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
+import { ERROR_BOX_CLASS } from "@/lib/ui-classes";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
 // the cover, the wordmark, one line and two buttons, Sign up and Log in
 // (MESITA-3751: "two different buttons… for clarity for the user"). Both
-// open the same phone and code steps (the caller's children) as a sheet
+// open the same sign-in options (the caller's children: Google, phone or
+// email, MESITA-3777) as a sheet
 // over the photo; only the sheet's title says which door was taken. The X
 // lowers it back to the cover.
 //
@@ -28,6 +30,8 @@ export function CoverAuthLayout({
   subtitle,
   children,
   footer,
+  openWith,
+  notice,
 }: {
   headline: string;
   /** Overrides both doors' sheet titles (the Pay QR door names its place). */
@@ -35,12 +39,16 @@ export function CoverAuthLayout({
   subtitle: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Opens on this door's sheet instead of the cover (a failed Google return). */
+  openWith?: "signup" | "login";
+  /** One line above the options, e.g. why Google sent the guest back. */
+  notice?: string;
 }) {
   // Which door is open: null is the cover.
-  const [door, setDoor] = useState<"signup" | "login" | null>(null);
+  const [door, setDoor] = useState<"signup" | "login" | null>(openWith ?? null);
   const open = door !== null;
   const sheetTitle =
-    title ?? (door === "login" ? "Log in with your phone" : "Create your account");
+    title ?? (door === "login" ? "Log in" : "Create your account");
 
   return (
     <div className="relative flex-1 overflow-hidden bg-black text-white">
@@ -143,6 +151,7 @@ export function CoverAuthLayout({
             <X className="h-4 w-4" />
           </button>
         </header>
+        {notice && <p className={cn(ERROR_BOX_CLASS, "mb-4")}>{notice}</p>}
         {children}
         {footer && (
           <p className="text-muted-foreground type-body mt-6 text-center">{footer}</p>

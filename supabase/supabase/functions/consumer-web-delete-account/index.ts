@@ -18,6 +18,7 @@ import { requireConsumerRequest } from "../_shared/request.ts";
 import { deleteConsumerAccount } from "../_shared/delete-history-free.ts";
 import { boostStripeKey, stripeClient } from "../_shared/stripe.ts";
 import { endConsumerPledges } from "../_shared/boost-writes.ts";
+import { closeGuard } from "./guard.ts";
 
 serveJson("consumer-web-delete-account", async (req) => {
   // Account close is self-only — the JWT identifies which row to
@@ -26,6 +27,36 @@ serveJson("consumer-web-delete-account", async (req) => {
   if (ctx instanceof Response) return ctx;
   const { admin, user } = ctx;
   const userId = user.id;
+
+  // MESITA-3777: a place owner or an admin keeps their account; refused
+  // before anything touches Stripe or the tombstone.
+  const guard = await closeGuard({
+    managesPlace: async () => {
+      const { count, error } = await admin
+        .from("place_managers")
+        .select("id", { count: "exact", head: true })
+        .eq("consumer_id", userId)
+        .is("revoked_at", null);
+      return error ? { ok: false, error: error.message } : { ok: true, value: (count ?? 0) > 0 };
+    },
+    isSuperAdmin: async () => {
+      // By user id, and by email (a row whose user_id is not backfilled yet).
+      const byId = await admin
+        .from("super_admins")
+        .select("email", { count: "exact", head: true })
+        .eq("user_id", userId);
+      if (byId.error) return { ok: false, error: byId.error.message };
+      if ((byId.count ?? 0) > 0 || !user.emailLower) return { ok: true, value: (byId.count ?? 0) > 0 };
+      const byEmail = await admin
+        .from("super_admins")
+        .select("email", { count: "exact", head: true })
+        .eq("email", user.emailLower);
+      return byEmail.error
+        ? { ok: false, error: byEmail.error.message }
+        : { ok: true, value: (byEmail.count ?? 0) > 0 };
+    },
+  });
+  if (!guard.ok) return json(guard.body, guard.status);
 
   // Premier (MESITA-2995): settle any charge in flight and take every pledge
   // out of its line (cards detached) before the account goes, or a renewal

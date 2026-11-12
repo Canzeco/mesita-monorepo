@@ -15,6 +15,8 @@ export const RESEND_COOLDOWN_SECONDS = 60;
 
 /** Digits Supabase's phone provider issues (dashboard: SMS OTP length). */
 export const OTP_LENGTH = 6;
+/** The email code's length: the cloud's mailer_otp_length (MESITA-3777). */
+export const EMAIL_OTP_LENGTH = 8;
 
 // National-number length by ISO country, for the markets we actually sell
 // in. Anything not listed falls back to the E.164 floor/ceiling, which
@@ -136,7 +138,10 @@ type MaybeAuthError = {
  * Map a Supabase Auth error to copy a guest can act on. Falls through to
  * the provider's own message so we never swallow something unexpected.
  */
-export function otpErrorMessage(error: MaybeAuthError | null): string {
+export function otpErrorMessage(
+  error: MaybeAuthError | null,
+  digits: number = OTP_LENGTH,
+): string {
   if (!error) return "Something went wrong. Try again.";
   const message = error.message ?? "";
   const code = error.code ?? "";
@@ -156,11 +161,17 @@ export function otpErrorMessage(error: MaybeAuthError | null): string {
   if (code === "otp_expired" || /expired/i.test(message)) {
     return "That code expired. Ask for a new one.";
   }
+  if (code === "email_address_not_authorized" || /not authorized/i.test(message)) {
+    return "Email sign-in isn't available yet. Use your phone or Google.";
+  }
+  if (code === "over_email_send_rate_limit") {
+    return "Too many emails sent. Wait a few minutes or use your phone.";
+  }
   if (code === "otp_disabled") {
     return "Phone sign-in is temporarily unavailable. Try again shortly.";
   }
   if (/invalid|incorrect/i.test(message) && /token|otp|code/i.test(message)) {
-    return "That code isn't right. Check the 6 digits and try again.";
+    return `That code isn't right. Check the ${digits} digits and try again.`;
   }
   const twilioCode = message.match(/twilio\.com\/docs\/errors\/(\d+)/i)?.[1];
   if (twilioCode && twilioCode in TWILIO_MESSAGES) {

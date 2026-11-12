@@ -140,7 +140,9 @@ function reservationRows(rows: EFReservationRow[], nowMs: number): Row[] {
       upcoming,
       place: item.placeName,
       photo: item.placePhoto,
-      status: { label: label === "Passed" ? "Past" : label, tone },
+      // No "Past" on the row: its group says it (MESITA-3778, Pato: "don't
+      // show the fucking past").
+      status: { label: label === "Passed" ? "" : label, tone },
       big: item.when,
       line: join(
         `${item.partySize} ${item.partySize === 1 ? "person" : "people"}`,
@@ -705,11 +707,11 @@ function Tickets({
           <h2 className="text-muted-foreground type-eyebrow mb-2">{title}</h2>
         ) : null}
         <ActivityRows>
-          {list.map((r, i) => (
+          {list.map((r) => (
             <ActivityRow
               key={r.key}
               t={
-                type === "reservations" && title === "Upcoming" && i === 0
+                type === "reservations" && r.key === upcoming[0]?.key
                   ? { ...r, label: "Next up" }
                   : r
               }
@@ -725,11 +727,15 @@ function Tickets({
       {note ? (
         <p className="text-muted-foreground mb-3 text-xs">{note}</p>
       ) : null}
-      {twoGroups ? (
+      {twoGroups && upcoming.length > 0 && past.length > 0 ? (
         <>
           {group("Upcoming", upcoming, true)}
-          {group("Past", past, upcoming.length === 0)}
+          {group("Past", past, false)}
         </>
+      ) : twoGroups && upcoming.length > 0 ? (
+        // One group, no heading (MESITA-3778): a lone "Past" or "Upcoming"
+        // only repeated what every row said.
+        group(null, upcoming, true)
       ) : (
         group(null, past, true)
       )}

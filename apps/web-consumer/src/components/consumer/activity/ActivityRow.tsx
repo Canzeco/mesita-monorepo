@@ -101,9 +101,11 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
             {t.big}
           </span>
         ) : null}
-        <span className={cn("text-sm font-medium", TONE[t.status.tone])}>
-          {t.status.label}
-        </span>
+        {t.status.label ? (
+          <span className={cn("text-sm font-medium", TONE[t.status.tone])}>
+            {t.status.label}
+          </span>
+        ) : null}
       </span>
       {t.href ? (
         <ChevronRight
@@ -123,7 +125,7 @@ export function ActivityRow({ t }: { t: ActivityItem }) {
         <PushLink
           href={t.href}
           className={cn(cls, "hover:bg-muted/40 active:bg-muted/60 transition")}
-          aria-label={`${t.place}, ${t.status.label}, ${t.big}`}
+          aria-label={[t.place, t.status.label, t.big].filter(Boolean).join(", ")}
         >
           {body}
         </PushLink>
