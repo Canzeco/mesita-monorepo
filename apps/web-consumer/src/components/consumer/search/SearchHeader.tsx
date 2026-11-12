@@ -16,7 +16,8 @@
 // THE FILTERS DISC AT THE FAR LEFT (Pato, MESITA-2882: "keep the Filters
 // icon at the super left"), pinned outside the scroll: a white icon-only
 // disc (MESITA-3006; MESITA-2999's worded chip "looks like [bad]"), then Top, then every
-// family, each with its line icon (MESITA-2478: line icons, not emoji).
+// family, each with its emoji (Pato, MESITA-3760: "the emojis must exist
+// here too"; Home's column has worn them since MESITA-3683).
 // Top, not All (Pato, MESITA-2882: "don't call it all, call it Top";
 // MESITA-2879 had All, MESITA-2534 Top). THE DISC OPENS THE FILTERS SHEET
 // (Pato, MESITA-2903: "when i click filters, open the modal to see select
@@ -46,7 +47,6 @@ import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { SlidersHorizontal, Sparkles } from "lucide-react";
 import { FILTERABLE_PLACE_FAMILIES } from "@/lib/place-families";
-import { FamilyIcon } from "@/lib/family-icons";
 import {
   clearMapFamilies,
   selectMapFamily,
@@ -69,9 +69,10 @@ import {
   DISC_BADGE,
 } from "./header-classes";
 
-// A chip's icon is a line icon, never an emoji (MESITA-2478), at the
-// header's one size and stroke (HEADER_ICON, MESITA-3023; it was 1.75 off,
-// 2.25 on).
+// A chip's mark is its family's emoji, the same one Home's column wears
+// (MESITA-3760, undoing MESITA-2478's line icons here); Top is ⭐ as on Home.
+const CHIP_EMOJI = "w-4 shrink-0 text-center text-sm leading-none";
+const TOP_EMOJI = "⭐";
 
 
 export function SearchHeader({
@@ -176,11 +177,9 @@ export function SearchHeader({
                 className={cn(CHIP, everyFamily ? CHIP_ON : CHIP_OFF)}
                 data-search-chip-top
               >
-                <FamilyIcon
-                  name="all"
-                  className={HEADER_ICON}
-                  strokeWidth={HEADER_ICON_STROKE}
-                />
+                <span aria-hidden className={CHIP_EMOJI}>
+                  {TOP_EMOJI}
+                </span>
                 <span>Top</span>
               </button>
               {FILTERABLE_PLACE_FAMILIES.map((family) => {
@@ -194,11 +193,9 @@ export function SearchHeader({
                     aria-pressed={on}
                     className={cn(CHIP, on ? CHIP_ON : CHIP_OFF)}
                   >
-                    <FamilyIcon
-                      name={family.key}
-                      className={HEADER_ICON}
-                      strokeWidth={HEADER_ICON_STROKE}
-                    />
+                    <span aria-hidden className={CHIP_EMOJI}>
+                      {family.emoji}
+                    </span>
                     <span>{family.label}</span>
                   </button>
                 );

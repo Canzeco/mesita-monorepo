@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Check } from "lucide-react";
 
 import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
-import { FamilyIcon } from "@/lib/family-icons";
 import {
   FILTERABLE_PLACE_FAMILIES,
   type FamilyKey,
@@ -123,11 +122,13 @@ function FamilyFilterBody({
                     aria-hidden
                   />
                 ) : (
-                  <FamilyIcon
-                    name={family.key}
-                    className="h-4 w-4 shrink-0"
-                    strokeWidth={1.75}
-                  />
+                  // The family's emoji, as on the chips and Home (MESITA-3760).
+                  <span
+                    aria-hidden
+                    className="w-4 shrink-0 text-center text-sm leading-none"
+                  >
+                    {family.emoji}
+                  </span>
                 )}
                 <span>{family.label}</span>
               </button>
