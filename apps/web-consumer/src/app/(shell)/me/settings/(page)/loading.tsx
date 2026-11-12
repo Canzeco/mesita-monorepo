@@ -12,12 +12,12 @@ import { SettingsRowSkeleton } from "../../me-skeletons";
 // the page you are loading, like the sizes"). Every row is a door or a
 // fetched fact, so each is a silhouette at its height:
 //
-//   Your account   Phone (a fact) · Contact · Send feedback (links), 60px rows
-//   Social         Public profile, with its switch; its words are
-//                  SocialNameRow's first paint (switch-words.ts), drawn as
-//                  themselves because the line wraps to two on a narrow phone
-//   Session        Sign out: a 16px glyph and one 14px line, 44px
-//   Support        Terms · Privacy                         60px rows
+//   Account   Phone (a fact) · Public profile with its switch; its words are
+//             SocialNameRow's first paint (switch-words.ts), drawn as
+//             themselves because the line wraps to two on a narrow phone
+//   Help      Contact · Send feedback                      60px rows
+//   Legal     Terms · Privacy                              60px rows
+//   Sign out  one centred row, 52px (MESITA-3793)
 //
 // IN A ROUTE GROUP SO IT WRAPS THIS PAGE ONLY (MESITA-2701), as (hub) does
 // for /me. Beside settings/contact/ it also wrapped /me/settings/contact, and
@@ -30,26 +30,28 @@ export default function SettingsLoading() {
         <>
           <SettingsRowSkeleton />
           <RowDivider />
-          <SettingsRowSkeleton />
-          <RowDivider />
-          <SettingsRowSkeleton />
+          <SettingsRowSkeleton
+            label={PUBLIC_PROFILE_SWITCH.label}
+            sub={PUBLIC_PROFILE_SWITCH.on}
+            toggle
+          />
         </>
       }
-      social={
-        <SettingsRowSkeleton
-          label={PUBLIC_PROFILE_SWITCH.label}
-          sub={PUBLIC_PROFILE_SWITCH.on}
-          toggle
-        />
-      }
-      session={<SignOutRowSkeleton />}
-      support={
+      help={
         <>
           <SettingsRowSkeleton />
           <RowDivider />
           <SettingsRowSkeleton />
         </>
       }
+      legal={
+        <>
+          <SettingsRowSkeleton />
+          <RowDivider />
+          <SettingsRowSkeleton />
+        </>
+      }
+      signOut={<SignOutRowSkeleton />}
     >
       <p role="status" className="sr-only">
         Loading settings

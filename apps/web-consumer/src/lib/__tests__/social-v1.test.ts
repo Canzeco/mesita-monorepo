@@ -201,8 +201,9 @@ describe("full handle, Open Instagram, and the Social name switch", () => {
     expect(card).toContain("Make your profile public to see their Instagram");
   });
 
-  it("Settings › Social: 'Public profile' writes appear_anonymous", () => {
-    expect(SETTINGS).toContain('<SettingsGroup title="Social">');
+  // The switch sits in Settings › Account since MESITA-3793 (its own Social
+  // group before); the group's name is copy, not pinned.
+  it("Settings: 'Public profile' writes appear_anonymous", () => {
     expect(SETTINGS).toContain("<SocialNameRow />");
     expect(SWITCH_WORDS).toContain('label: "Public profile"');
     expect(SWITCH).toContain("{PUBLIC_PROFILE_SWITCH.label}");

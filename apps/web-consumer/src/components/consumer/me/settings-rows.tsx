@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { ChevronRight } from "lucide-react";
+import { ArrowUpRight, ChevronRight } from "lucide-react";
 import { PushLink } from "@/components/consumer/nav/PushLink";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
@@ -166,10 +166,15 @@ export function SettingsLinkRow({
         <Icon className="h-[18px] w-[18px]" />
       </IconChip>
       <RowText label={label} sub={sub} />
-      <ChevronRight
-        className="text-muted-foreground h-4 w-4 shrink-0"
-        aria-hidden
-      />
+      {/* A door out of the app wears an arrow out, not a chevron (MESITA-3793). */}
+      {external ? (
+        <ArrowUpRight className="text-muted-foreground h-4 w-4 shrink-0" aria-hidden />
+      ) : (
+        <ChevronRight
+          className="text-muted-foreground h-4 w-4 shrink-0"
+          aria-hidden
+        />
+      )}
     </>
   );
   if (external) {

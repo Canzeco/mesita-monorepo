@@ -29,49 +29,50 @@ import { cn } from "@/lib/utils";
 // (MESITA-2552: "if you connect your … instagram, is because you want to be
 // seen").
 //
-// THE FRAME IS SettingsFrame, AND THE FALLBACK WEARS IT (MESITA-2701). The
-// title, the four groups under their eyebrows, their order, the 24px between
-// them and the version line exist once; /me/settings' loading.tsx fills the
-// same frame with row silhouettes (Pato, MESITA-2701: "the placeholders must
-// be similar to the page you are loading, like the sizes").
+// THREE GROUPS AND SIGN OUT (Pato, MESITA-3793: "make this better. it looks
+// like shit"). Four eyebrows for six rows read as clutter: Contact and
+// Feedback sat under "Your account", Social and Session were one-row groups,
+// Sign out drew a different row, and Terms and Privacy showed raw URLs.
+//
+//   ACCOUNT   Phone (a fact) · Public profile (the switch)
+//   HELP      Contact · Send feedback
+//   LEGAL     Terms of use · Privacy policy (an arrow out: they leave the app)
+//   ────────  Sign out, its own card, one centred row
+//   Mesita · version
+//
+// THE FRAME IS SettingsFrame, AND THE FALLBACK WEARS IT (MESITA-2701): the
+// title, the groups under their eyebrows, their order, the 24px between them
+// and the version line exist once; /me/settings' loading.tsx fills the same
+// frame with row silhouettes.
 
-/** Sign out's row: a 16px glyph and one 14px line, 44px. */
+/** Sign out's row: centred, one 14px line with its glyph, 52px. */
 const SIGN_OUT_ROW_CLASS =
-  "flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold";
+  "flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-semibold";
 
 /** Settings' page, its rows passed in: the page's own, or the fallback's
  *  silhouettes. `children` lands after the version line (the fallback's
  *  status line). */
 export function SettingsFrame({
   account,
-  social,
-  session,
-  support,
+  help,
+  legal,
+  signOut,
   children,
 }: {
   account: ReactNode;
-  social: ReactNode;
-  session: ReactNode;
-  support: ReactNode;
+  help: ReactNode;
+  legal: ReactNode;
+  signOut: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <MeScreen title="Settings">
       <div className="flex flex-col gap-6">
-        {/* Contact is the only door to a human. Support, below, is legal. */}
-        <SettingsGroup title="Your account">{account}</SettingsGroup>
-
-        <SettingsGroup title="Social">{social}</SettingsGroup>
-
-        {/* Sign out is an account control, so it sits with the rest of
-            them. Support follows: legal moved off its own tile
-            (MESITA-2169) and /me/help 308s here. Nothing below Support
-            but the version, which stays one line. */}
-        <SettingsGroup title="Session">{session}</SettingsGroup>
-
-        <SettingsGroup title="Support">{support}</SettingsGroup>
-
-        <p className="text-muted-foreground type-label text-center">
+        <SettingsGroup title="Account">{account}</SettingsGroup>
+        <SettingsGroup title="Help">{help}</SettingsGroup>
+        <SettingsGroup title="Legal">{legal}</SettingsGroup>
+        <SettingsGroup>{signOut}</SettingsGroup>
+        <p className="text-muted-foreground type-label -mt-2 text-center">
           Mesita · {APP_VERSION}
         </p>
       </div>
@@ -80,13 +81,13 @@ export function SettingsFrame({
   );
 }
 
-/** Sign out while the page loads: its row, the glyph's box and a bar on the
- *  label's line (MESITA-2701). */
+/** Sign out while the page loads: its row and a bar on the label's line
+ *  (MESITA-2701). */
 export function SignOutRowSkeleton() {
   return (
     <div aria-hidden className={SIGN_OUT_ROW_CLASS}>
       <Skeleton className="h-4 w-4 shrink-0 rounded" />
-      <SkeletonLine className="flex-1" bar="w-16" />
+      <SkeletonLine className="w-16" bar="w-16" />
     </div>
   );
 }
@@ -99,12 +100,17 @@ export function SettingsModal() {
           {/* The login phone left Me's card for here (MESITA-2547). */}
           <PhoneRow />
           <RowDivider />
+          <SocialNameRow />
+        </>
+      }
+      help={
+        <>
           <SettingsLinkRow
             Icon={MessageSquare}
             tint="muted"
             href={CONSUMER_ROUTES.mePages.settingsContact}
             label="Contact"
-            sub="Talk to us"
+            sub="Talk to a person"
           />
           <RowDivider />
           <SettingsLinkRow
@@ -112,25 +118,17 @@ export function SettingsModal() {
             tint="muted"
             href={CONSUMER_ROUTES.mePages.settingsFeedback}
             label="Send feedback"
-            sub="About the app"
+            sub="Tell us what to fix"
           />
         </>
       }
-      social={<SocialNameRow />}
-      session={
-        <SignOutButton
-          redirectTo="/"
-          className={cn(SIGN_OUT_ROW_CLASS, "hover:bg-muted transition")}
-        />
-      }
-      support={
+      legal={
         <>
           <SettingsLinkRow
             Icon={ScrollText}
             tint="muted"
             href={MESITA_TERMS_URL}
             label="Terms of use"
-            sub="landing.mesita.ai/terms"
             external
           />
           <RowDivider />
@@ -139,10 +137,15 @@ export function SettingsModal() {
             tint="muted"
             href={MESITA_PRIVACY_URL}
             label="Privacy policy"
-            sub="landing.mesita.ai/privacy"
             external
           />
         </>
+      }
+      signOut={
+        <SignOutButton
+          redirectTo="/"
+          className={cn(SIGN_OUT_ROW_CLASS, "hover:bg-muted transition")}
+        />
       }
     />
   );
