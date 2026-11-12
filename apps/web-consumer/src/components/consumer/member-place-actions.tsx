@@ -70,6 +70,11 @@ const BoostSheet = dynamic(() =>
 // being enriched"). With "Enrich after N views" at 1, this open is the view
 // that starts the run, after the page loaded `ready`. The `viewed` answer
 // says so, and `place` comes back Enriching until the place is Enriched.
+/** How long the screen waits on the Wallet and reservation reads before it
+ *  paints without them (MESITA-3803): a stuck read never strands the guest
+ *  on the skeleton; whatever lands later fills in. */
+const FIRST_READS_CAP_MS = 3_000;
+
 function noopSubscribe() {
   return () => {};
 }
@@ -82,6 +87,9 @@ function readRewardsAsk(): RewardsSection | null {
 export function useMemberPlaceActions(place: PlaceDetail): {
   /** The place to draw: Enriching once a view found it mid-run. */
   place: PlaceDetail;
+  /** The Wallet and reservation reads are in (MESITA-3803): draw the
+   *  place's skeleton until then, so the profile paints in one frame. */
+  ready: boolean;
   actions: PlaceActions;
   sheets: ReactNode;
   social: ReactNode;
@@ -109,14 +117,37 @@ export function useMemberPlaceActions(place: PlaceDetail): {
   const activity = usePlaceActivity(place.id);
   const boost = usePlaceBoost(place.id);
   const vouchers = usePlaceVouchers(place.id);
-  const live = usePlaceReservation(place.id);
-  // The Wallet tile's credit (MESITA-3574): read the place's offer and the
-  // guest's balance when the screen opens, not only when Rewards opens.
-  // load sets state in its promise callbacks only (Next 16 lint).
+  const reservation = usePlaceReservation(place.id);
+  const live = reservation.row;
+  // ONE READ, ONE PAINT (Pato, MESITA-3803: "call those two functions in
+  // parallel from the frontend and await them … i don't like that you load
+  // and display items in different orders and not all at the same time").
+  // The Wallet tile's credit (MESITA-3574) and the guest's table here
+  // (MESITA-3640) are asked together when the screen opens; the place's
+  // skeleton stays until both answered or failed, so the profile lands
+  // whole instead of the Wallet flipping Off → $0.00MX and the reservation
+  // button popping in under it. A stuck read gives up the wait after
+  // FIRST_READS_CAP_MS. State is set in callbacks only (Next 16 lint).
   const loadVouchers = vouchers.load;
+  const loadReservation = reservation.load;
+  const [readFor, setReadFor] = useState<string | null>(null);
   useEffect(() => {
-    loadVouchers();
-  }, [loadVouchers]);
+    let cancelled = false;
+    const done = () => {
+      if (!cancelled) setReadFor(place.id);
+    };
+    const cap = setTimeout(done, FIRST_READS_CAP_MS);
+    void Promise.all([loadVouchers(), loadReservation()]).finally(() => {
+      clearTimeout(cap);
+      done();
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(cap);
+    };
+  }, [loadVouchers, loadReservation, place.id]);
+  // A Google-only card has neither read: it paints at once.
+  const ready = !isMesitaPlaceId(place.id) || readFor === place.id;
   // Stripe Checkout's return asks for the sheet too: it is open while the
   // latest ask is newer than the last close (MESITA-3201).
   const boostOpen = Math.max(boostAskedAt, boost.returnedAt ?? 0) > boostClosedAt;
@@ -274,6 +305,7 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 
   return {
     place: shown,
+    ready,
     actions,
     sheets,
     social: activity.social,
@@ -294,26 +326,25 @@ export function useMemberPlaceActions(place: PlaceDetail): {
 /** The guest's live reservation at this place, if any (MESITA-3640: one per
  *  place). `upcoming` is exactly "live" server-side (pending or confirmed,
  *  slot within the 4h grace). A failed read draws no button. */
-function usePlaceReservation(placeId: string): EFReservationRow | null {
+function usePlaceReservation(placeId: string): {
+  row: EFReservationRow | null;
+  /** Reads it; resolves once it answered or failed (never rejects). */
+  load: () => Promise<void>;
+} {
   // The memoized client: the lazy getter is a new closure each render and
-  // would refetch forever in this effect (MESITA-3207).
+  // would refetch forever in an effect (MESITA-3207).
   const supabase = useBrowserSupabase();
   const mesita = isMesitaPlaceId(placeId);
   const [found, setFound] = useState<{ placeId: string; row: EFReservationRow | null } | null>(null);
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!mesita) return;
-    let cancelled = false;
-    apiListReservations(supabase, { scope: "upcoming", limit: 100 })
+    const row = await apiListReservations(supabase, { scope: "upcoming", limit: 100 })
       .then(({ reservations }) => reservations.find((r) => r.place?.id === placeId) ?? null)
-      .catch(() => null)
-      .then((row) => {
-        if (!cancelled) setFound({ placeId, row });
-      });
-    return () => {
-      cancelled = true;
-    };
+      .catch(() => null);
+    // Keyed by place: an answer for a place left behind is never drawn.
+    setFound({ placeId, row });
   }, [mesita, placeId, supabase]);
-  return found?.placeId === placeId ? found.row : null;
+  return { row: found?.placeId === placeId ? found.row : null, load };
 }
 
 function usePlaceVouchers(placeId: string): {
@@ -325,7 +356,8 @@ function usePlaceVouchers(placeId: string): {
   buying: VoucherKey | null;
   /** The first list-vouchers for this place has not answered (MESITA-3388). */
   loading: boolean;
-  load: () => void;
+  /** Reads the offer and the credit; resolves once it answered or failed. */
+  load: () => Promise<void>;
   buy: (key: VoucherKey) => void;
   sheet: ReactNode;
 } {
@@ -342,9 +374,9 @@ function usePlaceVouchers(placeId: string): {
   // promise callbacks, never synchronously in an effect (Next 16 lint).
   const [settled, setSettled] = useState<string | null>(null);
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     if (!mesita) return;
-    void apiListVouchers(getSupabase(), placeId)
+    await apiListVouchers(getSupabase(), placeId)
       .then(({ money, inWallet }) => {
         if (money) setState({ placeId, money });
         if (inWallet !== undefined) setCard({ placeId, inWallet });
