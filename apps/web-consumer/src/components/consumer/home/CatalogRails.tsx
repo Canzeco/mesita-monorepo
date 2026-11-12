@@ -80,6 +80,7 @@ import { readSavedPlacePreviews, useSavedPlaces } from "@/lib/saved-places";
 import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
+import { OVERLAY_BACKDROP_CLASS } from "@/components/consumer/overlay/overlay-presence";
 import { RowFallback } from "./DiscoverFallback";
 import { ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
@@ -577,8 +578,12 @@ export function CatalogRails() {
         aria-label="Close families"
         tabIndex={-1}
         onClick={closeMenu}
+        // BLURRED, NOT JUST DIM (Pato, MESITA-3804: "make the background
+        // blurred of the not menu part, else it looks weird"): every
+        // overlay's own backdrop, dim and blur.
         className={cn(
-          "absolute inset-0 z-10 bg-black/30 transition-opacity duration-200",
+          OVERLAY_BACKDROP_CLASS,
+          "z-10 duration-200",
           menuWide ? "opacity-100" : "opacity-0",
         )}
       />
@@ -614,8 +619,12 @@ export function CatalogRails() {
       <div className="relative flex min-h-0 flex-1">
         {tab === "places" ? emojiRail : null}
         {tab === "places" ? railMenu : null}
+        {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
+            card's stretched link, MESITA-3797) stays inside this pane, so the
+            open menu's blur covers all of it and nothing under it takes a tap
+            (Pato, MESITA-3804: "blurred and not clickable"). */}
         <div
-          className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
         >
           {inner}
