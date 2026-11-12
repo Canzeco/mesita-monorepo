@@ -43,19 +43,12 @@ export function CoverAuthLayout({
         fill
         priority
         sizes="(min-width: 768px) 30rem, 100vw"
-        // A 1px blur takes the edge off the photo's generated details
-        // without smearing faces (MESITA-3659: 3px was "too much"); the scale
-        // keeps the blurred edge off the frame.
+        // The photo shows as it is: no blur on it or behind the words
+        // (MESITA-3746). It only grows a little when the sheet opens.
         className={cn(
-          "scale-105 object-cover object-[center_40%] blur-[1px] transition-transform duration-700 ease-out",
-          open && "scale-110",
+          "object-cover object-[center_40%] transition-transform duration-700 ease-out",
+          open && "scale-105",
         )}
-      />
-      {/* Behind the words only: a soft backdrop blur over the bottom third,
-          fading in from clear (MESITA-3659). */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 bottom-0 h-[35%] backdrop-blur-[6px] [mask-image:linear-gradient(to_bottom,transparent,black_60%)]"
       />
       {/* Legibility: a veil at the top for the logo and a deep one at the
           bottom for the copy and the button; the middle stays clear. */}
