@@ -1,11 +1,7 @@
-// THE SEVEN PAY STEPS AND THE WORD "SIGN" (MESITA-3759, MESITA-3776). One
-// guest payment is seven named steps, the same on every screen and on both
-// phones:
+// THE SIX PAY STEPS AND THE WORD "SIGN" (MESITA-3759). One guest payment is
+// six named steps, the same on every screen and on both phones:
 //
-//   1 Pick · 2 Ticket · 3 Bill · 4 Tip · 5 Methods · 6 Pay · 7 Sign
-//
-// Ticket (MESITA-3776) is the number printed on the restaurant's ticket; the
-// guest may skip it ("No ticket number").
+//   1 Pick · 2 Bill · 3 Tip · 4 Methods · 5 Pay · 6 Sign
 //
 // Pato, 2026-11-11: "call the last step Sign, where the waiter signs. Sign
 // that he attended that transaction."
@@ -22,7 +18,6 @@
 
 export const PAY_STEPS = [
   { key: "pick", name: "Pick" },
-  { key: "ticket", name: "Ticket" },
   { key: "bill", name: "Bill" },
   { key: "tip", name: "Tip" },
   { key: "methods", name: "Methods" },
@@ -31,16 +26,16 @@ export const PAY_STEPS = [
 ] as const;
 
 export type PayStepKey = (typeof PAY_STEPS)[number]["key"];
-/** Whose phone: the guest never signs, so step 7 names the waiter there. */
+/** Whose phone: the guest never signs, so step 6 names the waiter there. */
 export type PayAudience = "guest" | "waiter";
 
-/** 1-based: Pick is 1, Sign is 7. */
+/** 1-based: Pick is 1, Sign is 6. */
 export function payStepNumber(key: PayStepKey): number {
   return PAY_STEPS.findIndex((s) => s.key === key) + 1;
 }
 
 /** The step's name as that phone reads it. Three stated exceptions to the
- *  bare name: the guest's list heading "Pick a place", the guest's step 7
+ *  bare name: the guest's list heading "Pick a place", the guest's step 6
  *  "Waiter signs" (never an instruction to the guest), the waiter's "Sign". */
 export function payStepName(key: PayStepKey, audience: PayAudience = "guest"): string {
   if (audience === "guest" && key === "pick") return "Pick a place";
@@ -48,14 +43,14 @@ export function payStepName(key: PayStepKey, audience: PayAudience = "guest"): s
   return PAY_STEPS[payStepNumber(key) - 1].name;
 }
 
-/** The heading: "3 · Bill" on the guest's phone; the waiter saw no other
+/** The heading: "2 · Bill" on the guest's phone; the waiter saw no other
  *  step, so theirs has no number ("Sign"). */
 export function payStepLabel(key: PayStepKey, audience: PayAudience = "guest"): string {
   const name = payStepName(key, audience);
   return audience === "waiter" ? name : `${payStepNumber(key)} · ${name}`;
 }
 
-/** What a screen reader hears for the strip: "Step 3 of 7: Bill". */
+/** What a screen reader hears for the strip: "Step 2 of 6: Bill". */
 export function payStepSpoken(key: PayStepKey): string {
   return `Step ${payStepNumber(key)} of ${PAY_STEPS.length}: ${payStepName(key, "guest")}`;
 }

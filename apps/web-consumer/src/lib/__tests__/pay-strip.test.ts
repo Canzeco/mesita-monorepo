@@ -17,7 +17,7 @@ function tab(over: Partial<PayStripTab> = {}): PayStripTab {
 const read = (over: Partial<PayStripTab> = {}) => payStrip(tab(over), NOW);
 
 describe("a payment the waiter can still sign", () => {
-  it("cash waiting: the strip at step 7, amber, the guest shows the QR", () => {
+  it("cash waiting: the strip at step 6, amber, the guest shows the QR", () => {
     const v = read({ cash_bill_cents: 50_000, parts: [part("outside", "open")] });
     expect(v).toMatchObject({ state: "waiting", strip: "waiting", heading: null, band: "Show this to the waiter", green: false, signed: false, closed: false });
   });
@@ -41,7 +41,7 @@ describe("a payment the waiter can still sign", () => {
 });
 
 describe("a signed payment", () => {
-  it("all seven solid, Paid · Signed, green, with or without cash, inside or past its window", () => {
+  it("all six solid, Paid · Signed, green, with or without cash, inside or past its window", () => {
     for (const over of [{}, { cash_bill_cents: 50_000 }, { expires_at: EARLIER }] as Array<Partial<PayStripTab>>) {
       const v = read({ status: "paid", verified_at: EARLIER, ...over });
       expect(v).toMatchObject({ state: "signed", strip: "signed", heading: null, band: "Paid · Signed", green: true, signed: true });

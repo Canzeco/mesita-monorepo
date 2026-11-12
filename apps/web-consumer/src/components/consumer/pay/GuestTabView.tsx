@@ -10,7 +10,7 @@ import { CashChip, PlainChip } from "@/components/consumer/wallet/WalletLists";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep, TICKET } from "@/lib/api/tab";
+import { apiCancelTab, apiGetTab, type GuestTab, runBankCheck, TAB_REFUSAL, type TabCardStep } from "@/lib/api/tab";
 import { money } from "@/lib/api/wallet";
 import { endAction } from "@/lib/pay-open";
 import { payStrip } from "@/lib/pay-strip";
@@ -28,24 +28,21 @@ import { forgetGuestTab, NETWORK_FAILURE, QUIET_BUTTON_CLASS, readGuestQr, remem
 // nothing moved. From 2 h 30 a line asks the guest to get the waiter's scan;
 // past the three-hour window the cash is not signed and earns nothing.
 //
-// THE TOP (MESITA-3759) comes from payStrip (lib/pay-strip.ts): the seven-step
-// strip at "7 · Waiter signs" while it waits, all solid and "Signed" once
+// THE TOP (MESITA-3759) comes from payStrip (lib/pay-strip.ts): the six-step
+// strip at "6 · Waiter signs" while it waits, all solid and "Signed" once
 // the waiter signed; a payment that ended any other way has no strip and its
 // status is the heading. "Sign" is the label; the wire keeps `verified`.
 //
 // ONE OPEN PAYMENT, WALKED BACK (MESITA-3772): the strip's done segments
-// open steps 2 to 6 again as read-only views of what was paid (Ticket,
-// Bill, Tip, Methods, Pay), and the header's back arrow steps 7 → 6 → … →
-// 2, then leaves. Step 7 ends the payment one of two ways besides the waiter's
+// open steps 2 to 5 again as read-only views of what was paid (Bill, Tip,
+// Methods, Pay), and the header's back arrow steps 6 → 5 → 4 → 3 → 2, then
+// leaves. Step 6 ends the payment one of two ways besides the waiter's
 // signature: Cancel while nothing moved (the credit comes back), Close once
 // money moved and nobody signed (it ends now, no cashback). Cashback turns on
 // only with the waiter's signature, card and cash alike.
-//
-// THE TICKET (MESITA-3776): the band's second line reads "Ticket 1234 ·
-// $200.00MX + $30.00MX tip", or the amounts alone when the guest gave none.
 
 /** The steps this page can show, in order (step 1, Pick, is the Pay tab). */
-const VIEW_STEPS = ["ticket", "bill", "tip", "methods", "pay", "sign"] as const;
+const VIEW_STEPS = ["bill", "tip", "methods", "pay", "sign"] as const;
 type ViewStep = (typeof VIEW_STEPS)[number];
 
 const FAST_MS = 1500;
@@ -87,7 +84,7 @@ export function GuestTabView({
   const { closed, green } = top;
   const verified = top.signed;
   const done = verified || closed;
-  // Only a payment with a strip can be walked back; any other shows step 7.
+  // Only a payment with a strip can be walked back; any other shows step 6.
   const shownStep: ViewStep = top.strip ? viewStep : "sign";
 
   // A lost QR (a new browser) is minted again, only for this guest's own tab.
@@ -259,7 +256,7 @@ export function GuestTabView({
     />
   );
 
-  // STEPS 2 TO 6, READ-ONLY (MESITA-3772): what was paid, from the payment
+  // STEPS 2 TO 5, READ-ONLY (MESITA-3772): what was paid, from the payment
   // itself; nothing here changes it.
   if (top.strip && shownStep !== "sign") {
     return (
@@ -305,7 +302,9 @@ export function GuestTabView({
           <p className="font-display shrink-0 text-2xl font-semibold tabular-nums">{m(total)}</p>
         </div>
         <p className={cn("h-5 truncate text-sm tabular-nums", green ? "text-white/80" : "text-muted-foreground")}>
-          {[tab.ticket ? TICKET.label(tab.ticket) : null, tip > 0 ? `${m(total - tip)} + ${m(tip)} tip` : null].filter(Boolean).join(" · ") || " "}
+          {/* "Ticket N" only when the payment carries one (a waiter-billed
+              tab; the guest never types it, MESITA-3796). */}
+          {[tab.ticket ? `Ticket ${tab.ticket}` : null, tip > 0 ? `${m(total - tip)} + ${m(tip)} tip` : null].filter(Boolean).join(" · ") || " "}
         </p>
       </div>
 
@@ -469,18 +468,6 @@ function PaidStep({
   const bill = tab.bill_cents ?? tab.credit_cents + tab.cash_bill_cents + tab.card_bill_cents;
   const total = tab.credit_cents + cash + card;
   const label = payStepLabel(step, "guest");
-
-  if (step === "ticket") {
-    return (
-      <div className="mt-6 flex h-14 w-full shrink-0 items-center justify-center" role="group" aria-label={`${label}: ${tab.ticket ?? TICKET.none}`}>
-        {tab.ticket ? (
-          <p className="max-w-full truncate text-[2.5rem] leading-none font-semibold whitespace-nowrap tabular-nums">{tab.ticket}</p>
-        ) : (
-          <p className="text-muted-foreground text-base">{TICKET.none}</p>
-        )}
-      </div>
-    );
-  }
 
   if (step === "bill") {
     return (
