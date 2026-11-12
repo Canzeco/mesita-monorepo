@@ -4,7 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Place } from "@/lib/api/places";
-import { CatalogTile } from "@/components/consumer/home/CatalogTile";
+import { PlaceRowCard } from "@/components/consumer/home/PlaceRowCard";
 
 // NO PASSIVE CREATION (MESITA-2298 req 5, MESITA-2302). A Mesita Place is
 // minted only when a guest explicitly opens a Google-only result's profile:
@@ -83,7 +83,12 @@ function tile(over: Partial<Place>): string {
     ...over,
   } as Place;
   return renderToStaticMarkup(
-    createElement(CatalogTile, { place, saved: false, onToggle: () => {} }),
+    createElement(PlaceRowCard, {
+      place,
+      saved: false,
+      onToggle: () => {},
+      onShare: () => {},
+    }),
   );
 }
 
@@ -161,7 +166,6 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
   it("rails, tiles, pins, cards and the server pages never create or prefetch", () => {
     for (const path of [
       "components/consumer/home/CatalogRails.tsx",
-      "components/consumer/home/CatalogTile.tsx",
       "components/consumer/search/SearchRailCard.tsx",
       "components/consumer/search/SearchMap.tsx",
       "app/(shell)/place/[id]/page.tsx",
@@ -223,25 +227,24 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
     expect(client.match(/openGoogleProfile\(/g)).toHaveLength(1);
   });
 
-  it("a Google-only tile is a button, never a link to a page it has no row for", () => {
-    const src = code(read("components/consumer/home/CatalogTile.tsx"));
-    const link = src.slice(
-      src.indexOf("function TileLink("),
-      src.indexOf("function readableKind("),
+  // PlaceRowCard carries the guard CatalogTile did (MESITA-3794).
+  it("a Google-only card is a button, never a link to a page it has no row for", () => {
+    const src = code(read("components/consumer/home/PlaceRowCard.tsx"));
+    const open = src.slice(
+      src.indexOf("const open = ("),
+      src.indexOf("const focus ="),
     );
-    const branch = link.indexOf("if (google) {");
-    expect(branch).toBeGreaterThan(-1);
-    const fallThrough = link.indexOf(
-      "return (",
-      link.indexOf("return (", branch) + 1,
-    );
-    const googleBranch = link.slice(branch, fallThrough);
-    const mesitaBranch = link.slice(fallThrough);
+    const split = open.indexOf(") : (");
+    expect(split).toBeGreaterThan(-1);
+    const googleBranch = open.slice(0, split);
+    const mesitaBranch = open.slice(split);
+    expect(googleBranch).toContain("google ?");
     expect(googleBranch).toContain("<button");
     expect(googleBranch).toContain('type="button"');
     expect(googleBranch).not.toContain("<Link");
     expect(googleBranch).not.toContain("href=");
-    expect(mesitaBranch).toContain("<Link href={href}");
+    expect(mesitaBranch).toContain("<Link");
+    expect(mesitaBranch).toContain("href={placeHref(");
     expect(mesitaBranch).not.toContain("prefetch");
 
     const google = tile({
@@ -251,7 +254,8 @@ describe("no passive creation: a Mesita Place is minted only on an explicit open
       googleOnly: true,
     });
     expect(google).not.toContain("<a ");
-    expect(google).toContain('aria-label="Open Casa"');
+    expect(google).not.toContain("google.com/maps");
+    expect(google).not.toContain('target="_blank"');
     expect(tile({})).toMatch(/<a\s[^>]*href="\/place\/casa"/);
   });
 });
