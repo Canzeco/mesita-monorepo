@@ -115,6 +115,8 @@ export const LEGACY_REDIRECTS: Redirect[] = [
   { source: "/home/classic", destination: "/home/places", permanent: true },
   { source: "/home/grid", destination: "/home/places", permanent: true },
   { source: "/home/rails", destination: "/home/places", permanent: true },
+  // Places 3.0's own tab is Places since MESITA-3789.
+  { source: "/home/rows", destination: "/home/places", permanent: true },
   // Search's two addresses under /discover (MESITA-1609 → MESITA-1616),
   // straight to the canonical /search. T7 pins both.
   { source: "/discover/search", destination: "/search", permanent: true },

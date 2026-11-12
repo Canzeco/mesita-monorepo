@@ -32,7 +32,6 @@ import CreditLoading from "./activity/credit/[placeId]/[entry]/loading";
 // is a type error, never a blank card.
 const FRAMES: Record<RouteId, () => ReactNode> = {
   home: () => <HomeLoadingFrame />,
-  homeRows: () => <HomeLoadingFrame view="rows" />,
   homeSocial: () => <HomeLoadingFrame />,
   search: () => <SearchLoading />,
   searchChat: () => <SearchChatLoading />,
