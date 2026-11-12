@@ -20,6 +20,7 @@ import {
   PRIMARY_BUTTON_CLASS,
 } from "@/lib/ui-classes";
 import { cn } from "@/lib/utils";
+import { AUTH_BUTTON_SIZE } from "./auth-ui";
 
 // Two-step phone OTP. Phone is the identity — there's no "create account"
 // vs "sign in" anymore; first verify on a number creates the auth.user,
@@ -159,7 +160,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         className="flex flex-col gap-3"
       >
         <label className="block">
-          <span className="text-muted-foreground mb-1.5 block text-xs font-medium">
+          <span className="text-foreground mb-1.5 block text-sm font-semibold">
             Phone number
           </span>
           <PhoneInputWithCountry
@@ -172,17 +173,14 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
           />
         </label>
 
-        <p className="text-muted-foreground type-body">
-          How should we send your {OTP_LENGTH}-digit code? Standard SMS rates
-          may apply.
-        </p>
-
         {error && <p className={ERROR_BOX_CLASS}>{error}</p>}
 
+        {/* One dark button; calling is the quiet second way (MESITA-3795).
+            Never greyed out while typing: a short number answers on tap. */}
         <button
           type="submit"
-          disabled={loading || !parsed.ok}
-          className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
+          disabled={loading}
+          className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-1")}
         >
           {sending === "sms" ? (
             <Spinner size="sm" className="border-white/40 border-t-white" />
@@ -197,15 +195,15 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
         <button
           type="button"
           onClick={() => void startVerification("call")}
-          disabled={loading || !parsed.ok}
-          className={cn(PRIMARY_BUTTON_CLASS, "bg-card text-foreground border-border border")}
+          disabled={loading}
+          className="text-muted-foreground hover:text-foreground inline-flex h-11 items-center justify-center gap-1.5 self-center text-sm font-semibold transition disabled:opacity-50"
         >
           {sending === "call" ? (
             <Spinner size="sm" />
           ) : (
             <>
               <Phone className="h-4 w-4" />
-              Call me with the code
+              Call me instead
             </>
           )}
         </button>
@@ -263,7 +261,7 @@ export function PhoneOtpForm({ redirectAfter }: { redirectAfter: string }) {
       <button
         type="submit"
         disabled={loading || code.length !== OTP_LENGTH}
-        className={cn(PRIMARY_BUTTON_CLASS, "mt-2")}
+        className={cn(PRIMARY_BUTTON_CLASS, AUTH_BUTTON_SIZE, "mt-2")}
       >
         {loading ? (
           <Spinner size="sm" className="border-white/40 border-t-white" />

@@ -36,7 +36,8 @@ export function CoverAuthLayout({
   headline: string;
   /** Overrides both doors' sheet titles (the Pay QR door names its place). */
   title?: string;
-  subtitle: string;
+  /** Under the sheet title; defaults to the door's own line. */
+  subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
   /** Opens on this door's sheet instead of the cover (a failed Google return). */
@@ -49,6 +50,8 @@ export function CoverAuthLayout({
   const open = door !== null;
   const sheetTitle =
     title ?? (door === "login" ? "Log in" : "Create your account");
+  const sheetSubtitle =
+    subtitle ?? (door === "login" ? "Welcome back." : "It takes a minute.");
 
   return (
     <div className="relative flex-1 overflow-hidden bg-black text-white">
@@ -96,17 +99,20 @@ export function CoverAuthLayout({
             </p>
           </div>
           <div className="flex flex-col gap-3">
+            {/* Both doors read on the photo (MESITA-3795, Pato: "outside the
+                box it must be more visible"): Sign up solid white, Log in a
+                frosted fill with a bright edge, never a bare outline. */}
             <button
               type="button"
               onClick={() => setDoor("signup")}
-              className="flex h-13 w-full items-center justify-center rounded-xl bg-white text-base font-semibold text-black transition active:scale-[0.98]"
+              className="flex h-14 w-full items-center justify-center rounded-2xl bg-white text-lg font-semibold text-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] transition active:scale-[0.98]"
             >
               Sign up
             </button>
             <button
               type="button"
               onClick={() => setDoor("login")}
-              className="flex h-13 w-full items-center justify-center rounded-xl border border-white/70 text-base font-semibold text-white transition active:scale-[0.98]"
+              className="flex h-14 w-full items-center justify-center rounded-2xl border border-white/60 bg-white/20 text-lg font-semibold text-white backdrop-blur-md transition active:scale-[0.98]"
             >
               Log in
             </button>
@@ -130,17 +136,17 @@ export function CoverAuthLayout({
         inert={!open}
         aria-hidden={!open}
         className={cn(
-          "bg-background text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-3xl px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
+          "bg-card text-foreground absolute inset-x-0 bottom-0 max-h-[90%] overflow-y-auto rounded-t-[28px] px-6 pt-3 pb-8 shadow-2xl transition-transform duration-300 ease-out",
           open ? "translate-y-0" : "translate-y-full",
         )}
       >
         <div aria-hidden className="bg-border mx-auto mb-4 h-1 w-10 rounded-full" />
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em]">
+            <h2 className="font-display text-3xl leading-tight font-semibold tracking-[-0.02em]">
               {sheetTitle}
             </h2>
-            <p className="text-muted-foreground mt-1 text-sm leading-[1.55]">{subtitle}</p>
+            <p className="text-muted-foreground mt-1 text-base leading-snug">{sheetSubtitle}</p>
           </div>
           <button
             type="button"
