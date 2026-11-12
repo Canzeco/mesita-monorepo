@@ -662,7 +662,7 @@ export function CatalogRails() {
         <ul
           role="list"
           aria-label="Families"
-          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-4"
+          className="scrollbar-thin-dark min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-10"
           data-places-menu-list
         >
           {chips.map((c) => {
@@ -702,6 +702,13 @@ export function CatalogRails() {
             );
           })}
         </ul>
+        {/* IT SCROLLS, AND SAYS SO (Pato, MESITA-3779: "add sidebar to menu
+            to explain that its scrollable"): Home's thin grey scrollbar on
+            the list, and the last rows fade into the panel's white. */}
+        <div
+          aria-hidden
+          className="from-popover pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t to-transparent"
+        />
       </LocalSheet>
     </div>
   );
