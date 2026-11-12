@@ -98,7 +98,7 @@ function EntryRow({ group, currency, now }: { group: EntryGroup; currency: strin
 export function HouseCardSkeleton() {
   return (
     <div className="flex flex-col" aria-hidden>
-      <Skeleton className="h-[5.5rem] w-full rounded-2xl" />
+      <Skeleton className="h-[7rem] w-full rounded-2xl" />
       <Skeleton className="mt-5 h-5 w-40 rounded-md" />
       <Skeleton className="mt-2 h-32 w-full rounded-2xl" />
       <Skeleton className="mt-6 h-12 w-full rounded-xl" />
@@ -191,11 +191,21 @@ export function PlaceCredit({
   const historyKeys = groupKeys(shownHistory);
   return (
     <>
-      <div className="border-border bg-card rounded-2xl border px-4 py-4" data-house-card-amounts>
-        <p className="text-muted-foreground text-sm">Available</p>
-        <p className={cn("mt-1 text-2xl font-semibold tabular-nums", muted && "text-muted-foreground")}>
+      {/* THE PINK PASS (MESITA-3774, Pato picked "A · Pink pass" of four
+          rendered options): the one spot of colour on the page, in the
+          brand's own pink; everything below stays achromatic. A $0 is
+          white at reduced opacity, never grey on pink. */}
+      <div
+        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] px-4 py-4 text-white"
+        data-house-card-amounts
+      >
+        <span className="pointer-events-none absolute -top-10 -right-8 h-32 w-32 rounded-full bg-white/10" aria-hidden />
+        <span className="pointer-events-none absolute -right-4 -bottom-12 h-24 w-24 rounded-full bg-white/[0.07]" aria-hidden />
+        <p className="relative text-sm text-white/85">Available</p>
+        <p className={cn("relative mt-1 text-2xl font-semibold tabular-nums", muted && "text-white/70")}>
           {money(Math.max(0, card.available_cents), card.currency)}
         </p>
+        <p className="type-eyebrow relative mt-1.5 text-white/80">House Card</p>
       </div>
       {held ? (
         <p className="text-muted-foreground mt-3 text-sm" data-house-card-held>
