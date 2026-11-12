@@ -4,6 +4,7 @@
 // (through lib/api/_invoke.ts), so it is a no-op without `window`.
 
 import { toast } from "./toast";
+import { leaveDeadSession } from "./stale-session";
 
 /** Background calls whose failure the guest should never hear about. */
 const SILENT_EFS = new Set([
@@ -30,6 +31,8 @@ export function reportEFFailure(
 ): void {
   if (SILENT_EFS.has(fn)) return;
   if (status != null && status >= 400 && status < 500 && status !== 401) return;
+  // A dead session goes to sign-in instead of a toast per call (MESITA-3808).
+  if (status === 401 && leaveDeadSession()) return;
   const said =
     status == null
       ? "Couldn't reach Mesita. Check your connection."

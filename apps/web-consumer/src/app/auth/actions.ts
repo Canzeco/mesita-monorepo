@@ -14,7 +14,10 @@ import { createServerSupabase } from "@/lib/supabase/server";
 // match the form-action signature and never read it.
 export async function authSignOut(redirectTo: string, _formData: FormData) {
   const supabase = await createServerSupabase();
-  await supabase.auth.signOut();
+  // This browser only (MESITA-3808). The default, "global", revoked every
+  // session the guest had: another window or phone kept drawing them signed
+  // in while every call it made came back 401.
+  await supabase.auth.signOut({ scope: "local" });
   revalidatePath("/", "layout");
   redirect(redirectTo);
 }
