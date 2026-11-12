@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type PointerEvent,
 } from "react";
-import { QrCode, Search, User } from "lucide-react";
+import { Inbox, QrCode, Search, User } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { SizedImg } from "@mesita/place-profile";
 import { useConsumerProfile } from "@/lib/use-consumer-profile";
@@ -26,14 +26,14 @@ import { useLazyBrowserSupabase } from "@/lib/supabase/browser";
 import { setPendingTab, usePendingTab } from "@/lib/pending-tab";
 import { useUnseenNotifications } from "./use-unseen-notifications";
 
-// FOUR tabs, in this order (Pato, 2026-11-11, MESITA-3726: "Queda decidido:
-// cuatro pestañas, Home, Search, Pay y Me. Wallet va dentro de Pay.
-// Reservaciones y Activity van dentro de Me."):
+// FIVE tabs, in this order (Pato, 2026-11-11, MESITA-3769: "in fact, add
+// the activity page again — Home Search Pay Activity Me"):
 //
-//   Home · Search · Pay · Me
+//   Home · Search · Pay · Activity · Me
 //
-// Wallet held a fifth tab for an hour (MESITA-3722). Before that it was four
-// too (MESITA-3717, Pato: "Make activity
+// It was four for a day (MESITA-3726: "cuatro pestañas, Home, Search, Pay y
+// Me … Activity van dentro de Me"). Wallet held a fifth tab for an hour
+// (MESITA-3722). Before that it was four too (MESITA-3717, Pato: "Make activity
 // hidden. Move it to profile. not in bottom menu."; then, on splitting Pay
 // and Wallet into two tabs, "better do keep pay and wallet in the same
 // page"). Activity held the fourth tab from MESITA-3631 (2026-11-09), Wallet
@@ -43,10 +43,10 @@ import { useUnseenNotifications } from "./use-unseen-notifications";
 // moved Saved under Me and made the fourth a Share tab, MESITA-2566 gave it
 // its own page):
 //
-//   ME WEARS A RED DOT while a notification is newer than the last one this
-//   device showed (MESITA-3717, Pato: "if there is an event not viewed yet,
-//   put red bubble"): Activity is behind Me now, so the bar says something
-//   is waiting there. Opening Activity › Notifications clears it.
+//   ACTIVITY WEARS A RED DOT while a notification is newer than the last one
+//   this device showed (MESITA-3717, Pato: "if there is an event not viewed
+//   yet, put red bubble"; on Me until MESITA-3769 put Activity back on the
+//   bar). Opening Activity › Notifications clears it.
 //
 //   PAY OWNS THE MONEY (MESITA-3726): it lights on every address under /pay
 //   (/pay/<placeId>, /pay/tab/<id>, /pay/receipt/<id>) and on the Wallet,
@@ -77,7 +77,7 @@ type Item = {
   label: string;
   /** The tab this item is. Which screens light it is ROUTE_MAP's `tab`
    *  (lib/consumer-route-contract.ts, MESITA-3646): a place lights Home, a
-   *  House Card Pay; Activity, a reservation and Share light Me. */
+   *  House Card Pay, a reservation Activity, Share Me. */
   tab: ConsumerTab;
 };
 
@@ -103,6 +103,13 @@ const ITEMS: Item[] = [
     // Reward from MESITA-3211 until then).
     label: "Pay",
     tab: "pay",
+  },
+  {
+    href: CONSUMER_ROUTES.activity,
+    // An inbox, where everything that happened lands (Pato, MESITA-3679).
+    Icon: Inbox,
+    label: "Activity",
+    tab: "activity",
   },
   {
     href: CONSUMER_ROUTES.me,
@@ -188,7 +195,7 @@ export function BottomNav() {
                     strokeWidth={active ? 2.25 : 1.75}
                   />
                 )}
-                {item.tab === "me" && unseen ? (
+                {item.tab === "activity" && unseen ? (
                   <span
                     className="bg-destructive ring-card absolute top-0 right-0 h-2.5 w-2.5 rounded-full ring-2"
                     data-unseen-dot

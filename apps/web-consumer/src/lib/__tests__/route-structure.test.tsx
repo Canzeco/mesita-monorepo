@@ -288,12 +288,11 @@ describe("T5 — exactly one tab lights per surface", () => {
     ["/wallet", "Pay"],
     ["/wallet/p1", "Pay"],
     ["/wallet/gift/g1", "Pay"],
-    // Activity is a page under Me, off the bar (MESITA-3717; a tab of its
-    // own from MESITA-3631 until then).
-    ["/activity", "Me"],
+    // Activity is the bar's tab again (MESITA-3769).
+    ["/activity", "Activity"],
     // A reservation is reached from a place AND from Activity › Reservations
-    // (MESITA-3688); it lights Me, as Activity does.
-    ["/reservation/r1", "Me"],
+    // (MESITA-3688); it lights Activity.
+    ["/reservation/r1", "Activity"],
     // Share is Me's tile since it left the bar (MESITA-2887).
     ["/share", "Me"],
     ["/me", "Me"],
@@ -370,8 +369,8 @@ describe("the bar is Home · Search · Pay · Me", () => {
     return [...html.matchAll(/text-center">([^<]+)</g)].map((m) => m[1]);
   }
 
-  it("is exactly Home · Search · Pay · Me (MESITA-3726)", async () => {
-    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Me"]);
+  it("is exactly Home · Search · Pay · Activity · Me (MESITA-3769)", async () => {
+    expect(await tabLabels()).toEqual(["Home", "Search", "Pay", "Activity", "Me"]);
   });
 
   it("the @modal host stacks over the body only, not BottomNav (MESITA-2747)", () => {
@@ -396,11 +395,11 @@ describe("the bar is Home · Search · Pay · Me", () => {
     expect(labels).not.toContain("Share");
   });
 
-  // Four <a> tabs and no <button>: Pay navigates to its page like every
+  // Five <a> tabs and no <button>: Pay navigates to its page like every
   // other link.
-  it("draws four links and no button", async () => {
+  it("draws five links and no button", async () => {
     const html = await renderNav("/search");
-    expect(html.split("<a ").slice(1)).toHaveLength(4);
+    expect(html.split("<a ").slice(1)).toHaveLength(5);
     expect(html.split("<button").slice(1)).toHaveLength(0);
   });
 
@@ -422,6 +421,7 @@ describe("the bar is Home · Search · Pay · Me", () => {
       CONSUMER_ROUTES.home,
       CONSUMER_ROUTES.search,
       CONSUMER_ROUTES.pay,
+      CONSUMER_ROUTES.activity,
       CONSUMER_ROUTES.me,
     ]);
     const redirects = await nextConfig.redirects!();
