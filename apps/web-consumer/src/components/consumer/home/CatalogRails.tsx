@@ -167,14 +167,6 @@ export function homeTabOf(pathname: string): HomeTab {
   return pathname === CONSUMER_ROUTES.homeRows ? "rows" : "places";
 }
 
-/** A place's family word for Places 3.0's fact line when it has no kind of
- *  its own: the first family the server ranked it under, or null. */
-export function placeFamilyLabel(place: Place): string | null {
-  const key = place.area?.familyKeys?.[0];
-  if (!key) return null;
-  return FILTERABLE_PLACE_FAMILIES.find((f) => f.key === key)?.label ?? null;
-}
-
 /** The Places tab's left column, top to bottom (MESITA-2519): Saved, the
  *  guest's hearts (MESITA-3718), then Top in one scrolling list (MESITA-2534),
  *  then every guest family. Google Places and Mesita Places are not guest choices
@@ -750,7 +742,6 @@ export function CatalogRails() {
           <PlaceRowCard
             key={place.id}
             place={withUserDistance(place, coords)}
-            family={isEveryFamily(chip) ? placeFamilyLabel(place) : null}
             saved={cards.isSaved(place)}
             onToggle={() => cards.toggle(place, i + 1)}
             onShare={() => cards.share(place)}

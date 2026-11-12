@@ -46,7 +46,6 @@ import { PlaceFactsRun } from "./place-facts";
  */
 export function PlaceRowCard({
   place,
-  family,
   saved,
   onToggle,
   onShare,
@@ -54,8 +53,6 @@ export function PlaceRowCard({
   onOpenGoogle,
 }: {
   place: Place;
-  /** The place's family word, or null where the chosen chip already says it. */
-  family: string | null;
   saved: boolean;
   onToggle: () => void;
   onShare: () => void;
@@ -143,7 +140,7 @@ export function PlaceRowCard({
                 ad={(place.boost_tier ?? 0) > 0}
               />
             </p>
-            <PlaceFactsRun place={place} family={family} />
+            <PlaceFactsRun place={place} />
           </>,
           cn("flex min-w-0 flex-col gap-0.5 rounded-lg text-left", focus),
         )}

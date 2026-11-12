@@ -22,23 +22,22 @@ type Cell = { key: string; node: ReactNode };
 /**
  * ONE RUN OF FACTS (Pato, MESITA-3669: "$$$$ from 1 to 4 … then the number
  * of stars … then if open or closed, don't mention the hour … then the
- * distance", "todo seguido"): `$$ · Taco Restaurant · ★ 4.7 (8.6K) · Open ·
- * 0.4 km`, wrapping over 2–3 lines; a missing fact drops with its dot.
+ * distance", "todo seguido"): `$$ · ★ 4.7 (8.6K) · Open · 0.4 km`, wrapping
+ * over 2–3 lines; a missing fact drops with its dot. NO GOOGLE CATEGORY
+ * (Pato, MESITA-3786: "don't show the google category, to make it look
+ * cleaner"): the kind ("Taco Restaurant") and its family-word fallback are
+ * gone; the rail beside the rows already says the family.
  * Places 3.0's row card and Places 4.0's rail card print it the same way
  * (MESITA-3670).
  */
 export function PlaceFactsRun({
   place,
-  family,
   className,
 }: {
   place: Place;
-  /** The family word, used only when the place has no kind of its own. */
-  family?: string | null;
   className?: string;
 }) {
   const facts = cardFacts(place);
-  const kind = facts.kind ?? family ?? null;
   // $ to $$$$, never the amount: price_level, else the range's low end.
   const price = facts.price ?? priceSymbolsFromRange(place.price_range);
   const icon = "inline h-3 w-3 shrink-0 align-[-2px]";
@@ -47,7 +46,6 @@ export function PlaceFactsRun({
       key: "price",
       node: <span className="text-fact-price font-semibold">{price}</span>,
     },
-    kind && { key: "kind", node: <span>{kind}</span> },
     facts.rating && {
       key: "stars",
       node: (
