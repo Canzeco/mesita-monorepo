@@ -197,10 +197,12 @@ export const SEMI_MODAL_PANEL_CLASS =
 
 const FULL_SCREEN_PANEL_CLASS = "bg-popover relative flex h-full min-h-0 flex-col overflow-hidden";
 
-// A LEFT DRAWER (MESITA-3764): two thirds of the card, full height, Home's
-// grey, for a menu that slides in from the left edge (Places 3.0's families).
+// A LEFT DRAWER (MESITA-3764): full height, for a menu that slides in from
+// the left edge (Places 3.0's families). White, about 64% of the card and
+// never past 272px, its free edge rounded like a sheet's (Pato, MESITA-3775:
+// "its too big": two thirds of the card in Home's grey before).
 const LEFT_DRAWER_PANEL_CLASS =
-  "bg-background shadow-elev relative flex h-full w-2/3 min-h-0 flex-col self-start overflow-hidden";
+  "bg-popover shadow-elev relative flex h-full w-[64%] max-w-[17rem] min-h-0 flex-col self-start overflow-hidden rounded-r-3xl";
 
 export function LocalSheet({
   open,

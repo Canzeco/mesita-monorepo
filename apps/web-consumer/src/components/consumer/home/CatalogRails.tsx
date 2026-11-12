@@ -87,11 +87,7 @@ import { enrichPlaceOverview } from "@/lib/adapters/enrich-overview";
 import { CONSUMER_ROUTES } from "@/lib/consumer-route-contract";
 import { EmptyState } from "@/components/shared";
 import { CatalogTile } from "./CatalogTile";
-import {
-  DiscoverFallback,
-  PLACES_LIST,
-  RowFallback,
-} from "./DiscoverFallback";
+import { DiscoverFallback, PLACES_LIST, RowFallback } from "./DiscoverFallback";
 import { GRID_CHIPS, ROW_LIST } from "./place-grid-classes";
 import { PlaceRowCard } from "./PlaceRowCard";
 import { useActiveLocation } from "@/lib/active-location";
@@ -125,6 +121,13 @@ const BAR_BLUE = "before:bg-blue-600";
 // instead of blue selector use red. its the only exception").
 const BAR_RED = "before:bg-red-600";
 const ROW_OFF = "text-foreground hover:bg-card/60";
+// PLACES 3.0'S FAMILY DRAWER ROWS (Pato, MESITA-3775: "the fams too
+// small"): body-size names and a 20px emoji, 20px in from the edge like the
+// title; the chosen row Home's grey with the same blue (red for Saved) bar.
+const MENU_ROW =
+  "text-foreground relative flex w-full items-center gap-3 px-5 py-2.5 text-left text-base transition";
+const MENU_ROW_ON =
+  "bg-background font-semibold before:absolute before:inset-y-0 before:left-0 before:w-1";
 
 /** The column's default row: every place, one list, ranked like the Search
  *  map (Pato, MESITA-2516: "only keeping All is cleaner. just like in map").
@@ -292,7 +295,13 @@ export function CatalogRails() {
           requestId: ef?.body?.requestId ?? null,
         });
         setFetchError(errMsg(err, "Couldn't load the catalog"));
-        setPool({ kind: "none", places: [], order: [], asked: 0, rankedFrom: null });
+        setPool({
+          kind: "none",
+          places: [],
+          order: [],
+          asked: 0,
+          rankedFrom: null,
+        });
       }
     };
     if (!kept) void fetchPool();
@@ -346,7 +355,8 @@ export function CatalogRails() {
   const hasMore = order !== undefined && asked < order.length;
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined") return;
+    if (!el || !pool || !hasMore || typeof IntersectionObserver === "undefined")
+      return;
     const key = requestKey;
     const start = asked;
     const ids = pool.order.slice(start, start + (pool.pageSize ?? PLACES_PAGE));
@@ -354,50 +364,57 @@ export function CatalogRails() {
     const tag = `${key}@${start}`;
     let disposed = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const io = new IntersectionObserver((entries) => {
-      if (!entries.some((e) => e.isIntersecting)) return;
-      if (filling.current === tag || invalidAt.current === tag) return;
-      filling.current = tag;
-      void apiFillAreaPool(supabase, rankedFrom, families, ids)
-        .then((filled) => {
-          if (key !== liveKey.current) return;
-          fails.current = 0;
-          emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
-          if (emptyRun.current >= 2) {
-            emptyRun.current = 0;
-            dropAreaPool(key);
-            setRetry((n) => n + 1);
-            return;
-          }
-          setPool((cur) => {
-            if (!cur || key !== liveKey.current || cur.asked !== start) return cur;
-            const merged = mergeFilledPlaces(cur, filled, start + ids.length);
-            writeAreaPool(key, merged);
-            return merged;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        if (filling.current === tag || invalidAt.current === tag) return;
+        filling.current = tag;
+        void apiFillAreaPool(supabase, rankedFrom, families, ids)
+          .then((filled) => {
+            if (key !== liveKey.current) return;
+            fails.current = 0;
+            emptyRun.current = filled.length === 0 ? emptyRun.current + 1 : 0;
+            if (emptyRun.current >= 2) {
+              emptyRun.current = 0;
+              dropAreaPool(key);
+              setRetry((n) => n + 1);
+              return;
+            }
+            setPool((cur) => {
+              if (!cur || key !== liveKey.current || cur.asked !== start)
+                return cur;
+              const merged = mergeFilledPlaces(cur, filled, start + ids.length);
+              writeAreaPool(key, merged);
+              return merged;
+            });
+          })
+          .catch((err) => {
+            // The EF's code and requestId join this to its log line.
+            const ef = err instanceof EFError ? err : null;
+            const invalid = ef?.code === "fill_invalid";
+            (invalid ? console.error : console.warn)("[catalog] fill failed", {
+              start,
+              size: ids.length,
+              code: ef?.code ?? null,
+              requestId: ef?.body?.requestId ?? null,
+              attempt: fails.current + 1,
+            });
+            if (invalid) invalidAt.current = tag;
+            if (invalid || disposed || key !== liveKey.current) return;
+            fails.current += 1;
+            if (fails.current <= 3) {
+              timer = setTimeout(
+                () => setFillRetry((n) => n + 1),
+                1000 * 2 ** (fails.current - 1),
+              );
+            }
+          })
+          .finally(() => {
+            if (filling.current === tag) filling.current = null;
           });
-        })
-        .catch((err) => {
-          // The EF's code and requestId join this to its log line.
-          const ef = err instanceof EFError ? err : null;
-          const invalid = ef?.code === "fill_invalid";
-          (invalid ? console.error : console.warn)("[catalog] fill failed", {
-            start,
-            size: ids.length,
-            code: ef?.code ?? null,
-            requestId: ef?.body?.requestId ?? null,
-            attempt: fails.current + 1,
-          });
-          if (invalid) invalidAt.current = tag;
-          if (invalid || disposed || key !== liveKey.current) return;
-          fails.current += 1;
-          if (fails.current <= 3) {
-            timer = setTimeout(() => setFillRetry((n) => n + 1), 1000 * 2 ** (fails.current - 1));
-          }
-        })
-        .finally(() => {
-          if (filling.current === tag) filling.current = null;
-        });
-    }, { rootMargin: "600px 0px" });
+      },
+      { rootMargin: "600px 0px" },
+    );
     io.observe(el);
     return () => {
       disposed = true;
@@ -506,10 +523,7 @@ export function CatalogRails() {
   // list has no inset and the rows no rounding; the chosen row is plain
   // white across the whole column, still with no bar.
   const chips = placesChips();
-  const categoryRow = (
-    c: { key: string; label: string; emoji: string },
-    afterPick?: () => void,
-  ) => {
+  const categoryRow = (c: { key: string; label: string; emoji: string }) => {
     const on = chip === c.key;
     return (
       <li key={c.key}>
@@ -520,7 +534,6 @@ export function CatalogRails() {
             setChip(c.key);
             // Saved reads no pool: the last pool row's family stays asked.
             if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
-            afterPick?.();
           }}
           aria-pressed={on}
           className={cn(
@@ -562,7 +575,7 @@ export function CatalogRails() {
         className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
         data-places-group="families"
       >
-        {chips.map((c) => categoryRow(c))}
+        {chips.map(categoryRow)}
       </ul>
     </nav>
   );
@@ -604,39 +617,38 @@ export function CatalogRails() {
         aria-label="Families"
         data-places-chips
       >
-        {chips
-          .map((c) => {
-            const on = chip === c.key;
-            return (
-              <button
-                key={c.key}
-                type="button"
-                onClick={(e) => {
-                  if (!on)
-                    trackEvent(supabase, "home_mode_view", { mode: c.label });
-                  setChip(c.key);
-                  // Saved reads no pool: the last pool row's family stays.
-                  if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
-                  e.currentTarget.scrollIntoView({
-                    block: "nearest",
-                    inline: "center",
-                  });
-                }}
-                aria-pressed={on}
-                className={cn(
-                  "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
-                  on
-                    ? "bg-foreground text-card font-semibold"
-                    : "bg-border/60 text-foreground hover:bg-border",
-                )}
-              >
-                <span aria-hidden className="mr-1">
-                  {c.emoji}
-                </span>
-                {c.label}
-              </button>
-            );
-          })}
+        {chips.map((c) => {
+          const on = chip === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={(e) => {
+                if (!on)
+                  trackEvent(supabase, "home_mode_view", { mode: c.label });
+                setChip(c.key);
+                // Saved reads no pool: the last pool row's family stays.
+                if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+                e.currentTarget.scrollIntoView({
+                  block: "nearest",
+                  inline: "center",
+                });
+              }}
+              aria-pressed={on}
+              className={cn(
+                "relative h-8 shrink-0 rounded-full px-3 text-xs transition after:absolute after:inset-x-0 after:-inset-y-1.5",
+                on
+                  ? "bg-foreground text-card font-semibold"
+                  : "bg-border/60 text-foreground hover:bg-border",
+              )}
+            >
+              <span aria-hidden className="mr-1">
+                {c.emoji}
+              </span>
+              {c.label}
+            </button>
+          );
+        })}
       </nav>
       <LocalSheet
         open={menuOpen}
@@ -644,13 +656,51 @@ export function CatalogRails() {
         ariaLabel="Families"
         from="left"
       >
+        <h2 className="shrink-0 px-5 pt-5 pb-2 text-lg font-semibold tracking-tight">
+          Families
+        </h2>
         <ul
           role="list"
           aria-label="Families"
-          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain"
+          className="scrollbar-hide min-h-0 flex-1 overflow-y-auto overscroll-y-contain pb-4"
           data-places-menu-list
         >
-          {chips.map((c) => categoryRow(c, pickedFromMenu))}
+          {chips.map((c) => {
+            const on = chip === c.key;
+            return (
+              <li key={c.key}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!on)
+                      trackEvent(supabase, "home_mode_view", { mode: c.label });
+                    setChip(c.key);
+                    // Saved reads no pool: the last pool family stays asked.
+                    if (c.key !== SAVED_CHIP) setFamilies(chipFamilies(c.key));
+                    pickedFromMenu();
+                  }}
+                  aria-pressed={on}
+                  className={cn(
+                    MENU_ROW,
+                    on
+                      ? cn(
+                          MENU_ROW_ON,
+                          c.key === SAVED_CHIP ? BAR_RED : BAR_BLUE,
+                        )
+                      : "hover:bg-background/60",
+                  )}
+                >
+                  <span
+                    aria-hidden
+                    className="w-6 shrink-0 text-center text-xl leading-none"
+                  >
+                    {c.emoji}
+                  </span>
+                  <span className="min-w-0 truncate">{c.label}</span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </LocalSheet>
     </div>
