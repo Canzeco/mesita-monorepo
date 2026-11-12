@@ -68,8 +68,14 @@ export function SplitButton({
 
   return (
     <>
-      <button type="button" className={cn(QUIET_BUTTON_CLASS, "mb-3")} onClick={() => setOpen(true)} data-split-with-friends>
+      <button
+        type="button"
+        className="border-border flex h-12 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left text-sm font-semibold"
+        onClick={() => setOpen(true)}
+        data-split-with-friends
+      >
         Split with friends
+        <span aria-hidden>›</span>
       </button>
       <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split the bill with friends">
         <div className="px-4 pt-2 pb-6">
@@ -196,7 +202,7 @@ export function ShareCard({
   }
 
   return (
-    <div className="border-border bg-card mb-3 rounded-2xl border px-4 py-4" data-share-card>
+    <div className="py-1" data-share-card>
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-base font-semibold">Split bill · {money(table.bill_cents, tab.currency)}</p>
         <p className="text-muted-foreground text-sm tabular-nums" role="status" aria-live="polite">

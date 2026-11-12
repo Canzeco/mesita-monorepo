@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Banknote, CheckCircle2, ChevronRight, CreditCard, Users } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { clockTime, readAmount } from "@mesita/place-profile/lib/money";
 import { Skeleton } from "@/components/shared/Skeleton";
 import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
+import { LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
 import { apiAddCard, brandLabel, CARD_REFUSAL } from "@/lib/api/cards";
 import {
@@ -27,11 +28,13 @@ import {
 import { money } from "@/lib/api/wallet";
 import { payTabPath } from "@/lib/consumer-route-contract";
 import { toast } from "@/lib/toast";
+import { type PadKey, pressKey } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
+import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
 import { GuestTabView } from "./GuestTabView";
 import { LiveClock } from "./LiveClock";
 import { ShareCard, SplitButton } from "./SplitWithFriends";
-import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
+import { NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 
 // PAY AT THE TABLE, THE GUEST'S SCREENS (MESITA-3564; the backend is
 // MESITA-3567/3568/3562, Docs › Credits "Pay at the table").
@@ -48,6 +51,12 @@ import { FIELD_CLASS, NETWORK_FAILURE, QUIET_BUTTON_CLASS } from "./pay-common";
 //    Received; "Change how I pay" undoes it before then.
 // 4. Paid: full screen green-700, the amount, the time, the place, the
 //    cashback and a live clock.
+//
+// ONE SCREEN A STATE (MESITA-3742, after MESITA-3739 did the guest's own
+// flow): white, no tab bar, nothing scrolls. The QR takes the height left
+// (a size container, 140–240px); the billed screen is three steps (Tip →
+// How you pay → Review) with the place and total on top and the button
+// pinned; a split table is one line that opens its card in a sheet.
 //
 // No websocket: the screen re-reads the tab (consumer-web-get-tab) every
 // 1.5 s, 5 s after a minute without a change, 10 s after five; it stops
@@ -128,6 +137,7 @@ export function TabView({
   onWaiterCode,
   onDone,
   onPayAgain,
+  registerBack,
 }: {
   start: TabStart;
   getSupabase: () => Parameters<typeof apiGetTab>[0];
@@ -139,6 +149,8 @@ export function TabView({
   onTabId: (tabId: string) => void;
   onWaiterCode: (placeId: string) => void;
   onDone: () => void;
+  /** The header's back arrow asks this first (the billed steps step back). */
+  registerBack?: (back: (() => boolean) | null) => void;
 }) {
   const [tabId, setTabId] = useState<string | null>(start.kind === "tab" ? start.tabId : null);
   const [qr, setQr] = useState<string | null>(null);
@@ -352,10 +364,11 @@ export function TabView({
   // Mesita isn't answering and nothing is paid yet: the waiter's code door.
   const usualWay =
     failures >= USUAL_WAY_AFTER && tabPlaceId && canUseCode(tabPlaceId) && (status === "waiting_bill" || status === "billed") ? (
-      <div className="border-border bg-card mt-4 rounded-2xl border px-4 py-4" role="status">
-        <p className="text-base font-semibold">Mesita isn&apos;t answering</p>
-        <p className="text-muted-foreground mt-1 text-sm">Nothing was paid. You can pay with the waiter&apos;s code instead.</p>
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={() => void payWithCode(tabPlaceId)}>
+      <div className="border-border mt-3 flex shrink-0 items-center justify-between gap-3 rounded-2xl border px-4 py-2" role="status">
+        <p className="min-w-0 text-sm">
+          <span className="font-semibold">Mesita isn&apos;t answering.</span> Nothing was paid.
+        </p>
+        <button type="button" className="min-h-11 shrink-0 text-sm font-semibold underline" onClick={() => void payWithCode(tabPlaceId)}>
           Pay the usual way
         </button>
       </div>
@@ -367,7 +380,7 @@ export function TabView({
         <p className="border-border bg-card rounded-2xl border px-4 py-4 text-base font-semibold" role="status">
           This bill isn&apos;t on your account
         </p>
-        <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={onDone}>
+        <Button size="lg" className="mt-auto w-full text-base font-semibold" onClick={onDone}>
           Done
         </Button>
       </Shell>
@@ -382,7 +395,7 @@ export function TabView({
         </p>
         <Button
           size="lg"
-          className="mt-6 w-full text-base font-semibold"
+          className="mt-auto w-full text-base font-semibold"
           onClick={() => {
             setOpenFailed(false);
             if (start.kind === "place") void open(start.placeId);
@@ -417,18 +430,17 @@ export function TabView({
           expiresAt={tab?.expires_at ?? null}
           reconnecting={reconnecting}
         />
-        {usualWay}
-        {placeId && canUseCode(placeId) ? (
+        {usualWay ?? (placeId && canUseCode(placeId) ? (
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground mx-auto mt-4 flex min-h-11 items-center text-sm font-semibold underline"
+            className="text-muted-foreground hover:text-foreground mx-auto flex min-h-11 shrink-0 items-center text-sm font-semibold underline"
             onClick={() => void payWithCode(placeId)}
             data-charge-code-link
           >
             Waiter gave you a code?
           </button>
-        ) : null}
-        <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-4")} disabled={busy || !tabId} onClick={() => void cancel("cancel")}>
+        ) : null)}
+        <button type="button" className={cn(QUIET_BUTTON_CLASS, "text-muted-foreground mt-2 shrink-0")} disabled={busy || !tabId} onClick={() => void cancel("cancel")}>
           Cancel
         </button>
       </Shell>
@@ -438,43 +450,35 @@ export function TabView({
   if (!tab) {
     return (
       <Shell>
-        <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-6 py-6" aria-busy>
+        <div className="flex min-h-0 flex-1 flex-col items-center" aria-busy>
           <Skeleton className="h-4 w-40" />
-          <Skeleton className="mt-4 h-64 w-64 rounded-xl" />
-          <Skeleton className="mt-5 h-4 w-32" />
+          <Skeleton className="mt-3 h-8 w-56" />
+          <Skeleton className="mt-4 h-40 w-40 rounded-xl" />
+          <Skeleton className="mt-4 h-4 w-32" />
         </div>
       </Shell>
     );
   }
 
   const shareCard = tab.table ? (
-    <ShareCard
-      tab={tab}
-      joinToken={joinToken}
-      getSupabase={getSupabase}
-      onJoinToken={setJoinToken}
-      onWhole={(tableId) => {
-        setJoinToken(null);
-        switchTo(tableId);
-      }}
-      onChanged={readNow}
-    />
+    <ShareLine tab={tab}>
+      <ShareCard
+        tab={tab}
+        joinToken={joinToken}
+        getSupabase={getSupabase}
+        onJoinToken={setJoinToken}
+        onWhole={(tableId) => {
+          setJoinToken(null);
+          switchTo(tableId);
+        }}
+        onChanged={readNow}
+      />
+    </ShareLine>
   ) : null;
 
   if (tab.status === "billed") {
     return (
       <Shell testMode={tab.test_mode}>
-        {shareCard}
-        {!tab.table ? (
-          <SplitButton
-            tab={tab}
-            getSupabase={getSupabase}
-            onSplit={(shareTabId, token) => {
-              setJoinToken(token);
-              switchTo(shareTabId);
-            }}
-          />
-        ) : null}
         <SplitScreen
           key={tab.bill_version}
           tab={tab}
@@ -485,8 +489,21 @@ export function TabView({
           onCardStep={(step) => void bankCheck(step)}
           onCancel={() => void cancel("cancel")}
           busyCancel={busy}
+          registerBack={registerBack}
+          friends={
+            shareCard ?? (
+              <SplitButton
+                tab={tab}
+                getSupabase={getSupabase}
+                onSplit={(shareTabId, token) => {
+                  setJoinToken(token);
+                  switchTo(shareTabId);
+                }}
+              />
+            )
+          }
+          usualWay={usualWay}
         />
-        {usualWay}
       </Shell>
     );
   }
@@ -523,7 +540,7 @@ export function TabView({
           {expired ? `Nothing was paid at ${placeName}. A bill closes 30 minutes after it opens.` : `Nothing was paid at ${placeName}.`}
         </p>
       </div>
-      <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => void reopen(tab.place.id)}>
+      <Button size="lg" className="mt-auto w-full text-base font-semibold" onClick={() => void reopen(tab.place.id)}>
         Open a new bill
       </Button>
       <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} onClick={onDone}>
@@ -538,7 +555,7 @@ export function TabView({
 // test banner"); callers still pass testMode.
 function Shell({ children }: { testMode?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col" data-pay-tab>
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-tab>
       {children}
     </div>
   );
@@ -557,6 +574,55 @@ function ReconnectingLine({ on }: { on: boolean }) {
   ) : null;
 }
 
+// ── The fitted pieces (MESITA-3742) ──────────────────────────────────────────
+
+/** The QR square: takes the height left, 140–240px (a size container; a
+ *  plain 160px where container queries are missing). */
+function FittedQr({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-3 flex min-h-0 w-full flex-1 items-center justify-center [container-type:size]">
+      <div
+        className="size-40 rounded-2xl bg-white p-2 ring-1 ring-black/10"
+        style={{ width: "max(140px, min(100cqh, 100cqw, 240px))", height: "max(140px, min(100cqh, 100cqw, 240px))" }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** A split table as one line; its card (shares, friends' QR) opens in a sheet. */
+function ShareLine({ tab, children }: { tab: GuestTab; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const table = tab.table;
+  if (!table) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="border-border flex h-12 w-full shrink-0 items-center justify-between gap-3 rounded-2xl border px-4 text-left"
+        onClick={() => setOpen(true)}
+        data-share-line
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <Users className="text-muted-foreground h-5 w-5 shrink-0" aria-hidden />
+          <span className="min-w-0 truncate text-sm">
+            <span className="font-semibold">Split bill</span> ·{" "}
+            {table.status === "paid" ? "All paid" : `${money(table.left_cents, tab.currency)} left`}
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-sm font-semibold">
+          Friends&apos; QR
+          <ChevronRight className="h-4 w-4" aria-hidden />
+        </span>
+      </button>
+      <LocalSheet open={open} onClose={() => setOpen(false)} ariaLabel="Split bill">
+        <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">{children}</div>
+      </LocalSheet>
+    </>
+  );
+}
+
 // ── 1. The QR ────────────────────────────────────────────────────────────────
 
 function QrScreen({
@@ -573,27 +639,26 @@ function QrScreen({
   const now = useMinuteNow();
   const minsLeft = expiresAt ? Math.max(0, Math.ceil((Date.parse(expiresAt) - now) / 60_000)) : null;
   return (
-    <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-4 py-6 text-center">
-      {placeName ? <p className="text-base font-semibold">{placeName}</p> : null}
-      <p className="font-display mt-1 text-2xl font-semibold">Show this to the waiter</p>
-      <div className="mt-5 rounded-xl bg-white p-4">
+    <div className="flex min-h-0 flex-1 flex-col items-center text-center" data-pay-tab-qr>
+      {placeName ? <p className="w-full shrink-0 truncate text-base font-semibold">{placeName}</p> : null}
+      <p className="font-display mt-1 shrink-0 text-2xl font-semibold">Show this to the waiter</p>
+      <FittedQr>
         {qr ? (
-          <QRCodeSVG value={qr} size={256} marginSize={0} aria-label="Your bill's QR for the waiter" data-tab-qr />
+          <QRCodeSVG value={qr} size={240} marginSize={0} style={{ width: "100%", height: "100%" }} aria-label="Your bill's QR for the waiter" data-tab-qr />
         ) : (
-          <div className="flex h-64 w-64 items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center">
             <Spinner size="sm" label="Opening your bill" />
           </div>
         )}
-      </div>
-      <p className="mt-5 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
+      </FittedQr>
+      <p className="mt-3 flex h-6 shrink-0 items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
         <Dot />
         Waiting for the bill
+        {minsLeft !== null && minsLeft <= 10 ? <span className="text-muted-foreground font-normal">· {minsLeft} min left</span> : null}
       </p>
-      {minsLeft !== null && minsLeft <= 10 ? (
-        <p className="text-muted-foreground mt-1 text-sm">{minsLeft} min left</p>
-      ) : null}
-      <p className="text-muted-foreground mt-3 text-sm">Turn up your brightness if it doesn&apos;t scan</p>
-      <ReconnectingLine on={reconnecting} />
+      <p className="text-muted-foreground h-5 shrink-0 truncate text-sm">
+        {reconnecting ? "Reconnecting…" : "Turn up your brightness if it doesn’t scan"}
+      </p>
     </div>
   );
 }
@@ -606,12 +671,15 @@ function Chip({
   title,
   sub,
   disabled = false,
+  compact = false,
 }: {
   on: boolean;
   onClick: () => void;
   title: string;
   sub: string;
   disabled?: boolean;
+  /** 52px instead of 64px (How you pay, where four sit on one screen). */
+  compact?: boolean;
 }) {
   return (
     <button
@@ -620,15 +688,20 @@ function Chip({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex min-h-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border px-2 transition disabled:opacity-40",
-        on ? "border-foreground bg-muted/60 border-2" : "border-border hover:bg-muted/60",
+        "flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl border px-2 transition disabled:opacity-40",
+        compact ? "h-13" : "h-16",
+        on ? "border-foreground bg-foreground text-background" : "border-border bg-card hover:bg-muted",
       )}
     >
       <span className="text-base font-semibold">{title}</span>
-      <span className="text-muted-foreground text-sm tabular-nums">{sub}</span>
+      <span className={cn("max-w-full truncate text-sm tabular-nums", on ? "opacity-80" : "text-muted-foreground")}>{sub}</span>
     </button>
   );
 }
+
+const SPLIT_STEPS = ["tip", "pay", "review"] as const;
+type SplitStep = (typeof SPLIT_STEPS)[number];
+const SPLIT_QUESTION: Record<SplitStep, string> = { tip: "Add a tip?", pay: "How do you pay?", review: "Review and pay" };
 
 function SplitScreen({
   tab,
@@ -639,6 +712,9 @@ function SplitScreen({
   onCardStep,
   onCancel,
   busyCancel,
+  registerBack,
+  friends,
+  usualWay,
 }: {
   tab: GuestTab;
   /** The guest's saved cards; null until the first read lists them. */
@@ -649,23 +725,30 @@ function SplitScreen({
   onCardStep: (step: TabCardStep) => void;
   onCancel: () => void;
   busyCancel: boolean;
+  registerBack?: (back: (() => boolean) | null) => void;
+  /** The split table's line, or "Split with friends". */
+  friends: React.ReactNode;
+  /** "Mesita isn't answering · Pay the usual way", when it applies. */
+  usualWay: React.ReactNode;
 }) {
   const bill = tab.bill_cents ?? 0;
   const suggested = tab.tip_suggested_cents;
   const cardOn = tab.rates.card_available;
+  const [step, setStep] = useState<SplitStep>("tip");
   const [tipChoice, setTipChoice] = useState<TipChoice>(suggested > 0 ? "waiter" : "none");
+  const [lastTip, setLastTip] = useState<TipChoice>(suggested > 0 ? "waiter" : "none");
   const [tipText, setTipText] = useState("");
   const [useCredit, setUseCredit] = useState(tab.spendable_cents > 0);
   const [billWith, setBillWith] = useState<PayWith>("cash");
   const [tipWithPick, setTipWithPick] = useState<PayWith>("cash");
   const [pmPick, setPmPick] = useState<string | null>(null);
+  const [cardSheet, setCardSheet] = useState(false);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
   const attempt = useRef<{ key: string; id: string } | null>(null);
   const m = (c: number) => money(c, tab.currency);
 
   const typedTip = tipChoice === "other" ? readAmount(tipText) : null;
-  const tipBad = tipChoice === "other" && tipText.trim() !== "" && typedTip === null;
   const tip = tipChoice === "waiter"
     ? suggested
     : typeof tipChoice === "number"
@@ -692,12 +775,25 @@ function SplitScreen({
   const usesCard = split.card_due_cents > 0;
   const card = usesCard && cards && cards.length > 0 ? cards.find((c) => c.id === pmPick) ?? cards[0] : null;
   const belowMinimum = usesCard && split.card_due_cents < tab.rates.card_minimum_cents;
-  const canPay =
-    bill > 0 &&
-    !tipBad &&
-    !(tipChoice === "other" && tipText.trim() === "") &&
-    !busy &&
-    (!usesCard || (card !== null && !belowMinimum));
+  const tipOk = tipChoice !== "other" || typedTip !== null;
+  const payOk = !usesCard || (card !== null && !belowMinimum);
+  const canPay = bill > 0 && tipOk && !busy && payOk;
+  const stepIndex = SPLIT_STEPS.indexOf(step);
+  const nextOk = step === "tip" ? tipOk : step === "pay" ? payOk : canPay;
+
+  // The header's back arrow steps back through the steps; off the screen
+  // from Tip. While a payment is going out it does nothing.
+  useEffect(() => {
+    if (!registerBack) return;
+    registerBack(() => {
+      if (busy || adding) return true;
+      const i = SPLIT_STEPS.indexOf(step);
+      if (i <= 0) return false;
+      setStep(SPLIT_STEPS[i - 1]);
+      return true;
+    });
+    return () => registerBack(null);
+  }, [registerBack, step, busy, adding]);
 
   async function pay() {
     if (!canPay) return;
@@ -750,205 +846,263 @@ function SplitScreen({
 
   const cardSub = cards === null ? "…" : cards.length === 0 ? "Add one" : `•••• ${(card ?? cards[0]).last4}`;
   const backBps = (bps: number) => (bps > 0 ? ` · ${bps / 100}% back` : "");
+  const status = step === "pay" && belowMinimum
+    ? `A card needs at least ${m(tab.rates.card_minimum_cents)}. Pay this part another way.`
+    : step === "pay" && tip > 0 && cardOn && !tipCardOk
+    ? "A tip by card needs part of the bill by card or credit."
+    : reconnecting
+    ? "Reconnecting…"
+    : null;
 
   return (
-    <div className="flex flex-col" data-pay-tab-split>
-      <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-4 py-5 text-center">
-        <p className="text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
-        <p className="font-display mt-2 text-4xl font-semibold tabular-nums" data-tab-total>
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-split={step}>
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3">
+        <span className="min-w-0 truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</span>
+        <span className="shrink-0 text-base font-semibold tabular-nums" data-tab-total>
           {m(split.total_cents)}
-        </p>
-        <p className="text-muted-foreground mt-1 text-sm tabular-nums">
+        </span>
+      </div>
+      <div className="flex h-5 shrink-0 items-center justify-between gap-3 text-sm">
+        <span className="text-muted-foreground min-w-0 truncate tabular-nums">
           {m(bill)} bill{tip > 0 ? ` + ${m(tip)} tip` : ""}
           {tab.ticket ? ` · Ticket ${tab.ticket}` : ""}
-        </p>
-        <ReconnectingLine on={reconnecting} />
+        </span>
+        <span className="text-muted-foreground shrink-0 tabular-nums">
+          Step {stepIndex + 1} of {SPLIT_STEPS.length}
+        </span>
       </div>
-
-      <h2 className="mt-6 px-1 text-base font-semibold">Tip</h2>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        {suggested > 0 ? (
-          <Chip on={tipChoice === "waiter"} onClick={() => setTipChoice("waiter")} title="Waiter's" sub={m(suggested)} />
-        ) : null}
-        {TIP_PERCENTS.map((pct) => (
-          <Chip key={pct} on={tipChoice === pct} onClick={() => setTipChoice(pct)} title={`${pct}%`} sub={m(Math.round((bill * pct) / 100))} />
+      <div className="mt-2 flex shrink-0 gap-1.5" aria-hidden>
+        {SPLIT_STEPS.map((s, i) => (
+          <span key={s} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-foreground" : "bg-border")} />
         ))}
-        <Chip on={tipChoice === "other"} onClick={() => setTipChoice("other")} title="Other" sub="Type it" />
-        <Chip on={tipChoice === "none"} onClick={() => setTipChoice("none")} title="No tip" sub={m(0)} />
       </div>
-      {tipChoice === "other" ? (
-        <input
-          inputMode="decimal"
-          autoComplete="off"
-          autoFocus
-          placeholder="Tip"
-          aria-label="Tip"
-          value={tipText}
-          onChange={(e) => setTipText(e.target.value)}
-          className={cn(FIELD_CLASS, "mt-2 tabular-nums")}
-        />
-      ) : null}
-      {tipBad ? <p className="text-muted-foreground mt-1 px-1 text-sm">Type a tip like 30 or 30.50</p> : null}
 
-      <h2 className="mt-6 px-1 text-base font-semibold">Pay the bill</h2>
-      <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border">
-        {tab.spendable_cents > 0 ? (
+      <h2 className="mt-4 shrink-0 text-2xl font-semibold">{SPLIT_QUESTION[step]}</h2>
+
+      <div className="mt-3 flex min-h-0 flex-1 flex-col">
+        {step === "tip" && tipChoice !== "other" ? (
           <>
-            <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3">
-              <span className="text-base font-semibold">Use my {m(tab.spendable_cents)} credit here</span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={useCredit}
-                onChange={(e) => setUseCredit(e.target.checked)}
-                className="accent-foreground h-6 w-6 shrink-0"
-              />
-            </label>
-            <div className="bg-border h-px" />
+            <div className="grid shrink-0 grid-cols-3 gap-2">
+              {suggested > 0 ? (
+                <Chip on={tipChoice === "waiter"} onClick={() => { setTipChoice("waiter"); setLastTip("waiter"); }} title="Waiter's" sub={m(suggested)} />
+              ) : null}
+              {TIP_PERCENTS.map((pct) => (
+                <Chip key={pct} on={tipChoice === pct} onClick={() => { setTipChoice(pct); setLastTip(pct); }} title={`${pct}%`} sub={m(Math.round((bill * pct) / 100))} />
+              ))}
+              <Chip on={false} onClick={() => setTipChoice("other")} title="Other" sub="Type it" />
+              <Chip on={tipChoice === "none"} onClick={() => { setTipChoice("none"); setLastTip("none"); }} title="No tip" sub={m(0)} />
+            </div>
+            <div className="mt-3 shrink-0">{friends}</div>
+            {usualWay}
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground mx-auto mt-auto flex min-h-11 shrink-0 items-center text-sm font-semibold underline"
+              disabled={busyCancel || busy}
+              onClick={onCancel}
+            >
+              Cancel this bill
+            </button>
           </>
         ) : null}
-        {rest > 0 && cardOn ? (
-          <div className="px-4 py-3">
-            <p className="flex items-center justify-between gap-3 text-base">
-              <span>{credit > 0 ? "The rest" : "All of it"}</span>
-              <span className="font-semibold tabular-nums">{m(rest)}</span>
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub={`To the waiter${backBps(tab.rates.cash_back_bps)}`} />
-              <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={`${cardSub}${backBps(tab.rates.card_back_bps)}`} />
+
+        {step === "tip" && tipChoice === "other" ? (
+          <>
+            <div className="flex h-11 shrink-0 items-center justify-between gap-3">
+              <AmountDisplay text={tipText} currency={tab.currency} label="Tip" className="[&>span:nth-child(2)]:text-4xl" />
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center text-sm font-semibold underline"
+                onClick={() => {
+                  setTipText("");
+                  setTipChoice(lastTip);
+                }}
+              >
+                Back to %
+              </button>
             </div>
+            <div className="mt-2 flex min-h-0 flex-1 flex-col">
+              <AmountKeypad text={tipText} onKey={(k: PadKey) => setTipText((t) => pressKey(t, k))} />
+            </div>
+          </>
+        ) : null}
+
+        {step === "pay" ? (
+          <div className="flex shrink-0 flex-col gap-2.5">
+            {tab.spendable_cents > 0 ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={useCredit}
+                onClick={() => setUseCredit((u) => !u)}
+                className="border-border flex h-12 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left"
+              >
+                <span className="min-w-0 truncate text-base">
+                  {m(tab.spendable_cents)} credit · <span className="text-muted-foreground">{useCredit ? "applied" : "not used"}</span>
+                </span>
+                <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition", useCredit ? "bg-foreground" : "bg-border")} aria-hidden>
+                  <span className={cn("bg-card absolute top-0.5 h-5 w-5 rounded-full transition", useCredit ? "left-[1.125rem]" : "left-0.5")} />
+                </span>
+              </button>
+            ) : null}
+            {rest > 0 && cardOn ? (
+              <div>
+                <p className="flex h-5 items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">{credit > 0 ? "The rest" : "The bill"}</span>
+                  <span className="font-semibold tabular-nums">{m(rest)}</span>
+                </p>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <Chip on={effBillWith === "cash"} onClick={() => setBillWith("cash")} title="Cash" sub={`To the waiter${backBps(tab.rates.cash_back_bps)}`} compact />
+                  <Chip on={effBillWith === "card"} onClick={() => setBillWith("card")} title="Card" sub={`${cardSub}${backBps(tab.rates.card_back_bps)}`} compact />
+                </div>
+              </div>
+            ) : (
+              <p className="border-border flex h-12 items-center justify-between gap-3 rounded-2xl border px-4 text-base">
+                <span>{rest > 0 ? (credit > 0 ? "The rest in cash" : "In cash") : "Your credit pays all of it"}</span>
+                <span className="font-semibold tabular-nums">{rest > 0 ? m(rest) : m(credit)}</span>
+              </p>
+            )}
+            {tip > 0 && cardOn ? (
+              <div>
+                <p className="flex h-5 items-center justify-between gap-3 text-sm">
+                  <span className="text-muted-foreground">The tip · never credits</span>
+                  <span className="font-semibold tabular-nums">{m(tip)}</span>
+                </p>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <Chip on={tipWith === "cash"} onClick={() => setTipWithPick("cash")} title="Cash" sub="To the waiter" compact />
+                  <Chip on={tipWith === "card"} onClick={() => setTipWithPick("card")} title="Card" sub={cardSub} disabled={!tipCardOk} compact />
+                </div>
+              </div>
+            ) : null}
+            {usesCard ? (
+              cards === null ? (
+                <div className="border-border flex h-12 items-center rounded-2xl border px-4">
+                  <Spinner size="sm" label="Loading your cards" />
+                </div>
+              ) : cards.length === 0 ? (
+                <button
+                  type="button"
+                  className="border-border flex h-12 w-full items-center gap-3 rounded-2xl border px-4 text-left disabled:opacity-60"
+                  disabled={adding}
+                  onClick={() => void addCard()}
+                >
+                  <CreditCard className="h-5 w-5" aria-hidden />
+                  <span className="text-base font-semibold">{adding ? "Opening…" : "Add a card"}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="border-border flex h-12 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left"
+                  onClick={() => setCardSheet(true)}
+                >
+                  <span className="flex min-w-0 items-center gap-3">
+                    <CreditCard className="h-5 w-5 shrink-0" aria-hidden />
+                    <span className="min-w-0 truncate text-base">
+                      {card ? `${brandLabel(card.brand)} •••• ${card.last4}` : "Pick a card"}
+                    </span>
+                  </span>
+                  <span className="text-muted-foreground flex shrink-0 items-center gap-1 text-sm font-semibold">
+                    Change <ChevronRight className="h-4 w-4" aria-hidden />
+                  </span>
+                </button>
+              )
+            ) : null}
           </div>
+        ) : null}
+
+        {step === "review" ? (
+          <>
+            <div className="border-border flex shrink-0 flex-col rounded-2xl border px-4 py-3 text-base tabular-nums" data-pay-split>
+              {split.credit_cents > 0 ? <SplitLine label="Bill · credit" value={m(split.credit_cents)} /> : null}
+              {split.card_bill_cents > 0 ? <SplitLine label="Bill · card" value={m(split.card_bill_cents)} icon={<CreditCard />} /> : null}
+              {split.cash_bill_cents > 0 ? <SplitLine label="Bill · cash" value={m(split.cash_bill_cents)} icon={<Banknote />} /> : null}
+              {split.card_tip_cents > 0 ? <SplitLine label="Tip · card" value={m(split.card_tip_cents)} icon={<CreditCard />} /> : null}
+              {split.cash_tip_cents > 0 ? <SplitLine label="Tip · cash" value={m(split.cash_tip_cents)} icon={<Banknote />} /> : null}
+              <div className="border-border mt-1 flex h-8 items-center justify-between gap-3 border-t pt-1 text-lg font-semibold">
+                <span>Total</span>
+                <span>{m(split.total_cents)}</span>
+              </div>
+            </div>
+            {split.cashback_cents > 0 ? (
+              <p className="mt-2 shrink-0 truncate text-sm font-semibold text-green-700">You get {m(split.cashback_cents)} back as credit here</p>
+            ) : null}
+            {card && usesCard ? (
+              <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">
+                {m(split.card_due_cents)} on your {brandLabel(card.brand)} •••• {card.last4}
+              </p>
+            ) : null}
+            {split.cash_due_cents > 0 ? (
+              <p className="text-muted-foreground mt-1 shrink-0 truncate text-sm tabular-nums">You give the waiter {m(split.cash_due_cents)} in cash</p>
+            ) : null}
+          </>
+        ) : null}
+
+        <p className={cn("text-muted-foreground mt-auto line-clamp-2 shrink-0 pt-2 text-sm", !status && "hidden")} role="status">
+          {status}
+        </p>
+      </div>
+
+      <div className="shrink-0 pt-4">
+        {step !== "review" ? (
+          <Button
+            size="lg"
+            className="min-h-12 w-full text-base font-semibold"
+            disabled={!nextOk}
+            onClick={() => setStep(SPLIT_STEPS[stepIndex + 1])}
+          >
+            Next
+          </Button>
         ) : (
-          <p className="flex min-h-14 items-center justify-between gap-3 px-4 py-3 text-base">
-            <span>{rest > 0 ? (credit > 0 ? "The rest in cash" : "In cash") : "Your credit pays all of it"}</span>
-            <span className="font-semibold tabular-nums">{rest > 0 ? m(rest) : m(credit)}</span>
-          </p>
+          <Button size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
+            {busy ? <Spinner size="sm" label="Paying" /> : `Pay ${m(split.total_cents)}`}
+          </Button>
         )}
       </div>
 
-      {tip > 0 ? (
-        <>
-          <h2 className="mt-6 px-1 text-base font-semibold">Pay the tip</h2>
-          <div className="border-border bg-card mt-2 rounded-2xl border px-4 py-3">
-            {cardOn ? (
-              <>
-                <p className="flex items-center justify-between gap-3 text-base">
-                  <span>Tip</span>
-                  <span className="font-semibold tabular-nums">{m(tip)}</span>
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  <Chip on={tipWith === "cash"} onClick={() => setTipWithPick("cash")} title="Cash" sub="To the waiter" />
-                  <Chip on={tipWith === "card"} onClick={() => setTipWithPick("card")} title="Card" sub={cardSub} disabled={!tipCardOk} />
-                </div>
-                {!tipCardOk ? (
-                  <p className="text-muted-foreground mt-2 text-sm">A tip by card needs part of the bill by card or credit.</p>
-                ) : null}
-              </>
-            ) : (
-              <p className="flex min-h-8 items-center justify-between text-base">
-                <span>In cash</span>
-                <span className="font-semibold tabular-nums">{m(tip)}</span>
-              </p>
-            )}
-            <p className="text-muted-foreground mt-1 text-sm">Tips can&apos;t be paid with credits.</p>
-          </div>
-        </>
-      ) : null}
-
-      {usesCard ? (
-        <>
-          <h2 className="mt-6 px-1 text-base font-semibold">Card</h2>
-          {cards === null ? (
-            <div className="border-border bg-card mt-2 flex min-h-14 items-center rounded-2xl border px-4 py-3">
-              <Spinner size="sm" label="Loading your cards" />
-            </div>
-          ) : cards.length === 0 ? (
-            <div className="border-border bg-card mt-2 rounded-2xl border px-4 py-3">
-              <p className="text-base">You have no saved card.</p>
-              <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} disabled={adding} onClick={() => void addCard()}>
-                {adding ? <Spinner size="sm" label="Opening" /> : "Add a card"}
-              </button>
-            </div>
-          ) : (
-            <div className="border-border bg-card mt-2 overflow-hidden rounded-2xl border" role="radiogroup" aria-label="Card">
-              {cards.map((c, i) => (
-                <Fragment key={c.id}>
-                  {i > 0 && <div className="bg-border h-px" />}
-                  <label className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3">
-                    <span className="text-base">
-                      <span className="font-semibold">{brandLabel(c.brand)}</span> •••• {c.last4}
-                    </span>
-                    <input
-                      type="radio"
-                      name="tab-card"
-                      checked={card?.id === c.id}
-                      onChange={() => setPmPick(c.id)}
-                      className="accent-foreground h-5 w-5 shrink-0"
-                    />
-                  </label>
-                </Fragment>
-              ))}
-              <div className="bg-border h-px" />
+      <LocalSheet open={cardSheet} onClose={() => setCardSheet(false)} ariaLabel="Your cards">
+        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4">
+          <p className="pt-2 pb-3 text-lg font-semibold">Your cards</p>
+          <div className="border-border scrollbar-hide min-h-0 overflow-y-auto rounded-2xl border" role="radiogroup" aria-label="Card">
+            {(cards ?? []).map((c, i) => (
               <button
+                key={c.id}
                 type="button"
-                className="text-muted-foreground hover:text-foreground flex min-h-12 w-full items-center px-4 text-sm font-semibold"
-                disabled={adding}
-                onClick={() => void addCard()}
+                role="radio"
+                aria-checked={card?.id === c.id}
+                onClick={() => {
+                  setPmPick(c.id);
+                  setCardSheet(false);
+                }}
+                className={cn("flex h-12 w-full items-center justify-between gap-3 px-4 text-left", i > 0 && "border-border border-t")}
               >
-                Add another card
+                <span className="text-base">
+                  <span className="font-semibold">{brandLabel(c.brand)}</span> •••• {c.last4}
+                </span>
+                <span className={cn("h-5 w-5 shrink-0 rounded-full border-2", card?.id === c.id ? "border-foreground bg-foreground" : "border-border")} aria-hidden />
               </button>
-            </div>
-          )}
-          {belowMinimum ? (
-            <p className="text-muted-foreground mt-2 px-1 text-sm tabular-nums">
-              A card needs at least {m(tab.rates.card_minimum_cents)}. Pay this part another way.
-            </p>
-          ) : null}
-        </>
-      ) : null}
+            ))}
+            <button
+              type="button"
+              className="border-border text-muted-foreground hover:text-foreground flex h-12 w-full items-center border-t px-4 text-sm font-semibold"
+              disabled={adding}
+              onClick={() => void addCard()}
+            >
+              {adding ? "Opening…" : "Add another card"}
+            </button>
+          </div>
+        </div>
+      </LocalSheet>
+    </div>
+  );
+}
 
-      <div className="bg-muted/60 mt-6 flex flex-col gap-2 rounded-2xl px-4 py-3.5 text-sm tabular-nums" data-pay-split>
-        {split.credit_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · credit</span><span>{m(split.credit_cents)}</span></p>
-        ) : null}
-        {split.card_bill_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · card</span><span>{m(split.card_bill_cents)}</span></p>
-        ) : null}
-        {split.cash_bill_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · cash</span><span>{m(split.cash_bill_cents)}</span></p>
-        ) : null}
-        {split.card_tip_cents > 0 ? (
-          <p className="flex justify-between"><span>Tip · card</span><span>{m(split.card_tip_cents)}</span></p>
-        ) : null}
-        {split.cash_tip_cents > 0 ? (
-          <p className="flex justify-between"><span>Tip · cash</span><span>{m(split.cash_tip_cents)}</span></p>
-        ) : null}
-        <div className="bg-border h-px" />
-        <p className="flex justify-between text-base font-semibold"><span>Total</span><span>{m(split.total_cents)}</span></p>
-        {split.cashback_cents > 0 ? (
-          <p className="text-muted-foreground flex justify-between">
-            <span>You get back as credit here</span>
-            <span>{m(split.cashback_cents)}</span>
-          </p>
-        ) : null}
-      </div>
-
-      <Button size="lg" className="mt-6 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
-        {busy ? <Spinner size="sm" label="Paying" /> : `Pay ${m(split.total_cents)}`}
-      </Button>
-      {card && usesCard ? (
-        <p className="text-muted-foreground mt-2 text-center text-sm tabular-nums">
-          {m(split.card_due_cents)} on your {brandLabel(card.brand)} •••• {card.last4}
-        </p>
-      ) : null}
-      {split.cash_due_cents > 0 ? (
-        <p className="text-muted-foreground mt-1 text-center text-sm tabular-nums">
-          You give the waiter {m(split.cash_due_cents)} in cash
-        </p>
-      ) : null}
-      <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3")} disabled={busyCancel || busy} onClick={onCancel}>
-        Cancel
-      </button>
+function SplitLine({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
+  return (
+    <div className="flex h-7 items-center justify-between gap-3">
+      <span className="text-muted-foreground flex items-center gap-2 [&>svg]:h-4 [&>svg]:w-4">
+        {icon}
+        {label}
+      </span>
+      <span>{value}</span>
     </div>
   );
 }
@@ -970,9 +1124,9 @@ function CardScreen({
 }) {
   const m = (c: number) => money(c, tab.currency);
   return (
-    <div className="flex flex-col" data-pay-tab-card>
-      <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-4 py-6 text-center">
-        <p className="text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-card>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+        <p className="w-full truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
         <p className="font-display mt-3 text-4xl font-semibold tabular-nums">{m(tab.card_bill_cents + tab.card_tip_cents)}</p>
         <p className="text-muted-foreground mt-1 text-base">on your card</p>
         <p className="mt-5 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
@@ -980,16 +1134,14 @@ function CardScreen({
           {checking ? "Checking with your bank" : action ? "Your bank wants to check this payment" : "Your card is going through"}
         </p>
         <ReconnectingLine on={reconnecting} />
+        {tab.cash_due_cents > 0 ? (
+          <p className="text-muted-foreground mt-4 text-sm tabular-nums">Then you give the waiter {m(tab.cash_due_cents)} in cash</p>
+        ) : null}
       </div>
       {action && !checking ? (
-        <Button size="lg" className="mt-6 w-full text-base font-semibold" onClick={() => onFinishCheck(action)}>
+        <Button size="lg" className="mt-4 w-full shrink-0 text-base font-semibold" onClick={() => onFinishCheck(action)}>
           Finish the bank check
         </Button>
-      ) : null}
-      {tab.cash_due_cents > 0 ? (
-        <p className="text-muted-foreground mt-4 text-center text-sm tabular-nums">
-          Then you give the waiter {m(tab.cash_due_cents)} in cash
-        </p>
       ) : null}
     </div>
   );
@@ -1000,41 +1152,31 @@ function CardScreen({
 function CashScreen({ tab, reconnecting, busy, onChange }: { tab: GuestTab; reconnecting: boolean; busy: boolean; onChange: () => void }) {
   const m = (c: number) => money(c, tab.currency);
   return (
-    <div className="flex flex-col" data-pay-tab-cash>
-      <div className="border-border bg-card flex flex-col items-center rounded-2xl border px-4 py-6 text-center">
-        <p className="text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
+    <div className="flex min-h-0 flex-1 flex-col" data-pay-tab-cash>
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+        <p className="w-full truncate text-base font-semibold">{tab.place.name ?? "A Mesita place"}</p>
         <p className="text-muted-foreground mt-3 text-base">Give the waiter</p>
         <p className="font-display mt-1 text-4xl font-semibold tabular-nums" data-tab-cash-due>
           {m(tab.cash_due_cents)}
         </p>
         <p className="text-muted-foreground mt-1 text-base">in cash</p>
-        <p className="mt-5 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
+        <p className="mt-4 flex items-center gap-2 text-base font-semibold" role="status" aria-live="polite">
           <Dot />
           Waiting for the waiter to tap Received
         </p>
         <ReconnectingLine on={reconnecting} />
       </div>
-      <div className="bg-muted/60 mt-4 flex flex-col gap-2 rounded-2xl px-4 py-3.5 text-sm tabular-nums">
-        {tab.credit_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · credit</span><span>{m(tab.credit_cents)}</span></p>
-        ) : null}
-        {tab.card_bill_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · card (paid)</span><span>{m(tab.card_bill_cents)}</span></p>
-        ) : null}
-        {tab.cash_bill_cents > 0 ? (
-          <p className="flex justify-between"><span>Bill · cash</span><span>{m(tab.cash_bill_cents)}</span></p>
-        ) : null}
-        {tab.card_tip_cents > 0 ? (
-          <p className="flex justify-between"><span>Tip · card (paid)</span><span>{m(tab.card_tip_cents)}</span></p>
-        ) : null}
-        {tab.cash_tip_cents > 0 ? (
-          <p className="flex justify-between"><span>Tip · cash</span><span>{m(tab.cash_tip_cents)}</span></p>
-        ) : null}
+      <div className="border-border mt-3 flex shrink-0 flex-col rounded-2xl border px-4 py-2 text-sm tabular-nums">
+        {tab.credit_cents > 0 ? <SplitLine label="Bill · credit" value={m(tab.credit_cents)} /> : null}
+        {tab.card_bill_cents > 0 ? <SplitLine label="Bill · card (paid)" value={m(tab.card_bill_cents)} /> : null}
+        {tab.cash_bill_cents > 0 ? <SplitLine label="Bill · cash" value={m(tab.cash_bill_cents)} /> : null}
+        {tab.card_tip_cents > 0 ? <SplitLine label="Tip · card (paid)" value={m(tab.card_tip_cents)} /> : null}
+        {tab.cash_tip_cents > 0 ? <SplitLine label="Tip · cash" value={m(tab.cash_tip_cents)} /> : null}
         {tab.credit_cents > 0 && tab.card_bill_cents + tab.card_tip_cents === 0 ? (
-          <p className="text-muted-foreground">Your credit is taken when the waiter taps Received.</p>
+          <p className="text-muted-foreground py-1">Your credit is taken when the waiter taps Received.</p>
         ) : null}
       </div>
-      <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-6")} disabled={busy} onClick={onChange}>
+      <button type="button" className={cn(QUIET_BUTTON_CLASS, "mt-3 shrink-0")} disabled={busy} onClick={onChange}>
         Change how I pay
       </button>
     </div>
