@@ -17,6 +17,10 @@ export type SavedCard = {
   in_use: boolean;
 };
 
+/** How many cards a guest may save (MESITA-3749). The server's rule
+ *  (consumer-web-add-card answers too_many); here it only hides Add. */
+export const MAX_SAVED_CARDS = 3;
+
 /** The query param Stripe's return carries (`?card=<session>`). */
 export const CARD_RETURN_PARAM = "card";
 
@@ -56,7 +60,7 @@ export function expiryLabel(c: Pick<SavedCard, "exp_month" | "exp_year">): strin
 
 export const CARD_REFUSAL: Record<string, string> = {
   sign_in: "Sign in to save a card.",
-  too_many: "You've saved the most cards Mesita keeps. Remove one first.",
+  too_many: "You can save up to three cards. Remove one first.",
   in_use: "This card pays your Premier plan. Change it there first.",
   not_found: "That card is already gone.",
   checkout_failed: "Couldn't open the card page. Try again.",

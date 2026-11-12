@@ -9,7 +9,7 @@ import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, type SavedCard } from "@/lib/api/cards";
+import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
 import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
 import { draftAmount, draftTip, type PadKey, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
@@ -46,8 +46,10 @@ type Tip = Pct | "other" | null;
 /** The amount past which Pay asks "Pay MX$X at <place>?" first. */
 const CONFIRM_ABOVE_CENTS = 300_000;
 const DRAFT_KEY = (placeId: string) => `mesita.pay.guest-draft.${placeId}`;
-/** Saved cards shown in the rows card; more open in a sheet. */
-const CARDS_SHOWN = 2;
+/** Saved cards shown in the rows card: all three a guest may save
+ *  (MESITA-3749). A guest who saved more before the limit opens the rest
+ *  in a sheet. */
+const CARDS_SHOWN = MAX_SAVED_CARDS;
 
 const STEPS = ["bill", "tip", "method", "review"] as const;
 type Step = (typeof STEPS)[number];
@@ -464,7 +466,7 @@ export function GuestPayScreen({
                           <MethodLabel chip={<PlainChip><CreditCard /></PlainChip>} title="More cards" />
                           <ChevronRight className="text-muted-foreground h-5 w-5" aria-hidden />
                         </button>
-                      ) : (
+                      ) : cardRows.length < MAX_SAVED_CARDS ? (
                         <button
                           type="button"
                           className="border-border flex min-h-14 w-full items-center gap-3 border-t px-4 py-2 text-left disabled:opacity-60"
@@ -473,7 +475,7 @@ export function GuestPayScreen({
                         >
                           <MethodLabel chip={<AddChip />} title={addingCard ? "Opening…" : "Add"} line="Add a card" />
                         </button>
-                      )
+                      ) : null
                     ) : null}
                   </div>
                 ) : tipCents > 0 ? (
@@ -579,14 +581,6 @@ export function GuestPayScreen({
                 }}
               />
             ))}
-            <button
-              type="button"
-              className="border-border flex min-h-14 w-full items-center gap-3 border-t px-4 py-2 text-left disabled:opacity-60"
-              disabled={busy || addingCard}
-              onClick={() => void addCard()}
-            >
-              <MethodLabel chip={<AddChip />} title={addingCard ? "Opening…" : "Add"} line="Add a card" />
-            </button>
           </div>
         </div>
       </LocalSheet>

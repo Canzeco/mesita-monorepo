@@ -27,9 +27,13 @@ export type SavedCard = {
   in_use: boolean;
 };
 
-/** How many cards one guest keeps. Stripe lists 100 per page; ten is plenty
- *  and bounds the list read. */
-export const MAX_CARDS = 10;
+/** How many cards one guest may save: three (Pato, MESITA-3749: "max to add
+ *  three money cards"). Credits Cards have no limit. */
+export const MAX_CARDS = 3;
+/** How many cards one read lists. More than MAX_CARDS, so a guest who saved
+ *  more before the limit (ten, until MESITA-3749) still sees, pays with and
+ *  removes every one. */
+const LIST_LIMIT = 10;
 
 /** The query param the Checkout's return carries. */
 export const CARD_RETURN_PARAM = "card";
@@ -55,7 +59,7 @@ export async function listCards(stripe: StripeCall, customer: string, inUse: Rea
   try {
     res = await stripe("GET", `customers/${encodeURIComponent(customer)}/payment_methods`, {
       type: "card",
-      limit: MAX_CARDS,
+      limit: LIST_LIMIT,
     });
   } catch (err) {
     if (err instanceof StripeError && err.code === "resource_missing") return [];
