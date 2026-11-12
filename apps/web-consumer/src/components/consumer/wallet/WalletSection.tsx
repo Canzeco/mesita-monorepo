@@ -19,6 +19,7 @@ import {
   CreditsRow,
   EmptyCreditsRow,
   AddRow,
+  GiftCodeRow,
   RowsSkeleton,
   SavedCardRow,
   StoryRow,
@@ -250,17 +251,8 @@ export function WalletSection({ giftToken = null }: { giftToken?: string | null 
         {creditsState === "rows" ? (
           <AddRow line="A place's Credits Card" ariaLabel="Add a Credits Card" href={CONSUMER_ROUTES.search} />
         ) : null}
+        {creditsState === "rows" || creditsState === "empty" ? <GiftCodeRow onOpen={() => setRedeeming(true)} /> : null}
       </WalletList>
-      <div>
-        <button
-          type="button"
-          onClick={() => setRedeeming(true)}
-          className="text-muted-foreground hover:text-foreground mt-2 py-2 text-sm font-semibold transition"
-          data-redeem-code-open
-        >
-          Have a gift code?
-        </button>
-      </div>
 
       <MethodSheet method={method} onClose={() => setMethod(null)} onRemoveCard={removeCard} />
       <RedeemCodeSheet

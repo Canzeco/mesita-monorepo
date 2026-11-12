@@ -2,7 +2,7 @@
 
 import { Children, Fragment, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Gift, Plus } from "lucide-react";
 import { PlaceMarks, SizedImg } from "@mesita/place-profile";
 import { firstInitial } from "@mesita/place-profile/lib/format";
 import { Instagram } from "@/components/shared/instagram-icon";
@@ -83,6 +83,20 @@ export function WalletList({
         </ul>
       )}
     </section>
+  );
+}
+
+/** A gift code a friend sent: a row in the Credits list (MESITA-3744; a
+ *  loose "Have a gift code?" link under it until then). */
+export function GiftCodeRow({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className={ROW} data-redeem-code-open>
+      <span className={cn(CHIP, "bg-muted text-foreground")} aria-hidden>
+        <Gift className="h-4 w-4" />
+      </span>
+      <RowText title="Gift code" line="Redeem a code a friend sent you" />
+      <Chevron />
+    </button>
   );
 }
 
@@ -207,9 +221,12 @@ export function CreditsRow({
         </span>
         <span className="text-muted-foreground mt-0.5 block truncate text-sm">{creditsLine(card, gone)}</span>
       </span>
-      <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
-        {money(amount.cents, card.currency)}
-      </span>
+      {/* Nothing on it: the line says so; no grey $0 beside it (MESITA-3744). */}
+      {amount.cents > 0 || gone ? (
+        <span className={cn("shrink-0 text-lg font-semibold tabular-nums", amount.cents === 0 && "text-muted-foreground")}>
+          {money(amount.cents, card.currency)}
+        </span>
+      ) : null}
       <Chevron />
     </Link>
   );

@@ -12,7 +12,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
   if (body === "list") {
     // /pay: the band (switch and search bar, MESITA-3738) and the places.
     return (
-      <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+      <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="pay" bar={<span className="text-muted-foreground text-sm font-semibold">Search a place</span>} />
         <Skeleton className="mt-5 h-56 w-full rounded-2xl" />
       </div>
@@ -24,7 +24,7 @@ export function PayFrameLoading({ body = "list" }: { body?: "list" | "wallet" | 
     // jumps: Money Payment Methods (a saved card, then Cash), then one
     // Credits Card (band, transactions, Fund | Gift).
     return (
-      <div className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
+      <div className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8" aria-busy>
         <PayHeader tab="wallet" />
         <WalletList title="Money Payment Methods">
           <RowsSkeleton count={2} />

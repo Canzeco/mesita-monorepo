@@ -175,7 +175,7 @@ export function PayPage() {
   }
 
   return (
-    <KeptScroll className="scrollbar-hide flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
+    <KeptScroll className="scrollbar-hide bg-card flex h-full min-h-0 flex-col overflow-y-auto px-4 pb-8">
       <PayHeader
         tab="pay"
         bar={
