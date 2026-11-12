@@ -212,7 +212,9 @@ export function SavedCardRow({ card, onOpen }: { card: SavedCard; onOpen: () => 
 function creditsLine(card: WalletCardModel, gone: boolean): string {
   if (gone) return "Ask Mesita support to use it";
   if (card.available_cents > 0 && card.pending_cents > 0) return `${money(card.pending_cents, card.currency)} pending`;
-  if (card.pending_cents > 0) return "Pending · available within the hour";
+  // No time here (MESITA-3750, Pato: "don't display time there"): each
+  // purchase lands on its own clock; the House Card shows each one's time.
+  if (card.pending_cents > 0) return "Pending";
   if (card.available_cents > 0) return "Available";
   return "No credits yet";
 }

@@ -1,7 +1,9 @@
 // Wallet — the guest's credit at each place (MESITA-3097/3098; on the
 // place's own Stripe Connect account since MESITA-3302; vouchers bought
 // here since MESITA-3303). Every amount and outcome comes from the server:
-// this file never computes money, it only formats it.
+// this file never computes money, it only formats it. (The one display-only
+// sum is lib/wallet-entries.ts: a voucher and its bonus, written by the
+// server in one transaction, read as one row, MESITA-3750.)
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { placeMoneyFrom, type PlaceMoney, type VoucherKey } from "@mesita/place-profile";
@@ -23,6 +25,10 @@ export type WalletEntry = {
    *  paid in cash at the table. Null on other entries; absent from a server
    *  before MESITA-3554. */
   confirmed_by?: string | null;
+  /** The purchase behind a voucher, prepay, bonus or purchase reversal
+   *  (MESITA-3750); null on payment and gift rows; absent from a server
+   *  before MESITA-3750. */
+  purchase_id?: string | null;
 };
 
 export type WalletBalance = {
@@ -520,11 +526,26 @@ export const ENTRY_LABEL: Record<string, string> = {
   cashback: "Cashback",
   spend: "Paid",
   reversal: "Refund",
+  // Credit given back on a payment (MESITA-3750: it showed the raw word).
+  refund: "Refund",
   // Sending credit to a friend (MESITA-3292)
   gift_out: "Sent to a friend",
   gift_in: "From a friend",
   gift_back: "Taken back",
 };
+
+/** An entry's label (MESITA-3750). A reversal reads from what it carries: a
+ *  purchase_id is a refunded purchase; a payment_id is a refunded bill's
+ *  cashback taken back. The wallet_entries CHECK requires one of the two on
+ *  every reversal, so the plain "Refund" fallback is defensive only. */
+export function entryLabel(e: Pick<WalletEntry, "kind" | "purchase_id" | "payment_id">): string {
+  if (e.kind === "reversal") {
+    if (e.purchase_id) return "Purchase refunded";
+    if (e.payment_id) return "Cashback taken back";
+    return "Refund";
+  }
+  return ENTRY_LABEL[e.kind] ?? e.kind;
+}
 
 // ── Sending credit to a friend (MESITA-3292) ────────────────────────────────
 

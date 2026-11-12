@@ -16,7 +16,7 @@
 //             balances: [{ place: { id, slug, name, photo, boost_tier, mesita_pay } | null, place_id, currency,
 //                          balance_cents, available_cents, pending_cents,
 //                          spendable_cents, last_at, card_ok, pinned,
-//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by }] }],
+//                          entries: [{ kind, amount_cents, at, pending, available_at, payment_id, confirmed_by, purchase_id }] }],
 //   available_at (MESITA-3549) rides a pending entry: when it turns
 //   Available. Null on an Available entry.
 //   confirmed_by (MESITA-3554) rides a cashback entry with a payment:
@@ -113,11 +113,11 @@ serveJson("consumer-web-get-wallet", async (req) => {
   // ── Balances ───────────────────────────────────────────────────────────
   const { data: rows, error: entriesErr } = await admin
     .from("wallet_entries")
-    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id")
+    .select("place_id, kind, amount_cents, currency, created_at, available_at, payment_id, purchase_id")
     .eq("consumer_id", userId)
     .eq("livemode", livemode)
     .order("created_at", { ascending: false })
-    .limit(1000);
+    .limit(1000); // newest 1000 across places; a heavy guest's oldest history can stop short (MESITA-3750)
   if (entriesErr) return json({ ok: false, error: `entries: ${entriesErr.message}` }, 500);
   const { data: sums, error: sumsErr } = await admin.rpc("wallet_balances", {
     p_consumer_id: userId,
