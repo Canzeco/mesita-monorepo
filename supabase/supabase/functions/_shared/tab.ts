@@ -313,7 +313,7 @@ export type TabPartRow = {
 };
 
 export const TAB_COLUMNS =
-  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
+  "id, place_id, consumer_id, status, currency, livemode, bill_cents, tip_cents, ticket, bill_version, waiter_name, staff_key_hash, credit_cents, cash_bill_cents, cash_tip_cents, card_bill_cents, card_tip_cents, cash_received_cents, billed_at, paying_at, paid_at, expires_at, updated_at, created_at, parent_tab_id, split_at, split_ways, origin, verified_at, verified_key_hash";
 const PART_COLUMNS =
   "id, part, status, credit_cents, outside_cents, card_cents, tip_cents, cashback_cents, paid_at, proof_token, created_at, cashback_bps, outside_cashback_bps";
 /** The guest's list reads only what a status needs (MESITA-3688): never
@@ -528,7 +528,25 @@ export function guestTabView(t: TabRow, parts: TabPartRow[], extra: {
     // earn now.
     ...(guest ? { cashback_cents: cashbackGranted(parts) } : {}),
     cashback_on_sign_cents: cashbackOnSign(t, parts, cashBps, card.card_back_bps, extra.nowMs),
-    parts: parts.map((p) => ({ id: p.id, part: p.part, status: p.status, paid_at: p.paid_at })),
+    // MESITA-3780: each part's money and its stored rate, so the Visit page
+    // can say what every method charged. Never `proof_token`.
+    parts: parts.map((p) => ({
+      id: p.id,
+      part: p.part,
+      status: p.status,
+      paid_at: p.paid_at,
+      created_at: p.created_at,
+      credit_cents: p.credit_cents,
+      cash_cents: p.outside_cents,
+      card_cents: p.card_cents,
+      tip_cents: p.tip_cents,
+      cashback_cents: p.cashback_cents,
+      cashback_bps: (p.part === "outside" ? p.outside_cashback_bps : p.cashback_bps) ?? null,
+    })),
+    // MESITA-3780: the visit's timeline.
+    created_at: t.created_at ?? null,
+    billed_at: t.billed_at,
+    paying_at: t.paying_at,
     paid_at: t.paid_at,
     expires_at: t.expires_at,
     updated_at: t.updated_at,

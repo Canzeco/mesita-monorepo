@@ -204,3 +204,16 @@ Deno.test("too_many_open names the open payment", () => {
   const r = rpcRefusal({ ok: false, code: "too_many_open", max_open: 1, open_tab_id: TAB, open_place_id: TAB });
   assertEquals([r.status, r.error, r.detail?.open_tab_id], [409, "Get your open payment signed or close it before paying again.", TAB]);
 });
+
+Deno.test("guest view: each part says what it charged, and the timeline is there (MESITA-3780)", () => {
+  const extra = { placeName: null, spendableCents: 0, cashOk: true, cashBackBps: 200, nowMs: NOW,
+    card: { card_available: true, card_unavailable_code: null, card_back_bps: 500, card_minimum_cents: 0 } };
+  const v = guestTabView(guestTab({ created_at: "2026-11-09T09:30:00Z", billed_at: "2026-11-09T09:40:00Z" }),
+    [cardPart({ tip_cents: 1500 }), cashPart({ id: "cash", part: "outside" })], extra);
+  const [card, cash] = v.parts;
+  assertEquals([card.card_cents, card.tip_cents, card.cashback_bps], [20000, 1500, 500]);
+  assertEquals([cash.cash_cents, cash.cashback_bps], [10000, 200]);
+  assertEquals([v.created_at, v.billed_at], ["2026-11-09T09:30:00Z", "2026-11-09T09:40:00Z"]);
+  // The proof token never leaves the server.
+  assertEquals(JSON.stringify(v).includes("proof_token"), false);
+});
