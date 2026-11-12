@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, CreditCard, Wallet } from "lucide-react";
+import { ChevronRight, CreditCard, HandCoins, PenLine, QrCode, Wallet } from "lucide-react";
 import { readAmount } from "@mesita/place-profile/lib/money";
 import { payStepName } from "@mesita/place-profile/lib/pay-steps";
 import { AddChip, CashChip, PlainChip, SavedCardChip } from "@/components/consumer/wallet/WalletLists";
@@ -27,8 +27,9 @@ import { PaySteps } from "./PaySteps";
 // (MESITA-3715). These are steps 2 to 6 of the seven pay steps (MESITA-3759,
 // MESITA-3798, lib/pay-steps in place-profile): Bill (before tip) → Tip →
 // Methods → Total (Bill, Tip, Total, the cashback; no money moves) → Pay
-// (how each part is paid: "Pay with your card" charged now with Stripe, "Pay
-// the waiter in cash", or credits, then one button that says what the tap
+// (the way drawn big, the amount the guest acts on, "Pay with your card",
+// "Pay the waiter in cash" or "Pay with credits", numbered steps down to the
+// waiter's signature (MESITA-3817), then one button that says what the tap
 // does). The header's back arrow steps back. After Pay the guest lands on
 // their payment's page (/pay/tab/<id>) and shows its QR to the waiter, who
 // signs it. Every rule and peso is the server's; this screen proposes.
@@ -421,8 +422,8 @@ export function GuestPayScreen({
     const rest = cardRows.filter((c) => c.id !== chosenCard);
     return (chosen ? [chosen, ...rest] : rest).slice(0, CARDS_SHOWN);
   })();
-  const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back` : undefined;
-  const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : undefined;
+  const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back in credits` : undefined;
+  const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back in credits` : undefined;
   // While the cards are unknown, "Add a card" would be a lie: the Retry row
   // (or the loading row) is the message.
   const cardsUnknown = cardOk && cards === null;
@@ -437,26 +438,39 @@ export function GuestPayScreen({
   // The Pay step's button and its line: what this tap charges or spends in
   // the app, and the cash left for the waiter (lib/pay-keypad.ts).
   const payNow = split ? payButton(split, { m }) : null;
-  // The Pay step's instructions (MESITA-3798): one row per way, bill and tip
-  // together, the card first, then the cash, then the credits.
+  // The Pay step's instructions (MESITA-3798; MESITA-3817, Pato: "this
+  // instruction must be clearer and more graphical"): the way drawn big (the
+  // card, the cash, or the credits), the amount the guest acts on (what moves
+  // in the app, else the cash), the heading, then numbered steps in the order
+  // they happen: the card, the credits, the QR (cash only), the cash, and
+  // the waiter's signature last.
   const cardCents = split ? split.card_bill_cents + split.card_tip_cents : 0;
   const cashCents = split ? split.cash_bill_cents + split.cash_tip_cents : 0;
   const creditCents = split?.credit_cents ?? 0;
+  const inAppCents = cardCents + creditCents;
   const payHeading = cardCents > 0 ? "Pay with your card" : cashCents > 0 ? "Pay the waiter in cash" : "Pay with credits";
-  const payRows: Array<{ key: string; chip: React.ReactNode; title: string; cents: number; line: string }> = [];
+  const payHow: Array<{ key: string; icon: React.ReactNode; title: string; line: string; good?: boolean }> = [];
   if (cardCents > 0) {
-    payRows.push({
-      key: "card",
-      chip: chosenCardRow ? <SavedCardChip last4={chosenCardRow.last4} /> : <PlainChip><CreditCard /></PlainChip>,
-      title: cardLabel ?? "Card",
-      cents: cardCents,
-      line: "Charged now with Stripe",
+    payHow.push({ key: "card", icon: <CreditCard />, title: "Tap Pay", line: `Stripe charges your ${cardLabel ?? "card"} now` });
+  }
+  if (creditCents > 0) payHow.push({ key: "credit", icon: <Wallet />, title: `${m(creditCents)} from your credits`, line: "Taken when you tap Pay" });
+  if (inAppCents === 0) payHow.push({ key: "qr", icon: <QrCode />, title: "Show the waiter your QR", line: "It opens on the next screen" });
+  if (cashCents > 0) {
+    payHow.push({
+      key: "cash",
+      icon: <HandCoins />,
+      title: `Hand over ${m(cashCents)} in cash`,
+      line: inAppCents === 0 ? "Change comes from the waiter" : "The rest, to the waiter",
     });
   }
-  if (cashCents > 0) payRows.push({ key: "cash", chip: <CashChip />, title: "Cash", cents: cashCents, line: "Give it to the waiter when they sign" });
-  if (creditCents > 0) {
-    payRows.push({ key: "credit", chip: <PlainChip><Wallet /></PlainChip>, title: "Credits", cents: creditCents, line: "From your credits here" });
-  }
+  const cashback = split?.cashback_cents ?? 0;
+  payHow.push({
+    key: "sign",
+    icon: <PenLine />,
+    title: "The waiter signs",
+    line: cashback > 0 ? `${m(cashback)} in credits once signed` : "That closes the payment",
+    good: cashback > 0,
+  });
 
   return (
     <>
@@ -659,22 +673,35 @@ export function GuestPayScreen({
 
           {step === "pay" && split ? (
             <>
-              <h3 className="font-display mt-5 shrink-0 text-center text-lg font-semibold">{payHeading}</h3>
-              <ul className="border-border mt-4 overflow-hidden rounded-2xl border" aria-label="How you pay" data-guest-pay-ways>
-                {payRows.map((r, i) => (
-                  <li key={r.key} className={cn("flex min-h-14 items-center justify-between gap-3 px-4 py-2", i > 0 && "border-border border-t")} data-pay-way={r.key}>
-                    {/* The instruction wraps, never truncates: it is what the guest does. */}
-                    <span className="flex min-w-0 items-center gap-3.5">
-                      {r.chip}
-                      <span className="min-w-0">
-                        <span className="block truncate text-base font-semibold">{r.title}</span>
-                        <span className="text-muted-foreground block text-sm break-words">{r.line}</span>
+              {/* The one step whose body may scroll on a short phone
+                  (MESITA-3817): the button stays pinned below it. */}
+              <div className="scrollbar-hide flex min-h-0 flex-1 flex-col items-center overflow-y-auto pt-4" data-guest-pay-how>
+                <PayArt
+                  way={cardCents > 0 ? "card" : cashCents > 0 ? "cash" : "credit"}
+                  brand={chosenCardRow ? brandLabel(chosenCardRow.brand) : "Card"}
+                  last4={chosenCardRow?.last4 ?? null}
+                />
+                <p className="mt-5 shrink-0 text-center text-[2.5rem] leading-none font-semibold tabular-nums" data-guest-pay-amount>
+                  {m(inAppCents > 0 ? inAppCents : cashCents)}
+                </p>
+                <h3 className="font-display mt-2 shrink-0 text-center text-lg font-semibold">{payHeading}</h3>
+                <ol className="mt-8 w-full shrink-0 space-y-4" aria-label="How you pay">
+                  {payHow.map((s, i) => (
+                    <li key={s.key} className="flex items-start gap-3" data-pay-how={s.key}>
+                      <span className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-full [&>svg]:h-5 [&>svg]:w-5" aria-hidden>
+                        {s.icon}
                       </span>
-                    </span>
-                    <span className="shrink-0 text-base font-semibold tabular-nums">{m(r.cents)}</span>
-                  </li>
-                ))}
-              </ul>
+                      {/* The instruction wraps, never truncates: it is what the guest does. */}
+                      <span className="min-w-0 pt-0.5">
+                        <span className="block text-base font-semibold break-words">
+                          {i + 1}. {s.title}
+                        </span>
+                        <span className={cn("block text-sm break-words", s.good ? "text-green-700" : "text-muted-foreground")}>{s.line}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </>
           ) : null}
 
@@ -689,12 +716,7 @@ export function GuestPayScreen({
         <div className="shrink-0 pt-4">
           {step === "pay" ? (
             <>
-              {/* What the tap does not move, or how it is paid: above the button. */}
-              {payNow?.line ? (
-                <p className="text-muted-foreground mb-2 text-center text-sm break-words" data-guest-pay-line>
-                  {payNow.line}
-                </p>
-              ) : null}
+              {/* No cash line above the button (MESITA-3817): the steps say it. */}
               <Button type="button" size="lg" className="min-h-12 w-full text-base font-semibold" disabled={!canPay} onClick={() => void pay()}>
                 {busy ? <Spinner size="sm" label="Paying" /> : payNow?.button ?? "Pay"}
               </Button>
@@ -874,6 +896,36 @@ function MethodLabel({ chip, title, line }: { chip: React.ReactNode; title: stri
         <span className="block truncate text-base font-semibold">{title}</span>
         {line ? <span className="text-muted-foreground block truncate text-sm">{line}</span> : null}
       </span>
+    </span>
+  );
+}
+
+/** The Pay step's big picture of the way (MESITA-3817): the chosen card in
+ *  black (brand, last four), the Cash chip's green tile and black coin scaled
+ *  up, or the credits in the brand pink. Decoration: the amount and the
+ *  heading under it say the same. */
+function PayArt({ way, brand, last4 }: { way: "card" | "cash" | "credit"; brand: string; last4: string | null }) {
+  if (way === "card") {
+    return (
+      <span className="bg-foreground flex h-24 w-40 shrink-0 flex-col justify-between rounded-2xl p-3 text-white" aria-hidden>
+        <span className="type-eyebrow">{brand}</span>
+        {last4 ? <span className="text-sm font-semibold tracking-widest tabular-nums">•••• {last4}</span> : null}
+      </span>
+    );
+  }
+  if (way === "cash") {
+    return (
+      <span className="flex h-24 w-40 shrink-0 items-center justify-center rounded-2xl bg-green-400" aria-hidden>
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-950 text-2xl font-bold text-green-400">$</span>
+      </span>
+    );
+  }
+  return (
+    <span
+      className="flex h-24 w-40 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--brand-pink-500)] to-[var(--brand-pink-800)] text-white"
+      aria-hidden
+    >
+      <Wallet className="h-10 w-10" />
     </span>
   );
 }
