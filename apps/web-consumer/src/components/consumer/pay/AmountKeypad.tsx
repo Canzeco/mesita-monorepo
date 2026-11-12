@@ -55,10 +55,12 @@ function widthEm(text: string): number {
   return em;
 }
 
-/** The typed amount (MESITA-3759): one size, 40px semibold, in the app's
- *  money format (amountShown: the formatter's prefix and suffix, the whole
- *  part grouped, decimals as typed). Nothing typed is the muted prefix
- *  alone; a typed 0 is a 0 in ink. A long amount in a narrow row shrinks to
+/** The typed amount (MESITA-3759, MESITA-3766): one size, 40px semibold,
+ *  at the top of the step under the strip, in the app's money format
+ *  (amountShown: the formatter's prefix and suffix, the whole part grouped,
+ *  decimals as typed, and the cents not typed yet as a muted ghost, so it
+ *  always reads "$20.00MX"). Nothing typed is a muted "$0.00MX"; what the
+ *  guest typed is ink, so a typed 0 is a 0. A long amount in a narrow row shrinks to
  *  fit (the row is a size container and the font is capped by its width):
  *  a digit is never cut off. A screen-reader copy speaks once the guest
  *  stops typing (not once per digit). */
@@ -80,9 +82,9 @@ export function AmountDisplay({
     return () => window.clearTimeout(t);
   }, [text]);
   const shown = amountShown(text, currency);
-  const em = Math.max(widthEm(shown.prefix + shown.body + shown.suffix), 1);
+  const em = Math.max(widthEm(shown.prefix + shown.body + shown.ghost + shown.suffix), 1);
   return (
-    <div className={cn("@container flex h-12 w-full min-w-0 items-center", className)} data-pay-amount>
+    <div className={cn("@container flex h-14 w-full min-w-0 items-center", className)} data-pay-amount>
       <div
         aria-hidden
         className="w-full text-center leading-none font-semibold whitespace-nowrap tabular-nums"
@@ -90,7 +92,8 @@ export function AmountDisplay({
       >
         <span className={cn(text === "" && "text-muted-foreground")}>{shown.prefix}</span>
         {shown.body}
-        {shown.suffix}
+        <span className="text-muted-foreground">{shown.ghost}</span>
+        <span className={cn(text === "" && "text-muted-foreground")}>{shown.suffix}</span>
       </div>
       <span role="status" className="sr-only">
         {`${label}, ${spoken === "" ? "0" : spoken} ${currency.toUpperCase()}`}

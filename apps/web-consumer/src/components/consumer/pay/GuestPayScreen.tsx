@@ -442,9 +442,10 @@ export function GuestPayScreen({
         <div className="mt-3 flex min-h-0 flex-1 flex-col">
           {step === "bill" ? (
             <>
-              {/* One block docked at the bottom: spare height goes above the amount. */}
+              {/* The amount at the top under the strip, the keypad at the
+                  bottom above Next; spare height sits between them (MESITA-3766). */}
+              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mt-6 shrink-0" />
               <div className="min-h-0 flex-1" aria-hidden />
-              <AmountDisplay text={amount} currency={place.currency} label="Bill" className="mb-2 shrink-0" />
               <AmountKeypad text={amount} onKey={(k) => setAmount((t) => pressKey(t, k))} />
             </>
           ) : null}
@@ -476,9 +477,10 @@ export function GuestPayScreen({
 
           {step === "tip" && tip === "other" ? (
             <>
+              <AmountDisplay text={other} currency={place.currency} label="Tip" className="mt-6 shrink-0" />
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center self-end text-sm font-semibold underline"
+                className="text-muted-foreground hover:text-foreground flex min-h-11 shrink-0 items-center self-center text-sm font-semibold underline"
                 onClick={() => {
                   setOther("");
                   setTip(lastPct);
@@ -487,7 +489,6 @@ export function GuestPayScreen({
                 Back to %
               </button>
               <div className="min-h-0 flex-1" aria-hidden />
-              <AmountDisplay text={other} currency={place.currency} label="Tip" className="mb-2 shrink-0" />
               <AmountKeypad text={other} onKey={(k) => setOther((t) => pressKey(t, k))} />
             </>
           ) : null}
