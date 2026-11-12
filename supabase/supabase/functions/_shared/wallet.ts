@@ -167,6 +167,9 @@ export type Entry = {
    *  confirmed_by, joined by the EF for cashback entries only. 'waiter' is
    *  a bill paid in cash at the table. */
   confirmed_by?: "credit" | "stripe" | "waiter" | null;
+  /** The purchase a voucher, prepay, bonus or purchase reversal belongs to
+   *  (MESITA-3750): the House Card shows a voucher and its bonus as one row. */
+  purchase_id?: string | null;
 };
 
 export type Balance = {
@@ -191,6 +194,8 @@ export type Balance = {
     payment_id: string | null;
     /** Set on a cashback entry with a payment (MESITA-3554); null otherwise. */
     confirmed_by: "credit" | "stripe" | "waiter" | null;
+    /** The purchase behind the entry (MESITA-3750); null on payment and gift rows. */
+    purchase_id: string | null;
   }>;
 };
 
@@ -238,6 +243,7 @@ export function balancesOf(
       available_at: pending ? e.available_at ?? null : null,
       payment_id: e.payment_id ?? null,
       confirmed_by: e.kind === "cashback" && e.payment_id ? e.confirmed_by ?? null : null,
+      purchase_id: e.purchase_id ?? null,
     });
   }
   const out = [...byKey.values()];

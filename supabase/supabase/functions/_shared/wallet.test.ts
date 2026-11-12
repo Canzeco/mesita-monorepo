@@ -73,6 +73,14 @@ Deno.test("balancesOf: one balance per place, newest first, Pending split from A
   assertEquals(b[0].entries.map((e) => e.available_at), [null, null, null]);
 });
 
+Deno.test("balancesOf: an entry's purchase_id comes through; null when the row has none (MESITA-3750)", () => {
+  const b = balancesOf([
+    { place_id: "a", kind: "voucher", amount_cents: 10000, currency: "mxn", created_at: "2026-11-07T10:00:00Z", purchase_id: "p1" },
+    { place_id: "a", kind: "spend", amount_cents: -5000, currency: "mxn", created_at: "2026-11-07T09:00:00Z", payment_id: "pay1" },
+  ], Date.parse("2026-11-07T12:00:00Z"));
+  assertEquals(b[0].entries.map((e) => e.purchase_id), ["p1", null]);
+});
+
 Deno.test("settleAll: a Stripe that never answers is cut by the budget; the read goes on and names what is still open", async () => {
   // Three open purchases. The first credits; the second hangs until the
   // budget aborts its fetch; the third is never asked. The RPC runs only for
