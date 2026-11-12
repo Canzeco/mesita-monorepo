@@ -3,14 +3,16 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Outfit } from "next/font/google";
-import { Phone, X } from "lucide-react";
+import { X } from "lucide-react";
 import { MesitaMark } from "@/components/brand/MesitaMark";
 import { cn } from "@/lib/utils";
 
 // Sign-in opens on a photo, not a form (MESITA-3650). The first screen is
-// the cover, the wordmark, one line and "Continue with phone"; the phone
-// and code steps (the caller's children) rise as a sheet over the photo
-// only after that tap, and the X lowers it back to the cover.
+// the cover, the wordmark, one line and two buttons, Sign up and Log in
+// (MESITA-3751: "two different buttons… for clarity for the user"). Both
+// open the same phone and code steps (the caller's children) as a sheet
+// over the photo; only the sheet's title says which door was taken. The X
+// lowers it back to the cover.
 //
 // It fills the MobileFrame card (flex-1, absolute layers), so it is the
 // same on a phone and in the desktop visualizer. The keyboard shrinks the
@@ -28,12 +30,17 @@ export function CoverAuthLayout({
   footer,
 }: {
   headline: string;
-  title: string;
+  /** Overrides both doors' sheet titles (the Pay QR door names its place). */
+  title?: string;
   subtitle: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  // Which door is open: null is the cover.
+  const [door, setDoor] = useState<"signup" | "login" | null>(null);
+  const open = door !== null;
+  const sheetTitle =
+    title ?? (door === "login" ? "Log in with your phone" : "Create your account");
 
   return (
     <div className="relative flex-1 overflow-hidden bg-black text-white">
@@ -80,14 +87,22 @@ export function CoverAuthLayout({
               Find a place, book a table, pay and earn credit back.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="flex h-13 w-full items-center justify-center gap-2 rounded-xl bg-white text-base font-semibold text-black transition active:scale-[0.98]"
-          >
-            <Phone className="h-4 w-4" />
-            Continue with phone
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setDoor("signup")}
+              className="flex h-13 w-full items-center justify-center rounded-xl bg-white text-base font-semibold text-black transition active:scale-[0.98]"
+            >
+              Sign up
+            </button>
+            <button
+              type="button"
+              onClick={() => setDoor("login")}
+              className="flex h-13 w-full items-center justify-center rounded-xl border border-white/70 text-base font-semibold text-white transition active:scale-[0.98]"
+            >
+              Log in
+            </button>
+          </div>
         </div>
       </div>
 
@@ -96,7 +111,7 @@ export function CoverAuthLayout({
         type="button"
         aria-label="Close"
         tabIndex={-1}
-        onClick={() => setOpen(false)}
+        onClick={() => setDoor(null)}
         className={cn(
           "absolute inset-0 bg-black/40 transition-opacity duration-300",
           open ? "opacity-100" : "pointer-events-none opacity-0",
@@ -115,13 +130,13 @@ export function CoverAuthLayout({
         <header className="mb-6 flex items-start justify-between gap-4">
           <div>
             <h2 className="font-display text-2xl leading-tight font-semibold tracking-[-0.02em]">
-              {title}
+              {sheetTitle}
             </h2>
             <p className="text-muted-foreground mt-1 text-sm leading-[1.55]">{subtitle}</p>
           </div>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => setDoor(null)}
             aria-label="Back to the cover"
             className="bg-muted text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition"
           >
