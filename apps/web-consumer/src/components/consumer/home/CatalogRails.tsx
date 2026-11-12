@@ -47,7 +47,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Compass, Heart } from "lucide-react";
+import { ChevronDown, Compass, Heart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MONTERREY_CENTER } from "@/lib/map-defaults";
@@ -239,6 +239,8 @@ export function CatalogRails() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuWide, setMenuWide] = useState(false);
   const railRef = useRef<HTMLElement | null>(null);
+  // The rail reached its last family: the down arrow hides (MESITA-3806).
+  const [railAtEnd, setRailAtEnd] = useState(false);
   const menuRef = useRef<HTMLElement | null>(null);
   const requestKey = `${areaPoolKey(from)}|${
     families.length > 0 ? families.join(",") : ALL_CHIP
@@ -548,7 +550,9 @@ export function CatalogRails() {
             on && open && "font-semibold",
           )}
         >
-          <span aria-hidden className={RAIL_EMOJI}>
+          {/* Closed, the emoji fills what the scrollbar leaves of the rail;
+              open, the same 48px column. */}
+          <span aria-hidden className={cn(RAIL_EMOJI, !open && "w-full")}>
             {c.emoji}
           </span>
           {open ? (
@@ -559,16 +563,41 @@ export function CatalogRails() {
         </button>
       );
     });
+  // MORE BELOW, AND SAYS SO (Pato, MESITA-3806: "show an arrow or
+  // something at the bottom of sidebar menu to indicate that that shit is
+  // scrollable"): the rail's foot fades into its own grey under a down
+  // chevron; a tap scrolls most of a screen; at the last family it hides.
+  const railScrolled = (el: HTMLElement) =>
+    setRailAtEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 4);
   const emojiRail = (
-    <div className="bg-border flex w-12 shrink-0 flex-col">
+    <div className="bg-border relative flex w-12 shrink-0 flex-col">
       <nav
         ref={railRef}
         aria-label="Families"
-        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+        onScroll={(e) => railScrolled(e.currentTarget)}
+        // ITS OWN SCROLLBAR ON THE RIGHT (Pato, MESITA-3806: "show
+        // scrollbar in the right side … like the contents"): the rows'
+        // thin grey bar.
+        className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
         data-places-rail
       >
         {railRows(false)}
       </nav>
+      {railAtEnd ? null : (
+        <button
+          type="button"
+          aria-label="More families"
+          onClick={() => {
+            const el = railRef.current;
+            if (el)
+              el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
+          }}
+          className="from-border via-border/90 text-muted-foreground absolute inset-x-0 bottom-0 flex h-10 items-end justify-center bg-gradient-to-t to-transparent pb-1.5"
+          data-places-rail-more
+        >
+          <ChevronDown className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+        </button>
+      )}
     </div>
   );
   const railMenu = menuOpen ? (
