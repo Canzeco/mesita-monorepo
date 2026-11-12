@@ -619,8 +619,12 @@ export function CatalogRails() {
       <div className="relative flex min-h-0 flex-1">
         {tab === "places" ? emojiRail : null}
         {tab === "places" ? railMenu : null}
+        {/* ISOLATE: the rows' own z-10 (the offer and Save · Share over the
+            card's stretched link, MESITA-3797) stays inside this pane, so the
+            open menu's blur covers all of it and nothing under it takes a tap
+            (Pato, MESITA-3804: "blurred and not clickable"). */}
         <div
-          className="bg-card scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
           data-home-scroller
         >
           {inner}
