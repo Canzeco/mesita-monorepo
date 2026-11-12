@@ -103,7 +103,7 @@ export default async function SignInPage({
           fill
           priority
           sizes="100vw"
-          className="scale-[1.03] object-cover object-[center_42%] blur-[1px]"
+          className="object-cover object-[center_42%]"
         />
         <div
           aria-hidden
