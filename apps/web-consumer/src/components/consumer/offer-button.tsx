@@ -39,43 +39,56 @@ export type OfferSlide = {
 // and pink for insta and yellow for vip"): the Offers page's voucher colours.
 const GREEN = "bg-green-400 text-neutral-950";
 
-// In Pato's order (MESITA-3671): payment, cash, $200, $1000, $5000, Welcome,
-// Story, VIP. The short words are Places 3.0's (MESITA-3671; gone with it in
-// MESITA-3684, back with it in MESITA-3762).
+// FIVE WORDS, IN PATO'S ORDER (MESITA-3791: "in the offers banners just
+// show this: Welcome (+X%) · Story (+X%) · VIP (+X%) · Pay (+X% Back) ·
+// Prepay (+X%) ONLY SHOW THE HIGHEST STANDARD VOUCHER"): the three special
+// vouchers, then the card cashback as Pay, then ONE Prepay slide for the
+// best of the $200 / $1,000 / $5,000 vouchers on sale. Cash (MESITA-3671)
+// and the three sized slides are gone from the banner. Every banner (the
+// Places rows, Search's strip) reads the same words; `short` = `lead`.
 const OFFER_SLIDES: OfferSlide[] = [
-  // The pill is filled in from the place's own rate (offerSlides). "Mesita
-  // Pay" on the button (Pato, MESITA-3691: "Better Mesita Pay").
-  { key: "cashback", lead: "Mesita Pay", pill: "Cashback", short: "Mesita Pay", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
-  // Cash at the table (MESITA-3671): shown once the catalog answer carries
-  // the place's cash rate, `cash_cashback_bps`.
-  { key: "cash", lead: "Cash", pill: "Cashback", short: "Cash Pay", spoken: "Cash cashback", section: "payment", tone: GREEN },
-  // "$X Prepay", never "Prepay $X"; "Mesita Payments +5% Cashback" (MESITA-3508). $…MX: the currency after the amount (MESITA-3490, MESITA-3481).
-  { key: "voucher_200", lead: "$200.00MX Prepay", pill: "+10% Bonus", short: "$200.00MX", spoken: "$200.00MX prepay, 10% bonus", section: "prepayment", tone: GREEN, bonus: 10 },
-  { key: "voucher_1000", lead: "$1,000.00MX Prepay", pill: "+20% Bonus", short: "$1000.00MX", spoken: "$1,000.00MX prepay, 20% bonus", section: "prepayment", tone: GREEN, bonus: 20 },
-  { key: "voucher_5000", lead: "$5,000.00MX Prepay", pill: "+30% Bonus", short: "$5000.00MX", spoken: "$5,000.00MX prepay, 30% bonus", section: "prepayment", tone: GREEN, bonus: 30 },
-  { key: "voucher_welcome", lead: "Welcome Prepay", pill: "+30% Bonus", short: "Welcome", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
-  { key: "voucher_story", lead: "Story Prepay", pill: "+30% Bonus", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
-  { key: "voucher_vip", lead: "VIP Prepay", pill: "+30% Bonus", short: "VIP", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
+  { key: "voucher_welcome", lead: "Welcome", pill: "+30%", short: "Welcome", spoken: "Welcome prepay, 30% bonus", section: "special", tone: "bg-[#2563EB] text-white", bonus: 30 },
+  { key: "voucher_story", lead: "Story", pill: "+30%", short: "Story", spoken: "Story prepay, 30% bonus", section: "special", tone: "bg-[#E1306C] text-white", bonus: 30 },
+  { key: "voucher_vip", lead: "VIP", pill: "+30%", short: "VIP", spoken: "VIP prepay, 30% bonus", section: "special", tone: "bg-[#F5B301] text-neutral-950", bonus: 30 },
+  // The pill is filled in from the place's own card rate (offerSlides).
+  { key: "cashback", lead: "Pay", pill: "Back", short: "Pay", spoken: "Mesita Pay cashback", section: "payment", tone: GREEN },
+  // The best standard voucher on sale (offerSlides picks it).
+  { key: "prepay", lead: "Prepay", pill: "", short: "Prepay", spoken: "Prepay", section: "prepayment", tone: GREEN },
 ];
+
+/** The standard vouchers' bonuses (vouchers.tsx STANDARD): the Prepay
+ *  slide shows the highest one the place sells. */
+const STANDARD_BONUS: Record<string, number> = {
+  voucher_200: 10,
+  voucher_1000: 20,
+  voucher_5000: 30,
+};
 
 /** The place's slides, in the fixed order; none = no button. */
 export function offerSlides(place: Pick<Place, "offers">): OfferSlide[] {
   const offers = place.offers;
   if (!offers) return [];
   const sell = new Set(offers.sell);
-  // The cashback slide says the place's own card rate (MESITA-3589); an
-  // older answer without it shows no number rather than a guessed one.
+  // The Pay slide says the place's own card rate (MESITA-3589); an older
+  // answer without it shows no slide rather than a guessed number.
   const bps = offers.card_cashback_bps ?? 0;
-  const cashBps = offers.cash_cashback_bps ?? 0;
-  return OFFER_SLIDES.filter((s) =>
-    s.key === "cashback" ? offers.cashback && bps > 0 : s.key === "cash" ? cashBps > 0 : sell.has(s.key),
-  ).map((s) =>
-    s.key === "cashback"
-      ? { ...s, pill: `+${bps / 100}% Cashback`, spoken: `Mesita Pay, ${bps / 100}% cashback` }
-      : s.key === "cash"
-        ? { ...s, pill: `+${cashBps / 100}% Cashback`, spoken: `Cash, ${cashBps / 100}% cashback` }
-        : s,
+  const best = Math.max(
+    0,
+    ...Object.entries(STANDARD_BONUS)
+      .filter(([key]) => sell.has(key))
+      .map(([, bonus]) => bonus),
   );
+  return OFFER_SLIDES.flatMap((s): OfferSlide[] => {
+    if (s.key === "cashback")
+      return offers.cashback && bps > 0
+        ? [{ ...s, pill: `+${bps / 100}% Back`, spoken: `Mesita Pay, ${bps / 100}% back` }]
+        : [];
+    if (s.key === "prepay")
+      return best > 0
+        ? [{ ...s, pill: `+${best}%`, spoken: `Prepay, ${best}% bonus`, bonus: best }]
+        : [];
+    return sell.has(s.key) ? [s] : [];
+  });
 }
 
 function offersLabel(name: string, slides: OfferSlide[]): string {
@@ -102,9 +115,8 @@ const OFFER_PILL =
  *  black pill: a voucher's bonus alone ("Story [+30%]"), cashback's rate as
  *  "5% Back" (MESITA-3678: "better the short form of cashback"). */
 function shortWords(slide: OfferSlide): { lead: string; pill: string } {
-  if (slide.bonus) return { lead: slide.short, pill: `+${slide.bonus}%` };
-  const rate = slide.pill.match(/[\d.]+%/)?.[0];
-  return { lead: slide.short, pill: rate ? `${rate} Back` : slide.pill };
+  // One set of words since MESITA-3791: the short ones are the long ones.
+  return { lead: slide.short, pill: slide.pill };
 }
 
 /** The words on the box: the slide's lead, then the ink pill; with `short`,
