@@ -9,9 +9,11 @@ import { Spinner } from "@/components/shared/Spinner";
 import { Button } from "@/components/ui/button";
 import { LocalDialog, LocalSheet } from "@/components/consumer/overlay/LocalOverlay";
 import { EFError } from "@/lib/api/_invoke";
-import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, MAX_SAVED_CARDS, type SavedCard } from "@/lib/api/cards";
+import { apiAddCard, apiListCards, brandLabel, CARD_RETURN_PARAM, MAX_SAVED_CARDS } from "@/lib/api/cards";
 import { apiPayGuest, type PayWith, runBankCheck, TAB_REFUSAL } from "@/lib/api/tab";
 import { money, type PayPlace } from "@/lib/api/wallet";
+import { acceptCardsAnswer, type CardsLoad, cardsFailure, fixedMethod, loadedCards, methodsWaitOnCards, pickCard } from "@/lib/pay-cards";
+import { clearSessionHref } from "@/lib/stale-session";
 import { draftAmount, draftTip, type PadKey, payProblem, paySplit, pressKey, readTip, tipWays } from "@/lib/pay-keypad";
 import { cn } from "@/lib/utils";
 import { AmountDisplay, AmountKeypad } from "./AmountKeypad";
@@ -118,7 +120,12 @@ export function GuestPayScreen({
   const [method, setMethod] = useState<PayWith | null>(draft?.method ?? null);
   const [cardId, setCardId] = useState<string | null>(draft?.cardId ?? null);
   const [tipMethod, setTipMethod] = useState<PayWith>("cash");
-  const [cards, setCards] = useState<SavedCard[] | null>(null);
+  // The saved cards: loading, failed (Retry), signed out, or the list. A
+  // failed read is never an empty list (MESITA-3758, lib/pay-cards.ts).
+  const [cardsLoad, setCardsLoad] = useState<CardsLoad>({ state: "loading" });
+  const [cardsAttempt, setCardsAttempt] = useState(0);
+  const latestCardsAttempt = useRef(0);
+  const cards = loadedCards(cardsLoad);
   const [busy, setBusy] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
   const [moreCards, setMoreCards] = useState(false);
@@ -137,30 +144,36 @@ export function GuestPayScreen({
   // Credit is the only way to pay here: its switch stays on.
   const creditOnly = !cardOk && !cashOk;
 
-  // Saved cards, once, when the place takes cards.
+  // Saved cards, when the place takes cards, and again on each Retry. An
+  // answer from an earlier attempt is dropped; a dead session goes through
+  // the stale-session path and comes back to this place's pay page.
   useEffect(() => {
-    if (!cardOk || cards !== null) return;
-    let cancelled = false;
+    if (!cardOk) return;
+    const attempt = cardsAttempt;
+    latestCardsAttempt.current = attempt;
     void apiListCards(getSupabase())
       .then((r) => {
-        if (!cancelled) setCards(r.cards);
+        if (acceptCardsAnswer(attempt, latestCardsAttempt.current)) setCardsLoad({ state: "loaded", cards: r.cards });
       })
-      .catch(() => {
-        if (!cancelled) setCards([]);
+      .catch((err: unknown) => {
+        if (!acceptCardsAnswer(attempt, latestCardsAttempt.current)) return;
+        const failed = cardsFailure(err);
+        if (failed.state === "signed_out") window.location.assign(clearSessionHref(`/pay/${placeId}`));
+        setCardsLoad(failed);
       });
-    return () => {
-      cancelled = true;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cardOk]);
+  }, [cardOk, cardsAttempt]);
+  const retryCards = () => {
+    setCardsLoad({ state: "loading" });
+    setCardsAttempt((n) => n + 1);
+  };
 
   const billCents = readAmount(amount) ?? 0;
   const tipCents =
     tip === null ? 0 : tip === "other" ? readTip(other) ?? 0 : Math.round((billCents * tip) / 100);
   const creditOn = (useCredit || creditOnly) && spendable > 0;
   const creditCovers = creditOn && spendable >= billCents && billCents > 0;
-  const firstCard = cards?.[0]?.id ?? null;
-  const chosenCard = cardId && cards?.some((c) => c.id === cardId) ? cardId : firstCard;
+  const chosenCard = pickCard(cards, cardId);
   // The rest of the bill: the guest's pick, else card when cards work, else cash.
   const restWith: PayWith | null = method ?? (cardOk && chosenCard ? "card" : cashOk ? "cash" : cardOk ? "card" : null);
   const base = { place: place!, billCents, tipCents, spendableCents: spendable, useCredit: creditOn, restWith, cardId: chosenCard };
@@ -287,11 +300,15 @@ export function GuestPayScreen({
       : step === "tip"
       ? tip !== null && (tip !== "other" || otherOk)
       : step === "method"
-      ? !problem && (creditCovers || !!restWith)
+      ? !problem && (creditCovers || !!restWith) && !methodsWaitOnCards({ cardOk, load: cardsLoad, method, creditCovers })
       : true;
   const next = () => {
     const i = STEPS.indexOf(step);
-    if (nextOk && i < STEPS.length - 1) setStep(STEPS[i + 1]);
+    if (!nextOk || i >= STEPS.length - 1) return;
+    // The method the guest leaves Methods with stays: a card list that
+    // arrives later never turns a cash payment into a card charge.
+    if (step === "method") setMethod(fixedMethod(method, restWith));
+    setStep(STEPS[i + 1]);
   };
   const stepIndex = STEPS.indexOf(step);
   const typing = step === "bill" || (step === "tip" && tip === "other");
@@ -327,7 +344,11 @@ export function GuestPayScreen({
   })();
   const cardBack = place.cashback_bps > 0 ? `${place.cashback_bps / 100}% back` : undefined;
   const cashBack = (place.outside_bps ?? 0) > 0 ? `${(place.outside_bps ?? 0) / 100}% back` : undefined;
-  const status = step === "method" || step === "review" ? error ?? problem : error;
+  // While the cards are unknown, "Add a card" would be a lie: the Retry row
+  // (or the loading row) is the message.
+  const cardsUnknown = cardOk && cards === null;
+  const shownProblem = cardsUnknown && restWith === "card" ? null : problem;
+  const status = step === "method" || step === "review" ? error ?? shownProblem : error;
 
   return (
     <>
@@ -434,13 +455,24 @@ export function GuestPayScreen({
 
                 {!creditCovers ? (
                   <div role="radiogroup" aria-label={creditOn ? "The rest" : "Pay with"}>
-                    {cardOk && cards === null
-                      ? [0, 1].map((i) => (
-                          <div key={i} className={cn("flex h-14 items-center px-4", (i > 0 || spendable > 0) && "border-border border-t")}>
-                            <Skeleton className="h-5 w-40" />
-                          </div>
-                        ))
-                      : null}
+                    {/* The cards row keeps one height while loading, failed and retrying. */}
+                    {cardsUnknown ? (
+                      cardsLoad.state === "failed" ? (
+                        <button
+                          type="button"
+                          className={cn("flex h-14 w-full items-center justify-between gap-3 px-4 text-left", spendable > 0 && "border-border border-t")}
+                          onClick={retryCards}
+                          data-cards-retry
+                        >
+                          <span className="min-w-0 truncate text-base">Couldn&apos;t load your cards</span>
+                          <span className="shrink-0 text-base font-semibold underline">Retry</span>
+                        </button>
+                      ) : (
+                        <div className={cn("flex h-14 items-center px-4", spendable > 0 && "border-border border-t")} aria-busy>
+                          {cardsAttempt > 0 ? <span className="text-muted-foreground text-base">Loading…</span> : <Skeleton className="h-5 w-40" />}
+                        </div>
+                      )
+                    ) : null}
                     {cardOk
                       ? shownCards.map((c, i) => (
                           <Row
@@ -458,7 +490,7 @@ export function GuestPayScreen({
                         ))
                       : null}
                     {cashOk ? (
-                      <Row divided={spendable > 0 || shownCards.length > 0 || (cardOk && cards === null)} on={restWith === "cash"} chip={<CashChip />} title="Cash" line={cashBack} onPick={() => setMethod("cash")} />
+                      <Row divided={spendable > 0 || shownCards.length > 0 || cardsUnknown} on={restWith === "cash"} chip={<CashChip />} title="Cash" line={cashBack} onPick={() => setMethod("cash")} />
                     ) : null}
                     {cardOk && cards !== null ? (
                       cardRows.length > CARDS_SHOWN ? (
