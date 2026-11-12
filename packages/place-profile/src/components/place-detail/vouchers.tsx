@@ -202,6 +202,9 @@ const FACES: Record<MoneyVoucherKey, Face> = (() => {
 
 /** Mesita Payments' face: the vouchers' light green (MESITA-3480). */
 const CASHBACK_FACE: Face = { card: "bg-green-200 text-neutral-950", ...LIGHT, Mark: BadgePercent };
+/** EXTERNAL PAY'S OWN FACE (Pato, MESITA-3787: "external cash payment must be
+ *  from other color"): light violet, a tint no other offer wears. */
+const EXTERNAL_FACE = "bg-violet-200 text-neutral-950";
 
 function SectionTitle({ id, title }: { id: string; title: string }) {
   return (
@@ -714,7 +717,7 @@ export function VouchersPane({
             className={cn(ROW, !outside && dim && "opacity-50")}
             aria-label={`External Pay Cashback: pay the place directly, by cash or their terminal, with the waiter's code. ${outside ? `${cashPct} comes back as credits.` : "Not at this place yet."}`}
           >
-            <span className={cn(CHIP, CASHBACK_FACE.card)} aria-hidden>
+            <span className={cn(CHIP, EXTERNAL_FACE)} aria-hidden>
               {outside ? `+${cashPct}` : "Off"}
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
