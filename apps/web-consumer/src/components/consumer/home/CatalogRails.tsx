@@ -550,9 +550,7 @@ export function CatalogRails() {
             on && open && "font-semibold",
           )}
         >
-          {/* Closed, the emoji fills what the scrollbar leaves of the rail;
-              open, the same 48px column. */}
-          <span aria-hidden className={cn(RAIL_EMOJI, !open && "w-full")}>
+          <span aria-hidden className={RAIL_EMOJI}>
             {c.emoji}
           </span>
           {open ? (
@@ -575,10 +573,10 @@ export function CatalogRails() {
         ref={railRef}
         aria-label="Families"
         onScroll={(e) => railScrolled(e.currentTarget)}
-        // ITS OWN SCROLLBAR ON THE RIGHT (Pato, MESITA-3806: "show
-        // scrollbar in the right side … like the contents"): the rows'
-        // thin grey bar.
-        className="scrollbar-thin-dark flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
+        // NO SCROLLBAR (Pato, MESITA-3807: "the scrolling bar in the
+        // sidebar menu looks like shit"; MESITA-3806 gave it the rows' thin
+        // bar for one round): the down arrow at its foot says it scrolls.
+        className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-y-contain"
         data-places-rail
       >
         {railRows(false)}
@@ -652,8 +650,18 @@ export function CatalogRails() {
             card's stretched link, MESITA-3797) stays inside this pane, so the
             open menu's blur covers all of it and nothing under it takes a tap
             (Pato, MESITA-3804: "blurred and not clickable"). */}
+        {/* THE ROWS THEMSELVES BLUR AND GO DEAF while the menu is open
+            (Pato, MESITA-3807: "the sections of places must be blurred and
+            not clickable"): the dim's backdrop-filter (MESITA-3804) drew no
+            blur on the live page, so the pane wears the filter itself and
+            takes no taps; the dim above still closes the menu. */}
         <div
-          className="bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain"
+          className={cn(
+            "bg-card scrollbar-thin-dark isolate flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-y-contain transition-[filter] duration-200",
+            tab === "places" && menuOpen && "pointer-events-none",
+            tab === "places" && menuWide && "blur-sm",
+          )}
+          aria-hidden={tab === "places" && menuOpen ? true : undefined}
           data-home-scroller
         >
           {inner}
